@@ -1,0 +1,15 @@
+[package]
+authors = ["The Rust Project Developers"]
+build = "build.rs"
+name = "compiler_builtins"
+version = "0.0.0"
+
+[lib]
+name = "compiler_builtins"
+path = "lib.rs"
+
+[dependencies]
+core = { path = "../libcore" }
+
+[build-dependencies]
+gcc = "0.3.27"

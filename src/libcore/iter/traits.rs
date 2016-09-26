@@ -7,6 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+use ops::{Mul, Add};
 
 /// Conversion from an `Iterator`.
 ///
@@ -581,41 +582,34 @@ pub trait Product<A = Self>: Sized {
     fn product<I: Iterator<Item=A>>(iter: I) -> Self;
 }
 
+// NB: explicitly use Add and Mul here to inherit overflow checks
 macro_rules! integer_sum_product {
     ($($a:ident)*) => ($(
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Sum for $a {
             fn sum<I: Iterator<Item=$a>>(iter: I) -> $a {
-                iter.fold(0, |a, b| {
-                    a.checked_add(b).expect("overflow in sum")
-                })
+                iter.fold(0, Add::add)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Product for $a {
             fn product<I: Iterator<Item=$a>>(iter: I) -> $a {
-                iter.fold(1, |a, b| {
-                    a.checked_mul(b).expect("overflow in product")
-                })
+                iter.fold(1, Mul::mul)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Sum<&'a $a> for $a {
             fn sum<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
-                iter.fold(0, |a, b| {
-                    a.checked_add(*b).expect("overflow in sum")
-                })
+                iter.cloned().fold(0, Add::add)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Product<&'a $a> for $a {
             fn product<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
-                iter.fold(1, |a, b| {
-                    a.checked_mul(*b).expect("overflow in product")
-                })
+                iter.cloned().fold(1, Mul::mul)
             }
         }
     )*)

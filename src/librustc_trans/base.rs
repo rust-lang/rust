@@ -466,32 +466,27 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             store_fat_ptr(bcx, base, info, dst, dst_ty);
         }
 
-        // This can be extended to enums and tuples in the future.
-        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
+        (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) => {
             assert_eq!(def_a, def_b);
 
-            let src_repr = adt::represent_type(bcx.ccx(), src_ty);
-            let src_fields = match &*src_repr {
-                &adt::Repr::Univariant(ref s) => &s.fields,
-                _ => bug!("struct has non-univariant repr"),
-            };
-            let dst_repr = adt::represent_type(bcx.ccx(), dst_ty);
-            let dst_fields = match &*dst_repr {
-                &adt::Repr::Univariant(ref s) => &s.fields,
-                _ => bug!("struct has non-univariant repr"),
-            };
+            let src_fields = def_a.variants[0].fields.iter().map(|f| {
+                monomorphize::field_ty(bcx.tcx(), substs_a, f)
+            });
+            let dst_fields = def_b.variants[0].fields.iter().map(|f| {
+                monomorphize::field_ty(bcx.tcx(), substs_b, f)
+            });
 
             let src = adt::MaybeSizedValue::sized(src);
             let dst = adt::MaybeSizedValue::sized(dst);
 
-            let iter = src_fields.iter().zip(dst_fields).enumerate();
+            let iter = src_fields.zip(dst_fields).enumerate();
             for (i, (src_fty, dst_fty)) in iter {
                 if type_is_zero_size(bcx.ccx(), dst_fty) {
                     continue;
                 }
 
-                let src_f = adt::trans_field_ptr(bcx, &src_repr, src, Disr(0), i);
-                let dst_f = adt::trans_field_ptr(bcx, &dst_repr, dst, Disr(0), i);
+                let src_f = adt::trans_field_ptr(bcx, src_ty, src, Disr(0), i);
+                let dst_f = adt::trans_field_ptr(bcx, dst_ty, dst, Disr(0), i);
                 if src_fty == dst_fty {
                     memcpy_ty(bcx, dst_f, src_f, src_fty);
                 } else {
@@ -1164,11 +1159,10 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if !fcx.fn_ty.ret.is_ignore() {
         let dest = fcx.llretslotptr.get().unwrap();
         let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
-        let repr = adt::represent_type(ccx, sig.output);
         let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
         for (i, arg_ty) in sig.inputs.into_iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(bcx, &repr, dest_val, Disr::from(disr), i);
+            let lldestptr = adt::trans_field_ptr(bcx, sig.output, dest_val, Disr::from(disr), i);
             let arg = &fcx.fn_ty.args[arg_idx];
             arg_idx += 1;
             let b = &bcx.build();
@@ -1181,7 +1175,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 arg.store_fn_arg(b, &mut llarg_idx, lldestptr);
             }
         }
-        adt::trans_set_discr(bcx, &repr, dest, disr);
+        adt::trans_set_discr(bcx, sig.output, dest, disr);
     }
 
     fcx.finish(bcx, DebugLoc::None);
@@ -1346,8 +1340,7 @@ fn write_metadata(cx: &SharedCrateContext,
                                           cx.export_map(),
                                           cx.link_meta(),
                                           reachable_ids,
-                                          cx.mir_map(),
-                                          cx.tcx().map.krate());
+                                          cx.mir_map());
     let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.extend_from_slice(&flate::deflate_bytes(&metadata));
 
@@ -1421,21 +1414,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
             .iter()
             .cloned()
             .filter(|trans_item|{
-                let def_id = match *trans_item {
-                    TransItem::DropGlue(..) => {
-                        return false
-                    },
-                    TransItem::Fn(ref instance) => {
-                        instance.def
-                    }
-                    TransItem::Static(node_id) => {
-                        tcx.map.local_def_id(node_id)
-                    }
-                };
-
-                trans_item.explicit_linkage(tcx).is_some() ||
-                attr::contains_extern_indicator(tcx.sess.diagnostic(),
-                                                &tcx.get_attrs(def_id))
+                trans_item.explicit_linkage(tcx).is_some()
             })
             .map(|trans_item| symbol_map.get_or_compute(scx, trans_item))
             .collect();
@@ -1591,7 +1570,11 @@ pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
                 node: hir::ImplItemKind::Method(..), .. }) => {
                 let def_id = tcx.map.local_def_id(id);
                 let generics = tcx.lookup_generics(def_id);
-                generics.parent_types == 0 && generics.types.is_empty()
+                let attributes = tcx.get_attrs(def_id);
+                (generics.parent_types == 0 && generics.types.is_empty()) &&
+                // Functions marked with #[inline] are only ever translated
+                // with "internal" linkage and are never exported.
+                !attr::requests_inline(&attributes[..])
             }
 
             _ => false
@@ -1896,8 +1879,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         partitioning::partition(scx,
                                 items.iter().cloned(),
                                 strategy,
-                                &inlining_map,
-                                scx.reachable())
+                                &inlining_map)
     });
 
     assert!(scx.tcx().sess.opts.cg.codegen_units == codegen_units.len() ||

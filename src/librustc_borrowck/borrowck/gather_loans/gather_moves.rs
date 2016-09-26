@@ -185,6 +185,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                         check_and_get_illegal_move_origin(bccx, b)
                     }
                 }
+                ty::TySlice(..) => Some(cmt.clone()),
                 _ => {
                     check_and_get_illegal_move_origin(bccx, b)
                 }

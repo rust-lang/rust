@@ -30,19 +30,12 @@ pub struct DefCollector<'ast> {
 }
 
 impl<'ast> DefCollector<'ast> {
-    pub fn root(definitions: &'ast mut Definitions) -> DefCollector<'ast> {
-        let mut collector = DefCollector {
+    pub fn new(definitions: &'ast mut Definitions) -> DefCollector<'ast> {
+        DefCollector {
             hir_crate: None,
             definitions: definitions,
             parent_def: None,
-        };
-        let root = collector.create_def_with_parent(None, CRATE_NODE_ID, DefPathData::CrateRoot);
-        assert_eq!(root, CRATE_DEF_INDEX);
-        collector.parent_def = Some(root);
-
-        collector.create_def_with_parent(Some(CRATE_DEF_INDEX), DUMMY_NODE_ID, DefPathData::Misc);
-
-        collector
+        }
     }
 
     pub fn extend(parent_node: NodeId,
@@ -50,11 +43,7 @@ impl<'ast> DefCollector<'ast> {
                   parent_def_id: DefId,
                   definitions: &'ast mut Definitions)
                   -> DefCollector<'ast> {
-        let mut collector = DefCollector {
-            hir_crate: None,
-            parent_def: None,
-            definitions: definitions,
-        };
+        let mut collector = DefCollector::new(definitions);
 
         assert_eq!(parent_def_path.krate, parent_def_id.krate);
         let root_path = Box::new(InlinedRootPath {
@@ -68,17 +57,21 @@ impl<'ast> DefCollector<'ast> {
         collector
     }
 
+    pub fn collect_root(&mut self) {
+        let root = self.create_def_with_parent(None, CRATE_NODE_ID, DefPathData::CrateRoot);
+        assert_eq!(root, CRATE_DEF_INDEX);
+        self.parent_def = Some(root);
+
+        self.create_def_with_parent(Some(CRATE_DEF_INDEX), DUMMY_NODE_ID, DefPathData::Misc);
+    }
+
     pub fn walk_item(&mut self, ii: &'ast InlinedItem, krate: &'ast hir::Crate) {
         self.hir_crate = Some(krate);
         ii.visit(self);
     }
 
-    fn parent_def(&self) -> Option<DefIndex> {
-        self.parent_def
-    }
-
     fn create_def(&mut self, node_id: NodeId, data: DefPathData) -> DefIndex {
-        let parent_def = self.parent_def();
+        let parent_def = self.parent_def;
         debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
         self.definitions.create_def_with_parent(parent_def, node_id, data)
     }
@@ -285,15 +278,6 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
 
 // We walk the HIR rather than the AST when reading items from metadata.
 impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
-    /// Because we want to track parent items and so forth, enable
-    /// deep walking so that we walk nested items in the context of
-    /// their outer items.
-    fn visit_nested_item(&mut self, item_id: hir::ItemId) {
-        debug!("visit_nested_item: {:?}", item_id);
-        let item = self.hir_crate.unwrap().item(item_id.id);
-        self.visit_item(item)
-    }
-
     fn visit_item(&mut self, i: &'ast hir::Item) {
         debug!("visit_item: {:?}", i);
 

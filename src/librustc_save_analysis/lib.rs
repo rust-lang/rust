@@ -52,7 +52,7 @@ use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use syntax::ast::{self, NodeId, PatKind, Attribute};
+use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::parse::token::{self, keywords, InternedString};
 use syntax::visit::{self, Visitor};
@@ -64,6 +64,7 @@ pub use self::csv_dumper::CsvDumper;
 pub use self::json_api_dumper::JsonApiDumper;
 pub use self::json_dumper::JsonDumper;
 pub use self::data::*;
+pub use self::external_data::make_def_id;
 pub use self::dump::Dump;
 pub use self::dump_visitor::DumpVisitor;
 use self::span_utils::SpanUtils;
@@ -119,7 +120,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             };
             result.push(CrateData {
                 name: (&self.tcx.sess.cstore.crate_name(n)[..]).to_owned(),
-                number: n,
+                number: n.as_u32(),
                 span: span,
             });
         }
@@ -295,7 +296,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 qualname: qualname,
                 span: sub_span.unwrap(),
                 scope: scope,
-                parent: Some(scope),
+                parent: Some(make_def_id(scope, &self.tcx.map)),
                 value: "".to_owned(),
                 type_value: typ,
                 visibility: From::from(&field.vis),
@@ -312,7 +313,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                            name: ast::Name, span: Span) -> Option<FunctionData> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
-        let (qualname, vis, docs) = match self.tcx.impl_of_method(self.tcx.map.local_def_id(id)) {
+        let (qualname, parent_scope, vis, docs) =
+          match self.tcx.impl_of_method(self.tcx.map.local_def_id(id)) {
             Some(impl_id) => match self.tcx.map.get_if_local(impl_id) {
                 Some(NodeItem(item)) => {
                     match item.node {
@@ -320,12 +322,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             let mut result = String::from("<");
                             result.push_str(&rustc::hir::print::ty_to_string(&ty));
 
-                            if let Some(def_id) = self.tcx.trait_id_of_impl(impl_id) {
+                            let trait_id = self.tcx.trait_id_of_impl(impl_id);
+                            if let Some(def_id) = trait_id {
                                 result.push_str(" as ");
                                 result.push_str(&self.tcx.item_path_str(def_id));
                             }
                             result.push_str(">");
-                            (result, From::from(&item.vis), docs_for_attrs(&item.attrs))
+                            (result, trait_id, From::from(&item.vis), docs_for_attrs(&item.attrs))
                         }
                         _ => {
                             span_bug!(span,
@@ -348,6 +351,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     match self.tcx.map.get_if_local(def_id) {
                         Some(NodeItem(item)) => {
                             (format!("::{}", self.tcx.item_path_str(def_id)),
+                             Some(def_id),
                              From::from(&item.vis),
                              docs_for_attrs(&item.attrs))
                         }
@@ -370,8 +374,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let qualname = format!("{}::{}", qualname, name);
 
         let def_id = self.tcx.map.local_def_id(id);
-        let decl_id = self.tcx.trait_item_of_item(def_id).and_then(|new_id| {
-            let new_def_id = new_id.def_id();
+        let decl_id = self.tcx.trait_item_of_item(def_id).and_then(|new_def_id| {
             if new_def_id != def_id {
                 Some(new_def_id)
             } else {
@@ -381,7 +384,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         let sub_span = self.span_utils.sub_span_after_keyword(span, keywords::Fn);
         filter!(self.span_utils, sub_span, span, None);
-        let parent_scope = self.enclosing_scope(id);
         Some(FunctionData {
             id: id,
             name: name.to_string(),
@@ -392,7 +394,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             // FIXME you get better data here by using the visitor.
             value: String::new(),
             visibility: vis,
-            parent: Some(parent_scope),
+            parent: parent_scope,
             docs: docs,
         })
     }
@@ -540,16 +542,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 .map(|mr| mr.def_id())
                         }
                         ty::ImplContainer(def_id) => {
-                            let impl_items = self.tcx.impl_items.borrow();
-                            Some(impl_items.get(&def_id)
-                                           .unwrap()
-                                           .iter()
-                                           .find(|mr| {
-                                               self.tcx.impl_or_trait_item(mr.def_id()).name() ==
-                                               ti.name()
-                                           })
-                                           .unwrap()
-                                           .def_id())
+                            Some(*self.tcx.impl_or_trait_items(def_id).iter().find(|&&mr| {
+                                self.tcx.impl_or_trait_item(mr).name() == ti.name()
+                            }).unwrap())
                         }
                     }
                 } else {
@@ -673,7 +668,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     #[inline]
     pub fn enclosing_scope(&self, id: NodeId) -> NodeId {
-        self.tcx.map.get_enclosing_scope(id).unwrap_or(0)
+        self.tcx.map.get_enclosing_scope(id).unwrap_or(CRATE_NODE_ID)
     }
 }
 

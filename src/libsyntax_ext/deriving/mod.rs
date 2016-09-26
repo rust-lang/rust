@@ -11,8 +11,7 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
 use syntax::ast::{self, MetaItem};
-use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxEnv};
-use syntax::ext::base::MultiModifier;
+use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
 use syntax::codemap;
@@ -89,7 +88,7 @@ fn allow_unstable(cx: &mut ExtCtxt, span: Span, attr_name: &str) -> Span {
     }
 }
 
-fn expand_derive(cx: &mut ExtCtxt,
+pub fn expand_derive(cx: &mut ExtCtxt,
                  span: Span,
                  mitem: &MetaItem,
                  annotatable: Annotatable)
@@ -196,7 +195,8 @@ fn expand_derive(cx: &mut ExtCtxt,
         // If custom derive extensions end up threading through the `#[derive]`
         // attribute, we'll get called again later on to continue expanding
         // those modes.
-        } else if let Some(ext) = cx.derive_modes.remove(&tname) {
+        } else if let Some(ext) =
+                   cx.resolver.resolve_derive_mode(ast::Ident::with_empty_ctxt(intern(&tname))) {
             let remaining_derives = iter.cloned().collect::<Vec<_>>();
             if remaining_derives.len() > 0 {
                 let list = cx.meta_list(titem.span,
@@ -215,7 +215,6 @@ fn expand_derive(cx: &mut ExtCtxt,
             let item = Annotatable::Item(item);
             let mut items = ext.expand(cx, mitem.span, &mitem, item);
             items.extend(other_items);
-            cx.derive_modes.insert(tname.clone(), ext);
             return items
 
         // If we've gotten this far then it means that we're in the territory of
@@ -243,10 +242,6 @@ fn expand_derive(cx: &mut ExtCtxt,
 
 macro_rules! derive_traits {
     ($( $name:expr => $func:path, )+) => {
-        pub fn register_all(env: &mut SyntaxEnv) {
-            env.insert(intern("derive"), MultiModifier(Box::new(expand_derive)));
-        }
-
         pub fn is_builtin_trait(name: &str) -> bool {
             match name {
                 $( $name )|+ => true,

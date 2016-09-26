@@ -28,7 +28,7 @@ pub fn main() {
         [_, ref tail..] => {
             match tail {
                 &[Foo { string: a },
-                //~^ ERROR cannot move out of borrowed content
+                //~^ ERROR cannot move out of type `[Foo]`
                 //~| cannot move out
                 //~| to prevent move
                   Foo { string: b }] => {

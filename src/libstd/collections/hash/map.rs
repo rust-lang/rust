@@ -1218,6 +1218,7 @@ impl<K, V, S> Default for HashMap<K, V, S>
     where K: Eq + Hash,
           S: BuildHasher + Default,
 {
+    /// Creates an empty `HashMap<K, V, S>`, with the `Default` value for the hasher.
     fn default() -> HashMap<K, V, S> {
         HashMap::with_hasher(Default::default())
     }
@@ -2026,6 +2027,7 @@ impl Hasher for DefaultHasher {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for RandomState {
+    /// Constructs a new `RandomState`.
     #[inline]
     fn default() -> RandomState {
         RandomState::new()
@@ -2085,8 +2087,23 @@ fn assert_covariance() {
 mod test_map {
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
+    use super::RandomState;
     use cell::RefCell;
     use rand::{thread_rng, Rng};
+
+    #[test]
+    fn test_create_capacities() {
+        type HM = HashMap<i32, i32>;
+
+        let m = HM::new();
+        assert_eq!(m.capacity(), 0);
+
+        let m = HM::default();
+        assert_eq!(m.capacity(), 0);
+
+        let m = HM::with_hasher(RandomState::new());
+        assert_eq!(m.capacity(), 0);
+    }
 
     #[test]
     fn test_create_capacity_zero() {

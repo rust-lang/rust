@@ -11,13 +11,14 @@
 //! Used by `rustc` when loading a crate with exported macros.
 
 use std::collections::HashSet;
+use std::rc::Rc;
 use std::env;
 use std::mem;
 
-use creader::{CrateReader, Macros};
-use cstore::CStore;
+use creader::{CrateLoader, Macros};
 
 use rustc::hir::def_id::DefIndex;
+use rustc::middle::cstore::LoadedMacro;
 use rustc::session::Session;
 use rustc::util::nodemap::FnvHashMap;
 use rustc_back::dynamic_lib::DynamicLibrary;
@@ -25,29 +26,9 @@ use rustc_macro::TokenStream;
 use rustc_macro::__internal::Registry;
 use syntax::ast;
 use syntax::attr;
-use syntax::ext::base::LoadedMacro;
-use syntax::ext;
 use syntax::parse::token;
 use syntax_ext::deriving::custom::CustomDerive;
 use syntax_pos::Span;
-
-pub struct MacroLoader<'a> {
-    sess: &'a Session,
-    reader: CrateReader<'a>,
-}
-
-impl<'a> MacroLoader<'a> {
-    pub fn new(sess: &'a Session,
-               cstore: &'a CStore,
-               crate_name: &str,
-               crate_config: ast::CrateConfig)
-               -> MacroLoader<'a> {
-        MacroLoader {
-            sess: sess,
-            reader: CrateReader::new(sess, cstore, crate_name, crate_config),
-        }
-    }
-}
 
 pub fn call_bad_macro_reexport(a: &Session, b: Span) {
     span_err!(a, b, E0467, "bad macro reexport");
@@ -55,7 +36,12 @@ pub fn call_bad_macro_reexport(a: &Session, b: Span) {
 
 pub type MacroSelection = FnvHashMap<token::InternedString, Span>;
 
-impl<'a> ext::base::MacroLoader for MacroLoader<'a> {
+pub fn load_macros(loader: &mut CrateLoader, extern_crate: &ast::Item, allows_macros: bool)
+                   -> Vec<LoadedMacro> {
+    loader.load_crate(extern_crate, allows_macros)
+}
+
+impl<'a> CrateLoader<'a> {
     fn load_crate(&mut self,
                   extern_crate: &ast::Item,
                   allows_macros: bool) -> Vec<LoadedMacro> {
@@ -108,9 +94,7 @@ impl<'a> ext::base::MacroLoader for MacroLoader<'a> {
 
         self.load_macros(extern_crate, allows_macros, import, reexport)
     }
-}
 
-impl<'a> MacroLoader<'a> {
     fn load_macros<'b>(&mut self,
                        vi: &ast::Item,
                        allows_macros: bool,
@@ -129,7 +113,7 @@ impl<'a> MacroLoader<'a> {
             return Vec::new();
         }
 
-        let mut macros = self.reader.read_macros(vi);
+        let mut macros = self.creader.read_macros(vi);
         let mut ret = Vec::new();
         let mut seen = HashSet::new();
 
@@ -221,9 +205,8 @@ impl<'a> MacroLoader<'a> {
             fn register_custom_derive(&mut self,
                                       trait_name: &str,
                                       expand: fn(TokenStream) -> TokenStream) {
-                let derive = Box::new(CustomDerive::new(expand));
-                self.0.push(LoadedMacro::CustomDerive(trait_name.to_string(),
-                                                      derive));
+                let derive = Rc::new(CustomDerive::new(expand));
+                self.0.push(LoadedMacro::CustomDerive(trait_name.to_string(), derive));
             }
         }
 

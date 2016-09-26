@@ -15,7 +15,6 @@ use ty;
 use ty::fast_reject;
 use ty::{Ty, TyCtxt, TraitRef};
 use std::cell::{Cell, RefCell};
-use syntax::ast::Name;
 use hir;
 use util::nodemap::FnvHashMap;
 
@@ -37,10 +36,6 @@ pub struct TraitDef<'tcx> {
     pub generics: &'tcx ty::Generics<'tcx>,
 
     pub trait_ref: ty::TraitRef<'tcx>,
-
-    /// A list of the associated types defined in this trait. Useful
-    /// for resolving `X::Foo` type markers.
-    pub associated_type_names: Vec<Name>,
 
     // Impls of a trait. To allow for quicker lookup, the impls are indexed by a
     // simplified version of their `Self` type: impls with a simplifiable `Self`
@@ -70,7 +65,11 @@ pub struct TraitDef<'tcx> {
     pub specialization_graph: RefCell<traits::specialization_graph::Graph>,
 
     /// Various flags
-    pub flags: Cell<TraitFlags>
+    pub flags: Cell<TraitFlags>,
+
+    /// The ICH of this trait's DefPath, cached here so it doesn't have to be
+    /// recomputed all the time.
+    pub def_path_hash: u64,
 }
 
 impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
@@ -78,18 +77,18 @@ impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
                paren_sugar: bool,
                generics: &'tcx ty::Generics<'tcx>,
                trait_ref: ty::TraitRef<'tcx>,
-               associated_type_names: Vec<Name>)
+               def_path_hash: u64)
                -> TraitDef<'tcx> {
         TraitDef {
             paren_sugar: paren_sugar,
             unsafety: unsafety,
             generics: generics,
             trait_ref: trait_ref,
-            associated_type_names: associated_type_names,
             nonblanket_impls: RefCell::new(FnvHashMap()),
             blanket_impls: RefCell::new(vec![]),
             flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS),
             specialization_graph: RefCell::new(traits::specialization_graph::Graph::new()),
+            def_path_hash: def_path_hash,
         }
     }
 

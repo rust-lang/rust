@@ -116,7 +116,7 @@ impl fmt::Display for Mode {
     }
 }
 
-fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
+pub fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         let fn_like = FnLikeNode::from_node(tcx.map.get(node_id));
         match fn_like.map(|f| f.kind()) {
@@ -475,7 +475,10 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 /// For functions (constant or not), it also records
 /// candidates for promotion in promotion_candidates.
 impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
-    fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, context: LvalueContext, location: Location) {
+    fn visit_lvalue(&mut self,
+                    lvalue: &Lvalue<'tcx>,
+                    context: LvalueContext<'tcx>,
+                    location: Location) {
         match *lvalue {
             Lvalue::Arg(_) => {
                 self.add(Qualif::FN_ARGUMENT);
@@ -910,7 +913,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
                 StatementKind::SetDiscriminant { .. } |
                 StatementKind::StorageLive(_) |
-                StatementKind::StorageDead(_) => {}
+                StatementKind::StorageDead(_) |
+                StatementKind::Nop => {}
             }
         });
     }

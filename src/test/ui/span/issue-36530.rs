@@ -8,19 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// force-host
-
-#![feature(plugin_registrar, rustc_private)]
-
-extern crate syntax;
-extern crate rustc;
-extern crate rustc_plugin;
-
-use syntax::parse::token;
-use syntax::ext::base::MacroRulesTT;
-use rustc_plugin::Registry;
-
-#[plugin_registrar]
-pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_syntax_extension(token::intern("bogus"), MacroRulesTT);
+#[foo]
+mod foo {
+    #![foo]
 }

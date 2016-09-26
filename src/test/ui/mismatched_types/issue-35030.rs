@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we generate obsolete syntax errors around usages of closure kinds: `|:|`, `|&:|` and
-// `|&mut:|`.
+// rustc-env:RUST_NEW_ERROR_FORMAT
+
+trait Parser<T> {
+    fn parse(text: &str) -> Option<T>;
+}
+
+impl<bool> Parser<bool> for bool {
+    fn parse(text: &str) -> Option<bool> {
+        Some(true)
+    }
+}
 
 fn main() {
-    let a = |:| {};  //~ ERROR obsolete syntax: `:`, `&mut:`, or `&:`
-    let a = |&:| {};  //~ ERROR obsolete syntax: `:`, `&mut:`, or `&:`
-    let a = |&mut:| {};  //~ ERROR obsolete syntax: `:`, `&mut:`, or `&:`
+    println!("{}", bool::parse("ok").unwrap_or(false));
 }

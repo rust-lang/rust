@@ -19,6 +19,7 @@ use mem;
 use memchr;
 use ops;
 use os::raw::c_char;
+use ptr;
 use slice;
 use str::{self, Utf8Error};
 
@@ -68,6 +69,9 @@ use str::{self, Utf8Error};
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
+    // Invariant 1: the slice ends with a zero byte and has a length of at least one.
+    // Invariant 2: the slice contains only one zero byte.
+    // Improper usage of unsafe function can break Invariant 2, but not Invariant 1.
     inner: Box<[u8]>,
 }
 
@@ -142,19 +146,19 @@ pub struct CStr {
 
 /// An error returned from `CString::new` to indicate that a nul byte was found
 /// in the vector provided.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct NulError(usize, Vec<u8>);
 
 /// An error returned from `CStr::from_bytes_with_nul` to indicate that a nul
 /// byte was found too early in the slice provided or one wasn't found at all.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
 pub struct FromBytesWithNulError { _a: () }
 
 /// An error returned from `CString::into_string` to indicate that a UTF-8 error
 /// was encountered during the conversion.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstring_into", since = "1.7.0")]
 pub struct IntoStringError {
     inner: CString,
@@ -224,9 +228,14 @@ impl CString {
 
     /// Retakes ownership of a `CString` that was transferred to C.
     ///
+    /// Additionally, the length of the string will be recalculated from the pointer.
+    ///
+    /// # Safety
+    ///
     /// This should only ever be called with a pointer that was earlier
-    /// obtained by calling `into_raw` on a `CString`. Additionally, the length
-    /// of the string will be recalculated from the pointer.
+    /// obtained by calling `into_raw` on a `CString`. Other usage (e.g. trying to take
+    /// ownership of a string that was allocated by foreign code) is likely to lead
+    /// to undefined behavior or allocator corruption.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
@@ -244,7 +253,7 @@ impl CString {
     /// Failure to call `from_raw` will lead to a memory leak.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub fn into_raw(self) -> *mut c_char {
-        Box::into_raw(self.inner) as *mut c_char
+        Box::into_raw(self.into_inner()) as *mut c_char
     }
 
     /// Converts the `CString` into a `String` if it contains valid Unicode data.
@@ -265,7 +274,7 @@ impl CString {
     /// it is guaranteed to not have any interior nul bytes.
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_bytes(self) -> Vec<u8> {
-        let mut vec = self.inner.into_vec();
+        let mut vec = self.into_inner().into_vec();
         let _nul = vec.pop();
         debug_assert_eq!(_nul, Some(0u8));
         vec
@@ -275,7 +284,7 @@ impl CString {
     /// includes the trailing nul byte.
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_bytes_with_nul(self) -> Vec<u8> {
-        self.inner.into_vec()
+        self.into_inner().into_vec()
     }
 
     /// Returns the contents of this `CString` as a slice of bytes.
@@ -292,6 +301,24 @@ impl CString {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         &self.inner
+    }
+
+    // Bypass "move out of struct which implements `Drop` trait" restriction.
+    fn into_inner(self) -> Box<[u8]> {
+        unsafe {
+            let result = ptr::read(&self.inner);
+            mem::forget(self);
+            result
+        }
+    }
+}
+
+// Turns this `CString` into an empty string to prevent
+// memory unsafe code from working by accident.
+#[stable(feature = "cstring_drop", since = "1.13.0")]
+impl Drop for CString {
+    fn drop(&mut self) {
+        unsafe { *self.inner.get_unchecked_mut(0) = 0; }
     }
 }
 
@@ -339,6 +366,7 @@ impl<'a> Default for &'a CStr {
 
 #[stable(feature = "cstr_default", since = "1.10.0")]
 impl Default for CString {
+    /// Creates an empty `CString`.
     fn default() -> CString {
         let a: &CStr = Default::default();
         a.to_owned()

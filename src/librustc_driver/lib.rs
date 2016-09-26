@@ -1054,7 +1054,8 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
 pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
-    const STACK_SIZE: usize = 8 * 1024 * 1024; // 8MB
+    // Temporarily have stack size set to 16MB to deal with nom-using crates failing
+    const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
 
     struct Sink(Arc<Mutex<Vec<u8>>>);
     impl Write for Sink {
@@ -1139,6 +1140,7 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
 
     Registry::new(&all_errors)
 }

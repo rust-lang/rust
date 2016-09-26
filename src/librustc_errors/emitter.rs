@@ -473,7 +473,8 @@ impl EmitterWriter {
         if spans_updated {
             children.push(SubDiagnostic {
                 level: Level::Note,
-                message: "this error originates in a macro from the standard library".to_string(),
+                message:"this error originates in a macro outside of the current \
+                         crate".to_string(),
                 span: MultiSpan::new(),
                 render_span: None
             });
@@ -882,45 +883,45 @@ impl Destination {
         match style {
             Style::FileNameStyle | Style::LineAndColumn => {}
             Style::LineNumber => {
-                try!(self.start_attr(term::Attr::Bold));
+                self.start_attr(term::Attr::Bold)?;
                 if cfg!(windows) {
-                    try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_CYAN)));
+                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_CYAN))?;
                 } else {
-                    try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE)));
+                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE))?;
                 }
             }
             Style::ErrorCode => {
-                try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_MAGENTA)));
+                self.start_attr(term::Attr::Bold)?;
+                self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_MAGENTA))?;
             }
             Style::Quotation => {}
             Style::OldSchoolNote => {
-                try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_GREEN)));
+                self.start_attr(term::Attr::Bold)?;
+                self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_GREEN))?;
             }
             Style::OldSchoolNoteText | Style::HeaderMsg => {
-                try!(self.start_attr(term::Attr::Bold));
+                self.start_attr(term::Attr::Bold)?;
                 if cfg!(windows) {
-                    try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_WHITE)));
+                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_WHITE))?;
                 }
             }
             Style::UnderlinePrimary | Style::LabelPrimary => {
-                try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(lvl.color())));
+                self.start_attr(term::Attr::Bold)?;
+                self.start_attr(term::Attr::ForegroundColor(lvl.color()))?;
             }
             Style::UnderlineSecondary |
             Style::LabelSecondary => {
-                try!(self.start_attr(term::Attr::Bold));
+                self.start_attr(term::Attr::Bold)?;
                 if cfg!(windows) {
-                    try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_CYAN)));
+                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_CYAN))?;
                 } else {
-                    try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE)));
+                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE))?;
                 }
             }
             Style::NoStyle => {}
             Style::Level(l) => {
-                try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(l.color())));
+                self.start_attr(term::Attr::Bold)?;
+                self.start_attr(term::Attr::ForegroundColor(l.color()))?;
             }
         }
         Ok(())

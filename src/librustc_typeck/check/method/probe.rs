@@ -403,7 +403,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         debug!("assemble_inherent_impl_probe {:?}", impl_def_id);
 
-        let item = match self.impl_item(impl_def_id) {
+        let item = match self.impl_or_trait_item(impl_def_id) {
             Some(m) => m,
             None => { return; } // No method with correct name on this impl
         };
@@ -555,7 +555,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         let tcx = self.tcx;
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
-            let item = match self.trait_item(bound_trait_ref.def_id()) {
+            let item = match self.impl_or_trait_item(bound_trait_ref.def_id()) {
                 Some(v) => v,
                 None => { continue; }
             };
@@ -1292,18 +1292,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         self.tcx.erase_late_bound_regions(value)
     }
 
-    fn impl_item(&self, impl_def_id: DefId)
-                 -> Option<ty::ImplOrTraitItem<'tcx>>
+    /// Find item with name `item_name` defined in impl/trait `def_id`
+    /// and return it, or `None`, if no such item was defined there.
+    fn impl_or_trait_item(&self, def_id: DefId)
+                          -> Option<ty::ImplOrTraitItem<'tcx>>
     {
-        self.fcx.impl_item(impl_def_id, self.item_name)
-    }
-
-    /// Find item with name `item_name` defined in `trait_def_id`
-    /// and return it, or `None`, if no such item.
-    fn trait_item(&self, trait_def_id: DefId)
-                  -> Option<ty::ImplOrTraitItem<'tcx>>
-    {
-        self.fcx.trait_item(trait_def_id, self.item_name)
+        self.fcx.impl_or_trait_item(def_id, self.item_name)
     }
 }
 

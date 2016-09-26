@@ -28,8 +28,7 @@ use rustc_back::sha2::{Sha256, Digest};
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_resolve::{MakeGlobMap, Resolver};
-use rustc_metadata::macro_import;
-use rustc_metadata::creader::read_local_crates;
+use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 use rustc_trans::back::{link, write};
 use rustc_trans as trans;
@@ -44,12 +43,14 @@ use super::Compilation;
 use serialize::json;
 
 use std::env;
+use std::mem;
 use std::ffi::{OsString, OsStr};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
+use syntax::ext::base::ExtCtxt;
 use syntax::parse::{self, PResult, token};
 use syntax::util::node_count::NodeCounter;
 use syntax;
@@ -638,6 +639,12 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     }
     sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess))?;
 
+    let mut crate_loader = CrateLoader::new(sess, &cstore, &krate, crate_name);
+    let resolver_arenas = Resolver::arenas();
+    let mut resolver =
+        Resolver::new(sess, &krate, make_glob_map, &mut crate_loader, &resolver_arenas);
+    syntax_ext::register_builtins(&mut resolver, sess.features.borrow().quote);
+
     krate = time(time_passes, "expansion", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
         // dependencies. It's up to us to tell the system where to find all the
@@ -666,31 +673,25 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         }
         let features = sess.features.borrow();
         let cfg = syntax::ext::expand::ExpansionConfig {
-            crate_name: crate_name.to_string(),
             features: Some(&features),
             recursion_limit: sess.recursion_limit.get(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
+            ..syntax::ext::expand::ExpansionConfig::default(crate_name.to_string())
         };
-        let mut loader = macro_import::MacroLoader::new(sess,
-                                                        &cstore,
-                                                        crate_name,
-                                                        krate.config.clone());
-        let mut ecx = syntax::ext::base::ExtCtxt::new(&sess.parse_sess,
-                                                      krate.config.clone(),
-                                                      cfg,
-                                                      &mut loader);
-        syntax_ext::register_builtins(&mut ecx.syntax_env);
+        let mut ecx = ExtCtxt::new(&sess.parse_sess, krate.config.clone(), cfg, &mut resolver);
         let ret = syntax::ext::expand::expand_crate(&mut ecx, syntax_exts, krate);
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
-        *sess.available_macros.borrow_mut() = ecx.syntax_env.names;
         ret
     });
 
+    krate.exported_macros = mem::replace(&mut resolver.exported_macros, Vec::new());
+
     krate = time(time_passes, "maybe building test harness", || {
         syntax::test::modify_for_testing(&sess.parse_sess,
+                                         &mut resolver,
                                          sess.opts.test,
                                          krate,
                                          sess.diagnostic())
@@ -701,17 +702,13 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         let is_rustc_macro_crate = crate_types.contains(&config::CrateTypeRustcMacro);
         let num_crate_types = crate_types.len();
         syntax_ext::rustc_macro_registrar::modify(&sess.parse_sess,
+                                                  &mut resolver,
                                                   krate,
                                                   is_rustc_macro_crate,
                                                   num_crate_types,
                                                   sess.diagnostic(),
                                                   &sess.features.borrow())
     });
-
-    let resolver_arenas = Resolver::arenas();
-    let mut resolver = Resolver::new(sess, make_glob_map, &resolver_arenas);
-
-    let krate = time(sess.time_passes(), "assigning node ids", || resolver.assign_node_ids(krate));
 
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
@@ -738,11 +735,6 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
 
     // Collect defintions for def ids.
     time(sess.time_passes(), "collecting defs", || resolver.definitions.collect(&krate));
-
-    time(sess.time_passes(), "external crate/lib resolution", || {
-        let defs = &resolver.definitions;
-        read_local_crates(sess, &cstore, defs, &krate, crate_name, &sess.dep_graph)
-    });
 
     time(sess.time_passes(),
          "early lint checks",
@@ -1021,6 +1013,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
         passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("no-landing-pads"));
 
+        // From here on out, regions are gone.
         passes.push_pass(box mir::transform::erase_regions::EraseRegions);
 
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
@@ -1028,7 +1021,10 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
         passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("elaborate-drops"));
 
+        // No lifetime analysis based on borrowing can be done from here on out.
+        passes.push_pass(box mir::transform::instcombine::InstCombine::new());
         passes.push_pass(box mir::transform::deaggregator::Deaggregator);
+        passes.push_pass(box mir::transform::copy_prop::CopyPropagation);
 
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box mir::transform::dump_mir::Marker("PreTrans"));

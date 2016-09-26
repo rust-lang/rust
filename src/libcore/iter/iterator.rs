@@ -1867,7 +1867,8 @@ pub trait Iterator {
     /// # Panics
     ///
     /// When calling `sum` and a primitive integer type is being returned, this
-    /// method will panic if the computation overflows.
+    /// method will panic if the computation overflows and debug assertions are
+    /// enabled.
     ///
     /// # Examples
     ///
@@ -1894,7 +1895,8 @@ pub trait Iterator {
     /// # Panics
     ///
     /// When calling `product` and a primitive integer type is being returned,
-    /// this method will panic if the computation overflows.
+    /// method will panic if the computation overflows and debug assertions are
+    /// enabled.
     ///
     /// # Examples
     ///

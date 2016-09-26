@@ -43,7 +43,7 @@ use std::ptr;
 
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
-use syntax::attr::IntType;
+use rustc::ty::layout;
 
 pub mod gdb;
 mod utils;
@@ -69,7 +69,7 @@ pub struct CrateDebugContext<'tcx> {
     builder: DIBuilderRef,
     current_debug_location: Cell<InternalDebugLocation>,
     created_files: RefCell<FnvHashMap<String, DIFile>>,
-    created_enum_disr_types: RefCell<FnvHashMap<(DefId, IntType), DIType>>,
+    created_enum_disr_types: RefCell<FnvHashMap<(DefId, layout::Integer), DIType>>,
 
     type_map: RefCell<TypeMap<'tcx>>,
     namespace_map: RefCell<DefIdMap<DIScope>>,

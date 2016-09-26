@@ -12,10 +12,11 @@ use std::collections::HashSet;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::fs;
-use syntax::ast;
+
+use rustc::hir::def_id::CrateNum;
 
 pub struct RPathConfig<'a> {
-    pub used_crates: Vec<(ast::CrateNum, Option<PathBuf>)>,
+    pub used_crates: Vec<(CrateNum, Option<PathBuf>)>,
     pub out_filename: PathBuf,
     pub is_like_osx: bool,
     pub has_rpath: bool,

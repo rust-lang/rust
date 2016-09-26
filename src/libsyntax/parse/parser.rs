@@ -47,7 +47,7 @@ use parse;
 use parse::classify;
 use parse::common::SeqSep;
 use parse::lexer::{Reader, TokenAndSpan};
-use parse::obsolete::{ParserObsoleteMethods, ObsoleteSyntax};
+use parse::obsolete::ObsoleteSyntax;
 use parse::token::{self, intern, MatchNt, SubstNt, SpecialVarNt, InternedString};
 use parse::token::{keywords, SpecialMacroVar};
 use parse::{new_sub_parser_from_file, ParseSess};
@@ -237,6 +237,15 @@ fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
     lhs
 }
 
+#[derive(PartialEq)]
+enum LastTokenKind {
+    DocComment,
+    Comma,
+    Interpolated,
+    Eof,
+    Other,
+}
+
 /* ident is handled by common.rs */
 
 pub struct Parser<'a> {
@@ -248,10 +257,8 @@ pub struct Parser<'a> {
     /// the span of the prior token:
     pub last_span: Span,
     pub cfg: CrateConfig,
-    /// the previous token or None (only stashed sometimes).
-    pub last_token: Option<Box<token::Token>>,
-    last_token_interpolated: bool,
-    last_token_eof: bool,
+    /// the previous token kind
+    last_token_kind: LastTokenKind,
     pub buffer: [TokenAndSpan; 4],
     pub buffer_start: isize,
     pub buffer_end: isize,
@@ -362,9 +369,7 @@ impl<'a> Parser<'a> {
             token: tok0.tok,
             span: span,
             last_span: span,
-            last_token: None,
-            last_token_interpolated: false,
-            last_token_eof: false,
+            last_token_kind: LastTokenKind::Other,
             buffer: [
                 placeholder.clone(),
                 placeholder.clone(),
@@ -500,7 +505,7 @@ impl<'a> Parser<'a> {
                                  expr: PResult<'a, P<Expr>>)
                                  -> PResult<'a, (Span, P<Expr>)> {
         expr.map(|e| {
-            if self.last_token_interpolated {
+            if self.last_token_kind == LastTokenKind::Interpolated {
                 (self.last_span, e)
             } else {
                 (e.span, e)
@@ -520,21 +525,19 @@ impl<'a> Parser<'a> {
                 self.bug("ident interpolation not converted to real token");
             }
             _ => {
-                let last_token = self.last_token.clone().map(|t| *t);
-                Err(match last_token {
-                    Some(token::DocComment(_)) => self.span_fatal_help(self.last_span,
+                Err(if self.last_token_kind == LastTokenKind::DocComment {
+                    self.span_fatal_help(self.last_span,
                         "found a documentation comment that doesn't document anything",
                         "doc comments must come before what they document, maybe a comment was \
-                        intended with `//`?"),
-                    _ => {
+                        intended with `//`?")
+                    } else {
                         let mut err = self.fatal(&format!("expected identifier, found `{}`",
                                                           self.this_token_to_string()));
                         if self.token == token::Underscore {
                             err.note("`_` is a wildcard pattern, not an identifier");
                         }
                         err
-                    }
-                })
+                    })
             }
         }
     }
@@ -808,10 +811,12 @@ impl<'a> Parser<'a> {
     /// Eat and discard tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     pub fn eat_to_tokens(&mut self, kets: &[&token::Token]) {
+        let handler = self.diagnostic();
+
         self.parse_seq_to_before_tokens(kets,
                                         SeqSep::none(),
                                         |p| p.parse_token_tree(),
-                                        |mut e| e.cancel());
+                                        |mut e| handler.cancel(&mut e));
     }
 
     /// Parse a sequence, including the closing delimiter. The function
@@ -923,26 +928,22 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser by one token
     pub fn bump(&mut self) {
-        if self.last_token_eof {
+        if self.last_token_kind == LastTokenKind::Eof {
             // Bumping after EOF is a bad sign, usually an infinite loop.
             self.bug("attempted to bump the parser past EOF (may be stuck in a loop)");
         }
 
-        if self.token == token::Eof {
-            self.last_token_eof = true;
-        }
-
         self.last_span = self.span;
-        // Stash token for error recovery (sometimes; clone is not necessarily cheap).
-        self.last_token = if self.token.is_ident() ||
-                          self.token.is_path() ||
-                          self.token.is_doc_comment() ||
-                          self.token == token::Comma {
-            Some(Box::new(self.token.clone()))
-        } else {
-            None
+
+        // Record last token kind for possible error recovery.
+        self.last_token_kind = match self.token {
+            token::DocComment(..) => LastTokenKind::DocComment,
+            token::Comma => LastTokenKind::Comma,
+            token::Interpolated(..) => LastTokenKind::Interpolated,
+            token::Eof => LastTokenKind::Eof,
+            _ => LastTokenKind::Other,
         };
-        self.last_token_interpolated = self.token.is_interpolated();
+
         let next = if self.buffer_start == self.buffer_end {
             self.reader.real_token()
         } else {
@@ -979,11 +980,10 @@ impl<'a> Parser<'a> {
                      lo: BytePos,
                      hi: BytePos) {
         self.last_span = mk_sp(self.span.lo, lo);
-        // It would be incorrect to just stash current token, but fortunately
-        // for tokens currently using `bump_with`, last_token will be of no
-        // use anyway.
-        self.last_token = None;
-        self.last_token_interpolated = false;
+        // It would be incorrect to record the kind of the current token, but
+        // fortunately for tokens currently using `bump_with`, the
+        // last_token_kind will be of no use anyway.
+        self.last_token_kind = LastTokenKind::Other;
         self.span = mk_sp(lo, hi);
         self.token = next;
         self.expected_tokens.clear();
@@ -1038,6 +1038,10 @@ impl<'a> Parser<'a> {
     }
     pub fn abort_if_errors(&self) {
         self.sess.span_diagnostic.abort_if_errors();
+    }
+
+    fn cancel(&self, err: &mut DiagnosticBuilder) {
+        self.sess.span_diagnostic.cancel(err)
     }
 
     pub fn diagnostic(&self) -> &'a errors::Handler {
@@ -1163,36 +1167,6 @@ impl<'a> Parser<'a> {
             lifetimes: lifetime_defs,
             decl: decl
         })))
-    }
-
-    /// Parses an obsolete closure kind (`&:`, `&mut:`, or `:`).
-    pub fn parse_obsolete_closure_kind(&mut self) -> PResult<'a, ()> {
-         let lo = self.span.lo;
-        if
-            self.check(&token::BinOp(token::And)) &&
-            self.look_ahead(1, |t| t.is_keyword(keywords::Mut)) &&
-            self.look_ahead(2, |t| *t == token::Colon)
-        {
-            self.bump();
-            self.bump();
-            self.bump();
-        } else if
-            self.token == token::BinOp(token::And) &&
-            self.look_ahead(1, |t| *t == token::Colon)
-        {
-            self.bump();
-            self.bump();
-        } else if
-            self.eat(&token::Colon)
-        {
-            /* nothing */
-        } else {
-            return Ok(());
-        }
-
-        let span = mk_sp(lo, self.span.hi);
-        self.obsolete(span, ObsoleteSyntax::ClosureKind);
-        Ok(())
     }
 
     pub fn parse_unsafety(&mut self) -> PResult<'a, Unsafety> {
@@ -2416,7 +2390,7 @@ impl<'a> Parser<'a> {
                             ex = ExprKind::Lit(P(lit));
                         }
                         Err(mut err) => {
-                            err.cancel();
+                            self.cancel(&mut err);
                             let msg = format!("expected expression, found {}",
                                               self.this_token_descr());
                             return Err(self.fatal(&msg));
@@ -2974,7 +2948,7 @@ impl<'a> Parser<'a> {
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
 
-            let lhs_span = if self.last_token_interpolated {
+            let lhs_span = if self.last_token_kind == LastTokenKind::Interpolated {
                 self.last_span
             } else {
                 lhs.span
@@ -3732,7 +3706,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                     Err(mut err) => {
-                        err.cancel();
+                        self.cancel(&mut err);
                         let msg = format!("expected pattern, found {}", self.this_token_descr());
                         return Err(self.fatal(&msg));
                     }
@@ -3898,15 +3872,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_stmt_(&mut self, macro_expanded: bool) -> Option<Stmt> {
-        self.parse_stmt_without_recovery(macro_expanded).unwrap_or_else(|mut e| {
+    fn parse_stmt_(&mut self, macro_legacy_warnings: bool) -> Option<Stmt> {
+        self.parse_stmt_without_recovery(macro_legacy_warnings).unwrap_or_else(|mut e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break);
             None
         })
     }
 
-    fn parse_stmt_without_recovery(&mut self, macro_expanded: bool) -> PResult<'a, Option<Stmt>> {
+    fn parse_stmt_without_recovery(&mut self,
+                                   macro_legacy_warnings: bool)
+                                   -> PResult<'a, Option<Stmt>> {
         maybe_whole!(Some deref self, NtStmt);
 
         let attrs = self.parse_outer_attributes()?;
@@ -3976,7 +3952,7 @@ impl<'a> Parser<'a> {
                 // We used to incorrectly stop parsing macro-expanded statements here.
                 // If the next token will be an error anyway but could have parsed with the
                 // earlier behavior, stop parsing here and emit a warning to avoid breakage.
-                else if macro_expanded && self.token.can_begin_expr() && match self.token {
+                else if macro_legacy_warnings && self.token.can_begin_expr() && match self.token {
                     // These can continue an expression, so we can't stop parsing and warn.
                     token::OpenDelim(token::Paren) | token::OpenDelim(token::Bracket) |
                     token::BinOp(token::Minus) | token::BinOp(token::Star) |
@@ -4036,13 +4012,13 @@ impl<'a> Parser<'a> {
                 None => {
                     let unused_attrs = |attrs: &[_], s: &mut Self| {
                         if attrs.len() > 0 {
-                            let last_token = s.last_token.clone().map(|t| *t);
-                            match last_token {
-                                Some(token::DocComment(_)) => s.span_err_help(s.last_span,
+                            if s.last_token_kind == LastTokenKind::DocComment {
+                                s.span_err_help(s.last_span,
                                     "found a documentation comment that doesn't document anything",
                                     "doc comments must come before what they document, maybe a \
-                                    comment was intended with `//`?"),
-                                _ => s.span_err(s.span, "expected statement after outer attribute"),
+                                    comment was intended with `//`?");
+                            } else {
+                                s.span_err(s.span, "expected statement after outer attribute");
                             }
                         }
                     };
@@ -4106,7 +4082,7 @@ impl<'a> Parser<'a> {
                 }
                 Err(mut e) => {
                     self.recover_stmt_(SemiColonMode::Break);
-                    e.cancel();
+                    self.cancel(&mut e);
                 }
                 _ => ()
             }
@@ -4151,8 +4127,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a statement, including the trailing semicolon.
-    pub fn parse_full_stmt(&mut self, macro_expanded: bool) -> PResult<'a, Option<Stmt>> {
-        let mut stmt = match self.parse_stmt_(macro_expanded) {
+    pub fn parse_full_stmt(&mut self, macro_legacy_warnings: bool) -> PResult<'a, Option<Stmt>> {
+        let mut stmt = match self.parse_stmt_(macro_legacy_warnings) {
             Some(stmt) => stmt,
             None => return Ok(None),
         };
@@ -4172,7 +4148,7 @@ impl<'a> Parser<'a> {
             }
             StmtKind::Local(..) => {
                 // We used to incorrectly allow a macro-expanded let statement to lack a semicolon.
-                if macro_expanded && self.token != token::Semi {
+                if macro_legacy_warnings && self.token != token::Semi {
                     self.warn_missing_semicolon();
                 } else {
                     self.expect_one_of(&[token::Semi], &[])?;
@@ -4332,9 +4308,7 @@ impl<'a> Parser<'a> {
 
         let missing_comma = !lifetimes.is_empty() &&
                             !self.token.is_like_gt() &&
-                            self.last_token
-                                .as_ref().map_or(true,
-                                                 |x| &**x != &token::Comma);
+                            self.last_token_kind != LastTokenKind::Comma;
 
         if missing_comma {
 
@@ -4347,7 +4321,7 @@ impl<'a> Parser<'a> {
             let span_hi = match self.parse_ty() {
                 Ok(..) => self.span.hi,
                 Err(ref mut err) => {
-                    err.cancel();
+                    self.cancel(err);
                     span_hi
                 }
             };
@@ -4728,7 +4702,6 @@ impl<'a> Parser<'a> {
                 Vec::new()
             } else {
                 self.expect(&token::BinOp(token::Or))?;
-                self.parse_obsolete_closure_kind()?;
                 let args = self.parse_seq_to_before_end(
                     &token::BinOp(token::Or),
                     SeqSep::trailing_allowed(token::Comma),
@@ -5291,20 +5264,29 @@ impl<'a> Parser<'a> {
 
     /// Parse a `mod <foo> { ... }` or `mod <foo>;` item
     fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
-        let outer_attrs = ::config::StripUnconfigured {
-            config: &self.cfg,
-            sess: self.sess,
-            should_test: false, // irrelevant
-            features: None, // don't perform gated feature checking
-        }.process_cfg_attrs(outer_attrs.to_owned());
+        let (in_cfg, outer_attrs) = {
+            let mut strip_unconfigured = ::config::StripUnconfigured {
+                config: &self.cfg,
+                sess: self.sess,
+                should_test: false, // irrelevant
+                features: None, // don't perform gated feature checking
+            };
+            let outer_attrs = strip_unconfigured.process_cfg_attrs(outer_attrs.to_owned());
+            (strip_unconfigured.in_cfg(&outer_attrs), outer_attrs)
+        };
 
         let id_span = self.span;
         let id = self.parse_ident()?;
         if self.check(&token::Semi) {
             self.bump();
-            // This mod is in an external file. Let's go get it!
-            let (m, attrs) = self.eval_src_mod(id, &outer_attrs, id_span)?;
-            Ok((id, m, Some(attrs)))
+            if in_cfg {
+                // This mod is in an external file. Let's go get it!
+                let (m, attrs) = self.eval_src_mod(id, &outer_attrs, id_span)?;
+                Ok((id, m, Some(attrs)))
+            } else {
+                let placeholder = ast::Mod { inner: syntax_pos::DUMMY_SP, items: Vec::new() };
+                Ok((id, ItemKind::Mod(placeholder), None))
+            }
         } else {
             let directory = self.directory.clone();
             self.push_directory(id, &outer_attrs);
@@ -6187,6 +6169,17 @@ impl<'a> Parser<'a> {
                 Ok((s, style))
             }
             _ =>  Err(self.fatal("expected string literal"))
+        }
+    }
+
+    pub fn ensure_complete_parse<F>(&mut self, allow_semi: bool, on_err: F)
+        where F: FnOnce(&Parser)
+    {
+        if allow_semi && self.token == token::Semi {
+            self.bump();
+        }
+        if self.token != token::Eof {
+            on_err(self);
         }
     }
 }

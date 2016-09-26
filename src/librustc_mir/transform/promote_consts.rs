@@ -328,7 +328,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     fn visit_lvalue(&mut self,
                     lvalue: &mut Lvalue<'tcx>,
-                    context: LvalueContext,
+                    context: LvalueContext<'tcx>,
                     location: Location) {
         if let Lvalue::Temp(ref mut temp) = *lvalue {
             *temp = self.promote_temp(*temp);

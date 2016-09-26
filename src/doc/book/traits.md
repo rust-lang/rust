@@ -275,7 +275,7 @@ won’t have its methods:
 [write]: ../std/io/trait.Write.html
 
 ```rust,ignore
-let mut f = std::fs::File::open("foo.txt").expect("Couldn’t open foo.txt");
+let mut f = std::fs::File::create("foo.txt").expect("Couldn’t create foo.txt");
 let buf = b"whatever"; // byte string literal. buf: &[u8; 8]
 let result = f.write(buf);
 # result.unwrap(); // ignore the error
@@ -291,10 +291,10 @@ let result = f.write(buf);
 
 We need to `use` the `Write` trait first:
 
-```rust,ignore
+```rust,no_run
 use std::io::Write;
 
-let mut f = std::fs::File::open("foo.txt").expect("Couldn’t open foo.txt");
+let mut f = std::fs::File::create("foo.txt").expect("Couldn’t create foo.txt");
 let buf = b"whatever";
 let result = f.write(buf);
 # result.unwrap(); // ignore the error

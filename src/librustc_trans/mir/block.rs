@@ -139,9 +139,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::TerminatorKind::Switch { ref discr, ref adt_def, ref targets } => {
                 let discr_lvalue = self.trans_lvalue(&bcx, discr);
                 let ty = discr_lvalue.ty.to_ty(bcx.tcx());
-                let repr = adt::represent_type(bcx.ccx(), ty);
                 let discr = bcx.with_block(|bcx|
-                    adt::trans_get_discr(bcx, &repr, discr_lvalue.llval, None, true)
+                    adt::trans_get_discr(bcx, ty, discr_lvalue.llval, None, true)
                 );
 
                 let mut bb_hist = FnvHashMap();
@@ -167,7 +166,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     if default_bb != Some(target) {
                         let llbb = llblock(self, target);
                         let llval = bcx.with_block(|bcx| adt::trans_case(
-                                bcx, &repr, Disr::from(adt_variant.disr_val)));
+                                bcx, ty, Disr::from(adt_variant.disr_val)));
                         build::AddCase(switch, llval, llbb)
                     }
                 }
@@ -242,10 +241,28 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let lvalue = self.trans_lvalue(&bcx, location);
                 let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
                 let drop_ty = glue::get_drop_glue_type(bcx.tcx(), ty);
-                let llvalue = if drop_ty != ty {
-                    bcx.pointercast(lvalue.llval, type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
+                let is_sized = common::type_is_sized(bcx.tcx(), ty);
+                let llvalue = if is_sized {
+                    if drop_ty != ty {
+                        bcx.pointercast(lvalue.llval, type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
+                    } else {
+                        lvalue.llval
+                    }
                 } else {
-                    lvalue.llval
+                    // FIXME(#36457) Currently drop glue takes sized
+                    // values as a `*(data, meta)`, but elsewhere in
+                    // MIR we pass `(data, meta)` as two separate
+                    // arguments. It would be better to fix drop glue,
+                    // but I am shooting for a quick fix to #35546
+                    // here that can be cleanly backported to beta, so
+                    // I want to avoid touching all of trans.
+                    bcx.with_block(|bcx| {
+                        let scratch = base::alloc_ty(bcx, ty, "drop");
+                        base::call_lifetime_start(bcx, scratch);
+                        build::Store(bcx, lvalue.llval, base::get_dataptr(bcx, scratch));
+                        build::Store(bcx, lvalue.llextra, base::get_meta(bcx, scratch));
+                        scratch
+                    })
                 };
                 if let Some(unwind) = unwind {
                     bcx.invoke(drop_fn,
@@ -683,10 +700,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         // Handle both by-ref and immediate tuples.
         match tuple.val {
             Ref(llval) => {
-                let base_repr = adt::represent_type(bcx.ccx(), tuple.ty);
                 let base = adt::MaybeSizedValue::sized(llval);
                 for (n, &ty) in arg_types.iter().enumerate() {
-                    let ptr = adt::trans_field_ptr_builder(bcx, &base_repr, base, Disr(0), n);
+                    let ptr = adt::trans_field_ptr_builder(bcx, tuple.ty, base, Disr(0), n);
                     let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
                         let (lldata, llextra) = load_fat_ptr(bcx, ptr);
                         Pair(lldata, llextra)

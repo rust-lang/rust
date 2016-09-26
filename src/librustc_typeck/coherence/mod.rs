@@ -20,8 +20,7 @@ use middle::lang_items::UnsizeTraitLangItem;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::traits::{self, Reveal};
-use rustc::ty::{ImplOrTraitItemId, ConstTraitItemId};
-use rustc::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
+use rustc::ty::{ParameterEnvironment};
 use rustc::ty::{Ty, TyBool, TyChar, TyError};
 use rustc::ty::{TyParam, TyRawPtr};
 use rustc::ty::{TyRef, TyAdt, TyTrait, TyNever, TyTuple};
@@ -38,6 +37,8 @@ use rustc::hir::map as hir_map;
 use rustc::hir::intravisit;
 use rustc::hir::{Item, ItemImpl};
 use rustc::hir;
+
+use std::rc::Rc;
 
 mod orphan;
 mod overlap;
@@ -156,7 +157,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
             }
         }
 
-        tcx.impl_items.borrow_mut().insert(impl_did, impl_items);
+        tcx.impl_or_trait_item_def_ids.borrow_mut().insert(impl_did, Rc::new(impl_items));
     }
 
     fn add_inherent_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
@@ -172,22 +173,11 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
     }
 
     // Converts an implementation in the AST to a vector of items.
-    fn create_impl_from_item(&self, item: &Item) -> Vec<ImplOrTraitItemId> {
+    fn create_impl_from_item(&self, item: &Item) -> Vec<DefId> {
         match item.node {
             ItemImpl(.., ref impl_items) => {
                 impl_items.iter().map(|impl_item| {
-                    let impl_def_id = self.crate_context.tcx.map.local_def_id(impl_item.id);
-                    match impl_item.node {
-                        hir::ImplItemKind::Const(..) => {
-                            ConstTraitItemId(impl_def_id)
-                        }
-                        hir::ImplItemKind::Method(..) => {
-                            MethodTraitItemId(impl_def_id)
-                        }
-                        hir::ImplItemKind::Type(_) => {
-                            TypeTraitItemId(impl_def_id)
-                        }
-                    }
+                    self.crate_context.tcx.map.local_def_id(impl_item.id)
                 }).collect()
             }
             _ => {
@@ -208,7 +198,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         tcx.populate_implementations_for_trait_if_necessary(drop_trait);
         let drop_trait = tcx.lookup_trait_def(drop_trait);
 
-        let impl_items = tcx.impl_items.borrow();
+        let impl_items = tcx.impl_or_trait_item_def_ids.borrow();
 
         drop_trait.for_each_impl(tcx, |impl_did| {
             let items = impl_items.get(&impl_did).unwrap();
@@ -221,7 +211,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
             let self_type = tcx.lookup_item_type(impl_did);
             match self_type.ty.sty {
                 ty::TyAdt(type_def, _) => {
-                    type_def.set_destructor(method_def_id.def_id());
+                    type_def.set_destructor(method_def_id);
                 }
                 _ => {
                     // Destructors only work on nominal types.

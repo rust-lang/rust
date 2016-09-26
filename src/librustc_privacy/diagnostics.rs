@@ -17,6 +17,8 @@ A private trait was used on a public type parameter bound. Erroneous code
 examples:
 
 ```compile_fail,E0445
+#![deny(private_in_public)]
+
 trait Foo {
     fn dummy(&self) { }
 }
@@ -45,6 +47,8 @@ E0446: r##"
 A private type was used in a public type signature. Erroneous code example:
 
 ```compile_fail,E0446
+#![deny(private_in_public)]
+
 mod Foo {
     struct Bar(u32);
 

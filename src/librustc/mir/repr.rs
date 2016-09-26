@@ -180,12 +180,38 @@ impl<'tcx> Mir<'tcx> {
         Some(Local::new(idx))
     }
 
-    /// Counts the number of locals, such that that local_index
+    /// Counts the number of locals, such that local_index
     /// will always return an index smaller than this count.
     pub fn count_locals(&self) -> usize {
         self.arg_decls.len() +
         self.var_decls.len() +
         self.temp_decls.len() + 1
+    }
+
+    pub fn format_local(&self, local: Local) -> String {
+        let mut index = local.index();
+        index = match index.checked_sub(self.arg_decls.len()) {
+            None => return format!("{:?}", Arg::new(index)),
+            Some(index) => index,
+        };
+        index = match index.checked_sub(self.var_decls.len()) {
+            None => return format!("{:?}", Var::new(index)),
+            Some(index) => index,
+        };
+        index = match index.checked_sub(self.temp_decls.len()) {
+            None => return format!("{:?}", Temp::new(index)),
+            Some(index) => index,
+        };
+        debug_assert!(index == 0);
+        return "ReturnPointer".to_string()
+    }
+
+    /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
+    /// invalidating statement indices in `Location`s.
+    pub fn make_statement_nop(&mut self, location: Location) {
+        let block = &mut self[location.block];
+        debug_assert!(location.statement_index < block.statements.len());
+        block.statements[location.statement_index].make_nop()
     }
 }
 
@@ -686,6 +712,14 @@ pub struct Statement<'tcx> {
     pub kind: StatementKind<'tcx>,
 }
 
+impl<'tcx> Statement<'tcx> {
+    /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
+    /// invalidating statement indices in `Location`s.
+    pub fn make_nop(&mut self) {
+        self.kind = StatementKind::Nop
+    }
+}
+
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
     /// Write the RHS Rvalue to the LHS Lvalue.
@@ -699,6 +733,9 @@ pub enum StatementKind<'tcx> {
 
     /// End the current live range for the storage of the local.
     StorageDead(Lvalue<'tcx>),
+
+    /// No-op. Useful for deleting instructions without affecting statement indices.
+    Nop,
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
@@ -711,6 +748,7 @@ impl<'tcx> Debug for Statement<'tcx> {
             SetDiscriminant{lvalue: ref lv, variant_index: index} => {
                 write!(fmt, "discriminant({:?}) = {:?}", lv, index)
             }
+            Nop => write!(fmt, "nop"),
         }
     }
 }
@@ -823,6 +861,24 @@ impl<'tcx> Lvalue<'tcx> {
             base: self,
             elem: elem,
         }))
+    }
+
+    pub fn from_local(mir: &Mir<'tcx>, local: Local) -> Lvalue<'tcx> {
+        let mut index = local.index();
+        index = match index.checked_sub(mir.arg_decls.len()) {
+            None => return Lvalue::Arg(Arg(index as u32)),
+            Some(index) => index,
+        };
+        index = match index.checked_sub(mir.var_decls.len()) {
+            None => return Lvalue::Var(Var(index as u32)),
+            Some(index) => index,
+        };
+        index = match index.checked_sub(mir.temp_decls.len()) {
+            None => return Lvalue::Temp(Temp(index as u32)),
+            Some(index) => index,
+        };
+        debug_assert!(index == 0);
+        Lvalue::ReturnPointer
     }
 }
 
@@ -1098,7 +1154,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, lv) in freevars.iter().zip(lvs) {
-                                    let var_name = tcx.local_var_name_str(freevar.def.var_id());
+                                    let def_id = freevar.def.def_id();
+                                    let var_id = tcx.map.as_local_node_id(def_id).unwrap();
+                                    let var_name = tcx.local_var_name_str(var_id);
                                     struct_fmt.field(&var_name, lv);
                                 }
                             });
@@ -1243,7 +1301,7 @@ impl<'a, 'b>  GraphSuccessors<'b> for Mir<'a> {
     type Iter = IntoIter<BasicBlock>;
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Ord, PartialOrd)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Location {
     /// the location is within this block
     pub block: BasicBlock,
@@ -1253,3 +1311,18 @@ pub struct Location {
     pub statement_index: usize,
 }
 
+impl fmt::Debug for Location {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{:?}[{}]", self.block, self.statement_index)
+    }
+}
+
+impl Location {
+    pub fn dominates(&self, other: &Location, dominators: &Dominators<BasicBlock>) -> bool {
+        if self.block == other.block {
+            self.statement_index <= other.statement_index
+        } else {
+            dominators.is_dominated_by(other.block, self.block)
+        }
+    }
+}

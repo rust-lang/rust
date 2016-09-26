@@ -92,6 +92,8 @@ pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     t: Ty<'tcx>) -> Ty<'tcx> {
     assert!(t.is_normalized_for_trans());
 
+    let t = tcx.erase_regions(&t);
+
     // Even if there is no dtor for t, there might be one deeper down and we
     // might need to pass in the vtable ptr.
     if !type_is_sized(tcx, t) {
@@ -214,30 +216,14 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 g: DropGlueKind<'tcx>) -> ValueRef {
     let g = g.map_ty(|t| get_drop_glue_type(ccx.tcx(), t));
     match ccx.drop_glues().borrow().get(&g) {
-        Some(&(glue, _)) => return glue,
+        Some(&(glue, _)) => glue,
         None => {
-            debug!("Could not find drop glue for {:?} -- {} -- {}. \
-                    Falling back to on-demand instantiation.",
+            bug!("Could not find drop glue for {:?} -- {} -- {}.",
                     g,
                     TransItem::DropGlue(g).to_raw_string(),
                     ccx.codegen_unit().name());
         }
     }
-
-    // FIXME: #34151
-    // Normally, getting here would indicate a bug in trans::collector,
-    // since it seems to have missed a translation item. When we are
-    // translating with non-MIR-based trans, however, the results of the
-    // collector are not entirely reliable since it bases its analysis
-    // on MIR. Thus, we'll instantiate the missing function on demand in
-    // this codegen unit, so that things keep working.
-
-    TransItem::DropGlue(g).predefine(ccx, llvm::InternalLinkage);
-    TransItem::DropGlue(g).define(ccx);
-
-    // Now that we made sure that the glue function is in ccx.drop_glues,
-    // give it another try
-    get_drop_glue_core(ccx, g)
 }
 
 pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -296,6 +282,7 @@ fn trans_custom_dtor<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         sized_args = [v0];
         &sized_args
     } else {
+        // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
         unsized_args = [
             Load(bcx, get_dataptr(bcx, v0)),
             Load(bcx, get_meta(bcx, v0))
@@ -440,7 +427,9 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     }
 }
 
-fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueKind<'tcx>)
+fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              v0: ValueRef,
+                              g: DropGlueKind<'tcx>)
                               -> Block<'blk, 'tcx> {
     let t = g.ty();
 
@@ -463,6 +452,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                 let llval = get_dataptr(bcx, v0);
                 let llbox = Load(bcx, llval);
                 let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
+                // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
                 let info = get_meta(bcx, v0);
                 let info = Load(bcx, info);
                 let (llsize, llalign) =
@@ -488,6 +478,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
             // No support in vtable for distinguishing destroying with
             // versus without calling Drop::drop. Assert caller is
             // okay with always calling the Drop impl, if any.
+            // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
             assert!(!skip_dtor);
             let data_ptr = get_dataptr(bcx, v0);
             let vtable_ptr = Load(bcx, get_meta(bcx, v0));
@@ -522,7 +513,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("drop_structural_ty");
 
     fn iter_variant<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
-                                repr: &adt::Repr<'tcx>,
+                                t: Ty<'tcx>,
                                 av: adt::MaybeSizedValue,
                                 variant: ty::VariantDef<'tcx>,
                                 substs: &Substs<'tcx>)
@@ -534,7 +525,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
             cx = drop_ty(cx,
-                         adt::trans_field_ptr(cx, repr, av, Disr::from(variant.disr_val), i),
+                         adt::trans_field_ptr(cx, t, av, Disr::from(variant.disr_val), i),
                          arg, DebugLoc::None);
         }
         return cx;
@@ -543,6 +534,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     let value = if type_is_sized(cx.tcx(), t) {
         adt::MaybeSizedValue::sized(av)
     } else {
+        // FIXME(#36457) -- we should pass unsized values as two arguments
         let data = Load(cx, get_dataptr(cx, av));
         let info = Load(cx, get_meta(cx, av));
         adt::MaybeSizedValue::unsized_(data, info)
@@ -551,9 +543,8 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     let mut cx = cx;
     match t.sty {
         ty::TyClosure(_, ref substs) => {
-            let repr = adt::represent_type(cx.ccx(), t);
             for (i, upvar_ty) in substs.upvar_tys.iter().enumerate() {
-                let llupvar = adt::trans_field_ptr(cx, &repr, value, Disr(0), i);
+                let llupvar = adt::trans_field_ptr(cx, t, value, Disr(0), i);
                 cx = drop_ty(cx, llupvar, upvar_ty, DebugLoc::None);
             }
         }
@@ -570,22 +561,21 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                 |bb, vv| drop_ty(bb, vv, unit_ty, DebugLoc::None));
         }
         ty::TyTuple(ref args) => {
-            let repr = adt::represent_type(cx.ccx(), t);
             for (i, arg) in args.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(cx, &repr, value, Disr(0), i);
+                let llfld_a = adt::trans_field_ptr(cx, t, value, Disr(0), i);
                 cx = drop_ty(cx, llfld_a, *arg, DebugLoc::None);
             }
         }
         ty::TyAdt(adt, substs) => match adt.adt_kind() {
             AdtKind::Struct => {
-                let repr = adt::represent_type(cx.ccx(), t);
                 let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
                 for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
-                    let llfld_a = adt::trans_field_ptr(cx, &repr, value, Disr::from(discr), i);
+                    let llfld_a = adt::trans_field_ptr(cx, t, value, Disr::from(discr), i);
 
                     let val = if type_is_sized(cx.tcx(), field_ty) {
                         llfld_a
                     } else {
+                        // FIXME(#36457) -- we should pass unsized values as two arguments
                         let scratch = alloc_ty(cx, field_ty, "__fat_ptr_iter");
                         Store(cx, llfld_a, get_dataptr(cx, scratch));
                         Store(cx, value.meta, get_meta(cx, scratch));
@@ -600,18 +590,16 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             AdtKind::Enum => {
                 let fcx = cx.fcx;
                 let ccx = fcx.ccx;
-
-                let repr = adt::represent_type(ccx, t);
                 let n_variants = adt.variants.len();
 
                 // NB: we must hit the discriminant first so that structural
                 // comparison know not to proceed when the discriminants differ.
 
-                match adt::trans_switch(cx, &repr, av, false) {
+                match adt::trans_switch(cx, t, av, false) {
                     (adt::BranchKind::Single, None) => {
                         if n_variants != 0 {
                             assert!(n_variants == 1);
-                            cx = iter_variant(cx, &repr, adt::MaybeSizedValue::sized(av),
+                            cx = iter_variant(cx, t, adt::MaybeSizedValue::sized(av),
                                             &adt.variants[0], substs);
                         }
                     }
@@ -640,10 +628,10 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                             let variant_cx = fcx.new_block(&format!("enum-iter-variant-{}",
                                                                         &variant.disr_val
                                                                                 .to_string()));
-                            let case_val = adt::trans_case(cx, &repr, Disr::from(variant.disr_val));
+                            let case_val = adt::trans_case(cx, t, Disr::from(variant.disr_val));
                             AddCase(llswitch, case_val, variant_cx.llbb);
                             let variant_cx = iter_variant(variant_cx,
-                                                        &repr,
+                                                        t,
                                                         value,
                                                         variant,
                                                         substs);

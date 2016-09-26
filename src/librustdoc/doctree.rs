@@ -21,6 +21,7 @@ use syntax::ptr::P;
 use syntax_pos::{self, Span};
 
 use rustc::hir;
+use rustc::hir::def_id::CrateNum;
 
 pub struct Module {
     pub name: Option<Name>,
@@ -53,7 +54,7 @@ impl Module {
     pub fn new(name: Option<Name>) -> Module {
         Module {
             name       : name,
-            id: 0,
+            id: ast::CRATE_NODE_ID,
             vis: hir::Inherited,
             stab: None,
             depr: None,
@@ -82,14 +83,12 @@ impl Module {
 
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable, Copy)]
 pub enum StructType {
-    /// A normal struct
+    /// A braced struct
     Plain,
     /// A tuple struct
     Tuple,
-    /// A newtype struct (tuple struct with one element)
-    Newtype,
     /// A unit struct
-    Unit
+    Unit,
 }
 
 pub enum TypeBound {
@@ -247,7 +246,7 @@ pub struct Macro {
 
 pub struct ExternCrate {
     pub name: Name,
-    pub cnum: ast::CrateNum,
+    pub cnum: CrateNum,
     pub path: Option<String>,
     pub vis: hir::Visibility,
     pub attrs: hir::HirVec<ast::Attribute>,
@@ -262,15 +261,10 @@ pub struct Import {
     pub whence: Span,
 }
 
-pub fn struct_type_from_def(sd: &hir::VariantData) -> StructType {
-    if !sd.is_struct() {
-        // We are in a tuple-struct
-        match sd.fields().len() {
-            0 => Unit,
-            1 => Newtype,
-            _ => Tuple
-        }
-    } else {
-        Plain
+pub fn struct_type_from_def(vdata: &hir::VariantData) -> StructType {
+    match *vdata {
+        hir::VariantData::Struct(..) => Plain,
+        hir::VariantData::Tuple(..) => Tuple,
+        hir::VariantData::Unit(..) => Unit,
     }
 }

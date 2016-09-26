@@ -119,16 +119,19 @@ class Void(Type):
     def __init__(self):
         Type.__init__(self, 0)
 
-    def compiler_ctor(self):
+    @staticmethod
+    def compiler_ctor():
         return '::VOID'
 
     def compiler_ctor_ref(self):
         return '&' + self.compiler_ctor()
 
-    def rust_name(self):
+    @staticmethod
+    def rust_name():
         return '()'
 
-    def type_info(self, platform_info):
+    @staticmethod
+    def type_info(platform_info):
         return None
 
     def __eq__(self, other):
@@ -282,7 +285,7 @@ class Vector(Type):
 
 class Pointer(Type):
     def __init__(self, elem, llvm_elem, const):
-        self._elem = elem;
+        self._elem = elem
         self._llvm_elem = llvm_elem
         self._const = const
         Type.__init__(self, BITWIDTH_POINTER)
@@ -503,7 +506,7 @@ class GenericIntrinsic(object):
             # must be a power of two
             assert width & (width - 1) == 0
             def recur(processed, untouched):
-                if untouched == []:
+                if not untouched:
                     ret = processed[0]
                     args = processed[1:]
                     yield MonomorphicIntrinsic(self._platform, self.intrinsic, width,
@@ -756,22 +759,26 @@ class ExternBlock(object):
     def __init__(self):
         pass
 
-    def open(self, platform):
+    @staticmethod
+    def open(platform):
         return 'extern "platform-intrinsic" {'
 
-    def render(self, mono):
+    @staticmethod
+    def render(mono):
         return '    fn {}{}{};'.format(mono.platform_prefix(),
                                        mono.intrinsic_name(),
                                        mono.intrinsic_signature())
 
-    def close(self):
+    @staticmethod
+    def close():
         return '}'
 
 class CompilerDefs(object):
     def __init__(self):
         pass
 
-    def open(self, platform):
+    @staticmethod
+    def open(platform):
         return '''\
 // Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -798,7 +805,8 @@ pub fn find(name: &str) -> Option<Intrinsic> {{
     if !name.starts_with("{0}") {{ return None }}
     Some(match &name["{0}".len()..] {{'''.format(platform.platform_prefix())
 
-    def render(self, mono):
+    @staticmethod
+    def render(mono):
         return '''\
         "{}" => Intrinsic {{
             inputs: {{ static INPUTS: [&'static Type; {}] = [{}]; &INPUTS }},
@@ -810,7 +818,8 @@ pub fn find(name: &str) -> Option<Intrinsic> {{
                       mono.compiler_ret(),
                       mono.llvm_name())
 
-    def close(self):
+    @staticmethod
+    def close():
         return '''\
         _ => return None,
     })

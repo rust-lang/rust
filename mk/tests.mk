@@ -27,7 +27,7 @@ TEST_TARGET_CRATES = $(filter-out core rustc_unicode alloc_system libc \
 				  panic_abort,$(TARGET_CRATES)) \
 			collectionstest coretest
 TEST_DOC_CRATES = $(DOC_CRATES) arena flate fmt_macros getopts graphviz \
-                log rand rbml serialize syntax term test
+                log rand serialize syntax term test
 TEST_HOST_CRATES = $(filter-out rustc_typeck rustc_borrowck rustc_resolve \
 		   		rustc_trans rustc_lint,\
                      $(HOST_CRATES))

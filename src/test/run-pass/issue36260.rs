@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro_crate_MacroRulesTT.rs
-// ignore-stage1
-// error-pattern: plugin tried to register a new MacroRulesTT
+// Make sure this compiles without getting a linker error because of missing
+// drop-glue because the collector missed adding drop-glue for the closure:
 
-#![feature(plugin)]
-#![plugin(macro_crate_MacroRulesTT)]
+fn create_fn() -> Box<Fn()> {
+    let text = String::new();
 
-fn main() { }
+    Box::new(move || { let _ = &text; })
+}
+
+fn main() {
+    let _ = create_fn();
+}

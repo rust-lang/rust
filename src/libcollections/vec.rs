@@ -1652,6 +1652,7 @@ impl<T> Drop for Vec<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Vec<T> {
+    /// Creates an empty `Vec<T>`.
     fn default() -> Vec<T> {
         Vec::new()
     }

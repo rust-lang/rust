@@ -2,6 +2,7 @@
 name = "std_shim"
 version = "0.1.0"
 dependencies = [
+ "core 0.0.0",
  "std 0.0.0",
 ]
 
@@ -41,6 +42,14 @@ dependencies = [
  "alloc 0.0.0",
  "core 0.0.0",
  "rustc_unicode 0.0.0",
+]
+
+[[package]]
+name = "compiler_builtins"
+version = "0.0.0"
+dependencies = [
+ "core 0.0.0",
+ "gcc 0.3.27 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -100,6 +109,7 @@ dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "collections 0.0.0",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
  "gcc 0.3.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.0.0",

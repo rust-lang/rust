@@ -34,7 +34,7 @@ div.stability > em > code {
     background-color: initial;
 }
 
-.docblock code {
+.docblock code, .docblock-short code {
     background-color: #F5F5F5;
 }
 pre {
@@ -107,13 +107,13 @@ nav.main .current {
     border-bottom-color: #000;
 }
 nav.main .separator {
-    border-color: 1px solid #000;
+    border: 1px solid #000;
 }
 a {
     color: #000;
 }
 
-.docblock a, .stability a {
+.docblock a, .docblock-short a, .stability a {
     color: #3873AD;
 }
 

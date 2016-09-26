@@ -216,8 +216,8 @@ impl<R: Seek> Seek for BufReader<R> {
     ///
     /// Seeking always discards the internal buffer, even if the seek position
     /// would otherwise fall within it. This guarantees that calling
-    /// `.unwrap()` immediately after a seek yields the underlying reader at
-    /// the same position.
+    /// `.into_inner()` immediately after a seek yields the underlying reader
+    /// at the same position.
     ///
     /// See `std::io::Seek` for more details.
     ///
@@ -468,8 +468,7 @@ impl<W: Write> Write for BufWriter<W> {
             self.panicked = false;
             r
         } else {
-            let amt = cmp::min(buf.len(), self.buf.capacity());
-            Write::write(&mut self.buf, &buf[..amt])
+            Write::write(&mut self.buf, buf)
         }
     }
     fn flush(&mut self) -> io::Result<()> {

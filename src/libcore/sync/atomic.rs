@@ -95,6 +95,7 @@ pub struct AtomicBool {
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for AtomicBool {
+    /// Creates an `AtomicBool` initialised as false.
     fn default() -> Self {
         Self::new(false)
     }
@@ -117,6 +118,7 @@ pub struct AtomicPtr<T> {
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for AtomicPtr<T> {
+    /// Creates a null `AtomicPtr<T>`.
     fn default() -> AtomicPtr<T> {
         AtomicPtr::new(::ptr::null_mut())
     }

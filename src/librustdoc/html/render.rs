@@ -53,10 +53,9 @@ use std::sync::Arc;
 use externalfiles::ExternalHtml;
 
 use serialize::json::{ToJson, Json, as_json};
-use syntax::{abi, ast};
+use syntax::abi;
 use syntax::feature_gate::UnstableFeatures;
-use rustc::middle::cstore::LOCAL_CRATE;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
 use rustc::session::config::get_unstable_features_setting;
@@ -246,10 +245,10 @@ pub struct Cache {
     pub implementors: FnvHashMap<DefId, Vec<Implementor>>,
 
     /// Cache of where external crate documentation can be found.
-    pub extern_locations: FnvHashMap<ast::CrateNum, (String, ExternalLocation)>,
+    pub extern_locations: FnvHashMap<CrateNum, (String, ExternalLocation)>,
 
     /// Cache of where documentation for primitives can be found.
-    pub primitive_locations: FnvHashMap<clean::PrimitiveType, ast::CrateNum>,
+    pub primitive_locations: FnvHashMap<clean::PrimitiveType, CrateNum>,
 
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -1846,7 +1845,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        <tr class='{stab} module-item'>
                            <td><a class='{class}' href='{href}'
                                   title='{title}'>{name}</a></td>
-                           <td class='docblock short'>
+                           <td class='docblock-short'>
                                {stab_docs} {docs}
                            </td>
                        </tr>",
@@ -2521,23 +2520,32 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
             if let Some(g) = g {
                 write!(w, "{}", WhereClause(g))?
             }
-            write!(w, " {{\n{}", tab)?;
+            let mut has_visible_fields = false;
+            write!(w, " {{")?;
             for field in fields {
                 if let clean::StructFieldItem(ref ty) = field.inner {
-                    write!(w, "    {}{}: {},\n{}",
+                    write!(w, "\n{}    {}{}: {},",
+                           tab,
                            VisSpace(&field.visibility),
                            field.name.as_ref().unwrap(),
-                           *ty,
-                           tab)?;
+                           *ty)?;
+                    has_visible_fields = true;
                 }
             }
 
-            if it.has_stripped_fields().unwrap() {
-                write!(w, "    // some fields omitted\n{}", tab)?;
+            if has_visible_fields {
+                if it.has_stripped_fields().unwrap() {
+                    write!(w, "\n{}    // some fields omitted", tab)?;
+                }
+                write!(w, "\n{}", tab)?;
+            } else if it.has_stripped_fields().unwrap() {
+                // If there are no visible fields we can just display
+                // `{ /* fields omitted */ }` to save space.
+                write!(w, " /* fields omitted */ ")?;
             }
             write!(w, "}}")?;
         }
-        doctree::Tuple | doctree::Newtype => {
+        doctree::Tuple => {
             write!(w, "(")?;
             for (i, field) in fields.iter().enumerate() {
                 if i > 0 {
@@ -2954,7 +2962,7 @@ impl<'a> fmt::Display for Source<'a> {
             write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols)?;
         }
         write!(fmt, "</pre>")?;
-        write!(fmt, "{}", highlight::render_with_highlighting(s, None, None))?;
+        write!(fmt, "{}", highlight::render_with_highlighting(s, None, None, None))?;
         Ok(())
     }
 }
@@ -2963,6 +2971,7 @@ fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
     w.write_str(&highlight::render_with_highlighting(&t.source,
                                                      Some("macro"),
+                                                     None,
                                                      None))?;
     render_stability_since_raw(w, it.stable_since(), None)?;
     document(w, cx, it)

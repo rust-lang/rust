@@ -33,12 +33,10 @@ use syntax::print::pprust as syntax_pprust;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
 use rustc_trans::back::link;
-use rustc::middle::cstore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime::DefRegion::*;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
-use rustc::hir::fold::Folder;
+use rustc::hir::def_id::{self, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::print as pprust;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind};
@@ -116,7 +114,7 @@ pub struct Crate {
     pub name: String,
     pub src: PathBuf,
     pub module: Option<Item>,
-    pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
+    pub externs: Vec<(def_id::CrateNum, ExternalCrate)>,
     pub primitives: Vec<PrimitiveType>,
     pub access_levels: Arc<AccessLevels<DefId>>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
@@ -124,7 +122,7 @@ pub struct Crate {
     pub external_traits: FnvHashMap<DefId, Trait>,
 }
 
-struct CrateNum(ast::CrateNum);
+struct CrateNum(def_id::CrateNum);
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
@@ -239,19 +237,16 @@ pub struct ExternalCrate {
 impl Clean<ExternalCrate> for CrateNum {
     fn clean(&self, cx: &DocContext) -> ExternalCrate {
         let mut primitives = Vec::new();
+        let root = DefId { krate: self.0, index: CRATE_DEF_INDEX };
         cx.tcx_opt().map(|tcx| {
-            for item in tcx.sess.cstore.crate_top_level_items(self.0) {
-                let did = match item.def {
-                    cstore::DlDef(Def::Mod(did)) => did,
-                    _ => continue
-                };
-                let attrs = inline::load_attrs(cx, tcx, did);
+            for item in tcx.sess.cstore.item_children(root) {
+                let attrs = inline::load_attrs(cx, tcx, item.def_id);
                 PrimitiveType::find(&attrs).map(|prim| primitives.push(prim));
             }
         });
         ExternalCrate {
             name: (&cx.sess().cstore.crate_name(self.0)[..]).to_owned(),
-            attrs: cx.sess().cstore.crate_attrs(self.0).clean(cx),
+            attrs: cx.sess().cstore.item_attrs(root).clean(cx),
             primitives: primitives,
         }
     }
@@ -774,7 +769,20 @@ impl Lifetime {
 }
 
 impl Clean<Lifetime> for hir::Lifetime {
-    fn clean(&self, _: &DocContext) -> Lifetime {
+    fn clean(&self, cx: &DocContext) -> Lifetime {
+        if let Some(tcx) = cx.tcx_opt() {
+            let def = tcx.named_region_map.defs.get(&self.id).cloned();
+            match def {
+                Some(DefEarlyBoundRegion(_, node_id)) |
+                Some(DefLateBoundRegion(_, node_id)) |
+                Some(DefFreeRegion(_, node_id)) => {
+                    if let Some(lt) = cx.lt_substs.borrow().get(&node_id).cloned() {
+                        return lt;
+                    }
+                }
+                _ => {}
+            }
+        }
         Lifetime(self.name.to_string())
     }
 }
@@ -1149,7 +1157,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
         let mut names = if cx.map.as_local_node_id(did).is_some() {
             vec![].into_iter()
         } else {
-            cx.tcx().sess.cstore.method_arg_names(did).into_iter()
+            cx.tcx().sess.cstore.fn_arg_names(did).into_iter()
         }.peekable();
         FnDecl {
             output: Return(sig.0.output.clean(cx)),
@@ -1159,8 +1167,8 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
                 values: sig.0.inputs.iter().map(|t| {
                     Argument {
                         type_: t.clean(cx),
-                        id: 0,
-                        name: names.next().unwrap_or("".to_string()),
+                        id: ast::CRATE_NODE_ID,
+                        name: names.next().map_or("".to_string(), |name| name.to_string()),
                     }
                 }).collect(),
             },
@@ -1629,42 +1637,6 @@ impl From<ast::FloatTy> for PrimitiveType {
     }
 }
 
-// Poor man's type parameter substitution at HIR level.
-// Used to replace private type aliases in public signatures with their aliased types.
-struct SubstAlias<'a, 'tcx: 'a> {
-    tcx: &'a ty::TyCtxt<'a, 'tcx, 'tcx>,
-    // Table type parameter definition -> substituted type
-    ty_substs: FnvHashMap<Def, hir::Ty>,
-    // Table node id of lifetime parameter definition -> substituted lifetime
-    lt_substs: FnvHashMap<ast::NodeId, hir::Lifetime>,
-}
-
-impl<'a, 'tcx: 'a, 'b: 'tcx> Folder for SubstAlias<'a, 'tcx> {
-    fn fold_ty(&mut self, ty: P<hir::Ty>) -> P<hir::Ty> {
-        if let hir::TyPath(..) = ty.node {
-            let def = self.tcx.expect_def(ty.id);
-            if let Some(new_ty) = self.ty_substs.get(&def).cloned() {
-                return P(new_ty);
-            }
-        }
-        hir::fold::noop_fold_ty(ty, self)
-    }
-    fn fold_lifetime(&mut self, lt: hir::Lifetime) -> hir::Lifetime {
-        let def = self.tcx.named_region_map.defs.get(&lt.id).cloned();
-        match def {
-            Some(DefEarlyBoundRegion(_, node_id)) |
-            Some(DefLateBoundRegion(_, node_id)) |
-            Some(DefFreeRegion(_, node_id)) => {
-                if let Some(lt) = self.lt_substs.get(&node_id).cloned() {
-                    return lt;
-                }
-            }
-            _ => {}
-        }
-        hir::fold::noop_fold_lifetime(lt, self)
-    }
-}
-
 impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext) -> Type {
         use rustc::hir::*;
@@ -1696,43 +1668,47 @@ impl Clean<Type> for hir::Ty {
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(None, ref path) => {
-                if let Some(tcx) = cx.tcx_opt() {
-                    // Substitute private type aliases
-                    let def = tcx.expect_def(self.id);
+                let tcx_and_def = cx.tcx_opt().map(|tcx| (tcx, tcx.expect_def(self.id)));
+                if let Some((_, def)) = tcx_and_def {
+                    if let Some(new_ty) = cx.ty_substs.borrow().get(&def).cloned() {
+                        return new_ty;
+                    }
+                }
+
+                let tcx_and_alias = tcx_and_def.and_then(|(tcx, def)| {
                     if let Def::TyAlias(def_id) = def {
-                        if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
+                        // Substitute private type aliases
+                        tcx.map.as_local_node_id(def_id).and_then(|node_id| {
                             if !cx.access_levels.borrow().is_exported(def_id) {
-                                let item = tcx.map.expect_item(node_id);
-                                if let hir::ItemTy(ref ty, ref generics) = item.node {
-                                    let provided_params = &path.segments.last().unwrap().parameters;
-                                    let mut ty_substs = FnvHashMap();
-                                    let mut lt_substs = FnvHashMap();
-                                    for (i, ty_param) in generics.ty_params.iter().enumerate() {
-                                        let ty_param_def = tcx.expect_def(ty_param.id);
-                                        if let Some(ty) = provided_params.types().get(i).cloned()
-                                                                                        .cloned() {
-                                            ty_substs.insert(ty_param_def, ty.unwrap());
-                                        } else if let Some(default) = ty_param.default.clone() {
-                                            ty_substs.insert(ty_param_def, default.unwrap());
-                                        }
-                                    }
-                                    for (i, lt_param) in generics.lifetimes.iter().enumerate() {
-                                        if let Some(lt) = provided_params.lifetimes().get(i)
-                                                                                     .cloned()
-                                                                                     .cloned() {
-                                            lt_substs.insert(lt_param.lifetime.id, lt);
-                                        }
-                                    }
-                                    let mut subst_alias = SubstAlias {
-                                        tcx: &tcx,
-                                        ty_substs: ty_substs,
-                                        lt_substs: lt_substs
-                                    };
-                                    return subst_alias.fold_ty(ty.clone()).clean(cx);
-                                }
+                                Some((tcx, &tcx.map.expect_item(node_id).node))
+                            } else {
+                                None
                             }
+                        })
+                    } else {
+                        None
+                    }
+                });
+                if let Some((tcx, &hir::ItemTy(ref ty, ref generics))) = tcx_and_alias {
+                    let provided_params = &path.segments.last().unwrap().parameters;
+                    let mut ty_substs = FnvHashMap();
+                    let mut lt_substs = FnvHashMap();
+                    for (i, ty_param) in generics.ty_params.iter().enumerate() {
+                        let ty_param_def = tcx.expect_def(ty_param.id);
+                        if let Some(ty) = provided_params.types().get(i).cloned()
+                                                                        .cloned() {
+                            ty_substs.insert(ty_param_def, ty.unwrap().clean(cx));
+                        } else if let Some(default) = ty_param.default.clone() {
+                            ty_substs.insert(ty_param_def, default.unwrap().clean(cx));
                         }
                     }
+                    for (i, lt_param) in generics.lifetimes.iter().enumerate() {
+                        if let Some(lt) = provided_params.lifetimes().get(i).cloned()
+                                                                            .cloned() {
+                            lt_substs.insert(lt_param.lifetime.id, lt.clean(cx));
+                        }
+                    }
+                    return cx.enter_alias(ty_substs, lt_substs, || ty.clean(cx));
                 }
                 resolve_type(cx, path.clean(cx), self.id)
             }
@@ -1808,7 +1784,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     type_params: Vec::new(),
                     where_predicates: Vec::new()
                 },
-                decl: (cx.map.local_def_id(0), &fty.sig).clean(cx),
+                decl: (cx.map.local_def_id(ast::CRATE_NODE_ID), &fty.sig).clean(cx),
                 abi: fty.abi,
             }),
             ty::TyAdt(def, substs) => {
@@ -1897,11 +1873,9 @@ impl Clean<Item> for hir::StructField {
 
 impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
-        // FIXME: possible O(n^2)-ness! Not my fault.
-        let attr_map = cx.tcx().sess.cstore.crate_struct_field_attrs(self.did.krate);
         Item {
             name: Some(self.name).clean(cx),
-            attrs: attr_map.get(&self.did).unwrap_or(&Vec::new()).clean(cx),
+            attrs: cx.tcx().get_attrs(self.did).clean(cx),
             source: Span::empty(),
             visibility: self.vis.clean(cx),
             stability: get_stability(cx, self.did),
@@ -2590,7 +2564,7 @@ impl Clean<Vec<Item>> for doctree::Import {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.map.local_def_id(0),
+            def_id: cx.map.local_def_id(ast::CRATE_NODE_ID),
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,
@@ -2779,6 +2753,8 @@ fn resolve_type(cx: &DocContext,
 fn register_def(cx: &DocContext, def: Def) -> DefId {
     debug!("register_def({:?})", def);
 
+    let tcx = cx.tcx();
+
     let (did, kind) = match def {
         Def::Fn(i) => (i, TypeFunction),
         Def::TyAlias(i) => (i, TypeTypedef),
@@ -2788,21 +2764,14 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::Union(i) => (i, TypeUnion),
         Def::Mod(i) => (i, TypeModule),
         Def::Static(i, _) => (i, TypeStatic),
-        Def::Variant(i, _) => (i, TypeEnum),
+        Def::Variant(i) => (tcx.parent_def_id(i).unwrap(), TypeEnum),
         Def::SelfTy(Some(def_id), _) => (def_id, TypeTrait),
-        Def::SelfTy(_, Some(impl_id)) => {
-            // For Def::SelfTy() values inlined from another crate, the
-            // impl_id will be DUMMY_NODE_ID, which would cause problems.
-            // But we should never run into an impl from another crate here.
-            return cx.map.local_def_id(impl_id)
+        Def::SelfTy(_, Some(impl_def_id)) => {
+            return impl_def_id
         }
         _ => return def.def_id()
     };
     if did.is_local() { return did }
-    let tcx = match cx.tcx_opt() {
-        Some(tcx) => tcx,
-        None => return did
-    };
     inline::record_extern_fqn(cx, did, kind);
     if let TypeTrait = kind {
         let t = inline::build_external_trait(cx, tcx, did);

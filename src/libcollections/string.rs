@@ -1567,6 +1567,7 @@ impl_eq! { Cow<'a, str>, String }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for String {
+    /// Creates an empty `String`.
     #[inline]
     fn default() -> String {
         String::new()
@@ -1898,26 +1899,6 @@ impl<'a> FromIterator<String> for Cow<'a, str> {
 impl Into<Vec<u8>> for String {
     fn into(self) -> Vec<u8> {
         self.into_bytes()
-    }
-}
-
-#[stable(feature = "stringfromchars", since = "1.12.0")]
-impl<'a> From<&'a [char]> for String {
-    #[inline]
-    fn from(v: &'a [char]) -> String {
-        let mut s = String::with_capacity(v.len());
-        for c in v {
-            s.push(*c);
-        }
-        s
-    }
-}
-
-#[stable(feature = "stringfromchars", since = "1.12.0")]
-impl From<Vec<char>> for String {
-    #[inline]
-    fn from(v: Vec<char>) -> String {
-        String::from(v.as_slice())
     }
 }
 

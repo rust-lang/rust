@@ -272,15 +272,13 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                     // affect the specific variant used, but we need to check
                     // the whole enum definition to see what expression that
                     // might be (if any).
-                    Some(Def::Variant(enum_id, variant_id)) => {
-                        if let Some(enum_node_id) = self.ast_map.as_local_node_id(enum_id) {
-                            if let hir::ItemEnum(ref enum_def, ref generics) = self.ast_map
-                                .expect_item(enum_node_id)
-                                .node {
+                    Some(Def::Variant(variant_id)) => {
+                        if let Some(variant_id) = self.ast_map.as_local_node_id(variant_id) {
+                            let variant = self.ast_map.expect_variant(variant_id);
+                            let enum_id = self.ast_map.get_parent(variant_id);
+                            let enum_item = self.ast_map.expect_item(enum_id);
+                            if let hir::ItemEnum(ref enum_def, ref generics) = enum_item.node {
                                 self.populate_enum_discriminants(enum_def);
-                                let enum_id = self.ast_map.as_local_node_id(enum_id).unwrap();
-                                let variant_id = self.ast_map.as_local_node_id(variant_id).unwrap();
-                                let variant = self.ast_map.expect_variant(variant_id);
                                 self.visit_variant(variant, generics, enum_id);
                             } else {
                                 span_bug!(e.span,

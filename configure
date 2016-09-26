@@ -676,7 +676,7 @@ valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
 valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
 valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
-valopt_nosave docdir "${CFG_PREFIX}/share/doc/rust" "install man pages in PATH"
+valopt_nosave docdir "${CFG_PREFIX}/share/doc/rust" "install documentation in PATH"
 
 # On Windows this determines root of the subtree for target libraries.
 # Host runtime libs always go to 'bin'.

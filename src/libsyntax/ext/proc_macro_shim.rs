@@ -24,7 +24,9 @@ use ext::base::*;
 
 /// Take a `ExtCtxt`, `Span`, and `TokenStream`, and produce a Macro Result that parses
 /// the TokenStream as a block and returns it as an `Expr`.
-pub fn build_block_emitter<'cx>(cx: &'cx mut ExtCtxt, sp: Span, output: TokenStream)
+pub fn build_block_emitter<'cx>(cx: &'cx mut ExtCtxt,
+                                sp: Span,
+                                output: TokenStream)
                                 -> Box<MacResult + 'cx> {
     let parser = cx.new_parser_from_tts(&output.to_tts());
 
@@ -60,7 +62,7 @@ pub fn build_block_emitter<'cx>(cx: &'cx mut ExtCtxt, sp: Span, output: TokenStr
 }
 
 pub mod prelude {
-    pub use ext::proc_macro_shim::build_block_emitter;
+    pub use super::build_block_emitter;
     pub use ast::Ident;
     pub use codemap::{DUMMY_SP, Span};
     pub use ext::base::{ExtCtxt, MacResult};

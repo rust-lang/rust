@@ -103,7 +103,7 @@ pub struct Handle<'rx, T:Send+'rx> {
 struct Packets { cur: *mut Handle<'static, ()> }
 
 #[doc(hidden)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum StartResult {
     Installed,
     Abort,

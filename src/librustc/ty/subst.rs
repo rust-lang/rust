@@ -10,12 +10,11 @@
 
 // Type substitutions.
 
-use middle::cstore;
 use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
-use serialize::{Encodable, Encoder, Decodable, Decoder};
+use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
 
 use core::nonzero::NonZero;
@@ -129,8 +128,40 @@ impl<'tcx> TypeFoldable<'tcx> for Kind<'tcx> {
     }
 }
 
+impl<'tcx> Encodable for Kind<'tcx> {
+    fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+        e.emit_enum("Kind", |e| {
+            if let Some(ty) = self.as_type() {
+                e.emit_enum_variant("Ty", TYPE_TAG, 1, |e| {
+                    e.emit_enum_variant_arg(0, |e| ty.encode(e))
+                })
+            } else if let Some(r) = self.as_region() {
+                e.emit_enum_variant("Region", REGION_TAG, 1, |e| {
+                    e.emit_enum_variant_arg(0, |e| r.encode(e))
+                })
+            } else {
+                bug!()
+            }
+        })
+    }
+}
+
+impl<'tcx> Decodable for Kind<'tcx> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Kind<'tcx>, D::Error> {
+        d.read_enum("Kind", |d| {
+            d.read_enum_variant(&["Ty", "Region"], |d, tag| {
+                match tag {
+                    TYPE_TAG => Ty::decode(d).map(Kind::from),
+                    REGION_TAG => <&ty::Region>::decode(d).map(Kind::from),
+                    _ => Err(d.error("invalid Kind tag"))
+                }
+            })
+        })
+    }
+}
+
 /// A substitution mapping type/region parameters to new values.
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub struct Substs<'tcx> {
     params: Vec<Kind<'tcx>>
 }
@@ -298,25 +329,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
     }
 }
 
-impl<'tcx> Encodable for &'tcx Substs<'tcx> {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        cstore::tls::with_encoding_context(s, |ecx, rbml_w| {
-            ecx.encode_substs(rbml_w, self);
-            Ok(())
-        })
-    }
-}
-
-impl<'tcx> Decodable for &'tcx Substs<'tcx> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<&'tcx Substs<'tcx>, D::Error> {
-        let substs = cstore::tls::with_decoding_context(d, |dcx, rbml_r| {
-            dcx.decode_substs(rbml_r)
-        });
-
-        Ok(substs)
-    }
-}
-
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Substs<'tcx> {}
 
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`

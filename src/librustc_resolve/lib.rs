@@ -41,25 +41,27 @@ use self::TypeParameters::*;
 use self::RibKind::*;
 use self::UseLexicalScopeFlag::*;
 use self::ModulePrefixResult::*;
-use self::ParentLink::*;
 
 use rustc::hir::map::Definitions;
 use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
+use rustc::middle::cstore::CrateLoader;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
+use syntax::ext::base::MultiItemModifier;
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
-use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
+use syntax::ast::{CRATE_NODE_ID, Name, NodeId, IntTy, UintTy};
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
+use syntax::attr;
 use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
@@ -70,6 +72,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use errors::DiagnosticBuilder;
 
 use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 use std::fmt;
 use std::mem::replace;
 
@@ -79,10 +82,10 @@ use resolve_imports::{ImportDirective, NameResolution};
 // registered before they are used.
 mod diagnostics;
 
+mod macros;
 mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
-mod assign_ids;
 
 enum SuggestionType {
     Macro(String),
@@ -247,7 +250,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                                            "method `{}` is not a member of trait `{}`",
                                            method,
                                            trait_);
-            err.span_label(span, &format!("not a member of `{}`", trait_));
+            err.span_label(span, &format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
@@ -257,7 +260,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "type `{}` is not a member of trait `{}`",
                              type_,
                              trait_);
-            err.span_label(span, &format!("not a member of trait `Foo`"));
+            err.span_label(span, &format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::ConstNotMemberOfTrait(const_, trait_) => {
@@ -267,7 +270,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "const `{}` is not a member of trait `{}`",
                              const_,
                              trait_);
-            err.span_label(span, &format!("not a member of trait `Foo`"));
+            err.span_label(span, &format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::VariableNotBoundInPattern(variable_name, from, to) => {
@@ -752,18 +755,15 @@ impl<'a> LexicalScopeBinding<'a> {
     }
 }
 
-/// The link from a module up to its nearest parent node.
-#[derive(Clone,Debug)]
-enum ParentLink<'a> {
-    NoParentLink,
-    ModuleParentLink(Module<'a>, Name),
-    BlockParentLink(Module<'a>, NodeId),
+enum ModuleKind {
+    Block(NodeId),
+    Def(Def, Name),
 }
 
 /// One node in the tree of modules.
 pub struct ModuleS<'a> {
-    parent_link: ParentLink<'a>,
-    def: Option<Def>,
+    parent: Option<Module<'a>>,
+    kind: ModuleKind,
 
     // The node id of the closest normal module (`mod`) ancestor (including this module).
     normal_ancestor_id: Option<NodeId>,
@@ -774,7 +774,7 @@ pub struct ModuleS<'a> {
 
     resolutions: RefCell<FnvHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
 
-    no_implicit_prelude: Cell<bool>,
+    no_implicit_prelude: bool,
 
     glob_importers: RefCell<Vec<&'a ImportDirective<'a>>>,
     globs: RefCell<Vec<&'a ImportDirective<'a>>>,
@@ -791,19 +791,18 @@ pub struct ModuleS<'a> {
 pub type Module<'a> = &'a ModuleS<'a>;
 
 impl<'a> ModuleS<'a> {
-    fn new(parent_link: ParentLink<'a>, def: Option<Def>, normal_ancestor_id: Option<NodeId>)
-           -> Self {
+    fn new(parent: Option<Module<'a>>, kind: ModuleKind) -> Self {
         ModuleS {
-            parent_link: parent_link,
-            def: def,
-            normal_ancestor_id: normal_ancestor_id,
+            parent: parent,
+            kind: kind,
+            normal_ancestor_id: None,
             extern_crate_id: None,
             resolutions: RefCell::new(FnvHashMap()),
-            no_implicit_prelude: Cell::new(false),
+            no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
-            populated: Cell::new(normal_ancestor_id.is_some()),
+            populated: Cell::new(true),
         }
     }
 
@@ -813,36 +812,36 @@ impl<'a> ModuleS<'a> {
         }
     }
 
+    fn def(&self) -> Option<Def> {
+        match self.kind {
+            ModuleKind::Def(def, _) => Some(def),
+            _ => None,
+        }
+    }
+
     fn def_id(&self) -> Option<DefId> {
-        self.def.as_ref().map(Def::def_id)
+        self.def().as_ref().map(Def::def_id)
     }
 
     // `self` resolves to the first module ancestor that `is_normal`.
     fn is_normal(&self) -> bool {
-        match self.def {
-            Some(Def::Mod(_)) => true,
+        match self.kind {
+            ModuleKind::Def(Def::Mod(_), _) => true,
             _ => false,
         }
     }
 
     fn is_trait(&self) -> bool {
-        match self.def {
-            Some(Def::Trait(_)) => true,
+        match self.kind {
+            ModuleKind::Def(Def::Trait(_), _) => true,
             _ => false,
-        }
-    }
-
-    fn parent(&self) -> Option<&'a Self> {
-        match self.parent_link {
-            ModuleParentLink(parent, _) | BlockParentLink(parent, _) => Some(parent),
-            NoParentLink => None,
         }
     }
 }
 
 impl<'a> fmt::Debug for ModuleS<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.def)
+        write!(f, "{:?}", self.def())
     }
 }
 
@@ -902,7 +901,7 @@ impl<'a> NameBinding<'a> {
     fn def(&self) -> Def {
         match self.kind {
             NameBindingKind::Def(def) => def,
-            NameBindingKind::Module(module) => module.def.unwrap(),
+            NameBindingKind::Module(module) => module.def().unwrap(),
             NameBindingKind::Import { binding, .. } => binding.def(),
             NameBindingKind::Ambiguity { .. } => Def::Err,
         }
@@ -1068,6 +1067,14 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
     new_import_semantics: bool, // true if `#![feature(item_like_imports)]`
+
+    pub exported_macros: Vec<ast::MacroDef>,
+    pub derive_modes: FnvHashMap<Name, Rc<MultiItemModifier>>,
+    crate_loader: &'a mut CrateLoader,
+    macro_names: FnvHashSet<Name>,
+
+    // Maps the `Mark` of an expansion to its containing module or block.
+    expansion_data: FnvHashMap<u32, macros::ExpansionData>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1104,7 +1111,7 @@ impl<'a> ResolverArenas<'a> {
 impl<'a> ty::NodeIdTree for Resolver<'a> {
     fn is_descendant_of(&self, mut node: NodeId, ancestor: NodeId) -> bool {
         while node != ancestor {
-            node = match self.module_map[&node].parent() {
+            node = match self.module_map[&node].parent {
                 Some(parent) => parent.normal_ancestor_id.unwrap(),
                 None => return false,
             }
@@ -1144,8 +1151,8 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         self.def_map.insert(id, PathResolution::new(def));
     }
 
-    fn definitions(&mut self) -> Option<&mut Definitions> {
-        Some(&mut self.definitions)
+    fn definitions(&mut self) -> &mut Definitions {
+        &mut self.definitions
     }
 }
 
@@ -1166,14 +1173,23 @@ impl Named for hir::PathSegment {
 }
 
 impl<'a> Resolver<'a> {
-    pub fn new(session: &'a Session, make_glob_map: MakeGlobMap, arenas: &'a ResolverArenas<'a>)
+    pub fn new(session: &'a Session,
+               krate: &Crate,
+               make_glob_map: MakeGlobMap,
+               crate_loader: &'a mut CrateLoader,
+               arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
-        let root_def_id = DefId::local(CRATE_DEF_INDEX);
-        let graph_root =
-            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), Some(CRATE_NODE_ID));
-        let graph_root = arenas.alloc_module(graph_root);
+        let root_def = Def::Mod(DefId::local(CRATE_DEF_INDEX));
+        let graph_root = arenas.alloc_module(ModuleS {
+            normal_ancestor_id: Some(CRATE_NODE_ID),
+            no_implicit_prelude: attr::contains_name(&krate.attrs, "no_implicit_prelude"),
+            ..ModuleS::new(None, ModuleKind::Def(root_def, keywords::Invalid.name()))
+        });
         let mut module_map = NodeMap();
         module_map.insert(CRATE_NODE_ID, graph_root);
+
+        let mut expansion_data = FnvHashMap();
+        expansion_data.insert(0, macros::ExpansionData::default()); // Crate root expansion
 
         Resolver {
             session: session,
@@ -1227,6 +1243,12 @@ impl<'a> Resolver<'a> {
                 vis: ty::Visibility::Public,
             }),
             new_import_semantics: session.features.borrow().item_like_imports,
+
+            exported_macros: Vec::new(),
+            derive_modes: FnvHashMap(),
+            crate_loader: crate_loader,
+            macro_names: FnvHashSet(),
+            expansion_data: expansion_data,
         }
     }
 
@@ -1247,21 +1269,15 @@ impl<'a> Resolver<'a> {
 
         check_unused::check_crate(self, krate);
         self.report_errors();
+        self.crate_loader.postprocess(krate);
     }
 
-    fn new_module(&self,
-                  parent_link: ParentLink<'a>,
-                  def: Option<Def>,
-                  normal_ancestor_id: Option<NodeId>)
-                  -> Module<'a> {
-        self.arenas.alloc_module(ModuleS::new(parent_link, def, normal_ancestor_id))
-    }
-
-    fn new_extern_crate_module(&self, parent_link: ParentLink<'a>, def: Def, local_node_id: NodeId)
-                               -> Module<'a> {
-        let mut module = ModuleS::new(parent_link, Some(def), Some(local_node_id));
-        module.extern_crate_id = Some(local_node_id);
-        self.arenas.modules.alloc(module)
+    fn new_module(&self, parent: Module<'a>, kind: ModuleKind, local: bool) -> Module<'a> {
+        self.arenas.alloc_module(ModuleS {
+            normal_ancestor_id: if local { self.current_module.normal_ancestor_id } else { None },
+            populated: Cell::new(local),
+            ..ModuleS::new(Some(parent), kind)
+        })
     }
 
     fn get_ribs<'b>(&'b mut self, ns: Namespace) -> &'b mut Vec<Rib<'a>> {
@@ -1321,11 +1337,10 @@ impl<'a> Resolver<'a> {
                                        -> Option<Module<'a>> {
             match this.resolve_name_in_module(module, needle, TypeNS, false, None) {
                 Success(binding) if binding.is_extern_crate() => Some(module),
-                _ => match module.parent_link {
-                    ModuleParentLink(ref parent, _) => {
-                        search_parent_externals(this, needle, parent)
-                    }
-                    _ => None,
+                _ => if let (&ModuleKind::Def(..), Some(parent)) = (&module.kind, module.parent) {
+                    search_parent_externals(this, needle, parent)
+                } else {
+                    None
                 },
             }
         }
@@ -1501,15 +1516,13 @@ impl<'a> Resolver<'a> {
                     return Some(LexicalScopeBinding::Item(binding));
                 }
 
-                // We can only see through anonymous modules
-                if module.def.is_some() {
-                    return match self.prelude {
-                        Some(prelude) if !module.no_implicit_prelude.get() => {
-                            self.resolve_name_in_module(prelude, name, ns, false, None).success()
-                                .map(LexicalScopeBinding::Item)
-                        }
-                        _ => None,
-                    };
+                if let ModuleKind::Block(..) = module.kind { // We can see through blocks
+                } else if !module.no_implicit_prelude {
+                    return self.prelude.and_then(|prelude| {
+                        self.resolve_name_in_module(prelude, name, ns, false, None).success()
+                    }).map(LexicalScopeBinding::Item)
+                } else {
+                    return None;
                 }
             }
 
@@ -1546,7 +1559,7 @@ impl<'a> Resolver<'a> {
         while i < module_path.len() && "super" == module_path[i].as_str() {
             debug!("(resolving module prefix) resolving `super` at {}",
                    module_to_string(&containing_module));
-            if let Some(parent) = containing_module.parent() {
+            if let Some(parent) = containing_module.parent {
                 containing_module = self.module_map[&parent.normal_ancestor_id.unwrap()];
                 i += 1;
             } else {
@@ -1945,7 +1958,8 @@ impl<'a> Resolver<'a> {
                 // Resolve the self type.
                 this.visit_ty(self_type);
 
-                this.with_self_rib(Def::SelfTy(trait_id, Some(item_id)), |this| {
+                let item_def_id = this.definitions.local_def_id(item_id);
+                this.with_self_rib(Def::SelfTy(trait_id, Some(item_def_id)), |this| {
                     this.with_current_self_type(self_type, |this| {
                         for impl_item in impl_items {
                             this.resolve_visibility(&impl_item.vis);
@@ -2229,7 +2243,7 @@ impl<'a> Resolver<'a> {
         // must not add it if it's in the bindings map
         // because that breaks the assumptions later
         // passes make about or-patterns.)
-        let mut def = Def::Local(self.definitions.local_def_id(pat_id), pat_id);
+        let mut def = Def::Local(self.definitions.local_def_id(pat_id));
         match bindings.get(&ident.node).cloned() {
             Some(id) if id == outer_pat_id => {
                 // `Variant(a, a)`, error
@@ -2545,7 +2559,7 @@ impl<'a> Resolver<'a> {
             Def::Upvar(..) => {
                 span_bug!(span, "unexpected {:?} in bindings", def)
             }
-            Def::Local(_, node_id) => {
+            Def::Local(def_id) => {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | ModuleRibKind(..) | MacroDefinition(..) => {
@@ -2553,13 +2567,13 @@ impl<'a> Resolver<'a> {
                         }
                         ClosureRibKind(function_id) => {
                             let prev_def = def;
-                            let node_def_id = self.definitions.local_def_id(node_id);
+                            let node_id = self.definitions.as_local_node_id(def_id).unwrap();
 
                             let seen = self.freevars_seen
                                            .entry(function_id)
                                            .or_insert_with(|| NodeMap());
                             if let Some(&index) = seen.get(&node_id) {
-                                def = Def::Upvar(node_def_id, node_id, index, function_id);
+                                def = Def::Upvar(def_id, index, function_id);
                                 continue;
                             }
                             let vec = self.freevars
@@ -2571,7 +2585,7 @@ impl<'a> Resolver<'a> {
                                 span: span,
                             });
 
-                            def = Def::Upvar(node_def_id, node_id, depth, function_id);
+                            def = Def::Upvar(def_id, depth, function_id);
                             seen.insert(node_id, depth);
                         }
                         ItemRibKind | MethodRibKind(_) => {
@@ -2741,7 +2755,7 @@ impl<'a> Resolver<'a> {
             if let Some(resolution) = self.def_map.get(&node_id) {
                 match resolution.base_def {
                     Def::Enum(did) | Def::TyAlias(did) | Def::Union(did) |
-                    Def::Struct(did) | Def::Variant(_, did) if resolution.depth == 0 => {
+                    Def::Struct(did) | Def::Variant(did) if resolution.depth == 0 => {
                         if let Some(fields) = self.structs.get(&did) {
                             if fields.iter().any(|&field_name| name == field_name) {
                                 return Field;
@@ -2768,8 +2782,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn find_best_match(&mut self, name: &str) -> SuggestionType {
-        if let Some(macro_name) = self.session.available_macros
-                                  .borrow().iter().find(|n| n.as_str() == name) {
+        if let Some(macro_name) = self.macro_names.iter().find(|n| n.as_str() == name) {
             return SuggestionType::Macro(format!("{}!", macro_name));
         }
 
@@ -2811,7 +2824,7 @@ impl<'a> Resolver<'a> {
                 if let Some(path_res) = self.resolve_possibly_assoc_item(expr.id,
                                                             maybe_qself.as_ref(), path, ValueNS) {
                     // Check if struct variant
-                    let is_struct_variant = if let Def::Variant(_, variant_id) = path_res.base_def {
+                    let is_struct_variant = if let Def::Variant(variant_id) = path_res.base_def {
                         self.structs.contains_key(&variant_id)
                     } else {
                         false
@@ -2939,7 +2952,7 @@ impl<'a> Resolver<'a> {
                                                                    UseLexicalScope,
                                                                    Some(expr.span)) {
                                         Success(e) => {
-                                            if let Some(def_type) = e.def {
+                                            if let Some(def_type) = e.def() {
                                                 def = def_type;
                                             }
                                             context = UnresolvedNameContext::PathIsMod(parent);
@@ -3148,16 +3161,13 @@ impl<'a> Resolver<'a> {
             };
             search_in_module(self, search_module);
 
-            match search_module.parent_link {
-                NoParentLink | ModuleParentLink(..) => {
-                    if !search_module.no_implicit_prelude.get() {
-                        self.prelude.map(|prelude| search_in_module(self, prelude));
-                    }
-                    break;
+            if let ModuleKind::Block(..) = search_module.kind {
+                search_module = search_module.parent.unwrap();
+            } else {
+                if !search_module.no_implicit_prelude {
+                    self.prelude.map(|prelude| search_in_module(self, prelude));
                 }
-                BlockParentLink(parent_module, _) => {
-                    search_module = parent_module;
-                }
+                break;
             }
         }
 
@@ -3225,9 +3235,9 @@ impl<'a> Resolver<'a> {
                 // collect submodules to explore
                 if let Ok(module) = name_binding.module() {
                     // form the path
-                    let path_segments = match module.parent_link {
-                        NoParentLink => path_segments.clone(),
-                        ModuleParentLink(_, name) => {
+                    let path_segments = match module.kind {
+                        _ if module.parent.is_none() => path_segments.clone(),
+                        ModuleKind::Def(_, name) => {
                             let mut paths = path_segments.clone();
                             let ident = ast::Ident::with_empty_ctxt(name);
                             let params = PathParameters::none();
@@ -3244,7 +3254,7 @@ impl<'a> Resolver<'a> {
                     if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
-                        if !worklist.iter().any(|&(m, ..)| m.def == module.def) {
+                        if !worklist.iter().any(|&(m, ..)| m.def() == module.def()) {
                             worklist.push((module, path_segments, is_extern));
                         }
                     }
@@ -3279,7 +3289,7 @@ impl<'a> Resolver<'a> {
         let mut path_resolution = err_path_resolution();
         let vis = match self.resolve_module_path(&segments, DontUseLexicalScope, Some(path.span)) {
             Success(module) => {
-                path_resolution = PathResolution::new(module.def.unwrap());
+                path_resolution = PathResolution::new(module.def().unwrap());
                 ty::Visibility::Restricted(module.normal_ancestor_id.unwrap())
             }
             Indeterminate => unreachable!(),
@@ -3345,10 +3355,10 @@ impl<'a> Resolver<'a> {
             return self.report_conflict(parent, name, ns, old_binding, binding);
         }
 
-        let container = match parent.def {
-            Some(Def::Mod(_)) => "module",
-            Some(Def::Trait(_)) => "trait",
-            None => "block",
+        let container = match parent.kind {
+            ModuleKind::Def(Def::Mod(_), _) => "module",
+            ModuleKind::Def(Def::Trait(_), _) => "trait",
+            ModuleKind::Block(..) => "block",
             _ => "enum",
         };
 
@@ -3495,17 +3505,15 @@ fn module_to_string(module: Module) -> String {
     let mut names = Vec::new();
 
     fn collect_mod(names: &mut Vec<ast::Name>, module: Module) {
-        match module.parent_link {
-            NoParentLink => {}
-            ModuleParentLink(ref module, name) => {
+        if let ModuleKind::Def(_, name) = module.kind {
+            if let Some(parent) = module.parent {
                 names.push(name);
-                collect_mod(names, module);
+                collect_mod(names, parent);
             }
-            BlockParentLink(ref module, _) => {
-                // danger, shouldn't be ident?
-                names.push(token::intern("<opaque>"));
-                collect_mod(names, module);
-            }
+        } else {
+            // danger, shouldn't be ident?
+            names.push(token::intern("<opaque>"));
+            collect_mod(names, module);
         }
     }
     collect_mod(&mut names, module);

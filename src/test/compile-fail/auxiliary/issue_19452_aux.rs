@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Simba {
-    mother: u32,
-}
-
-fn main() {
-    let s = Simba { mother: 1, father: 0 }; //~ ERROR E0560
+pub enum Homura {
+    Madoka { age: u32 }
 }

@@ -1667,6 +1667,7 @@ impl<K: Hash, V: Hash> Hash for BTreeMap<K, V> {
 }
 
 impl<K: Ord, V> Default for BTreeMap<K, V> {
+    /// Creates an empty `BTreeMap<K, V>`.
     fn default() -> BTreeMap<K, V> {
         BTreeMap::new()
     }
