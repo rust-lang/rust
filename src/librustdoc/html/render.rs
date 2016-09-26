@@ -1975,6 +1975,14 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         UnstableFeatures::Allow => f.constness,
         _ => hir::Constness::NotConst
     };
+    let prefix = format!("{vis}{constness}{unsafety}{abi:#}fn {name}{generics:#}",
+                         vis = VisSpace(&it.visibility),
+                         constness = ConstnessSpace(vis_constness),
+                         unsafety = UnsafetySpace(f.unsafety),
+                         abi = AbiSpace(f.abi),
+                         name = it.name.as_ref().unwrap(),
+                         generics = f.generics)?;
+    let indent = repeat("&nbsp;").take(prefix.len()).collect::<String>();
     write!(w, "<pre class='rust fn'>{vis}{constness}{unsafety}{abi}fn \
                {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
@@ -2254,6 +2262,13 @@ fn render_assoc_item(w: &mut fmt::Formatter,
             UnstableFeatures::Allow => constness,
             _ => hir::Constness::NotConst
         };
+        let prefix = format!("{}{}{:#}fn {}{:#}",
+                             ConstnessSpace(vis_constness),
+                             UnsafetySpace(unsafety),
+                             AbiSpace(abi),
+                             name,
+                             *g);
+        let indent = repeat("&nbsp;").take(prefix.len()).collect::<String>();
         write!(w, "{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                ConstnessSpace(vis_constness),
@@ -2262,7 +2277,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                href = href,
                name = name,
                generics = *g,
-               decl = Method(d),
+               decl = Method(d, &indent),
                where_clause = WhereClause(g))
     }
     match item.inner {
