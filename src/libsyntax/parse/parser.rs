@@ -6171,18 +6171,4 @@ impl<'a> Parser<'a> {
             _ =>  Err(self.fatal("expected string literal"))
         }
     }
-
-    pub fn ensure_complete_parse(&mut self, macro_name: ast::Name, kind_name: &str, span: Span) {
-        if self.token == token::Eof {
-            return
-        }
-
-        let msg = format!("macro expansion ignores token `{}` and any following",
-                          self.this_token_to_string());
-        let mut err = self.diagnostic().struct_span_err(self.span, &msg);
-        let msg = format!("caused by the macro expansion here; the usage \
-                           of `{}!` is likely invalid in {} context",
-                           macro_name, kind_name);
-        err.span_note(span, &msg).emit();
-    }
 }
