@@ -286,8 +286,7 @@ mod tests {
     #[test]
     fn test_double_different_nan() {
         let a = f64::from_repr(1);
-        let b = f64::from_repr(
-            0b1111111111110010001000100101010101001000101010000110100011101011);
+        let b = f64::from_repr(0b1111111111110010001000100101010101001000101010000110100011101011);
         let x = super::__adddf3(a, b);
         let y = a + b;
         assert!(x.eq_repr(y));

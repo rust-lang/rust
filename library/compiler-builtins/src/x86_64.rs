@@ -67,4 +67,3 @@ pub unsafe fn ___chkstk() {
           ret");
     intrinsics::unreachable();
 }
-

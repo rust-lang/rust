@@ -4,6 +4,10 @@ build = "build.rs"
 name = "rustc_builtins"
 version = "0.1.0"
 
+[build-dependencies]
+gcc = "0.3.35"
+rustc-cfg = "0.1.2"
+
 [dependencies]
 
 [dependencies.rlibc]
@@ -17,6 +21,8 @@ gcc_s = { path = "gcc_s" }
 compiler-rt = { path = "compiler-rt" }
 
 [features]
+# Build the missing intrinsics from compiler-rt C source code
+c = []
 weak = ["rlibc/weak"]
 
 [workspace]

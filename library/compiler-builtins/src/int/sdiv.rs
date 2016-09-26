@@ -36,18 +36,33 @@ macro_rules! divmod {
         /// Returns `a / b` and sets `*rem = n % d`
         #[cfg_attr(not(test), no_mangle)]
         pub extern "C" fn $intrinsic(a: $ty, b: $ty, rem: &mut $ty) -> $ty {
-            let r = $div(a, b);
+            #[cfg(all(feature = "c", any(target_arch = "x86")))]
+            extern {
+                fn $div(a: $ty, b: $ty) -> $ty;
+            }
+
+            let r = unsafe { $div(a, b) };
             *rem = a - (r * b);
             r
         }
     }
 }
 
+#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
 div!(__divsi3: i32, u32);
+
+#[cfg(not(all(feature = "c", target_arch = "x86")))]
 div!(__divdi3: i64, u64);
+
+#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
 mod_!(__modsi3: i32, u32);
+
+#[cfg(not(all(feature = "c", target_arch = "x86")))]
 mod_!(__moddi3: i64, u64);
+
+#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
 divmod!(__divmodsi4, __divsi3: i32);
+
 divmod!(__divmoddi4, __divdi3: i64);
 
 #[cfg(test)]

@@ -66,7 +66,9 @@ macro_rules! mulo {
     }
 }
 
+#[cfg(not(all(feature = "c", target_arch = "x86")))]
 mul!(__muldi3: u64);
+
 mulo!(__mulosi4: i32);
 mulo!(__mulodi4: i64);
 

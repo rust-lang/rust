@@ -10,6 +10,9 @@
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.
 
+// NOTE cfg(all(feature = "c", ..)) indicate that compiler-rt provides an arch optimized
+// implementation of that intrinsic and we'll prefer to use that
+
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;

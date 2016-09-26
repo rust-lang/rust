@@ -54,8 +54,13 @@ macro_rules! lshr {
     }
 }
 
+#[cfg(not(all(feature = "c", target_arch = "x86")))]
 ashl!(__ashldi3: u64);
+
+#[cfg(not(all(feature = "c", target_arch = "x86")))]
 ashr!(__ashrdi3: i64);
+
+#[cfg(not(all(feature = "c", target_arch = "x86")))]
 lshr!(__lshrdi3: u64);
 
 #[cfg(test)]

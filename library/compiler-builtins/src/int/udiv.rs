@@ -2,6 +2,7 @@ use core::mem;
 use int::{Int, LargeInt};
 
 /// Returns `n / d`
+#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
     // Special cases
@@ -52,15 +53,27 @@ pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
 }
 
 /// Returns `n % d`
+#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __umodsi3(n: u32, d: u32) -> u32 {
-    n - __udivsi3(n, d) * d
+    #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios")))]
+    extern "C" {
+        fn __udivsi3(n: u32, d: u32) -> u32;
+    }
+
+    n - unsafe { __udivsi3(n, d) * d }
 }
 
 /// Returns `n / d` and sets `*rem = n % d`
+#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {
-    let q = __udivsi3(n, d);
+    #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios")))]
+    extern "C" {
+        fn __udivsi3(n: u32, d: u32) -> u32;
+    }
+
+    let q = unsafe { __udivsi3(n, d) };
     if let Some(rem) = rem {
         *rem = n - (q * d);
     }
@@ -69,11 +82,13 @@ pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {
 
 /// Returns `n / d`
 #[cfg_attr(not(test), no_mangle)]
+#[cfg(not(all(feature = "c", target_arch = "x86")))]
 pub extern "C" fn __udivdi3(n: u64, d: u64) -> u64 {
     __udivmoddi4(n, d, None)
 }
 
 /// Returns `n % d`
+#[cfg(not(all(feature = "c", target_arch = "x86")))]
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __umoddi3(a: u64, b: u64) -> u64 {
     let mut rem = unsafe { mem::uninitialized() };

@@ -68,6 +68,7 @@ pub extern "C" fn __aeabi_fadd(a: f32, b: f32) -> f32 {
     ::float::add::__addsf3(a, b)
 }
 
+#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __aeabi_idiv(a: i32, b: i32) -> i32 {
     ::int::sdiv::__divsi3(a, b)
@@ -93,6 +94,7 @@ pub extern "C" fn __aeabi_lmul(a: u64, b: u64) -> u64 {
     ::int::mul::__muldi3(a, b)
 }
 
+#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __aeabi_uidiv(a: u32, b: u32) -> u32 {
     ::int::udiv::__udivsi3(a, b)
