@@ -9,5 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    assert(true); //~ERROR unresolved name `assert`. Did you mean the macro `assert!`?
+    assert(true);
+    //~^ ERROR unresolved name `assert`
+    //~| NOTE did you mean the macro `assert!`?
 }
