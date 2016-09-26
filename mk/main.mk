@@ -302,7 +302,7 @@ endif
 
 LLVM_OPTIONAL_COMPONENTS=x86 arm aarch64 avr mips powerpc pnacl systemz
 LLVM_REQUIRED_COMPONENTS=ipo bitreader bitwriter linker asmparser mcjit \
-                interpreter instrumentation
+                interpreter instrumentation objcarcopts
 
 ifneq ($(CFG_LLVM_ROOT),)
 # Ensure we only try to link targets that the installed LLVM actually has:
