@@ -95,11 +95,11 @@ pub struct Mir<'tcx> {
     /// the first argument is either the closure or a reference to it.
     pub upvar_decls: Vec<UpvarDecl>,
 
-    /// A boolean indicating whether the last argument (which must be a tuple)
-    /// is passed as its individual components at the LLVM level.
+    /// Mark an argument local (which must be a tuple) as getting passed as
+    /// its individual components at the LLVM level.
     ///
     /// This is used for the "rust-call" ABI.
-    pub spread_last_arg: bool,
+    pub spread_arg: Option<Local>,
 
     /// A span representing this MIR, for error reporting
     pub span: Span,
@@ -134,7 +134,7 @@ impl<'tcx> Mir<'tcx> {
             local_decls: local_decls,
             arg_count: arg_count,
             upvar_decls: upvar_decls,
-            spread_last_arg: false,
+            spread_arg: None,
             span: span,
             cache: Cache::new()
         }

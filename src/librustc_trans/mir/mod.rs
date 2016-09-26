@@ -359,57 +359,60 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
     mir.arg_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
         let arg_ty = bcx.monomorphize(&arg_decl.ty);
-        if mir.spread_last_arg && arg_index == mir.arg_count - 1 {
-            // This argument (e.g. the last argument in the "rust-call" ABI)
-            // is a tuple that was spread at the ABI level and now we have
-            // to reconstruct it into a tuple local variable, from multiple
-            // individual LLVM function arguments.
 
-            let tupled_arg_tys = match arg_ty.sty {
-                ty::TyTuple(ref tys) => tys,
-                _ => bug!("spread argument isn't a tuple?!")
-            };
+        if let Some(spread_local) = mir.spread_arg {
+            if local == spread_local {
+                // This argument (e.g. the last argument in the "rust-call" ABI)
+                // is a tuple that was spread at the ABI level and now we have
+                // to reconstruct it into a tuple local variable, from multiple
+                // individual LLVM function arguments.
 
-            let lltuplety = type_of::type_of(bcx.ccx(), arg_ty);
-            let lltemp = bcx.with_block(|bcx| {
-                base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
-            });
-            for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
-                let dst = bcx.struct_gep(lltemp, i);
-                let arg = &fcx.fn_ty.args[idx];
-                idx += 1;
-                if common::type_is_fat_ptr(tcx, tupled_arg_ty) {
-                    // We pass fat pointers as two words, but inside the tuple
-                    // they are the two sub-fields of a single aggregate field.
-                    let meta = &fcx.fn_ty.args[idx];
+                let tupled_arg_tys = match arg_ty.sty {
+                    ty::TyTuple(ref tys) => tys,
+                    _ => bug!("spread argument isn't a tuple?!")
+                };
+
+                let lltuplety = type_of::type_of(bcx.ccx(), arg_ty);
+                let lltemp = bcx.with_block(|bcx| {
+                    base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
+                });
+                for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
+                    let dst = bcx.struct_gep(lltemp, i);
+                    let arg = &fcx.fn_ty.args[idx];
                     idx += 1;
-                    arg.store_fn_arg(bcx, &mut llarg_idx, get_dataptr(bcx, dst));
-                    meta.store_fn_arg(bcx, &mut llarg_idx, get_meta(bcx, dst));
-                } else {
-                    arg.store_fn_arg(bcx, &mut llarg_idx, dst);
+                    if common::type_is_fat_ptr(tcx, tupled_arg_ty) {
+                        // We pass fat pointers as two words, but inside the tuple
+                        // they are the two sub-fields of a single aggregate field.
+                        let meta = &fcx.fn_ty.args[idx];
+                        idx += 1;
+                        arg.store_fn_arg(bcx, &mut llarg_idx, get_dataptr(bcx, dst));
+                        meta.store_fn_arg(bcx, &mut llarg_idx, get_meta(bcx, dst));
+                    } else {
+                        arg.store_fn_arg(bcx, &mut llarg_idx, dst);
+                    }
+
+                    bcx.with_block(|bcx| arg_scope.map(|scope| {
+                        let byte_offset_of_var_in_tuple =
+                            machine::llelement_offset(bcx.ccx(), lltuplety, i);
+
+                        let ops = unsafe {
+                            [llvm::LLVMRustDIBuilderCreateOpDeref(),
+                             llvm::LLVMRustDIBuilderCreateOpPlus(),
+                             byte_offset_of_var_in_tuple as i64]
+                        };
+
+                        let variable_access = VariableAccess::IndirectVariable {
+                            alloca: lltemp,
+                            address_operations: &ops
+                        };
+                        declare_local(bcx, keywords::Invalid.name(),
+                                      tupled_arg_ty, scope, variable_access,
+                                      VariableKind::ArgumentVariable(arg_index + i + 1),
+                                      bcx.fcx().span.unwrap_or(DUMMY_SP));
+                    }));
                 }
-
-                bcx.with_block(|bcx| arg_scope.map(|scope| {
-                    let byte_offset_of_var_in_tuple =
-                        machine::llelement_offset(bcx.ccx(), lltuplety, i);
-
-                    let ops = unsafe {
-                        [llvm::LLVMRustDIBuilderCreateOpDeref(),
-                         llvm::LLVMRustDIBuilderCreateOpPlus(),
-                         byte_offset_of_var_in_tuple as i64]
-                    };
-
-                    let variable_access = VariableAccess::IndirectVariable {
-                        alloca: lltemp,
-                        address_operations: &ops
-                    };
-                    declare_local(bcx, keywords::Invalid.name(),
-                                  tupled_arg_ty, scope, variable_access,
-                                  VariableKind::ArgumentVariable(arg_index + i + 1),
-                                  bcx.fcx().span.unwrap_or(DUMMY_SP));
-                }));
+                return LocalRef::Lvalue(LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty)));
             }
-            return LocalRef::Lvalue(LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty)));
         }
 
         let arg = &fcx.fn_ty.args[idx];

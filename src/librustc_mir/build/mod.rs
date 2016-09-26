@@ -187,11 +187,11 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     }));
     assert_eq!(block, builder.return_block());
 
-    let mut spread_last_arg = false;
+    let mut spread_arg = None;
     match tcx.node_id_to_type(fn_id).sty {
         ty::TyFnDef(_, _, f) if f.abi == Abi::RustCall => {
             // RustCall pseudo-ABI untuples the last argument.
-            spread_last_arg = true;
+            spread_arg = Some(Local::new(arguments.len()));
         }
         _ => {}
     }
@@ -221,7 +221,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     });
 
     let (mut mir, aux) = builder.finish(upvar_decls, return_ty);
-    mir.spread_last_arg = spread_last_arg;
+    mir.spread_arg = spread_arg;
     (mir, aux)
 }
 
