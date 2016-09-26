@@ -101,6 +101,9 @@ impl<'a> Registry<'a> {
     ///
     /// This is the most general hook into `libsyntax`'s expansion behavior.
     pub fn register_syntax_extension(&mut self, name: ast::Name, extension: SyntaxExtension) {
+        if name.as_str() == "macro_rules" {
+            panic!("user-defined macros may not be named `macro_rules`");
+        }
         self.syntax_exts.push((name, match extension {
             NormalTT(ext, _, allow_internal_unstable) => {
                 NormalTT(ext, Some(self.krate_span), allow_internal_unstable)
