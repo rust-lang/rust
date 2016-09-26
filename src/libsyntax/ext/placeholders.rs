@@ -88,10 +88,11 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
     }
 
     pub fn add(&mut self, id: ast::NodeId, expansion: Expansion) {
+        let expansion = expansion.fold_with(self);
         self.expansions.insert(id, expansion);
     }
 
-    pub fn remove(&mut self, id: ast::NodeId) -> Expansion {
+    fn remove(&mut self, id: ast::NodeId) -> Expansion {
         self.expansions.remove(&id).unwrap()
     }
 }

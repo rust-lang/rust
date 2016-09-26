@@ -224,7 +224,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let (expansion, mut invocations) = self.collect_invocations(expansion);
         invocations.reverse();
 
-        let mut expansions = vec![vec![(0, expansion)]];
+        let mut expansions = Vec::new();
         while let Some(invoc) = invocations.pop() {
             let ExpansionData { depth, mark, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
@@ -236,13 +236,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 None => invoc.expansion_kind.dummy(invoc.span()),
             };
 
-            self.cx.current_expansion.depth = depth + 1;
             let (expansion, new_invocations) = self.collect_invocations(expansion);
 
-            if expansions.len() == depth {
+            if expansions.len() < depth {
                 expansions.push(Vec::new());
             }
-            expansions[depth].push((mark.as_u32(), expansion));
+            expansions[depth - 1].push((mark.as_u32(), expansion));
             if !self.cx.ecfg.single_step {
                 invocations.extend(new_invocations.into_iter().rev());
             }
@@ -253,12 +252,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
         while let Some(expansions) = expansions.pop() {
             for (mark, expansion) in expansions.into_iter().rev() {
-                let expansion = expansion.fold_with(&mut placeholder_expander);
                 placeholder_expander.add(ast::NodeId::from_u32(mark), expansion);
             }
         }
 
-        placeholder_expander.remove(ast::NodeId::from_u32(0))
+        expansion.fold_with(&mut placeholder_expander)
     }
 
     fn collect_invocations(&mut self, expansion: Expansion) -> (Expansion, Vec<Invocation>) {
@@ -541,7 +539,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         self.invocations.push(Invocation {
             kind: kind,
             expansion_kind: expansion_kind,
-            expansion_data: ExpansionData { mark: mark, ..self.cx.current_expansion.clone() },
+            expansion_data: ExpansionData {
+                mark: mark,
+                depth: self.cx.current_expansion.depth + 1,
+                ..self.cx.current_expansion.clone()
+            },
         });
         placeholder(expansion_kind, ast::NodeId::from_u32(mark.as_u32()))
     }
