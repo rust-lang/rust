@@ -335,7 +335,7 @@ fn test_resize_policy() {
 ///     println!("{:?} has {} hp", viking, health);
 /// }
 /// ```
-/// A HashMap with fixed list of elements can be initialized from vector:
+/// A HashMap with fixed list of elements can be initialized from an array:
 /// ```
 /// use std::collections::HashMap;
 ///
