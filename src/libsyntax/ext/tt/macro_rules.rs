@@ -63,7 +63,7 @@ impl<'a> ParserAnyMacro<'a> {
     }
 
     pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: ExpansionKind) -> Expansion {
-        let expansion = panictry!(self.parser.parse_expansion(kind));
+        let expansion = panictry!(self.parser.parse_expansion(kind, true));
         self.ensure_complete_parse(kind == ExpansionKind::Expr, kind.name());
         expansion
     }

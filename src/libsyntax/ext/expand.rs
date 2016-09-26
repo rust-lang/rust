@@ -325,14 +325,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let item_toks = TokenStream::from_tts(tts_for_item(&item, &self.cx.parse_sess));
 
                 let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
-                let parser = self.cx.new_parser_from_tts(&tok_result.to_tts());
-                let result = Box::new(TokResult { parser: parser, span: attr.span });
-
-                kind.make_from(result).unwrap_or_else(|| {
-                    let msg = format!("macro could not be expanded into {} position", kind.name());
-                    self.cx.span_err(attr.span, &msg);
-                    kind.dummy(attr.span)
-                })
+                self.parse_expansion(tok_result, kind, attr.span)
             }
             _ => unreachable!(),
         }
@@ -429,14 +422,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     },
                 });
 
-
-                let tok_result = expandfun.expand(self.cx,
-                                                  span,
-                                                  TokenStream::from_tts(marked_tts));
-                let parser = self.cx.new_parser_from_tts(&tok_result.to_tts());
-                let result = Box::new(TokResult { parser: parser, span: span });
-                // FIXME better span info.
-                kind.make_from(result).map(|i| i.fold_with(&mut ChangeSpan { span: span }))
+                let toks = TokenStream::from_tts(marked_tts);
+                let tok_result = expandfun.expand(self.cx, span, toks);
+                Some(self.parse_expansion(tok_result, kind, span))
             }
         };
 
@@ -454,10 +442,31 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             expn_id: Some(self.cx.backtrace()),
         })
     }
+
+    fn parse_expansion(&mut self, toks: TokenStream, kind: ExpansionKind, span: Span) -> Expansion {
+        let mut parser = self.cx.new_parser_from_tts(&toks.to_tts());
+        let expansion = match parser.parse_expansion(kind, false) {
+            Ok(expansion) => expansion,
+            Err(mut err) => {
+                err.emit();
+                return kind.dummy(span);
+            }
+        };
+        parser.ensure_complete_parse(kind == ExpansionKind::Expr, |parser| {
+            let msg = format!("macro expansion ignores token `{}` and any following",
+                              parser.this_token_to_string());
+            parser.diagnostic().struct_span_err(parser.span, &msg)
+                .span_note(span, "caused by the macro expansion here")
+                .emit();
+        });
+        // FIXME better span info
+        expansion.fold_with(&mut ChangeSpan { span: span })
+    }
 }
 
 impl<'a> Parser<'a> {
-    pub fn parse_expansion(&mut self, kind: ExpansionKind) -> PResult<'a, Expansion> {
+    pub fn parse_expansion(&mut self, kind: ExpansionKind, macro_legacy_warnings: bool)
+                           -> PResult<'a, Expansion> {
         Ok(match kind {
             ExpansionKind::Items => {
                 let mut items = SmallVector::zero();
@@ -483,7 +492,7 @@ impl<'a> Parser<'a> {
             ExpansionKind::Stmts => {
                 let mut stmts = SmallVector::zero();
                 while self.token != token::Eof {
-                    if let Some(stmt) = self.parse_full_stmt(true)? {
+                    if let Some(stmt) = self.parse_full_stmt(macro_legacy_warnings)? {
                         stmts.push(stmt);
                     }
                 }
