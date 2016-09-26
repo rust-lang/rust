@@ -63,7 +63,7 @@ pub fn create_mir_scopes(fcx: &FunctionContext) -> IndexVec<VisibilityScope, Mir
 
     // Find all the scopes with variables defined in them.
     let mut has_variables = BitVector::new(mir.visibility_scopes.len());
-    for var in mir.var_iter() {
+    for var in mir.vars_iter() {
         let decl = &mir.local_decls[var];
         has_variables.insert(decl.source_info.unwrap().scope.index());
     }

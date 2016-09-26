@@ -188,7 +188,7 @@ impl<'tcx> Mir<'tcx> {
 
     /// Returns an iterator over all temporaries.
     #[inline]
-    pub fn temp_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
+    pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             if self.local_decls[local].source_info.is_none() {
@@ -201,7 +201,7 @@ impl<'tcx> Mir<'tcx> {
 
     /// Returns an iterator over all user-declared locals.
     #[inline]
-    pub fn var_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
+    pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             if self.local_decls[local].source_info.is_none() {
@@ -214,14 +214,14 @@ impl<'tcx> Mir<'tcx> {
 
     /// Returns an iterator over all function arguments.
     #[inline]
-    pub fn arg_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
+    pub fn args_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (1..self.arg_count+1).map(Local::new)
     }
 
     /// Returns an iterator over all user-defined variables and compiler-generated temporaries (all
     /// locals that are neither arguments nor the return pointer).
     #[inline]
-    pub fn var_and_temp_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
+    pub fn vars_and_temps_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).map(Local::new)
     }
 
