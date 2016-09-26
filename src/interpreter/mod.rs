@@ -938,13 +938,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.monomorphize(operand.ty(&self.mir(), self.tcx), self.substs())
     }
 
-    fn move_value(&mut self, src: Value, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
-        match src {
-            Value::ByRef(ptr) => self.move_(ptr, dest, ty),
-            Value::ByVal(val) => self.memory.write_primval(dest, val),
-        }
-    }
-
     fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
         let size = self.type_size(ty);
         let align = self.type_align(ty);

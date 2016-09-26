@@ -136,7 +136,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "move_val_init" => {
                 let ty = substs.type_at(0);
                 let ptr = args_ptrs[0].read_ptr(&self.memory)?;
-                self.move_value(args_ptrs[1], ptr, ty)?;
+                self.write_value(args_ptrs[1], ptr, ty)?;
             }
 
             "needs_drop" => {
@@ -213,7 +213,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "transmute" => {
                 let ty = substs.type_at(0);
-                self.move_value(args_ptrs[0], dest, ty)?;
+                self.write_value(args_ptrs[0], dest, ty)?;
             }
 
             "try" => unimplemented!(),
@@ -229,7 +229,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "volatile_store" => {
                 let ty = substs.type_at(0);
                 let dest = args_ptrs[0].read_ptr(&self.memory)?;
-                self.move_value(args_ptrs[1], dest, ty)?;
+                self.write_value(args_ptrs[1], dest, ty)?;
             }
 
             name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),
