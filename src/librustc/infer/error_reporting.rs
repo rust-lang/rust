@@ -954,16 +954,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut err = self.report_inference_failure(var_origin);
 
         self.tcx.note_and_explain_region(&mut err,
-            "first, the lifetime cannot outlive ",
+            "the lifetime cannot outlive ",
             sup_region,
-            "...");
+            "");
 
         self.note_region_origin(&mut err, &sup_origin);
 
         self.tcx.note_and_explain_region(&mut err,
-            "but, the lifetime must be valid for ",
+            "the lifetime must be valid for ",
             sub_region,
-            "...");
+            "");
 
         self.note_region_origin(&mut err, &sub_origin);
         err.emit();
