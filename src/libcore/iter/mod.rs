@@ -209,7 +209,14 @@
 //! interesting implementation of [`IntoIterator`]:
 //!
 //! ```ignore
-//! impl<I: Iterator> IntoIterator for I
+//! impl<I: Iterator> IntoIterator for I {
+//!     type Item = I::Item;
+//!     type IntoIter = I;
+//! 
+//!     fn into_iter(self) -> I {
+//!         self
+//!     }
+//! }
 //! ```
 //!
 //! In other words, all [`Iterator`]s implement [`IntoIterator`], by just
