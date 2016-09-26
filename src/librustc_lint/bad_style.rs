@@ -112,16 +112,16 @@ impl LateLintPass for NonCamelCaseTypes {
 
         match it.node {
             hir::ItemTy(..) | hir::ItemStruct(..) | hir::ItemUnion(..) => {
-                self.check_case(cx, "type", it.name.node, it.span)
+                self.check_case(cx, "type", it.name, it.span)
             }
             hir::ItemTrait(..) => {
-                self.check_case(cx, "trait", it.name.node, it.span)
+                self.check_case(cx, "trait", it.name, it.span)
             }
             hir::ItemEnum(ref enum_definition, _) => {
                 if has_extern_repr {
                     return;
                 }
-                self.check_case(cx, "type", it.name.node, it.span);
+                self.check_case(cx, "type", it.name, it.span);
                 for variant in &enum_definition.variants {
                     self.check_case(cx, "variant", variant.node.name, variant.span);
                 }
@@ -257,7 +257,7 @@ impl LateLintPass for NonSnakeCase {
 
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         if let hir::ItemMod(_) = it.node {
-            self.check_snake_case(cx, "module", &it.name.node.as_str(), Some(it.span));
+            self.check_snake_case(cx, "module", &it.name.as_str(), Some(it.span));
         }
     }
 
@@ -329,10 +329,10 @@ impl LateLintPass for NonUpperCaseGlobals {
         match it.node {
             // only check static constants
             hir::ItemStatic(_, hir::MutImmutable, _) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "static constant", it.name.node, it.span);
+                NonUpperCaseGlobals::check_upper_case(cx, "static constant", it.name, it.span);
             }
             hir::ItemConst(..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "constant", it.name.node, it.span);
+                NonUpperCaseGlobals::check_upper_case(cx, "constant", it.name, it.span);
             }
             _ => {}
         }

@@ -305,9 +305,9 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
             hir::ItemEnum(..) | hir::ItemStruct(..) | hir::ItemUnion(..) |
             hir::ItemTrait(..) | hir::ItemExternCrate(..) | hir::ItemMod(..) |
             hir::ItemForeignMod(..) | hir::ItemTy(..) =>
-                DefPathData::TypeNs(i.name.node.as_str()),
+                DefPathData::TypeNs(i.name.as_str()),
             hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) =>
-                DefPathData::ValueNs(i.name.node.as_str()),
+                DefPathData::ValueNs(i.name.as_str()),
             hir::ItemUse(..) => DefPathData::Misc,
         };
         let def = self.create_def(i.id, def_data);

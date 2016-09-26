@@ -519,7 +519,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
             self.warn_dead_code(
                 item.id,
                 item.span,
-                item.name.node,
+                item.name,
                 item.node.descriptive_variant()
             );
         } else {

@@ -632,7 +632,7 @@ impl<'ast> Map<'ast> {
     /// Returns the name associated with the given NodeId's AST.
     pub fn name(&self, id: NodeId) -> Name {
         match self.get(id) {
-            NodeItem(i) => i.name.node,
+            NodeItem(i) => i.name,
             NodeForeignItem(i) => i.name,
             NodeImplItem(ii) => ii.name,
             NodeTraitItem(ti) => ti.name,
@@ -770,7 +770,7 @@ impl<'a, 'ast> NodesMatchingSuffix<'a, 'ast> {
                 match map.find(id) {
                     None => return None,
                     Some(NodeItem(item)) if item_is_mod(&item) =>
-                        return Some((id, item.name.node)),
+                        return Some((id, item.name)),
                     _ => {}
                 }
                 let parent = map.get_parent(id);
@@ -826,7 +826,7 @@ trait Named {
 
 impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() } }
 
-impl Named for Item { fn name(&self) -> Name { self.name.node } }
+impl Named for Item { fn name(&self) -> Name { self.name } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.name } }
 impl Named for Variant_ { fn name(&self) -> Name { self.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.name } }

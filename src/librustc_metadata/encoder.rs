@@ -477,7 +477,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
             ty::VariantKind::Unit => 'u',
         });
         self.encode_bounds_and_type_for_item(ctor_node_id);
-        encode_name(self.rbml_w, item.name.node);
+        encode_name(self.rbml_w, item.name);
         self.encode_parent_item(struct_def_id);
 
         let stab = ecx.tcx.lookup_stability(ctor_def_id);
@@ -909,7 +909,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                     encode_family(self.rbml_w, 'c');
                 }
                 self.encode_bounds_and_type_for_item(item.id);
-                encode_name(self.rbml_w, item.name.node);
+                encode_name(self.rbml_w, item.name);
                 self.encode_visibility(vis);
                 encode_stability(self.rbml_w, stab);
                 encode_deprecation(self.rbml_w, depr);
@@ -919,7 +919,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 encode_def_id_and_key(ecx, self.rbml_w, def_id);
                 encode_family(self.rbml_w, 'C');
                 self.encode_bounds_and_type_for_item(item.id);
-                encode_name(self.rbml_w, item.name.node);
+                encode_name(self.rbml_w, item.name);
                 encode_attributes(self.rbml_w, &item.attrs);
                 encode_inlined_item(ecx, self.rbml_w, InlinedItemRef::Item(def_id, item));
                 self.encode_mir(item.id);
@@ -932,7 +932,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 encode_family(self.rbml_w, FN_FAMILY);
                 let tps_len = generics.ty_params.len();
                 self.encode_bounds_and_type_for_item(item.id);
-                encode_name(self.rbml_w, item.name.node);
+                encode_name(self.rbml_w, item.name);
                 encode_attributes(self.rbml_w, &item.attrs);
                 let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
                 if constness == hir::Constness::Const {
@@ -948,12 +948,12 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 self.encode_method_argument_names(&decl);
             }
             hir::ItemMod(ref m) => {
-                self.encode_info_for_mod(FromId(item.id, (m, &item.attrs, item.name.node, &item.vis)));
+                self.encode_info_for_mod(FromId(item.id, (m, &item.attrs, item.name, &item.vis)));
             }
             hir::ItemForeignMod(ref fm) => {
                 encode_def_id_and_key(ecx, self.rbml_w, def_id);
                 encode_family(self.rbml_w, 'n');
-                encode_name(self.rbml_w, item.name.node);
+                encode_name(self.rbml_w, item.name);
 
                 // Encode all the items in self module.
                 for foreign_item in &fm.items {
@@ -969,7 +969,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 encode_def_id_and_key(ecx, self.rbml_w, def_id);
                 encode_family(self.rbml_w, 'y');
                 self.encode_bounds_and_type_for_item(item.id);
-                encode_name(self.rbml_w, item.name.node);
+                encode_name(self.rbml_w, item.name);
                 self.encode_visibility(vis);
                 encode_stability(self.rbml_w, stab);
                 encode_deprecation(self.rbml_w, depr);
@@ -979,7 +979,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 encode_family(self.rbml_w, 't');
                 encode_item_variances(self.rbml_w, ecx, item.id);
                 self.encode_bounds_and_type_for_item(item.id);
-                encode_name(self.rbml_w, item.name.node);
+                encode_name(self.rbml_w, item.name);
                 encode_attributes(self.rbml_w, &item.attrs);
                 self.encode_repr_attrs(&item.attrs);
                 for v in &enum_definition.variants {
@@ -1008,7 +1008,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 self.encode_bounds_and_type_for_item(item.id);
 
                 encode_item_variances(self.rbml_w, ecx, item.id);
-                encode_name(self.rbml_w, item.name.node);
+                encode_name(self.rbml_w, item.name);
                 encode_attributes(self.rbml_w, &item.attrs);
                 encode_stability(self.rbml_w, stab);
                 encode_deprecation(self.rbml_w, depr);
@@ -1038,7 +1038,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 self.encode_bounds_and_type_for_item(item.id);
 
                 encode_item_variances(self.rbml_w, ecx, item.id);
-                encode_name(self.rbml_w, item.name.node);
+                encode_name(self.rbml_w, item.name);
                 encode_attributes(self.rbml_w, &item.attrs);
                 encode_stability(self.rbml_w, stab);
                 encode_deprecation(self.rbml_w, depr);
@@ -1059,7 +1059,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
             hir::ItemDefaultImpl(unsafety, _) => {
                 encode_def_id_and_key(ecx, self.rbml_w, def_id);
                 encode_family(self.rbml_w, 'd');
-                encode_name(self.rbml_w, item.name.node);
+                encode_name(self.rbml_w, item.name);
                 encode_unsafety(self.rbml_w, unsafety);
 
                 let trait_ref = tcx.impl_trait_ref(ecx.tcx.map.local_def_id(item.id)).unwrap();
@@ -1074,7 +1074,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 encode_def_id_and_key(ecx, self.rbml_w, def_id);
                 encode_family(self.rbml_w, 'i');
                 self.encode_bounds_and_type_for_item(item.id);
-                encode_name(self.rbml_w, item.name.node);
+                encode_name(self.rbml_w, item.name);
                 encode_attributes(self.rbml_w, &item.attrs);
                 encode_unsafety(self.rbml_w, unsafety);
                 encode_polarity(self.rbml_w, polarity);
@@ -1143,7 +1143,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 self.encode_predicates(&tcx.lookup_super_predicates(def_id),
                                        tag_item_super_predicates);
                 encode_trait_ref(self.rbml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
-                encode_name(self.rbml_w, item.name.node);
+                encode_name(self.rbml_w, item.name);
                 encode_attributes(self.rbml_w, &item.attrs);
                 self.encode_visibility(vis);
                 encode_stability(self.rbml_w, stab);

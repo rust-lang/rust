@@ -708,7 +708,7 @@ fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
 
 fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
     let tcx = ccx.tcx;
-    debug!("convert: item {} with id {}", it.name.node, it.id);
+    debug!("convert: item {} with id {}", it.name, it.id);
     match it.node {
         // These don't define types.
         hir::ItemExternCrate(_) | hir::ItemUse(_) | hir::ItemMod(_) => {
@@ -1060,7 +1060,7 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let did = ccx.tcx.map.local_def_id(it.id);
     // Use separate constructor id for unit/tuple structs and reuse did for braced structs.
     let ctor_id = if !def.is_struct() { Some(ccx.tcx.map.local_def_id(def.id())) } else { None };
-    let variants = vec![convert_struct_variant(ccx, ctor_id.unwrap_or(did), it.name.node,
+    let variants = vec![convert_struct_variant(ccx, ctor_id.unwrap_or(did), it.name,
                                                ConstInt::Infer(0), def)];
     let adt = ccx.tcx.intern_adt_def(did, AdtKind::Struct, variants);
     if let Some(ctor_id) = ctor_id {
@@ -1076,7 +1076,7 @@ fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 -> ty::AdtDefMaster<'tcx>
 {
     let did = ccx.tcx.map.local_def_id(it.id);
-    let variants = vec![convert_struct_variant(ccx, did, it.name.node, ConstInt::Infer(0), def)];
+    let variants = vec![convert_struct_variant(ccx, did, it.name, ConstInt::Infer(0), def)];
     ccx.tcx.intern_adt_def(did, AdtKind::Union, variants)
 }
 

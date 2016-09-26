@@ -989,7 +989,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ast_map::NodeItem(ref item) => {
                     match item.node {
                         hir::ItemFn(ref fn_decl, unsafety, constness, _, ref gen, _) => {
-                            Some((fn_decl, gen, unsafety, constness, item.name.node, item.span))
+                            Some((fn_decl, gen, unsafety, constness, item.name, item.span))
                         },
                         _ => None
                     }

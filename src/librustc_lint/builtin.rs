@@ -1041,7 +1041,7 @@ impl LateLintPass for InvalidNoMangleItems {
                 if attr::contains_name(&it.attrs, "no_mangle") {
                     if !cx.access_levels.is_reachable(it.id) {
                         let msg = format!("function {} is marked #[no_mangle], but not exported",
-                                          it.name.node);
+                                          it.name);
                         cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, &msg);
                     }
                     if generics.is_parameterized() {
@@ -1055,7 +1055,7 @@ impl LateLintPass for InvalidNoMangleItems {
                 if attr::contains_name(&it.attrs, "no_mangle") &&
                        !cx.access_levels.is_reachable(it.id) {
                     let msg = format!("static {} is marked #[no_mangle], but not exported",
-                                      it.name.node);
+                                      it.name);
                     cx.span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, &msg);
                 }
             },

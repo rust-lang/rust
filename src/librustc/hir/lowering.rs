@@ -56,8 +56,7 @@ use syntax::codemap::{respan, Spanned};
 use syntax::parse::token;
 use syntax::std_inject;
 use syntax::visit::{self, Visitor};
-use syntax_pos::{Span, BytePos};
-use syntax::codemap::{spanned};
+use syntax_pos::Span;
 
 pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
@@ -753,7 +752,7 @@ impl<'a> LoweringContext<'a> {
 
         hir::Item {
             id: i.id,
-            name: spanned(BytePos(0), BytePos(0), i.ident.name),
+            name: i.ident.name,
             attrs: self.lower_attrs(&i.attrs),
             node: node,
             vis: self.lower_visibility(&i.vis),
