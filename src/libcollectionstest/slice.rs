@@ -345,18 +345,6 @@ fn test_dedup_unique() {
 }
 
 #[test]
-fn test_dedup_shared() {
-    let mut v0: Vec<Box<_>> = vec![box 1, box 1, box 2, box 3];
-    v0.dedup();
-    let mut v1: Vec<Box<_>> = vec![box 1, box 2, box 2, box 3];
-    v1.dedup();
-    let mut v2: Vec<Box<_>> = vec![box 1, box 2, box 3, box 3];
-    v2.dedup();
-    // If the pointers were leaked or otherwise misused, valgrind and/or
-    // rt should raise errors.
-}
-
-#[test]
 fn test_retain() {
     let mut v = vec![1, 2, 3, 4, 5];
     v.retain(is_odd);
