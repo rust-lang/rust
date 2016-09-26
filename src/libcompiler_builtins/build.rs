@@ -72,7 +72,7 @@ impl Sources {
 }
 
 fn main() {
-    let target = env::var("TARGET").unwrap();
+    let target = env::var("TARGET").expect("TARGET was not set");
     let cfg = &mut gcc::Config::new();
 
     if target.contains("msvc") {
