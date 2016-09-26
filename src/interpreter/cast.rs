@@ -8,7 +8,7 @@ use primval::PrimVal;
 use memory::Pointer;
 
 use rustc::ty::Ty;
-use syntax::ast;
+use syntax::ast::{self, IntTy, UintTy};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn cast_primval(&self, val: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
@@ -38,6 +38,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyRef(..) |
             ty::TyRawPtr(_) => Ok(Ptr(ptr)),
             ty::TyFnPtr(_) => Ok(FnPtr(ptr)),
+            // FIXME: can truncation happen here?
+            ty::TyInt(IntTy::I8) => Ok(I8(ptr.to_int()? as i8)),
+            ty::TyInt(IntTy::I16) => Ok(I16(ptr.to_int()? as i16)),
+            ty::TyInt(IntTy::I32) => Ok(I32(ptr.to_int()? as i32)),
+            ty::TyInt(IntTy::I64) => Ok(I64(ptr.to_int()? as i64)),
+            ty::TyUint(UintTy::U8) => Ok(U8(ptr.to_int()? as u8)),
+            ty::TyUint(UintTy::U16) => Ok(U16(ptr.to_int()? as u16)),
+            ty::TyUint(UintTy::U32) => Ok(U32(ptr.to_int()? as u32)),
+            ty::TyUint(UintTy::U64) => Ok(U64(ptr.to_int()? as u64)),
             _ => Err(EvalError::Unimplemented(format!("ptr to {:?} cast", ty))),
         }
     }

@@ -46,7 +46,7 @@ impl PrimVal {
             U16(u) => u as u64,
             U32(u) => u as u64,
             U64(u) => u,
-            Ptr(ptr) => ptr.to_int() as u64,
+            Ptr(ptr) => ptr.to_int().expect("non abstract ptr") as u64,
             _ => bug!("{}", error_msg),
         }
     }
@@ -58,7 +58,7 @@ impl PrimVal {
             I16(i) => i as i64,
             I32(i) => i as i64,
             I64(i) => i,
-            Ptr(ptr) => ptr.to_int() as i64,
+            Ptr(ptr) => ptr.to_int().expect("non abstract ptr") as i64,
             _ => bug!("{}", error_msg),
         }
     }

@@ -55,8 +55,12 @@ impl Pointer {
     pub fn points_to_zst(&self) -> bool {
         self.alloc_id == ZST_ALLOC_ID
     }
-    pub fn to_int(&self) -> usize {
-        self.offset
+    pub fn to_int<'tcx>(&self) -> EvalResult<'tcx, usize> {
+        if self.points_to_zst() {
+            Ok(self.offset)
+        } else {
+            Err(EvalError::ReadPointerAsBytes)
+        }
     }
     pub fn from_int(i: usize) -> Self {
         Pointer {
