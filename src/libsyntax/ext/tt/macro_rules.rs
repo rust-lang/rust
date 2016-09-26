@@ -243,7 +243,7 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
                     (**tt).clone()
                 }
                 _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
-            }).collect()
+            }).collect::<Vec<TokenTree>>()
         }
         _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
     };
@@ -260,6 +260,11 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
 
     for rhs in &rhses {
         valid &= check_rhs(sess, rhs);
+    }
+
+    // don't abort iteration early, so that errors for multiple lhses can be reported
+    for lhs in &lhses {
+        valid &= check_lhs_no_empty_seq(sess, &[lhs.clone()])
     }
 
     let exp: Box<_> = Box::new(MacroRulesMacroExpander {
@@ -286,6 +291,38 @@ fn check_lhs_nt_follows(sess: &ParseSess, lhs: &TokenTree) -> bool {
     }
     // we don't abort on errors on rejection, the driver will do that for us
     // after parsing/expansion. we can report every error in every macro this way.
+}
+
+/// Check that the lhs contains no repetition which could match an empty token
+/// tree, because then the matcher would hang indefinitely.
+fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[TokenTree]) -> bool {
+    for tt in tts {
+        match *tt {
+            TokenTree::Token(_, _) => (),
+            TokenTree::Delimited(_, ref del) => if !check_lhs_no_empty_seq(sess, &del.tts) {
+                return false;
+            },
+            TokenTree::Sequence(span, ref seq) => {
+                if seq.separator.is_none() {
+                    if seq.tts.iter().all(|seq_tt| {
+                        match *seq_tt {
+                            TokenTree::Sequence(_, ref sub_seq) =>
+                                sub_seq.op == tokenstream::KleeneOp::ZeroOrMore,
+                            _ => false,
+                        }
+                    }) {
+                        sess.span_diagnostic.span_err(span, "repetition matches empty token tree");
+                        return false;
+                    }
+                }
+                if !check_lhs_no_empty_seq(sess, &seq.tts) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    true
 }
 
 fn check_rhs(sess: &ParseSess, rhs: &TokenTree) -> bool {
