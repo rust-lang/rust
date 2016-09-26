@@ -237,7 +237,7 @@ fn write_scope_tree(tcx: TyCtxt,
         writeln!(w, "{0:1$}scope {2} {{", "", indent, child.index())?;
 
         // User variable types (including the user's name in a comment).
-        for local in mir.var_iter() {
+        for local in mir.vars_iter() {
             let var = &mir.local_decls[local];
             let (name, source_info) = if var.source_info.unwrap().scope == child {
                 (var.name.unwrap(), var.source_info.unwrap())
@@ -333,7 +333,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
         write!(w, "(")?;
 
         // fn argument types.
-        for (i, arg) in mir.arg_iter().enumerate() {
+        for (i, arg) in mir.args_iter().enumerate() {
             if i != 0 {
                 write!(w, ", ")?;
             }
@@ -349,7 +349,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
 
 fn write_temp_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
     // Compiler-introduced temporary types.
-    for temp in mir.temp_iter() {
+    for temp in mir.temps_iter() {
         writeln!(w, "{}let mut {:?}: {};", INDENT, temp, mir.local_decls[temp].ty)?;
     }
 

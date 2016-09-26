@@ -410,7 +410,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::Return => {
                     // Check for unused values. This usually means
                     // there are extra statements in the AST.
-                    for temp in mir.temp_iter() {
+                    for temp in mir.temps_iter() {
                         if self.temp_qualif[temp].is_none() {
                             continue;
                         }
@@ -435,7 +435,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
                     // Make sure there are no extra unassigned variables.
                     self.qualif = Qualif::NOT_CONST;
-                    for index in mir.var_iter() {
+                    for index in mir.vars_iter() {
                         if !self.const_fn_arg_vars.contains(index.index()) {
                             debug!("unassigned variable {:?}", index);
                             self.assign(&Lvalue::Local(index), Location {

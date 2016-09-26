@@ -290,7 +290,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         let retptr = allocate_local(mir::RETURN_POINTER);
         iter::once(retptr)
             .chain(args.into_iter())
-            .chain(mir.var_and_temp_iter().map(&mut allocate_local))
+            .chain(mir.vars_and_temps_iter().map(&mut allocate_local))
             .collect()
     };
 
@@ -356,7 +356,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
         None
     };
 
-    mir.arg_iter().enumerate().map(|(arg_index, local)| {
+    mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
         let arg_ty = bcx.monomorphize(&arg_decl.ty);
 
