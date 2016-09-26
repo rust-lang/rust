@@ -466,32 +466,27 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             store_fat_ptr(bcx, base, info, dst, dst_ty);
         }
 
-        // This can be extended to enums and tuples in the future.
-        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
+        (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) => {
             assert_eq!(def_a, def_b);
 
-            let src_repr = adt::represent_type(bcx.ccx(), src_ty);
-            let src_fields = match &*src_repr {
-                &adt::Repr::Univariant(ref s) => &s.fields,
-                _ => bug!("struct has non-univariant repr"),
-            };
-            let dst_repr = adt::represent_type(bcx.ccx(), dst_ty);
-            let dst_fields = match &*dst_repr {
-                &adt::Repr::Univariant(ref s) => &s.fields,
-                _ => bug!("struct has non-univariant repr"),
-            };
+            let src_fields = def_a.variants[0].fields.iter().map(|f| {
+                monomorphize::field_ty(bcx.tcx(), substs_a, f)
+            });
+            let dst_fields = def_b.variants[0].fields.iter().map(|f| {
+                monomorphize::field_ty(bcx.tcx(), substs_b, f)
+            });
 
             let src = adt::MaybeSizedValue::sized(src);
             let dst = adt::MaybeSizedValue::sized(dst);
 
-            let iter = src_fields.iter().zip(dst_fields).enumerate();
+            let iter = src_fields.zip(dst_fields).enumerate();
             for (i, (src_fty, dst_fty)) in iter {
                 if type_is_zero_size(bcx.ccx(), dst_fty) {
                     continue;
                 }
 
-                let src_f = adt::trans_field_ptr(bcx, &src_repr, src, Disr(0), i);
-                let dst_f = adt::trans_field_ptr(bcx, &dst_repr, dst, Disr(0), i);
+                let src_f = adt::trans_field_ptr(bcx, src_ty, src, Disr(0), i);
+                let dst_f = adt::trans_field_ptr(bcx, dst_ty, dst, Disr(0), i);
                 if src_fty == dst_fty {
                     memcpy_ty(bcx, dst_f, src_f, src_fty);
                 } else {
@@ -1164,11 +1159,10 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if !fcx.fn_ty.ret.is_ignore() {
         let dest = fcx.llretslotptr.get().unwrap();
         let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
-        let repr = adt::represent_type(ccx, sig.output);
         let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
         for (i, arg_ty) in sig.inputs.into_iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(bcx, &repr, dest_val, Disr::from(disr), i);
+            let lldestptr = adt::trans_field_ptr(bcx, sig.output, dest_val, Disr::from(disr), i);
             let arg = &fcx.fn_ty.args[arg_idx];
             arg_idx += 1;
             let b = &bcx.build();
@@ -1181,7 +1175,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 arg.store_fn_arg(b, &mut llarg_idx, lldestptr);
             }
         }
-        adt::trans_set_discr(bcx, &repr, dest, disr);
+        adt::trans_set_discr(bcx, sig.output, dest, disr);
     }
 
     fcx.finish(bcx, DebugLoc::None);

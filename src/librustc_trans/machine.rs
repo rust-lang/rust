@@ -24,40 +24,11 @@ pub type llalign = u32;
 // ______________________________________________________________________
 // compute sizeof / alignof
 
-// Returns the number of bytes clobbered by a Store to this type.
-pub fn llsize_of_store(cx: &CrateContext, ty: Type) -> llsize {
-    unsafe {
-        return llvm::LLVMStoreSizeOfType(cx.td(), ty.to_ref());
-    }
-}
-
 // Returns the number of bytes between successive elements of type T in an
 // array of T. This is the "ABI" size. It includes any ABI-mandated padding.
 pub fn llsize_of_alloc(cx: &CrateContext, ty: Type) -> llsize {
     unsafe {
         return llvm::LLVMABISizeOfType(cx.td(), ty.to_ref());
-    }
-}
-
-// Returns, as near as we can figure, the "real" size of a type. As in, the
-// bits in this number of bytes actually carry data related to the datum
-// with the type. Not junk, accidentally-damaged words, or whatever.
-// Note that padding of the type will be included for structs, but not for the
-// other types (i.e. SIMD types).
-// Rounds up to the nearest byte though, so if you have a 1-bit
-// value, we return 1 here, not 0. Most of rustc works in bytes. Be warned
-// that LLVM *does* distinguish between e.g. a 1-bit value and an 8-bit value
-// at the codegen level! In general you should prefer `llbitsize_of_real`
-// below.
-pub fn llsize_of_real(cx: &CrateContext, ty: Type) -> llsize {
-    unsafe {
-        let nbits = llvm::LLVMSizeOfTypeInBits(cx.td(), ty.to_ref());
-        if nbits & 7 != 0 {
-            // Not an even number of bytes, spills into "next" byte.
-            1 + (nbits >> 3)
-        } else {
-            nbits >> 3
-        }
     }
 }
 
