@@ -912,8 +912,7 @@ fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match tcx.span_of_impl(parent_impl) {
         Ok(span) => {
             err.span_label(span, &"parent `impl` is here");
-            err.note(&format!("to specialize, `{}` \
-                               in the parent `impl` must be marked `default`",
+            err.note(&format!("to specialize, `{}` in the parent `impl` must be marked `default`",
                               impl_item.name));
         }
         Err(cname) => {
