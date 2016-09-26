@@ -14,16 +14,40 @@ use primval::PrimVal;
 pub(super) enum Value {
     ByRef(Pointer),
     ByVal(PrimVal),
+    ByValPair(PrimVal, PrimVal),
 }
 
 impl Value {
+
     pub(super) fn read_ptr<'a, 'tcx: 'a>(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr),
             ByVal(PrimVal::Ptr(ptr)) |
             ByVal(PrimVal::FnPtr(ptr)) => Ok(ptr),
+            ByValPair(..) => unimplemented!(),
             ByVal(_other) => unimplemented!(),
+        }
+    }
+
+    pub(super) fn read_uint<'a, 'tcx: 'a>(&self, mem: &Memory<'a, 'tcx>, size: usize) -> EvalResult<'tcx, u64> {
+        use self::Value::*;
+        match *self {
+            ByRef(ptr) => mem.read_uint(ptr, size),
+            ByVal(PrimVal::U8(u)) => Ok(u as u64),
+            ByVal(PrimVal::U16(u)) => Ok(u as u64),
+            ByVal(PrimVal::U32(u)) => Ok(u as u64),
+            ByVal(PrimVal::U64(u)) => Ok(u as u64),
+            ByValPair(..) => unimplemented!(),
+            ByVal(_other) => unimplemented!(),
+        }
+    }
+
+    pub(super) fn to_ptr(&self) -> Pointer {
+        use self::Value::*;
+        match *self {
+            ByRef(ptr) => ptr,
+            other => bug!("expected pointer, got {:?}", other),
         }
     }
 
@@ -31,7 +55,7 @@ impl Value {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr.offset(mem.pointer_size() as isize)),
-            ByVal(PrimVal::VtablePtr(_, vtable)) => Ok(vtable),
+            ByValPair(_, PrimVal::Ptr(vtable)) => Ok(vtable),
             _ => unimplemented!(),
         }
     }
@@ -40,7 +64,10 @@ impl Value {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_usize(ptr.offset(mem.pointer_size() as isize)),
-            ByVal(PrimVal::SlicePtr(_, len)) => Ok(len),
+            ByValPair(_, PrimVal::U8(len)) => Ok(len as u64),
+            ByValPair(_, PrimVal::U16(len)) => Ok(len as u64),
+            ByValPair(_, PrimVal::U32(len)) => Ok(len as u64),
+            ByValPair(_, PrimVal::U64(len)) => Ok(len),
             _ => unimplemented!(),
         }
     }

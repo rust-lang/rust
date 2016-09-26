@@ -14,8 +14,6 @@ pub enum PrimVal {
 
     Ptr(Pointer),
     FnPtr(Pointer),
-    VtablePtr(Pointer, Pointer),
-    SlicePtr(Pointer, u64),
     Char(char),
 
     F32(f32), F64(f64),

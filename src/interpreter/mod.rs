@@ -101,20 +101,6 @@ pub struct Frame<'a, 'tcx: 'a> {
     pub stmt: usize,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-struct Lvalue {
-    ptr: Pointer,
-    extra: LvalueExtra,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum LvalueExtra {
-    None,
-    Length(u64),
-    Vtable(Pointer),
-    DowncastVariant(usize),
-}
-
 #[derive(Clone)]
 pub enum CachedMir<'mir, 'tcx: 'mir> {
     Ref(&'mir mir::Mir<'tcx>),
@@ -204,15 +190,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub fn str_to_primval(&mut self, s: &str) -> EvalResult<'tcx, PrimVal> {
+    fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         // FIXME: cache these allocs
         let ptr = self.memory.allocate(s.len(), 1)?;
         self.memory.write_bytes(ptr, s.as_bytes())?;
         self.memory.freeze(ptr.alloc_id)?;
-        Ok(PrimVal::SlicePtr(ptr, s.len() as u64))
+        Ok(Value::ByValPair(PrimVal::Ptr(ptr), self.target_usize_primval(s.len() as u64)))
     }
 
-    fn const_to_primval(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, PrimVal> {
+    fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
         use rustc::middle::const_val::ConstVal::*;
         use rustc_const_math::{ConstInt, ConstIsize, ConstUsize, ConstFloat};
 
@@ -236,7 +222,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Bool(b) => PrimVal::Bool(b),
             Char(c) => PrimVal::Char(c),
 
-            Str(ref s) => self.str_to_primval(s)?,
+            Str(ref s) => return self.str_to_value(s),
 
             ByteStr(ref bs) => {
                 let ptr = self.memory.allocate(bs.len(), 1)?;
@@ -258,7 +244,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 bug!("uninferred constants only exist before typeck"),
         };
 
-        Ok(primval)
+        Ok(Value::ByVal(primval))
     }
 
     fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
@@ -565,30 +551,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Len(ref lvalue) => {
                 let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
-                let len = match ty.sty {
-                    ty::TyArray(_, n) => n as u64,
-                    ty::TySlice(_) => if let LvalueExtra::Length(n) = src.extra {
-                        n
+                match ty.sty {
+                    ty::TyArray(_, n) => self.memory.write_usize(dest, n as u64)?,
+                    ty::TySlice(_) => if let Value::ByValPair(_, len) = src {
+                        self.memory.write_primval(dest, len)?;
                     } else {
                         bug!("Rvalue::Len of a slice given non-slice pointer: {:?}", src);
                     },
                     _ => bug!("Rvalue::Len expected array or slice, got {:?}", ty),
-                };
-                self.memory.write_usize(dest, len)?;
+                }
             }
 
             Ref(_, _, ref lvalue) => {
-                let lv = self.eval_lvalue(lvalue)?;
-                match lv.extra {
-                    LvalueExtra::None => self.memory.write_ptr(dest, lv.ptr)?,
-                    LvalueExtra::Length(len) => {
-                        self.memory.write_primval(dest, PrimVal::SlicePtr(lv.ptr, len))?;
-                    }
-                    LvalueExtra::Vtable(ptr) => {
-                        self.memory.write_primval(dest, PrimVal::VtablePtr(lv.ptr, ptr))?;
-                    },
-                    LvalueExtra::DowncastVariant(..) =>
-                        bug!("attempted to take a reference to an enum downcast lvalue"),
+                match self.eval_lvalue(lvalue)? {
+                    Value::ByRef(ptr) => self.memory.write_ptr(dest, ptr)?,
+                    Value::ByVal(..) => bug!("cannot take reference of immediate"),
+                    pair @ Value::ByValPair(..) => self.write_value(pair, dest, dest_ty)?,
                 }
             }
 
@@ -617,7 +595,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                                 let ptr = src.read_ptr(&self.memory)?;
-                                self.memory.write_primval(dest, PrimVal::SlicePtr(ptr, length as u64))?;
+                                self.memory.write_ptr(dest, ptr)?;
+                                let ptr_size = self.memory.pointer_size() as isize;
+                                let dest_extra = dest.offset(ptr_size);
+                                self.memory.write_usize(dest_extra, length as u64)?;
                             }
                             (&ty::TyTrait(_), &ty::TyTrait(_)) => {
                                 // For now, upcasts are limited to changes in marker
@@ -630,7 +611,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 let trait_ref = self.tcx.erase_regions(&trait_ref);
                                 let vtable = self.get_vtable(trait_ref)?;
                                 let ptr = src.read_ptr(&self.memory)?;
-                                self.memory.write_primval(dest, PrimVal::VtablePtr(ptr, vtable))?;
+
+                                self.memory.write_ptr(dest, ptr)?;
+                                let ptr_size = self.memory.pointer_size() as isize;
+                                let dest_extra = dest.offset(ptr_size);
+                                self.memory.write_ptr(dest_extra, vtable)?;
                             },
 
                             _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
@@ -646,17 +631,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             trace!("misc cast: {:?}", src);
                             let ptr_size = self.memory.pointer_size();
                             match (src, self.type_is_fat_ptr(dest_ty)) {
-                                (Value::ByVal(PrimVal::VtablePtr(data, meta)), true) => {
-                                    self.memory.write_ptr(dest, data)?;
-                                    self.memory.write_ptr(dest.offset(ptr_size as isize), meta)?;
+                                (Value::ByValPair(data, meta), true) => {
+                                    self.memory.write_primval(dest, data)?;
+                                    self.memory.write_primval(dest.offset(ptr_size as isize), meta)?;
                                 },
-                                (Value::ByVal(PrimVal::SlicePtr(data, meta)), true) => {
-                                    self.memory.write_ptr(dest, data)?;
-                                    self.memory.write_usize(dest.offset(ptr_size as isize), meta)?;
-                                },
-                                (Value::ByVal(PrimVal::SlicePtr(data, _)), false) |
-                                (Value::ByVal(PrimVal::VtablePtr(data, _)), false) => {
-                                    self.memory.write_ptr(dest, data)?;
+                                (Value::ByValPair(data, _), false) => {
+                                    self.memory.write_primval(dest, data)?;
                                 },
                                 (Value::ByRef(ptr), true) => {
                                     self.memory.copy(ptr, dest, ptr_size * 2, ptr_size)?;
@@ -782,12 +762,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::mir::repr::Operand::*;
         match *op {
-            Consume(ref lvalue) => Ok(Value::ByRef(self.eval_lvalue(lvalue)?.to_ptr())),
+            Consume(ref lvalue) => self.eval_lvalue(lvalue),
 
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal;
                 let value = match *literal {
-                    Literal::Value { ref value } => Value::ByVal(self.const_to_primval(value)?),
+                    Literal::Value { ref value } => self.const_to_value(value)?,
 
                     Literal::Item { def_id, substs } => {
                         if let ty::TyFnDef(..) = ty.sty {
@@ -822,14 +802,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue> {
+    fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::mir::repr::Lvalue::*;
-        let ptr = match *lvalue {
-            ReturnPointer => self.frame().return_ptr
-                .expect("ReturnPointer used in a function with no return value"),
-            Arg(i) => self.frame().locals[i.index()],
-            Var(i) => self.frame().locals[self.frame().var_offset + i.index()],
-            Temp(i) => self.frame().locals[self.frame().temp_offset + i.index()],
+        let value = match *lvalue {
+            ReturnPointer => Value::ByRef(self.frame().return_ptr
+                .expect("ReturnPointer used in a function with no return value")),
+            Arg(i) => Value::ByRef(self.frame().locals[i.index()]),
+            Var(i) => Value::ByRef(self.frame().locals[self.frame().var_offset + i.index()]),
+            Temp(i) => Value::ByRef(self.frame().locals[self.frame().temp_offset + i.index()]),
 
             Static(def_id) => {
                 let substs = subst::Substs::empty(self.tcx);
@@ -838,25 +818,34 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     substs: substs,
                     kind: ConstantKind::Global,
                 };
-                *self.statics.get(&cid).expect("static should have been cached (lvalue)")
+                Value::ByRef(*self.statics.get(&cid).expect("static should have been cached (lvalue)"))
             },
 
             Projection(ref proj) => {
                 let base = self.eval_lvalue(&proj.base)?;
                 trace!("projection base: {:?}", base);
                 trace!("projection: {:?}", proj.elem);
+                match base {
+                    Value::ByRef(ptr) => self.memory.dump(ptr.alloc_id),
+                    _ => {},
+                }
                 let base_ty = self.lvalue_ty(&proj.base);
                 let base_layout = self.type_layout(base_ty);
 
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
                     Field(field, field_ty) => {
+                        let field_ty = self.monomorphize(field_ty, self.substs());
                         use rustc::ty::layout::Layout::*;
                         let variant = match *base_layout {
                             Univariant { ref variant, .. } => variant,
                             General { ref variants, .. } => {
-                                if let LvalueExtra::DowncastVariant(variant_idx) = base.extra {
-                                    &variants[variant_idx]
+                                if let Value::ByValPair(PrimVal::Ptr(ptr), variant_idx) = base {
+                                    // early exit, because enum variant field access is passed
+                                    // as a non-fat-pointer ByValPair
+                                    let idx = variant_idx.expect_uint("enum variant id not integral") as usize;
+                                    let offset = variants[idx].field_offset(field.index()).bytes() as isize;
+                                    return Ok(ByRef(ptr.offset(offset)));
                                 } else {
                                     bug!("field access on enum had no variant index");
                                 }
@@ -869,17 +858,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             _ => bug!("field access on non-product type: {:?}", base_layout),
                         };
 
-                        let offset = variant.field_offset(field.index()).bytes();
-                        let ptr = base.ptr.offset(offset as isize);
-                        match (&field_ty.sty, base.extra) {
-                            (&ty::TyStr, extra @ LvalueExtra::Length(_)) |
-                            (&ty::TySlice(_), extra @ LvalueExtra::Length(_)) |
-                            (&ty::TyTrait(_), extra @ LvalueExtra::Vtable(_)) => return Ok(Lvalue {
-                                ptr: ptr,
-                                extra: extra,
-                            }),
-                            (&ty::TyTrait(_), _) => bug!("trait field without vtable"),
-                            _ => ptr,
+                        let offset = variant.field_offset(field.index()).bytes() as isize;
+                        use self::value::Value::*;
+                        match base {
+                            ByRef(ptr) => if self.type_is_fat_ptr(field_ty) {
+                                self.read_value(ptr.offset(offset), field_ty)?
+                            } else {
+                                ByRef(ptr.offset(offset))
+                            },
+                            // indexing into a field of an unsized struct
+                            ByValPair(PrimVal::Ptr(ptr), extra) => if self.type_is_sized(field_ty) {
+                                ByRef(ptr.offset(offset))
+                            } else {
+                                ByValPair(PrimVal::Ptr(ptr.offset(offset)), extra)
+                            },
+                            other => bug!("expected thin ptr, got: {:?}", other),
                         }
                     },
 
@@ -887,10 +880,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         use rustc::ty::layout::Layout::*;
                         match *base_layout {
                             General { ref variants, .. } => {
-                                return Ok(Lvalue {
-                                    ptr: base.ptr.offset(variants[variant].field_offset(1).bytes() as isize),
-                                    extra: LvalueExtra::DowncastVariant(variant),
-                                });
+                                use self::value::Value::*;
+                                match base {
+                                    ByRef(ptr) => return Ok(ByValPair(
+                                        PrimVal::Ptr(ptr.offset(variants[variant].field_offset(1).bytes() as isize)),
+                                        PrimVal::U64(variant as u64),
+                                    )),
+                                    other => bug!("bad downcast base: {:?}", other),
+                                }
                             }
                             RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
                                 return Ok(base);
@@ -899,15 +896,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     },
 
-                    Deref => {
-                        let (ptr, extra) = match self.read_primval(base.ptr, base_ty)? {
-                            PrimVal::SlicePtr(ptr, n) => (ptr, LvalueExtra::Length(n)),
-                            PrimVal::VtablePtr(ptr, vptr) => (ptr, LvalueExtra::Vtable(vptr)),
-                            PrimVal::Ptr(ptr) => (ptr, LvalueExtra::None),
-                            _ => bug!("can't deref non pointer types"),
-                        };
-                        return Ok(Lvalue { ptr: ptr, extra: extra });
-                    }
+                    Deref => match self.follow_ref(base, base_ty)? {
+                        Value::ByRef(..) => bug!("follow_ref broken"),
+                        // magical deref
+                        Value::ByVal(PrimVal::Ptr(ptr)) => Value::ByRef(ptr),
+                        Value::ByVal(..) => bug!("can't deref non pointer types"),
+                        // deref ops on fat pointers are no-ops
+                        pair @ Value::ByValPair(..) => pair,
+                    },
 
                     Index(ref operand) => {
                         let elem_size = match base_ty.sty {
@@ -918,7 +914,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let n_ptr = self.eval_operand(operand)?;
                         let usize = self.tcx.types.usize;
                         let n = self.value_to_primval(n_ptr, usize)?.expect_uint("Projection::Index expected usize");
-                        base.ptr.offset(n as isize * elem_size as isize)
+                        match base {
+                            Value::ByRef(ptr) |
+                            Value::ByValPair(PrimVal::Ptr(ptr), _) |
+                            Value::ByVal(PrimVal::Ptr(ptr)) => Value::ByRef(ptr.offset(n as isize * elem_size as isize)),
+                            other => bug!("index op on {:?}", other),
+                        }
                     }
 
                     ConstantIndex { .. } => unimplemented!(),
@@ -926,8 +927,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
         };
-
-        Ok(Lvalue { ptr: ptr, extra: LvalueExtra::None })
+        Ok(value)
     }
 
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
@@ -958,15 +958,30 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_primval(ptr, primval)?;
                 Ok(ptr)
             }
+
+            Value::ByValPair(a, b) => {
+                let size = self.type_size(ty);
+                let align = self.type_align(ty);
+                let ptr = self.memory.allocate(size, align)?;
+                let ptr_size = self.memory.pointer_size() as isize;
+                self.memory.write_primval(ptr, a)?;
+                self.memory.write_primval(ptr.offset(ptr_size), b)?;
+                Ok(ptr)
+            }
         }
     }
 
     fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         match value {
-            Value::ByRef(ptr) => self.read_primval(ptr, ty),
+            Value::ByRef(ptr) => match self.read_value(ptr, ty)? {
+                Value::ByRef(_) => bug!("read_value can't result in `ByRef`"),
+                Value::ByVal(primval) => Ok(primval),
+                Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
+            },
 
             // TODO(solson): Sanity-check the primval type against the input type.
             Value::ByVal(primval) => Ok(primval),
+            Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
         }
     }
 
@@ -979,10 +994,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match value {
             Value::ByRef(ptr) => self.move_(ptr, dest, dest_ty),
             Value::ByVal(primval) => self.memory.write_primval(dest, primval),
+            Value::ByValPair(a, b) => {
+                self.memory.write_primval(dest, a)?;
+                let extra_dest = dest.offset(self.memory.pointer_size() as isize);
+                self.memory.write_primval(extra_dest, b)
+            }
         }
     }
 
-    pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    // ensures that this value isn't a `ByRef` anymore
+    fn follow_ref(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+        match value {
+            Value::ByRef(ptr) => self.read_value(ptr, ty),
+            other => Ok(other),
+        }
+    }
+
+    fn read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         use syntax::ast::{IntTy, UintTy, FloatTy};
         let val = match &ty.sty {
             &ty::TyBool => PrimVal::Bool(self.memory.read_bool(ptr)?),
@@ -1022,12 +1050,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 } else {
                     // FIXME: extract the offset to the tail field for `Box<(i64, i32, [u8])>`
                     let extra = ptr.offset(self.memory.pointer_size() as isize);
-                    match self.tcx.struct_tail(ty).sty {
-                        ty::TyTrait(..) => PrimVal::VtablePtr(p, self.memory.read_ptr(extra)?),
+                    let extra = match self.tcx.struct_tail(ty).sty {
+                        ty::TyTrait(..) => PrimVal::Ptr(self.memory.read_ptr(extra)?),
                         ty::TySlice(..) |
-                        ty::TyStr => PrimVal::SlicePtr(p, self.memory.read_usize(extra)?),
+                        ty::TyStr => self.target_usize_primval(self.memory.read_usize(extra)?),
                         _ => bug!("unsized primval ptr read from {:?}", ty),
-                    }
+                    };
+                    return Ok(Value::ByValPair(PrimVal::Ptr(p), extra));
                 }
             }
 
@@ -1052,7 +1081,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             _ => bug!("primitive read of non-primitive type: {:?}", ty),
         };
-        Ok(val)
+        Ok(Value::ByVal(val))
     }
 
     fn frame(&self) -> &Frame<'a, 'tcx> {
@@ -1080,13 +1109,6 @@ fn pointee_type(ptr_ty: ty::Ty) -> Option<ty::Ty> {
             Some(ty)
         }
         _ => None,
-    }
-}
-
-impl Lvalue {
-    fn to_ptr(self) -> Pointer {
-        assert_eq!(self.extra, LvalueExtra::None);
-        self.ptr
     }
 }
 

@@ -2,7 +2,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::repr as mir;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 
 use error::{EvalError, EvalResult};
 use memory::Pointer;
@@ -17,6 +17,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         substs: &'tcx Substs<'tcx>,
         args: &[mir::Operand<'tcx>],
         dest: Pointer,
+        dest_ty: Ty<'tcx>,
         dest_layout: &'tcx Layout,
     ) -> EvalResult<'tcx, ()> {
         let args_ptrs: EvalResult<Vec<Value>> = args.iter()
@@ -202,8 +203,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "type_name" => {
                 let ty = substs.type_at(0);
                 let ty_name = ty.to_string();
-                let s = self.str_to_primval(&ty_name)?;
-                self.memory.write_primval(dest, s)?;
+                let s = self.str_to_value(&ty_name)?;
+                self.write_value(s, dest, dest_ty)?;
             }
             "type_id" => {
                 let ty = substs.type_at(0);
