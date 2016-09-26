@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ascii::AsciiExt;
 use std::borrow::Cow;
 use std::iter::{FromIterator, repeat};
 use std::mem::size_of;
@@ -228,6 +229,31 @@ fn test_dedup() {
     case(vec![1, 2, 2, 3], vec![1, 2, 3]);
     case(vec![1, 2, 3, 3], vec![1, 2, 3]);
     case(vec![1, 1, 2, 2, 2, 3, 3], vec![1, 2, 3]);
+}
+
+#[test]
+fn test_dedup_by_key() {
+    fn case(a: Vec<i32>, b: Vec<i32>) {
+        let mut v = a;
+        v.dedup_by_key(|i| *i / 10);
+        assert_eq!(v, b);
+    }
+    case(vec![], vec![]);
+    case(vec![10], vec![10]);
+    case(vec![10, 11], vec![10]);
+    case(vec![10, 20, 30], vec![10, 20, 30]);
+    case(vec![10, 11, 20, 30], vec![10, 20, 30]);
+    case(vec![10, 20, 21, 30], vec![10, 20, 30]);
+    case(vec![10, 20, 30, 31], vec![10, 20, 30]);
+    case(vec![10, 11, 20, 21, 22, 30, 31], vec![10, 20, 30]);
+}
+
+#[test]
+fn test_dedup_by() {
+    let mut vec = vec!["foo", "bar", "Bar", "baz", "bar"];
+    vec.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+
+    assert_eq!(vec, ["foo", "bar", "baz", "bar"]);
 }
 
 #[test]
