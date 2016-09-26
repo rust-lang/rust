@@ -122,6 +122,12 @@ LLVMRustAddPass(LLVMPassManagerRef PM, LLVMPassRef rust_pass) {
 #define SUBTARGET_AARCH64
 #endif
 
+#ifdef LLVM_COMPONENT_AVR
+#define SUBTARGET_AVR SUBTARGET(AVR)
+#else
+#define SUBTARGET_AVR
+#endif
+
 #ifdef LLVM_COMPONENT_MIPS
 #define SUBTARGET_MIPS SUBTARGET(Mips)
 #else
@@ -144,6 +150,7 @@ LLVMRustAddPass(LLVMPassManagerRef PM, LLVMPassRef rust_pass) {
         SUBTARGET_X86     \
         SUBTARGET_ARM     \
         SUBTARGET_AARCH64 \
+        SUBTARGET_AVR     \
         SUBTARGET_MIPS    \
         SUBTARGET_PPC     \
         SUBTARGET_SYSTEMZ
@@ -236,7 +243,7 @@ from_rust(LLVMRustCodeGenOptLevel level)
   }
 }
 
-#if LLVM_RUSTLLVM
+#if LLVM_RUSTLLVM && false
 /// getLongestEntryLength - Return the length of the longest entry in the table.
 ///
 static size_t getLongestEntryLength(ArrayRef<SubtargetFeatureKV> Table) {

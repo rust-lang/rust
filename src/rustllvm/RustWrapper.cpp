@@ -564,7 +564,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
         unwrapDI<DIType>(Ty),
         isLocalToUnit,
 #if LLVM_VERSION_GT_OR_EQ(4,0)
-        unwrapDI<DIExpression>(Val),
+        unwrapDI<DIExpression>((LLVMRustMetadataRef) Val),
 #else
         cast<Constant>(unwrap(Val)),
 #endif
