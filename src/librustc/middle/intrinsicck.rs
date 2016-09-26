@@ -103,11 +103,16 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
             }
         };
 
-        span_err!(self.infcx.tcx.sess, span, E0512,
+        struct_span_err!(self.infcx.tcx.sess, span, E0512,
                   "transmute called with differently sized types: \
                    {} ({}) to {} ({})",
                   from, skeleton_string(from, sk_from),
-                  to, skeleton_string(to, sk_to));
+                  to, skeleton_string(to, sk_to))
+            .span_label(span,
+                &format!("transmuting between {} and {}",
+                    skeleton_string(from, sk_from),
+                    skeleton_string(to, sk_to)))
+            .emit();
     }
 }
 
