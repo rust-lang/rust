@@ -335,6 +335,23 @@ fn test_resize_policy() {
 ///     println!("{:?} has {} hp", viking, health);
 /// }
 /// ```
+/// A HashMap with fixed list of elements can be initialized from vector:
+/// ```
+/// use std::collections::HashMap;
+///
+/// fn main() {
+///     let timber_resources: HashMap<&str, i32> =
+///     [ ("Norway", 100),
+///       ("Denmark", 50),
+///       ("Iceland", 10) ]
+///       .iter().map(|&x| x).collect();
+///     // use the values store in map
+/// }
+/// ```
+/// This works for Copy types, if you want to cover non-copy types then you need to replace 
+/// the map(|&x| x) with map(|x| x.clone())
+
+
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashMap<K, V, S = RandomState> {
