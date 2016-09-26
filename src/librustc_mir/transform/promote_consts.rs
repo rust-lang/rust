@@ -82,7 +82,10 @@ struct TempCollector<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
-    fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, context: LvalueContext<'tcx>, location: Location) {
+    fn visit_lvalue(&mut self,
+                    lvalue: &Lvalue<'tcx>,
+                    context: LvalueContext<'tcx>,
+                    location: Location) {
         self.super_lvalue(lvalue, context, location);
         if let Lvalue::Local(index) = *lvalue {
             // We're only interested in temporaries
