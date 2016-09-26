@@ -106,12 +106,10 @@ const INITIAL_CAPACITY: usize = 32;
 ///
 /// fn main() {
 ///     let viking_names: HashSet<&str> =
-///         [ "Einar", "Olaf", "Harald" ].iter().map(|&x| x).collect();
-///     // use the values store in the set
+///         [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
+///     // use the values stored in the set
 /// }
 /// ```
-/// This works for Copy types, if you want to cover non-copy types then you need to replace 
-/// the map(|&x| x) with map(|x| x.clone())
 
 
 #[derive(Clone)]
