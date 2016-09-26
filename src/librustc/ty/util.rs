@@ -608,10 +608,19 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             }
         }
 
+        let rec_limit = tcx.sess.recursion_limit.get();
+        let depth = tcx.layout_depth.get();
+        if depth > rec_limit {
+            tcx.sess.fatal(
+                &format!("overflow representing the type `{}`", self));
+        }
+
+        tcx.layout_depth.set(depth+1);
         let layout = Layout::compute_uncached(self, infcx)?;
         if can_cache {
             tcx.layout_cache.borrow_mut().insert(self, layout);
         }
+        tcx.layout_depth.set(depth);
         Ok(layout)
     }
 

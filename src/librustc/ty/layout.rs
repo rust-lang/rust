@@ -328,6 +328,42 @@ pub enum Integer {
 }
 
 impl Integer {
+    pub fn size(&self) -> Size {
+        match *self {
+            I1 => Size::from_bits(1),
+            I8 => Size::from_bytes(1),
+            I16 => Size::from_bytes(2),
+            I32 => Size::from_bytes(4),
+            I64  => Size::from_bytes(8),
+        }
+    }
+
+    pub fn align(&self, dl: &TargetDataLayout)-> Align {
+        match *self {
+            I1 => dl.i1_align,
+            I8 => dl.i8_align,
+            I16 => dl.i16_align,
+            I32 => dl.i32_align,
+            I64 => dl.i64_align,
+        }
+    }
+
+    pub fn to_ty<'a, 'tcx>(&self, tcx: &ty::TyCtxt<'a, 'tcx, 'tcx>,
+                           signed: bool) -> Ty<'tcx> {
+        match (*self, signed) {
+            (I1, false) => tcx.types.u8,
+            (I8, false) => tcx.types.u8,
+            (I16, false) => tcx.types.u16,
+            (I32, false) => tcx.types.u32,
+            (I64, false) => tcx.types.u64,
+            (I1, true) => tcx.types.i8,
+            (I8, true) => tcx.types.i8,
+            (I16, true) => tcx.types.i16,
+            (I32, true) => tcx.types.i32,
+            (I64, true) => tcx.types.i64,
+        }
+    }
+
     /// Find the smallest Integer type which can represent the signed value.
     pub fn fit_signed(x: i64) -> Integer {
         match x {
@@ -348,6 +384,18 @@ impl Integer {
             0...0xffff_ffff => I32,
             _ => I64
         }
+    }
+
+    /// Find the smallest integer with the given alignment.
+    pub fn for_abi_align(dl: &TargetDataLayout, align: Align) -> Option<Integer> {
+        let wanted = align.abi();
+        for &candidate in &[I8, I16, I32, I64] {
+            let ty = Int(candidate);
+            if wanted == ty.align(dl).abi() && wanted == ty.size(dl).bytes() {
+                return Some(candidate);
+            }
+        }
+        None
     }
 
     /// Get the Integer type from an attr::IntType.
@@ -622,6 +670,15 @@ impl<'a, 'gcx, 'tcx> Struct {
             }
         }
         Ok(None)
+    }
+
+    pub fn offset_of_field(&self, index: usize) -> Size {
+        assert!(index < self.offset_after_field.len());
+        if index == 0 {
+            Size::from_bytes(0)
+        } else {
+            self.offset_after_field[index-1]
+        }
     }
 }
 
@@ -912,7 +969,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 Univariant { variant: unit, non_zero: false }
             }
 
-            // Tuples.
+            // Tuples and closures.
             ty::TyClosure(_, ty::ClosureSubsts { upvar_tys: tys, .. }) |
             ty::TyTuple(tys) => {
                 let mut st = Struct::new(dl, false);
@@ -972,10 +1029,10 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                 }
 
-                if def.variants.len() == 1 {
+                if !def.is_enum() || def.variants.len() == 1 && hint == attr::ReprAny {
                     // Struct, or union, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
-                    assert!(!def.is_enum() || hint == attr::ReprAny);
+
                     let fields = def.variants[0].fields.iter().map(|field| {
                         field.ty(tcx, substs).layout(infcx)
                     });
@@ -1103,20 +1160,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // won't be so conservative.
 
                 // Use the initial field alignment
-                let wanted = start_align.abi();
-                let mut ity = min_ity;
-                for &candidate in &[I16, I32, I64] {
-                    let ty = Int(candidate);
-                    if wanted == ty.align(dl).abi() && wanted == ty.size(dl).bytes() {
-                        ity = candidate;
-                        break;
-                    }
-                }
-
-                // FIXME(eddyb) conservative only to avoid diverging from trans::adt.
-                if align.abi() != start_align.abi() {
-                    ity = min_ity;
-                }
+                let mut ity = Integer::for_abi_align(dl, start_align).unwrap_or(min_ity);
 
                 // If the alignment is not larger than the chosen discriminant size,
                 // don't use the alignment as the final size.

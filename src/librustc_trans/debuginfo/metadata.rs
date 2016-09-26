@@ -27,10 +27,10 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType, DI
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::hir;
-use {type_of, adt, machine, monomorphize};
+use {type_of, machine, monomorphize};
 use common::CrateContext;
 use type_::Type;
-use rustc::ty::{self, AdtKind, Ty};
+use rustc::ty::{self, AdtKind, Ty, layout};
 use session::config;
 use util::nodemap::FnvHashMap;
 use util::common::path2cstr;
@@ -40,7 +40,6 @@ use std::ffi::CString;
 use std::path::Path;
 use std::ptr;
 use std::rc::Rc;
-use syntax;
 use syntax::util::interner::Interner;
 use syntax::ast;
 use syntax::parse::token;
@@ -1281,7 +1280,7 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 // offset of zero bytes).
 struct EnumMemberDescriptionFactory<'tcx> {
     enum_type: Ty<'tcx>,
-    type_rep: Rc<adt::Repr<'tcx>>,
+    type_rep: &'tcx layout::Layout,
     discriminant_type_metadata: Option<DIType>,
     containing_scope: DIScope,
     file_metadata: DIFile,
@@ -1292,11 +1291,15 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         let adt = &self.enum_type.ty_adt_def().unwrap();
+        let substs = match self.enum_type.sty {
+            ty::TyAdt(def, ref s) if def.adt_kind() == AdtKind::Enum => s,
+            _ => bug!("{} is not an enum", self.enum_type)
+        };
         match *self.type_rep {
-            adt::General(_, ref struct_defs) => {
+            layout::General { ref variants, .. } => {
                 let discriminant_info = RegularDiscriminant(self.discriminant_type_metadata
                     .expect(""));
-                struct_defs
+                variants
                     .iter()
                     .enumerate()
                     .map(|(i, struct_def)| {
@@ -1327,7 +1330,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         }
                     }).collect()
             },
-            adt::Univariant(ref struct_def) => {
+            layout::Univariant{ ref variant, .. } => {
                 assert!(adt.variants.len() <= 1);
 
                 if adt.variants.is_empty() {
@@ -1338,7 +1341,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                          member_description_factory) =
                         describe_enum_variant(cx,
                                               self.enum_type,
-                                              struct_def,
+                                              variant,
                                               &adt.variants[0],
                                               NoDiscriminant,
                                               self.containing_scope,
@@ -1362,16 +1365,17 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     ]
                 }
             }
-            adt::RawNullablePointer { nndiscr: non_null_variant_index, nnty, .. } => {
+            layout::RawNullablePointer { nndiscr: non_null_variant_index, .. } => {
                 // As far as debuginfo is concerned, the pointer this enum
                 // represents is still wrapped in a struct. This is to make the
                 // DWARF representation of enums uniform.
 
                 // First create a description of the artificial wrapper struct:
-                let non_null_variant = &adt.variants[non_null_variant_index.0 as usize];
+                let non_null_variant = &adt.variants[non_null_variant_index as usize];
                 let non_null_variant_name = non_null_variant.name.as_str();
 
                 // The llvm type and metadata of the pointer
+                let nnty = monomorphize::field_ty(cx.tcx(), &substs, &non_null_variant.fields[0] );
                 let non_null_llvm_type = type_of::type_of(cx, nnty);
                 let non_null_type_metadata = type_metadata(cx, nnty, self.span);
 
@@ -1416,7 +1420,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
 
                 // Encode the information about the null variant in the union
                 // member's name.
-                let null_variant_index = (1 - non_null_variant_index.0) as usize;
+                let null_variant_index = (1 - non_null_variant_index) as usize;
                 let null_variant_name = adt.variants[null_variant_index].name;
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 0,
@@ -1434,7 +1438,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 ]
             },
-            adt::StructWrappedNullablePointer { nonnull: ref struct_def,
+            layout::StructWrappedNullablePointer { nonnull: ref struct_def,
                                                 nndiscr,
                                                 ref discrfield, ..} => {
                 // Create a description of the non-null variant
@@ -1442,7 +1446,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     describe_enum_variant(cx,
                                           self.enum_type,
                                           struct_def,
-                                          &adt.variants[nndiscr.0 as usize],
+                                          &adt.variants[nndiscr as usize],
                                           OptimizedDiscriminant,
                                           self.containing_scope,
                                           self.span);
@@ -1457,7 +1461,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
 
                 // Encode the information about the null variant in the union
                 // member's name.
-                let null_variant_index = (1 - nndiscr.0) as usize;
+                let null_variant_index = (1 - nndiscr) as usize;
                 let null_variant_name = adt.variants[null_variant_index].name;
                 let discrfield = discrfield.iter()
                                            .skip(1)
@@ -1478,9 +1482,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 ]
             },
-            adt::CEnum(..) | adt::UntaggedUnion(..) => {
-                span_bug!(self.span, "This should be unreachable.")
-            }
+            layout::CEnum { .. } => span_bug!(self.span, "This should be unreachable."),
+            ref l @ _ => bug!("Not an enum layout: {:#?}", l)
         }
     }
 }
@@ -1523,16 +1526,39 @@ enum EnumDiscriminantInfo {
 // full RecursiveTypeDescription.
 fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    enum_type: Ty<'tcx>,
-                                   struct_def: &adt::Struct<'tcx>,
+                                   struct_def: &layout::Struct,
                                    variant: ty::VariantDef<'tcx>,
                                    discriminant_info: EnumDiscriminantInfo,
                                    containing_scope: DIScope,
                                    span: Span)
                                    -> (DICompositeType, Type, MemberDescriptionFactory<'tcx>) {
+    let substs = match enum_type.sty {
+        ty::TyAdt(def, s) if def.adt_kind() == AdtKind::Enum => s,
+        ref t @ _ => bug!("{:#?} is not an enum", t)
+    };
+
+    let maybe_discr_and_signed: Option<(layout::Integer, bool)> = match *cx.layout_of(enum_type) {
+        layout::CEnum {discr, ..} => Some((discr, true)),
+        layout::General{discr, ..} => Some((discr, false)),
+        layout::Univariant { .. }
+        | layout::RawNullablePointer { .. }
+        | layout::StructWrappedNullablePointer { .. } => None,
+        ref l @ _ => bug!("This should be unreachable. Type is {:#?} layout is {:#?}", enum_type, l)
+    };
+
+    let mut field_tys = variant.fields.iter().map(|f: ty::FieldDef<'tcx>| {
+        monomorphize::field_ty(cx.tcx(), &substs, f)
+    }).collect::<Vec<_>>();
+
+    if let Some((discr, signed)) = maybe_discr_and_signed {
+        field_tys.insert(0, discr.to_ty(&cx.tcx(), signed));
+    }
+
+
     let variant_llvm_type =
-        Type::struct_(cx, &struct_def.fields
+        Type::struct_(cx, &field_tys
                                     .iter()
-                                    .map(|&t| type_of::type_of(cx, t))
+                                    .map(|t| type_of::type_of(cx, t))
                                     .collect::<Vec<_>>()
                                     ,
                       struct_def.packed);
@@ -1578,7 +1604,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
     let args: Vec<(String, Ty)> = arg_names.iter()
-        .zip(&struct_def.fields)
+        .zip(field_tys.iter())
         .map(|(s, &t)| (s.to_string(), t))
         .collect();
 
@@ -1615,7 +1641,6 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let file_metadata = unknown_file_metadata(cx);
 
     let variants = &enum_type.ty_adt_def().unwrap().variants;
-
     let enumerators_metadata: Vec<DIDescriptor> = variants
         .iter()
         .map(|v| {
@@ -1630,7 +1655,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         })
         .collect();
 
-    let discriminant_type_metadata = |inttype: syntax::attr::IntType| {
+    let discriminant_type_metadata = |inttype: layout::Integer, signed: bool| {
         let disr_type_key = (enum_def_id, inttype);
         let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
                                                                  .borrow()
@@ -1638,12 +1663,12 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         match cached_discriminant_type_metadata {
             Some(discriminant_type_metadata) => discriminant_type_metadata,
             None => {
-                let discriminant_llvm_type = adt::ll_inttype(cx, inttype);
+                let discriminant_llvm_type = Type::from_integer(cx, inttype);
                 let (discriminant_size, discriminant_align) =
                     size_and_align_of(cx, discriminant_llvm_type);
                 let discriminant_base_type_metadata =
                     type_metadata(cx,
-                                  adt::ty_of_inttype(cx.tcx(), inttype),
+                                  inttype.to_ty(&cx.tcx(), signed),
                                   syntax_pos::DUMMY_SP);
                 let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
 
@@ -1670,16 +1695,17 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
     };
 
-    let type_rep = adt::represent_type(cx, enum_type);
+    let type_rep = cx.layout_of(enum_type);
 
     let discriminant_type_metadata = match *type_rep {
-        adt::CEnum(inttype, ..) => {
-            return FinalMetadata(discriminant_type_metadata(inttype))
+        layout::CEnum { discr, signed, .. } => {
+            return FinalMetadata(discriminant_type_metadata(discr, signed))
         },
-        adt::RawNullablePointer { .. }           |
-        adt::StructWrappedNullablePointer { .. } |
-        adt::Univariant(..) | adt::UntaggedUnion(..) => None,
-        adt::General(inttype, _) => Some(discriminant_type_metadata(inttype)),
+        layout::RawNullablePointer { .. }           |
+        layout::StructWrappedNullablePointer { .. } |
+        layout::Univariant { .. }                      => None,
+        layout::General { discr, .. } => Some(discriminant_type_metadata(discr, false)),
+        ref l @ _ => bug!("Not an enum layout: {:#?}", l)
     };
 
     let enum_llvm_type = type_of::type_of(cx, enum_type);
@@ -1715,7 +1741,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         enum_llvm_type,
         EnumMDF(EnumMemberDescriptionFactory {
             enum_type: enum_type,
-            type_rep: type_rep.clone(),
+            type_rep: type_rep,
             discriminant_type_metadata: discriminant_type_metadata,
             containing_scope: containing_scope,
             file_metadata: file_metadata,

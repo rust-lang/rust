@@ -513,7 +513,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("drop_structural_ty");
 
     fn iter_variant<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
-                                repr: &adt::Repr<'tcx>,
+                                t: Ty<'tcx>,
                                 av: adt::MaybeSizedValue,
                                 variant: ty::VariantDef<'tcx>,
                                 substs: &Substs<'tcx>)
@@ -525,7 +525,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
             cx = drop_ty(cx,
-                         adt::trans_field_ptr(cx, repr, av, Disr::from(variant.disr_val), i),
+                         adt::trans_field_ptr(cx, t, av, Disr::from(variant.disr_val), i),
                          arg, DebugLoc::None);
         }
         return cx;
@@ -543,9 +543,8 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     let mut cx = cx;
     match t.sty {
         ty::TyClosure(_, ref substs) => {
-            let repr = adt::represent_type(cx.ccx(), t);
             for (i, upvar_ty) in substs.upvar_tys.iter().enumerate() {
-                let llupvar = adt::trans_field_ptr(cx, &repr, value, Disr(0), i);
+                let llupvar = adt::trans_field_ptr(cx, t, value, Disr(0), i);
                 cx = drop_ty(cx, llupvar, upvar_ty, DebugLoc::None);
             }
         }
@@ -562,18 +561,16 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                 |bb, vv| drop_ty(bb, vv, unit_ty, DebugLoc::None));
         }
         ty::TyTuple(ref args) => {
-            let repr = adt::represent_type(cx.ccx(), t);
             for (i, arg) in args.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(cx, &repr, value, Disr(0), i);
+                let llfld_a = adt::trans_field_ptr(cx, t, value, Disr(0), i);
                 cx = drop_ty(cx, llfld_a, *arg, DebugLoc::None);
             }
         }
         ty::TyAdt(adt, substs) => match adt.adt_kind() {
             AdtKind::Struct => {
-                let repr = adt::represent_type(cx.ccx(), t);
                 let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
                 for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
-                    let llfld_a = adt::trans_field_ptr(cx, &repr, value, Disr::from(discr), i);
+                    let llfld_a = adt::trans_field_ptr(cx, t, value, Disr::from(discr), i);
 
                     let val = if type_is_sized(cx.tcx(), field_ty) {
                         llfld_a
@@ -593,18 +590,16 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             AdtKind::Enum => {
                 let fcx = cx.fcx;
                 let ccx = fcx.ccx;
-
-                let repr = adt::represent_type(ccx, t);
                 let n_variants = adt.variants.len();
 
                 // NB: we must hit the discriminant first so that structural
                 // comparison know not to proceed when the discriminants differ.
 
-                match adt::trans_switch(cx, &repr, av, false) {
+                match adt::trans_switch(cx, t, av, false) {
                     (adt::BranchKind::Single, None) => {
                         if n_variants != 0 {
                             assert!(n_variants == 1);
-                            cx = iter_variant(cx, &repr, adt::MaybeSizedValue::sized(av),
+                            cx = iter_variant(cx, t, adt::MaybeSizedValue::sized(av),
                                             &adt.variants[0], substs);
                         }
                     }
@@ -633,10 +628,10 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                             let variant_cx = fcx.new_block(&format!("enum-iter-variant-{}",
                                                                         &variant.disr_val
                                                                                 .to_string()));
-                            let case_val = adt::trans_case(cx, &repr, Disr::from(variant.disr_val));
+                            let case_val = adt::trans_case(cx, t, Disr::from(variant.disr_val));
                             AddCase(llswitch, case_val, variant_cx.llbb);
                             let variant_cx = iter_variant(variant_cx,
-                                                        &repr,
+                                                        t,
                                                         value,
                                                         variant,
                                                         substs);

@@ -489,6 +489,9 @@ pub struct GlobalCtxt<'tcx> {
     /// Cache for layouts computed from types.
     pub layout_cache: RefCell<FnvHashMap<Ty<'tcx>, &'tcx Layout>>,
 
+    /// Used to prevent layout from recursing too deeply.
+    pub layout_depth: Cell<usize>,
+
     /// Map from function to the `#[derive]` mode that it's defining. Only used
     /// by `rustc-macro` crates.
     pub derive_macros: RefCell<NodeMap<token::InternedString>>,
@@ -760,6 +763,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             crate_name: token::intern_and_get_ident(crate_name),
             data_layout: data_layout,
             layout_cache: RefCell::new(FnvHashMap()),
+            layout_depth: Cell::new(0),
             derive_macros: RefCell::new(NodeMap()),
        }, f)
     }

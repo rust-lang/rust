@@ -23,9 +23,9 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::Substs;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use {abi, adt, base, Disr};
+use {abi, adt, base, Disr, machine};
 use callee::Callee;
-use common::{self, BlockAndBuilder, CrateContext, const_get_elt, val_ty};
+use common::{self, BlockAndBuilder, CrateContext, const_get_elt, val_ty, type_is_sized};
 use common::{C_array, C_bool, C_bytes, C_floating_f64, C_integral};
 use common::{C_null, C_struct, C_str_slice, C_undef, C_uint};
 use common::{const_to_opt_int, const_to_opt_uint};
@@ -441,8 +441,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         }
                     }
                     mir::ProjectionElem::Field(ref field, _) => {
-                        let base_repr = adt::represent_type(self.ccx, tr_base.ty);
-                        let llprojected = adt::const_get_field(&base_repr, base.llval,
+                        let llprojected = adt::const_get_field(self.ccx, tr_base.ty, base.llval,
                                                                Disr(0), field.index());
                         let llextra = if is_sized {
                             ptr::null_mut()
@@ -585,9 +584,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             }
                             _ => Disr(0)
                         };
-                        let repr = adt::represent_type(self.ccx, dest_ty);
                         Const::new(
-                            adt::trans_const(self.ccx, &repr, disr, &fields),
+                            adt::trans_const(self.ccx, dest_ty, disr, &fields),
                             dest_ty
                         )
                     }
@@ -658,8 +656,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         let ll_t_out = type_of::immediate_type_of(self.ccx, cast_ty);
                         let llval = operand.llval;
                         let signed = if let CastTy::Int(IntTy::CEnum) = r_t_in {
-                            let repr = adt::represent_type(self.ccx, operand.ty);
-                            adt::is_discr_signed(&repr)
+                            let l = self.ccx.layout_of(operand.ty);
+                            adt::is_discr_signed(&l)
                         } else {
                             operand.ty.is_signed()
                         };
@@ -735,7 +733,12 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
                 let base = match tr_lvalue.base {
                     Base::Value(llval) => {
-                        let align = type_of::align_of(self.ccx, ty);
+                        // FIXME: may be wrong for &*(&simd_vec as &fmt::Debug)
+                        let align = if type_is_sized(self.ccx.tcx(), ty) {
+                            type_of::align_of(self.ccx, ty)
+                        } else {
+                            self.ccx.tcx().data_layout.pointer_align.abi() as machine::llalign
+                        };
                         if bk == mir::BorrowKind::Mut {
                             consts::addr_of_mut(self.ccx, llval, align, "ref_mut")
                         } else {
