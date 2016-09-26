@@ -18,8 +18,6 @@ fn main() {
     let c = 1;
 }
 
-// TODO The StorageDead for local1 (a) after local6's (c) is missing!
-
 // END RUST SOURCE
 // START rustc.node4.TypeckMir.before.mir
 //     bb0: {
@@ -39,6 +37,7 @@ fn main() {
 //         local6 = const 1i32;             // scope 1 at storage_ranges.rs:16:13: 16:14
 //         local0 = ();                     // scope 3 at storage_ranges.rs:11:11: 17:2
 //         StorageDead(local6);             // scope 1 at storage_ranges.rs:16:9: 16:10
+//         StorageDead(local1);             // scope 0 at storage_ranges.rs:14:9: 14:10
 //         goto -> bb1;                     // scope 0 at storage_ranges.rs:11:1: 17:2
 //     }
 //

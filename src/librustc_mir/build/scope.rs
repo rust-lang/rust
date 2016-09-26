@@ -462,7 +462,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         } else {
             // Only temps and vars need their storage dead.
             match *lvalue {
-                Lvalue::Local(index) if index.index() > self.arg_count + 1 => DropKind::Storage,
+                Lvalue::Local(index) if index.index() > self.arg_count => DropKind::Storage,
                 _ => return
             }
         };
