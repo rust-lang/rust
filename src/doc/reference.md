@@ -3506,6 +3506,19 @@ As you can see, the `vec!` macro allows you to create a `Vec<T>` easily. The
 All in-bounds elements of arrays and slices are always initialized, and access
 to an array or slice is always bounds-checked.
 
+Arrays can be used to initialize constant collections of type HashSet and HashMap.
+```{rust}
+// A HashSet initialized from vector.
+let set: HashSet<i32> = [1, 2, 3].iter().map(|&x| x).collect();
+
+// A HashMap over fixed lists of static strings
+let map3: HashMap<&'static str, i32> =
+    [ ("A", 1),
+      ("B", 2),
+      ("C", 3) ]
+      .iter().map(|&x| x).collect();
+```
+
 ### Struct types
 
 A `struct` *type* is a heterogeneous product of other types, called the
