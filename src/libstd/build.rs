@@ -23,8 +23,8 @@ fn main() {
     println!("cargo:rustc-cfg=cargobuild");
     println!("cargo:rerun-if-changed=build.rs");
 
-    let target = env::var("TARGET").unwrap();
-    let host = env::var("HOST").unwrap();
+    let target = env::var("TARGET").expect("TARGET was not set");
+    let host = env::var("HOST").expect("HOST was not set");
     if cfg!(feature = "backtrace") && !target.contains("apple") && !target.contains("msvc") &&
         !target.contains("emscripten") {
         build_libbacktrace(&host, &target);
@@ -103,5 +103,5 @@ fn build_libbacktrace(host: &str, target: &str) {
     run(Command::new("make")
                 .current_dir(&build_dir)
                 .arg(format!("INCDIR={}", src_dir.display()))
-                .arg("-j").arg(env::var("NUM_JOBS").unwrap()));
+                .arg("-j").arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
 }
