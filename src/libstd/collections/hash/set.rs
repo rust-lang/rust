@@ -17,8 +17,6 @@ use ops::{BitOr, BitAnd, BitXor, Sub};
 use super::Recover;
 use super::map::{self, HashMap, Keys, RandomState};
 
-const INITIAL_CAPACITY: usize = 32;
-
 // Future Optimization (FIXME!)
 // =============================
 //
@@ -118,7 +116,7 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> HashSet<T, RandomState> {
-        HashSet::with_capacity(INITIAL_CAPACITY)
+        HashSet { map: HashMap::new() }
     }
 
     /// Creates an empty HashSet with space for at least `n` elements in
@@ -163,7 +161,7 @@ impl<T, S> HashSet<T, S>
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_hasher(hasher: S) -> HashSet<T, S> {
-        HashSet::with_capacity_and_hasher(INITIAL_CAPACITY, hasher)
+        HashSet { map: HashMap::with_hasher(hasher) }
     }
 
     /// Creates an empty HashSet with space for at least `capacity`
@@ -188,9 +186,7 @@ impl<T, S> HashSet<T, S>
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S)
                                     -> HashSet<T, S> {
-        HashSet {
-            map: HashMap::with_capacity_and_hasher(capacity, hasher),
-        }
+        HashSet { map: HashMap::with_capacity_and_hasher(capacity, hasher) }
     }
 
     /// Returns a reference to the set's hasher.
@@ -667,7 +663,7 @@ impl<T, S> Default for HashSet<T, S>
 {
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
     fn default() -> HashSet<T, S> {
-        HashSet::with_hasher(Default::default())
+        HashSet { map: HashMap::default() }
     }
 }
 
@@ -1069,6 +1065,21 @@ fn assert_covariance() {
 #[cfg(test)]
 mod test_set {
     use super::HashSet;
+    use super::super::map::RandomState;
+
+    #[test]
+    fn test_create_capacities() {
+        type HS = HashSet<i32>;
+
+        let s = HS::new();
+        assert_eq!(s.capacity(), 0);
+
+        let s = HS::default();
+        assert_eq!(s.capacity(), 0);
+
+        let s = HS::with_hasher(RandomState::new());
+        assert_eq!(s.capacity(), 0);
+    }
 
     #[test]
     fn test_disjoint() {
