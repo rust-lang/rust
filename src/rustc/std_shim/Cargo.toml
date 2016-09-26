@@ -40,11 +40,23 @@ debug = false
 debug-assertions = false
 
 [dependencies]
-std = { path = "../../libstd" }
-core = { path = "../../libcore" }
+# full
+std = { path = "../../libstd", optional = true }
+
+# thumb
+compiler_builtins = { path = "../../libcompiler_builtins", optional = true }
+core = { path = "../../libcore", optional = true }
+rustc_unicode = { path = "../../librustc_unicode", optional = true }
+
+# thumb-no-atomics
+collections = { path = "../../libcollections", optional = true }
+rand = { path = "../../librand", optional = true }
 
 # Reexport features from std
 [features]
-jemalloc = ["std/jemalloc"]
-debug-jemalloc = ["std/debug-jemalloc"]
 backtrace = ["std/backtrace"]
+debug-jemalloc = ["std/debug-jemalloc"]
+jemalloc = ["std/jemalloc"]
+full = ["core", "std"]
+thumb_no_atomics  = ["compiler_builtins", "core", "rustc_unicode"]
+thumb = ["core", "compiler_builtins", "collections", "rand"]

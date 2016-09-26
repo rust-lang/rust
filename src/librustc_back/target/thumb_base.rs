@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// See comments in Cargo.toml for why this exists
+use target::TargetOptions;
+use std::default::Default;
 
-// There's a bug right now where if we pass --extern std=... and we're cross
-// compiling then this doesn't work with `#[macro_use] extern crate std;`. Work
-// around this by not having `#[macro_use] extern crate std;`
-#![no_std]
+pub fn opts() -> TargetOptions {
+    TargetOptions {
+        executables: true,
+        linker: "arm-none-eabi-gcc".to_string(),
+        max_atomic_width: 32,
+        .. Default::default()
+    }
+}

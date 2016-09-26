@@ -63,11 +63,12 @@ mod netbsd_base;
 mod solaris_base;
 mod windows_base;
 mod windows_msvc_base;
+mod thumb_base;
 
 pub type TargetResult = Result<Target, String>;
 
 macro_rules! supported_targets {
-    ( $(($triple:expr, $module:ident)),+ ) => (
+    ( $(($triple:expr, $module:ident)),+, ) => (
         $(mod $module;)*
 
         /// List of supported targets
@@ -184,7 +185,12 @@ supported_targets! {
     ("i586-pc-windows-msvc", i586_pc_windows_msvc),
 
     ("le32-unknown-nacl", le32_unknown_nacl),
-    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten)
+    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
+
+    ("thumbv6m-none-eabi", thumbv6m_none_eabi),
+    ("thumbv7m-none-eabi", thumbv7m_none_eabi),
+    ("thumbv7em-none-eabi", thumbv7em_none_eabi),
+    ("thumbv7em-none-eabihf", thumbv7em_none_eabihf),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
@@ -391,7 +397,13 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
-            max_atomic_width: 0,
+            // NOTE this is *not* the real default value. The default value of max_atomic_width is
+            // actually the pointer width of the target. This default is injected in the
+            // Target::from_json function. Still, we have to pick some value to put here. We'll pick
+            // an impossible value: u64::max_value() because using a valid value like 0 or 8 as the
+            // default would cause the max-atomic-width field to be "lost" (it would get replaced
+            // by target_pointer_width) during the Target <-> JSON round trip
+            max_atomic_width: u64::max_value(),
         }
     }
 }

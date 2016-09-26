@@ -34,10 +34,13 @@
 //! far far less than working with compiler-rt's build system over time.
 
 extern crate gcc;
+extern crate rustc_cfg;
 
 use std::collections::BTreeMap;
 use std::env;
 use std::path::Path;
+
+use rustc_cfg::Cfg;
 
 struct Sources {
     // SYMBOL -> PATH TO SOURCE
@@ -69,13 +72,33 @@ impl Sources {
             }
         }
     }
+
+    fn remove(&mut self, symbols: &[&str]) {
+        for symbol in symbols {
+            self.map.remove(*symbol).unwrap();
+        }
+    }
 }
 
 fn main() {
     let target = env::var("TARGET").unwrap();
+    let Cfg {
+        ref llvm_target,
+        ref target_arch,
+        ref target_os,
+        ref target_env,
+        ref target_vendor,
+        ..
+    } = Cfg::new(&target).unwrap();
+    // TODO(stage0) use `unwrap` instead of `unwrap_or`
+    // NOTE in the latest stable/beta release, `rustc --print cfg` doesn't include `llvm_target` in
+    // its output. In those cases simply fallback to the target triple, which is usually similar to
+    // llvm-target, as a workaround.
+    let llvm_target = llvm_target.as_ref().unwrap_or(&target).split('-').collect::<Vec<_>>();
+    let target_vendor = target_vendor.as_ref().unwrap();
     let cfg = &mut gcc::Config::new();
 
-    if target.contains("msvc") {
+    if target_env == "msvc" {
         // Don't pull in extra libraries on MSVC
         cfg.flag("/Zl");
 
@@ -88,6 +111,25 @@ fn main() {
         cfg.flag("-fvisibility=hidden");
         cfg.flag("-fomit-frame-pointer");
         cfg.flag("-ffreestanding");
+    }
+
+    // NOTE Most of the ARM intrinsics are written in assembly. Tell gcc which arch we are going to
+    // target to make sure that the assembly implementations really work for the target. If the
+    // implementation is not valid for the arch, then gcc will error when compiling it.
+    if llvm_target[0].starts_with("thumb") {
+        cfg.flag("-mthumb");
+    }
+
+    if llvm_target[0] == "thumbv6m" {
+        cfg.flag("-march=armv6-m");
+    }
+
+    if llvm_target[0] == "thumbv7m" {
+        cfg.flag("-march=armv7-m");
+    }
+
+    if llvm_target[0] == "thumbv7em" {
+        cfg.flag("-march=armv7e-m");
     }
 
     let mut sources = Sources::new();
@@ -183,7 +225,7 @@ fn main() {
                      "umoddi3.c",
                      "umodsi3.c"]);
 
-    if !target.contains("ios") {
+    if target_os != "ios" {
         sources.extend(&["absvti2.c",
                          "addtf3.c",
                          "addvti3.c",
@@ -226,7 +268,7 @@ fn main() {
                          "umodti3.c"]);
     }
 
-    if target.contains("apple") {
+    if target_vendor == "apple" {
         sources.extend(&["atomic_flag_clear.c",
                          "atomic_flag_clear_explicit.c",
                          "atomic_flag_test_and_set.c",
@@ -235,20 +277,20 @@ fn main() {
                          "atomic_thread_fence.c"]);
     }
 
-    if !target.contains("windows") {
+    if target_os != "windows" && target_os != "none" {
         sources.extend(&["emutls.c"]);
     }
 
-    if target.contains("msvc") {
-        if target.contains("x86_64") {
+    if target_env == "msvc" {
+        if llvm_target[0] == "x86_64" {
             sources.extend(&["x86_64/floatdidf.c", "x86_64/floatdisf.c", "x86_64/floatdixf.c"]);
         }
     } else {
-        if !target.contains("freebsd") {
+        if target_os != "freebsd" {
             sources.extend(&["gcc_personality_v0.c"]);
         }
 
-        if target.contains("x86_64") {
+        if target_arch == "x86_64" {
             sources.extend(&["x86_64/chkstk.S",
                              "x86_64/chkstk2.S",
                              "x86_64/floatdidf.c",
@@ -259,7 +301,7 @@ fn main() {
                              "x86_64/floatundixf.S"]);
         }
 
-        if target.contains("i386") || target.contains("i586") || target.contains("i686") {
+        if llvm_target[0] == "i386" || llvm_target[0] == "i586" || llvm_target[0] == "i686" {
             sources.extend(&["i386/ashldi3.S",
                              "i386/ashrdi3.S",
                              "i386/chkstk.S",
@@ -279,7 +321,7 @@ fn main() {
         }
     }
 
-    if target.contains("arm") && !target.contains("ios") {
+    if target_arch == "arm" && target_os != "ios" {
         sources.extend(&["arm/aeabi_cdcmp.S",
                          "arm/aeabi_cdcmpeq_check_nan.c",
                          "arm/aeabi_cfcmp.S",
@@ -315,7 +357,7 @@ fn main() {
                          "arm/umodsi3.S"]);
     }
 
-    if target.contains("armv7") {
+    if llvm_target[0] == "armv7" {
         sources.extend(&["arm/sync_fetch_and_add_4.S",
                          "arm/sync_fetch_and_add_8.S",
                          "arm/sync_fetch_and_and_4.S",
@@ -338,46 +380,47 @@ fn main() {
                          "arm/sync_fetch_and_xor_8.S"]);
     }
 
-    if target.contains("eabihf") {
-        sources.extend(&["arm/adddf3vfp.S",
-                         "arm/addsf3vfp.S",
-                         "arm/divdf3vfp.S",
-                         "arm/divsf3vfp.S",
-                         "arm/eqdf2vfp.S",
-                         "arm/eqsf2vfp.S",
-                         "arm/extendsfdf2vfp.S",
-                         "arm/fixdfsivfp.S",
-                         "arm/fixsfsivfp.S",
-                         "arm/fixunsdfsivfp.S",
-                         "arm/fixunssfsivfp.S",
-                         "arm/floatsidfvfp.S",
-                         "arm/floatsisfvfp.S",
-                         "arm/floatunssidfvfp.S",
-                         "arm/floatunssisfvfp.S",
-                         "arm/gedf2vfp.S",
-                         "arm/gesf2vfp.S",
-                         "arm/gtdf2vfp.S",
-                         "arm/gtsf2vfp.S",
-                         "arm/ledf2vfp.S",
-                         "arm/lesf2vfp.S",
-                         "arm/ltdf2vfp.S",
-                         "arm/ltsf2vfp.S",
-                         "arm/muldf3vfp.S",
-                         "arm/mulsf3vfp.S",
-                         "arm/negdf2vfp.S",
-                         "arm/negsf2vfp.S",
-                         "arm/nedf2vfp.S",
-                         "arm/nesf2vfp.S",
-                         "arm/restore_vfp_d8_d15_regs.S",
-                         "arm/save_vfp_d8_d15_regs.S",
-                         "arm/subdf3vfp.S",
-                         "arm/subsf3vfp.S",
-                         "arm/truncdfsf2vfp.S",
-                         "arm/unorddf2vfp.S",
-                         "arm/unordsf2vfp.S"]);
+    if llvm_target.last().unwrap().ends_with("eabihf") {
+        if !llvm_target[0].starts_with("thumbv7em") {
+            sources.extend(&["arm/adddf3vfp.S",
+                             "arm/addsf3vfp.S",
+                             "arm/divdf3vfp.S",
+                             "arm/divsf3vfp.S",
+                             "arm/eqdf2vfp.S",
+                             "arm/eqsf2vfp.S",
+                             "arm/extendsfdf2vfp.S",
+                             "arm/fixdfsivfp.S",
+                             "arm/fixsfsivfp.S",
+                             "arm/fixunsdfsivfp.S",
+                             "arm/fixunssfsivfp.S",
+                             "arm/floatsidfvfp.S",
+                             "arm/floatsisfvfp.S",
+                             "arm/floatunssidfvfp.S",
+                             "arm/floatunssisfvfp.S",
+                             "arm/gedf2vfp.S",
+                             "arm/gesf2vfp.S",
+                             "arm/gtdf2vfp.S",
+                             "arm/gtsf2vfp.S",
+                             "arm/ledf2vfp.S",
+                             "arm/lesf2vfp.S",
+                             "arm/ltdf2vfp.S",
+                             "arm/ltsf2vfp.S",
+                             "arm/muldf3vfp.S",
+                             "arm/mulsf3vfp.S",
+                             "arm/nedf2vfp.S",
+                             "arm/nesf2vfp.S",
+                             "arm/restore_vfp_d8_d15_regs.S",
+                             "arm/save_vfp_d8_d15_regs.S",
+                             "arm/subdf3vfp.S",
+                             "arm/subsf3vfp.S",
+            ]);
+        }
+
+        sources.extend(&["arm/negdf2vfp.S", "arm/negsf2vfp.S"]);
+
     }
 
-    if target.contains("aarch64") {
+    if target_arch == "aarch64" {
         sources.extend(&["comparetf2.c",
                          "extenddftf2.c",
                          "extendsftf2.c",
@@ -394,6 +437,18 @@ fn main() {
                          "multc3.c",
                          "trunctfdf2.c",
                          "trunctfsf2.c"]);
+    }
+
+    // Remove the assembly implementations that won't compile for the target
+    if llvm_target[0] == "thumbv6m" {
+        sources.remove(&["aeabi_cdcmp", "aeabi_cfcmp", "aeabi_dcmp", "aeabi_fcmp", "aeabi_ldivmod",
+                         "aeabi_memset", "aeabi_uldivmod", "clzdi2", "clzsi2", "comparesf2",
+                         "divmodsi4", "divsi3", "modsi3", "switch16", "switch32", "switch8",
+                         "switchu8", "udivmodsi4", "udivsi3", "umodsi3"]);
+    }
+
+    if llvm_target[0] == "thumbv7m" || llvm_target[0] == "thumbv7em" {
+        sources.remove(&["aeabi_cdcmp", "aeabi_cfcmp"]);
     }
 
     for src in sources.map.values() {

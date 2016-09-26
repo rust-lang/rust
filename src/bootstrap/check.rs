@@ -265,7 +265,7 @@ pub fn krate(build: &Build,
              target: &str,
              mode: Mode) {
     let (name, path, features) = match mode {
-        Mode::Libstd => ("libstd", "src/rustc/std_shim", build.std_features()),
+        Mode::Libstd => ("libstd", "src/rustc/std_shim", build.std_features(target)),
         Mode::Libtest => ("libtest", "src/rustc/test_shim", String::new()),
         Mode::Librustc => ("librustc", "src/rustc", build.rustc_features()),
         _ => panic!("can only test libraries"),

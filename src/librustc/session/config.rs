@@ -930,6 +930,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let os = &sess.target.target.target_os;
     let env = &sess.target.target.target_env;
     let vendor = &sess.target.target.target_vendor;
+    let llvm_target = &sess.target.target.llvm_target;
     let max_atomic_width = sess.target.target.options.max_atomic_width;
 
     let fam = if let Some(ref fam) = sess.target.target.options.target_family {
@@ -949,6 +950,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         mk(InternedString::new("target_pointer_width"), intern(wordsz)),
         mk(InternedString::new("target_env"), intern(env)),
         mk(InternedString::new("target_vendor"), intern(vendor)),
+        mk(InternedString::new("llvm_target"), intern(llvm_target)),
     ];
     match &fam[..] {
         "windows" | "unix" => ret.push(attr::mk_word_item(fam)),
