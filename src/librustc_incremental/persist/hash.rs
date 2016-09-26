@@ -16,12 +16,11 @@ use rustc_data_structures::fnv::FnvHashMap;
 use rustc_data_structures::flock;
 use rustc_serialize::Decodable;
 use rustc_serialize::opaque::Decoder;
-use std::io::{ErrorKind, Read};
-use std::fs::File;
 
 use IncrementalHashesMap;
 use super::data::*;
 use super::fs::*;
+use super::file_format;
 
 pub struct HashContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -153,12 +152,9 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
             let hashes_file_path = metadata_hash_import_path(&session_dir);
 
-            let mut data = vec![];
-            match
-                File::open(&hashes_file_path)
-                     .and_then(|mut file| file.read_to_end(&mut data))
+            match file_format::read_file(&hashes_file_path)
             {
-                Ok(_) => {
+                Ok(Some(data)) => {
                     match self.load_from_data(cnum, &data, svh) {
                         Ok(()) => { }
                         Err(err) => {
@@ -167,18 +163,13 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
                         }
                     }
                 }
+                Ok(None) => {
+                    // If the file is not found, that's ok.
+                }
                 Err(err) => {
-                    match err.kind() {
-                        ErrorKind::NotFound => {
-                            // If the file is not found, that's ok.
-                        }
-                        _ => {
-                            self.tcx.sess.err(
-                                &format!("could not load dep information from `{}`: {}",
-                                         hashes_file_path.display(), err));
-                            return;
-                        }
-                    }
+                    self.tcx.sess.err(
+                        &format!("could not load dep information from `{}`: {}",
+                                 hashes_file_path.display(), err));
                 }
             }
         }
