@@ -344,13 +344,10 @@ fn test_resize_policy() {
 ///     [ ("Norway", 100),
 ///       ("Denmark", 50),
 ///       ("Iceland", 10) ]
-///       .iter().map(|&x| x).collect();
-///     // use the values store in map
+///       .iter().cloned().collect();
+///     // use the values stored in map
 /// }
 /// ```
-/// This works for Copy types, if you want to cover non-copy types then you need to replace 
-/// the map(|&x| x) with map(|x| x.clone())
-
 
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
