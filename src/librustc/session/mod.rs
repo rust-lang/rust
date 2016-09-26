@@ -42,6 +42,7 @@ use std::cell::{self, Cell, RefCell};
 use std::collections::HashMap;
 use std::env;
 use std::ffi::CString;
+use std::io::Write;
 use std::rc::Rc;
 use std::fmt;
 use std::time::Duration;
@@ -449,7 +450,8 @@ pub fn build_session(sopts: config::Options,
                                local_crate_source_file,
                                registry,
                                cstore,
-                               Rc::new(codemap::CodeMap::new()))
+                               Rc::new(codemap::CodeMap::new()),
+                               None)
 }
 
 pub fn build_session_with_codemap(sopts: config::Options,
@@ -457,7 +459,8 @@ pub fn build_session_with_codemap(sopts: config::Options,
                                   local_crate_source_file: Option<PathBuf>,
                                   registry: errors::registry::Registry,
                                   cstore: Rc<for<'a> CrateStore<'a>>,
-                                  codemap: Rc<codemap::CodeMap>)
+                                  codemap: Rc<codemap::CodeMap>,
+                                  emitter_dest: Option<Box<Write + Send>>)
                                   -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -470,13 +473,20 @@ pub fn build_session_with_codemap(sopts: config::Options,
         .unwrap_or(true);
     let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
 
-    let emitter: Box<Emitter> = match sopts.error_format {
-        config::ErrorOutputType::HumanReadable(color_config) => {
+    let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
+        (config::ErrorOutputType::HumanReadable(color_config), None) => {
             Box::new(EmitterWriter::stderr(color_config,
                                            Some(codemap.clone())))
         }
-        config::ErrorOutputType::Json => {
+        (config::ErrorOutputType::HumanReadable(_), Some(dst)) => {
+            Box::new(EmitterWriter::new(dst,
+                                        Some(codemap.clone())))
+        }
+        (config::ErrorOutputType::Json, None) => {
             Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))
+        }
+        (config::ErrorOutputType::Json, Some(dst)) => {
+            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone()))
         }
     };
 

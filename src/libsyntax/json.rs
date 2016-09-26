@@ -38,14 +38,24 @@ pub struct JsonEmitter {
 }
 
 impl JsonEmitter {
-    pub fn basic() -> JsonEmitter {
-        JsonEmitter::stderr(None, Rc::new(CodeMap::new()))
-    }
-
     pub fn stderr(registry: Option<Registry>,
                   code_map: Rc<CodeMap>) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
+            registry: registry,
+            cm: code_map,
+        }
+    }
+
+    pub fn basic() -> JsonEmitter {
+        JsonEmitter::stderr(None, Rc::new(CodeMap::new()))
+    }
+
+    pub fn new(dst: Box<Write + Send>,
+               registry: Option<Registry>,
+               code_map: Rc<CodeMap>) -> JsonEmitter {
+        JsonEmitter {
+            dst: dst,
             registry: registry,
             cm: code_map,
         }
