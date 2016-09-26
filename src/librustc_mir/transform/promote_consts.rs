@@ -171,7 +171,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         })
     }
 
-    fn assign(&mut self, dest: Lvalue<'tcx>, rvalue: Rvalue<'tcx>, span: Span) {
+    fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
         let last = self.promoted.basic_blocks().last().unwrap();
         let data = &mut self.promoted[last];
         data.statements.push(Statement {
@@ -179,7 +179,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 span: span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
-            kind: StatementKind::Assign(dest, rvalue)
+            kind: StatementKind::Assign(Lvalue::Local(dest), rvalue)
         });
     }
 
@@ -272,7 +272,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         // Inject the Rvalue or Call into the promoted MIR.
         if stmt_idx < no_stmts {
-            self.assign(Lvalue::Local(new_temp), rvalue.unwrap(), source_info.span);
+            self.assign(new_temp, rvalue.unwrap(), source_info.span);
         } else {
             let last = self.promoted.basic_blocks().last().unwrap();
             let new_target = self.new_block();
@@ -327,7 +327,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             statement_index: usize::MAX
         });
 
-        self.assign(Lvalue::Local(RETURN_POINTER), rvalue, span);
+        self.assign(RETURN_POINTER, rvalue, span);
         self.source.promoted.push(self.promoted);
     }
 }
