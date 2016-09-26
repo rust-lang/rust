@@ -3512,7 +3512,7 @@ Arrays can be used to initialize constant collections of type HashSet and HashMa
 let set: HashSet<i32> = [1, 2, 3].iter().map(|&x| x).collect();
 
 // A HashMap over fixed lists of static strings
-let map3: HashMap<&'static str, i32> =
+let map: HashMap<&'static str, i32> =
     [ ("A", 1),
       ("B", 2),
       ("C", 3) ]
