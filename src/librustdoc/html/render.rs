@@ -1975,13 +1975,13 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         UnstableFeatures::Allow => f.constness,
         _ => hir::Constness::NotConst
     };
-    let prefix = format!("{vis}{constness}{unsafety}{abi:#}fn {name}{generics:#}",
-                         vis = VisSpace(&it.visibility),
-                         constness = ConstnessSpace(vis_constness),
-                         unsafety = UnsafetySpace(f.unsafety),
-                         abi = AbiSpace(f.abi),
-                         name = it.name.as_ref().unwrap(),
-                         generics = f.generics)?;
+    let prefix = format!("{}{}{}{:#}fn {}{:#}",
+                         VisSpace(&it.visibility),
+                         ConstnessSpace(vis_constness),
+                         UnsafetySpace(f.unsafety),
+                         AbiSpace(f.abi),
+                         it.name.as_ref().unwrap(),
+                         f.generics);
     let indent = repeat("&nbsp;").take(prefix.len()).collect::<String>();
     write!(w, "<pre class='rust fn'>{vis}{constness}{unsafety}{abi}fn \
                {name}{generics}{decl}{where_clause}</pre>",
@@ -1992,7 +1992,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
            where_clause = WhereClause(&f.generics),
-           decl = f.decl)?;
+           decl = Method(&f.decl, &indent))?;
     document(w, cx, it)
 }
 

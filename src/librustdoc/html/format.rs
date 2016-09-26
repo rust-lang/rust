@@ -621,17 +621,19 @@ impl fmt::Display for clean::Type {
                             clean::Generic(_) =>
                                 if f.alternate() {
                                     primitive_link(f, PrimitiveType::Slice,
-                                        &format!("&amp;{}{}[{:#}]", lt, m, **bt))
+                                        &format!("&{}{}[{:#}]", lt, m, **bt))
                                 } else {
                                     primitive_link(f, PrimitiveType::Slice,
                                         &format!("&amp;{}{}[{}]", lt, m, **bt))
                                 },
                             _ => {
-                                primitive_link(f, PrimitiveType::Slice,
-                                               &format!("&amp;{}{}[", lt, m))?;
                                 if f.alternate() {
+                                    primitive_link(f, PrimitiveType::Slice,
+                                                   &format!("&{}{}[", lt, m))?;
                                     write!(f, "{:#}", **bt)?;
                                 } else {
+                                    primitive_link(f, PrimitiveType::Slice,
+                                                   &format!("&amp;{}{}[", lt, m))?;
                                     write!(f, "{}", **bt)?;
                                 }
                                 primitive_link(f, PrimitiveType::Slice, "]")
@@ -640,7 +642,7 @@ impl fmt::Display for clean::Type {
                     }
                     _ => {
                         if f.alternate() {
-                            write!(f, "&amp;{}{}{:#}", lt, m, **ty)
+                            write!(f, "&{}{}{:#}", lt, m, **ty)
                         } else {
                             write!(f, "&amp;{}{}{}", lt, m, **ty)
                         }
@@ -757,7 +759,6 @@ pub fn fmt_impl_for_trait_page(i: &clean::Impl, f: &mut fmt::Formatter) -> fmt::
 impl fmt::Display for clean::Arguments {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, input) in self.values.iter().enumerate() {
-            write!(f, "\n    ")?;
             if !input.name.is_empty() {
                 write!(f, "{}: ", input.name)?;
             }
@@ -766,10 +767,7 @@ impl fmt::Display for clean::Arguments {
             } else {
                 write!(f, "{}", input.type_)?;
             }
-            if i + 1 < self.values.len() { write!(f, ",")?; }
-        }
-        if !self.values.is_empty() {
-            write!(f, "\n")?;
+            if i + 1 < self.values.len() { write!(f, ", ")?; }
         }
         Ok(())
     }
@@ -819,14 +817,12 @@ impl<'a> fmt::Display for Method<'a> {
                         args_plain.push_str("self");
                     }
                     clean::SelfBorrowed(Some(ref lt), mtbl) => {
-                        let arg = format!("{}{} {}self", amp, *lt, MutableSpace(mtbl));
-                        args.push_str(&arg);
-                        args_plain.push_str(&arg);
+                        args.push_str(&format!("{}{} {}self", amp, *lt, MutableSpace(mtbl)));
+                        args_plain.push_str(&format!("&{} {}self", *lt, MutableSpace(mtbl)));
                     }
                     clean::SelfBorrowed(None, mtbl) => {
-                        let arg = format!("{}{}self", amp, MutableSpace(mtbl));
-                        args.push_str(&arg);
-                        args_plain.push_str(&arg);
+                        args.push_str(&format!("{}{}self", amp, MutableSpace(mtbl)));
+                        args_plain.push_str(&format!("&{}self", MutableSpace(mtbl)));
                     }
                     clean::SelfExplicit(ref typ) => {
                         if f.alternate() {
@@ -839,13 +835,14 @@ impl<'a> fmt::Display for Method<'a> {
                 }
             } else {
                 if i > 0 {
-                    args.push_str("\n ");
-                    args_plain.push_str("\n ");
+                    args.push_str("<br> ");
+                    args_plain.push_str(" ");
                 }
                 if !input.name.is_empty() {
                     args.push_str(&format!("{}: ", input.name));
                     args_plain.push_str(&format!("{}: ", input.name));
                 }
+
                 if f.alternate() {
                     args.push_str(&format!("{:#}", input.type_));
                 } else {
@@ -859,6 +856,11 @@ impl<'a> fmt::Display for Method<'a> {
             }
         }
 
+        if decl.variadic {
+            args.push_str(",<br> ...");
+            args_plain.push_str(", ...");
+        }
+
         let arrow_plain = format!("{:#}", decl.output);
         let arrow = if f.alternate() {
             format!("{:#}", decl.output)
@@ -870,17 +872,20 @@ impl<'a> fmt::Display for Method<'a> {
         let plain: String;
         if arrow.is_empty() {
             output = format!("({})", args);
-            plain = format!("({})", args_plain);
+            plain = format!("{}({})", indent.replace("&nbsp;", " "), args_plain);
         } else {
-            output = format!("({args})\n{arrow}", args = args, arrow = arrow);
-            plain = format!("({args})\n{arrow}", args = args_plain, arrow = arrow_plain);
+            output = format!("({args})<br>{arrow}", args = args, arrow = arrow);
+            plain = format!("{indent}({args}){arrow}",
+                            indent = indent.replace("&nbsp;", " "),
+                            args = args_plain,
+                            arrow = arrow_plain);
         }
 
-        if plain.replace("\n", "").len() > 80 {
-            let pad = format!("\n{}", indent);
-            output = output.replace("\n", &pad);
+        if plain.len() > 80 {
+            let pad = format!("<br>{}", indent);
+            output = output.replace("<br>", &pad);
         } else {
-            output = output.replace("\n", "");
+            output = output.replace("<br>", "");
         }
         write!(f, "{}", output)
     }
