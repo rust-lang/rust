@@ -13,5 +13,6 @@
 fn main() {
     if foo { //~ NOTE: unclosed delimiter
     //~^ ERROR: unresolved name `foo`
+    //~| NOTE unresolved name
     ) //~ ERROR: incorrect close delimiter: `)`
 }

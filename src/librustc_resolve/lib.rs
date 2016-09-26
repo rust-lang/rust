@@ -366,9 +366,14 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0425,
-                                           "unresolved name `{}`{}",
-                                           path,
-                                           msg);
+                                           "unresolved name `{}`",
+                                           path);
+            if msg != "" {
+                err.span_label(span, &msg);
+            } else {
+                err.span_label(span, &format!("unresolved name"));
+            }
+
             match context {
                 UnresolvedNameContext::Other => {
                     if msg.is_empty() && is_static_method && is_field {
@@ -2941,7 +2946,7 @@ impl<'a> Resolver<'a> {
                                 let mut context =  UnresolvedNameContext::Other;
                                 let mut def = Def::Err;
                                 if !msg.is_empty() {
-                                    msg = format!(". Did you mean {}?", msg);
+                                    msg = format!("did you mean {}?", msg);
                                 } else {
                                     // we display a help message if this is a module
                                     let name_path = path.segments.iter()

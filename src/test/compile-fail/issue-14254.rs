@@ -27,87 +27,111 @@ impl BarTy {
 impl Foo for *const BarTy {
     fn bar(&self) {
         baz();
-        //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
+        //~^ ERROR: unresolved name `baz`
+        //~| NOTE did you mean to call `self.baz`?
         a;
         //~^ ERROR: unresolved name `a`
+        //~| NOTE unresolved name
     }
 }
 
 impl<'a> Foo for &'a BarTy {
     fn bar(&self) {
         baz();
-        //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
+        //~^ ERROR: unresolved name `baz`
+        //~| NOTE did you mean to call `self.baz`?
         x;
-        //~^ ERROR: unresolved name `x`. Did you mean `self.x`?
+        //~^ ERROR: unresolved name `x`
+        //~| NOTE did you mean `self.x`?
         y;
-        //~^ ERROR: unresolved name `y`. Did you mean `self.y`?
+        //~^ ERROR: unresolved name `y`
+        //~| NOTE did you mean `self.y`?
         a;
         //~^ ERROR: unresolved name `a`
+        //~| NOTE unresolved name
         bah;
-        //~^ ERROR: unresolved name `bah`. Did you mean to call `Foo::bah`?
+        //~^ ERROR: unresolved name `bah`
+        //~| NOTE did you mean to call `Foo::bah`?
         b;
         //~^ ERROR: unresolved name `b`
+        //~| NOTE unresolved name
     }
 }
 
 impl<'a> Foo for &'a mut BarTy {
     fn bar(&self) {
         baz();
-        //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
+        //~^ ERROR: unresolved name `baz`
+        //~| NOTE did you mean to call `self.baz`?
         x;
-        //~^ ERROR: unresolved name `x`. Did you mean `self.x`?
+        //~^ ERROR: unresolved name `x`
+        //~| NOTE did you mean `self.x`?
         y;
-        //~^ ERROR: unresolved name `y`. Did you mean `self.y`?
+        //~^ ERROR: unresolved name `y`
+        //~| NOTE did you mean `self.y`?
         a;
         //~^ ERROR: unresolved name `a`
+        //~| NOTE unresolved name
         bah;
-        //~^ ERROR: unresolved name `bah`. Did you mean to call `Foo::bah`?
+        //~^ ERROR: unresolved name `bah`
+        //~| NOTE did you mean to call `Foo::bah`?
         b;
         //~^ ERROR: unresolved name `b`
+        //~| NOTE unresolved name
     }
 }
 
 impl Foo for Box<BarTy> {
     fn bar(&self) {
         baz();
-        //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
+        //~^ ERROR: unresolved name `baz`
+        //~| NOTE did you mean to call `self.baz`?
         bah;
-        //~^ ERROR: unresolved name `bah`. Did you mean to call `Foo::bah`?
+        //~^ ERROR: unresolved name `bah`
+        //~| NOTE did you mean to call `Foo::bah`?
     }
 }
 
 impl Foo for *const isize {
     fn bar(&self) {
         baz();
-        //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
+        //~^ ERROR: unresolved name `baz`
+        //~| NOTE did you mean to call `self.baz`?
         bah;
-        //~^ ERROR: unresolved name `bah`. Did you mean to call `Foo::bah`?
+        //~^ ERROR: unresolved name `bah`
+        //~| NOTE did you mean to call `Foo::bah`?
     }
 }
 
 impl<'a> Foo for &'a isize {
     fn bar(&self) {
         baz();
-        //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
+        //~^ ERROR: unresolved name `baz`
+        //~| NOTE did you mean to call `self.baz`?
         bah;
-        //~^ ERROR: unresolved name `bah`. Did you mean to call `Foo::bah`?
+        //~^ ERROR: unresolved name `bah`
+        //~| NOTE did you mean to call `Foo::bah`?
     }
 }
 
 impl<'a> Foo for &'a mut isize {
     fn bar(&self) {
         baz();
-        //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
+        //~^ ERROR: unresolved name `baz`
+        //~| NOTE did you mean to call `self.baz`?
         bah;
-        //~^ ERROR: unresolved name `bah`. Did you mean to call `Foo::bah`?
+        //~^ ERROR: unresolved name `bah`
+        //~| NOTE did you mean to call `Foo::bah`?
     }
 }
 
 impl Foo for Box<isize> {
     fn bar(&self) {
         baz();
-        //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
+        //~^ ERROR: unresolved name `baz`
+        //~| NOTE did you mean to call `self.baz`?
         bah;
-        //~^ ERROR: unresolved name `bah`. Did you mean to call `Foo::bah`?
+        //~^ ERROR: unresolved name `bah`
+        //~| NOTE did you mean to call `Foo::bah`?
     }
 }
