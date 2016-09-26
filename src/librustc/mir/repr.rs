@@ -214,8 +214,9 @@ impl<'tcx> Mir<'tcx> {
 
     /// Returns an iterator over all function arguments.
     #[inline]
-    pub fn args_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
-        (1..self.arg_count+1).map(Local::new)
+    pub fn args_iter(&self) -> impl Iterator<Item=Local> {
+        let arg_count = self.arg_count;
+        (1..arg_count+1).map(Local::new)
     }
 
     /// Returns an iterator over all user-defined variables and compiler-generated temporaries (all
