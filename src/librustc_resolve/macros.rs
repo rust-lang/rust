@@ -138,6 +138,22 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Attr { ref attr, .. } => (intern(&*attr.name()), attr.span),
         };
 
+        self.resolve_macro_name(scope, name).or_else(|| {
+            let mut err =
+                self.session.struct_span_err(span, &format!("macro undefined: '{}!'", name));
+            self.suggest_macro_name(&name.as_str(), &mut err);
+            err.emit();
+            None
+        })
+    }
+
+    fn resolve_derive_mode(&mut self, ident: ast::Ident) -> Option<Rc<MultiItemModifier>> {
+        self.derive_modes.get(&ident.name).cloned()
+    }
+}
+
+impl<'a> Resolver<'a> {
+    fn resolve_macro_name(&mut self, scope: Mark, name: ast::Name) -> Option<Rc<SyntaxExtension>> {
         let mut module = self.expansion_data[&scope].module;
         loop {
             if let Some(binding) = module.macros.borrow().get(&name) {
@@ -148,20 +164,9 @@ impl<'a> base::Resolver for Resolver<'a> {
                 None => break,
             }
         }
-
-        let mut err =
-            self.session.struct_span_err(span, &format!("macro undefined: '{}!'", name));
-        self.suggest_macro_name(&name.as_str(), &mut err);
-        err.emit();
         None
     }
 
-    fn resolve_derive_mode(&mut self, ident: ast::Ident) -> Option<Rc<MultiItemModifier>> {
-        self.derive_modes.get(&ident.name).cloned()
-    }
-}
-
-impl<'a> Resolver<'a> {
     fn suggest_macro_name(&mut self, name: &str, err: &mut DiagnosticBuilder<'a>) {
         if let Some(suggestion) = find_best_match_for_name(self.macro_names.iter(), name, None) {
             if suggestion != name {
