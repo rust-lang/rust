@@ -391,18 +391,18 @@ fn krate_emscripten(build: &Build,
          let test_file_name = test.to_string_lossy().into_owned();
          println!("running {}", test_file_name);
          let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
-         let output = Command::new(nodejs)
+         let status = Command::new(nodejs)
              .arg(&test_file_name)
              .stderr(::std::process::Stdio::inherit())
-             .output();
-         let output = match output {
-             Ok(status) => status,
+             .status();
+         match status {
+             Ok(status) => {
+                 if !status.success() {
+                     panic!("some tests failed");
+                 }
+             }
              Err(e) => panic!(format!("failed to execute command: {}", e)),
          };
-         println!("{}", String::from_utf8(output.stdout).unwrap());
-         if !output.status.success() {
-             panic!("some tests failed");
-         }
      }
  }
 
