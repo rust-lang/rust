@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn takes_u8(_: u8) {}
+use std::mem;
 
 fn main() {
-    unsafe { takes_u8(::std::mem::transmute(0u16)); } //~ ERROR E0512
-                                                      //~| transmuting between 16 bits and 8 bits
+    unsafe {
+        let size = mem::size_of::<u32>();
+        mem::transmute_copy::<u32, [u8; size]>(&8_8); //~ ERROR E0513
+                                                      //~| NOTE no type for variable
+    }
 }

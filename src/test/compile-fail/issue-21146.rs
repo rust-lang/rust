@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: expected item, found `parse_error`
+// error-pattern: expected one of `!` or `::`, found `<eof>`
 include!("auxiliary/issue-21146-inc.rs");
 fn main() {}
