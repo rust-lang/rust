@@ -8,42 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-emscripten
+// no-prefer-dynamic
+// aux-build:allocator-leaking.rs
 
 // Test that `CString::new("hello").unwrap().as_ptr()` pattern
 // leads to failure.
 
-use std::env;
-use std::ffi::{CString, CStr};
-use std::os::raw::c_char;
-use std::process::{Command, Stdio};
+extern crate allocator_leaking;
+
+use std::ffi::CString;
+use std::ptr;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() > 1 && args[1] == "child" {
-        // Repeat several times to be more confident that
-        // it is `Drop` for `CString` that does the cleanup,
-        // and not just some lucky UB.
-        let xs = vec![CString::new("Hello").unwrap(); 10];
-        let ys = xs.iter().map(|s| s.as_ptr()).collect::<Vec<_>>();
-        drop(xs);
-        assert!(ys.into_iter().any(is_hello));
-        return;
-    }
-
-    let output = Command::new(&args[0]).arg("child").output().unwrap();
-    assert!(!output.status.success());
-}
-
-fn is_hello(s: *const c_char) -> bool {
-    // `s` is a dangling pointer and reading it is technically
+    let ptr = CString::new("Hello").unwrap().as_ptr();
+    // `ptr` is a dangling pointer and reading it is almost always
     // undefined behavior. But we want to prevent the most diabolical
     // kind of UB (apart from nasal demons): reading a value that was
-    // previously written.
-    //
-    // Segfaulting or reading an empty string is Ok,
-    // reading "Hello" is bad.
-    let s = unsafe { CStr::from_ptr(s) };
-    let hello = CString::new("Hello").unwrap();
-    s == hello.as_ref()
+    // previously written. So we make sure that CString zeros the
+    // first byte in the `Drop`.
+    // To make the test itself UB-free we use a custom allocator
+    // which always leaks memory.
+    assert_eq!(unsafe { ptr::read(ptr as *const [u8; 6]) } , *b"\0ello\0");
 }
