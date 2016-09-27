@@ -42,6 +42,11 @@ use sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
               target_os = "solaris", target_os = "haiku")))]
 use sys::net::netc::IPV6_DROP_MEMBERSHIP;
 
+#[cfg(target_os = "linux")]
+const MSG_NOSIGNAL: c_int = 0x4000;
+#[cfg(not(target_os = "linux"))]
+const MSG_NOSIGNAL: c_int = 0x0; // unused dummy value
+
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,11 +226,12 @@ impl TcpStream {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
+        let flags = if cfg!(target_os = "linux") { MSG_NOSIGNAL } else { 0 };
         let ret = cvt(unsafe {
             c::send(*self.inner.as_inner(),
                     buf.as_ptr() as *const c_void,
                     len,
-                    0)
+                    flags)
         })?;
         Ok(ret as usize)
     }
@@ -446,10 +452,11 @@ impl UdpSocket {
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
         let (dstp, dstlen) = dst.into_inner();
+        let flags = if cfg!(target_os = "linux") { MSG_NOSIGNAL } else { 0 };
         let ret = cvt(unsafe {
             c::sendto(*self.inner.as_inner(),
                       buf.as_ptr() as *const c_void, len,
-                      0, dstp, dstlen)
+                      flags, dstp, dstlen)
         })?;
         Ok(ret as usize)
     }
@@ -569,11 +576,12 @@ impl UdpSocket {
 
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
+        let flags = if cfg!(target_os = "linux") { MSG_NOSIGNAL } else { 0 };
         let ret = cvt(unsafe {
             c::send(*self.inner.as_inner(),
                     buf.as_ptr() as *const c_void,
                     len,
-                    0)
+                    flags)
         })?;
         Ok(ret as usize)
     }
