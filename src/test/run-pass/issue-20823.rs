@@ -10,7 +10,6 @@
 
 // compile-flags: --test
 // no-pretty-expanded
-// ignore-emscripten
 
 #![deny(unstable)]
 
