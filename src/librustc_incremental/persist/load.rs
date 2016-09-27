@@ -18,8 +18,7 @@ use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::{FnvHashSet, FnvHashMap};
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
-use std::io::Read;
-use std::fs::{self, File};
+use std::fs;
 use std::path::{Path};
 
 use IncrementalHashesMap;
@@ -28,6 +27,7 @@ use super::directory::*;
 use super::dirty_clean;
 use super::hash::*;
 use super::fs::*;
+use super::file_format;
 
 pub type DirtyNodes = FnvHashSet<DepNode<DefPathIndex>>;
 
@@ -94,25 +94,26 @@ fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn load_data(sess: &Session, path: &Path) -> Option<Vec<u8>> {
-    if !path.exists() {
-        return None;
-    }
-
-    let mut data = vec![];
-    match
-        File::open(path)
-        .and_then(|mut file| file.read_to_end(&mut data))
-    {
-        Ok(_) => {
-            Some(data)
+    match file_format::read_file(path) {
+        Ok(Some(data)) => return Some(data),
+        Ok(None) => {
+            // The file either didn't exist or was produced by an incompatible
+            // compiler version. Neither is an error.
         }
         Err(err) => {
             sess.err(
                 &format!("could not load dep-graph from `{}`: {}",
                          path.display(), err));
-            None
         }
     }
+
+    if let Err(err) = delete_all_session_dir_contents(sess) {
+        sess.err(&format!("could not clear incompatible incremental \
+                           compilation session directory `{}`: {}",
+                          path.display(), err));
+    }
+
+    None
 }
 
 /// Decode the dep graph and load the edges/nodes that are still clean
@@ -331,16 +332,22 @@ fn load_prev_metadata_hashes(tcx: TyCtxt,
 
     debug!("load_prev_metadata_hashes() - File: {}", file_path.display());
 
-    let mut data = vec![];
-    if !File::open(&file_path)
-             .and_then(|mut file| file.read_to_end(&mut data)).is_ok() {
-        debug!("load_prev_metadata_hashes() - Couldn't read file containing \
-                hashes at `{}`", file_path.display());
-        return
-    }
+    let data = match file_format::read_file(&file_path) {
+        Ok(Some(data)) => data,
+        Ok(None) => {
+            debug!("load_prev_metadata_hashes() - File produced by incompatible \
+                    compiler version: {}", file_path.display());
+            return
+        }
+        Err(err) => {
+            debug!("load_prev_metadata_hashes() - Error reading file `{}`: {}",
+                   file_path.display(), err);
+            return
+        }
+    };
 
     debug!("load_prev_metadata_hashes() - Decoding hashes");
-    let mut decoder = Decoder::new(&mut data, 0);
+    let mut decoder = Decoder::new(&data, 0);
     let _ = Svh::decode(&mut decoder).unwrap();
     let serialized_hashes = SerializedMetadataHashes::decode(&mut decoder).unwrap();
 
@@ -358,3 +365,4 @@ fn load_prev_metadata_hashes(tcx: TyCtxt,
     debug!("load_prev_metadata_hashes() - successfully loaded {} hashes",
            serialized_hashes.index_map.len());
 }
+
