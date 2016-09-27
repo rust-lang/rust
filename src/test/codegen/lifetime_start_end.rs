@@ -30,11 +30,11 @@ pub fn test() {
 // CHECK: [[S_b:%[0-9]+]] = bitcast %"2.std::option::Option<i32>"** %b to i8*
 // CHECK: call void @llvm.lifetime.start(i{{[0-9 ]+}}, i8* [[S_b]])
 
-// CHECK: [[S_tmp2:%[0-9]+]] = bitcast %"2.std::option::Option<i32>"* %tmp2 to i8*
-// CHECK: call void @llvm.lifetime.start(i{{[0-9 ]+}}, i8* [[S_tmp2]])
+// CHECK: [[S_local5:%[0-9]+]] = bitcast %"2.std::option::Option<i32>"* %local5 to i8*
+// CHECK: call void @llvm.lifetime.start(i{{[0-9 ]+}}, i8* [[S_local5]])
 
-// CHECK: [[E_tmp2:%[0-9]+]] = bitcast %"2.std::option::Option<i32>"* %tmp2 to i8*
-// CHECK: call void @llvm.lifetime.end(i{{[0-9 ]+}}, i8* [[E_tmp2]])
+// CHECK: [[E_local5:%[0-9]+]] = bitcast %"2.std::option::Option<i32>"* %local5 to i8*
+// CHECK: call void @llvm.lifetime.end(i{{[0-9 ]+}}, i8* [[E_local5]])
 
 // CHECK: [[E_b:%[0-9]+]] = bitcast %"2.std::option::Option<i32>"** %b to i8*
 // CHECK: call void @llvm.lifetime.end(i{{[0-9 ]+}}, i8* [[E_b]])
