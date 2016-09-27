@@ -94,6 +94,27 @@ mod imp {
         pub const F_SETLKW: libc::c_int = 9;
     }
 
+    #[cfg(target_os = "haiku")]
+    mod os {
+        use libc;
+
+        pub struct flock {
+            pub l_type: libc::c_short,
+            pub l_whence: libc::c_short,
+            pub l_start: libc::off_t,
+            pub l_len: libc::off_t,
+            pub l_pid: libc::pid_t,
+
+            // not actually here, but brings in line with freebsd
+            pub l_sysid: libc::c_int,
+        }
+
+        pub const F_UNLCK: libc::c_short = 0x0200;
+        pub const F_WRLCK: libc::c_short = 0x0400;
+        pub const F_SETLK: libc::c_int = 0x0080;
+        pub const F_SETLKW: libc::c_int = 0x0100;
+    }
+
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     mod os {
         use libc;

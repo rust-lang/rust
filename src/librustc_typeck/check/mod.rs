@@ -1525,9 +1525,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match self.locals.borrow().get(&nid) {
             Some(&t) => t,
             None => {
-                span_err!(self.tcx.sess, span, E0513,
-                          "no type for local variable {}",
-                          nid);
+                struct_span_err!(self.tcx.sess, span, E0513,
+                                 "no type for local variable {}",
+                                 self.tcx.map.node_to_string(nid))
+                    .span_label(span, &"no type for variable")
+                    .emit();
                 self.tcx.types.err
             }
         }

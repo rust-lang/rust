@@ -605,6 +605,7 @@ macro_rules! options {
         pub const parse_opt_bool: Option<&'static str> =
             Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
         pub const parse_string: Option<&'static str> = Some("a string");
+        pub const parse_string_push: Option<&'static str> = Some("a string");
         pub const parse_opt_string: Option<&'static str> = Some("a string");
         pub const parse_list: Option<&'static str> = Some("a space-separated list of strings");
         pub const parse_opt_list: Option<&'static str> = Some("a space-separated list of strings");
@@ -663,6 +664,13 @@ macro_rules! options {
         fn parse_string(slot: &mut String, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.to_string(); true },
+                None => false,
+            }
+        }
+
+        fn parse_string_push(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => { slot.push(s.to_string()); true },
                 None => false,
             }
         }
@@ -742,6 +750,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "tool to assemble archives with"),
     linker: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "system linker to link outputs with"),
+    link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
+        "a single extra argument to pass to the linker (can be used several times)"),
     link_args: Option<Vec<String>> = (None, parse_opt_list, [UNTRACKED],
         "extra arguments to pass to the linker (space separated)"),
     link_dead_code: bool = (false, parse_bool, [UNTRACKED],

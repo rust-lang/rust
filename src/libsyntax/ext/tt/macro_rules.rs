@@ -12,6 +12,7 @@ use {ast, attr};
 use syntax_pos::{Span, DUMMY_SP};
 use ext::base::{DummyResult, ExtCtxt, MacEager, MacResult, SyntaxExtension};
 use ext::base::{IdentMacroExpander, NormalTT, TTMacroExpander};
+use ext::expand::{Expansion, ExpansionKind};
 use ext::placeholders;
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
@@ -22,18 +23,14 @@ use parse::parser::{Parser, Restrictions};
 use parse::token::{self, gensym_ident, NtTT, Token};
 use parse::token::Token::*;
 use print;
-use ptr::P;
 use tokenstream::{self, TokenTree};
 
-use util::small_vector::SmallVector;
-
-use std::cell::RefCell;
 use std::collections::{HashMap};
 use std::collections::hash_map::{Entry};
 use std::rc::Rc;
 
-struct ParserAnyMacro<'a> {
-    parser: RefCell<Parser<'a>>,
+pub struct ParserAnyMacro<'a> {
+    parser: Parser<'a>,
 
     /// Span of the expansion site of the macro this parser is for
     site_span: Span,
@@ -42,106 +39,20 @@ struct ParserAnyMacro<'a> {
 }
 
 impl<'a> ParserAnyMacro<'a> {
-    /// Make sure we don't have any tokens left to parse, so we don't
-    /// silently drop anything. `allow_semi` is so that "optional"
-    /// semicolons at the end of normal expressions aren't complained
-    /// about e.g. the semicolon in `macro_rules! kapow { () => {
-    /// panic!(); } }` doesn't get picked up by .parse_expr(), but it's
-    /// allowed to be there.
-    fn ensure_complete_parse(&self, allow_semi: bool, context: &str) {
-        let mut parser = self.parser.borrow_mut();
-        parser.ensure_complete_parse(allow_semi, |parser| {
-            let token_str = parser.this_token_to_string();
-            let msg = format!("macro expansion ignores token `{}` and any \
-                               following",
-                              token_str);
-            let span = parser.span;
-            let mut err = parser.diagnostic().struct_span_err(span, &msg);
-            let msg = format!("caused by the macro expansion here; the usage \
-                               of `{}!` is likely invalid in {} context",
-                               self.macro_ident, context);
-            err.span_note(self.site_span, &msg)
-               .emit();
-        });
-    }
-}
+    pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: ExpansionKind) -> Expansion {
+        let ParserAnyMacro { site_span, macro_ident, ref mut parser } = *self;
+        let expansion = panictry!(parser.parse_expansion(kind, true));
 
-impl<'a> MacResult for ParserAnyMacro<'a> {
-    fn make_expr(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Expr>> {
-        let ret = panictry!(self.parser.borrow_mut().parse_expr());
-        self.ensure_complete_parse(true, "expression");
-        Some(ret)
-    }
-    fn make_pat(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Pat>> {
-        let ret = panictry!(self.parser.borrow_mut().parse_pat());
-        self.ensure_complete_parse(false, "pattern");
-        Some(ret)
-    }
-    fn make_items(self: Box<ParserAnyMacro<'a>>) -> Option<SmallVector<P<ast::Item>>> {
-        let mut ret = SmallVector::zero();
-        while let Some(item) = panictry!(self.parser.borrow_mut().parse_item()) {
-            ret.push(item);
+        // We allow semicolons at the end of expressions -- e.g. the semicolon in
+        // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
+        // but `m!()` is allowed in expression positions (c.f. issue #34706).
+        if kind == ExpansionKind::Expr && parser.token == token::Semi {
+            parser.bump();
         }
-        self.ensure_complete_parse(false, "item");
-        Some(ret)
-    }
 
-    fn make_impl_items(self: Box<ParserAnyMacro<'a>>)
-                       -> Option<SmallVector<ast::ImplItem>> {
-        let mut ret = SmallVector::zero();
-        loop {
-            let mut parser = self.parser.borrow_mut();
-            match parser.token {
-                token::Eof => break,
-                _ => ret.push(panictry!(parser.parse_impl_item()))
-            }
-        }
-        self.ensure_complete_parse(false, "item");
-        Some(ret)
-    }
-
-    fn make_trait_items(self: Box<ParserAnyMacro<'a>>)
-                       -> Option<SmallVector<ast::TraitItem>> {
-        let mut ret = SmallVector::zero();
-        loop {
-            let mut parser = self.parser.borrow_mut();
-            match parser.token {
-                token::Eof => break,
-                _ => ret.push(panictry!(parser.parse_trait_item()))
-            }
-        }
-        self.ensure_complete_parse(false, "item");
-        Some(ret)
-    }
-
-
-    fn make_stmts(self: Box<ParserAnyMacro<'a>>)
-                 -> Option<SmallVector<ast::Stmt>> {
-        let mut ret = SmallVector::zero();
-        loop {
-            let mut parser = self.parser.borrow_mut();
-            match parser.token {
-                token::Eof => break,
-                _ => match parser.parse_full_stmt(true) {
-                    Ok(maybe_stmt) => match maybe_stmt {
-                        Some(stmt) => ret.push(stmt),
-                        None => (),
-                    },
-                    Err(mut e) => {
-                        e.emit();
-                        break;
-                    }
-                }
-            }
-        }
-        self.ensure_complete_parse(false, "statement");
-        Some(ret)
-    }
-
-    fn make_ty(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Ty>> {
-        let ret = panictry!(self.parser.borrow_mut().parse_ty());
-        self.ensure_complete_parse(false, "type");
-        Some(ret)
+        // Make sure we don't have any tokens left to parse so we don't silently drop anything.
+        parser.ensure_complete_parse(macro_ident.name, kind.name(), site_span);
+        expansion
     }
 }
 
@@ -219,7 +130,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return Box::new(ParserAnyMacro {
-                    parser: RefCell::new(p),
+                    parser: p,
 
                     // Pass along the original expansion site and the name of the macro
                     // so we can print a useful error message if the parse of the expanded
@@ -332,7 +243,7 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
                     (**tt).clone()
                 }
                 _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
-            }).collect()
+            }).collect::<Vec<TokenTree>>()
         }
         _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
     };
@@ -349,6 +260,11 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
 
     for rhs in &rhses {
         valid &= check_rhs(sess, rhs);
+    }
+
+    // don't abort iteration early, so that errors for multiple lhses can be reported
+    for lhs in &lhses {
+        valid &= check_lhs_no_empty_seq(sess, &[lhs.clone()])
     }
 
     let exp: Box<_> = Box::new(MacroRulesMacroExpander {
@@ -375,6 +291,38 @@ fn check_lhs_nt_follows(sess: &ParseSess, lhs: &TokenTree) -> bool {
     }
     // we don't abort on errors on rejection, the driver will do that for us
     // after parsing/expansion. we can report every error in every macro this way.
+}
+
+/// Check that the lhs contains no repetition which could match an empty token
+/// tree, because then the matcher would hang indefinitely.
+fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[TokenTree]) -> bool {
+    for tt in tts {
+        match *tt {
+            TokenTree::Token(_, _) => (),
+            TokenTree::Delimited(_, ref del) => if !check_lhs_no_empty_seq(sess, &del.tts) {
+                return false;
+            },
+            TokenTree::Sequence(span, ref seq) => {
+                if seq.separator.is_none() {
+                    if seq.tts.iter().all(|seq_tt| {
+                        match *seq_tt {
+                            TokenTree::Sequence(_, ref sub_seq) =>
+                                sub_seq.op == tokenstream::KleeneOp::ZeroOrMore,
+                            _ => false,
+                        }
+                    }) {
+                        sess.span_diagnostic.span_err(span, "repetition matches empty token tree");
+                        return false;
+                    }
+                }
+                if !check_lhs_no_empty_seq(sess, &seq.tts) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    true
 }
 
 fn check_rhs(sess: &ParseSess, rhs: &TokenTree) -> bool {

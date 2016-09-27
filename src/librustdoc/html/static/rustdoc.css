@@ -378,6 +378,11 @@ h4 > code, h3 > code, .invisible > code {
     font-size: 90%;
 }
 
+/* Shift where in trait listing down a line */
+pre.trait .where::before {
+    content: '\a         ';
+}
+
 nav {
     border-bottom: 1px solid;
     padding-bottom: 10px;

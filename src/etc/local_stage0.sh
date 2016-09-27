@@ -18,7 +18,7 @@ LIB_PREFIX=lib
 
 OS=`uname -s`
 case $OS in
-    ("Linux"|"FreeBSD"|"DragonFly"|"Bitrig"|"OpenBSD"|"SunOS")
+    ("Linux"|"FreeBSD"|"DragonFly"|"Bitrig"|"OpenBSD"|"SunOS"|"Haiku")
     BIN_SUF=
     LIB_SUF=.so
     ;;
