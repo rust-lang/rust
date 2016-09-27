@@ -398,6 +398,33 @@ impl OutputFilenames {
     pub fn filestem(&self) -> String {
         format!("{}{}", self.out_filestem, self.extra)
     }
+
+    pub fn is_path_used(&self, path: &PathBuf) -> bool {
+        fn eq(p1: &PathBuf, p2: &PathBuf) -> bool {
+            let p1 = match p1.canonicalize() {
+                Ok(p) => Some(p),
+                _ => None,
+            };
+            let p2 = match p2.canonicalize() {
+                Ok(p) => Some(p),
+                _ => None,
+            };
+            p1 == p2
+        }
+
+        match self.single_output_file {
+            Some(ref p) => eq(&p, path),
+            None => {
+                for k in self.outputs.keys() {
+                    let opath: PathBuf = self.path(k.to_owned());
+                    if eq(&opath, path) {
+                        return true;
+                    }
+                }
+                false
+            }
+        }
+    }
 }
 
 pub fn host_triple() -> &'static str {
@@ -453,6 +480,12 @@ impl Options {
     pub fn single_codegen_unit(&self) -> bool {
         self.incremental.is_none() ||
         self.cg.codegen_units == 1
+    }
+
+    /// True if there will be an output file generated
+    pub fn will_create_output_file(&self) -> bool {
+        !self.debugging_opts.parse_only ||  // we will generate an output file and
+            self.debugging_opts.ls          // we're not just querying an existing file
     }
 }
 
