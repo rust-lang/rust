@@ -295,6 +295,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
+    pub fn monomorphize_field_ty(&self, f: ty::FieldDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+        let substituted = &f.ty(self.tcx, substs);
+        self.tcx.normalize_associated_type(&substituted)
+    }
+
     pub fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         let substituted = ty.subst(self.tcx, substs);
         self.tcx.normalize_associated_type(&substituted)
@@ -608,56 +613,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_ptr(dest, ptr)?;
             }
 
-            Cast(kind, ref operand, dest_ty) => {
+            Cast(kind, ref operand, cast_ty) => {
+                debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
                 use rustc::mir::repr::CastKind::*;
                 match kind {
                     Unsize => {
                         let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
-                        let dest_ty = self.monomorphize(dest_ty, self.substs());
-                        // FIXME: cases where dest_ty is not a fat pointer. e.g. Arc<Struct> -> Arc<Trait>
-                        assert!(self.type_is_fat_ptr(dest_ty));
-                        let src_pointee_ty = pointee_type(src_ty).unwrap();
-                        let dest_pointee_ty = pointee_type(dest_ty).unwrap();
-
-                        // A<Struct> -> A<Trait> conversion
-                        let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(src_pointee_ty, dest_pointee_ty);
-
-                        match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
-                            (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                                let ptr = src.read_ptr(&self.memory)?;
-                                self.memory.write_ptr(dest, ptr)?;
-                                let ptr_size = self.memory.pointer_size() as isize;
-                                let dest_extra = dest.offset(ptr_size);
-                                self.memory.write_usize(dest_extra, length as u64)?;
-                            }
-                            (&ty::TyTrait(_), &ty::TyTrait(_)) => {
-                                // For now, upcasts are limited to changes in marker
-                                // traits, and hence never actually require an actual
-                                // change to the vtable.
-                                self.write_value(src, dest, dest_ty)?;
-                            },
-                            (_, &ty::TyTrait(ref data)) => {
-                                let trait_ref = data.principal.with_self_ty(self.tcx, src_pointee_ty);
-                                let trait_ref = self.tcx.erase_regions(&trait_ref);
-                                let vtable = self.get_vtable(trait_ref)?;
-                                let ptr = src.read_ptr(&self.memory)?;
-
-                                self.memory.write_ptr(dest, ptr)?;
-                                let ptr_size = self.memory.pointer_size() as isize;
-                                let dest_extra = dest.offset(ptr_size);
-                                self.memory.write_ptr(dest_extra, vtable)?;
-                            },
-
-                            _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
-                        }
+                        self.unsize_into(src, src_ty, dest, dest_ty)?;
                     }
 
                     Misc => {
                         let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
-                        // FIXME: dest_ty should already be monomorphized
-                        let dest_ty = self.monomorphize(dest_ty, self.substs());
                         if self.type_is_fat_ptr(src_ty) {
                             trace!("misc cast: {:?}", src);
                             let ptr_size = self.memory.pointer_size();
@@ -772,9 +740,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         use rustc::ty::layout::Layout::*;
         match *layout {
-            Univariant { .. } => {
-                assert_eq!(field_index, 0);
-                Ok(Size::from_bytes(0))
+            Univariant { ref variant, .. } => {
+                Ok(variant.field_offset(field_index))
             }
             FatPointer { .. } => {
                 let bytes = layout::FAT_PTR_ADDR * self.memory.pointer_size();
@@ -1118,16 +1085,91 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn substs(&self) -> &'tcx Substs<'tcx> {
         self.frame().substs
     }
-}
 
-fn pointee_type(ptr_ty: ty::Ty) -> Option<ty::Ty> {
-    match ptr_ty.sty {
-        ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-        ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
-        ty::TyBox(ty) => {
-            Some(ty)
+    fn unsize_into(
+        &mut self,
+        src: Value,
+        src_ty: Ty<'tcx>,
+        dest: Pointer,
+        dest_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, ()> {
+        match (&src_ty.sty, &dest_ty.sty) {
+            (&ty::TyBox(sty), &ty::TyBox(dty)) |
+            (&ty::TyRef(_, ty::TypeAndMut { ty: sty, .. }), &ty::TyRef(_, ty::TypeAndMut { ty: dty, .. })) |
+            (&ty::TyRef(_, ty::TypeAndMut { ty: sty, .. }), &ty::TyRawPtr(ty::TypeAndMut { ty: dty, .. })) |
+            (&ty::TyRawPtr(ty::TypeAndMut { ty: sty, .. }), &ty::TyRawPtr(ty::TypeAndMut { ty: dty, .. })) => {
+                // A<Struct> -> A<Trait> conversion
+                let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(sty, dty);
+
+                match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
+                    (&ty::TyArray(_, length), &ty::TySlice(_)) => {
+                        let ptr = src.read_ptr(&self.memory)?;
+                        self.memory.write_ptr(dest, ptr)?;
+                        let ptr_size = self.memory.pointer_size() as isize;
+                        let dest_extra = dest.offset(ptr_size);
+                        self.memory.write_usize(dest_extra, length as u64)?;
+                    }
+                    (&ty::TyTrait(_), &ty::TyTrait(_)) => {
+                        // For now, upcasts are limited to changes in marker
+                        // traits, and hence never actually require an actual
+                        // change to the vtable.
+                        self.write_value(src, dest, dest_ty)?;
+                    },
+                    (_, &ty::TyTrait(ref data)) => {
+                        let trait_ref = data.principal.with_self_ty(self.tcx, src_pointee_ty);
+                        let trait_ref = self.tcx.erase_regions(&trait_ref);
+                        let vtable = self.get_vtable(trait_ref)?;
+                        let ptr = src.read_ptr(&self.memory)?;
+
+                        self.memory.write_ptr(dest, ptr)?;
+                        let ptr_size = self.memory.pointer_size() as isize;
+                        let dest_extra = dest.offset(ptr_size);
+                        self.memory.write_ptr(dest_extra, vtable)?;
+                    },
+
+                    _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
+                }
+            }
+            (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) => {
+                // unsizing of generic struct with pointer fields
+                // Example: `Arc<T>` -> `Arc<Trait>`
+                // here we need to increase the size of every &T thin ptr field to a fat ptr
+
+                assert_eq!(def_a, def_b);
+
+                let src_fields = def_a.variants[0].fields.iter();
+                let dst_fields = def_b.variants[0].fields.iter();
+
+                //let src = adt::MaybeSizedValue::sized(src);
+                //let dst = adt::MaybeSizedValue::sized(dst);
+                let src_ptr = match src {
+                    Value::ByRef(ptr) => ptr,
+                    _ => panic!("expected pointer, got {:?}", src),
+                };
+
+                let iter = src_fields.zip(dst_fields).enumerate();
+                for (i, (src_f, dst_f)) in iter {
+                    let src_fty = self.monomorphize_field_ty(src_f, substs_a);
+                    let dst_fty = self.monomorphize_field_ty(dst_f, substs_b);
+                    if self.type_size(dst_fty) == 0 {
+                        continue;
+                    }
+                    let src_field_offset = self.get_field_offset(src_ty, i)?.bytes() as isize;
+                    let dst_field_offset = self.get_field_offset(dest_ty, i)?.bytes() as isize;
+                    let src_f_ptr = src_ptr.offset(src_field_offset);
+                    let dst_f_ptr = dest.offset(dst_field_offset);
+                    if src_fty == dst_fty {
+                        self.move_(src_f_ptr, dst_f_ptr, src_fty)?;
+                    } else {
+                        self.unsize_into(Value::ByRef(src_f_ptr), src_fty, dst_f_ptr, dst_fty)?;
+                    }
+                }
+            }
+            _ => bug!("unsize_into: invalid conversion: {:?} -> {:?}",
+                      src_ty,
+                      dest_ty),
         }
-        _ => None,
+        Ok(())
     }
 }
 
