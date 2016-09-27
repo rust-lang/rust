@@ -33,12 +33,12 @@ pub trait OsStringExt {
     fn from_wide(wide: &[u16]) -> Self;
 
     /// Creates an `OsString` from a potentially ill-formed null-terminated
-    /// UTF-16 pointer
+    /// UTF-16 pointer.
     ///
     /// This is lossless: calling `.encode_wide()` on the resulting string
     /// will always return the original code units.
-    #[unstable(feature = "from_wide_ptr", issue = "0")]
-    unsafe fn from_wide_ptr(ptr: *const u16) -> OsString {
+    #[unstable(feature = "from_wide_null", issue = "0")]
+    unsafe fn from_wide_null(ptr: *const u16) -> OsString {
         let mut len = 0;
         while *ptr.offset(len) != 0 {
             len += 1;
