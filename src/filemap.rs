@@ -14,7 +14,7 @@
 use strings::string_buffer::StringBuffer;
 
 use std::fs::{self, File};
-use std::io::{self, Write, Read, sBufWriter};
+use std::io::{self, Write, Read, BufWriter};
 
 use config::{NewlineStyle, Config, WriteMode};
 use rustfmt_diff::{make_diff, print_diff, Mismatch};
