@@ -28,6 +28,7 @@ use super::hash::*;
 use super::preds::*;
 use super::fs::*;
 use super::dirty_clean;
+use super::file_format;
 
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 incremental_hashes_map: &IncrementalHashesMap,
@@ -102,6 +103,7 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
 
     // generate the data in a memory buffer
     let mut wr = Cursor::new(Vec::new());
+    file_format::write_file_header(&mut wr).unwrap();
     match encode(&mut Encoder::new(&mut wr)) {
         Ok(()) => {}
         Err(err) => {
