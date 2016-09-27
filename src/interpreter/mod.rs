@@ -1002,7 +1002,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Value::ByVal(primval) => self.memory.write_primval(dest, primval),
             Value::ByValPair(a, b) => {
                 self.memory.write_primval(dest, a)?;
-                let extra_dest = dest.offset(self.memory.pointer_size() as isize);
+                let layout = self.type_layout(dest_ty);
+                let offset = match *layout {
+                    Layout::Univariant { ref variant, .. } => {
+                        bug!("I don't think this can ever happen until we have custom fat pointers");
+                        //variant.field_offset(1).bytes() as isize
+                    },
+                    Layout::FatPointer { .. } => self.memory.pointer_size() as isize,
+                    _ => bug!("tried to write value pair of non-fat pointer type: {:?}", layout),
+                };
+                let extra_dest = dest.offset(offset);
                 self.memory.write_primval(extra_dest, b)
             }
         }
