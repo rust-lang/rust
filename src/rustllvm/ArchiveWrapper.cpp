@@ -22,7 +22,7 @@ struct RustArchiveMember {
   Archive::Child child;
 
   RustArchiveMember(): filename(NULL), name(NULL),
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GE(3, 8)
     child(NULL, NULL, NULL)
 #else
     child(NULL, NULL)
@@ -35,7 +35,7 @@ struct RustArchiveMember {
 struct RustArchiveIterator {
     Archive::child_iterator cur;
     Archive::child_iterator end;
-#if LLVM_VERSION_MINOR >= 9
+#if LLVM_VERSION_GE(3, 9)
     Error err;
 #endif
 };
@@ -81,7 +81,7 @@ LLVMRustOpenArchive(char *path) {
         return nullptr;
     }
 
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LE(3, 8)
     ErrorOr<std::unique_ptr<Archive>> archive_or =
 #else
     Expected<std::unique_ptr<Archive>> archive_or =
@@ -89,7 +89,7 @@ LLVMRustOpenArchive(char *path) {
         Archive::create(buf_or.get()->getMemBufferRef());
 
     if (!archive_or) {
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LE(3, 8)
         LLVMRustSetLastError(archive_or.getError().message().c_str());
 #else
         LLVMRustSetLastError(toString(archive_or.takeError()).c_str());
@@ -112,7 +112,7 @@ extern "C" LLVMRustArchiveIteratorRef
 LLVMRustArchiveIteratorNew(LLVMRustArchiveRef ra) {
     Archive *ar = ra->getBinary();
     RustArchiveIterator *rai = new RustArchiveIterator();
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LE(3, 8)
     rai->cur = ar->child_begin();
 #else
     rai->cur = ar->child_begin(rai->err);
@@ -127,7 +127,7 @@ LLVMRustArchiveIteratorNew(LLVMRustArchiveRef ra) {
 
 extern "C" LLVMRustArchiveChildConstRef
 LLVMRustArchiveIteratorNext(LLVMRustArchiveIteratorRef rai) {
-#if LLVM_VERSION_MINOR >= 9
+#if LLVM_VERSION_GE(3, 9)
     if (rai->err) {
         LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
         return NULL;
@@ -135,7 +135,7 @@ LLVMRustArchiveIteratorNext(LLVMRustArchiveIteratorRef rai) {
 #endif
     if (rai->cur == rai->end)
         return NULL;
-#if LLVM_VERSION_MINOR == 8
+#if LLVM_VERSION_EQ(3, 8)
     const ErrorOr<Archive::Child>* cur = rai->cur.operator->();
     if (!*cur) {
         LLVMRustSetLastError(cur->getError().message().c_str());
@@ -207,7 +207,7 @@ LLVMRustWriteArchive(char *Dst,
                      bool WriteSymbtab,
                      LLVMRustArchiveKind rust_kind) {
 
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LE(3, 8)
   std::vector<NewArchiveIterator> Members;
 #else
   std::vector<NewArchiveMember> Members;
@@ -218,20 +218,20 @@ LLVMRustWriteArchive(char *Dst,
     auto Member = NewMembers[i];
     assert(Member->name);
     if (Member->filename) {
-#if LLVM_VERSION_MINOR >= 9
+#if LLVM_VERSION_GE(3, 9)
       Expected<NewArchiveMember> MOrErr = NewArchiveMember::getFile(Member->filename, true);
       if (!MOrErr) {
         LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
         return LLVMRustResult::Failure;
       }
       Members.push_back(std::move(*MOrErr));
-#elif LLVM_VERSION_MINOR == 8
+#elif LLVM_VERSION_EQ(3, 8)
       Members.push_back(NewArchiveIterator(Member->filename));
 #else
       Members.push_back(NewArchiveIterator(Member->filename, Member->name));
 #endif
     } else {
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LE(3, 8)
       Members.push_back(NewArchiveIterator(Member->child, Member->name));
 #else
       Expected<NewArchiveMember> MOrErr = NewArchiveMember::getOldMember(Member->child, true);
@@ -243,7 +243,7 @@ LLVMRustWriteArchive(char *Dst,
 #endif
     }
   }
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GE(3, 8)
   auto pair = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false);
 #else
   auto pair = writeArchive(Dst, Members, WriteSymbtab, Kind, true);
