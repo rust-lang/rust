@@ -1,9 +1,8 @@
 use reexport::*;
 use rustc::hir::*;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::map::Node;
 use rustc::lint::{LintContext, LateContext, Level, Lint};
-use rustc::middle::cstore;
 use rustc::session::Session;
 use rustc::traits::Reveal;
 use rustc::traits;
@@ -216,13 +215,14 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
 
 /// Get the definition associated to a path.
 /// TODO: investigate if there is something more efficient for that.
-pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<cstore::DefLike> {
+pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
     let cstore = &cx.tcx.sess.cstore;
 
     let crates = cstore.crates();
     let krate = crates.iter().find(|&&krate| cstore.crate_name(krate) == path[0]);
     if let Some(krate) = krate {
-        let mut items = cstore.crate_top_level_items(*krate);
+        let krate = DefId { krate: *krate, index: CRATE_DEF_INDEX };
+        let mut items = cstore.item_children(krate);
         let mut path_it = path.iter().skip(1).peekable();
 
         loop {
@@ -234,16 +234,10 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<cstore::DefLike> {
             for item in &mem::replace(&mut items, vec![]) {
                 if item.name.as_str() == *segment {
                     if path_it.peek().is_none() {
-                        return Some(item.def);
+                        return cx.tcx.sess.cstore.describe_def(item.def_id);
                     }
 
-                    let def_id = match item.def {
-                        cstore::DefLike::DlDef(def) => def.def_id(),
-                        cstore::DefLike::DlImpl(def_id) => def_id,
-                        _ => panic!("Unexpected {:?}", item.def),
-                    };
-
-                    items = cstore.item_children(def_id);
+                    items = cstore.item_children(item.def_id);
                     break;
                 }
             }
@@ -261,7 +255,7 @@ pub fn get_trait_def_id(cx: &LateContext, path: &[&str]) -> Option<DefId> {
     };
 
     match def {
-        cstore::DlDef(def::Def::Trait(trait_id)) => Some(trait_id),
+        def::Def::Trait(trait_id) => Some(trait_id),
         _ => None,
     }
 }

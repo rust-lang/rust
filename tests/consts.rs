@@ -9,7 +9,7 @@ extern crate syntax;
 use clippy_lints::consts::{constant_simple, Constant, FloatWidth};
 use rustc_const_math::ConstInt;
 use rustc::hir::*;
-use syntax::ast::{LitIntType, LitKind, StrStyle};
+use syntax::ast::{LitIntType, LitKind, NodeId, StrStyle};
 use syntax::codemap::{Spanned, COMMAND_LINE_SP};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
@@ -24,7 +24,7 @@ fn spanned<T>(t: T) -> Spanned<T> {
 
 fn expr(n: Expr_) -> Expr {
     Expr {
-        id: 1,
+        id: NodeId::new(1),
         node: n,
         span: COMMAND_LINE_SP,
         attrs: ThinVec::new(),

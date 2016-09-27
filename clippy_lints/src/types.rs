@@ -127,18 +127,21 @@ declare_lint! {
 fn check_let_unit(cx: &LateContext, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
         let bindtype = &cx.tcx.pat_ty(&local.pat).sty;
-        if *bindtype == ty::TyTuple(&[]) {
-            if in_external_macro(cx, decl.span) || in_macro(cx, local.pat.span) {
-                return;
+        match *bindtype {
+            ty::TyTuple(slice) if slice.is_empty() => {
+                if in_external_macro(cx, decl.span) || in_macro(cx, local.pat.span) {
+                    return;
+                }
+                if higher::is_from_for_desugar(decl) {
+                    return;
+                }
+                span_lint(cx,
+                          LET_UNIT_VALUE,
+                          decl.span,
+                          &format!("this let-binding has unit value. Consider omitting `let {} =`",
+                                   snippet(cx, local.pat.span, "..")));
             }
-            if higher::is_from_for_desugar(decl) {
-                return;
-            }
-            span_lint(cx,
-                      LET_UNIT_VALUE,
-                      decl.span,
-                      &format!("this let-binding has unit value. Consider omitting `let {} =`",
-                               snippet(cx, local.pat.span, "..")));
+            _ => (),
         }
     }
 }
@@ -193,18 +196,23 @@ impl LateLintPass for UnitCmp {
         }
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
-            let sty = &cx.tcx.expr_ty(left).sty;
-            if *sty == ty::TyTuple(&[]) && op.is_comparison() {
-                let result = match op {
-                    BiEq | BiLe | BiGe => "true",
-                    _ => "false",
-                };
-                span_lint(cx,
-                          UNIT_CMP,
-                          expr.span,
-                          &format!("{}-comparison of unit values detected. This will always be {}",
-                                   op.as_str(),
-                                   result));
+            if op.is_comparison() {
+                let sty = &cx.tcx.expr_ty(left).sty;
+                match *sty {
+                    ty::TyTuple(slice) if slice.is_empty() => {
+                        let result = match op {
+                            BiEq | BiLe | BiGe => "true",
+                            _ => "false",
+                        };
+                        span_lint(cx,
+                                  UNIT_CMP,
+                                  expr.span,
+                                  &format!("{}-comparison of unit values detected. This will always be {}",
+                                           op.as_str(),
+                                           result));
+                    }
+                    _ => ()
+                }
             }
         }
     }
