@@ -101,6 +101,20 @@ pub struct Frame<'a, 'tcx: 'a> {
     pub stmt: usize,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+struct Lvalue {
+    ptr: Pointer,
+    extra: LvalueExtra,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum LvalueExtra {
+    None,
+    Length(u64),
+    Vtable(Pointer),
+    DowncastVariant(usize),
+}
+
 #[derive(Clone)]
 pub enum CachedMir<'mir, 'tcx: 'mir> {
     Ref(&'mir mir::Mir<'tcx>),
@@ -553,8 +567,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = self.lvalue_ty(lvalue);
                 match ty.sty {
                     ty::TyArray(_, n) => self.memory.write_usize(dest, n as u64)?,
-                    ty::TySlice(_) => if let Value::ByValPair(_, len) = src {
-                        self.memory.write_primval(dest, len)?;
+                    ty::TySlice(_) => if let LvalueExtra::Length(len) = src.extra {
+                        self.memory.write_usize(dest, len)?;
                     } else {
                         bug!("Rvalue::Len of a slice given non-slice pointer: {:?}", src);
                     },
@@ -563,10 +577,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Ref(_, _, ref lvalue) => {
-                match self.eval_lvalue(lvalue)? {
-                    Value::ByRef(ptr) => self.memory.write_ptr(dest, ptr)?,
-                    Value::ByVal(..) => bug!("cannot take reference of immediate"),
-                    pair @ Value::ByValPair(..) => self.write_value(pair, dest, dest_ty)?,
+                let lvalue = self.eval_lvalue(lvalue)?;
+                self.memory.write_ptr(dest, lvalue.ptr)?;
+                let extra_ptr = dest.offset(self.memory.pointer_size() as isize);
+                match lvalue.extra {
+                    LvalueExtra::None => {},
+                    LvalueExtra::Length(len) => self.memory.write_usize(extra_ptr, len)?,
+                    LvalueExtra::Vtable(ptr) => self.memory.write_ptr(extra_ptr, ptr)?,
+                    LvalueExtra::DowncastVariant(..) =>
+                        bug!("attempted to take a reference to an enum downcast lvalue"),
                 }
             }
 
@@ -762,7 +781,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::mir::repr::Operand::*;
         match *op {
-            Consume(ref lvalue) => self.eval_lvalue(lvalue),
+            Consume(ref lvalue) => Ok(Value::ByRef(self.eval_lvalue(lvalue)?.to_ptr())),
 
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal;
@@ -802,14 +821,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
+    fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue> {
         use rustc::mir::repr::Lvalue::*;
-        let value = match *lvalue {
-            ReturnPointer => Value::ByRef(self.frame().return_ptr
-                .expect("ReturnPointer used in a function with no return value")),
-            Arg(i) => Value::ByRef(self.frame().locals[i.index()]),
-            Var(i) => Value::ByRef(self.frame().locals[self.frame().var_offset + i.index()]),
-            Temp(i) => Value::ByRef(self.frame().locals[self.frame().temp_offset + i.index()]),
+        let ptr = match *lvalue {
+            ReturnPointer => self.frame().return_ptr
+                .expect("ReturnPointer used in a function with no return value"),
+            Arg(i) => self.frame().locals[i.index()],
+            Var(i) => self.frame().locals[self.frame().var_offset + i.index()],
+            Temp(i) => self.frame().locals[self.frame().temp_offset + i.index()],
 
             Static(def_id) => {
                 let substs = subst::Substs::empty(self.tcx);
@@ -818,17 +837,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     substs: substs,
                     kind: ConstantKind::Global,
                 };
-                Value::ByRef(*self.statics.get(&cid).expect("static should have been cached (lvalue)"))
+                *self.statics.get(&cid).expect("static should have been cached (lvalue)")
             },
 
             Projection(ref proj) => {
                 let base = self.eval_lvalue(&proj.base)?;
-                trace!("projection base: {:?}", base);
-                trace!("projection: {:?}", proj.elem);
-                match base {
-                    Value::ByRef(ptr) => self.memory.dump(ptr.alloc_id),
-                    _ => {},
-                }
                 let base_ty = self.lvalue_ty(&proj.base);
                 let base_layout = self.type_layout(base_ty);
 
@@ -840,12 +853,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let variant = match *base_layout {
                             Univariant { ref variant, .. } => variant,
                             General { ref variants, .. } => {
-                                if let Value::ByValPair(PrimVal::Ptr(ptr), variant_idx) = base {
-                                    // early exit, because enum variant field access is passed
-                                    // as a non-fat-pointer ByValPair
-                                    let idx = variant_idx.expect_uint("enum variant id not integral") as usize;
-                                    let offset = variants[idx].field_offset(field.index()).bytes() as isize;
-                                    return Ok(ByRef(ptr.offset(offset)));
+                                if let LvalueExtra::DowncastVariant(variant_idx) = base.extra {
+                                    &variants[variant_idx]
                                 } else {
                                     bug!("field access on enum had no variant index");
                                 }
@@ -858,21 +867,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             _ => bug!("field access on non-product type: {:?}", base_layout),
                         };
 
-                        let offset = variant.field_offset(field.index()).bytes() as isize;
-                        use self::value::Value::*;
-                        match base {
-                            ByRef(ptr) => if self.type_is_fat_ptr(field_ty) {
-                                self.read_value(ptr.offset(offset), field_ty)?
-                            } else {
-                                ByRef(ptr.offset(offset))
-                            },
-                            // indexing into a field of an unsized struct
-                            ByValPair(PrimVal::Ptr(ptr), extra) => if self.type_is_sized(field_ty) {
-                                ByRef(ptr.offset(offset))
-                            } else {
-                                ByValPair(PrimVal::Ptr(ptr.offset(offset)), extra)
-                            },
-                            other => bug!("expected thin ptr, got: {:?}", other),
+                        let offset = variant.field_offset(field.index()).bytes();
+                        let ptr = base.ptr.offset(offset as isize);
+                        trace!("{:?}", base);
+                        trace!("{:?}", field_ty);
+                        if self.type_is_sized(field_ty) {
+                            ptr
+                        } else {
+                            match base.extra {
+                                LvalueExtra::None => bug!("expected fat pointer"),
+                                LvalueExtra::DowncastVariant(..) => bug!("Rust doesn't support unsized fields in enum variants"),
+                                LvalueExtra::Vtable(_) |
+                                LvalueExtra::Length(_) => {},
+                            }
+                            return Ok(Lvalue {
+                                ptr: ptr,
+                                extra: base.extra,
+                            });
                         }
                     },
 
@@ -880,14 +891,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         use rustc::ty::layout::Layout::*;
                         match *base_layout {
                             General { ref variants, .. } => {
-                                use self::value::Value::*;
-                                match base {
-                                    ByRef(ptr) => return Ok(ByValPair(
-                                        PrimVal::Ptr(ptr.offset(variants[variant].field_offset(1).bytes() as isize)),
-                                        PrimVal::U64(variant as u64),
-                                    )),
-                                    other => bug!("bad downcast base: {:?}", other),
-                                }
+                                return Ok(Lvalue {
+                                    ptr: base.ptr.offset(variants[variant].field_offset(1).bytes() as isize),
+                                    extra: LvalueExtra::DowncastVariant(variant),
+                                });
                             }
                             RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
                                 return Ok(base);
@@ -896,14 +903,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     },
 
-                    Deref => match self.follow_ref(base, base_ty)? {
-                        Value::ByRef(..) => bug!("follow_ref broken"),
-                        // magical deref
-                        Value::ByVal(PrimVal::Ptr(ptr)) => Value::ByRef(ptr),
-                        Value::ByVal(..) => bug!("can't deref non pointer types"),
-                        // deref ops on fat pointers are no-ops
-                        pair @ Value::ByValPair(..) => pair,
-                    },
+                    Deref => {
+                        use primval::PrimVal::*;
+                        use interpreter::value::Value::*;
+                        let (ptr, extra) = match self.read_value(base.ptr, base_ty)? {
+                            ByValPair(Ptr(ptr), Ptr(vptr)) => (ptr, LvalueExtra::Vtable(vptr)),
+                            ByValPair(Ptr(ptr), n) => (ptr, LvalueExtra::Length(n.expect_uint("slice length"))),
+                            ByVal(Ptr(ptr)) => (ptr, LvalueExtra::None),
+                            _ => bug!("can't deref non pointer types"),
+                        };
+                        return Ok(Lvalue { ptr: ptr, extra: extra });
+                    }
 
                     Index(ref operand) => {
                         let elem_size = match base_ty.sty {
@@ -914,12 +924,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let n_ptr = self.eval_operand(operand)?;
                         let usize = self.tcx.types.usize;
                         let n = self.value_to_primval(n_ptr, usize)?.expect_uint("Projection::Index expected usize");
-                        match base {
-                            Value::ByRef(ptr) |
-                            Value::ByValPair(PrimVal::Ptr(ptr), _) |
-                            Value::ByVal(PrimVal::Ptr(ptr)) => Value::ByRef(ptr.offset(n as isize * elem_size as isize)),
-                            other => bug!("index op on {:?}", other),
-                        }
+                        base.ptr.offset(n as isize * elem_size as isize)
                     }
 
                     ConstantIndex { .. } => unimplemented!(),
@@ -927,7 +932,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
         };
-        Ok(value)
+
+        Ok(Lvalue { ptr: ptr, extra: LvalueExtra::None })
     }
 
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
@@ -999,14 +1005,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let extra_dest = dest.offset(self.memory.pointer_size() as isize);
                 self.memory.write_primval(extra_dest, b)
             }
-        }
-    }
-
-    // ensures that this value isn't a `ByRef` anymore
-    fn follow_ref(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
-        match value {
-            Value::ByRef(ptr) => self.read_value(ptr, ty),
-            other => Ok(other),
         }
     }
 
@@ -1109,6 +1107,13 @@ fn pointee_type(ptr_ty: ty::Ty) -> Option<ty::Ty> {
             Some(ty)
         }
         _ => None,
+    }
+}
+
+impl Lvalue {
+    fn to_ptr(self) -> Pointer {
+        assert_eq!(self.extra, LvalueExtra::None);
+        self.ptr
     }
 }
 

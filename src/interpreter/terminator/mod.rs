@@ -43,13 +43,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
-                let discr_ptr = self.eval_lvalue(discr)?;
+                let discr_ptr = self.eval_lvalue(discr)?.to_ptr();
                 let discr_ty = self.lvalue_ty(discr);
                 let discr_size = self
                     .type_layout(discr_ty)
                     .size(&self.tcx.data_layout)
                     .bytes() as usize;
-                let discr_val = discr_ptr.read_uint(&self.memory, discr_size)?;
+                let discr_val = self.memory.read_uint(discr_ptr, discr_size)?;
                 if let ty::TyChar = discr_ty.sty {
                     if ::std::char::from_u32(discr_val as u32).is_none() {
                         return Err(EvalError::InvalidChar(discr_val as u64));
