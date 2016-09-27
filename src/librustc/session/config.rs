@@ -37,7 +37,6 @@ use std::collections::btree_map::Iter as BTreeMapIter;
 use std::collections::btree_map::Keys as BTreeMapKeysIter;
 use std::collections::btree_map::Values as BTreeMapValuesIter;
 
-use std::env;
 use std::fmt;
 use std::hash::{Hasher, SipHasher};
 use std::iter::FromIterator;
@@ -1525,25 +1524,10 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         crate_name: crate_name,
         alt_std_name: None,
         libs: libs,
-        unstable_features: get_unstable_features_setting(),
+        unstable_features: UnstableFeatures::from_environment(),
         debug_assertions: debug_assertions,
     },
     cfg)
-}
-
-pub fn get_unstable_features_setting() -> UnstableFeatures {
-    // Whether this is a feature-staged build, i.e. on the beta or stable channel
-    let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
-    // The secret key needed to get through the rustc build itself by
-    // subverting the unstable features lints
-    let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
-    // The matching key to the above, only known by the build system
-    let bootstrap_provided_key = env::var("RUSTC_BOOTSTRAP_KEY").ok();
-    match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
-        (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
-        (true, ..) => UnstableFeatures::Disallow,
-        (false, ..) => UnstableFeatures::Allow
-    }
 }
 
 pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateType>, String> {
@@ -1575,7 +1559,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
 pub mod nightly_options {
     use getopts;
     use syntax::feature_gate::UnstableFeatures;
-    use super::{ErrorOutputType, OptionStability, RustcOptGroup, get_unstable_features_setting};
+    use super::{ErrorOutputType, OptionStability, RustcOptGroup};
     use session::{early_error, early_warn};
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
@@ -1583,18 +1567,13 @@ pub mod nightly_options {
     }
 
     pub fn is_nightly_build() -> bool {
-        match get_unstable_features_setting() {
-            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
-            _ => false,
-        }
+        UnstableFeatures::from_environment().is_nightly_build()
     }
 
     pub fn check_nightly_options(matches: &getopts::Matches, flags: &[RustcOptGroup]) {
         let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
-        let really_allows_unstable_options = match get_unstable_features_setting() {
-            UnstableFeatures::Disallow => false,
-            _ => true,
-        };
+        let really_allows_unstable_options = UnstableFeatures::from_environment()
+            .is_nightly_build();
 
         for opt in flags.iter() {
             if opt.stability == OptionStability::Stable {

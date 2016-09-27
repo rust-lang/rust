@@ -411,8 +411,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                                                &feature, &r),
                         None => format!("use of unstable library feature '{}'", &feature)
                     };
-                    emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
-                                      &feature, span, GateIssue::Library(Some(issue)), &msg);
+                    emit_feature_err(&self.tcx.sess.parse_sess, &feature, span,
+                                     GateIssue::Library(Some(issue)), &msg);
                 }
             }
             Some(&Stability { ref level, ref feature, .. }) => {

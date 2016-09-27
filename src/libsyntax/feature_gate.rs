@@ -36,6 +36,7 @@ use parse::ParseSess;
 use parse::token::InternedString;
 
 use std::ascii::AsciiExt;
+use std::env;
 
 macro_rules! setter {
     ($field: ident) => {{
@@ -679,16 +680,15 @@ impl GatedCfg {
     pub fn check_and_emit(&self, sess: &ParseSess, features: &Features) {
         let (cfg, feature, has_feature) = GATED_CFGS[self.index];
         if !has_feature(features) && !sess.codemap().span_allows_unstable(self.span) {
-            let diagnostic = &sess.span_diagnostic;
             let explain = format!("`cfg({})` is experimental and subject to change", cfg);
-            emit_feature_err(diagnostic, feature, self.span, GateIssue::Language, &explain);
+            emit_feature_err(sess, feature, self.span, GateIssue::Language, &explain);
         }
     }
 }
 
 struct Context<'a> {
     features: &'a Features,
-    span_handler: &'a Handler,
+    parse_sess: &'a ParseSess,
     cm: &'a CodeMap,
     plugin_attributes: &'a [(String, AttributeType)],
 }
@@ -699,7 +699,7 @@ macro_rules! gate_feature_fn {
         let has_feature: bool = has_feature(&$cx.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
         if !has_feature && !cx.cm.span_allows_unstable(span) {
-            emit_feature_err(cx.span_handler, name, span, GateIssue::Language, explain);
+            emit_feature_err(cx.parse_sess, name, span, GateIssue::Language, explain);
         }
     }}
 }
@@ -756,10 +756,10 @@ impl<'a> Context<'a> {
     }
 }
 
-pub fn check_attribute(attr: &ast::Attribute, handler: &Handler,
+pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess,
                        cm: &CodeMap, features: &Features) {
     let cx = Context {
-        features: features, span_handler: handler,
+        features: features, parse_sess: parse_sess,
         cm: cm, plugin_attributes: &[]
     };
     cx.check_attribute(attr, true);
@@ -788,8 +788,10 @@ pub enum GateIssue {
     Library(Option<u32>)
 }
 
-pub fn emit_feature_err(diag: &Handler, feature: &str, span: Span, issue: GateIssue,
+pub fn emit_feature_err(sess: &ParseSess, feature: &str, span: Span, issue: GateIssue,
                         explain: &str) {
+    let diag = &sess.span_diagnostic;
+
     let issue = match issue {
         GateIssue::Language => find_lang_feature_issue(feature),
         GateIssue::Library(lib) => lib,
@@ -802,13 +804,12 @@ pub fn emit_feature_err(diag: &Handler, feature: &str, span: Span, issue: GateIs
     };
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
-    if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some() {
-        err.emit();
-        return;
+    if sess.unstable_features.is_nightly_build() {
+        err.help(&format!("add #![feature({})] to the \
+                           crate attributes to enable",
+                          feature));
     }
-    err.help(&format!("add #![feature({})] to the \
-                       crate attributes to enable",
-                      feature));
+
     err.emit();
 }
 
@@ -962,9 +963,10 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                 if attr::contains_name(&i.attrs[..], "simd") {
                     gate_feature_post!(&self, simd, i.span,
                                        "SIMD types are experimental and possibly buggy");
-                    self.context.span_handler.span_warn(i.span,
-                                                        "the `#[simd]` attribute is deprecated, \
-                                                         use `#[repr(simd)]` instead");
+                    self.context.parse_sess.span_diagnostic.span_warn(i.span,
+                                                                      "the `#[simd]` attribute \
+                                                                       is deprecated, use \
+                                                                       `#[repr(simd)]` instead");
                 }
                 for attr in &i.attrs {
                     if attr.name() == "repr" {
@@ -1273,7 +1275,7 @@ pub fn check_crate(krate: &ast::Crate,
     maybe_stage_features(&sess.span_diagnostic, krate, unstable);
     let ctx = Context {
         features: features,
-        span_handler: &sess.span_diagnostic,
+        parse_sess: sess,
         cm: sess.codemap(),
         plugin_attributes: plugin_attributes,
     };
@@ -1292,6 +1294,30 @@ pub enum UnstableFeatures {
     /// because the build turns on warnings-as-errors and uses lots of unstable
     /// features. As a result, this is always required for building Rust itself.
     Cheat
+}
+
+impl UnstableFeatures {
+    pub fn from_environment() -> UnstableFeatures {
+        // Whether this is a feature-staged build, i.e. on the beta or stable channel
+        let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
+        // The secret key needed to get through the rustc build itself by
+        // subverting the unstable features lints
+        let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
+        // The matching key to the above, only known by the build system
+        let bootstrap_provided_key = env::var("RUSTC_BOOTSTRAP_KEY").ok();
+        match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
+            (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
+            (true, _, _) => UnstableFeatures::Disallow,
+            (false, _, _) => UnstableFeatures::Allow
+        }
+    }
+
+    pub fn is_nightly_build(&self) -> bool {
+        match *self {
+            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
+            _ => false,
+        }
+    }
 }
 
 fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate,

@@ -14,6 +14,7 @@ use ast;
 use codemap::CodeMap;
 use syntax_pos::{self, Span, FileMap};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
+use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
 use parse::token::InternedString;
 use ptr::P;
@@ -42,6 +43,7 @@ pub mod obsolete;
 /// Info about a parsing session.
 pub struct ParseSess {
     pub span_diagnostic: Handler, // better be the same as the one in the reader!
+    pub unstable_features: UnstableFeatures,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<PathBuf>>,
     code_map: Rc<CodeMap>,
@@ -60,6 +62,7 @@ impl ParseSess {
     pub fn with_span_handler(handler: Handler, code_map: Rc<CodeMap>) -> ParseSess {
         ParseSess {
             span_diagnostic: handler,
+            unstable_features: UnstableFeatures::from_environment(),
             included_mod_stack: RefCell::new(vec![]),
             code_map: code_map
         }
