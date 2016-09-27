@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_primval(dest, a)?;
                 let layout = self.type_layout(dest_ty);
                 let offset = match *layout {
-                    Layout::Univariant { ref variant, .. } => {
+                    Layout::Univariant { .. } => {
                         bug!("I don't think this can ever happen until we have custom fat pointers");
                         //variant.field_offset(1).bytes() as isize
                     },
