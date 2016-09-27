@@ -23,6 +23,7 @@ use std::process;
 use num_cpus;
 use rustc_serialize::Decodable;
 use toml::{Parser, Decoder, Value};
+use Triple;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -43,7 +44,7 @@ pub struct Config {
     pub submodules: bool,
     pub compiler_docs: bool,
     pub docs: bool,
-    pub target_config: HashMap<String, Target>,
+    pub target_config: HashMap<Triple, Target>,
 
     // llvm codegen options
     pub llvm_assertions: bool,
@@ -62,9 +63,9 @@ pub struct Config {
     pub rust_optimize_tests: bool,
     pub rust_debuginfo_tests: bool,
 
-    pub build: String,
-    pub host: Vec<String>,
-    pub target: Vec<String>,
+    pub build: Triple,
+    pub host: Vec<Triple>,
+    pub target: Vec<Triple>,
     pub rustc: Option<PathBuf>,
     pub cargo: Option<PathBuf>,
     pub local_rebuild: bool,
@@ -104,15 +105,15 @@ struct TomlConfig {
     build: Option<Build>,
     llvm: Option<Llvm>,
     rust: Option<Rust>,
-    target: Option<HashMap<String, TomlTarget>>,
+    target: Option<HashMap<Triple, TomlTarget>>,
 }
 
 /// TOML representation of various global build decisions.
 #[derive(RustcDecodable, Default, Clone)]
 struct Build {
-    build: Option<String>,
-    host: Vec<String>,
-    target: Vec<String>,
+    build: Option<Triple>,
+    host: Vec<Triple>,
+    target: Vec<Triple>,
     cargo: Option<String>,
     rustc: Option<String>,
     compiler_docs: Option<bool>,
@@ -172,7 +173,7 @@ impl Config {
         config.docs = true;
         config.rust_rpath = true;
         config.rust_codegen_units = 1;
-        config.build = build.to_string();
+        config.build = build.into();
         config.channel = "dev".to_string();
         config.codegen_tests = true;
 
@@ -205,7 +206,7 @@ impl Config {
         }).unwrap_or_else(|| TomlConfig::default());
 
         let build = toml.build.clone().unwrap_or(Build::default());
-        set(&mut config.build, build.build.clone());
+        set(&mut config.build, build.build);
         config.host.push(config.build.clone());
         for host in build.host.iter() {
             if !config.host.contains(host) {
@@ -333,13 +334,13 @@ impl Config {
             }
 
             match key {
-                "CFG_BUILD" => self.build = value.to_string(),
+                "CFG_BUILD" => self.build = value.into(),
                 "CFG_HOST" => {
-                    self.host = value.split(" ").map(|s| s.to_string())
+                    self.host = value.split(" ").map(|s| s.into())
                                      .collect();
                 }
                 "CFG_TARGET" => {
-                    self.target = value.split(" ").map(|s| s.to_string())
+                    self.target = value.split(" ").map(|s| s.into())
                                        .collect();
                 }
                 "CFG_MUSL_ROOT" if value.len() > 0 => {
@@ -369,25 +370,25 @@ impl Config {
                     target.jemalloc = Some(PathBuf::from(value));
                 }
                 "CFG_ARM_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
-                    let target = "arm-linux-androideabi".to_string();
+                    let target = "arm-linux-androideabi".into();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));
                 }
                 "CFG_ARMV7_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
-                    let target = "armv7-linux-androideabi".to_string();
+                    let target = "armv7-linux-androideabi".into();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));
                 }
                 "CFG_I686_LINUX_ANDROID_NDK" if value.len() > 0 => {
-                    let target = "i686-linux-android".to_string();
+                    let target = "i686-linux-android".into();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));
                 }
                 "CFG_AARCH64_LINUX_ANDROID_NDK" if value.len() > 0 => {
-                    let target = "aarch64-linux-android".to_string();
+                    let target = "aarch64-linux-android".into();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));

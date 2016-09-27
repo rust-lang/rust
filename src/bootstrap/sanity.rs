@@ -101,22 +101,22 @@ pub fn check(build: &mut Build) {
 
     for target in build.config.target.iter() {
         // Either can't build or don't want to run jemalloc on these targets
-        if target.contains("rumprun") ||
-           target.contains("bitrig") ||
-           target.contains("openbsd") ||
-           target.contains("msvc") ||
-           target.contains("emscripten") {
+        if target.is_rumprun() ||
+           target.is_bitrig() ||
+           target.is_openbsd() ||
+           target.is_msvc() ||
+           target.is_emscripten() {
             build.config.use_jemalloc = false;
         }
 
         // Can't compile for iOS unless we're on OSX
-        if target.contains("apple-ios") &&
-           !build.config.build.contains("apple-darwin") {
+        if target.is_apple_ios() &&
+           !build.config.build.is_apple_darwin() {
             panic!("the iOS target is only supported on OSX");
         }
 
         // Make sure musl-root is valid if specified
-        if target.contains("musl") && !target.contains("mips") {
+        if target.is_musl() && !target.is_mips() {
             match build.musl_root(target) {
                 Some(root) => {
                     if fs::metadata(root.join("lib/libc.a")).is_err() {
@@ -136,7 +136,7 @@ pub fn check(build: &mut Build) {
             }
         }
 
-        if target.contains("msvc") {
+        if target.is_msvc() {
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
@@ -157,7 +157,7 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             }
         }
 
-        if target.contains("arm-linux-android") {
+        if target.is_arm_linux_android() {
             need_cmd("adb".as_ref());
         }
     }

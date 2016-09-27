@@ -21,7 +21,7 @@ use std::process::Command;
 
 use build_helper::output;
 
-use {Build, Compiler, Mode};
+use {Build, Compiler, Mode, Triple};
 use util::{self, dylib_path, dylib_path_var};
 
 const ADB_TEST_DIR: &'static str = "/data/tmp";
@@ -30,7 +30,7 @@ const ADB_TEST_DIR: &'static str = "/data/tmp";
 ///
 /// This tool in `src/tools` will verify the validity of all our links in the
 /// documentation to ensure we don't have a bunch of dead ones.
-pub fn linkcheck(build: &Build, stage: u32, host: &str) {
+pub fn linkcheck(build: &Build, stage: u32, host: &Triple) {
     println!("Linkcheck stage{} ({})", stage, host);
     let compiler = Compiler::new(stage, host);
     build.run(build.tool_cmd(&compiler, "linkchecker")
@@ -41,7 +41,7 @@ pub fn linkcheck(build: &Build, stage: u32, host: &str) {
 ///
 /// This tool in `src/tools` will check out a few Rust projects and run `cargo
 /// test` to ensure that we don't regress the test suites there.
-pub fn cargotest(build: &Build, stage: u32, host: &str) {
+pub fn cargotest(build: &Build, stage: u32, host: &Triple) {
     let ref compiler = Compiler::new(stage, host);
 
     // Configure PATH to find the right rustc. NB. we have to use PATH
@@ -69,14 +69,14 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
 /// This tool in `src/tools` checks up on various bits and pieces of style and
 /// otherwise just implements a few lint-like checks that are specific to the
 /// compiler itself.
-pub fn tidy(build: &Build, stage: u32, host: &str) {
+pub fn tidy(build: &Build, stage: u32, host: &Triple) {
     println!("tidy check stage{} ({})", stage, host);
     let compiler = Compiler::new(stage, host);
     build.run(build.tool_cmd(&compiler, "tidy")
                    .arg(build.src.join("src")));
 }
 
-fn testdir(build: &Build, host: &str) -> PathBuf {
+fn testdir(build: &Build, host: &Triple) -> PathBuf {
     build.out.join(host).join("test")
 }
 
@@ -87,7 +87,7 @@ fn testdir(build: &Build, host: &str) -> PathBuf {
 /// "run-pass" or `suite` can be something like `debuginfo`.
 pub fn compiletest(build: &Build,
                    compiler: &Compiler,
-                   target: &str,
+                   target: &Triple,
                    mode: &str,
                    suite: &str) {
     println!("Check compiletest {} ({} -> {})", suite, compiler.host, target);
@@ -130,7 +130,7 @@ pub fn compiletest(build: &Build,
     let python_default = "python";
     cmd.arg("--docck-python").arg(python_default);
 
-    if build.config.build.ends_with("apple-darwin") {
+    if build.config.build.is_apple_darwin() {
         // Force /usr/bin/python on OSX for LLDB tests because we're loading the
         // LLDB plugin's compiled module which only works with the system python
         // (namely not Homebrew-installed python)
@@ -178,7 +178,7 @@ pub fn compiletest(build: &Build,
 
     // Running a C compiler on MSVC requires a few env vars to be set, to be
     // sure to set them here.
-    if target.contains("msvc") {
+    if target.is_msvc() {
         for &(ref k, ref v) in build.cc[target].0.env() {
             if k != "PATH" {
                 cmd.env(k, v);
@@ -189,7 +189,7 @@ pub fn compiletest(build: &Build,
 
     cmd.arg("--adb-path").arg("adb");
     cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
-    if target.contains("android") {
+    if target.is_android() {
         // Assume that cc for this target comes from the android sysroot
         cmd.arg("--android-cross-path")
            .arg(build.cc(target).parent().unwrap().parent().unwrap());
@@ -262,7 +262,7 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
 /// arguments, and those arguments are discovered from `Cargo.lock`.
 pub fn krate(build: &Build,
              compiler: &Compiler,
-             target: &str,
+             target: &Triple,
              mode: Mode) {
     let (name, path, features) = match mode {
         Mode::Libstd => ("libstd", "src/rustc/std_shim", build.std_features()),
@@ -320,7 +320,7 @@ pub fn krate(build: &Build,
     dylib_path.insert(0, build.sysroot_libdir(compiler, target));
     cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-    if target.contains("android") {
+    if target.is_android() {
         build.run(cargo.arg("--no-run"));
         krate_android(build, compiler, target, mode);
     } else {
@@ -331,7 +331,7 @@ pub fn krate(build: &Build,
 
 fn krate_android(build: &Build,
                  compiler: &Compiler,
-                 target: &str,
+                 target: &Triple,
                  mode: Mode) {
     let mut tests = Vec::new();
     let out_dir = build.cargo_out(compiler, mode, target);
@@ -372,7 +372,7 @@ fn krate_android(build: &Build,
 }
 
 fn find_tests(dir: &Path,
-              target: &str,
+              target: &Triple,
               dst: &mut Vec<PathBuf>) {
     for e in t!(dir.read_dir()).map(|e| t!(e)) {
         let file_type = t!(e.file_type());
@@ -380,8 +380,8 @@ fn find_tests(dir: &Path,
             continue
         }
         let filename = e.file_name().into_string().unwrap();
-        if (target.contains("windows") && filename.ends_with(".exe")) ||
-           (!target.contains("windows") && !filename.contains(".")) {
+        if (target.is_windows() && filename.ends_with(".exe")) ||
+           (!target.is_windows() && !filename.contains(".")) {
             dst.push(e.path());
         }
     }
@@ -389,7 +389,7 @@ fn find_tests(dir: &Path,
 
 pub fn android_copy_libs(build: &Build,
                          compiler: &Compiler,
-                         target: &str) {
+                         target: &Triple) {
     println!("Android copy libs to emulator ({})", target);
     build.run(Command::new("adb").arg("remount"));
     build.run(Command::new("adb").args(&["shell", "rm", "-r", ADB_TEST_DIR]));

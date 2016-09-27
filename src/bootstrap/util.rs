@@ -20,10 +20,11 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use filetime::FileTime;
+use Triple;
 
 /// Returns the `name` as the filename of a static library for `target`.
-pub fn staticlib(name: &str, target: &str) -> String {
-    if target.contains("windows") {
+pub fn staticlib(name: &str, target: &Triple) -> String {
+    if target.is_windows() {
         format!("{}.lib", name)
     } else {
         format!("lib{}.a", name)
@@ -98,8 +99,8 @@ pub fn cp_filtered<F: Fn(&Path) -> bool>(src: &Path, dst: &Path, filter: &F) {
 
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
-pub fn exe(name: &str, target: &str) -> String {
-    if target.contains("windows") {
+pub fn exe(name: &str, target: &Triple) -> String {
+    if target.is_windows() {
         format!("{}.exe", name)
     } else {
         name.to_string()
@@ -113,8 +114,8 @@ pub fn is_dylib(name: &str) -> bool {
 
 /// Returns the corresponding relative library directory that the compiler's
 /// dylibs will be found in.
-pub fn libdir(target: &str) -> &'static str {
-    if target.contains("windows") {"bin"} else {"lib"}
+pub fn libdir(target: &Triple) -> &'static str {
+    if target.is_windows() {"bin"} else {"lib"}
 }
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.

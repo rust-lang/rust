@@ -65,6 +65,7 @@ mod flags;
 mod native;
 mod sanity;
 mod step;
+mod triple;
 pub mod util;
 
 #[cfg(windows)]
@@ -77,6 +78,7 @@ mod job {
 
 pub use config::Config;
 pub use flags::Flags;
+pub use triple::Triple;
 
 /// A structure representing a Rust compiler.
 ///
@@ -86,7 +88,7 @@ pub use flags::Flags;
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct Compiler<'a> {
     stage: u32,
-    host: &'a str,
+    host: &'a Triple,
 }
 
 /// Global configuration for the build system.
@@ -128,8 +130,8 @@ pub struct Build {
     lldb_python_dir: Option<String>,
 
     // Runtime state filled in later on
-    cc: HashMap<String, (gcc::Tool, Option<PathBuf>)>,
-    cxx: HashMap<String, gcc::Tool>,
+    cc: HashMap<Triple, (gcc::Tool, Option<PathBuf>)>,
+    cxx: HashMap<Triple, gcc::Tool>,
 }
 
 /// The various "modes" of invoking Cargo.
@@ -409,9 +411,9 @@ impl Build {
                                        "ui", "ui");
                 }
                 CheckDebuginfo { compiler } => {
-                    if target.target.contains("msvc") {
+                    if target.target.is_msvc() {
                         // nothing to do
-                    } else if target.target.contains("apple") {
+                    } else if target.target.is_apple() {
                         check::compiletest(self, &compiler, target.target,
                                            "debuginfo-lldb", "debuginfo");
                     } else {
@@ -603,7 +605,7 @@ impl Build {
     fn cargo(&self,
              compiler: &Compiler,
              mode: Mode,
-             target: &str,
+             target: &Triple,
              cmd: &str) -> Command {
         let mut cargo = Command::new(&self.cargo);
         let out_dir = self.stage_out(compiler, mode);
@@ -653,7 +655,7 @@ impl Build {
         // the build.
         //
         // FIXME: the guard against msvc shouldn't need to be here
-        if !target.contains("msvc") {
+        if !target.is_msvc() {
             cargo.env(format!("CC_{}", target), self.cc(target))
                  .env(format!("AR_{}", target), self.ar(target).unwrap()) // only msvc is None
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
@@ -661,7 +663,7 @@ impl Build {
 
         // If we're building for OSX, inform the compiler and the linker that
         // we want to build a compiler runnable on 10.7
-        if target.contains("apple-darwin") {
+        if target.is_apple_darwin() {
             cargo.env("MACOSX_DEPLOYMENT_TARGET", "10.7");
         }
 
@@ -764,7 +766,7 @@ impl Build {
 
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
-    fn sysroot_libdir(&self, compiler: &Compiler, target: &str) -> PathBuf {
+    fn sysroot_libdir(&self, compiler: &Compiler, target: &Triple) -> PathBuf {
         self.sysroot(compiler).join("lib").join("rustlib")
             .join(target).join("lib")
     }
@@ -790,7 +792,7 @@ impl Build {
     fn cargo_out(&self,
                  compiler: &Compiler,
                  mode: Mode,
-                 target: &str) -> PathBuf {
+                 target: &Triple) -> PathBuf {
         self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
     }
 
@@ -798,14 +800,14 @@ impl Build {
     ///
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
-    fn llvm_out(&self, target: &str) -> PathBuf {
+    fn llvm_out(&self, target: &Triple) -> PathBuf {
         self.out.join(target).join("llvm")
     }
 
     /// Returns true if no custom `llvm-config` is set for the specified target.
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
-    fn is_rust_llvm(&self, target: &str) -> bool {
+    fn is_rust_llvm(&self, target: &Triple) -> bool {
         match self.config.target_config.get(target) {
             Some(ref c) => c.llvm_config.is_none(),
             None => true
@@ -816,7 +818,7 @@ impl Build {
     ///
     /// If a custom `llvm-config` was specified for target then that's returned
     /// instead.
-    fn llvm_config(&self, target: &str) -> PathBuf {
+    fn llvm_config(&self, target: &Triple) -> PathBuf {
         let target_config = self.config.target_config.get(target);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             s.clone()
@@ -827,14 +829,14 @@ impl Build {
     }
 
     /// Returns the path to `FileCheck` binary for the specified target
-    fn llvm_filecheck(&self, target: &str) -> PathBuf {
+    fn llvm_filecheck(&self, target: &Triple) -> PathBuf {
         let target_config = self.config.target_config.get(target);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             s.parent().unwrap().join(exe("FileCheck", target))
         } else {
             let base = self.llvm_out(&self.config.build).join("build");
             let exe = exe("FileCheck", target);
-            if self.config.build.contains("msvc") {
+            if self.config.build.is_msvc() {
                 base.join("Release/bin").join(exe)
             } else {
                 base.join("bin").join(exe)
@@ -844,7 +846,7 @@ impl Build {
 
     /// Root output directory for rust_test_helpers library compiled for
     /// `target`
-    fn test_helpers_out(&self, target: &str) -> PathBuf {
+    fn test_helpers_out(&self, target: &Triple) -> PathBuf {
         self.out.join(target).join("rust-test-helpers")
     }
 
@@ -913,13 +915,13 @@ impl Build {
     }
 
     /// Returns the path to the C compiler for the target specified.
-    fn cc(&self, target: &str) -> &Path {
+    fn cc(&self, target: &Triple) -> &Path {
         self.cc[target].0.path()
     }
 
     /// Returns a list of flags to pass to the C compiler for the target
     /// specified.
-    fn cflags(&self, target: &str) -> Vec<String> {
+    fn cflags(&self, target: &Triple) -> Vec<String> {
         // Filter out -O and /O (the optimization flags) that we picked up from
         // gcc-rs because the build scripts will determine that for themselves.
         let mut base = self.cc[target].0.args().iter()
@@ -931,14 +933,14 @@ impl Build {
         // indicating that we want libc++ (more filled out than libstdc++) and
         // we want to compile for 10.7. This way we can ensure that
         // LLVM/jemalloc/etc are all properly compiled.
-        if target.contains("apple-darwin") {
+        if target.is_apple_darwin() {
             base.push("-stdlib=libc++".into());
             base.push("-mmacosx-version-min=10.7".into());
         }
         // This is a hack, because newer binutils broke things on some vms/distros
         // (i.e., linking against unknown relocs disabled by the following flag)
         // See: https://github.com/rust-lang/rust/issues/34978
-        match target {
+        match &target.0 as &str {
             "i586-unknown-linux-gnu" |
             "i686-unknown-linux-musl" |
             "x86_64-unknown-linux-musl" => {
@@ -950,13 +952,13 @@ impl Build {
     }
 
     /// Returns the path to the `ar` archive utility for the target specified.
-    fn ar(&self, target: &str) -> Option<&Path> {
+    fn ar(&self, target: &Triple) -> Option<&Path> {
         self.cc[target].1.as_ref().map(|p| &**p)
     }
 
     /// Returns the path to the C++ compiler for the target specified, may panic
     /// if no C++ compiler was configured for the target.
-    fn cxx(&self, target: &str) -> &Path {
+    fn cxx(&self, target: &Triple) -> &Path {
         match self.cxx.get(target) {
             Some(p) => p.path(),
             None => panic!("\n\ntarget `{}` is not configured as a host,
@@ -965,7 +967,7 @@ impl Build {
     }
 
     /// Returns flags to pass to the compiler to generate code for `target`.
-    fn rustc_flags(&self, target: &str) -> Vec<String> {
+    fn rustc_flags(&self, target: &Triple) -> Vec<String> {
         // New flags should be added here with great caution!
         //
         // It's quite unfortunate to **require** flags to generate code for a
@@ -974,14 +976,14 @@ impl Build {
         // than an entry here.
 
         let mut base = Vec::new();
-        if target != self.config.build && !target.contains("msvc") {
+        if target != &self.config.build && !target.is_msvc() {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }
         return base
     }
 
     /// Returns the "musl root" for this `target`, if defined
-    fn musl_root(&self, target: &str) -> Option<&Path> {
+    fn musl_root(&self, target: &Triple) -> Option<&Path> {
         self.config.target_config[target].musl_root.as_ref()
             .or(self.config.musl_root.as_ref())
             .map(|p| &**p)
@@ -990,12 +992,12 @@ impl Build {
 
 impl<'a> Compiler<'a> {
     /// Creates a new complier for the specified stage/host
-    fn new(stage: u32, host: &'a str) -> Compiler<'a> {
+    fn new(stage: u32, host: &'a Triple) -> Compiler<'a> {
         Compiler { stage: stage, host: host }
     }
 
     /// Returns whether this is a snapshot compiler for `build`'s configuration
     fn is_snapshot(&self, build: &Build) -> bool {
-        self.stage == 0 && self.host == build.config.build
+        self.stage == 0 && self.host == &build.config.build
     }
 }

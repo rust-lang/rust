@@ -26,14 +26,14 @@ use build_helper::output;
 use filetime::FileTime;
 
 use util::{exe, staticlib, libdir, mtime, is_dylib, copy};
-use {Build, Compiler, Mode};
+use {Build, Compiler, Mode, Triple};
 
 /// Build the standard library.
 ///
 /// This will build the standard library for a particular stage of the build
 /// using the `compiler` targeting the `target` architecture. The artifacts
 /// created will also be linked into the sysroot directory.
-pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
+pub fn std<'a>(build: &'a Build, target: &Triple, compiler: &Compiler<'a>) {
     println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
              compiler.host, target);
 
@@ -71,7 +71,7 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
             cargo.env("JEMALLOC_OVERRIDE", jemalloc);
         }
     }
-    if target.contains("musl") {
+    if target.is_musl() {
         if let Some(p) = build.musl_root(target) {
             cargo.env("MUSL_ROOT", p);
         }
@@ -87,9 +87,9 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
 /// Links those artifacts generated in the given `stage` for `target` produced
 /// by `compiler` into `host`'s sysroot.
 pub fn std_link(build: &Build,
-                target: &str,
+                target: &Triple,
                 compiler: &Compiler,
-                host: &str) {
+                host: &Triple) {
     let target_compiler = Compiler::new(compiler.stage, host);
     let libdir = build.sysroot_libdir(&target_compiler, target);
     let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
@@ -103,7 +103,7 @@ pub fn std_link(build: &Build,
     }
     add_to_sysroot(&out_dir, &libdir);
 
-    if target.contains("musl") && !target.contains("mips") {
+    if target.is_musl() && !target.is_mips() {
         copy_musl_third_party_objects(build, &libdir);
     }
 }
@@ -123,8 +123,8 @@ fn copy_musl_third_party_objects(build: &Build, into: &Path) {
 /// They don't require any library support as they're just plain old object
 /// files, so we just use the nightly snapshot compiler to always build them (as
 /// no other compilers are guaranteed to be available).
-fn build_startup_objects(build: &Build, target: &str, into: &Path) {
-    if !target.contains("pc-windows-gnu") {
+fn build_startup_objects(build: &Build, target: &Triple, into: &Path) {
+    if !target.is_pc_windows_gnu() {
         return
     }
     let compiler = Compiler::new(0, &build.config.build);
@@ -150,7 +150,8 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
 /// This will build libtest and supporting libraries for a particular stage of
 /// the build using the `compiler` targeting the `target` architecture. The
 /// artifacts created will also be linked into the sysroot directory.
-pub fn test<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
+pub fn test<'a>(build: &'a Build, target: &Triple,
+                compiler: &Compiler<'a>) {
     println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
              compiler.host, target);
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
@@ -168,9 +169,9 @@ pub fn test<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
 /// Links those artifacts generated in the given `stage` for `target` produced
 /// by `compiler` into `host`'s sysroot.
 pub fn test_link(build: &Build,
-                 target: &str,
+                 target: &Triple,
                  compiler: &Compiler,
-                 host: &str) {
+                 host: &Triple) {
     let target_compiler = Compiler::new(compiler.stage, host);
     let libdir = build.sysroot_libdir(&target_compiler, target);
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
@@ -182,7 +183,7 @@ pub fn test_link(build: &Build,
 /// This will build the compiler for a particular stage of the build using
 /// the `compiler` targeting the `target` architecture. The artifacts
 /// created will also be linked into the sysroot directory.
-pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
+pub fn rustc<'a>(build: &'a Build, target: &Triple, compiler: &Compiler<'a>) {
     println!("Building stage{} compiler artifacts ({} -> {})",
              compiler.stage, compiler.host, target);
 
@@ -241,9 +242,9 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
 /// Links those artifacts generated in the given `stage` for `target` produced
 /// by `compiler` into `host`'s sysroot.
 pub fn rustc_link(build: &Build,
-                  target: &str,
+                  target: &Triple,
                   compiler: &Compiler,
-                  host: &str) {
+                  host: &Triple) {
     let target_compiler = Compiler::new(compiler.stage, host);
     let libdir = build.sysroot_libdir(&target_compiler, target);
     let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
@@ -252,13 +253,15 @@ pub fn rustc_link(build: &Build,
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
-fn libstd_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+fn libstd_stamp(build: &Build, compiler: &Compiler,
+                target: &Triple) -> PathBuf {
     build.cargo_out(compiler, Mode::Libstd, target).join(".libstd.stamp")
 }
 
 /// Cargo's output path for libtest in a given stage, compiled by a particular
 /// compiler for the specified target.
-fn libtest_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+fn libtest_stamp(build: &Build, compiler: &Compiler,
+                 target: &Triple) -> PathBuf {
     build.cargo_out(compiler, Mode::Libtest, target).join(".libtest.stamp")
 }
 
@@ -273,7 +276,7 @@ fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
 /// This will assemble a compiler in `build/$host/stage$stage`. The compiler
 /// must have been previously produced by the `stage - 1` build.config.build
 /// compiler.
-pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
+pub fn assemble_rustc(build: &Build, stage: u32, host: &Triple) {
     assert!(stage > 0, "the stage0 compiler isn't assembled, it's downloaded");
     // The compiler that we're assembling
     let target_compiler = Compiler::new(stage, host);
@@ -360,7 +363,7 @@ fn add_to_sysroot(out_dir: &Path, sysroot_dst: &Path) {
 ///
 /// This will build the specified tool with the specified `host` compiler in
 /// `stage` into the normal cargo output directory.
-pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
+pub fn tool(build: &Build, stage: u32, host: &Triple, tool: &str) {
     println!("Building stage{} tool {} ({})", stage, tool, host);
 
     let compiler = Compiler::new(stage, host);
