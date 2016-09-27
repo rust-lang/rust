@@ -119,8 +119,10 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
         HashSet { map: HashMap::new() }
     }
 
-    /// Creates an empty HashSet with space for at least `n` elements in
-    /// the hash table.
+    /// Creates an empty `HashSet` with the specified capacity.
+    ///
+    /// The hash set will be able to hold at least `capacity` elements without
+    /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
     /// # Examples
     ///
@@ -164,8 +166,11 @@ impl<T, S> HashSet<T, S>
         HashSet { map: HashMap::with_hasher(hasher) }
     }
 
-    /// Creates an empty HashSet with space for at least `capacity`
-    /// elements in the hash table, using `hasher` to hash the keys.
+    /// Creates an empty HashSet with with the specified capacity, using
+    /// `hasher` to hash the keys.
+    ///
+    /// The hash set will be able to hold at least `capacity` elements without
+    /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
     /// Warning: `hasher` is normally randomly generated, and
     /// is designed to allow `HashSet`s to be resistant to attacks that
@@ -1068,7 +1073,7 @@ mod test_set {
     use super::super::map::RandomState;
 
     #[test]
-    fn test_create_capacities() {
+    fn test_zero_capacities() {
         type HS = HashSet<i32>;
 
         let s = HS::new();
@@ -1078,6 +1083,24 @@ mod test_set {
         assert_eq!(s.capacity(), 0);
 
         let s = HS::with_hasher(RandomState::new());
+        assert_eq!(s.capacity(), 0);
+
+        let s = HS::with_capacity(0);
+        assert_eq!(s.capacity(), 0);
+
+        let s = HS::with_capacity_and_hasher(0, RandomState::new());
+        assert_eq!(s.capacity(), 0);
+
+        let mut s = HS::new();
+        s.insert(1);
+        s.insert(2);
+        s.remove(&1);
+        s.remove(&2);
+        s.shrink_to_fit();
+        assert_eq!(s.capacity(), 0);
+
+        let mut s = HS::new();
+        s.reserve(0);
         assert_eq!(s.capacity(), 0);
     }
 
