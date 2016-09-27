@@ -75,7 +75,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
                 mir_map_copy.map.insert(def_id, mir_map.map.get(&def_id).unwrap().clone());
             }
             run_mir_passes(tcx, &mut mir_map_copy);
-            eval_main(tcx, &mir_map_copy, entry_def_id, memory_size, step_limit, stack_limit, state.session);
+            eval_main(tcx, &mir_map_copy, entry_def_id, memory_size, step_limit, stack_limit);
 
             state.session.abort_if_errors();
         });

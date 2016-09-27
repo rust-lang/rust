@@ -58,7 +58,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls<'a> {
 
             let mut mir_map = MirMap { map: mir_map.map.clone() };
             run_mir_passes(tcx, &mut mir_map);
-            bencher.borrow_mut().iter(|| { eval_main(tcx, &mir_map, node_id, state.session); });
+            bencher.borrow_mut().iter(|| { eval_main(tcx, &mir_map, node_id); });
 
             state.session.abort_if_errors();
         });
