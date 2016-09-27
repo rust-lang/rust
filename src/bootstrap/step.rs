@@ -171,6 +171,8 @@ targets!(define_source);
 /// into a topologically sorted list which when executed left-to-right will
 /// correctly sequence the entire build.
 pub fn all(build: &Build) -> Vec<Step> {
+    build.verbose("inferred build steps:");
+
     let mut ret = Vec::new();
     let mut all = HashSet::new();
     for target in top_level(build) {
@@ -184,6 +186,7 @@ pub fn all(build: &Build) -> Vec<Step> {
                 set: &mut HashSet<Step<'a>>) {
         if set.insert(target.clone()) {
             for dep in target.deps(build) {
+                build.verbose(&format!("{:?}\n  -> {:?}", target, dep));
                 fill(build, &dep, ret, set);
             }
             ret.push(target.clone());
