@@ -335,16 +335,18 @@ fn test_resize_policy() {
 ///     println!("{:?} has {} hp", viking, health);
 /// }
 /// ```
+///
 /// A HashMap with fixed list of elements can be initialized from an array:
+///
 /// ```
 /// use std::collections::HashMap;
 ///
 /// fn main() {
 ///     let timber_resources: HashMap<&str, i32> =
-///     [ ("Norway", 100),
-///       ("Denmark", 50),
-///       ("Iceland", 10) ]
-///       .iter().cloned().collect();
+///     [("Norway", 100),
+///      ("Denmark", 50),
+///      ("Iceland", 10)]
+///      .iter().cloned().collect();
 ///     // use the values stored in map
 /// }
 /// ```
