@@ -974,7 +974,7 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                                self.old_error_set.contains(&ty.id) {
                                 let mut err = struct_span_err!(self.tcx.sess, ty.span, E0446,
                                           "private type in public interface");
-                                err.span_label(ty.span, &format!("private type can't be public"));
+                                err.span_label(ty.span, &format!("can't leak private type"));
                                 err.emit();
                             } else {
                                 self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
