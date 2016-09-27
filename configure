@@ -437,6 +437,10 @@ case $CFG_OSTYPE in
         CFG_CPUTYPE=$(isainfo -n)
         ;;
 
+    Haiku)
+        CFG_OSTYPE=unknown-haiku
+        ;;
+
     MINGW*)
         # msys' `uname` does not print gcc configuration, but prints msys
         # configuration. so we cannot believe `uname -m`:
@@ -530,6 +534,10 @@ case $CFG_CPUTYPE in
 
     x86_64 | x86-64 | x64 | amd64)
         CFG_CPUTYPE=x86_64
+        ;;
+
+    BePC)
+        CFG_CPUTYPE=i686
         ;;
 
     *)

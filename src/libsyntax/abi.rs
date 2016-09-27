@@ -24,6 +24,7 @@ pub enum Os {
     Netbsd,
     Openbsd,
     NaCl,
+    Haiku,
     Solaris,
 }
 
@@ -146,6 +147,7 @@ impl fmt::Display for Os {
             Os::Netbsd => "netbsd".fmt(f),
             Os::Openbsd => "openbsd".fmt(f),
             Os::NaCl => "nacl".fmt(f),
+            Os::Haiku => "haiku".fmt(f),
             Os::Solaris => "solaris".fmt(f),
         }
     }
