@@ -38,7 +38,8 @@ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
           target_os = "netbsd",
           target_os = "openbsd",
           target_os = "solaris",
-          target_os = "emscripten"))]
+          target_os = "emscripten",
+          target_os = "haiku"))]
 mod imp {
     use libc::c_char;
     use mem;

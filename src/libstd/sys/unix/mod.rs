@@ -17,6 +17,7 @@ use libc;
 #[cfg(target_os = "bitrig")]    pub use os::bitrig as platform;
 #[cfg(target_os = "dragonfly")] pub use os::dragonfly as platform;
 #[cfg(target_os = "freebsd")]   pub use os::freebsd as platform;
+#[cfg(target_os = "haiku")]     pub use os::haiku as platform;
 #[cfg(target_os = "ios")]       pub use os::ios as platform;
 #[cfg(target_os = "linux")]     pub use os::linux as platform;
 #[cfg(target_os = "macos")]     pub use os::macos as platform;
