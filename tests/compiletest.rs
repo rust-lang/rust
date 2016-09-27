@@ -105,7 +105,6 @@ fn compile_test() {
                         writeln!(stderr.lock(), "FAILED with exit code {:?}", output.status.code()).unwrap();
                         writeln!(stderr.lock(), "stdout: \n {}", std::str::from_utf8(&output.stdout).unwrap()).unwrap();
                         writeln!(stderr.lock(), "stderr: \n {}", output_err).unwrap();
-                        panic!("failed to run test");
                     }
                 }
                 Err(e) => {
@@ -116,5 +115,6 @@ fn compile_test() {
         }
         let stderr = std::io::stderr();
         writeln!(stderr.lock(), "{} success, {} mir not found, {} crate not found, {} failed", success, mir_not_found, crate_not_found, failed).unwrap();
+        assert_eq!(failed, 0, "some tests failed");
     });
 }
