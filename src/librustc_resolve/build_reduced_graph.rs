@@ -20,21 +20,25 @@ use {NameBinding, NameBindingKind, ToNameBinding};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
+use rustc::middle::cstore::LoadedMacro;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::map::DefPathData;
 use rustc::ty;
 
 use std::cell::Cell;
+use std::rc::Rc;
 
 use syntax::ast::Name;
 use syntax::attr;
 use syntax::parse::token;
 
-use syntax::ast::{Block, Crate};
-use syntax::ast::{ForeignItem, ForeignItemKind, Item, ItemKind};
+use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
+use syntax::ext::base::{MultiItemModifier, Resolver as SyntaxResolver};
+use syntax::ext::hygiene::Mark;
+use syntax::feature_gate::{self, emit_feature_err};
 use syntax::parse::token::keywords;
 use syntax::visit::{self, Visitor};
 
@@ -53,11 +57,6 @@ impl<'a> ToNameBinding<'a> for (Def, Span, ty::Visibility) {
 }
 
 impl<'b> Resolver<'b> {
-    /// Constructs the reduced graph for the entire crate.
-    pub fn build_reduced_graph(&mut self, krate: &Crate) {
-        visit::walk_crate(&mut BuildReducedGraphVisitor { resolver: self }, krate);
-    }
-
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
     fn define<T>(&mut self, parent: Module<'b>, name: Name, ns: Namespace, def: T)
@@ -72,15 +71,13 @@ impl<'b> Resolver<'b> {
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
         // If any statements are items, we need to create an anonymous module
         block.stmts.iter().any(|statement| match statement.node {
-            StmtKind::Item(_) => true,
+            StmtKind::Item(_) | StmtKind::Mac(_) => true,
             _ => false,
         })
     }
 
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &Item) {
-        self.crate_loader.process_item(item, &self.definitions);
-
         let parent = self.current_module;
         let name = item.ident.name;
         let sp = item.span;
@@ -188,8 +185,20 @@ impl<'b> Resolver<'b> {
             }
 
             ItemKind::ExternCrate(_) => {
-                // n.b. we don't need to look at the path option here, because cstore already
-                // did
+                // We need to error on `#[macro_use] extern crate` when it isn't at the
+                // crate root, because `$crate` won't work properly.
+                let is_crate_root = self.current_module.parent.is_none();
+                for def in self.crate_loader.load_macros(item, is_crate_root) {
+                    match def {
+                        LoadedMacro::Def(def) => self.add_macro(Mark::root(), def),
+                        LoadedMacro::CustomDerive(name, ext) => {
+                            self.insert_custom_derive(&name, ext, item.span);
+                        }
+                    }
+                }
+                self.crate_loader.process_item(item, &self.definitions);
+
+                // n.b. we don't need to look at the path option here, because cstore already did
                 if let Some(crate_id) = self.session.cstore.extern_mod_stmt_cnum(item.id) {
                     let def_id = DefId {
                         krate: crate_id,
@@ -206,6 +215,8 @@ impl<'b> Resolver<'b> {
                 }
             }
 
+            ItemKind::Mod(..) if item.ident == keywords::Invalid.ident() => {} // Crate root
+
             ItemKind::Mod(..) => {
                 let def = Def::Mod(self.definitions.local_def_id(item.id));
                 let module = self.arenas.alloc_module(ModuleS {
@@ -213,6 +224,7 @@ impl<'b> Resolver<'b> {
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
                     },
                     normal_ancestor_id: Some(item.id),
+                    macros_escape: self.contains_macro_use(&item.attrs),
                     ..ModuleS::new(Some(parent), ModuleKind::Def(def, name))
                 });
                 self.define(parent, name, TypeNS, (module, sp, vis));
@@ -222,7 +234,7 @@ impl<'b> Resolver<'b> {
                 self.current_module = module;
             }
 
-            ItemKind::ForeignMod(..) => {}
+            ItemKind::ForeignMod(..) => self.crate_loader.process_item(item, &self.definitions),
 
             // These items live in the value namespace.
             ItemKind::Static(_, m, _) => {
@@ -476,14 +488,79 @@ impl<'b> Resolver<'b> {
         }
         module.populated.set(true)
     }
+
+    // does this attribute list contain "macro_use"?
+    fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
+        for attr in attrs {
+            if attr.check_name("macro_escape") {
+                let msg = "macro_escape is a deprecated synonym for macro_use";
+                let mut err = self.session.struct_span_warn(attr.span, msg);
+                if let ast::AttrStyle::Inner = attr.node.style {
+                    err.help("consider an outer attribute, #[macro_use] mod ...").emit();
+                } else {
+                    err.emit();
+                }
+            } else if !attr.check_name("macro_use") {
+                continue;
+            }
+
+            if !attr.is_word() {
+                self.session.span_err(attr.span, "arguments to macro_use are not allowed here");
+            }
+            return true;
+        }
+
+        false
+    }
+
+    fn insert_custom_derive(&mut self, name: &str, ext: Rc<MultiItemModifier>, sp: Span) {
+        if !self.session.features.borrow().rustc_macro {
+            let sess = &self.session.parse_sess;
+            let msg = "loading custom derive macro crates is experimentally supported";
+            emit_feature_err(sess, "rustc_macro", sp, feature_gate::GateIssue::Language, msg);
+        }
+        if self.derive_modes.insert(token::intern(name), ext).is_some() {
+            self.session.span_err(sp, &format!("cannot shadow existing derive mode `{}`", name));
+        }
+    }
 }
 
-struct BuildReducedGraphVisitor<'a, 'b: 'a> {
-    resolver: &'a mut Resolver<'b>,
+pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
+    pub resolver: &'a mut Resolver<'b>,
+}
+
+impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
+    fn visit_invoc(&mut self, id: ast::NodeId) {
+        self.resolver.expansion_data.get_mut(&id.as_u32()).unwrap().module =
+            self.resolver.current_module;
+    }
+}
+
+macro_rules! method {
+    ($visit:ident: $ty:ty, $invoc:path, $walk:ident) => {
+        fn $visit(&mut self, node: &$ty) {
+            match node.node {
+                $invoc(..) => self.visit_invoc(node.id),
+                _ => visit::$walk(self, node),
+            }
+        }
+    }
 }
 
 impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
+    method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item);
+    method!(visit_stmt:      ast::Stmt,     ast::StmtKind::Mac,       walk_stmt);
+    method!(visit_expr:      ast::Expr,     ast::ExprKind::Mac,       walk_expr);
+    method!(visit_pat:       ast::Pat,      ast::PatKind::Mac,        walk_pat);
+    method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty);
+
     fn visit_item(&mut self, item: &Item) {
+        match item.node {
+            ItemKind::Mac(..) if item.id == ast::DUMMY_NODE_ID => return, // Scope placeholder
+            ItemKind::Mac(..) => return self.visit_invoc(item.id),
+            _ => {}
+        }
+
         let parent = self.resolver.current_module;
         self.resolver.build_reduced_graph_for_item(item);
         visit::walk_item(self, item);
@@ -492,6 +569,7 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
         self.resolver.build_reduced_graph_for_foreign_item(foreign_item);
+        visit::walk_foreign_item(self, foreign_item);
     }
 
     fn visit_block(&mut self, block: &Block) {
@@ -515,7 +593,7 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
                 (Def::Method(item_def_id), ValueNS)
             }
             TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS),
-            TraitItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
+            TraitItemKind::Macro(_) => return self.visit_invoc(item.id),
         };
 
         self.resolver.trait_item_map.insert((item.ident.name, def_id), is_static_method);

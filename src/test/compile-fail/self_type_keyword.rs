@@ -38,11 +38,17 @@ pub fn main() {
     }
 }
 
-use std::option::Option as Self;
-//~^ ERROR expected identifier, found keyword `Self`
+mod m1 {
+    extern crate core as Self;
+    //~^ ERROR expected identifier, found keyword `Self`
+}
 
-extern crate Self;
-//~^ ERROR expected identifier, found keyword `Self`
+mod m2 {
+    use std::option::Option as Self;
+    //~^ ERROR expected identifier, found keyword `Self`
+}
 
-trait Self {}
-//~^ ERROR expected identifier, found keyword `Self`
+mod m3 {
+    trait Self {}
+    //~^ ERROR expected identifier, found keyword `Self`
+}

@@ -42,7 +42,7 @@ use self::RibKind::*;
 use self::UseLexicalScopeFlag::*;
 use self::ModulePrefixResult::*;
 
-use rustc::hir::map::Definitions;
+use rustc::hir::map::{Definitions, DefCollector};
 use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
 use rustc::middle::cstore::CrateLoader;
 use rustc::session::Session;
@@ -57,6 +57,7 @@ use syntax::ext::base::MultiItemModifier;
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, IntTy, UintTy};
+use syntax::ext::base::SyntaxExtension;
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -72,9 +73,9 @@ use syntax_pos::{Span, DUMMY_SP};
 use errors::DiagnosticBuilder;
 
 use std::cell::{Cell, RefCell};
-use std::rc::Rc;
 use std::fmt;
 use std::mem::replace;
+use std::rc::Rc;
 
 use resolve_imports::{ImportDirective, NameResolution};
 
@@ -791,6 +792,9 @@ pub struct ModuleS<'a> {
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
     populated: Cell<bool>,
+
+    macros: RefCell<FnvHashMap<Name, Rc<SyntaxExtension>>>,
+    macros_escape: bool,
 }
 
 pub type Module<'a> = &'a ModuleS<'a>;
@@ -808,6 +812,8 @@ impl<'a> ModuleS<'a> {
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
             populated: Cell::new(true),
+            macros: RefCell::new(FnvHashMap()),
+            macros_escape: false,
         }
     }
 
@@ -1079,7 +1085,7 @@ pub struct Resolver<'a> {
     macro_names: FnvHashSet<Name>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
-    expansion_data: FnvHashMap<u32, macros::ExpansionData>,
+    expansion_data: FnvHashMap<u32, macros::ExpansionData<'a>>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1193,13 +1199,16 @@ impl<'a> Resolver<'a> {
         let mut module_map = NodeMap();
         module_map.insert(CRATE_NODE_ID, graph_root);
 
+        let mut definitions = Definitions::new();
+        DefCollector::new(&mut definitions).collect_root();
+
         let mut expansion_data = FnvHashMap();
-        expansion_data.insert(0, macros::ExpansionData::default()); // Crate root expansion
+        expansion_data.insert(0, macros::ExpansionData::root(graph_root)); // Crate root expansion
 
         Resolver {
             session: session,
 
-            definitions: Definitions::new(),
+            definitions: definitions,
             macros_at_scope: FnvHashMap(),
 
             // The outermost module has def ID 0; this is not reflected in the
@@ -1269,6 +1278,13 @@ impl<'a> Resolver<'a> {
 
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
+        // Collect `DefId`s for exported macro defs.
+        for def in &krate.exported_macros {
+            DefCollector::new(&mut self.definitions).with_parent(CRATE_DEF_INDEX, |collector| {
+                collector.visit_macro_def(def)
+            })
+        }
+
         self.current_module = self.graph_root;
         visit::walk_crate(self, krate);
 
