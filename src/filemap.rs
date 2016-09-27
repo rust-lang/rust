@@ -14,7 +14,7 @@
 use strings::string_buffer::StringBuffer;
 
 use std::fs::{self, File};
-use std::io::{self, Write, Read, stdout, BufWriter};
+use std::io::{self, Write, Read, sBufWriter};
 
 use config::{NewlineStyle, Config, WriteMode};
 use rustfmt_diff::{make_diff, print_diff, Mismatch};
@@ -133,15 +133,11 @@ pub fn write_file<T>(text: &StringBuffer,
             try!(write_system_newlines(file, text, config));
         }
         WriteMode::Plain => {
-            let stdout = stdout();
-            let stdout = stdout.lock();
-            try!(write_system_newlines(stdout, text, config));
+            try!(write_system_newlines(out, text, config));
         }
         WriteMode::Display | WriteMode::Coverage => {
             println!("{}:\n", filename);
-            let stdout = stdout();
-            let stdout = stdout.lock();
-            try!(write_system_newlines(stdout, text, config));
+            try!(write_system_newlines(out, text, config));
         }
         WriteMode::Diff => {
             if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
