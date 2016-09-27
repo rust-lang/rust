@@ -6141,15 +6141,4 @@ impl<'a> Parser<'a> {
             _ =>  Err(self.fatal("expected string literal"))
         }
     }
-
-    pub fn ensure_complete_parse<F>(&mut self, allow_semi: bool, on_err: F)
-        where F: FnOnce(&Parser)
-    {
-        if allow_semi && self.token == token::Semi {
-            self.bump();
-        }
-        if self.token != token::Eof {
-            on_err(self);
-        }
-    }
 }
