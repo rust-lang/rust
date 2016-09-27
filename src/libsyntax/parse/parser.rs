@@ -1205,7 +1205,8 @@ impl<'a> Parser<'a> {
         } else if !self.token.is_any_keyword()
             && self.look_ahead(1, |t| *t == token::Not)
             && (self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
-                || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
+                || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))
+                || self.look_ahead(2, |t| *t == token::OpenDelim(token::Bracket))) {
                 // trait item macro.
                 // code copied from parse_macro_use_or_failure... abstraction!
                 let lo = self.span.lo;
@@ -4860,7 +4861,8 @@ impl<'a> Parser<'a> {
         if !self.token.is_any_keyword()
             && self.look_ahead(1, |t| *t == token::Not)
             && (self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
-                || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
+                || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))
+                || self.look_ahead(2, |t| *t == token::OpenDelim(token::Bracket))) {
             // method macro.
 
             let last_span = self.last_span;
@@ -5983,7 +5985,8 @@ impl<'a> Parser<'a> {
                 && self.look_ahead(1, |t| *t == token::Not)
                 && (self.look_ahead(2, |t| t.is_ident())
                     || self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
-                    || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
+                    || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))
+                    || self.look_ahead(2, |t| *t == token::OpenDelim(token::Bracket))) {
             // MACRO INVOCATION ITEM
 
             let last_span = self.last_span;
