@@ -565,7 +565,7 @@ impl fmt::Display for clean::Type {
                         primitive_link(f, PrimitiveType::Tuple, "(")?;
                         //carry f.alternate() into this display w/o branching manually
                         fmt::Display::fmt(one, f)?;
-                        primitive_link(f, PrimitiveType::Tuple, ")")
+                        primitive_link(f, PrimitiveType::Tuple, ",)")
                     }
                     many => {
                         primitive_link(f, PrimitiveType::Tuple, "(")?;
