@@ -148,14 +148,16 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 
     if impl_m.fty.sig.0.inputs.len() != trait_m.fty.sig.0.inputs.len() {
-        span_err!(tcx.sess, impl_m_span, E0050,
+         struct_span_err!(tcx.sess, impl_m_span, E0050,
             "method `{}` has {} parameter{} \
              but the declaration in trait `{}` has {}",
             trait_m.name,
             impl_m.fty.sig.0.inputs.len(),
             if impl_m.fty.sig.0.inputs.len() == 1 {""} else {"s"},
             tcx.item_path_str(trait_m.def_id),
-            trait_m.fty.sig.0.inputs.len());
+            trait_m.fty.sig.0.inputs.len())
+            .span_label(impl_m_span, &format!("expected 2 parameters"))
+            .emit();
         return;
     }
 
