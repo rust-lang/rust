@@ -37,7 +37,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyRef(..) |
             ty::TyRawPtr(_) => Ok(Ptr(ptr)),
             ty::TyFnPtr(_) => Ok(FnPtr(ptr)),
-            // FIXME: can truncation happen here?
             ty::TyInt(IntTy::I8) => Ok(I8(ptr.to_int()? as i8)),
             ty::TyInt(IntTy::I16) => Ok(I16(ptr.to_int()? as i16)),
             ty::TyInt(IntTy::I32) => Ok(I32(ptr.to_int()? as i32)),
