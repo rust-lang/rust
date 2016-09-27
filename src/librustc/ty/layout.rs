@@ -57,8 +57,7 @@ impl Default for TargetDataLayout {
             i16_align: Align::from_bits(16, 16).unwrap(),
             i32_align: Align::from_bits(32, 32).unwrap(),
             i64_align: Align::from_bits(32, 64).unwrap(),
-            // FIXME: i128 is correct?
-            i128_align: Align::from_bits(64, 128).unwrap(),
+            i128_align: Align::from_bits(32, 64).unwrap(),
             f32_align: Align::from_bits(32, 32).unwrap(),
             f64_align: Align::from_bits(64, 64).unwrap(),
             pointer_size: Size::from_bits(64),
@@ -103,6 +102,7 @@ impl TargetDataLayout {
         };
 
         let mut dl = TargetDataLayout::default();
+        let mut i128_align_src = 64;
         for spec in sess.target.target.data_layout.split("-") {
             match &spec.split(":").collect::<Vec<_>>()[..] {
                 &["e"] => dl.endian = Endian::Little,
@@ -115,20 +115,28 @@ impl TargetDataLayout {
                     dl.pointer_align = align(a, p);
                 }
                 &[s, ref a..] if s.starts_with("i") => {
-                    let ty_align = match s[1..].parse::<u64>() {
-                        Ok(1) => &mut dl.i8_align,
-                        Ok(8) => &mut dl.i8_align,
-                        Ok(16) => &mut dl.i16_align,
-                        Ok(32) => &mut dl.i32_align,
-                        Ok(64) => &mut dl.i64_align,
-                        Ok(128) => &mut dl.i128_align,
-                        Ok(_) => continue,
+                    let bits = match s[1..].parse::<u64>() {
+                        Ok(bits) => bits,
                         Err(_) => {
                             size(&s[1..], "i"); // For the user error.
                             continue;
                         }
                     };
-                    *ty_align = align(a, s);
+                    let a = align(a, s);
+                    match bits {
+                        1 => dl.i1_align = a,
+                        8 => dl.i8_align = a,
+                        16 => dl.i16_align = a,
+                        32 => dl.i32_align = a,
+                        64 => dl.i64_align = a,
+                        _ => {}
+                    }
+                    if bits >= i128_align_src && bits <= 128 {
+                        // Default alignment for i128 is decided by taking the alignment of
+                        // largest-sized i{64...128}.
+                        i128_align_src = bits;
+                        dl.i128_align = a;
+                    }
                 }
                 &[s, ref a..] if s.starts_with("v") => {
                     let v_size = size(&s[1..], "v");
