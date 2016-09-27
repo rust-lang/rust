@@ -13,9 +13,7 @@ fn main() {
 
     // `foo` shouldn't be suggested, it is too dissimilar from `bar`.
     println!("Hello {}", bar);
-    //~^ ERROR: unresolved name `bar`
 
     // But this is close enough.
     println!("Hello {}", fob);
-    //~^ ERROR: unresolved name `fob`. Did you mean `foo`?
 }

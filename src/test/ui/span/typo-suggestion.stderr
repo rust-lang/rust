@@ -1,0 +1,14 @@
+error[E0425]: unresolved name `bar`
+  --> $DIR/typo-suggestion.rs:15:26
+   |
+15 |     println!("Hello {}", bar);
+   |                          ^^^ unresolved name
+
+error[E0425]: unresolved name `fob`
+  --> $DIR/typo-suggestion.rs:18:26
+   |
+18 |     println!("Hello {}", fob);
+   |                          ^^^ did you mean `foo`?
+
+error: aborting due to 2 previous errors
+
