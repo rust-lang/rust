@@ -56,6 +56,7 @@ mod apple_ios_base;
 mod bitrig_base;
 mod dragonfly_base;
 mod freebsd_base;
+mod haiku_base;
 mod linux_base;
 mod linux_musl_base;
 mod openbsd_base;
@@ -164,6 +165,9 @@ supported_targets! {
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
     ("x86_64-unknown-netbsd", x86_64_unknown_netbsd),
     ("x86_64-rumprun-netbsd", x86_64_rumprun_netbsd),
+
+    ("i686_unknown_haiku", i686_unknown_haiku),
+    ("x86_64_unknown_haiku", x86_64_unknown_haiku),
 
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),

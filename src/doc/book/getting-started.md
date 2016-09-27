@@ -230,12 +230,13 @@ $ cd hello_world
 
 ## Writing and Running a Rust Program
 
-Next, make a new source file and call it *main.rs*. Rust files always end
-in a *.rs* extension. If you’re using more than one word in your filename, use
-an underscore to separate them; for example, you'd use *hello_world.rs* rather
-than *helloworld.rs*.
+We need to create a source file for our Rust program. Rust files always end
+in a *.rs* extension. If you are using more than one word in your filename,
+use an underscore to separate them; for example, you would use
+*my_program.rs* rather than *myprogram.rs*.
 
-Now open the *main.rs* file you just created, and type the following code:
+Now, make a new file and call it *main.rs*. Open the file and type
+the following code:
 
 ```rust
 fn main() {

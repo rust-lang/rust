@@ -513,7 +513,11 @@ else
 ifeq ($$(CFG_WINDOWSY_$(3)),1)
   LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3) := PATH
 else
+ifeq ($$(OSTYPE_$(3)),unknown-haiku)
+  LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3) := LIBRARY_PATH
+else
   LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3) := LD_LIBRARY_PATH
+endif
 endif
 endif
 

@@ -45,7 +45,16 @@
 #include "llvm-c/ExecutionEngine.h"
 #include "llvm-c/Object.h"
 
-#if LLVM_VERSION_MINOR >= 7
+#define LLVM_VERSION_GE(major, minor) \
+  (LLVM_VERSION_MAJOR > (major) || LLVM_VERSION_MAJOR == (major) && LLVM_VERSION_MINOR >= (minor))
+
+#define LLVM_VERSION_EQ(major, minor) \
+  (LLVM_VERSION_MAJOR == (major) && LLVM_VERSION_MINOR == (minor))
+
+#define LLVM_VERSION_LE(major, minor) \
+  (LLVM_VERSION_MAJOR < (major) || LLVM_VERSION_MAJOR == (major) && LLVM_VERSION_MINOR <= (minor))
+
+#if LLVM_VERSION_GE(3, 7)
 #include "llvm/IR/LegacyPassManager.h"
 #else
 #include "llvm/PassManager.h"

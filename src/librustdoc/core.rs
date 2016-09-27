@@ -32,6 +32,7 @@ use errors::emitter::ColorConfig;
 use std::cell::{RefCell, Cell};
 use std::mem;
 use std::rc::Rc;
+use std::path::PathBuf;
 
 use visit_ast::RustdocVisitor;
 use clean;
@@ -127,7 +128,8 @@ pub fn run_core(search_paths: SearchPaths,
                 cfgs: Vec<String>,
                 externs: config::Externs,
                 input: Input,
-                triple: Option<String>) -> (clean::Crate, RenderInfo)
+                triple: Option<String>,
+                maybe_sysroot: Option<PathBuf>) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -139,7 +141,7 @@ pub fn run_core(search_paths: SearchPaths,
     let warning_lint = lint::builtin::WARNINGS.name_lower();
 
     let sessopts = config::Options {
-        maybe_sysroot: None,
+        maybe_sysroot: maybe_sysroot,
         search_paths: search_paths,
         crate_types: vec!(config::CrateTypeRlib),
         lint_opts: vec!((warning_lint, lint::Allow)),
