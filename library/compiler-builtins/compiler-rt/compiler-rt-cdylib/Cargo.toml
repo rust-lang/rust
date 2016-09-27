@@ -1,0 +1,11 @@
+[package]
+name = "compiler-rt-cdylib"
+version = "0.1.0"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib"]
+
+[build-dependencies]
+gcc = "0.3"

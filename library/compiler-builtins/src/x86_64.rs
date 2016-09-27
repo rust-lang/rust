@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use core::intrinsics;
 
 // NOTE These functions are implemented using assembly because they using a custom

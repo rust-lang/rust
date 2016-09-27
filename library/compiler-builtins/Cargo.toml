@@ -13,9 +13,8 @@ optional = true
 [dev-dependencies]
 quickcheck = "0.3.1"
 rand = "0.3.14"
-
-[dev-dependencies.gcc_s]
-path = "gcc_s"
+gcc_s = { path = "gcc_s" }
+compiler-rt = { path = "compiler-rt" }
 
 [features]
 weak = ["rlibc/weak"]

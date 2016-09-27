@@ -230,116 +230,66 @@ pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
 mod tests {
     use qc::{U32, U64};
 
-    use gcc_s;
-    use quickcheck::TestResult;
-    use rand;
-
-    quickcheck!{
-        fn udivdi3(n: U64, d: U64) -> TestResult {
+    check! {
+        fn __udivdi3(f: extern fn(u64, u64) -> u64, n: U64, d: U64) -> Option<u64> {
             let (n, d) = (n.0, d.0);
             if d == 0 {
-                TestResult::discard()
+                None
             } else {
-                let q = super::__udivdi3(n, d);
-
-                match gcc_s::udivdi3() {
-                    Some(udivdi3) if rand::random() => {
-                        TestResult::from_bool(q == unsafe { udivdi3(n, d) })
-                    },
-                    _ => TestResult::from_bool(q == n / d),
-                }
+                Some(f(n, d))
             }
         }
 
-        fn umoddi3(n: U64, d: U64) -> TestResult {
+        fn __umoddi3(f: extern fn(u64, u64) -> u64, n: U64, d: U64) -> Option<u64> {
             let (n, d) = (n.0, d.0);
             if d == 0 {
-                TestResult::discard()
+                None
             } else {
-                let r = super::__umoddi3(n, d);
-
-                match gcc_s::umoddi3() {
-                    Some(umoddi3) if rand::random() => {
-                        TestResult::from_bool(r == unsafe { umoddi3(n, d) })
-                    },
-                    _ => TestResult::from_bool(r == n % d),
-                }
+                Some(f(n, d))
             }
         }
 
-        fn udivmoddi4(n: U64, d: U64) -> TestResult {
+        fn __udivmoddi4(f: extern fn(u64, u64, Option<&mut u64>) -> u64,
+                        n: U64,
+                        d: U64) -> Option<(u64, u64)> {
             let (n, d) = (n.0, d.0);
             if d == 0 {
-                TestResult::discard()
+                None
             } else {
                 let mut r = 0;
-                let q = super::__udivmoddi4(n, d, Some(&mut r));
-
-                match gcc_s::udivmoddi4() {
-                    Some(udivmoddi4) if rand::random() => {
-                        let mut gcc_s_r = 0;
-                        let gcc_s_q = unsafe {
-                            udivmoddi4(n, d, Some(&mut gcc_s_r))
-                        };
-
-                        TestResult::from_bool(q == gcc_s_q && r == gcc_s_r)
-                    },
-                    _ => TestResult::from_bool(q == n / d && r == n % d),
-                }
+                let q = f(n, d, Some(&mut r));
+                Some((q, r))
             }
         }
 
-        fn udivsi3(n: U32, d: U32) -> TestResult {
+        fn __udivsi3(f: extern fn(u32, u32) -> u32, n: U32, d: U32) -> Option<u32> {
             let (n, d) = (n.0, d.0);
             if d == 0 {
-                TestResult::discard()
+                None
             } else {
-                let q = super::__udivsi3(n, d);
-
-                match gcc_s::udivsi3() {
-                    Some(udivsi3) if rand::random() => {
-                        TestResult::from_bool(q == unsafe { udivsi3(n, d) })
-                    },
-                    _ => TestResult::from_bool(q == n / d),
-                }
+                Some(f(n, d))
             }
         }
 
-        fn umodsi3(n: U32, d: U32) -> TestResult {
+        fn __umodsi3(f: extern fn(u32, u32) -> u32, n: U32, d: U32) -> Option<u32> {
             let (n, d) = (n.0, d.0);
             if d == 0 {
-                TestResult::discard()
+                None
             } else {
-                let r = super::__umodsi3(n, d);
-
-                match gcc_s::umodsi3() {
-                    Some(umodsi3) if rand::random() => {
-                        TestResult::from_bool(r == unsafe { umodsi3(n, d) })
-                    },
-                    _ => TestResult::from_bool(r == n % d),
-                }
+                Some(f(n, d))
             }
         }
 
-        fn udivmodsi4(n: U32, d: U32) -> TestResult {
+        fn __udivmodsi4(f: extern fn(u32, u32, Option<&mut u32>) -> u32,
+                        n: U32,
+                        d: U32) -> Option<(u32, u32)> {
             let (n, d) = (n.0, d.0);
             if d == 0 {
-                TestResult::discard()
+                None
             } else {
                 let mut r = 0;
-                let q = super::__udivmodsi4(n, d, Some(&mut r));
-
-                match gcc_s::udivmodsi4() {
-                    Some(udivmodsi4) if rand::random() => {
-                        let mut gcc_s_r = 0;
-                        let gcc_s_q = unsafe {
-                            udivmodsi4(n, d, Some(&mut gcc_s_r))
-                        };
-
-                        TestResult::from_bool(q == gcc_s_q && r == gcc_s_r)
-                    },
-                    _ => TestResult::from_bool(q == n / d && r == n % d),
-                }
+                let q = f(n, d, Some(&mut r));
+                Some((q, r))
             }
         }
     }

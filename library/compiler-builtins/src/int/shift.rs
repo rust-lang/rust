@@ -62,57 +62,32 @@ lshr!(__lshrdi3: u64);
 mod tests {
     use qc::{I64, U64};
 
-    use gcc_s;
-    use quickcheck::TestResult;
-    use rand;
-
     // NOTE We purposefully stick to `u32` for `b` here because we want "small" values (b < 64)
-    quickcheck! {
-        fn ashldi(a: U64, b: u32) -> TestResult {
+    check! {
+        fn __ashldi3(f: extern fn(u64, u32) -> u64, a: U64, b: u32) -> Option<u64> {
             let a = a.0;
             if b >= 64 {
-                TestResult::discard()
+                None
             } else {
-                let r = super::__ashldi3(a, b);
-
-                match gcc_s::ashldi3() {
-                    Some(ashldi3) if rand::random() => {
-                        TestResult::from_bool(r == unsafe { ashldi3(a, b) })
-                    },
-                    _ => TestResult::from_bool(r == a << b),
-                }
+                Some(f(a, b))
             }
         }
 
-        fn ashrdi(a: I64, b: u32) -> TestResult {
+        fn __ashrdi3(f: extern fn(i64, u32) -> i64, a: I64, b: u32) -> Option<i64> {
             let a = a.0;
             if b >= 64 {
-                TestResult::discard()
+                None
             } else {
-                let r = super::__ashrdi3(a, b);
-
-                match gcc_s::ashrdi3() {
-                    Some(ashrdi3) if rand::random() => {
-                        TestResult::from_bool(r == unsafe { ashrdi3(a, b) })
-                    },
-                    _ => TestResult::from_bool(r == a >> b),
-                }
+                Some(f(a, b))
             }
         }
 
-        fn lshrdi(a: U64, b: u32) -> TestResult {
+        fn __lshrdi3(f: extern fn(u64, u32) -> u64, a: U64, b: u32) -> Option<u64> {
             let a = a.0;
             if b >= 64 {
-                TestResult::discard()
+                None
             } else {
-                let r = super::__lshrdi3(a, b);
-
-                match gcc_s::lshrdi3() {
-                    Some(lshrdi3) if rand::random() => {
-                        TestResult::from_bool(r == unsafe { lshrdi3(a, b) })
-                    },
-                    _ => TestResult::from_bool(r == a >> b),
-                }
+                Some(f(a, b))
             }
         }
     }

@@ -1,62 +1,63 @@
 dist: trusty
-language: generic
+language: rust
 services: docker
 sudo: required
+rust: nightly
+cache: cargo
 
 matrix:
   include:
     - env: TARGET=aarch64-unknown-linux-gnu
-      os: linux
     - env: TARGET=arm-unknown-linux-gnueabi
-      os: linux
+      # FIXME(rust-lang/rust#36518)
+      rust: nightly-2016-09-21
     - env: TARGET=arm-unknown-linux-gnueabihf
-      os: linux
     - env: TARGET=armv7-unknown-linux-gnueabihf
-      os: linux
     - env: TARGET=i586-unknown-linux-gnu
-      os: linux
     - env: TARGET=i686-apple-darwin
-      language: ruby
+      # FIXME(rust-lang/rust#36793)
+      rust: nightly-2016-09-10
       os: osx
     - env: TARGET=i686-unknown-linux-gnu
-      os: linux
+      # FIXME(rust-lang/rust#36793)
+      rust: nightly-2016-09-10
     - env: TARGET=mips-unknown-linux-gnu
-      os: linux
     - env: TARGET=mipsel-unknown-linux-gnu
-      os: linux
     - env: TARGET=powerpc-unknown-linux-gnu
-      os: linux
     - env: TARGET=powerpc64-unknown-linux-gnu
-      os: linux
-    - env: TARGET=powerpc64le-unknown-linux-gnu
-      os: linux
+    # QEMU crashes even when executing the simplest cross compiled C program:
+    # `int main() { return 0; }`
+    - env: TARGET=powerpc64le-unknown-linux-gnu NO_RUN=1
     - env: TARGET=thumbv6m-none-eabi
-      os: linux
-    - env: TARGET=thumbv6m-none-eabi WEAK=true
-      os: linux
+      install: cargo install xargo --debug -f
+      script: $HOME/.cargo/bin/xargo build --target $TARGET
     - env: TARGET=thumbv7em-none-eabi
-      os: linux
-    - env: TARGET=thumbv7em-none-eabi WEAK=true
-      os: linux
+      install: cargo install xargo --debug -f
+      script: $HOME/.cargo/bin/xargo build --target $TARGET
     - env: TARGET=thumbv7em-none-eabihf
-      os: linux
-    - env: TARGET=thumbv7em-none-eabihf WEAK=true
-      os: linux
-    - env: TARGET=thumbv7m-none-eabi
-      os: linux
-    - env: TARGET=thumbv7m-none-eabi WEAK=true
-      os: linux
+      install: cargo install xargo --debug -f
+      script: $HOME/.cargo/bin/xargo build --target $TARGET
     - env: TARGET=x86_64-apple-darwin
-      language: ruby
       os: osx
-    - env: TARGET=x86_64-unknown-linux-gnu
-      os: linux
+env: TARGET=x86_64-unknown-linux-gnu
+
+before_install:
+  - test "$TRAVIS_OS_NAME" = "osx" || docker run --rm --privileged multiarch/qemu-user-static:register
 
 install:
-  - bash ci/install.sh
+  - curl https://static.rust-lang.org/rustup.sh |
+    sh -s -- --add-target=$TARGET --disable-sudo -y --prefix=`rustc --print sysroot`
 
 script:
-  - bash ci/script.sh
+  - cargo generate-lockfile
+  - if [[ $TRAVIS_OS_NAME = "linux" ]]; then
+      sudo apt-get remove -y qemu-user-static &&
+      sudo apt-get install -y qemu-user-static &&
+      sh ci/run-docker.sh $TARGET;
+    else
+      cargo test --target $TARGET &&
+      cargo test --target $TARGET --release;
+    fi
 
 branches:
   only:

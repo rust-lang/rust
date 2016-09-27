@@ -16,8 +16,8 @@ See [rust-lang/rust#35437][0].
 
 If you are working with a target that doesn't have binary releases of std available via rustup (this
 probably means you are building the core crate yourself) and need compiler-rt intrinsics (i.e. you
-are probably getting linker errors when building an executable: "undefined reference to
-__aeabi_memcpy"), you can use this crate to get those intrinsics and solve the linker errors. To do
+are probably getting linker errors when building an executable: `undefined reference to
+__aeabi_memcpy`), you can use this crate to get those intrinsics and solve the linker errors. To do
 that, simply add this crate as a Cargo dependency (it doesn't matter where in the dependency graph
 this crate ends up, as long as it's there):
 
@@ -52,7 +52,7 @@ porting that particular intrinsic.
 1. [Rust][4] and [C][5] have slightly different operator precedence. C evaluates comparisons (`== !=`) before bitwise operations (`& | ^`), while Rust evaluates the other way.
 2. C assumes wrapping operations everywhere. Rust panics on overflow when in debug mode. Consider using the [Wrapping][6] type or the explicit [wrapping_*][7] functions where applicable.
 3. Note [C implicit casts][8], especially integer promotion. Rust is much more explicit about casting, so be sure that any cast which affects the output is ported to the Rust implementation.
-4. Rust has [many functions][9] for integer or floating point manipulation in the standard library. Consider using one of these functions rather than porting a new one. 
+4. Rust has [many functions][9] for integer or floating point manipulation in the standard library. Consider using one of these functions rather than porting a new one.
 
 [4]: https://doc.rust-lang.org/reference.html#operator-precedence
 [5]: http://en.cppreference.com/w/c/language/operator_precedence
