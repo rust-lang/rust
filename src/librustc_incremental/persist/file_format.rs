@@ -35,7 +35,7 @@ const HEADER_FORMAT_VERSION: u16 = 0;
 /// A version string that hopefully is always different for compiler versions
 /// with different encodings of incremental compilation artifacts. Contains
 /// the git commit hash.
-const RUSTC_VERSION: &'static str = env!("CFG_VERSION");
+const RUSTC_VERSION: Option<&'static str> = option_env!("CFG_VERSION");
 
 pub fn write_file_header<W: io::Write>(stream: &mut W) -> io::Result<()> {
     stream.write_all(FILE_MAGIC)?;
@@ -98,7 +98,7 @@ pub fn read_file(path: &Path) -> io::Result<Option<Vec<u8>>> {
         buffer.resize(rustc_version_str_len, 0);
         file.read_exact(&mut buffer[..])?;
 
-        if &buffer[..] != RUSTC_VERSION.as_bytes() {
+        if &buffer[..] != rustc_version().as_bytes() {
             return Ok(None);
         }
     }
@@ -116,5 +116,7 @@ fn rustc_version() -> String {
         }
     }
 
-    RUSTC_VERSION.to_string()
+    RUSTC_VERSION.expect("Cannot use rustc without explicit version for \
+                          incremental compilation")
+                 .to_string()
 }
