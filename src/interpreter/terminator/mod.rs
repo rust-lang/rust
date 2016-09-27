@@ -184,7 +184,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         (def_id, substs)
                     };
 
-                let mir = self.load_mir(resolved_def_id);
+                let mir = self.load_mir(resolved_def_id)?;
                 let (return_ptr, return_to_block) = match destination {
                     Some((ptr, block)) => (Some(ptr), StackPopCleanup::Goto(block)),
                     None => (None, StackPopCleanup::None),

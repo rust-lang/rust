@@ -267,22 +267,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
     }
 
-    pub fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
+    pub fn load_mir(&self, def_id: DefId) -> EvalResult<'tcx, CachedMir<'a, 'tcx>> {
+        trace!("load mir {:?}", def_id);
         if def_id.is_local() {
-            CachedMir::Ref(self.mir_map.map.get(&def_id).unwrap())
+            Ok(CachedMir::Ref(self.mir_map.map.get(&def_id).unwrap()))
         } else {
             let mut mir_cache = self.mir_cache.borrow_mut();
             if let Some(mir) = mir_cache.get(&def_id) {
-                return CachedMir::Owned(mir.clone());
+                return Ok(CachedMir::Owned(mir.clone()));
             }
 
             let cs = &self.tcx.sess.cstore;
-            let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
-                panic!("no mir for `{}`", self.tcx.item_path_str(def_id));
-            });
-            let cached = Rc::new(mir);
-            mir_cache.insert(def_id, cached.clone());
-            CachedMir::Owned(cached)
+            match cs.maybe_get_item_mir(self.tcx, def_id) {
+                Some(mir) => {
+                    let cached = Rc::new(mir);
+                    mir_cache.insert(def_id, cached.clone());
+                    Ok(CachedMir::Owned(cached))
+                },
+                None => Err(EvalError::NoMirFor(self.tcx.item_path_str(def_id))),
+            }
         }
     }
 

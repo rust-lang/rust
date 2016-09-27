@@ -125,8 +125,8 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         if self.ecx.statics.contains_key(&cid) {
             return;
         }
-        let mir = self.ecx.load_mir(def_id);
         self.try(|this| {
+            let mir = this.ecx.load_mir(def_id)?;
             let ptr = this.ecx.alloc_ret_ptr(mir.return_ty, substs)?;
             this.ecx.statics.insert(cid.clone(), ptr);
             let cleanup = if immutable && !mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe() {
