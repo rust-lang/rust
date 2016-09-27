@@ -659,12 +659,6 @@ impl Build {
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
         }
 
-        // If we're building for OSX, inform the compiler and the linker that
-        // we want to build a compiler runnable on 10.7
-        if target.contains("apple-darwin") {
-            cargo.env("MACOSX_DEPLOYMENT_TARGET", "10.7");
-        }
-
         // Environment variables *required* needed throughout the build
         //
         // FIXME: should update code to not require this env var
@@ -933,7 +927,6 @@ impl Build {
         // LLVM/jemalloc/etc are all properly compiled.
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
-            base.push("-mmacosx-version-min=10.7".into());
         }
         // This is a hack, because newer binutils broke things on some vms/distros
         // (i.e., linking against unknown relocs disabled by the following flag)
