@@ -23,7 +23,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                               tts: &[TokenTree])
                               -> Box<base::MacResult + 'cx> {
     if !cx.ecfg.enable_concat_idents() {
-        feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
+        feature_gate::emit_feature_err(&cx.parse_sess,
                                        "concat_idents",
                                        sp,
                                        feature_gate::GateIssue::Language,

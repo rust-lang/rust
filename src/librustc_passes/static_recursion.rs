@@ -143,7 +143,7 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
             });
             if any_static {
                 if !self.sess.features.borrow().static_recursion {
-                    emit_feature_err(&self.sess.parse_sess.span_diagnostic,
+                    emit_feature_err(&self.sess.parse_sess,
                                      "static_recursion",
                                      *self.root_span,
                                      GateIssue::Language,

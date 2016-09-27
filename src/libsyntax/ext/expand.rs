@@ -344,7 +344,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // Detect use of feature-gated or invalid attributes on macro invoations
         // since they will not be detected after macro expansion.
         for attr in attrs.iter() {
-            feature_gate::check_attribute(&attr, &self.cx.parse_sess.span_diagnostic,
+            feature_gate::check_attribute(&attr, &self.cx.parse_sess,
                                           &self.cx.parse_sess.codemap(),
                                           &self.cx.ecfg.features.unwrap());
         }
