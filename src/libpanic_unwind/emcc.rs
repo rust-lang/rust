@@ -8,6 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Unwinding for emscripten
+//!
+//! Whereas Rust's usual unwinding implementation for Unix platforms
+//! calls into the libunwind APIs directly, on emscripten we instead
+//! call into the C++ unwinding APIs. This is just an expedience since
+//! emscripten's runtime always implements those APIs and does not
+//! implement libunwind.
+
 #![allow(private_no_mangle_fns)]
 
 use core::any::Any;
@@ -53,12 +61,6 @@ unsafe extern "C" fn rust_eh_personality(version: c_int,
                          exception_class,
                          exception_object,
                          context)
-}
-
-#[lang = "eh_unwind_resume"]
-#[unwind]
-unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
-    uw::_Unwind_Resume(panic_ctx as *mut uw::_Unwind_Exception);
 }
 
 extern {
