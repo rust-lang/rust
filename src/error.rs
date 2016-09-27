@@ -9,6 +9,7 @@ use syntax::codemap::Span;
 #[derive(Clone, Debug)]
 pub enum EvalError<'tcx> {
     FunctionPointerTyMismatch(&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>),
+    NoMirFor(String),
     DanglingPointerDeref,
     InvalidMemoryAccess,
     InvalidFunctionPointer,
@@ -82,6 +83,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "array index out of bounds",
             EvalError::Math(..) =>
                 "mathematical operation failed",
+            EvalError::NoMirFor(..) =>
+                "mir not found",
             EvalError::InvalidChar(..) =>
                 "tried to interpret an invalid 32-bit value as a char",
             EvalError::OutOfMemory{..} =>
@@ -113,6 +116,7 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "memory access of {}..{} outside bounds of allocation {} which has size {}",
                        ptr.offset, ptr.offset + size, ptr.alloc_id, allocation_size)
             },
+            EvalError::NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
             EvalError::FunctionPointerTyMismatch(expected, got) =>
                 write!(f, "tried to call a function of type {:?} through a function pointer of type {:?}", expected, got),
             EvalError::ArrayIndexOutOfBounds(span, len, index) =>

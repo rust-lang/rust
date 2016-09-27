@@ -1,5 +1,4 @@
 use rustc::hir::def_id::DefId;
-use rustc::middle::const_val::ConstVal;
 use rustc::mir::repr as mir;
 use rustc::traits::{self, Reveal};
 use rustc::ty::fold::TypeFoldable;
@@ -45,26 +44,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             SwitchInt { ref discr, ref values, ref targets, .. } => {
                 let discr_ptr = self.eval_lvalue(discr)?.to_ptr();
                 let discr_ty = self.lvalue_ty(discr);
-                let discr_size = self
-                    .type_layout(discr_ty)
-                    .size(&self.tcx.data_layout)
-                    .bytes() as usize;
-                let discr_val = self.memory.read_uint(discr_ptr, discr_size)?;
-                if let ty::TyChar = discr_ty.sty {
-                    if ::std::char::from_u32(discr_val as u32).is_none() {
-                        return Err(EvalError::InvalidChar(discr_val as u64));
-                    }
-                }
+                let discr_val = self.read_value(discr_ptr, discr_ty)?;
+                let discr_prim = self.value_to_primval(discr_val, discr_ty)?;
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, const_val) in values.iter().enumerate() {
-                    let val = match const_val {
-                        &ConstVal::Integral(i) => i.to_u64_unchecked(),
-                        _ => bug!("TerminatorKind::SwitchInt branch constant was not an integer"),
-                    };
-                    if discr_val == val {
+                    let val = self.const_to_value(const_val)?;
+                    let prim = self.value_to_primval(val, discr_ty)?;
+                    if discr_prim == prim {
                         target_block = targets[index];
                         break;
                     }
@@ -195,7 +184,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         (def_id, substs)
                     };
 
-                let mir = self.load_mir(resolved_def_id);
+                let mir = self.load_mir(resolved_def_id)?;
                 let (return_ptr, return_to_block) = match destination {
                     Some((ptr, block)) => (Some(ptr), StackPopCleanup::Goto(block)),
                     None => (None, StackPopCleanup::None),
