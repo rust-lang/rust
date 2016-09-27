@@ -12,7 +12,7 @@ mod Foo {
     struct Bar(u32);
 
     pub fn bar() -> Bar { //~ ERROR E0446
-                          //~| NOTE private type can't be public
+                          //~| NOTE can't leak private type
         Bar(0)
     }
 }
