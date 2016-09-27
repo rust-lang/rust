@@ -112,35 +112,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         self.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
-        let trait_item_def_ids = self.tcx.trait_item_def_ids(trait_id);
+        let trait_item_def_ids = self.tcx.impl_or_trait_items(trait_id);
         trait_item_def_ids
             .iter()
 
             // Filter out non-method items.
-            .filter_map(|item_def_id| {
-                match *item_def_id {
-                    ty::MethodTraitItemId(def_id) => Some(def_id),
-                    _ => None,
-                }
-            })
-
-            // Now produce pointers for each remaining method. If the
-            // method could never be called from this object, just supply
-            // null.
-            .map(|trait_method_def_id| {
+            .filter_map(|&trait_method_def_id| {
+                let trait_method_type = match self.tcx.impl_or_trait_item(trait_method_def_id) {
+                    ty::MethodTraitItem(trait_method_type) => trait_method_type,
+                    _ => return None,
+                };
                 debug!("get_vtable_methods: trait_method_def_id={:?}",
                        trait_method_def_id);
 
-                let trait_method_type = match self.tcx.impl_or_trait_item(trait_method_def_id) {
-                    ty::MethodTraitItem(m) => m,
-                    _ => bug!("should be a method, not other assoc item"),
-                };
                 let name = trait_method_type.name;
 
                 // Some methods cannot be called on an object; skip those.
                 if !self.tcx.is_vtable_safe_method(trait_id, &trait_method_type) {
                     debug!("get_vtable_methods: not vtable safe");
-                    return None;
+                    return Some(None);
                 }
 
                 debug!("get_vtable_methods: trait_method_type={:?}",
@@ -167,11 +157,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let predicates = mth.method.predicates.predicates.subst(self.tcx, mth.substs);
                     if !self.normalize_and_test_predicates(predicates) {
                         debug!("get_vtable_methods: predicates do not hold");
-                        return None;
+                        return Some(None);
                     }
                 }
 
-                Some(mth)
+                Some(Some(mth))
             })
             .collect()
     }
