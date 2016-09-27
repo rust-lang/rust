@@ -100,7 +100,9 @@ const INITIAL_CAPACITY: usize = 32;
 ///     println!("{:?}", x);
 /// }
 /// ```
+///
 /// HashSet with fixed list of elements can be initialized from an array:
+///
 /// ```
 /// use std::collections::HashSet;
 ///
