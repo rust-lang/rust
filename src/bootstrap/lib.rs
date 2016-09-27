@@ -660,9 +660,9 @@ impl Build {
         }
 
         // If we're building for OSX, inform the compiler and the linker that
-        // we want to build a compiler runnable on 10.7
+        // we want to build a compiler runnable on 10.8
         if target.contains("apple-darwin") {
-            cargo.env("MACOSX_DEPLOYMENT_TARGET", "10.7");
+            cargo.env("MACOSX_DEPLOYMENT_TARGET", "10.8");
         }
 
         // Environment variables *required* needed throughout the build
@@ -929,11 +929,11 @@ impl Build {
 
         // If we're compiling on OSX then we add a few unconditional flags
         // indicating that we want libc++ (more filled out than libstdc++) and
-        // we want to compile for 10.7. This way we can ensure that
+        // we want to compile for 10.8. This way we can ensure that
         // LLVM/jemalloc/etc are all properly compiled.
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
-            base.push("-mmacosx-version-min=10.7".into());
+            base.push("-mmacosx-version-min=10.8".into());
         }
         // This is a hack, because newer binutils broke things on some vms/distros
         // (i.e., linking against unknown relocs disabled by the following flag)
