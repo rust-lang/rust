@@ -10,7 +10,6 @@
 
 // compile-flags: --test
 // ignore-pretty: does not work well with `--test`
-// ignore-emscripten needs threads?
 
 #[test]
 #[should_panic(expected = "foo")]
