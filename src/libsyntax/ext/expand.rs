@@ -16,7 +16,7 @@ use ext::placeholders::{placeholder, PlaceholderExpander};
 use attr::{self, HasAttrs};
 use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use syntax_pos::{self, Span, ExpnId};
-use config::StripUnconfigured;
+use config::{is_test_or_bench, StripUnconfigured};
 use ext::base::*;
 use feature_gate::{self, Features};
 use fold;
@@ -206,7 +206,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             _ => unreachable!(),
         };
 
-        if self.cx.parse_sess.span_diagnostic.err_count() > err_count {
+        if self.cx.parse_sess.span_diagnostic.err_count() - self.cx.resolve_err_count > err_count {
             self.cx.parse_sess.span_diagnostic.abort_if_errors();
         }
 
@@ -277,8 +277,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.cfg = crate_config;
 
         if self.monotonic {
+            let err_count = self.cx.parse_sess.span_diagnostic.err_count();
             let mark = self.cx.current_expansion.mark;
             self.cx.resolver.visit_expansion(mark, &result.0);
+            self.cx.resolve_err_count += self.cx.parse_sess.span_diagnostic.err_count() - err_count;
         }
 
         result
@@ -674,7 +676,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         let item = configure!(self, item);
 
-        let (item, attr) = self.classify_item(item);
+        let (mut item, attr) = self.classify_item(item);
         if let Some(attr) = attr {
             let item = Annotatable::Item(fully_configure!(self, item, noop_fold_item));
             return self.collect_attr(attr, item, ExpansionKind::Items).make_items();
@@ -730,6 +732,13 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 let result = noop_fold_item(item, self);
                 self.cx.current_expansion.module = orig_module;
                 return result;
+            }
+            // Ensure that test functions are accessible from the test harness.
+            ast::ItemKind::Fn(..) if self.cx.ecfg.should_test => {
+                if item.attrs.iter().any(|attr| is_test_or_bench(attr)) {
+                    item = item.map(|mut item| { item.vis = ast::Visibility::Public; item });
+                }
+                noop_fold_item(item, self)
             }
             _ => noop_fold_item(item, self),
         }

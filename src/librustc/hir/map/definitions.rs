@@ -9,11 +9,10 @@
 // except according to those terms.
 
 use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
-use hir::map::def_collector::DefCollector;
 use rustc_data_structures::fnv::FnvHashMap;
 use std::fmt::Write;
 use std::hash::{Hash, Hasher, SipHasher};
-use syntax::{ast, visit};
+use syntax::ast;
 use syntax::parse::token::{self, InternedString};
 use ty::TyCtxt;
 use util::nodemap::NodeMap;
@@ -222,12 +221,6 @@ impl Definitions {
             key_map: FnvHashMap(),
             node_map: NodeMap(),
         }
-    }
-
-    pub fn collect(&mut self, krate: &ast::Crate) {
-        let mut def_collector = DefCollector::new(self);
-        def_collector.collect_root();
-        visit::walk_crate(&mut def_collector, krate);
     }
 
     /// Get the number of definitions.

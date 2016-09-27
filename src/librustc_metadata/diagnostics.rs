@@ -98,10 +98,10 @@ Erroneous code examples:
 
 ```compile_fail,E0466
 #[macro_use(a_macro(another_macro))] // error: invalid import declaration
-extern crate some_crate;
+extern crate core as some_crate;
 
 #[macro_use(i_want = "some_macros")] // error: invalid import declaration
-extern crate another_crate;
+extern crate core as another_crate;
 ```
 
 This is a syntax error at the level of attribute declarations. The proper
@@ -135,10 +135,10 @@ Erroneous code examples:
 
 ```compile_fail,E0467
 #[macro_reexport]                    // error: no macros listed for export
-extern crate macros_for_good;
+extern crate core as macros_for_good;
 
 #[macro_reexport(fun_macro = "foo")] // error: not a macro identifier
-extern crate other_macros_for_good;
+extern crate core as other_macros_for_good;
 ```
 
 This is a syntax error at the level of attribute declarations.
@@ -165,8 +165,8 @@ Example of erroneous code:
 ```compile_fail,E0468
 mod foo {
     #[macro_use(helpful_macro)] // error: must be at crate root to import
-    extern crate some_crate;    //        macros from another crate
-    helpful_macro!(...)
+    extern crate core;          //        macros from another crate
+    helpful_macro!(...);
 }
 ```
 

@@ -11,7 +11,7 @@
 pub use self::Node::*;
 use self::MapEntry::*;
 use self::collector::NodeCollector;
-use self::def_collector::DefCollector;
+pub use self::def_collector::{DefCollector, MacroInvocationData};
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
                             DisambiguatedDefPathData, InlinedRootPath};
 

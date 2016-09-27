@@ -515,6 +515,7 @@ pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
 pub trait Resolver {
     fn next_node_id(&mut self) -> ast::NodeId;
+    fn get_module_scope(&mut self, id: ast::NodeId) -> Mark;
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion);
     fn add_macro(&mut self, scope: Mark, def: ast::MacroDef);
@@ -530,6 +531,7 @@ pub struct DummyResolver;
 
 impl Resolver for DummyResolver {
     fn next_node_id(&mut self) -> ast::NodeId { ast::DUMMY_NODE_ID }
+    fn get_module_scope(&mut self, _id: ast::NodeId) -> Mark { Mark::root() }
 
     fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion) {}
     fn add_macro(&mut self, _scope: Mark, _def: ast::MacroDef) {}
@@ -567,6 +569,7 @@ pub struct ExtCtxt<'a> {
     pub ecfg: expand::ExpansionConfig<'a>,
     pub crate_root: Option<&'static str>,
     pub resolver: &'a mut Resolver,
+    pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
 }
 
@@ -581,6 +584,7 @@ impl<'a> ExtCtxt<'a> {
             ecfg: ecfg,
             crate_root: None,
             resolver: resolver,
+            resolve_err_count: 0,
             current_expansion: ExpansionData {
                 mark: Mark::root(),
                 depth: 0,

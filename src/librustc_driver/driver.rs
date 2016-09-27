@@ -639,6 +639,12 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     }
     sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess))?;
 
+    // Currently, we ignore the name resolution data structures for the purposes of dependency
+    // tracking. Instead we will run name resolution and include its output in the hash of each
+    // item, much like we do for macro expansion. In other words, the hash reflects not just
+    // its contents but the results of name resolution on those contents. Hopefully we'll push
+    // this back at some point.
+    let _ignore = sess.dep_graph.in_ignore();
     let mut crate_loader = CrateLoader::new(sess, &cstore, &krate, crate_name);
     let resolver_arenas = Resolver::arenas();
     let mut resolver =
@@ -733,9 +739,6 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         })
     })?;
 
-    // Collect defintions for def ids.
-    time(sess.time_passes(), "collecting defs", || resolver.definitions.collect(&krate));
-
     time(sess.time_passes(),
          "early lint checks",
          || lint::check_ast_crate(sess, &krate));
@@ -745,13 +748,6 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
          || ast_validation::check_crate(sess, &krate));
 
     time(sess.time_passes(), "name resolution", || -> CompileResult {
-        // Currently, we ignore the name resolution data structures for the purposes of dependency
-        // tracking. Instead we will run name resolution and include its output in the hash of each
-        // item, much like we do for macro expansion. In other words, the hash reflects not just
-        // its contents but the results of name resolution on those contents. Hopefully we'll push
-        // this back at some point.
-        let _ignore = sess.dep_graph.in_ignore();
-        resolver.build_reduced_graph(&krate);
         resolver.resolve_imports();
 
         // Since import resolution will eventually happen in expansion,

@@ -18,31 +18,39 @@ use middle::cstore::InlinedItem;
 
 use syntax::ast::*;
 use syntax::visit;
-use syntax::parse::token;
+use syntax::parse::token::{self, keywords};
 
 /// Creates def ids for nodes in the HIR.
-pub struct DefCollector<'ast> {
+pub struct DefCollector<'a> {
     // If we are walking HIR (c.f., AST), we need to keep a reference to the
     // crate.
-    hir_crate: Option<&'ast hir::Crate>,
-    definitions: &'ast mut Definitions,
+    hir_crate: Option<&'a hir::Crate>,
+    definitions: &'a mut Definitions,
     parent_def: Option<DefIndex>,
+    pub visit_macro_invoc: Option<&'a mut FnMut(MacroInvocationData)>,
 }
 
-impl<'ast> DefCollector<'ast> {
-    pub fn new(definitions: &'ast mut Definitions) -> DefCollector<'ast> {
+pub struct MacroInvocationData {
+    pub id: NodeId,
+    pub def_index: DefIndex,
+    pub const_integer: bool,
+}
+
+impl<'a> DefCollector<'a> {
+    pub fn new(definitions: &'a mut Definitions) -> Self {
         DefCollector {
             hir_crate: None,
             definitions: definitions,
             parent_def: None,
+            visit_macro_invoc: None,
         }
     }
 
     pub fn extend(parent_node: NodeId,
                   parent_def_path: DefPath,
                   parent_def_id: DefId,
-                  definitions: &'ast mut Definitions)
-                  -> DefCollector<'ast> {
+                  definitions: &'a mut Definitions)
+                  -> Self {
         let mut collector = DefCollector::new(definitions);
 
         assert_eq!(parent_def_path.krate, parent_def_id.krate);
@@ -65,7 +73,7 @@ impl<'ast> DefCollector<'ast> {
         self.create_def_with_parent(Some(CRATE_DEF_INDEX), DUMMY_NODE_ID, DefPathData::Misc);
     }
 
-    pub fn walk_item(&mut self, ii: &'ast InlinedItem, krate: &'ast hir::Crate) {
+    pub fn walk_item(&mut self, ii: &'a InlinedItem, krate: &'a hir::Crate) {
         self.hir_crate = Some(krate);
         ii.visit(self);
     }
@@ -84,29 +92,28 @@ impl<'ast> DefCollector<'ast> {
         self.definitions.create_def_with_parent(parent, node_id, data)
     }
 
-    fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: DefIndex, f: F) {
+    pub fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: DefIndex, f: F) {
         let parent = self.parent_def;
         self.parent_def = Some(parent_def);
         f(self);
         self.parent_def = parent;
     }
 
-    fn visit_ast_const_integer(&mut self, expr: &Expr) {
-        // Find the node which will be used after lowering.
-        if let ExprKind::Paren(ref inner) = expr.node {
-            return self.visit_ast_const_integer(inner);
-        }
-
-        // FIXME(eddyb) Closures should have separate
-        // function definition IDs and expression IDs.
-        if let ExprKind::Closure(..) = expr.node {
-            return;
+    pub fn visit_ast_const_integer(&mut self, expr: &Expr) {
+        match expr.node {
+            // Find the node which will be used after lowering.
+            ExprKind::Paren(ref inner) => return self.visit_ast_const_integer(inner),
+            ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id, true),
+            // FIXME(eddyb) Closures should have separate
+            // function definition IDs and expression IDs.
+            ExprKind::Closure(..) => return,
+            _ => {}
         }
 
         self.create_def(expr.id, DefPathData::Initializer);
     }
 
-    fn visit_hir_const_integer(&mut self, expr: &'ast hir::Expr) {
+    fn visit_hir_const_integer(&mut self, expr: &hir::Expr) {
         // FIXME(eddyb) Closures should have separate
         // function definition IDs and expression IDs.
         if let hir::ExprClosure(..) = expr.node {
@@ -115,9 +122,19 @@ impl<'ast> DefCollector<'ast> {
 
         self.create_def(expr.id, DefPathData::Initializer);
     }
+
+    fn visit_macro_invoc(&mut self, id: NodeId, const_integer: bool) {
+        if let Some(ref mut visit) = self.visit_macro_invoc {
+            visit(MacroInvocationData {
+                id: id,
+                const_integer: const_integer,
+                def_index: self.parent_def.unwrap(),
+            })
+        }
+    }
 }
 
-impl<'ast> visit::Visitor for DefCollector<'ast> {
+impl<'a> visit::Visitor for DefCollector<'a> {
     fn visit_item(&mut self, i: &Item) {
         debug!("visit_item: {:?}", i);
 
@@ -129,10 +146,14 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) | ItemKind::Trait(..) |
             ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>
                 DefPathData::TypeNs(i.ident.name.as_str()),
+            ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {
+                return visit::walk_item(self, i);
+            }
             ItemKind::Mod(..) => DefPathData::Module(i.ident.name.as_str()),
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
                 DefPathData::ValueNs(i.ident.name.as_str()),
-            ItemKind::Mac(..) => DefPathData::MacroDef(i.ident.name.as_str()),
+            ItemKind::Mac(..) if i.id == DUMMY_NODE_ID => return, // Scope placeholder
+            ItemKind::Mac(..) => return self.visit_macro_invoc(i.id, false),
             ItemKind::Use(..) => DefPathData::Misc,
         };
         let def = self.create_def(i.id, def_data);
@@ -198,7 +219,7 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
                 DefPathData::ValueNs(ti.ident.name.as_str()),
             TraitItemKind::Type(..) => DefPathData::TypeNs(ti.ident.name.as_str()),
-            TraitItemKind::Macro(..) => DefPathData::MacroDef(ti.ident.name.as_str()),
+            TraitItemKind::Macro(..) => return self.visit_macro_invoc(ti.id, false),
         };
 
         let def = self.create_def(ti.id, def_data);
@@ -216,7 +237,7 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
                 DefPathData::ValueNs(ii.ident.name.as_str()),
             ImplItemKind::Type(..) => DefPathData::TypeNs(ii.ident.name.as_str()),
-            ImplItemKind::Macro(..) => DefPathData::MacroDef(ii.ident.name.as_str()),
+            ImplItemKind::Macro(..) => return self.visit_macro_invoc(ii.id, false),
         };
 
         let def = self.create_def(ii.id, def_data);
@@ -232,9 +253,13 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
     fn visit_pat(&mut self, pat: &Pat) {
         let parent_def = self.parent_def;
 
-        if let PatKind::Ident(_, id, _) = pat.node {
-            let def = self.create_def(pat.id, DefPathData::Binding(id.node.name.as_str()));
-            self.parent_def = Some(def);
+        match pat.node {
+            PatKind::Mac(..) => return self.visit_macro_invoc(pat.id, false),
+            PatKind::Ident(_, id, _) => {
+                let def = self.create_def(pat.id, DefPathData::Binding(id.node.name.as_str()));
+                self.parent_def = Some(def);
+            }
+            _ => {}
         }
 
         visit::walk_pat(self, pat);
@@ -244,13 +269,14 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
     fn visit_expr(&mut self, expr: &Expr) {
         let parent_def = self.parent_def;
 
-        if let ExprKind::Repeat(_, ref count) = expr.node {
-            self.visit_ast_const_integer(count);
-        }
-
-        if let ExprKind::Closure(..) = expr.node {
-            let def = self.create_def(expr.id, DefPathData::ClosureExpr);
-            self.parent_def = Some(def);
+        match expr.node {
+            ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id, false),
+            ExprKind::Repeat(_, ref count) => self.visit_ast_const_integer(count),
+            ExprKind::Closure(..) => {
+                let def = self.create_def(expr.id, DefPathData::ClosureExpr);
+                self.parent_def = Some(def);
+            }
+            _ => {}
         }
 
         visit::walk_expr(self, expr);
@@ -258,11 +284,13 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
     }
 
     fn visit_ty(&mut self, ty: &Ty) {
-        if let TyKind::FixedLengthVec(_, ref length) = ty.node {
-            self.visit_ast_const_integer(length);
-        }
-        if let TyKind::ImplTrait(..) = ty.node {
-            self.create_def(ty.id, DefPathData::ImplTrait);
+        match ty.node {
+            TyKind::Mac(..) => return self.visit_macro_invoc(ty.id, false),
+            TyKind::FixedLengthVec(_, ref length) => self.visit_ast_const_integer(length),
+            TyKind::ImplTrait(..) => {
+                self.create_def(ty.id, DefPathData::ImplTrait);
+            }
+            _ => {}
         }
         visit::walk_ty(self, ty);
     }
@@ -273,6 +301,13 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
 
     fn visit_macro_def(&mut self, macro_def: &MacroDef) {
         self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.ident.name.as_str()));
+    }
+
+    fn visit_stmt(&mut self, stmt: &Stmt) {
+        match stmt.node {
+            StmtKind::Mac(..) => self.visit_macro_invoc(stmt.id, false),
+            _ => visit::walk_stmt(self, stmt),
+        }
     }
 }
 
