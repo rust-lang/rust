@@ -174,23 +174,13 @@ impl<'a, 'b> ExpansionVisitor<'a, 'b> {
     // does this attribute list contain "macro_use"?
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
-            if attr.check_name("macro_escape") {
-                let msg = "macro_escape is a deprecated synonym for macro_use";
-                let mut err = self.resolver.session.struct_span_warn(attr.span, msg);
-                if let ast::AttrStyle::Inner = attr.node.style {
-                    err.help("consider an outer attribute, #[macro_use] mod ...").emit();
-                } else {
-                    err.emit();
+            if attr.check_name("macro_use") {
+                if !attr.is_word() {
+                    self.resolver.session.span_err(attr.span,
+                                                   "arguments to macro_use are not allowed here");
                 }
-            } else if !attr.check_name("macro_use") {
-                continue;
+                return true;
             }
-
-            if !attr.is_word() {
-                self.resolver.session.span_err(attr.span,
-                                               "arguments to macro_use are not allowed here");
-            }
-            return true;
         }
 
         false
