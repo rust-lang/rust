@@ -7,6 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+// ignore-stage0
+// ignore-stage1
 #![feature(i128_type)]
 
 fn main() {

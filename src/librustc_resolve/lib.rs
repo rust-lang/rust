@@ -2498,7 +2498,7 @@ impl<'a> Resolver<'a> {
                     match prim {
                         Some(&TyUint(UintTy::U128)) | Some(&TyInt(IntTy::I128)) => {
                             if !this.session.features.borrow().i128_type {
-                                emit_feature_err(&this.session.parse_sess.span_diagnostic,
+                                emit_feature_err(&this.session.parse_sess,
                                                  "i128_type", span, GateIssue::Language,
                                                  "128-bit type is unstable");
                             }

@@ -791,6 +791,7 @@ fn find_repr_type_name(diagnostic: &Handler, type_attrs: &[ast::Attribute]) -> &
                 attr::ReprInt(attr::UnsignedInt(ast::UintTy::U8)) => "u8",
                 attr::ReprInt(attr::UnsignedInt(ast::UintTy::U16)) => "u16",
                 attr::ReprInt(attr::UnsignedInt(ast::UintTy::U32)) => "u32",
+                attr::ReprInt(attr::UnsignedInt(ast::UintTy::U64)) => "u64",
                 attr::ReprInt(attr::UnsignedInt(ast::UintTy::U128)) => "u128",
             }
         }

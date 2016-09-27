@@ -305,7 +305,7 @@ declare_features! (
     (active, compiler_builtins, "1.13.0", None),
 
     // The `i128` type
-    (active, i128_type, "1.14.0", Some(35118))
+    (active, i128_type, "1.14.0", Some(35118)),
 );
 
 declare_features! (

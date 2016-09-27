@@ -26,6 +26,8 @@ use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
 
+use rustc_i128::u128;
+
 #[cfg(not(test))]
 pub const RUSTC_VERSION: &'static str = concat!("rustc ", env!("CFG_VERSION"));
 
@@ -264,7 +266,7 @@ pub struct FnData {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct VariantData {
     pub kind: ty::VariantKind,
-    pub disr: u64,
+    pub disr: u128,
 
     /// If this is a struct's only variant, this
     /// is the index of the "struct ctor" item.
