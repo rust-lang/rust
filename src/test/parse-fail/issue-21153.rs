@@ -11,5 +11,6 @@
 // compile-flags: -Z parse-only
 
 trait MyTrait<T>: Iterator {
-    Item = T; //~ ERROR expected one of `const`, `extern`, `fn`, `type`, or `unsafe`, found `Item`
+    Item = T; //~ ERROR expected one of `!` or `::`, found `=`
+              //~| ERROR expected item, found `=`
 }
