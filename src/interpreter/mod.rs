@@ -17,6 +17,7 @@ use syntax::codemap::{self, DUMMY_SP};
 use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer, AllocId};
 use primval::{self, PrimVal};
+use self::value::Value;
 
 use std::collections::HashMap;
 
@@ -24,6 +25,7 @@ mod step;
 mod terminator;
 mod cast;
 mod vtable;
+mod value;
 
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
@@ -97,21 +99,6 @@ pub struct Frame<'a, 'tcx: 'a> {
 
     /// The index of the currently evaluated statment.
     pub stmt: usize,
-}
-
-/// A `Value` represents a single self-contained Rust value.
-///
-/// A `Value` can either refer to a block of memory inside an allocation (`ByRef`) or to a primitve
-/// value held directly, outside of any allocation (`ByVal`).
-///
-/// For optimization of a few very common cases, there is also a representation for a pair of
-/// primitive values (`ByValPair`). It allows Miri to avoid making allocations for checked binary
-/// operations and fat pointers. This idea was taken from rustc's trans.
-#[derive(Clone, Copy, Debug)]
-enum Value {
-    ByRef(Pointer),
-    ByVal(PrimVal),
-    ByValPair(PrimVal, PrimVal),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -217,45 +204,45 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
+    fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
+        // FIXME: cache these allocs
+        let ptr = self.memory.allocate(s.len(), 1)?;
+        self.memory.write_bytes(ptr, s.as_bytes())?;
+        self.memory.freeze(ptr.alloc_id)?;
+        Ok(Value::ByValPair(PrimVal::Ptr(ptr), self.target_usize_primval(s.len() as u64)))
+    }
+
     fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
         use rustc::middle::const_val::ConstVal::*;
         use rustc_const_math::{ConstInt, ConstIsize, ConstUsize, ConstFloat};
 
         let primval = match *const_val {
-            Integral(ConstInt::I8(i)) => Value::ByVal(PrimVal::I8(i)),
-            Integral(ConstInt::U8(i)) => Value::ByVal(PrimVal::U8(i)),
+            Integral(ConstInt::I8(i)) => PrimVal::I8(i),
+            Integral(ConstInt::U8(i)) => PrimVal::U8(i),
             Integral(ConstInt::Isize(ConstIsize::Is16(i))) |
-            Integral(ConstInt::I16(i)) => Value::ByVal(PrimVal::I16(i)),
+            Integral(ConstInt::I16(i)) => PrimVal::I16(i),
             Integral(ConstInt::Usize(ConstUsize::Us16(i))) |
-            Integral(ConstInt::U16(i)) => Value::ByVal(PrimVal::U16(i)),
+            Integral(ConstInt::U16(i)) => PrimVal::U16(i),
             Integral(ConstInt::Isize(ConstIsize::Is32(i))) |
-            Integral(ConstInt::I32(i)) => Value::ByVal(PrimVal::I32(i)),
+            Integral(ConstInt::I32(i)) => PrimVal::I32(i),
             Integral(ConstInt::Usize(ConstUsize::Us32(i))) |
-            Integral(ConstInt::U32(i)) => Value::ByVal(PrimVal::U32(i)),
+            Integral(ConstInt::U32(i)) => PrimVal::U32(i),
             Integral(ConstInt::Isize(ConstIsize::Is64(i))) |
-            Integral(ConstInt::I64(i)) => Value::ByVal(PrimVal::I64(i)),
+            Integral(ConstInt::I64(i)) => PrimVal::I64(i),
             Integral(ConstInt::Usize(ConstUsize::Us64(i))) |
-            Integral(ConstInt::U64(i)) => Value::ByVal(PrimVal::U64(i)),
-            Float(ConstFloat::F32(f)) => Value::ByVal(PrimVal::F32(f)),
-            Float(ConstFloat::F64(f)) => Value::ByVal(PrimVal::F64(f)),
-            Bool(b) => Value::ByVal(PrimVal::Bool(b)),
-            Char(c) => Value::ByVal(PrimVal::Char(c)),
+            Integral(ConstInt::U64(i)) => PrimVal::U64(i),
+            Float(ConstFloat::F32(f)) => PrimVal::F32(f),
+            Float(ConstFloat::F64(f)) => PrimVal::F64(f),
+            Bool(b) => PrimVal::Bool(b),
+            Char(c) => PrimVal::Char(c),
 
-            Str(ref s) => {
-                let ptr = self.memory.allocate(s.len(), 1)?;
-                self.memory.write_bytes(ptr, s.as_bytes())?;
-                self.memory.freeze(ptr.alloc_id)?;
-                Value::ByValPair(
-                    PrimVal::Ptr(ptr),
-                    self.target_usize_primval(s.len() as u64)
-                )
-            }
+            Str(ref s) => return self.str_to_value(s),
 
             ByteStr(ref bs) => {
                 let ptr = self.memory.allocate(bs.len(), 1)?;
                 self.memory.write_bytes(ptr, bs)?;
                 self.memory.freeze(ptr.alloc_id)?;
-                Value::ByVal(PrimVal::Ptr(ptr))
+                PrimVal::Ptr(ptr)
             }
 
             Struct(_)    => unimplemented!(),
@@ -271,7 +258,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 bug!("uninferred constants only exist before typeck"),
         };
 
-        Ok(primval)
+        Ok(Value::ByVal(primval))
     }
 
     fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
@@ -578,30 +565,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Len(ref lvalue) => {
                 let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
-                let len = match ty.sty {
-                    ty::TyArray(_, n) => n as u64,
-                    ty::TySlice(_) => if let LvalueExtra::Length(n) = src.extra {
-                        n
+                match ty.sty {
+                    ty::TyArray(_, n) => self.memory.write_usize(dest, n as u64)?,
+                    ty::TySlice(_) => if let LvalueExtra::Length(len) = src.extra {
+                        self.memory.write_usize(dest, len)?;
                     } else {
                         bug!("Rvalue::Len of a slice given non-slice pointer: {:?}", src);
                     },
                     _ => bug!("Rvalue::Len expected array or slice, got {:?}", ty),
-                };
-                self.memory.write_usize(dest, len)?;
+                }
             }
 
             Ref(_, _, ref lvalue) => {
-                let lv = self.eval_lvalue(lvalue)?;
-                let (ptr, extra) = self.get_fat_ptr(dest);
-                self.memory.write_ptr(ptr, lv.ptr)?;
-                match lv.extra {
+                let lvalue = self.eval_lvalue(lvalue)?;
+                self.memory.write_ptr(dest, lvalue.ptr)?;
+                let extra_ptr = dest.offset(self.memory.pointer_size() as isize);
+                match lvalue.extra {
                     LvalueExtra::None => {},
-                    LvalueExtra::Length(len) => {
-                        self.memory.write_usize(extra, len)?;
-                    }
-                    LvalueExtra::Vtable(ptr) => {
-                        self.memory.write_ptr(extra, ptr)?;
-                    },
+                    LvalueExtra::Length(len) => self.memory.write_usize(extra_ptr, len)?,
+                    LvalueExtra::Vtable(ptr) => self.memory.write_ptr(extra_ptr, ptr)?,
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
                 }
@@ -618,13 +600,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 use rustc::mir::repr::CastKind::*;
                 match kind {
                     Unsize => {
-                        let src = self.eval_operand_to_ptr(operand)?;
+                        let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
                         let dest_ty = self.monomorphize(dest_ty, self.substs());
                         // FIXME: cases where dest_ty is not a fat pointer. e.g. Arc<Struct> -> Arc<Trait>
                         assert!(self.type_is_fat_ptr(dest_ty));
-                        let (ptr, extra) = self.get_fat_ptr(dest);
-                        self.move_(src, ptr, src_ty)?;
                         let src_pointee_ty = pointee_type(src_ty).unwrap();
                         let dest_pointee_ty = pointee_type(dest_ty).unwrap();
 
@@ -633,21 +613,28 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                                self.memory.write_usize(extra, length as u64)?;
+                                let ptr = src.read_ptr(&self.memory)?;
+                                self.memory.write_ptr(dest, ptr)?;
+                                let ptr_size = self.memory.pointer_size() as isize;
+                                let dest_extra = dest.offset(ptr_size);
+                                self.memory.write_usize(dest_extra, length as u64)?;
                             }
                             (&ty::TyTrait(_), &ty::TyTrait(_)) => {
                                 // For now, upcasts are limited to changes in marker
                                 // traits, and hence never actually require an actual
                                 // change to the vtable.
-                                let (_, src_extra) = self.get_fat_ptr(src);
-                                let src_extra = self.memory.read_ptr(src_extra)?;
-                                self.memory.write_ptr(extra, src_extra)?;
+                                self.write_value(src, dest, dest_ty)?;
                             },
                             (_, &ty::TyTrait(ref data)) => {
                                 let trait_ref = data.principal.with_self_ty(self.tcx, src_pointee_ty);
                                 let trait_ref = self.tcx.erase_regions(&trait_ref);
                                 let vtable = self.get_vtable(trait_ref)?;
-                                self.memory.write_ptr(extra, vtable)?;
+                                let ptr = src.read_ptr(&self.memory)?;
+
+                                self.memory.write_ptr(dest, ptr)?;
+                                let ptr_size = self.memory.pointer_size() as isize;
+                                let dest_extra = dest.offset(ptr_size);
+                                self.memory.write_ptr(dest_extra, vtable)?;
                             },
 
                             _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
@@ -655,25 +642,31 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     Misc => {
-                        let src = self.eval_operand_to_ptr(operand)?;
+                        let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
+                        // FIXME: dest_ty should already be monomorphized
+                        let dest_ty = self.monomorphize(dest_ty, self.substs());
                         if self.type_is_fat_ptr(src_ty) {
-                            let (data_ptr, _meta_ptr) = self.get_fat_ptr(src);
+                            trace!("misc cast: {:?}", src);
                             let ptr_size = self.memory.pointer_size();
-                            let dest_ty = self.monomorphize(dest_ty, self.substs());
-                            if self.type_is_fat_ptr(dest_ty) {
-                                // FIXME: add assertion that the extra part of the src_ty and
-                                // dest_ty is of the same type
-                                self.memory.copy(data_ptr, dest, ptr_size * 2, ptr_size)?;
-                            } else { // cast to thin-ptr
-                                // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
-                                // pointer-cast of that pointer to desired pointer type.
-                                self.memory.copy(data_ptr, dest, ptr_size, ptr_size)?;
+                            match (src, self.type_is_fat_ptr(dest_ty)) {
+                                (Value::ByValPair(data, meta), true) => {
+                                    self.memory.write_primval(dest, data)?;
+                                    self.memory.write_primval(dest.offset(ptr_size as isize), meta)?;
+                                },
+                                (Value::ByValPair(data, _), false) => {
+                                    self.memory.write_primval(dest, data)?;
+                                },
+                                (Value::ByRef(ptr), true) => {
+                                    self.memory.copy(ptr, dest, ptr_size * 2, ptr_size)?;
+                                },
+                                (Value::ByRef(ptr), false) => {
+                                    self.memory.copy(ptr, dest, ptr_size, ptr_size)?;
+                                },
+                                (Value::ByVal(_), _) => bug!("expected fat ptr"),
                             }
                         } else {
-                            // FIXME: dest_ty should already be monomorphized
-                            let dest_ty = self.monomorphize(dest_ty, self.substs());
-                            let src_val = self.read_primval(src, src_ty)?;
+                            let src_val = self.value_to_primval(src, src_ty)?;
                             let dest_val = self.cast_primval(src_val, dest_ty)?;
                             self.memory.write_primval(dest, dest_val)?;
                         }
@@ -689,8 +682,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     UnsafeFnPointer => match dest_ty.sty {
                         ty::TyFnPtr(unsafe_fn_ty) => {
-                            let src = self.eval_operand_to_ptr(operand)?;
-                            let ptr = self.memory.read_ptr(src)?;
+                            let src = self.eval_operand(operand)?;
+                            let ptr = src.read_ptr(&self.memory)?;
                             let (def_id, substs, _) = self.memory.get_fn(ptr.alloc_id)?;
                             let fn_ptr = self.memory.create_fn_ptr(def_id, substs, unsafe_fn_ty);
                             self.memory.write_ptr(dest, fn_ptr)?;
@@ -779,14 +772,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    // FIXME(solson): This method unnecessarily allocates and should not be necessary. We can
-    // remove it as soon as PrimVal can represent fat pointers.
-    fn eval_operand_to_ptr(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Pointer> {
-        let value = self.eval_operand(op)?;
-        let ty = self.operand_ty(op);
-        self.value_to_ptr(value, ty)
-    }
-
     fn eval_operand_to_primval(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, PrimVal> {
         let value = self.eval_operand(op)?;
         let ty = self.operand_ty(op);
@@ -863,6 +848,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
                     Field(field, field_ty) => {
+                        let field_ty = self.monomorphize(field_ty, self.substs());
                         use rustc::ty::layout::Layout::*;
                         let variant = match *base_layout {
                             Univariant { ref variant, .. } => variant,
@@ -883,15 +869,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                         let offset = variant.field_offset(field.index()).bytes();
                         let ptr = base.ptr.offset(offset as isize);
-                        match (&field_ty.sty, base.extra) {
-                            (&ty::TyStr, extra @ LvalueExtra::Length(_)) |
-                            (&ty::TySlice(_), extra @ LvalueExtra::Length(_)) |
-                            (&ty::TyTrait(_), extra @ LvalueExtra::Vtable(_)) => return Ok(Lvalue {
+                        trace!("{:?}", base);
+                        trace!("{:?}", field_ty);
+                        if self.type_is_sized(field_ty) {
+                            ptr
+                        } else {
+                            match base.extra {
+                                LvalueExtra::None => bug!("expected fat pointer"),
+                                LvalueExtra::DowncastVariant(..) => bug!("Rust doesn't support unsized fields in enum variants"),
+                                LvalueExtra::Vtable(_) |
+                                LvalueExtra::Length(_) => {},
+                            }
+                            return Ok(Lvalue {
                                 ptr: ptr,
-                                extra: extra,
-                            }),
-                            (&ty::TyTrait(_), _) => bug!("trait field without vtable"),
-                            _ => ptr,
+                                extra: base.extra,
+                            });
                         }
                     },
 
@@ -912,21 +904,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     },
 
                     Deref => {
-                        let pointee_ty = pointee_type(base_ty).expect("Deref of non-pointer");
-                        let pointee_ty = self.tcx.struct_tail(pointee_ty);
-                        let ptr = self.memory.read_ptr(base.ptr)?;
-                        let extra = match pointee_ty.sty {
-                            ty::TySlice(_) | ty::TyStr => {
-                                let (_, extra) = self.get_fat_ptr(base.ptr);
-                                let len = self.memory.read_usize(extra)?;
-                                LvalueExtra::Length(len)
-                            }
-                            ty::TyTrait(_) => {
-                                let (_, extra) = self.get_fat_ptr(base.ptr);
-                                let vtable = self.memory.read_ptr(extra)?;
-                                LvalueExtra::Vtable(vtable)
-                            },
-                            _ => LvalueExtra::None,
+                        use primval::PrimVal::*;
+                        use interpreter::value::Value::*;
+                        let (ptr, extra) = match self.read_value(base.ptr, base_ty)? {
+                            ByValPair(Ptr(ptr), Ptr(vptr)) => (ptr, LvalueExtra::Vtable(vptr)),
+                            ByValPair(Ptr(ptr), n) => (ptr, LvalueExtra::Length(n.expect_uint("slice length"))),
+                            ByVal(Ptr(ptr)) => (ptr, LvalueExtra::None),
+                            _ => bug!("can't deref non pointer types"),
                         };
                         return Ok(Lvalue { ptr: ptr, extra: extra });
                     }
@@ -937,8 +921,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             ty::TySlice(elem_ty) => self.type_size(elem_ty),
                             _ => bug!("indexing expected an array or slice, got {:?}", base_ty),
                         };
-                        let n_ptr = self.eval_operand_to_ptr(operand)?;
-                        let n = self.memory.read_usize(n_ptr)?;
+                        let n_ptr = self.eval_operand(operand)?;
+                        let usize = self.tcx.types.usize;
+                        let n = self.value_to_primval(n_ptr, usize)?.expect_uint("Projection::Index expected usize");
                         base.ptr.offset(n as isize * elem_size as isize)
                     }
 
@@ -949,12 +934,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         };
 
         Ok(Lvalue { ptr: ptr, extra: LvalueExtra::None })
-    }
-
-    fn get_fat_ptr(&self, ptr: Pointer) -> (Pointer, Pointer) {
-        assert_eq!(layout::FAT_PTR_ADDR, 0);
-        assert_eq!(layout::FAT_PTR_EXTRA, 1);
-        (ptr, ptr.offset(self.memory.pointer_size() as isize))
     }
 
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
@@ -974,7 +953,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     // FIXME(solson): This method unnecessarily allocates and should not be necessary. We can
     // remove it as soon as PrimVal can represent fat pointers.
-    fn value_to_ptr(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Pointer> {
+    fn value_to_ptr_dont_use(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Pointer> {
         match value {
             Value::ByRef(ptr) => Ok(ptr),
 
@@ -986,15 +965,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(ptr)
             }
 
-            Value::ByValPair(primval1, primval2) => {
+            Value::ByValPair(a, b) => {
                 let size = self.type_size(ty);
                 let align = self.type_align(ty);
                 let ptr = self.memory.allocate(size, align)?;
-
-                // FIXME(solson): Major dangerous assumptions here. Ideally obliterate this
-                // function.
-                self.memory.write_primval(ptr, primval1)?;
-                self.memory.write_primval(ptr.offset((size / 2) as isize), primval2)?;
+                let ptr_size = self.memory.pointer_size() as isize;
+                self.memory.write_primval(ptr, a)?;
+                self.memory.write_primval(ptr.offset(ptr_size), b)?;
                 Ok(ptr)
             }
         }
@@ -1002,11 +979,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         match value {
-            Value::ByRef(ptr) => self.read_primval(ptr, ty),
+            Value::ByRef(ptr) => match self.read_value(ptr, ty)? {
+                Value::ByRef(_) => bug!("read_value can't result in `ByRef`"),
+                Value::ByVal(primval) => Ok(primval),
+                Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
+            },
 
             // TODO(solson): Sanity-check the primval type against the input type.
             Value::ByVal(primval) => Ok(primval),
-            Value::ByValPair(..) => bug!("can't turn a ByValPair into a single PrimVal"),
+            Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
         }
     }
 
@@ -1019,18 +1000,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match value {
             Value::ByRef(ptr) => self.move_(ptr, dest, dest_ty),
             Value::ByVal(primval) => self.memory.write_primval(dest, primval),
-            Value::ByValPair(primval1, primval2) => {
-                let size = self.type_size(dest_ty);
-
-                // FIXME(solson): Major dangerous assumptions here.
-                self.memory.write_primval(dest, primval1)?;
-                self.memory.write_primval(dest.offset((size / 2) as isize), primval2)?;
-                Ok(())
+            Value::ByValPair(a, b) => {
+                self.memory.write_primval(dest, a)?;
+                let layout = self.type_layout(dest_ty);
+                let offset = match *layout {
+                    Layout::Univariant { .. } => {
+                        bug!("I don't think this can ever happen until we have custom fat pointers");
+                        //variant.field_offset(1).bytes() as isize
+                    },
+                    Layout::FatPointer { .. } => self.memory.pointer_size() as isize,
+                    _ => bug!("tried to write value pair of non-fat pointer type: {:?}", layout),
+                };
+                let extra_dest = dest.offset(offset);
+                self.memory.write_primval(extra_dest, b)
             }
         }
     }
 
-    pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    fn read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         use syntax::ast::{IntTy, UintTy, FloatTy};
         let val = match &ty.sty {
             &ty::TyBool => PrimVal::Bool(self.memory.read_bool(ptr)?),
@@ -1061,12 +1048,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 PrimVal::FnPtr(self.memory.create_fn_ptr(def_id, substs, fn_ty))
             },
             &ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::FnPtr)?,
+            &ty::TyBox(ty) |
             &ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             &ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+                let p = self.memory.read_ptr(ptr)?;
                 if self.type_is_sized(ty) {
-                    PrimVal::Ptr(self.memory.read_ptr(ptr)?)
+                    PrimVal::Ptr(p)
                 } else {
-                    bug!("primitive read of fat pointer type: {:?}", ty);
+                    // FIXME: extract the offset to the tail field for `Box<(i64, i32, [u8])>`
+                    let extra = ptr.offset(self.memory.pointer_size() as isize);
+                    let extra = match self.tcx.struct_tail(ty).sty {
+                        ty::TyTrait(..) => PrimVal::Ptr(self.memory.read_ptr(extra)?),
+                        ty::TySlice(..) |
+                        ty::TyStr => self.target_usize_primval(self.memory.read_usize(extra)?),
+                        _ => bug!("unsized primval ptr read from {:?}", ty),
+                    };
+                    return Ok(Value::ByValPair(PrimVal::Ptr(p), extra));
                 }
             }
 
@@ -1091,7 +1088,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             _ => bug!("primitive read of non-primitive type: {:?}", ty),
         };
-        Ok(val)
+        Ok(Value::ByVal(val))
     }
 
     fn frame(&self) -> &Frame<'a, 'tcx> {

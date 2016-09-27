@@ -2,12 +2,13 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::repr as mir;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 
 use error::{EvalError, EvalResult};
 use memory::Pointer;
 use interpreter::EvalContext;
-use primval;
+use primval::{self, PrimVal};
+use interpreter::value::Value;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn call_intrinsic(
@@ -16,14 +17,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         substs: &'tcx Substs<'tcx>,
         args: &[mir::Operand<'tcx>],
         dest: Pointer,
+        dest_ty: Ty<'tcx>,
         dest_layout: &'tcx Layout,
     ) -> EvalResult<'tcx, ()> {
-        // TODO(solson): We can probably remove this _to_ptr easily.
-        let args_res: EvalResult<Vec<Pointer>> = args.iter()
-            .map(|arg| self.eval_operand_to_ptr(arg))
+        let args_ptrs: EvalResult<Vec<Value>> = args.iter()
+            .map(|arg| self.eval_operand(arg))
             .collect();
-        let args_ptrs = args_res?;
+        let args_ptrs = args_ptrs?;
         let pointer_size = self.memory.pointer_size();
+        let i32 = self.tcx.types.i32;
+        let isize = self.tcx.types.isize;
+        let usize = self.tcx.types.usize;
+        let f32 = self.tcx.types.f32;
+        let f64 = self.tcx.types.f64;
 
         match &self.tcx.item_name(def_id).as_str()[..] {
             "add_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Add, &args[0], &args[1], dest, dest_layout)?,
@@ -31,14 +37,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "mul_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Mul, &args[0], &args[1], dest, dest_layout)?,
 
             "arith_offset" => {
-                let ptr = self.memory.read_ptr(args_ptrs[0])?;
-                let offset = self.memory.read_int(args_ptrs[1], pointer_size)?;
+                let ptr = args_ptrs[0].read_ptr(&self.memory)?;
+                let offset = self.value_to_primval(args_ptrs[1], isize)?.expect_int("arith_offset second arg not isize");
                 let new_ptr = ptr.offset(offset as isize);
                 self.memory.write_ptr(dest, new_ptr)?;
             }
 
             "assume" => {
-                if !self.memory.read_bool(args_ptrs[0])? {
+                let bool = self.tcx.types.bool;
+                if !self.value_to_primval(args_ptrs[0], bool)?.expect_bool("assume arg not bool") {
                     return Err(EvalError::AssumptionNotHeld);
                 }
             }
@@ -51,47 +58,59 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let elem_ty = substs.type_at(0);
                 let elem_size = self.type_size(elem_ty);
                 let elem_align = self.type_align(elem_ty);
-                let src = self.memory.read_ptr(args_ptrs[0])?;
-                let dest = self.memory.read_ptr(args_ptrs[1])?;
-                let count = self.memory.read_isize(args_ptrs[2])?;
+                let src = args_ptrs[0].read_ptr(&self.memory)?;
+                let dest = args_ptrs[1].read_ptr(&self.memory)?;
+                let count = self.value_to_primval(args_ptrs[2], usize)?.expect_uint("arith_offset second arg not isize");
                 self.memory.copy(src, dest, count as usize * elem_size, elem_align)?;
             }
 
             "ctpop" => {
                 let elem_ty = substs.type_at(0);
                 let elem_size = self.type_size(elem_ty);
-                let num = self.memory.read_uint(args_ptrs[0], elem_size)?.count_ones();
+                let num = self.value_to_primval(args_ptrs[2], elem_ty)?.expect_int("ctpop second arg not integral");
+                let num = num.count_ones();
                 self.memory.write_uint(dest, num.into(), elem_size)?;
             }
 
             "ctlz" => {
                 let elem_ty = substs.type_at(0);
                 let elem_size = self.type_size(elem_ty);
-                let num = self.memory.read_uint(args_ptrs[0], elem_size)?.leading_zeros();
+                let num = self.value_to_primval(args_ptrs[2], elem_ty)?;
+                let num = match num {
+                    PrimVal::I8(i) => i.leading_zeros(),
+                    PrimVal::U8(i) => i.leading_zeros(),
+                    PrimVal::I16(i) => i.leading_zeros(),
+                    PrimVal::U16(i) => i.leading_zeros(),
+                    PrimVal::I32(i) => i.leading_zeros(),
+                    PrimVal::U32(i) => i.leading_zeros(),
+                    PrimVal::I64(i) => i.leading_zeros(),
+                    PrimVal::U64(i) => i.leading_zeros(),
+                    _ => bug!("ctlz called with non-integer type"),
+                };
                 self.memory.write_uint(dest, num.into(), elem_size)?;
             }
 
             "discriminant_value" => {
                 let ty = substs.type_at(0);
-                let adt_ptr = self.memory.read_ptr(args_ptrs[0])?;
+                let adt_ptr = args_ptrs[0].read_ptr(&self.memory)?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
                 self.memory.write_uint(dest, discr_val, 8)?;
             }
 
             "fabsf32" => {
-                let f = self.memory.read_f32(args_ptrs[0])?;
+                let f = self.value_to_primval(args_ptrs[2], f32)?.expect_f32("fabsf32 read non f32");
                 self.memory.write_f32(dest, f.abs())?;
             }
 
             "fabsf64" => {
-                let f = self.memory.read_f64(args_ptrs[0])?;
+                let f = self.value_to_primval(args_ptrs[2], f64)?.expect_f64("fabsf64 read non f64");
                 self.memory.write_f64(dest, f.abs())?;
             }
 
             "fadd_fast" => {
                 let ty = substs.type_at(0);
-                let a = self.read_primval(args_ptrs[0], ty)?;
-                let b = self.read_primval(args_ptrs[0], ty)?;
+                let a = self.value_to_primval(args_ptrs[0], ty)?;
+                let b = self.value_to_primval(args_ptrs[0], ty)?;
                 let result = primval::binary_op(mir::BinOp::Add, a, b)?;
                 self.memory.write_primval(dest, result.0)?;
             }
@@ -117,8 +136,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "move_val_init" => {
                 let ty = substs.type_at(0);
-                let ptr = self.memory.read_ptr(args_ptrs[0])?;
-                self.move_(args_ptrs[1], ptr, ty)?;
+                let ptr = args_ptrs[0].read_ptr(&self.memory)?;
+                self.write_value(args_ptrs[1], ptr, ty)?;
             }
 
             "needs_drop" => {
@@ -129,10 +148,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "offset" => {
                 let pointee_ty = substs.type_at(0);
                 let pointee_size = self.type_size(pointee_ty) as isize;
-                let ptr_arg = args_ptrs[0];
-                let offset = self.memory.read_isize(args_ptrs[1])?;
+                let offset = self.value_to_primval(args_ptrs[1], isize)?.expect_int("offset second arg not isize");
 
-                let ptr = self.memory.read_ptr(ptr_arg)?;
+                let ptr = args_ptrs[0].read_ptr(&self.memory)?;
                 let result_ptr = ptr.offset(offset as isize * pointee_size);
                 self.memory.write_ptr(dest, result_ptr)?;
             }
@@ -150,24 +168,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "powif32" => {
-                let f = self.memory.read_f32(args_ptrs[0])?;
-                let i = self.memory.read_int(args_ptrs[1], 4)?;
+                let f = self.value_to_primval(args_ptrs[0], f32)?.expect_f32("powif32 first arg not f32");
+                let i = self.value_to_primval(args_ptrs[1], i32)?.expect_int("powif32 second arg not i32");
                 self.memory.write_f32(dest, f.powi(i as i32))?;
             }
 
             "powif64" => {
-                let f = self.memory.read_f32(args_ptrs[0])?;
-                let i = self.memory.read_int(args_ptrs[1], 4)?;
-                self.memory.write_f32(dest, f.powi(i as i32))?;
+                let f = self.value_to_primval(args_ptrs[0], f64)?.expect_f64("powif64 first arg not f64");
+                let i = self.value_to_primval(args_ptrs[1], i32)?.expect_int("powif64 second arg not i32");
+                self.memory.write_f64(dest, f.powi(i as i32))?;
             }
 
             "sqrtf32" => {
-                let f = self.memory.read_f32(args_ptrs[0])?;
+                let f = self.value_to_primval(args_ptrs[0], f32)?.expect_f32("sqrtf32 first arg not f32");
                 self.memory.write_f32(dest, f.sqrt())?;
             }
 
             "sqrtf64" => {
-                let f = self.memory.read_f64(args_ptrs[0])?;
+                let f = self.value_to_primval(args_ptrs[0], f64)?.expect_f64("sqrtf64 first arg not f64");
                 self.memory.write_f64(dest, f.sqrt())?;
             }
 
@@ -182,14 +200,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (size, _) = self.size_and_align_of_dst(ty, args_ptrs[0])?;
                 self.memory.write_uint(dest, size, pointer_size)?;
             }
-            // FIXME: wait for eval_operand_to_ptr to be gone
-            /*
             "type_name" => {
                 let ty = substs.type_at(0);
                 let ty_name = ty.to_string();
                 let s = self.str_to_value(&ty_name)?;
-                self.memory.write_ptr(dest, s)?;
-            }*/
+                self.write_value(s, dest, dest_ty)?;
+            }
             "type_id" => {
                 let ty = substs.type_at(0);
                 let n = self.tcx.type_id_hash(ty);
@@ -198,7 +214,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "transmute" => {
                 let ty = substs.type_at(0);
-                self.move_(args_ptrs[0], dest, ty)?;
+                self.write_value(args_ptrs[0], dest, ty)?;
             }
 
             "try" => unimplemented!(),
@@ -207,14 +223,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "volatile_load" => {
                 let ty = substs.type_at(0);
-                let ptr = self.memory.read_ptr(args_ptrs[0])?;
+                let ptr = args_ptrs[0].read_ptr(&self.memory)?;
                 self.move_(ptr, dest, ty)?;
             }
 
             "volatile_store" => {
                 let ty = substs.type_at(0);
-                let dest = self.memory.read_ptr(args_ptrs[0])?;
-                self.move_(args_ptrs[1], dest, ty)?;
+                let dest = args_ptrs[0].read_ptr(&self.memory)?;
+                self.write_value(args_ptrs[1], dest, ty)?;
             }
 
             name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),
@@ -229,7 +245,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn size_and_align_of_dst(
         &self,
         ty: ty::Ty<'tcx>,
-        value: Pointer,
+        value: Value,
     ) -> EvalResult<'tcx, (u64, u64)> {
         let pointer_size = self.memory.pointer_size();
         if self.type_is_sized(ty) {
@@ -306,8 +322,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 }
                 ty::TyTrait(..) => {
-                    let (_, vtable) = self.get_fat_ptr(value);
-                    let vtable = self.memory.read_ptr(vtable)?;
+                    let vtable = value.expect_vtable(&self.memory)?;
                     // the second entry in the vtable is the dynamic size of the object.
                     let size = self.memory.read_usize(vtable.offset(pointer_size as isize))?;
                     let align = self.memory.read_usize(vtable.offset(pointer_size as isize * 2))?;
@@ -317,10 +332,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 ty::TySlice(_) | ty::TyStr => {
                     let elem_ty = ty.sequence_element_type(self.tcx);
                     let elem_size = self.type_size(elem_ty) as u64;
-                    let (_, len_ptr) = self.get_fat_ptr(value);
-                    let n = self.memory.read_usize(len_ptr)?;
+                    let len = value.expect_slice_len(&self.memory)?;
                     let align = self.type_align(elem_ty);
-                    Ok((n * elem_size, align as u64))
+                    Ok((len * elem_size, align as u64))
                 }
 
                 _ => bug!("size_of_val::<{:?}>", ty),

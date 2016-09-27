@@ -14,7 +14,8 @@ use syntax::{ast, attr};
 use error::{EvalError, EvalResult};
 use memory::Pointer;
 use primval::PrimVal;
-use super::{EvalContext, IntegerExt, StackPopCleanup, Value};
+use super::{EvalContext, IntegerExt, StackPopCleanup};
+use super::value::Value;
 
 mod intrinsics;
 
@@ -164,7 +165,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = fn_ty.sig.0.output;
                 let layout = self.type_layout(ty);
                 let (ret, target) = destination.unwrap();
-                self.call_intrinsic(def_id, substs, arg_operands, ret, layout)?;
+                self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout)?;
                 self.goto_block(target);
                 Ok(())
             }
@@ -265,9 +266,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             None => name.as_str(),
         };
 
-        // TODO(solson): We can probably remove this _to_ptr easily.
-        let args_res: EvalResult<Vec<Pointer>> = args.iter()
-            .map(|arg| self.eval_operand_to_ptr(arg))
+        let args_res: EvalResult<Vec<Value>> = args.iter()
+            .map(|arg| self.eval_operand(arg))
             .collect();
         let args = args_res?;
 
@@ -276,26 +276,28 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             return Ok(());
         }
 
+        let usize = self.tcx.types.usize;
+
         match &link_name[..] {
             "__rust_allocate" => {
-                let size = self.memory.read_usize(args[0])?;
-                let align = self.memory.read_usize(args[1])?;
+                let size = self.value_to_primval(args[0], usize)?.expect_uint("__rust_allocate first arg not usize");
+                let align = self.value_to_primval(args[1], usize)?.expect_uint("__rust_allocate second arg not usize");
                 let ptr = self.memory.allocate(size as usize, align as usize)?;
                 self.memory.write_ptr(dest, ptr)?;
             }
 
             "__rust_reallocate" => {
-                let ptr = self.memory.read_ptr(args[0])?;
-                let size = self.memory.read_usize(args[2])?;
-                let align = self.memory.read_usize(args[3])?;
+                let ptr = args[0].read_ptr(&self.memory)?;
+                let size = self.value_to_primval(args[2], usize)?.expect_uint("__rust_reallocate third arg not usize");
+                let align = self.value_to_primval(args[3], usize)?.expect_uint("__rust_reallocate fourth arg not usize");
                 let new_ptr = self.memory.reallocate(ptr, size as usize, align as usize)?;
                 self.memory.write_ptr(dest, new_ptr)?;
             }
 
             "memcmp" => {
-                let left = self.memory.read_ptr(args[0])?;
-                let right = self.memory.read_ptr(args[1])?;
-                let n = self.memory.read_usize(args[2])? as usize;
+                let left = args[0].read_ptr(&self.memory)?;
+                let right = args[1].read_ptr(&self.memory)?;
+                let n = self.value_to_primval(args[2], usize)?.expect_uint("__rust_reallocate first arg not usize") as usize;
 
                 let result = {
                     let left_bytes = self.memory.read_bytes(left, n)?;
@@ -419,7 +421,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         // intermediate function call.
                         // FIXME: this is a memory leak, should probably add the pointer to the
                         // current stack.
-                        let first = self.value_to_ptr(args[0].0, args[0].1)?;
+                        let first = self.value_to_ptr_dont_use(args[0].0, args[0].1)?;
                         args[0].0 = Value::ByVal(PrimVal::Ptr(first));
                         args[0].1 = self.tcx.mk_mut_ptr(args[0].1);
                     }
@@ -442,11 +444,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             traits::VtableObject(ref data) => {
                 let idx = self.tcx.get_vtable_index_of_object_method(data, def_id);
                 if let Some(&mut(ref mut first_arg, ref mut first_ty)) = args.get_mut(0) {
-                    // FIXME(solson): Remove this allocating hack.
-                    let ptr = self.value_to_ptr(*first_arg, *first_ty)?;
-                    *first_arg = Value::ByRef(ptr);
-                    let (_, vtable) = self.get_fat_ptr(ptr);
-                    let vtable = self.memory.read_ptr(vtable)?;
+                    let vtable = first_arg.expect_vtable(&self.memory)?;
                     let idx = idx + 3;
                     let offset = idx * self.memory.pointer_size();
                     let fn_ptr = self.memory.read_ptr(vtable.offset(offset as isize))?;
