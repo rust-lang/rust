@@ -394,7 +394,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateSubroutineType(
     LLVMRustMetadataRef File,
     LLVMRustMetadataRef ParameterTypes) {
     return wrap(Builder->createSubroutineType(
-#if LLVM_VERSION_MINOR == 7
+#if LLVM_VERSION_EQ(3, 7)
         unwrapDI<DIFile>(File),
 #endif
         DITypeRefArray(unwrap<MDTuple>(ParameterTypes))));
@@ -411,12 +411,17 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateFunction(
     bool isLocalToUnit,
     bool isDefinition,
     unsigned ScopeLine,
-    unsigned Flags,
     bool isOptimized,
     LLVMValueRef Fn,
     LLVMRustMetadataRef TParam,
     LLVMRustMetadataRef Decl) {
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+  auto Flags = DINode::FlagPrototyped;
+#else
+  unsigned Flags = 0;
+#endif
+
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
     DITemplateParameterArray TParams =
         DITemplateParameterArray(unwrap<MDTuple>(TParam));
     DISubprogram *Sub = Builder->createFunction(
@@ -469,12 +474,17 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStructType(
     unsigned LineNumber,
     uint64_t SizeInBits,
     uint64_t AlignInBits,
-    unsigned Flags,
     LLVMRustMetadataRef DerivedFrom,
     LLVMRustMetadataRef Elements,
     unsigned RunTimeLang,
     LLVMRustMetadataRef VTableHolder,
     const char *UniqueId) {
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+  auto Flags = DINode::FlagZero;
+#else
+  unsigned Flags = 0;
+#endif
+
     return wrap(Builder->createStructType(
         unwrapDI<DIDescriptor>(Scope),
         Name,
@@ -500,8 +510,13 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateMemberType(
     uint64_t SizeInBits,
     uint64_t AlignInBits,
     uint64_t OffsetInBits,
-    unsigned Flags,
     LLVMRustMetadataRef Ty) {
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+  auto Flags = DINode::FlagZero;
+#else
+  unsigned Flags = 0;
+#endif
+
     return wrap(Builder->createMemberType(
         unwrapDI<DIDescriptor>(Scope), Name,
         unwrapDI<DIFile>(File), LineNo,
@@ -548,7 +563,11 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
         LineNo,
         unwrapDI<DIType>(Ty),
         isLocalToUnit,
+#if LLVM_VERSION_GT_OR_EQ(4,0)
+        unwrapDI<DIExpression>((LLVMRustMetadataRef) Val),
+#else
         cast<Constant>(unwrap(Val)),
+#endif
         unwrapDIptr<MDNode>(Decl)));
 }
 
@@ -561,11 +580,16 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
     unsigned LineNo,
     LLVMRustMetadataRef Ty,
     bool AlwaysPreserve,
-    unsigned Flags,
     int64_t* AddrOps,
     unsigned AddrOpsCount,
     unsigned ArgNo) {
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+  auto Flags = DINode::FlagZero;
+#else
+  unsigned Flags = 0;
+#endif
+
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
     if (Tag == 0x100) { // DW_TAG_auto_variable
         return wrap(Builder->createAutoVariable(
             unwrapDI<DIDescriptor>(Scope), Name,
@@ -700,11 +724,16 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateUnionType(
     unsigned LineNumber,
     uint64_t SizeInBits,
     uint64_t AlignInBits,
-    unsigned Flags,
     LLVMRustMetadataRef Elements,
     unsigned RunTimeLang,
     const char* UniqueId)
 {
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+  auto Flags = DINode::FlagZero;
+#else
+  unsigned Flags = 0;
+#endif
+
     return wrap(Builder->createUnionType(
         unwrapDI<DIDescriptor>(Scope),
         Name,
@@ -814,7 +843,7 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
 
     raw_string_ostream Stream(Err);
     DiagnosticPrinterRawOStream DP(Stream);
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
     if (Linker::linkModules(*Dst, std::move(Src.get()))) {
 #else
     if (Linker::LinkModules(Dst, Src->get(), [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
@@ -937,14 +966,14 @@ to_rust(DiagnosticKind kind)
         return LLVMRustDiagnosticKind::OptimizationRemarkMissed;
     case DK_OptimizationRemarkAnalysis:
         return LLVMRustDiagnosticKind::OptimizationRemarkAnalysis;
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
     case DK_OptimizationRemarkAnalysisFPCommute:
         return LLVMRustDiagnosticKind::OptimizationRemarkAnalysisFPCommute;
     case DK_OptimizationRemarkAnalysisAliasing:
         return LLVMRustDiagnosticKind::OptimizationRemarkAnalysisAliasing;
 #endif
     default:
-#if LLVM_VERSION_MINOR >= 9
+#if LLVM_VERSION_GT_OR_EQ(3, 9)
         return (kind >= DK_FirstRemark && kind <= DK_LastRemark) ?
             LLVMRustDiagnosticKind::OptimizationRemarkOther :
             LLVMRustDiagnosticKind::Other;
@@ -994,7 +1023,7 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMVectorTypeKind;
   case Type::X86_MMXTyID:
     return LLVMX86_MMXTypeKind;
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
   case Type::TokenTyID:
     return LLVMTokenTypeKind;
 #endif
@@ -1043,7 +1072,7 @@ LLVMRustBuildCleanupPad(LLVMBuilderRef Builder,
                         unsigned ArgCnt,
                         LLVMValueRef *LLArgs,
                         const char *Name) {
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
     Value **Args = unwrap(LLArgs);
     if (ParentPad == NULL) {
         Type *Ty = Type::getTokenTy(unwrap(Builder)->getContext());
@@ -1061,7 +1090,7 @@ extern "C" LLVMValueRef
 LLVMRustBuildCleanupRet(LLVMBuilderRef Builder,
                         LLVMValueRef CleanupPad,
                         LLVMBasicBlockRef UnwindBB) {
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
     CleanupPadInst *Inst = cast<CleanupPadInst>(unwrap(CleanupPad));
     return wrap(unwrap(Builder)->CreateCleanupRet(Inst, unwrap(UnwindBB)));
 #else
@@ -1075,7 +1104,7 @@ LLVMRustBuildCatchPad(LLVMBuilderRef Builder,
                       unsigned ArgCnt,
                       LLVMValueRef *LLArgs,
                       const char *Name) {
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
     Value **Args = unwrap(LLArgs);
     return wrap(unwrap(Builder)->CreateCatchPad(unwrap(ParentPad),
                                                 ArrayRef<Value*>(Args, ArgCnt),
@@ -1089,7 +1118,7 @@ extern "C" LLVMValueRef
 LLVMRustBuildCatchRet(LLVMBuilderRef Builder,
                       LLVMValueRef Pad,
                       LLVMBasicBlockRef BB) {
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
     return wrap(unwrap(Builder)->CreateCatchRet(cast<CatchPadInst>(unwrap(Pad)),
                                                 unwrap(BB)));
 #else
@@ -1103,7 +1132,7 @@ LLVMRustBuildCatchSwitch(LLVMBuilderRef Builder,
                          LLVMBasicBlockRef BB,
                          unsigned NumHandlers,
                          const char *Name) {
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
     if (ParentPad == NULL) {
         Type *Ty = Type::getTokenTy(unwrap(Builder)->getContext());
         ParentPad = wrap(Constant::getNullValue(Ty));
@@ -1120,7 +1149,7 @@ LLVMRustBuildCatchSwitch(LLVMBuilderRef Builder,
 extern "C" void
 LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
                    LLVMBasicBlockRef Handler) {
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
     Value *CatchSwitch = unwrap(CatchSwitchRef);
     cast<CatchSwitchInst>(CatchSwitch)->addHandler(unwrap(Handler));
 #endif
@@ -1129,14 +1158,14 @@ LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
 extern "C" void
 LLVMRustSetPersonalityFn(LLVMBuilderRef B,
                          LLVMValueRef Personality) {
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
     unwrap(B)->GetInsertBlock()
              ->getParent()
              ->setPersonalityFn(cast<Function>(unwrap(Personality)));
 #endif
 }
 
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_GT_OR_EQ(3, 8)
 extern "C" OperandBundleDef*
 LLVMRustBuildOperandBundleDef(const char *Name,
                               LLVMValueRef *Inputs,

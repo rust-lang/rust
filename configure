@@ -1026,6 +1026,9 @@ then
         (3.[7-9]*)
             msg "found ok version of LLVM: $LLVM_VERSION"
             ;;
+        (4.[0]*)
+            msg "found ok version of LLVM: $LLVM_VERSION"
+            ;;
         (*)
             err "bad LLVM version: $LLVM_VERSION, need >=3.7"
             ;;
@@ -1371,7 +1374,7 @@ if [ -z "$CFG_ENABLE_RUSTBUILD" ]; then
       make_dir $t/rt/compiler-rt
       for i in                                          \
         isaac sync test \
-        arch/i386 arch/x86_64 arch/arm arch/aarch64 arch/mips arch/powerpc
+        arch/i386 arch/x86_64 arch/arm arch/avr arch/aarch64 arch/mips arch/powerpc
       do
         make_dir $t/rt/stage$s/$i
       done
@@ -1760,7 +1763,7 @@ do
         CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=ON"
     fi
 
-    CMAKE_ARGS="$CMAKE_ARGS -DLLVM_TARGETS_TO_BUILD='X86;ARM;AArch64;Mips;PowerPC;SystemZ'"
+    CMAKE_ARGS="$CMAKE_ARGS -DLLVM_TARGETS_TO_BUILD='X86;ARM;AVR;AArch64;Mips;PowerPC;SystemZ'"
     CMAKE_ARGS="$CMAKE_ARGS -G '$CFG_CMAKE_GENERATOR'"
     CMAKE_ARGS="$CMAKE_ARGS $CFG_LLVM_SRC_DIR"
 

@@ -57,6 +57,7 @@ mod bitrig_base;
 mod dragonfly_base;
 mod freebsd_base;
 mod linux_base;
+mod none_base;
 mod linux_musl_base;
 mod openbsd_base;
 mod netbsd_base;
@@ -174,6 +175,8 @@ supported_targets! {
     ("armv7-apple-ios", armv7_apple_ios),
     ("armv7s-apple-ios", armv7s_apple_ios),
 
+    ("avr_atmel_none", avr_atmel_none),
+
     ("x86_64-sun-solaris", x86_64_sun_solaris),
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
@@ -205,7 +208,7 @@ pub struct Target {
     /// Vendor name to use for conditional compilation.
     pub target_vendor: String,
     /// Architecture to use for ABI considerations. Valid options: "x86",
-    /// "x86_64", "arm", "aarch64", "mips", "powerpc", and "powerpc64".
+    /// "x86_64", "arm", "avr", "aarch64", "mips", "powerpc", and "powerpc64".
     pub arch: String,
     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: String,

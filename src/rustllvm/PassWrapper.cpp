@@ -22,6 +22,9 @@
 #include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+#include "llvm/LinkAllPasses.h"
+#endif
 
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 
@@ -46,7 +49,7 @@ LLVMInitializePasses() {
   initializeVectorization(Registry);
   initializeIPO(Registry);
   initializeAnalysis(Registry);
-#if LLVM_VERSION_MINOR == 7
+#if LLVM_VERSION_EQ(3, 7)
   initializeIPA(Registry);
 #endif
   initializeTransformUtils(Registry);
@@ -119,6 +122,12 @@ LLVMRustAddPass(LLVMPassManagerRef PM, LLVMPassRef rust_pass) {
 #define SUBTARGET_AARCH64
 #endif
 
+#ifdef LLVM_COMPONENT_AVR
+#define SUBTARGET_AVR SUBTARGET(AVR)
+#else
+#define SUBTARGET_AVR
+#endif
+
 #ifdef LLVM_COMPONENT_MIPS
 #define SUBTARGET_MIPS SUBTARGET(Mips)
 #else
@@ -141,6 +150,7 @@ LLVMRustAddPass(LLVMPassManagerRef PM, LLVMPassRef rust_pass) {
         SUBTARGET_X86     \
         SUBTARGET_ARM     \
         SUBTARGET_AARCH64 \
+        SUBTARGET_AVR     \
         SUBTARGET_MIPS    \
         SUBTARGET_PPC     \
         SUBTARGET_SYSTEMZ
@@ -233,7 +243,7 @@ from_rust(LLVMRustCodeGenOptLevel level)
   }
 }
 
-#if LLVM_RUSTLLVM
+#if LLVM_RUSTLLVM && false
 /// getLongestEntryLength - Return the length of the longest entry in the table.
 ///
 static size_t getLongestEntryLength(ArrayRef<SubtargetFeatureKV> Table) {
@@ -297,7 +307,7 @@ LLVMRustCreateTargetMachine(const char *triple,
                             bool FunctionSections,
                             bool DataSections) {
 
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LT_OR_EQ(3, 8)
     Reloc::Model RM;
 #else
     Optional<Reloc::Model> RM;
@@ -316,7 +326,7 @@ LLVMRustCreateTargetMachine(const char *triple,
             RM = Reloc::DynamicNoPIC;
             break;
         default:
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LT_OR_EQ(3, 8)
             RM = Reloc::Default;
 #endif
             break;
@@ -337,7 +347,7 @@ LLVMRustCreateTargetMachine(const char *triple,
     }
 
     TargetOptions Options;
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LT_OR_EQ(3, 8)
     Options.PositionIndependentExecutable = PositionIndependentExecutable;
 #endif
 
@@ -532,14 +542,18 @@ LLVMRustPrintPasses() {
 
 extern "C" void
 LLVMRustAddAlwaysInlinePass(LLVMPassManagerBuilderRef PMB, bool AddLifetimes) {
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+    unwrap(PMB)->Inliner = llvm::createAlwaysInlinerLegacyPass(AddLifetimes);
+#else
     unwrap(PMB)->Inliner = createAlwaysInlinerPass(AddLifetimes);
+#endif
 }
 
 extern "C" void
 LLVMRustRunRestrictionPass(LLVMModuleRef M, char **symbols, size_t len) {
     llvm::legacy::PassManager passes;
 
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LT_OR_EQ(3, 8)
     ArrayRef<const char*> ref(symbols, len);
     passes.add(llvm::createInternalizePass(ref));
 #else
@@ -593,7 +607,7 @@ LLVMRustGetModuleDataLayout(LLVMModuleRef M) {
 
 extern "C" void
 LLVMRustSetModulePIELevel(LLVMModuleRef M) {
-#if LLVM_VERSION_MINOR >= 9
+#if LLVM_VERSION_GT_OR_EQ(3, 9)
     unwrap(M)->setPIELevel(PIELevel::Level::Large);
 #endif
 }
