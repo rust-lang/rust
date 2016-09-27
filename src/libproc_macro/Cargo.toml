@@ -9,4 +9,3 @@ crate-type = ["dylib"]
 
 [dependencies]
 syntax = { path = "../libsyntax" }
-rustc_i128 = { path = "../librustc_i128" }

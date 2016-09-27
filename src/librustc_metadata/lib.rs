@@ -51,9 +51,6 @@ mod diagnostics;
 
 pub use rustc::middle;
 
-#[macro_use]
-mod macros;
-
 mod astencode;
 mod index_builder;
 mod index;

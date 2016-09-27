@@ -2313,8 +2313,8 @@ impl<'a> Resolver<'a> {
                 let prim = self.primitive_type_table.primitive_types[&path[0].name];
                 match prim {
                     TyUint(UintTy::U128) | TyInt(IntTy::I128) => {
-                        if !this.session.features.borrow().i128_type {
-                            emit_feature_err(&this.session.parse_sess.span_diagnostic,
+                        if !self.session.features.borrow().i128_type {
+                            emit_feature_err(&self.session.parse_sess,
                                                 "i128_type", span, GateIssue::Language,
                                                 "128-bit type is unstable");
 
