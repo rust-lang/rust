@@ -6,6 +6,7 @@ use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::session::Session;
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::cell::RefCell;
@@ -30,6 +31,10 @@ mod value;
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+
+    /// The Session, from rustc.
+    /// Used to extract info from other crates
+    session: &'a Session,
 
     /// A mapping from NodeIds to Mir, from rustc. Only contains MIR for crate-local items.
     mir_map: &'a MirMap<'tcx>,
@@ -154,7 +159,7 @@ pub enum StackPopCleanup {
 }
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>, memory_size: usize, stack_limit: usize) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>, memory_size: usize, stack_limit: usize, session: &'a Session) -> Self {
         EvalContext {
             tcx: tcx,
             mir_map: mir_map,
@@ -163,6 +168,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             statics: HashMap::new(),
             stack: Vec::new(),
             stack_limit: stack_limit,
+            session: session,
         }
     }
 
@@ -522,7 +528,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                     .chain(nonnull.offset_after_field.iter().map(|s| s.bytes()));
                                 try!(self.assign_fields(dest, offsets, operands));
                             } else {
-                                assert_eq!(operands.len(), 0);
+                                for operand in operands {
+                                    let operand_ty = self.operand_ty(operand);
+                                    assert_eq!(self.type_size(operand_ty), 0);
+                                }
                                 let offset = self.nonnull_offset(dest_ty, nndiscr, discrfield)?;
                                 let dest = dest.offset(offset.bytes() as isize);
                                 try!(self.memory.write_isize(dest, 0));
@@ -1146,9 +1155,10 @@ pub fn eval_main<'a, 'tcx: 'a>(
     memory_size: usize,
     step_limit: u64,
     stack_limit: usize,
+    session: &'a Session,
 ) {
     let mir = mir_map.map.get(&def_id).expect("no mir for main function");
-    let mut ecx = EvalContext::new(tcx, mir_map, memory_size, stack_limit);
+    let mut ecx = EvalContext::new(tcx, mir_map, memory_size, stack_limit, session);
     let substs = subst::Substs::empty(tcx);
     let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs)
         .expect("should at least be able to allocate space for the main function's return value");

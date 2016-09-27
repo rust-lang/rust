@@ -200,18 +200,25 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
         if let mir::Lvalue::Static(def_id) = *lvalue {
             let substs = subst::Substs::empty(self.ecx.tcx);
             let span = self.span;
-            let node_item = self.ecx.tcx.map.get_if_local(def_id).expect("static not found");
-            if let hir::map::Node::NodeItem(&hir::Item { ref node, .. }) = node_item {
-                if let hir::ItemStatic(_, m, _) = *node {
-                    self.global_item(def_id, substs, span, m == hir::MutImmutable);
-                    return;
+            if let Some(node_item) = self.ecx.tcx.map.get_if_local(def_id) {
+                if let hir::map::Node::NodeItem(&hir::Item { ref node, .. }) = node_item {
+                    if let hir::ItemStatic(_, m, _) = *node {
+                        self.global_item(def_id, substs, span, m == hir::MutImmutable);
+                        return;
+                    } else {
+                        bug!("static def id doesn't point to static");
+                    }
                 } else {
-                    bug!("static def id doesn't point to static");
+                    bug!("static def id doesn't point to item");
                 }
             } else {
-                bug!("static def id doesn't point to item");
+                let def = self.ecx.session.cstore.describe_def(def_id).expect("static not found");
+                if let hir::def::Def::Static(_, mutable) = def {
+                    self.global_item(def_id, substs, span, !mutable);
+                } else {
+                    bug!("static found but isn't a static: {:?}", def);
+                }
             }
-            self.global_item(def_id, substs, span, false);
         }
     }
 }
