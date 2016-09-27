@@ -27,6 +27,8 @@ use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
 
+use rustc_i128::u128;
+
 pub fn rustc_version() -> String {
     format!("rustc {}",
             option_env!("CFG_VERSION").unwrap_or("unknown version"))
@@ -264,7 +266,7 @@ pub struct FnData {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct VariantData {
     pub ctor_kind: CtorKind,
-    pub disr: u64,
+    pub disr: u128,
 
     /// If this is a struct's only variant, this
     /// is the index of the "struct ctor" item.

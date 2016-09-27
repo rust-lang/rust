@@ -350,6 +350,7 @@ impl Integer {
             I16 => Size::from_bytes(2),
             I32 => Size::from_bytes(4),
             I64  => Size::from_bytes(8),
+            I128  => Size::from_bytes(16),
         }
     }
 
@@ -360,6 +361,7 @@ impl Integer {
             I16 => dl.i16_align,
             I32 => dl.i32_align,
             I64 => dl.i64_align,
+            I128 => dl.i128_align,
         }
     }
 
@@ -371,11 +373,13 @@ impl Integer {
             (I16, false) => tcx.types.u16,
             (I32, false) => tcx.types.u32,
             (I64, false) => tcx.types.u64,
+            (I128, false) => tcx.types.u128,
             (I1, true) => tcx.types.i8,
             (I8, true) => tcx.types.i8,
             (I16, true) => tcx.types.i16,
             (I32, true) => tcx.types.i32,
             (I64, true) => tcx.types.i64,
+            (I128, true) => tcx.types.i128,
         }
     }
 
