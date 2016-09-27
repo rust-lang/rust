@@ -313,6 +313,7 @@ impl Type {
             I16 => Type::i16(cx),
             I32 => Type::i32(cx),
             I64 => Type::i64(cx),
+            I128 => Type::i128(cx),
         }
     }
 

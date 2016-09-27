@@ -1454,6 +1454,7 @@ extern "C" LLVMRustLinkage LLVMRustGetLinkage(LLVMValueRef V) {
 
 extern "C" void LLVMRustSetLinkage(LLVMValueRef V, LLVMRustLinkage RustLinkage) {
     LLVMSetLinkage(V, from_rust(RustLinkage));
+}
 
 // Returns true if both high and low were successfully set. Fails in case constant wasn’t any of
 // the common sizes (1, 8, 16, 32, 64, 128 bits)

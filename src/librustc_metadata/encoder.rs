@@ -42,6 +42,8 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::hir::intravisit;
 
+use rustc_i128::{u128, i128};
+
 use super::index_builder::{FromId, IndexBuilder, Untracked};
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
@@ -74,12 +76,14 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
 
     encoder_methods! {
         emit_usize(usize);
+        emit_u128(u128);
         emit_u64(u64);
         emit_u32(u32);
         emit_u16(u16);
         emit_u8(u8);
 
         emit_isize(isize);
+        emit_i128(i128);
         emit_i64(i64);
         emit_i32(i32);
         emit_i16(i16);
@@ -265,7 +269,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
-            disr: variant.disr_val.to_u64_unchecked(),
+            disr: variant.disr_val.to_u128_unchecked(),
             struct_ctor: None,
         };
 
@@ -419,7 +423,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
-            disr: variant.disr_val.to_u64_unchecked(),
+            disr: variant.disr_val.to_u128_unchecked(),
             struct_ctor: Some(def_id.index),
         };
 
@@ -682,7 +686,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 };
                 EntryKind::Struct(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
-                    disr: variant.disr_val.to_u64_unchecked(),
+                    disr: variant.disr_val.to_u128_unchecked(),
                     struct_ctor: struct_ctor,
                 }))
             }
@@ -691,7 +695,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 EntryKind::Union(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
-                    disr: variant.disr_val.to_u64_unchecked(),
+                    disr: variant.disr_val.to_u128_unchecked(),
                     struct_ctor: None,
                 }))
             }
