@@ -15,7 +15,7 @@ use errors::{FatalError, Handler, DiagnosticBuilder};
 use ext::tt::transcribe::tt_next_token;
 use parse::token::{self, keywords, str_to_ident};
 use str::char_at;
-use rustc_unicode::property::Pattern_White_Space;
+use std_unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;
 use std::char;

@@ -57,7 +57,7 @@
 
 #![no_std]
 
-extern crate rustc_unicode;
+extern crate std_unicode;
 extern crate alloc;
 
 #[cfg(test)]

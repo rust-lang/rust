@@ -41,7 +41,7 @@ version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
  "core 0.0.0",
- "rustc_unicode 0.0.0",
+ "std_unicode 0.0.0",
 ]
 
 [[package]]
@@ -94,13 +94,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_unicode"
-version = "0.0.0"
-dependencies = [
- "core 0.0.0",
-]
-
-[[package]]
 name = "std"
 version = "0.0.0"
 dependencies = [
@@ -116,8 +109,15 @@ dependencies = [
  "panic_abort 0.0.0",
  "panic_unwind 0.0.0",
  "rand 0.0.0",
- "rustc_unicode 0.0.0",
+ "std_unicode 0.0.0",
  "unwind 0.0.0",
+]
+
+[[package]]
+name = "std_unicode"
+version = "0.0.0"
+dependencies = [
+ "core 0.0.0",
 ]
 
 [[package]]
