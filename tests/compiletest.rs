@@ -91,7 +91,7 @@ fn compile_test() {
                 },
                 Ok(output) => {
                     let output_err = std::str::from_utf8(&output.stderr).unwrap();
-                    if let Some(text) = output_err.splitn(2, "thread 'main' panicked at 'no mir for `").nth(1) {
+                    if let Some(text) = output_err.splitn(2, "no mir for `").nth(1) {
                         mir_not_found += 1;
                         let end = text.find('`').unwrap();
                         writeln!(stderr.lock(), "NO MIR FOR `{}`", &text[..end]).unwrap();
