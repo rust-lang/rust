@@ -9,49 +9,102 @@
 // except according to those terms.
 
 use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
-use hir::def_id::DefId;
+use hir::def_id::{CrateNum, DefId};
 use middle::const_val::ConstVal;
-use ty::{self, Ty};
+use mir;
+use ty::{self, Ty, TyCtxt};
+use util::common::MemoizationMap;
 use util::nodemap::DefIdSet;
 
+use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::RefCell;
-use std::marker::PhantomData;
 use std::rc::Rc;
 use syntax::attr;
 
+trait Key {
+    fn map_crate(&self) -> CrateNum;
+}
+
+impl Key for DefId {
+    fn map_crate(&self) -> CrateNum {
+        self.krate
+    }
+}
+
 macro_rules! define_maps {
-    ($($(#[$attr:meta])* pub $field:ident: $node_name:ident($key:ty) -> $value:ty),*) => {
-        pub struct Maps<'tcx> {
-            $($(#[$attr])* pub $field: RefCell<DepTrackingMap<$field<'tcx>>>),*
+    (<$tcx:tt>
+     $($(#[$attr:meta])*
+       pub $name:ident: $node:ident($K:ty) -> $V:ty),*) => {
+        pub struct Maps<$tcx> {
+            providers: IndexVec<CrateNum, Providers<$tcx>>,
+            $($(#[$attr])* pub $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>),*
         }
 
-        impl<'tcx> Maps<'tcx> {
-            pub fn new(dep_graph: DepGraph) -> Self {
+        impl<$tcx> Maps<$tcx> {
+            pub fn new(dep_graph: DepGraph,
+                       providers: IndexVec<CrateNum, Providers<$tcx>>)
+                       -> Self {
                 Maps {
-                    $($field: RefCell::new(DepTrackingMap::new(dep_graph.clone()))),*
+                    providers,
+                    $($name: RefCell::new(DepTrackingMap::new(dep_graph.clone()))),*
                 }
             }
         }
 
-        $(#[allow(bad_style)]
-        pub struct $field<'tcx> {
-            data: PhantomData<&'tcx ()>
+        pub mod queries {
+            use std::marker::PhantomData;
+
+            $(#[allow(bad_style)]
+            pub struct $name<$tcx> {
+                data: PhantomData<&$tcx ()>
+            })*
         }
 
-        impl<'tcx> DepTrackingMapConfig for $field<'tcx> {
-            type Key = $key;
-            type Value = $value;
-            fn to_dep_node(key: &$key) -> DepNode<DefId> { DepNode::$node_name(*key) }
+        $(impl<$tcx> DepTrackingMapConfig for queries::$name<$tcx> {
+            type Key = $K;
+            type Value = $V;
+            fn to_dep_node(key: &$K) -> DepNode<DefId> { DepNode::$node(*key) }
         })*
+
+        pub struct Providers<$tcx> {
+            $(pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $V),*
+        }
+
+        impl<$tcx> Copy for Providers<$tcx> {}
+        impl<$tcx> Clone for Providers<$tcx> {
+            fn clone(&self) -> Self { *self }
+        }
+
+        impl<$tcx> Default for Providers<$tcx> {
+            fn default() -> Self {
+                $(fn $name<'a, $tcx>(_: TyCtxt<'a, $tcx, $tcx>, key: $K) -> $V {
+                    bug!("tcx.maps.{}({:?}) unsupported by its crate",
+                         stringify!($name), key);
+                })*
+                Providers { $($name),* }
+            }
+        }
+
+        impl<$tcx> Maps<$tcx> {
+            $($(#[$attr])*
+              pub fn $name<'a, 'lcx>(&self, tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> $V {
+                self.$name.memoize(key, || {
+                    (self.providers[key.map_crate()].$name)(tcx.global_tcx(), key)
+                })
+            })*
+        }
     }
 }
 
-define_maps! {
-    /// Maps from a trait item to the trait item "descriptor"
-    pub associated_items: AssociatedItems(DefId) -> ty::AssociatedItem,
-
+// Each of these maps also corresponds to a method on a
+// `Provider` trait for requesting a value of that type,
+// and a method on `Maps` itself for doing that in a
+// a way that memoizes and does dep-graph tracking,
+// wrapping around the actual chain of providers that
+// the driver creates (using several `rustc_*` crates).
+define_maps! { <'tcx>
     /// Records the type of every item.
-    pub types: ItemSignature(DefId) -> Ty<'tcx>,
+    pub ty: ItemSignature(DefId) -> Ty<'tcx>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated generics and predicates.
@@ -66,17 +119,21 @@ define_maps! {
     /// additional acyclicity requirements).
     pub super_predicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
 
-    /// Maps from an impl/trait def-id to a list of the def-ids of its items
-    pub associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
-
-    pub impl_trait_refs: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>>,
-    pub trait_defs: ItemSignature(DefId) -> &'tcx ty::TraitDef,
-    pub adt_defs: ItemSignature(DefId) -> &'tcx ty::AdtDef,
+    pub trait_def: ItemSignature(DefId) -> &'tcx ty::TraitDef,
+    pub adt_def: ItemSignature(DefId) -> &'tcx ty::AdtDef,
     pub adt_sized_constraint: SizedConstraint(DefId) -> Ty<'tcx>,
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
     pub variances: ItemSignature(DefId) -> Rc<Vec<ty::Variance>>,
+
+    /// Maps from an impl/trait def-id to a list of the def-ids of its items
+    pub associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
+
+    /// Maps from a trait item to the trait item "descriptor"
+    pub associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
+
+    pub impl_trait_ref: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>>,
 
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
@@ -93,18 +150,18 @@ define_maps! {
     ///
     /// Note that cross-crate MIR appears to be always borrowed
     /// (in the `RefCell` sense) to prevent accidental mutation.
-    pub mir: Mir(DefId) -> &'tcx RefCell<::mir::Mir<'tcx>>,
+    pub mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
-    pub closure_kinds: ItemSignature(DefId) -> ty::ClosureKind,
+    pub closure_kind: ItemSignature(DefId) -> ty::ClosureKind,
 
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
-    pub closure_types: ItemSignature(DefId) -> ty::ClosureTy<'tcx>,
+    pub closure_type: ItemSignature(DefId) -> ty::ClosureTy<'tcx>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
-    pub custom_coerce_unsized_kinds: ItemSignature(DefId)
+    pub custom_coerce_unsized_kind: ItemSignature(DefId)
         -> ty::adjustment::CustomCoerceUnsized,
 
     pub typeck_tables: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,

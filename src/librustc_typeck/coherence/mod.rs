@@ -39,7 +39,7 @@ mod unsafety;
 
 struct CoherenceCollect<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    inherent_impls: RefMut<'a, DepTrackingMap<maps::inherent_impls<'tcx>>>,
+    inherent_impls: RefMut<'a, DepTrackingMap<maps::queries::inherent_impls<'tcx>>>,
 }
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceCollect<'a, 'tcx> {

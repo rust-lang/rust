@@ -123,7 +123,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     } else {
         let expr_tables_ty = tcx.sess.cstore.maybe_get_item_body(tcx, def_id).map(|body| {
             (&body.value, Some(tcx.item_tables(def_id)),
-             Some(tcx.sess.cstore.item_type(tcx, def_id)))
+             Some(tcx.item_type(def_id)))
         });
         match tcx.sess.cstore.describe_def(def_id) {
             Some(Def::AssociatedConst(_)) => {

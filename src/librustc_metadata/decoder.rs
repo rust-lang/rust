@@ -584,7 +584,7 @@ impl<'a, 'tcx> CrateMetadata {
         let adt = tcx.alloc_adt_def(did, kind, variants, repr);
         if let Some(ctor_index) = ctor_index {
             // Make adt definition available through constructor id as well.
-            tcx.maps.adt_defs.borrow_mut().insert(self.local_def_id(ctor_index), adt);
+            tcx.maps.adt_def.borrow_mut().insert(self.local_def_id(ctor_index), adt);
         }
 
         adt
@@ -822,54 +822,35 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_associated_item(&self, id: DefIndex) -> Option<ty::AssociatedItem> {
+    pub fn get_associated_item(&self, id: DefIndex) -> ty::AssociatedItem {
         let item = self.entry(id);
-        let parent_and_name = || {
-            let def_key = self.def_key(id);
-            (self.local_def_id(def_key.parent.unwrap()),
-             def_key.disambiguated_data.data.get_opt_name().unwrap())
-        };
+        let def_key = self.def_key(id);
+        let parent = self.local_def_id(def_key.parent.unwrap());
+        let name = def_key.disambiguated_data.data.get_opt_name().unwrap();
 
-        Some(match item.kind {
+        let (kind, container, has_self) = match item.kind {
             EntryKind::AssociatedConst(container) => {
-                let (parent, name) = parent_and_name();
-                ty::AssociatedItem {
-                    name: name,
-                    kind: ty::AssociatedKind::Const,
-                    vis: item.visibility.decode(self),
-                    defaultness: container.defaultness(),
-                    def_id: self.local_def_id(id),
-                    container: container.with_def_id(parent),
-                    method_has_self_argument: false
-                }
+                (ty::AssociatedKind::Const, container, false)
             }
             EntryKind::Method(data) => {
-                let (parent, name) = parent_and_name();
                 let data = data.decode(self);
-                ty::AssociatedItem {
-                    name: name,
-                    kind: ty::AssociatedKind::Method,
-                    vis: item.visibility.decode(self),
-                    defaultness: data.container.defaultness(),
-                    def_id: self.local_def_id(id),
-                    container: data.container.with_def_id(parent),
-                    method_has_self_argument: data.has_self
-                }
+                (ty::AssociatedKind::Method, data.container, data.has_self)
             }
             EntryKind::AssociatedType(container) => {
-                let (parent, name) = parent_and_name();
-                ty::AssociatedItem {
-                    name: name,
-                    kind: ty::AssociatedKind::Type,
-                    vis: item.visibility.decode(self),
-                    defaultness: container.defaultness(),
-                    def_id: self.local_def_id(id),
-                    container: container.with_def_id(parent),
-                    method_has_self_argument: false
-                }
+                (ty::AssociatedKind::Type, container, false)
             }
-            _ => return None,
-        })
+            _ => bug!()
+        };
+
+        ty::AssociatedItem {
+            name: name,
+            kind: kind,
+            vis: item.visibility.decode(self),
+            defaultness: container.defaultness(),
+            def_id: self.local_def_id(id),
+            container: container.with_def_id(parent),
+            method_has_self_argument: has_self
+        }
     }
 
     pub fn get_item_variances(&self, id: DefIndex) -> Vec<ty::Variance> {

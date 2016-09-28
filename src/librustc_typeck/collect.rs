@@ -606,7 +606,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 {
     generics_of_def_id(ccx, ty_f.did);
     let tt = ccx.icx(ty_f.did).to_ty(&field.ty);
-    ccx.tcx.maps.types.borrow_mut().insert(ty_f.did, tt);
+    ccx.tcx.maps.ty.borrow_mut().insert(ty_f.did, tt);
     ccx.tcx.maps.predicates.borrow_mut().insert(ty_f.did, ty::GenericPredicates {
         parent: Some(ccx.tcx.hir.get_parent_did(field.id)),
         predicates: vec![]
@@ -619,7 +619,7 @@ fn convert_method(ccx: &CrateCtxt, id: ast::NodeId, sig: &hir::MethodSig) {
     let fty = AstConv::ty_of_fn(&ccx.icx(def_id), sig.unsafety, sig.abi, &sig.decl);
     let substs = mk_item_substs(ccx, def_id);
     let fty = ccx.tcx.mk_fn_def(def_id, substs, fty);
-    ccx.tcx.maps.types.borrow_mut().insert(def_id, fty);
+    ccx.tcx.maps.ty.borrow_mut().insert(def_id, fty);
 
     ty_generic_predicates(ccx, def_id, &sig.generics);
 }
@@ -635,7 +635,7 @@ fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     };
     let def_id = ccx.tcx.hir.local_def_id(id);
     ccx.tcx.maps.predicates.borrow_mut().insert(def_id, predicates);
-    ccx.tcx.maps.types.borrow_mut().insert(def_id, ty);
+    ccx.tcx.maps.ty.borrow_mut().insert(def_id, ty);
 }
 
 fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -651,7 +651,7 @@ fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     ccx.tcx.maps.predicates.borrow_mut().insert(def_id, predicates);
 
     if let Some(ty) = ty {
-        ccx.tcx.maps.types.borrow_mut().insert(def_id, ty);
+        ccx.tcx.maps.ty.borrow_mut().insert(def_id, ty);
     }
 }
 
@@ -725,7 +725,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             tcx.record_trait_has_default_impl(trait_ref.def_id);
 
-            tcx.maps.impl_trait_refs.borrow_mut().insert(ccx.tcx.hir.local_def_id(it.id),
+            tcx.maps.impl_trait_ref.borrow_mut().insert(ccx.tcx.hir.local_def_id(it.id),
                                                          Some(trait_ref));
         }
         hir::ItemImpl(.., ref opt_trait_ref, _, _) => {
@@ -735,7 +735,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             let trait_ref = opt_trait_ref.as_ref().map(|ast_trait_ref| {
                 AstConv::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
             });
-            tcx.maps.impl_trait_refs.borrow_mut().insert(def_id, trait_ref);
+            tcx.maps.impl_trait_ref.borrow_mut().insert(def_id, trait_ref);
 
             predicates_of_item(ccx, it);
         },
@@ -864,7 +864,7 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             }))
         }
     };
-    tcx.maps.types.borrow_mut().insert(def_id, ctor_ty);
+    tcx.maps.ty.borrow_mut().insert(def_id, ctor_ty);
     tcx.maps.predicates.borrow_mut().insert(def_id, ty::GenericPredicates {
         parent: Some(ccx.tcx.hir.get_parent_did(ctor_id)),
         predicates: vec![]
@@ -966,10 +966,10 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         ReprOptions::new(&ccx.tcx, did));
     if let Some(ctor_id) = ctor_id {
         // Make adt definition available through constructor id as well.
-        ccx.tcx.maps.adt_defs.borrow_mut().insert(ctor_id, adt);
+        ccx.tcx.maps.adt_def.borrow_mut().insert(ctor_id, adt);
     }
 
-    ccx.tcx.maps.adt_defs.borrow_mut().insert(did, adt);
+    ccx.tcx.maps.adt_def.borrow_mut().insert(did, adt);
     adt
 }
 
@@ -983,7 +983,7 @@ fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                ty::VariantDiscr::Relative(0), def)];
 
     let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Union, variants, ReprOptions::new(&ccx.tcx, did));
-    ccx.tcx.maps.adt_defs.borrow_mut().insert(did, adt);
+    ccx.tcx.maps.adt_def.borrow_mut().insert(did, adt);
     adt
 }
 
@@ -1061,7 +1061,7 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let did = tcx.hir.local_def_id(it.id);
     let adt = tcx.alloc_adt_def(did, AdtKind::Enum, variants, ReprOptions::new(&ccx.tcx, did));
-    tcx.maps.adt_defs.borrow_mut().insert(did, adt);
+    tcx.maps.adt_def.borrow_mut().insert(did, adt);
     adt
 }
 
@@ -1150,7 +1150,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item) -> &'t
     let tcx = ccx.tcx;
     let def_id = tcx.hir.local_def_id(it.id);
 
-    tcx.maps.trait_defs.memoize(def_id, || {
+    tcx.maps.trait_def.memoize(def_id, || {
         let unsafety = match it.node {
             hir::ItemTrait(unsafety, ..) => unsafety,
             _ => span_bug!(it.span, "trait_def_of_item invoked on non-trait"),
@@ -1380,7 +1380,7 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     } else {
         return ccx.tcx.item_type(def_id);
     };
-    ccx.tcx.maps.types.memoize(def_id, || {
+    ccx.tcx.maps.ty.memoize(def_id, || {
         use rustc::hir::map::*;
         use rustc::hir::*;
 
@@ -1389,7 +1389,7 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         let icx = ccx.icx(def_id);
 
-        let ty = match ccx.tcx.hir.get(node_id) {
+        match ccx.tcx.hir.get(node_id) {
             NodeItem(item) => {
                 match item.node {
                     ItemStatic(ref t, ..) | ItemConst(ref t, _) |
@@ -1455,9 +1455,7 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             x => {
                 bug!("unexpected sort of node in type_of_def_id(): {:?}", x);
             }
-        };
-
-        ty
+        }
     })
 }
 
