@@ -17,17 +17,17 @@ struct dog {
 impl dog {
     pub fn chase_cat(&mut self) {
         let _f = || {
-            //~^ first, the lifetime cannot outlive the lifetime  as defined on the block
+            //~^ the lifetime cannot outlive the lifetime  as defined on the block
             let p: &'static mut usize = &mut self.food;
             //~^ ERROR cannot infer an appropriate lifetime for borrow expression due to conflicting
             //~| ERROR cannot infer an appropriate lifetime for borrow expression due to conflicting
             //~| ERROR cannot infer an appropriate lifetime for borrow expression due to conflicting
             //~| NOTE cannot infer an appropriate lifetime
-            //~| NOTE ...so that closure can access `self`
-            //~| NOTE ...so that reference does not outlive borrowed content
-            //~| NOTE but, the lifetime must be valid for the static lifetime...
-            //~| NOTE but, the lifetime must be valid for the static lifetime...
-            //~| NOTE but, the lifetime must be valid for the static lifetime...
+            //~| NOTE so that closure can access `self`
+            //~| NOTE so that reference does not outlive borrowed content
+            //~| NOTE the lifetime must be valid for the static lifetime
+            //~| NOTE the lifetime must be valid for the static lifetime
+            //~| NOTE the lifetime must be valid for the static lifetime
             *p = 3;
         };
     }

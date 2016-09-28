@@ -19,11 +19,11 @@ fn main() {
         //~| ERROR cannot infer an appropriate lifetime for borrow expression
         //~| ERROR cannot infer an appropriate lifetime for borrow expression
         //~| NOTE cannot infer an appropriate lifetime
-        //~| NOTE first, the lifetime cannot outlive the lifetime  as defined on the block
+        //~| NOTE the lifetime cannot outlive the lifetime  as defined on the block
         //~| NOTE ...so that closure can access `x`
         let x = f();
         let y = f();
-        //~^ NOTE but, the lifetime must be valid for the call
+        //~^ NOTE the lifetime must be valid for the call
         //~| NOTE ...so type
     }
 }

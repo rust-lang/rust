@@ -26,12 +26,12 @@ impl<'a> Foo<'static> for &'a i32 {
     //~| ERROR cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting
     //~| ERROR cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting
     //~| NOTE cannot infer an appropriate lifetime
-    //~| NOTE first, the lifetime cannot outlive the lifetime 'a as defined on the impl
-    //~| NOTE ...so that trait type parameters matches those specified on the impl
-    //~| NOTE ...so that the type `&i32` will meet its required lifetime bounds
-    //~| NOTE but, the lifetime must be valid for the static lifetime
-    //~| NOTE but, the lifetime must be valid for the static lifetime
-    //~| NOTE but, the lifetime must be valid for the static lifetime
+    //~| NOTE the lifetime cannot outlive the lifetime 'a as defined on the impl
+    //~| NOTE so that trait type parameters matches those specified on the impl
+    //~| NOTE so that the type `&i32` will meet its required lifetime bounds
+    //~| NOTE the lifetime must be valid for the static lifetime
+    //~| NOTE the lifetime must be valid for the static lifetime
+    //~| NOTE the lifetime must be valid for the static lifetime
     type Value = &'a i32;
 }
 
@@ -40,10 +40,10 @@ impl<'a,'b> Foo<'b> for &'a i64 {
     //~| ERROR cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting
     //~| ERROR cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting
     //~| NOTE cannot infer an appropriate lifetime
-    //~| NOTE first, the lifetime cannot outlive the lifetime 'a as defined on the impl
-    //~| NOTE ...so that trait type parameters matches those specified on the impl
-    //~| NOTE but, the lifetime must be valid for the lifetime 'b as defined on the impl
-    //~| NOTE ...so that the type `&i32` will meet its required lifetime bounds
+    //~| NOTE the lifetime cannot outlive the lifetime 'a as defined on the impl
+    //~| NOTE so that trait type parameters matches those specified on the impl
+    //~| NOTE the lifetime must be valid for the lifetime 'b as defined on the impl
+    //~| NOTE so that the type `&i32` will meet its required lifetime bounds
     type Value = &'a i32;
 }
 

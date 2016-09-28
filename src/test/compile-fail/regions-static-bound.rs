@@ -19,24 +19,24 @@ fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
 }
 
 fn error(u: &(), v: &()) {
-    //~^ NOTE first, the lifetime cannot outlive the anonymous lifetime #1 defined on the block
-    //~| NOTE first, the lifetime cannot outlive the anonymous lifetime #2 defined on the block
+    //~^ NOTE the lifetime cannot outlive the anonymous lifetime #1 defined on the block
+    //~| NOTE the lifetime cannot outlive the anonymous lifetime #2 defined on the block
     static_id(&u);
     //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter
     //~| ERROR cannot infer an appropriate lifetime for lifetime parameter
     //~| NOTE cannot infer an appropriate lifetime
     //~| NOTE ...so that reference does not outlive borrowed content
     //~| NOTE ...so that the declared lifetime parameter bounds are satisfied
-    //~| NOTE but, the lifetime must be valid for the static lifetime...
-    //~| NOTE but, the lifetime must be valid for the static lifetime...
+    //~| NOTE the lifetime must be valid for the static lifetime
+    //~| NOTE the lifetime must be valid for the static lifetime
     static_id_indirect(&v);
     //~^ ERROR cannot infer an appropriate lifetime
     //~| ERROR cannot infer an appropriate lifetime
     //~| NOTE cannot infer an appropriate lifetime
     //~| NOTE ...so that reference does not outlive borrowed content
     //~| NOTE ...so that the declared lifetime parameter bounds are satisfied
-    //~| NOTE but, the lifetime must be valid for the static lifetime
-    //~| NOTE but, the lifetime must be valid for the static lifetime
+    //~| NOTE the lifetime must be valid for the static lifetime
+    //~| NOTE the lifetime must be valid for the static lifetime
 }
 
 fn main() {}

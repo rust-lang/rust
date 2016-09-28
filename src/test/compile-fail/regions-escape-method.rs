@@ -27,8 +27,8 @@ fn main() {
     //~| ERROR cannot infer an appropriate lifetime due to conflicting requirements
     //~| ERROR cannot infer an appropriate lifetime due to conflicting requirements
     //~| NOTE cannot infer an appropriate lifetime
-    //~| NOTE first, the lifetime cannot outlive the anonymous lifetime #1 defined on the block
+    //~| NOTE the lifetime cannot outlive the anonymous lifetime #1 defined on the block
     //~| NOTE ...so that expression is assignable (expected &i32, found &i32)
-    //~| NOTE but, the lifetime must be valid for the method call at 25:4
+    //~| NOTE the lifetime must be valid for the method call at 25:4
     //~| NOTE ...so type
 }

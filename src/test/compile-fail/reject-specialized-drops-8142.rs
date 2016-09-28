@@ -32,8 +32,8 @@ struct U;
 struct V<Tva, Tvb> { x: *const Tva, y: *const Tvb }
 //~^ NOTE Use same sequence of generic type and region parameters that is on the struct/enum
 struct W<'l1, 'l2> { x: &'l1 i8, y: &'l2 u8 }
-//~^ NOTE first, the lifetime cannot outlive the lifetime 'l2 as defined on the struct
-//~| NOTE but, the lifetime must be valid for the lifetime 'l1 as defined on the struct
+//~^ NOTE the lifetime cannot outlive the lifetime 'l2 as defined on the struct
+//~| NOTE the lifetime must be valid for the lifetime 'l1 as defined on the struct
 
 impl<'al,'adds_bnd:'al> Drop for K<'al,'adds_bnd> {                        // REJECT
     //~^ ERROR The requirement `'adds_bnd : 'al` is added only by the Drop impl.
