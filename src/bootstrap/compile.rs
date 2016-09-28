@@ -25,7 +25,7 @@ use std::process::Command;
 use build_helper::output;
 use filetime::FileTime;
 
-use util::{exe, staticlib, libdir, mtime, is_dylib, copy};
+use util::{exe, libdir, mtime, is_dylib, copy};
 use {Build, Compiler, Mode};
 
 /// Build the standard library.
@@ -40,20 +40,6 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     let libdir = build.sysroot_libdir(compiler, target);
     let _ = fs::remove_dir_all(&libdir);
     t!(fs::create_dir_all(&libdir));
-    // FIXME(stage0) remove this `if` after the next snapshot
-    // The stage0 compiler still passes the `-lcompiler-rt` flag to the linker but now `bootstrap`
-    // never builds a `libcopmiler-rt.a`! We'll fill the hole by simply copying stage0's
-    // `libcompiler-rt.a` to where the stage1's one is expected (though we could as well just use
-    // an empty `.a` archive). Note that the symbols of that stage0 `libcompiler-rt.a` won't make
-    // it to the final binary because now `libcore.rlib` also contains the symbols that
-    // `libcompiler-rt.a` provides. Since that rlib appears first in the linker arguments, its
-    // symbols are used instead of `libcompiler-rt.a`'s.
-    if compiler.stage == 0 {
-        let rtlib = &staticlib("compiler-rt", target);
-        let src = build.rustc.parent().unwrap().parent().unwrap().join("lib").join("rustlib")
-            .join(target).join("lib").join(rtlib);
-        copy(&src, &libdir.join(rtlib));
-    }
 
     // Some platforms have startup objects that may be required to produce the
     // libstd dynamic library, for example.

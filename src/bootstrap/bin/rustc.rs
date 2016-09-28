@@ -104,8 +104,7 @@ fn main() {
         let is_panic_abort = args.windows(2).any(|a| {
             &*a[0] == "--crate-name" && &*a[1] == "panic_abort"
         });
-        // FIXME(stage0): remove this `stage != "0"` condition
-        if is_panic_abort && stage != "0" {
+        if is_panic_abort {
             cmd.arg("-C").arg("panic=abort");
         }
 

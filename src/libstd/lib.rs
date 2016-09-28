@@ -278,7 +278,6 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
-#![cfg_attr(stage0, feature(unsafe_no_drop_flag))]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(zero_one)]
