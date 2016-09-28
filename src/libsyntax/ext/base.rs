@@ -739,13 +739,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn initialize(&mut self, user_exts: Vec<NamedSyntaxExtension>, krate: &ast::Crate) {
-        if std_inject::no_core(&krate) {
-            self.crate_root = None;
-        } else if std_inject::no_std(&krate) {
-            self.crate_root = Some("core");
-        } else {
-            self.crate_root = Some("std");
-        }
+        self.crate_root = std_inject::injected_crate_name(krate);
 
         for (name, extension) in user_exts {
             let ident = ast::Ident::with_empty_ctxt(name);
