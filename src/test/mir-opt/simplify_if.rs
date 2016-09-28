@@ -17,11 +17,11 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node4.SimplifyBranches.initial-before.mir
 // bb0: {
-//     if(const false) -> [true: bb1, false: bb2]; // scope 0 at simplify_if.rs:12:5: 14:6
+//     if(const false) -> [true: bb1, false: bb2];
 // }
 // END rustc.node4.SimplifyBranches.initial-before.mir
 // START rustc.node4.SimplifyBranches.initial-after.mir
 // bb0: {
-//     goto -> bb2;                     // scope 0 at simplify_if.rs:12:5: 14:6
+//     goto -> bb2;
 // }
 // END rustc.node4.SimplifyBranches.initial-after.mir
