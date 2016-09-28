@@ -166,12 +166,22 @@ you can find the Rust executables in a directory like
 `"C:\Program Files\Rust stable GNU 1.x\bin"`.
 
 Rust does not do its own linking, and so you’ll need to have a linker
-installed. Doing so will depend on your specific system, consult its
-documentation for more details.
+installed. Doing so will depend on your specific system. For
+Linux-based systems, Rust will attempt to call `cc` for linking. On
+`windows-msvc` (Rust built on Windows with Microsoft Visual Studio),
+this depends on having [Microsoft Visual C++ Build Tools][msvbt]
+installed. These do not need to be in `%PATH%` as `rustc` will find
+them automatically. In general, if you have your linker in a
+non-traditional location you can call `rustc 
+linker=/path/to/cc`, where `/path/to/cc` should point to your linker path.
 
-If not, there are a number of places where we can get help. The easiest is
-[the #rust-beginners IRC channel on irc.mozilla.org][irc-beginners] and for
-general discussion [the #rust IRC channel on irc.mozilla.org][irc], which we
+[msvbt]: http://landinghub.visualstudio.com/visual-cpp-build-tools
+
+If you are still stuck, there are a number of places where we can get
+help. The easiest is
+[the #rust-beginners IRC channel on irc.mozilla.org][irc-beginners] 
+and for general discussion
+[the #rust IRC channel on irc.mozilla.org][irc], which we 
 can access through [Mibbit][mibbit]. Then we'll be chatting with other
 Rustaceans (a silly nickname we call ourselves) who can help us out. Other great
 resources include [the user’s forum][users] and [Stack Overflow][stackoverflow].
