@@ -181,6 +181,7 @@ impl<I> Iterator for Utf16Encoder<I>
 impl<I> FusedIterator for Utf16Encoder<I>
     where I: FusedIterator<Item = char> {}
 
+#[stable(feature = "split_whitespace", since = "1.1.0")]
 impl<'a> Iterator for SplitWhitespace<'a> {
     type Item = &'a str;
 
@@ -188,6 +189,8 @@ impl<'a> Iterator for SplitWhitespace<'a> {
         self.inner.next()
     }
 }
+
+#[stable(feature = "split_whitespace", since = "1.1.0")]
 impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
     fn next_back(&mut self) -> Option<&'a str> {
         self.inner.next_back()

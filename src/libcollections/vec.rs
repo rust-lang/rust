@@ -1755,7 +1755,7 @@ pub struct IntoIter<T> {
     end: *const T,
 }
 
-#[stable(feature = "vec_intoiter_debug", since = "")]
+#[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IntoIter")
@@ -1929,7 +1929,7 @@ unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
 #[stable(feature = "drain", since = "1.6.0")]
 unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T> Iterator for Drain<'a, T> {
     type Item = T;
 
@@ -1943,7 +1943,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1951,7 +1951,7 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         // exhaust self first
@@ -1973,7 +1973,7 @@ impl<'a, T> Drop for Drain<'a, T> {
 }
 
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
 
 #[unstable(feature = "fused", issue = "35602")]
