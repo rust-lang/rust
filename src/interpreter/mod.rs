@@ -661,7 +661,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            InlineAsm { .. } => return Err(EvalError::Assembler),
+            InlineAsm { .. } => return Err(EvalError::InlineAsm),
         }
 
         Ok(())
