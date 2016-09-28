@@ -290,12 +290,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         for (&id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
             let closure_ty = self.resolve(closure_ty, ResolvingClosure(id));
             let def_id = self.tcx().hir.local_def_id(id);
-            self.tcx().maps.closure_types.borrow_mut().insert(def_id, closure_ty);
+            self.tcx().maps.closure_type.borrow_mut().insert(def_id, closure_ty);
         }
 
         for (&id, &closure_kind) in self.fcx.tables.borrow().closure_kinds.iter() {
             let def_id = self.tcx().hir.local_def_id(id);
-            self.tcx().maps.closure_kinds.borrow_mut().insert(def_id, closure_kind);
+            self.tcx().maps.closure_kind.borrow_mut().insert(def_id, closure_kind);
         }
     }
 
@@ -361,7 +361,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 }
             });
 
-            gcx.maps.types.borrow_mut().insert(def_id, outside_ty);
+            gcx.maps.ty.borrow_mut().insert(def_id, outside_ty);
         }
     }
 

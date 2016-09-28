@@ -28,7 +28,7 @@ use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_incremental::ich::Fingerprint;
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
-use rustc_metadata::cstore::CStore;
+use rustc_metadata::cstore::{self, CStore};
 use rustc_trans::back::{link, write};
 use rustc_trans as trans;
 use rustc_typeck as typeck;
@@ -872,7 +872,14 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let index = stability::Index::new(&hir_map);
 
+    let local_providers = ty::maps::Providers::default();
+    let mut extern_providers = ty::maps::Providers::default();
+
+    cstore::provide(&mut extern_providers);
+
     TyCtxt::create_and_enter(sess,
+                             local_providers,
+                             extern_providers,
                              arenas,
                              arena,
                              resolutions,

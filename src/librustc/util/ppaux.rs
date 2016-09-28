@@ -770,7 +770,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyAdt(def, substs) => {
                 ty::tls::with(|tcx| {
                     if def.did.is_local() &&
-                          !tcx.maps.types.borrow().contains_key(&def.did) {
+                          !tcx.maps.ty.borrow().contains_key(&def.did) {
                         write!(f, "{}<..>", tcx.item_path_str(def.did))
                     } else {
                         parameterized(f, substs, def.did, &[])

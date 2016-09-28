@@ -155,7 +155,7 @@ impl<'a, 'gcx, 'tcx> DeferredObligation<'tcx> {
                       -> Option<Vec<PredicateObligation<'tcx>>> {
         if let ty::TyAnon(def_id, substs) = self.predicate.skip_binder().self_ty().sty {
             let ty = if def_id.is_local() {
-                tcx.maps.types.borrow().get(&def_id).cloned()
+                tcx.maps.ty.borrow().get(&def_id).cloned()
             } else {
                 Some(tcx.item_type(def_id))
             };

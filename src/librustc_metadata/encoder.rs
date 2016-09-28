@@ -711,7 +711,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let data = ImplData {
                     polarity: polarity,
                     parent_impl: parent,
-                    coerce_unsized_kind: tcx.maps.custom_coerce_unsized_kinds
+                    coerce_unsized_kind: tcx.maps.custom_coerce_unsized_kind
                         .borrow()
                         .get(&def_id)
                         .cloned(),
@@ -1096,7 +1096,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = ClosureData {
             kind: tcx.closure_kind(def_id),
-            ty: self.lazy(&tcx.maps.closure_types.borrow()[&def_id]),
+            ty: self.lazy(&tcx.maps.closure_type.borrow()[&def_id]),
         };
 
         Entry {

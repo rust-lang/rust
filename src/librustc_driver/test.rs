@@ -139,6 +139,8 @@ fn test_env<F>(source_string: &str,
     let region_map = region::resolve_crate(&sess, &hir_map);
     let index = stability::Index::new(&hir_map);
     TyCtxt::create_and_enter(&sess,
+                             ty::maps::Providers::default(),
+                             ty::maps::Providers::default(),
                              &arenas,
                              &arena,
                              resolutions,
