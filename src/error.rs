@@ -45,6 +45,7 @@ pub enum EvalError<'tcx> {
     VtableForArgumentlessMethod,
     ModifiedConstantMemory,
     AssumptionNotHeld,
+    InlineAsm,
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -102,7 +103,9 @@ impl<'tcx> Error for EvalError<'tcx> {
             EvalError::ModifiedConstantMemory =>
                 "tried to modify constant memory",
             EvalError::AssumptionNotHeld =>
-                "`assume` argument was false"
+                "`assume` argument was false",
+            EvalError::InlineAsm =>
+                "cannot evaluate inline assembly",
         }
     }
 
