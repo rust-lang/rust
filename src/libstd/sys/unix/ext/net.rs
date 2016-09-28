@@ -29,7 +29,7 @@ use sys::net::Socket;
 use sys_common::{AsInner, FromInner, IntoInner};
 
 #[cfg(target_os = "linux")]
-const MSG_NOSIGNAL: libc::c_int = 0x4000;
+use libc::MSG_NOSIGNAL;
 #[cfg(not(target_os = "linux"))]
 const MSG_NOSIGNAL: libc::c_int = 0x0; // unused dummy value
 
@@ -691,12 +691,11 @@ impl UnixDatagram {
         fn inner(d: &UnixDatagram, buf: &[u8], path: &Path) -> io::Result<usize> {
             unsafe {
                 let (addr, len) = sockaddr_un(path)?;
-                let flags = if cfg!(target_os = "linux") { MSG_NOSIGNAL } else { 0 };
 
                 let count = cvt(libc::sendto(*d.0.as_inner(),
                                              buf.as_ptr() as *const _,
                                              buf.len(),
-                                             flags,
+                                             MSG_NOSIGNAL,
                                              &addr as *const _ as *const _,
                                              len))?;
                 Ok(count as usize)
