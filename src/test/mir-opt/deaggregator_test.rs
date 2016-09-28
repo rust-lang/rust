@@ -23,19 +23,19 @@ fn main() {}
 // END RUST SOURCE
 // START rustc.node13.Deaggregator.before.mir
 // bb0: {
-//     local2 = local1;                     // scope 0 at main.rs:8:8: 8:9
-//     local3 = local2;                     // scope 1 at main.rs:9:14: 9:15
-//     local0 = Baz { x: local3, y: const F32(0), z: const false }; // scope ...
+//     _2 = _1;                     // scope 0 at main.rs:8:8: 8:9
+//     _3 = _2;                     // scope 1 at main.rs:9:14: 9:15
+//     _0 = Baz { x: _3, y: const F32(0), z: const false }; // scope ...
 //     goto -> bb1;                     // scope 1 at main.rs:8:1: 10:2
 // }
 // END rustc.node13.Deaggregator.before.mir
 // START rustc.node13.Deaggregator.after.mir
 // bb0: {
-//     local2 = local1;                     // scope 0 at main.rs:8:8: 8:9
-//     local3 = local2;                     // scope 1 at main.rs:9:14: 9:15
-//     (local0.0: usize) = local3;        // scope 1 at main.rs:9:5: 9:34
-//     (local0.1: f32) = const F32(0);  // scope 1 at main.rs:9:5: 9:34
-//     (local0.2: bool) = const false;  // scope 1 at main.rs:9:5: 9:34
+//     _2 = _1;                     // scope 0 at main.rs:8:8: 8:9
+//     _3 = _2;                     // scope 1 at main.rs:9:14: 9:15
+//     (_0.0: usize) = _3;        // scope 1 at main.rs:9:5: 9:34
+//     (_0.1: f32) = const F32(0);  // scope 1 at main.rs:9:5: 9:34
+//     (_0.2: bool) = const false;  // scope 1 at main.rs:9:5: 9:34
 //     goto -> bb1;                     // scope 1 at main.rs:8:1: 10:2
 // }
 // END rustc.node13.Deaggregator.after.mir

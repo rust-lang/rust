@@ -230,7 +230,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             locals: (0..mir.local_decls.len()).map(|_| None).collect(),
         };
         for (i, arg) in args.into_iter().enumerate() {
-            // Locals after local0 are the function arguments
+            // Locals after local 0 are the function arguments
             let index = mir::Local::new(i + 1);
             context.locals[index] = Some(arg);
         }

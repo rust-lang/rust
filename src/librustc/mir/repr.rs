@@ -85,7 +85,7 @@ pub struct Mir<'tcx> {
 
     /// Number of arguments this function takes.
     ///
-    /// Starting at local1, `arg_count` locals will be provided by the caller
+    /// Starting at local 1, `arg_count` locals will be provided by the caller
     /// and can be assumed to be initialized.
     ///
     /// If this MIR was built for a constant, this will be 0.
@@ -323,7 +323,7 @@ pub enum BorrowKind {
 ///////////////////////////////////////////////////////////////////////////
 // Variables and temps
 
-newtype_index!(Local, "local");
+newtype_index!(Local, "_");
 
 pub const RETURN_POINTER: Local = Local(0);
 
