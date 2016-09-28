@@ -866,19 +866,15 @@ impl<'feat> ExpansionConfig<'feat> {
     }
 }
 
-pub fn expand_crate(cx: &mut ExtCtxt,
-                    user_exts: Vec<NamedSyntaxExtension>,
-                    c: Crate) -> Crate {
-    cx.initialize(user_exts, &c);
+pub fn expand_crate(cx: &mut ExtCtxt, c: Crate) -> Crate {
+    cx.initialize(&c);
     cx.monotonic_expander().expand_crate(c)
 }
 
 // Expands crate using supplied MacroExpander - allows for
 // non-standard expansion behaviour (e.g. step-wise).
-pub fn expand_crate_with_expander(expander: &mut MacroExpander,
-                                  user_exts: Vec<NamedSyntaxExtension>,
-                                  c: Crate) -> Crate {
-    expander.cx.initialize(user_exts, &c);
+pub fn expand_crate_with_expander(expander: &mut MacroExpander, c: Crate) -> Crate {
+    expander.cx.initialize(&c);
     expander.expand_crate(c)
 }
 

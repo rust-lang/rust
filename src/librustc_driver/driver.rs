@@ -649,7 +649,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     let resolver_arenas = Resolver::arenas();
     let mut resolver =
         Resolver::new(sess, &krate, make_glob_map, &mut crate_loader, &resolver_arenas);
-    syntax_ext::register_builtins(&mut resolver, sess.features.borrow().quote);
+    syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features.borrow().quote);
 
     krate = time(time_passes, "expansion", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
@@ -686,7 +686,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
             ..syntax::ext::expand::ExpansionConfig::default(crate_name.to_string())
         };
         let mut ecx = ExtCtxt::new(&sess.parse_sess, krate.config.clone(), cfg, &mut resolver);
-        let ret = syntax::ext::expand::expand_crate(&mut ecx, syntax_exts, krate);
+        let ret = syntax::ext::expand::expand_crate(&mut ecx, krate);
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }

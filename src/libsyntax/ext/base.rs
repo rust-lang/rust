@@ -738,13 +738,8 @@ impl<'a> ExtCtxt<'a> {
         token::intern(st)
     }
 
-    pub fn initialize(&mut self, user_exts: Vec<NamedSyntaxExtension>, krate: &ast::Crate) {
+    pub fn initialize(&mut self, krate: &ast::Crate) {
         self.crate_root = std_inject::injected_crate_name(krate);
-
-        for (name, extension) in user_exts {
-            let ident = ast::Ident::with_empty_ctxt(name);
-            self.resolver.add_ext(ident, Rc::new(extension));
-        }
 
         let mut module = ModuleData {
             mod_path: vec![token::str_to_ident(&self.ecfg.crate_name)],
