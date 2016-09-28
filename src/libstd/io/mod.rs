@@ -1432,7 +1432,7 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         if !self.done_first {
             match self.first.read(buf)? {
-                0 => { self.done_first = true; }
+                0 if buf.len() != 0 => { self.done_first = true; }
                 n => return Ok(n),
             }
         }
@@ -1957,6 +1957,17 @@ mod tests {
         let chain2 = (&testdata[..4]).chain(&testdata[4..8])
                                      .chain(&testdata[8..]);
         cmp_bufread(chain1, chain2, &testdata[..]);
+    }
+
+    #[test]
+    fn chain_zero_length_read_is_not_eof() {
+        let a = b"A";
+        let b = b"B";
+        let mut s = String::new();
+        let mut chain = (&a[..]).chain(&b[..]);
+        chain.read(&mut []).unwrap();
+        chain.read_to_string(&mut s).unwrap();
+        assert_eq!("AB", s);
     }
 
     #[bench]
