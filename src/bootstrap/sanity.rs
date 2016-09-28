@@ -95,6 +95,13 @@ pub fn check(build: &mut Build) {
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in build.config.target.iter() {
+        // On emscripten we don't actually need the C compiler to just
+        // build the target artifacts, only for testing. For the sake
+        // of easier bot configuration, just skip detection.
+        if target.contains("emscripten") {
+            continue;
+        }
+
         need_cmd(build.cc(target).as_ref());
         if let Some(ar) = build.ar(target) {
             need_cmd(ar.as_ref());
