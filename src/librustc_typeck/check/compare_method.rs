@@ -148,14 +148,70 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 
     if impl_m.fty.sig.0.inputs.len() != trait_m.fty.sig.0.inputs.len() {
-        span_err!(tcx.sess, impl_m_span, E0050,
+        let trait_number_args = trait_m.fty.sig.0.inputs.len();
+        let impl_number_args = impl_m.fty.sig.0.inputs.len();
+        let trait_m_node_id = tcx.map.as_local_node_id(trait_m.def_id);
+        let trait_span = if let Some(trait_id) = trait_m_node_id {
+            match tcx.map.expect_trait_item(trait_id).node {
+                TraitItem_::MethodTraitItem(ref trait_m_sig, _) => {
+                    if let Some(arg) = trait_m_sig.decl.inputs.get(
+                        if trait_number_args > 0 {
+                            trait_number_args - 1
+                        } else {
+                            0
+                        }) {
+                        Some(arg.pat.span)
+                    } else {
+                        trait_item_span
+                    }
+                }
+                _ => bug!("{:?} is not a method", impl_m)
+            }
+        } else {
+            trait_item_span
+        };
+        let impl_m_node_id = tcx.map.as_local_node_id(impl_m.def_id).unwrap();
+        let impl_span = match tcx.map.expect_impl_item(impl_m_node_id).node {
+            ImplItemKind::Method(ref impl_m_sig, _) => {
+                if let Some(arg) = impl_m_sig.decl.inputs.get(
+                    if impl_number_args > 0 {
+                        impl_number_args - 1
+                    } else {
+                        0
+                    }) {
+                    arg.pat.span
+                } else {
+                    impl_m_span
+                }
+            }
+            _ => bug!("{:?} is not a method", impl_m)
+        };
+        let mut err = struct_span_err!(tcx.sess, impl_span, E0050,
             "method `{}` has {} parameter{} \
              but the declaration in trait `{}` has {}",
             trait_m.name,
-            impl_m.fty.sig.0.inputs.len(),
-            if impl_m.fty.sig.0.inputs.len() == 1 {""} else {"s"},
+            impl_number_args,
+            if impl_number_args == 1 {""} else {"s"},
             tcx.item_path_str(trait_m.def_id),
-            trait_m.fty.sig.0.inputs.len());
+            trait_number_args);
+        if let Some(trait_span) = trait_span {
+            err.span_label(trait_span,
+                           &format!("trait requires {}",
+                                    &if trait_number_args != 1 {
+                                        format!("{} parameters", trait_number_args)
+                                    } else {
+                                        format!("{} parameter", trait_number_args)
+                                    }));
+        }
+        err.span_label(impl_span,
+                       &format!("expected {}, found {}",
+                                &if trait_number_args != 1 {
+                                    format!("{} parameters", trait_number_args)
+                                } else {
+                                    format!("{} parameter", trait_number_args)
+                                },
+                       impl_number_args));
+        err.emit();
         return;
     }
 
