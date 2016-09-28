@@ -33,7 +33,7 @@ impl AsRawHandle for process::Child {
     }
 }
 
-#[stable(feature = "process_extensions", since = "1.2.0")]
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::Child {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw() as *mut _
@@ -61,21 +61,21 @@ impl AsRawHandle for process::ChildStderr {
     }
 }
 
-#[stable(feature = "process_extensions", since = "1.2.0")]
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::ChildStdin {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw() as *mut _
     }
 }
 
-#[stable(feature = "process_extensions", since = "1.2.0")]
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::ChildStdout {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw() as *mut _
     }
 }
 
-#[stable(feature = "process_extensions", since = "1.2.0")]
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::ChildStderr {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw() as *mut _
@@ -91,7 +91,7 @@ pub trait ExitStatusExt {
     fn from_raw(raw: u32) -> Self;
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "exit_status_from", since = "1.12.0")]
 impl ExitStatusExt for process::ExitStatus {
     fn from_raw(raw: u32) -> Self {
         process::ExitStatus::from_inner(From::from(raw))
