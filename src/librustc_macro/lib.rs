@@ -139,7 +139,7 @@ impl FromStr for TokenStream {
         __internal::with_parse_sess(|sess| {
             let src = src.to_string();
             let cfg = Vec::new();
-            let name = "rustc-macro source code".to_string();
+            let name = "<rustc-macro source code>".to_string();
             let mut parser = parse::new_parser_from_source_str(sess, cfg, name,
                                                                src);
             let mut ret = TokenStream { inner: Vec::new() };
