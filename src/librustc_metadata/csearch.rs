@@ -26,7 +26,7 @@ use rustc::hir::map::DefKey;
 use rustc::mir::repr::Mir;
 use rustc::mir::mir_map::MirMap;
 use rustc::util::nodemap::{NodeSet, DefIdMap};
-use rustc::session::config::PanicStrategy;
+use rustc_back::PanicStrategy;
 
 use std::path::PathBuf;
 use syntax::ast;
