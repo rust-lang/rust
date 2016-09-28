@@ -576,15 +576,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Len(ref lvalue) => {
                 let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
-                match ty.sty {
-                    ty::TyArray(_, n) => self.memory.write_usize(dest, n as u64)?,
-                    ty::TySlice(_) => if let LvalueExtra::Length(len) = src.extra {
-                        self.memory.write_usize(dest, len)?;
-                    } else {
-                        bug!("Rvalue::Len of a slice given non-slice pointer: {:?}", src);
-                    },
-                    _ => bug!("Rvalue::Len expected array or slice, got {:?}", ty),
-                }
+                let (_, len) = src.elem_ty_and_len(ty);
+                self.memory.write_usize(dest, len)?;
             }
 
             Ref(_, _, ref lvalue) => {
@@ -889,19 +882,34 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     Index(ref operand) => {
-                        let elem_size = match base_ty.sty {
-                            ty::TyArray(elem_ty, _) |
-                            ty::TySlice(elem_ty) => self.type_size(elem_ty),
-                            _ => bug!("indexing expected an array or slice, got {:?}", base_ty),
-                        };
+                        let (elem_ty, len) = base.elem_ty_and_len(base_ty);
+                        let elem_size = self.type_size(elem_ty);
                         let n_ptr = self.eval_operand(operand)?;
                         let usize = self.tcx.types.usize;
                         let n = self.value_to_primval(n_ptr, usize)?.expect_uint("Projection::Index expected usize");
+                        assert!(n < len);
                         base.ptr.offset(n as isize * elem_size as isize)
                     }
 
-                    ConstantIndex { .. } => unimplemented!(),
-                    Subslice { .. } => unimplemented!(),
+                    ConstantIndex { offset, min_length, from_end } => {
+                        let (elem_ty, n) = base.elem_ty_and_len(base_ty);
+                        let elem_size = self.type_size(elem_ty);
+                        assert!(n >= min_length as u64);
+                        if from_end {
+                            base.ptr.offset((n as isize - offset as isize) * elem_size as isize)
+                        } else {
+                            base.ptr.offset(offset as isize * elem_size as isize)
+                        }
+                    },
+                    Subslice { from, to } => {
+                        let (elem_ty, n) = base.elem_ty_and_len(base_ty);
+                        let elem_size = self.type_size(elem_ty);
+                        assert!((from as u64) <= n - (to as u64));
+                        return Ok(Lvalue {
+                            ptr: base.ptr.offset(from as isize * elem_size as isize),
+                            extra: LvalueExtra::Length(n - to as u64 - from as u64),
+                        })
+                    },
                 }
             }
         };
@@ -1171,6 +1179,17 @@ impl Lvalue {
     fn to_ptr(self) -> Pointer {
         assert_eq!(self.extra, LvalueExtra::None);
         self.ptr
+    }
+    fn elem_ty_and_len<'tcx>(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
+        match ty.sty {
+            ty::TyArray(elem, n) => (elem, n as u64),
+            ty::TySlice(elem) => if let LvalueExtra::Length(len) = self.extra {
+                (elem, len)
+            } else {
+                bug!("elem_ty_and_len called on a slice given non-slice lvalue: {:?}", self);
+            },
+            _ => bug!("elem_ty_and_len expected array or slice, got {:?}", ty),
+        }
     }
 }
 
