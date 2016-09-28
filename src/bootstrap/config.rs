@@ -396,9 +396,6 @@ impl Config {
                     self.rustc = Some(PathBuf::from(value).join("bin/rustc"));
                     self.cargo = Some(PathBuf::from(value).join("bin/cargo"));
                 }
-                "CFG_NODEJS" if value.len() > 0 => {
-                    self.nodejs = Some(PathBuf::from(value));
-                }
                 _ => {}
             }
         }
