@@ -28,18 +28,18 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node10.Deaggregator.before.mir
 // bb0: {
-//     local2 = local1;                     // scope 0 at main.rs:7:8: 7:9
-//     local3 = local2;                     // scope 1 at main.rs:8:19: 8:20
-//     local0 = Baz::Foo { x: local3 };   // scope 1 at main.rs:8:5: 8:21
+//     _2 = _1;                     // scope 0 at main.rs:7:8: 7:9
+//     _3 = _2;                     // scope 1 at main.rs:8:19: 8:20
+//     _0 = Baz::Foo { x: _3 };   // scope 1 at main.rs:8:5: 8:21
 //     goto -> bb1;                     // scope 1 at main.rs:7:1: 9:2
 // }
 // END rustc.node10.Deaggregator.before.mir
 // START rustc.node10.Deaggregator.after.mir
 // bb0: {
-//     local2 = local1;                     // scope 0 at main.rs:7:8: 7:9
-//     local3 = local2;                     // scope 1 at main.rs:8:19: 8:20
-//     ((local0 as Foo).0: usize) = local3; // scope 1 at main.rs:8:5: 8:21
-//     discriminant(local0) = 1;         // scope 1 at main.rs:8:5: 8:21
+//     _2 = _1;                     // scope 0 at main.rs:7:8: 7:9
+//     _3 = _2;                     // scope 1 at main.rs:8:19: 8:20
+//     ((_0 as Foo).0: usize) = _3; // scope 1 at main.rs:8:5: 8:21
+//     discriminant(_0) = 1;         // scope 1 at main.rs:8:5: 8:21
 //     goto -> bb1;                     // scope 1 at main.rs:7:1: 9:2
 // }
 // END rustc.node10.Deaggregator.after.mir
