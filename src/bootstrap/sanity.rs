@@ -22,6 +22,7 @@ use std::collections::HashSet;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs;
+use std::path::PathBuf;
 use std::process::Command;
 
 use build_helper::output;
@@ -44,7 +45,13 @@ pub fn check(build: &mut Build) {
         if !checked.insert(cmd.to_owned()) {
             return
         }
-        for path in env::split_paths(&path).map(|p| p.join(cmd)) {
+        for mut path in env::split_paths(&path).map(|p| p.join(cmd)) {
+            // On mingw the path join function will not realize that "/c/" is
+            // not a real path prefix and produce paths with a bogus "C:/c/"
+            // prefix.
+            if path.starts_with("C:/c/") {
+                path = PathBuf::from("C:\\").join(path.strip_prefix("C:/c/").expect(""));
+            }
             if fs::metadata(&path).is_ok() ||
                fs::metadata(path.with_extension("exe")).is_ok() {
                 return
