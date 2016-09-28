@@ -2959,18 +2959,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .emit();
             self.tcx().types.err
         } else {
-            let mut err = self.type_error_struct(expr.span, |actual| {
-                format!("attempted access of field `{}` on type `{}`, \
-                         but no field with that name was found",
+            let mut err = self.type_error_struct(field.span, |actual| {
+                format!("no field `{}` on type `{}`",
                         field.node, actual)
             }, expr_t);
             match expr_t.sty {
                 ty::TyAdt(def, _) if !def.is_enum() => {
                     if let Some(suggested_field_name) =
                         Self::suggest_field_name(def.struct_variant(), field, vec![]) {
-                        err.span_help(field.span,
-                                      &format!("did you mean `{}`?", suggested_field_name));
-                    };
+                            err.span_label(field.span,
+                                           &format!("did you mean `{}`?", suggested_field_name));
+                        } else {
+                            err.span_label(field.span,
+                                           &format!("unknown field"));
+                        };
                 }
                 ty::TyRawPtr(..) => {
                     err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
