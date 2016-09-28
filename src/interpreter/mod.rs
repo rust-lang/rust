@@ -660,7 +660,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            InlineAsm { .. } => unimplemented!(),
+            InlineAsm { .. } => return Err(EvalError::Assembler),
         }
 
         Ok(())
