@@ -18,7 +18,7 @@ fn main() {
         foo: 0,
         bar: 0.5,
     };
-    let x = foo.baa;//~ ERROR attempted access of field `baa` on type `BuildData`
-    //~^ HELP did you mean `bar`?
+    let x = foo.baa;//~ ERROR no field `baa` on type `BuildData`
+    //~| NOTE did you mean `bar`?
     println!("{}", x);
 }

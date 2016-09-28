@@ -17,13 +17,17 @@ pub enum Foo {
 }
 
 fn test(a: Foo) {
-    println!("{}", a.b); //~ ERROR attempted access of field
+    println!("{}", a.b); //~ ERROR no field `b` on type `Foo`
+                         //~| NOTE unknown field
+                         //~| NOTE in this expansion
 }
 
 fn main() {
     let x = Attribute::Code {
         attr_name_idx: 42,
     };
-    let z = (&x).attr_name_idx; //~ ERROR attempted access of field
-    let y = x.attr_name_idx; //~ ERROR attempted access of field
+    let z = (&x).attr_name_idx; //~ ERROR no field `attr_name_idx` on type `&Attribute`
+                                //~| NOTE unknown field
+    let y = x.attr_name_idx; //~ ERROR no field `attr_name_idx` on type `Attribute`
+                             //~| NOTE unknown field
 }

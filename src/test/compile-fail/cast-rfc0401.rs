@@ -112,7 +112,8 @@ fn main()
     //~| NOTE required for the cast to the object type `Foo`
 
     // check no error cascade
-    let _ = main.f as *const u32; //~ ERROR attempted access of field
+    let _ = main.f as *const u32; //~ ERROR no field `f` on type `fn() {main}`
+                                  //~| NOTE unknown field
 
     let cf: *const Foo = &0;
     let _ = cf as *const [u16];

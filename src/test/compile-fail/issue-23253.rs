@@ -12,5 +12,6 @@ enum Foo { Bar }
 
 fn main() {
     Foo::Bar.a;
-    //~^ ERROR: attempted access of field `a` on type `Foo`, but no field with that name was found
+    //~^ ERROR: no field `a` on type `Foo`
+    //~| NOTE unknown field
 }
