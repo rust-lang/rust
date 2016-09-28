@@ -1,5 +1,6 @@
 use rustc::middle::const_val::ConstVal;
 use rustc::hir::def_id::DefId;
+use rustc::hir::map::definitions::DefPathData;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
 use rustc::traits::Reveal;
@@ -712,13 +713,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(adt_def.struct_variant().fields[field_index].ty(self.tcx, substs))
             }
 
+            ty::TyTuple(fields) => Ok(fields[field_index]),
+
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
             ty::TyBox(ty) => {
                 assert_eq!(field_index, 0);
                 Ok(ty)
             }
-            _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}", ty))),
+            _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, {:?}", ty, ty.sty))),
         }
     }
 
@@ -1255,6 +1258,10 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
     };
     let mut err = tcx.sess.struct_span_err(span, &e.to_string());
     for &Frame { def_id, substs, span, .. } in ecx.stack().iter().rev() {
+        if tcx.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr {
+            err.span_note(span, "inside call to closure");
+            continue;
+        }
         // FIXME(solson): Find a way to do this without this Display impl hack.
         use rustc::util::ppaux;
         use std::fmt;
