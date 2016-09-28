@@ -24,7 +24,6 @@ trait Append {
          Append,
          Eq)]
 struct A {
-//~^ ERROR: the semantics of constant patterns is not yet settled
     inner: u32,
 }
 
