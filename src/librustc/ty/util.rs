@@ -436,7 +436,7 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
             TyInt(i) => self.hash(i),
             TyUint(u) => self.hash(u),
             TyFloat(f) => self.hash(f),
-            TyArray(_, n) => self.hash(n),
+            TyArray(_, n) => self.hash(n as u64),
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
@@ -447,14 +447,14 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
                 self.hash(f.unsafety);
                 self.hash(f.abi);
                 self.hash(f.sig.variadic());
-                self.hash(f.sig.inputs().skip_binder().len());
+                self.hash(f.sig.inputs().skip_binder().len() as u64);
             }
             TyTrait(ref data) => {
                 self.def_id(data.principal.def_id());
                 self.hash(data.builtin_bounds);
             }
             TyTuple(tys) => {
-                self.hash(tys.len());
+                self.hash(tys.len() as u64);
             }
             TyParam(p) => {
                 self.hash(p.idx);
