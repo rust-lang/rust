@@ -15,7 +15,7 @@ use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{DebugInfoLevel, PanicStrategy};
+use session::config::DebugInfoLevel;
 use ty::tls;
 use util::nodemap::{NodeMap, FnvHashMap};
 use util::common::duration_to_secs_str;
@@ -33,6 +33,7 @@ use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{Span, MultiSpan};
 
+use rustc_back::PanicStrategy;
 use rustc_back::target::Target;
 use rustc_data_structures::flock;
 use llvm;
@@ -306,9 +307,13 @@ impl Session {
     pub fn lto(&self) -> bool {
         self.opts.cg.lto
     }
+    /// Returns the panic strategy for this compile session. If the user explicitly selected one
+    /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
+    pub fn panic_strategy(&self) -> PanicStrategy {
+        self.opts.cg.panic.unwrap_or(self.target.target.options.panic_strategy)
+    }
     pub fn no_landing_pads(&self) -> bool {
-        self.opts.debugging_opts.no_landing_pads ||
-            self.opts.cg.panic == PanicStrategy::Abort
+        self.opts.debugging_opts.no_landing_pads || self.panic_strategy() == PanicStrategy::Abort
     }
     pub fn unstable_options(&self) -> bool {
         self.opts.debugging_opts.unstable_options
