@@ -54,7 +54,6 @@ fn compile_test() {
             .expect("need to specify RUST_SYSROOT env var or use rustup or multirust")
             .to_owned(),
     };
-    compile_fail(&sysroot);
     run_pass();
     for_all_targets(&sysroot, |target| {
         let files = std::fs::read_dir("tests/run-pass").unwrap();
@@ -117,4 +116,5 @@ fn compile_test() {
         writeln!(stderr.lock(), "{} success, {} mir not found, {} crate not found, {} failed", success, mir_not_found, crate_not_found, failed).unwrap();
         assert_eq!(failed, 0, "some tests failed");
     });
+    compile_fail(&sysroot);
 }
