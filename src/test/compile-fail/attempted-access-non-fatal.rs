@@ -11,6 +11,6 @@
 // Check that bogus field access is non-fatal
 fn main() {
     let x = 0;
-    let _ = x.foo; //~ ERROR attempted access of field
-    let _ = x.bar; //~ ERROR attempted access of field
+    let _ = x.foo; //~ no field `foo` on type `{integer}`
+    let _ = x.bar; //~ no field `bar` on type `{integer}`
 }
