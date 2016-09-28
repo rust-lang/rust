@@ -8,26 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:append-impl.rs
 
-#![feature(rustc_macro)]
-#![allow(warnings)]
-
-#[macro_use]
-extern crate append_impl;
-
-trait Append {
-    fn foo(&self);
+pub trait Indexable<T>: std::ops::Index<usize, Output = T> {
+    fn index2(&self, i: usize) -> &T {
+        &self[i]
+    }
 }
-
-#[derive(PartialEq,
-         Append,
-         Eq)]
-struct A {
-//~^ ERROR: the semantics of constant patterns is not yet settled
-    inner: u32,
-}
-
-fn main() {
-    A { inner: 3 }.foo();
-}
+fn main() {}

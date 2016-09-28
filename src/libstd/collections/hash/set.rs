@@ -98,6 +98,20 @@ use super::map::{self, HashMap, Keys, RandomState};
 ///     println!("{:?}", x);
 /// }
 /// ```
+///
+/// HashSet with fixed list of elements can be initialized from an array:
+///
+/// ```
+/// use std::collections::HashSet;
+///
+/// fn main() {
+///     let viking_names: HashSet<&str> =
+///         [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
+///     // use the values stored in the set
+/// }
+/// ```
+
+
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashSet<T, S = RandomState> {

@@ -22,6 +22,6 @@ use rustc_macro::TokenStream;
 pub fn derive(input: TokenStream) -> TokenStream {
     let input = input.to_string();
     assert!(input.contains("struct A;"));
-    assert!(input.contains("#[derive(Eq, Copy, Clone)]"));
-    "#[derive(Eq, Copy, Clone)] struct A;".parse().unwrap()
+    assert!(input.contains("#[derive(Debug, PartialEq, Eq, Copy, Clone)]"));
+    "#[derive(Debug, PartialEq, Eq, Copy, Clone)] struct A;".parse().unwrap()
 }
