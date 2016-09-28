@@ -303,6 +303,7 @@ pub struct TestOpts {
     pub color: ColorConfig,
     pub quiet: bool,
     pub test_threads: Option<usize>,
+    pub skip: Vec<String>,
 }
 
 impl TestOpts {
@@ -318,6 +319,7 @@ impl TestOpts {
             color: AutoColor,
             quiet: false,
             test_threads: None,
+            skip: vec![],
         }
     }
 }
@@ -337,6 +339,8 @@ fn optgroups() -> Vec<getopts::OptGroup> {
                                          task, allow printing directly"),
       getopts::optopt("", "test-threads", "Number of threads used for running tests \
                                            in parallel", "n_threads"),
+      getopts::optmulti("", "skip", "Skip tests whose names contain FILTER (this flag can \
+                                     be used multiple times)","FILTER"),
       getopts::optflag("q", "quiet", "Display one character per test instead of one line"),
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
@@ -446,6 +450,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         color: color,
         quiet: quiet,
         test_threads: test_threads,
+        skip: matches.opt_strs("skip"),
     };
 
     Some(Ok(test_opts))
@@ -1100,6 +1105,11 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
                     .collect()
         }
     };
+
+    // Skip tests that match any of the skip filters
+    filtered = filtered.into_iter()
+        .filter(|t| !opts.skip.iter().any(|sf| t.desc.name.as_slice().contains(&sf[..])))
+        .collect();
 
     // Maybe pull out the ignored test and unignore them
     filtered = if !opts.run_ignored {
