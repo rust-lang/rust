@@ -51,7 +51,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         thread_info::set(main_guard, thread);
 
         // Store our args if necessary in a squirreled away location
-        sys_common::args::init(argc, argv);
+        sys::args::init(argc, argv);
 
         // Let's run some code!
         let res = panic::catch_unwind(mem::transmute::<_, fn()>(main));
