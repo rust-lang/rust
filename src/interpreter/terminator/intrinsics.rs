@@ -31,7 +31,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let f32 = self.tcx.types.f32;
         let f64 = self.tcx.types.f64;
 
-        match &self.tcx.item_name(def_id).as_str()[..] {
+        let intrinsic_name = &self.tcx.item_name(def_id).as_str()[..];
+        match intrinsic_name {
             "add_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Add, &args[0], &args[1], dest, dest_layout)?,
             "sub_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Sub, &args[0], &args[1], dest, dest_layout)?,
             "mul_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Mul, &args[0], &args[1], dest, dest_layout)?,
@@ -64,76 +65,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.copy(src, dest, count as usize * elem_size, elem_align)?;
             }
 
-            "ctpop" => {
-                let elem_ty = substs.type_at(0);
-                let elem_size = self.type_size(elem_ty);
-                let num = self.value_to_primval(args_ptrs[0], elem_ty)?;
-                let num = match num {
-                    PrimVal::I8(i) => i.count_ones(),
-                    PrimVal::U8(i) => i.count_ones(),
-                    PrimVal::I16(i) => i.count_ones(),
-                    PrimVal::U16(i) => i.count_ones(),
-                    PrimVal::I32(i) => i.count_ones(),
-                    PrimVal::U32(i) => i.count_ones(),
-                    PrimVal::I64(i) => i.count_ones(),
-                    PrimVal::U64(i) => i.count_ones(),
-                    _ => bug!("ctpop called with non-integer type"),
-                };
-                self.memory.write_uint(dest, num.into(), elem_size)?;
-            }
-
+            "ctpop" |
+            "cttz" |
+            "ctlz" |
             "bswap" => {
                 let elem_ty = substs.type_at(0);
-                let elem_size = self.type_size(elem_ty);
                 let num = self.value_to_primval(args_ptrs[0], elem_ty)?;
-                let num = match num {
-                    PrimVal::I8(i) => i.swap_bytes() as u64,
-                    PrimVal::U8(i) => i.swap_bytes() as u64,
-                    PrimVal::I16(i) => i.swap_bytes() as u64,
-                    PrimVal::U16(i) => i.swap_bytes() as u64,
-                    PrimVal::I32(i) => i.swap_bytes() as u64,
-                    PrimVal::U32(i) => i.swap_bytes() as u64,
-                    PrimVal::I64(i) => i.swap_bytes() as u64,
-                    PrimVal::U64(i) => i.swap_bytes(),
-                    _ => bug!("bswap called with non-integer type"),
-                };
-                self.memory.write_uint(dest, num, elem_size)?;
-            }
-
-            "cttz" => {
-                let elem_ty = substs.type_at(0);
-                let elem_size = self.type_size(elem_ty);
-                let num = self.value_to_primval(args_ptrs[0], elem_ty)?;
-                let num = match num {
-                    PrimVal::I8(i) => i.trailing_zeros(),
-                    PrimVal::U8(i) => i.trailing_zeros(),
-                    PrimVal::I16(i) => i.trailing_zeros(),
-                    PrimVal::U16(i) => i.trailing_zeros(),
-                    PrimVal::I32(i) => i.trailing_zeros(),
-                    PrimVal::U32(i) => i.trailing_zeros(),
-                    PrimVal::I64(i) => i.trailing_zeros(),
-                    PrimVal::U64(i) => i.trailing_zeros(),
-                    _ => bug!("cttz called with non-integer type"),
-                };
-                self.memory.write_uint(dest, num.into(), elem_size)?;
-            }
-
-            "ctlz" => {
-                let elem_ty = substs.type_at(0);
-                let elem_size = self.type_size(elem_ty);
-                let num = self.value_to_primval(args_ptrs[0], elem_ty)?;
-                let num = match num {
-                    PrimVal::I8(i) => i.leading_zeros(),
-                    PrimVal::U8(i) => i.leading_zeros(),
-                    PrimVal::I16(i) => i.leading_zeros(),
-                    PrimVal::U16(i) => i.leading_zeros(),
-                    PrimVal::I32(i) => i.leading_zeros(),
-                    PrimVal::U32(i) => i.leading_zeros(),
-                    PrimVal::I64(i) => i.leading_zeros(),
-                    PrimVal::U64(i) => i.leading_zeros(),
-                    _ => bug!("ctlz called with non-integer type"),
-                };
-                self.memory.write_uint(dest, num.into(), elem_size)?;
+                let num = numeric_intrinsic(intrinsic_name, num);
+                self.memory.write_primval(dest, num)?;
             }
 
             "discriminant_value" => {
@@ -394,5 +333,56 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         f: ty::FieldDef<'tcx>,
     )-> ty::Ty<'tcx> {
         self.tcx.normalize_associated_type(&f.ty(self.tcx, param_substs))
+    }
+}
+
+fn numeric_intrinsic(name: &str, val: PrimVal) -> PrimVal {
+    use primval::PrimVal::*;
+    match name {
+        "ctpop" => match val {
+            I8(i) => I8(i.count_ones() as i8),
+            U8(i) => U8(i.count_ones() as u8),
+            I16(i) => I16(i.count_ones() as i16),
+            U16(i) => U16(i.count_ones() as u16),
+            I32(i) => I32(i.count_ones() as i32),
+            U32(i) => U32(i.count_ones() as u32),
+            I64(i) => I64(i.count_ones() as i64),
+            U64(i) => U64(i.count_ones() as u64),
+            other => bug!("invalid `ctpop` argument: {:?}", other),
+        },
+        "cttz" => match val {
+            I8(i) => I8(i.trailing_zeros() as i8),
+            U8(i) => U8(i.trailing_zeros() as u8),
+            I16(i) => I16(i.trailing_zeros() as i16),
+            U16(i) => U16(i.trailing_zeros() as u16),
+            I32(i) => I32(i.trailing_zeros() as i32),
+            U32(i) => U32(i.trailing_zeros() as u32),
+            I64(i) => I64(i.trailing_zeros() as i64),
+            U64(i) => U64(i.trailing_zeros() as u64),
+            other => bug!("invalid `cttz` argument: {:?}", other),
+        },
+        "ctlz" => match val {
+            I8(i) => I8(i.leading_zeros() as i8),
+            U8(i) => U8(i.leading_zeros() as u8),
+            I16(i) => I16(i.leading_zeros() as i16),
+            U16(i) => U16(i.leading_zeros() as u16),
+            I32(i) => I32(i.leading_zeros() as i32),
+            U32(i) => U32(i.leading_zeros() as u32),
+            I64(i) => I64(i.leading_zeros() as i64),
+            U64(i) => U64(i.leading_zeros() as u64),
+            other => bug!("invalid `ctlz` argument: {:?}", other),
+        },
+        "bswap" => match val {
+            I8(i) => I8(i.swap_bytes() as i8),
+            U8(i) => U8(i.swap_bytes() as u8),
+            I16(i) => I16(i.swap_bytes() as i16),
+            U16(i) => U16(i.swap_bytes() as u16),
+            I32(i) => I32(i.swap_bytes() as i32),
+            U32(i) => U32(i.swap_bytes() as u32),
+            I64(i) => I64(i.swap_bytes() as i64),
+            U64(i) => U64(i.swap_bytes() as u64),
+            other => bug!("invalid `bswap` argument: {:?}", other),
+        },
+        _ => bug!("not a numeric intrinsic: {}", name),
     }
 }
