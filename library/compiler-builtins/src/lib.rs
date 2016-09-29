@@ -21,10 +21,17 @@ extern crate core;
 extern crate gcc_s;
 
 #[cfg(test)]
+extern crate compiler_rt;
+
+#[cfg(test)]
 extern crate rand;
 
 #[cfg(feature = "weak")]
 extern crate rlibc;
+
+#[cfg(test)]
+#[macro_use]
+mod qc;
 
 pub mod int;
 pub mod float;
@@ -34,7 +41,3 @@ pub mod arm;
 
 #[cfg(target_arch = "x86_64")]
 pub mod x86_64;
-
-#[cfg(test)]
-mod qc;
-

@@ -1,0 +1,3 @@
+[submodule "compiler-rt/compiler-rt-cdylib/compiler-rt"]
+	path = compiler-rt/compiler-rt-cdylib/compiler-rt
+	url = https://github.com/llvm-mirror/compiler-rt

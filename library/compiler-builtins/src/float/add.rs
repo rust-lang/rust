@@ -89,12 +89,12 @@ macro_rules! add {
             if a_exponent.0 == 0 {
                 let (exponent, significand) = <$ty>::normalize(a_significand.0);
                 a_exponent = Wrapping(exponent);
-                a_significand = Wrapping(significand); 
+                a_significand = Wrapping(significand);
             }
             if b_exponent.0 == 0 {
                 let (exponent, significand) = <$ty>::normalize(b_significand.0);
                 b_exponent = Wrapping(exponent);
-                b_significand = Wrapping(significand); 
+                b_significand = Wrapping(significand);
             }
 
             // The sign of the result is the sign of the larger operand, a.  If they
@@ -123,8 +123,8 @@ macro_rules! add {
             if subtraction {
                 a_significand -= b_significand;
                 // If a == -b, return +zero.
-                if a_significand.0 == 0 { 
-                    return (<$ty as Float>::from_repr(0)); 
+                if a_significand.0 == 0 {
+                    return (<$ty as Float>::from_repr(0));
                 }
 
                 // If partial cancellation occured, we need to left-shift the result
@@ -148,7 +148,7 @@ macro_rules! add {
             }
 
             // If we have overflowed the type, return +/- infinity:
-            if a_exponent >= Wrapping(max_exponent.0 as i32) { 
+            if a_exponent >= Wrapping(max_exponent.0 as i32) {
                 return (<$ty>::from_repr((inf_rep | result_sign).0));
             }
 
@@ -190,47 +190,46 @@ mod tests {
     use float::Float;
     use qc::{U32, U64};
 
-    use gcc_s;
-    use rand;
-
     // NOTE The tests below have special handing for NaN values.
     // Because NaN != NaN, the floating-point representations must be used
     // Because there are many diffferent values of NaN, and the implementation
     // doesn't care about calculating the 'correct' one, if both values are NaN
     // the values are considered equivalent.
 
-    // TODO: Add F32/F64 to qc so that they print the right values (at the very least)
-    quickcheck! {
-        fn addsf3(a: U32, b: U32) -> bool {
-            let (a, b) = (f32::from_repr(a.0), f32::from_repr(b.0));
-            let x = super::__addsf3(a, b);
+    struct FRepr<F>(F);
 
-            match gcc_s::addsf3() {
-                // NOTE(cfg) for some reason, on hard float targets, our implementation doesn't
-                // match the output of its gcc_s counterpart. Until we investigate further, we'll
-                // just avoid testing against gcc_s on those targets. Do note that our
-                // implementation matches the output of the FPU instruction on *hard* float targets
-                // and matches its gcc_s counterpart on *soft* float targets.
-                #[cfg(not(gnueabihf))]
-                Some(addsf3) if rand::random() => x.eq_repr(unsafe { addsf3(a, b) }),
-                _ => x.eq_repr(a + b),
+    impl<F: Float> PartialEq for FRepr<F> {
+        fn eq(&self, other: &FRepr<F>) -> bool {
+            // NOTE(cfg) for some reason, on hard float targets, our implementation doesn't
+            // match the output of its gcc_s counterpart. Until we investigate further, we'll
+            // just avoid testing against gcc_s on those targets. Do note that our
+            // implementation matches the output of the FPU instruction on *hard* float targets
+            // and matches its gcc_s counterpart on *soft* float targets.
+            if cfg!(gnueabihf) {
+                return true
             }
-        }
-
-        fn adddf3(a: U64, b: U64) -> bool {
-            let (a, b) = (f64::from_repr(a.0), f64::from_repr(b.0));
-            let x = super::__adddf3(a, b);
-
-            match gcc_s::adddf3() {
-                // NOTE(cfg) See NOTE above
-                #[cfg(not(gnueabihf))]
-                Some(adddf3) if rand::random() => x.eq_repr(unsafe { adddf3(a, b) }),
-                _ => x.eq_repr(a + b),
-
-            }
+            self.0.eq_repr(other.0)
         }
     }
-    
+
+    // TODO: Add F32/F64 to qc so that they print the right values (at the very least)
+    check! {
+        fn __addsf3(f: extern fn(f32, f32) -> f32,
+                    a: U32,
+                    b: U32)
+                    -> Option<FRepr<f32> > {
+            let (a, b) = (f32::from_repr(a.0), f32::from_repr(b.0));
+            Some(FRepr(f(a, b)))
+        }
+
+        fn __adddf3(f: extern fn(f64, f64) -> f64,
+                    a: U64,
+                    b: U64) -> Option<FRepr<f64> > {
+            let (a, b) = (f64::from_repr(a.0), f64::from_repr(b.0));
+            Some(FRepr(f(a, b)))
+        }
+    }
+
     // More tests for special float values
 
     #[test]

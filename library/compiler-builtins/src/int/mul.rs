@@ -74,60 +74,34 @@ mulo!(__mulodi4: i64);
 mod tests {
     use qc::{I32, I64, U64};
 
-    use gcc_s;
-    use rand;
-
-    quickcheck! {
-        fn muldi(a: U64, b: U64) -> bool {
-            let (a, b) = (a.0, b.0);
-            let r = super::__muldi3(a, b);
-
-            match gcc_s::muldi3() {
-                Some(muldi3) if rand::random() => r == unsafe { muldi3(a, b) },
-                _ => r == a.wrapping_mul(b),
-            }
+    check! {
+        fn __muldi3(f: extern fn(u64, u64) -> u64, a: U64, b: U64)
+                    -> Option<u64> {
+            Some(f(a.0, b.0))
         }
 
-        fn mulosi(a: I32, b: I32) -> bool {
+        fn __mulosi4(f: extern fn(i32, i32, &mut i32) -> i32,
+                     a: I32,
+                     b: I32) -> Option<(i32, i32)> {
             let (a, b) = (a.0, b.0);
             let mut overflow = 2;
-            let r = super::__mulosi4(a, b, &mut overflow);
+            let r = f(a, b, &mut overflow);
             if overflow != 0 && overflow != 1 {
-                return false;
+                return None
             }
-
-            match gcc_s::mulosi4() {
-                Some(mulosi4) if rand::random() => {
-                    let mut gcc_s_overflow = 2;
-                    let gcc_s_r = unsafe {
-                        mulosi4(a, b, &mut gcc_s_overflow)
-                    };
-
-                    (r, overflow) == (gcc_s_r, gcc_s_overflow)
-                },
-                _ => (r, overflow != 0) == a.overflowing_mul(b),
-            }
+            Some((r, overflow))
         }
 
-        fn mulodi(a: I64, b: I64) -> bool {
+        fn __mulodi4(f: extern fn(i64, i64, &mut i32) -> i64,
+                     a: I64,
+                     b: I64) -> Option<(i64, i32)> {
             let (a, b) = (a.0, b.0);
             let mut overflow = 2;
-            let r = super::__mulodi4(a, b, &mut overflow);
+            let r = f(a, b, &mut overflow);
             if overflow != 0 && overflow != 1 {
-                return false;
+                return None
             }
-
-            match gcc_s::mulodi4() {
-                Some(mulodi4) if rand::random() => {
-                    let mut gcc_s_overflow = 2;
-                    let gcc_s_r = unsafe {
-                        mulodi4(a, b, &mut gcc_s_overflow)
-                    };
-
-                    (r, overflow) == (gcc_s_r, gcc_s_overflow)
-                },
-                _ => (r, overflow != 0) == a.overflowing_mul(b),
-            }
+            Some((r, overflow))
         }
     }
 }

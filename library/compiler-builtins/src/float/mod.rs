@@ -3,10 +3,10 @@ use core::mem;
 pub mod add;
 
 /// Trait for some basic operations on floats
-pub trait Float: Sized {
+pub trait Float: Sized + Copy {
     /// A uint of the same with as the float
     type Int;
-    
+
     /// Returns the bitwidth of the float type
     fn bits() -> u32;
 
@@ -22,7 +22,7 @@ pub trait Float: Sized {
     /// compared.
     fn eq_repr(self, rhs: Self) -> bool;
 
-    /// Returns a `Self::Int` transmuted back to `Self` 
+    /// Returns a `Self::Int` transmuted back to `Self`
     fn from_repr(a: Self::Int) -> Self;
 
     /// Returns (normalized exponent, normalized significand)
