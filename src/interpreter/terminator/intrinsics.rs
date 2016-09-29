@@ -67,15 +67,61 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "ctpop" => {
                 let elem_ty = substs.type_at(0);
                 let elem_size = self.type_size(elem_ty);
-                let num = self.value_to_primval(args_ptrs[2], elem_ty)?.expect_int("ctpop second arg not integral");
-                let num = num.count_ones();
+                let num = self.value_to_primval(args_ptrs[0], elem_ty)?;
+                let num = match num {
+                    PrimVal::I8(i) => i.count_ones(),
+                    PrimVal::U8(i) => i.count_ones(),
+                    PrimVal::I16(i) => i.count_ones(),
+                    PrimVal::U16(i) => i.count_ones(),
+                    PrimVal::I32(i) => i.count_ones(),
+                    PrimVal::U32(i) => i.count_ones(),
+                    PrimVal::I64(i) => i.count_ones(),
+                    PrimVal::U64(i) => i.count_ones(),
+                    _ => bug!("ctpop called with non-integer type"),
+                };
+                self.memory.write_uint(dest, num.into(), elem_size)?;
+            }
+
+            "bswap" => {
+                let elem_ty = substs.type_at(0);
+                let elem_size = self.type_size(elem_ty);
+                let num = self.value_to_primval(args_ptrs[0], elem_ty)?;
+                let num = match num {
+                    PrimVal::I8(i) => i.swap_bytes() as u64,
+                    PrimVal::U8(i) => i.swap_bytes() as u64,
+                    PrimVal::I16(i) => i.swap_bytes() as u64,
+                    PrimVal::U16(i) => i.swap_bytes() as u64,
+                    PrimVal::I32(i) => i.swap_bytes() as u64,
+                    PrimVal::U32(i) => i.swap_bytes() as u64,
+                    PrimVal::I64(i) => i.swap_bytes() as u64,
+                    PrimVal::U64(i) => i.swap_bytes(),
+                    _ => bug!("bswap called with non-integer type"),
+                };
+                self.memory.write_uint(dest, num, elem_size)?;
+            }
+
+            "cttz" => {
+                let elem_ty = substs.type_at(0);
+                let elem_size = self.type_size(elem_ty);
+                let num = self.value_to_primval(args_ptrs[0], elem_ty)?;
+                let num = match num {
+                    PrimVal::I8(i) => i.trailing_zeros(),
+                    PrimVal::U8(i) => i.trailing_zeros(),
+                    PrimVal::I16(i) => i.trailing_zeros(),
+                    PrimVal::U16(i) => i.trailing_zeros(),
+                    PrimVal::I32(i) => i.trailing_zeros(),
+                    PrimVal::U32(i) => i.trailing_zeros(),
+                    PrimVal::I64(i) => i.trailing_zeros(),
+                    PrimVal::U64(i) => i.trailing_zeros(),
+                    _ => bug!("cttz called with non-integer type"),
+                };
                 self.memory.write_uint(dest, num.into(), elem_size)?;
             }
 
             "ctlz" => {
                 let elem_ty = substs.type_at(0);
                 let elem_size = self.type_size(elem_ty);
-                let num = self.value_to_primval(args_ptrs[2], elem_ty)?;
+                let num = self.value_to_primval(args_ptrs[0], elem_ty)?;
                 let num = match num {
                     PrimVal::I8(i) => i.leading_zeros(),
                     PrimVal::U8(i) => i.leading_zeros(),
