@@ -20,21 +20,26 @@ pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.map.krate().visit_all_items(&mut orphan);
 }
 
-struct UnsafetyChecker<'cx, 'tcx:'cx> {
-    tcx: TyCtxt<'cx, 'tcx, 'tcx>
+struct UnsafetyChecker<'cx, 'tcx: 'cx> {
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
 }
 
 impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
-    fn check_unsafety_coherence(&mut self, item: &'v hir::Item,
+    fn check_unsafety_coherence(&mut self,
+                                item: &'v hir::Item,
                                 unsafety: hir::Unsafety,
                                 polarity: hir::ImplPolarity) {
         match self.tcx.impl_trait_ref(self.tcx.map.local_def_id(item.id)) {
             None => {
                 // Inherent impl.
                 match unsafety {
-                    hir::Unsafety::Normal => { /* OK */ }
+                    hir::Unsafety::Normal => {
+                        // OK
+                    }
                     hir::Unsafety::Unsafe => {
-                        span_err!(self.tcx.sess, item.span, E0197,
+                        span_err!(self.tcx.sess,
+                                  item.span,
+                                  E0197,
                                   "inherent impls cannot be declared as unsafe");
                     }
                 }
@@ -43,31 +48,33 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
             Some(trait_ref) => {
                 let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id);
                 match (trait_def.unsafety, unsafety, polarity) {
-                    (hir::Unsafety::Unsafe,
-                     hir::Unsafety::Unsafe, hir::ImplPolarity::Negative) => {
-                        span_err!(self.tcx.sess, item.span, E0198,
+                    (hir::Unsafety::Unsafe, hir::Unsafety::Unsafe, hir::ImplPolarity::Negative) => {
+                        span_err!(self.tcx.sess,
+                                  item.span,
+                                  E0198,
                                   "negative implementations are not unsafe");
                     }
 
                     (hir::Unsafety::Normal, hir::Unsafety::Unsafe, _) => {
-                        span_err!(self.tcx.sess, item.span, E0199,
+                        span_err!(self.tcx.sess,
+                                  item.span,
+                                  E0199,
                                   "implementing the trait `{}` is not unsafe",
                                   trait_ref);
                     }
 
-                    (hir::Unsafety::Unsafe,
-                     hir::Unsafety::Normal, hir::ImplPolarity::Positive) => {
-                        span_err!(self.tcx.sess, item.span, E0200,
+                    (hir::Unsafety::Unsafe, hir::Unsafety::Normal, hir::ImplPolarity::Positive) => {
+                        span_err!(self.tcx.sess,
+                                  item.span,
+                                  E0200,
                                   "the trait `{}` requires an `unsafe impl` declaration",
                                   trait_ref);
                     }
 
-                    (hir::Unsafety::Unsafe,
-                     hir::Unsafety::Normal, hir::ImplPolarity::Negative) |
-                    (hir::Unsafety::Unsafe,
-                     hir::Unsafety::Unsafe, hir::ImplPolarity::Positive) |
+                    (hir::Unsafety::Unsafe, hir::Unsafety::Normal, hir::ImplPolarity::Negative) |
+                    (hir::Unsafety::Unsafe, hir::Unsafety::Unsafe, hir::ImplPolarity::Positive) |
                     (hir::Unsafety::Normal, hir::Unsafety::Normal, _) => {
-                        /* OK */
+                        // OK
                     }
                 }
             }
@@ -75,7 +82,7 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
+impl<'cx, 'tcx, 'v> intravisit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
             hir::ItemDefaultImpl(unsafety, _) => {
@@ -84,7 +91,7 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
             hir::ItemImpl(unsafety, polarity, ..) => {
                 self.check_unsafety_coherence(item, unsafety, polarity);
             }
-            _ => { }
+            _ => {}
         }
     }
 }
