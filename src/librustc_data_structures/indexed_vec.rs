@@ -149,6 +149,16 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn last(&self) -> Option<I> {
         self.len().checked_sub(1).map(I::new)
     }
+
+    #[inline]
+    pub fn get(&self, index: I) -> Option<&T> {
+        self.raw.get(index.index())
+    }
+
+    #[inline]
+    pub fn get_mut(&mut self, index: I) -> Option<&mut T> {
+        self.raw.get_mut(index.index())
+    }
 }
 
 impl<I: Idx, T> Index<I> for IndexVec<I, T> {

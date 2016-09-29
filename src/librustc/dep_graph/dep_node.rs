@@ -34,7 +34,7 @@ pub enum DepNode<D: Clone + Debug> {
     // `Krate` value gives you access to all other items. To avoid
     // this fate, do not call `tcx.map.krate()`; instead, prefer
     // wrappers like `tcx.visit_all_items_in_krate()`.  If there is no
-    // suitable wrapper, you can use `tcx.dep_graph.ignore()` to gain
+    // suitable wrapper, you can use `tcx.dep_graph.in_ignore()` to gain
     // access to the krate, but you must remember to add suitable
     // edges yourself for the individual items that you read.
     Krate,
@@ -243,4 +243,3 @@ impl<D: Clone + Debug> DepNode<D> {
 /// them even in the absence of a tcx.)
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct WorkProductId(pub String);
-

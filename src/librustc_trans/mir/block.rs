@@ -31,6 +31,7 @@ use type_::Type;
 
 use rustc_data_structures::fnv::FnvHashMap;
 use syntax::parse::token;
+use syntax_pos::Span;
 
 use super::{MirContext, LocalRef};
 use super::analyze::CleanupKind;
@@ -371,11 +372,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // is also constant, then we can produce a warning.
                 if const_cond == Some(!expected) {
                     if let Some(err) = const_err {
-                        let err = ConstEvalErr{ span: span, kind: err };
-                        let mut diag = bcx.tcx().sess.struct_span_warn(
-                            span, "this expression will panic at run-time");
-                        note_const_eval_err(bcx.tcx(), &err, span, "expression", &mut diag);
-                        diag.emit();
+                        if let Some(span) = self.diag_span(span, terminator.source_info.scope) {
+                            let err = ConstEvalErr { span: span, kind: err };
+                            let mut diag = bcx.tcx().sess.struct_span_warn(
+                                span, "this expression will panic at run-time");
+                            note_const_eval_err(bcx.tcx(), &err, span, "expression", &mut diag);
+                            diag.emit();
+                        }
                     }
                 }
 
@@ -941,6 +944,25 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 self.locals[index] = LocalRef::Operand(Some(op));
             }
         }
+    }
+
+    // Attempts to get an appropriate span for diagnostics. We might not have the source
+    // available if the span is from an inlined crate, but there's usually a decent span
+    // in an ancestor scope somewhere
+    fn diag_span(&self, span: Span, scope: mir::VisibilityScope) -> Option<Span> {
+        let cm = self.fcx.ccx.sess().codemap();
+        if cm.have_source_for_span(span) { return Some(span); }
+
+        let mut scope = Some(scope);
+        while let Some(s) = scope {
+            let data = &self.mir.visibility_scopes[s];
+            if cm.have_source_for_span(data.span) {
+                return Some(data.span);
+            }
+            scope = data.parent_scope;
+        }
+
+        None
     }
 }
 

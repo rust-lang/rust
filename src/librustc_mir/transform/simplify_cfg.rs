@@ -73,7 +73,7 @@ pub struct CfgSimplifier<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
-    fn new(mir: &'a mut Mir<'tcx>) -> Self {
+    pub fn new(mir: &'a mut Mir<'tcx>) -> Self {
         let mut pred_count = IndexVec::from_elem(0u32, mir.basic_blocks());
 
         // we can't use mir.predecessors() here because that counts
@@ -94,7 +94,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         }
     }
 
-    fn simplify(mut self) {
+    pub fn simplify(mut self) {
         loop {
             let mut changed = false;
 
@@ -219,7 +219,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
     }
 }
 
-fn remove_dead_blocks(mir: &mut Mir) {
+pub fn remove_dead_blocks(mir: &mut Mir) {
     let mut seen = BitVector::new(mir.basic_blocks().len());
     for (bb, _) in traversal::preorder(mir) {
         seen.insert(bb.index());

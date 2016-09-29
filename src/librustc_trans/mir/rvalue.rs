@@ -266,8 +266,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                     mir::CastKind::Misc => {
                         debug_assert!(common::type_is_immediate(bcx.ccx(), cast_ty));
-                        let r_t_in = CastTy::from_ty(operand.ty).expect("bad input type for cast");
-                        let r_t_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
+                        let r_t_in = CastTy::from_ty(operand.ty)
+                            .unwrap_or_else(|| bug!("bad input type `{:?}` for cast", operand.ty));
+                        let r_t_out = CastTy::from_ty(cast_ty)
+                            .unwrap_or_else(|| bug!("bad output type `{:?}` for cast", cast_ty));
                         let ll_t_in = type_of::immediate_type_of(bcx.ccx(), operand.ty);
                         let ll_t_out = type_of::immediate_type_of(bcx.ccx(), cast_ty);
                         let (llval, signed) = if let CastTy::Int(IntTy::CEnum) = r_t_in {

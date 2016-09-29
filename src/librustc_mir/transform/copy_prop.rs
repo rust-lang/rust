@@ -35,7 +35,6 @@ use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::indexed_vec::Idx;
-use transform::qualify_consts;
 
 pub struct CopyPropagation;
 
@@ -58,7 +57,7 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                 return
             }
             MirSource::Fn(function_node_id) => {
-                if qualify_consts::is_const_fn(tcx, tcx.map.local_def_id(function_node_id)) {
+                if tcx.is_const_fn(tcx.map.local_def_id(function_node_id)) {
                     // Don't run on const functions, as, again, trans might not be able to evaluate
                     // the optimized IR.
                     return
@@ -152,6 +151,15 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
             if !changed {
                 break
             }
+        }
+
+        // Strip out nops
+        for blk in mir.basic_blocks_mut() {
+            blk.statements.retain(|stmt| if let StatementKind::Nop = stmt.kind {
+                false
+            } else {
+                true
+            })
         }
     }
 }
@@ -329,6 +337,6 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
 
         *operand = Operand::Constant(self.constant.clone());
         self.uses_replaced += 1
+
     }
 }
-
