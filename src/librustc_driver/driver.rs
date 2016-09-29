@@ -686,11 +686,17 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
             ..syntax::ext::expand::ExpansionConfig::default(crate_name.to_string())
         };
         let mut ecx = ExtCtxt::new(&sess.parse_sess, krate.config.clone(), cfg, &mut resolver);
-        let ret = syntax::ext::expand::expand_crate(&mut ecx, krate);
+        let err_count = ecx.parse_sess.span_diagnostic.err_count();
+
+        let krate = ecx.monotonic_expander().expand_crate(krate);
+
+        if ecx.parse_sess.span_diagnostic.err_count() - ecx.resolve_err_count > err_count {
+            ecx.parse_sess.span_diagnostic.abort_if_errors();
+        }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
-        ret
+        krate
     });
 
     krate.exported_macros = mem::replace(&mut resolver.exported_macros, Vec::new());

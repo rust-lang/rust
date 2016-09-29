@@ -22,7 +22,6 @@ use parse::{self, parser};
 use parse::token;
 use parse::token::{InternedString, str_to_ident};
 use ptr::P;
-use std_inject;
 use util::small_vector::SmallVector;
 
 use std::path::PathBuf;
@@ -736,17 +735,6 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
         token::intern(st)
-    }
-
-    pub fn initialize(&mut self, krate: &ast::Crate) {
-        self.crate_root = std_inject::injected_crate_name(krate);
-
-        let mut module = ModuleData {
-            mod_path: vec![token::str_to_ident(&self.ecfg.crate_name)],
-            directory: PathBuf::from(self.parse_sess.codemap().span_to_filename(krate.span)),
-        };
-        module.directory.pop();
-        self.current_expansion.module = Rc::new(module);
     }
 }
 
