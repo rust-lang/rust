@@ -19,7 +19,7 @@ use std::iter;
 use std::slice;
 use std::mem;
 use std::vec;
-use attr;
+use attr::{self, HasAttrs};
 use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
 use std::rc::Rc;
 
@@ -226,12 +226,20 @@ fn mk_reexport_mod(cx: &mut TestCtxt, parent: ast::NodeId, tests: Vec<ast::Ident
                    tested_submods: Vec<(ast::Ident, ast::Ident)>) -> (P<ast::Item>, ast::Ident) {
     let super_ = token::str_to_ident("super");
 
+    // Generate imports with `#[allow(private_in_public)]` to work around issue #36768.
+    let allow_private_in_public = cx.ext_cx.attribute(DUMMY_SP, cx.ext_cx.meta_list(
+        DUMMY_SP,
+        InternedString::new("allow"),
+        vec![cx.ext_cx.meta_list_item_word(DUMMY_SP, InternedString::new("private_in_public"))],
+    ));
     let items = tests.into_iter().map(|r| {
         cx.ext_cx.item_use_simple(DUMMY_SP, ast::Visibility::Public,
                                   cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
+            .map_attrs(|_| vec![allow_private_in_public.clone()])
     }).chain(tested_submods.into_iter().map(|(r, sym)| {
         let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, sym]);
         cx.ext_cx.item_use_simple_(DUMMY_SP, ast::Visibility::Public, r, path)
+            .map_attrs(|_| vec![allow_private_in_public.clone()])
     })).collect();
 
     let reexport_mod = ast::Mod {
