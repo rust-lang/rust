@@ -40,17 +40,23 @@ pub fn check(build: &mut Build) {
             panic!("PATH contains invalid character '\"'");
         }
     }
+    let have_cmd = |cmd: &OsStr| {
+        for path in env::split_paths(&path).map(|p| p.join(cmd)) {
+            if fs::metadata(&path).is_ok() ||
+               fs::metadata(path.with_extension("exe")).is_ok() {
+                return Some(path);
+            }
+        }
+        return None;
+    };
+
     let mut need_cmd = |cmd: &OsStr| {
         if !checked.insert(cmd.to_owned()) {
             return
         }
-        for path in env::split_paths(&path).map(|p| p.join(cmd)) {
-            if fs::metadata(&path).is_ok() ||
-               fs::metadata(path.with_extension("exe")).is_ok() {
-                return
-            }
+        if have_cmd(cmd).is_none() {
+            panic!("\n\ncouldn't find required command: {:?}\n\n", cmd);
         }
-        panic!("\n\ncouldn't find required command: {:?}\n\n", cmd);
     };
 
     // If we've got a git directory we're gona need git to update
@@ -75,8 +81,13 @@ pub fn check(build: &mut Build) {
 
     need_cmd("python".as_ref());
 
-    // If a manual nodejs was added to the config,
-    // of if a nodejs install is detected through config, use it.
+    // Look for the nodejs command, needed for emscripten testing
+    if let Some(node) = have_cmd("node".as_ref()) {
+        build.config.nodejs = Some(node);
+    } else if let Some(node) = have_cmd("nodejs".as_ref()) {
+        build.config.nodejs = Some(node);
+    }
+
     if let Some(ref s) = build.config.nodejs {
         need_cmd(s.as_ref());
     }
