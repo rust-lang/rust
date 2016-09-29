@@ -64,9 +64,10 @@
 use hir::def_id::CrateNum;
 
 use session;
-use session::config::{self, PanicStrategy};
+use session::config;
 use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use util::nodemap::FnvHashMap;
+use rustc_back::PanicStrategy;
 
 /// A list of dependencies for a certain crate type.
 ///
@@ -357,7 +358,7 @@ fn verify_ok(sess: &session::Session, list: &[Linkage]) {
     // only one, but we perform validation here that all the panic strategy
     // compilation modes for the whole DAG are valid.
     if let Some((cnum, found_strategy)) = panic_runtime {
-        let desired_strategy = sess.opts.cg.panic.clone();
+        let desired_strategy = sess.panic_strategy();
 
         // First up, validate that our selected panic runtime is indeed exactly
         // our same strategy.
