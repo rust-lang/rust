@@ -557,7 +557,9 @@ pub struct ExpansionData {
     pub depth: usize,
     pub backtrace: ExpnId,
     pub module: Rc<ModuleData>,
-    pub in_block: bool,
+
+    // True if non-inline modules without a `#[path]` are forbidden at the root of this expansion.
+    pub no_noninline_mod: bool,
 }
 
 /// One of these is made during expansion and incrementally updated as we go;
@@ -590,7 +592,7 @@ impl<'a> ExtCtxt<'a> {
                 depth: 0,
                 backtrace: NO_EXPANSION,
                 module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
-                in_block: false,
+                no_noninline_mod: false,
             },
         }
     }
