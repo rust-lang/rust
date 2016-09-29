@@ -20,7 +20,7 @@ core = { path = "../libcore" }
 libc = { path = "../rustc/libc_shim" }
 rand = { path = "../librand" }
 compiler_builtins = { path = "../libcompiler_builtins" }
-rustc_unicode = { path = "../librustc_unicode" }
+std_unicode = { path = "../libstd_unicode" }
 unwind = { path = "../libunwind" }
 
 [build-dependencies]

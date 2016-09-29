@@ -313,7 +313,7 @@ extern crate collections as core_collections;
 
 #[allow(deprecated)] extern crate rand as core_rand;
 extern crate alloc;
-extern crate rustc_unicode;
+extern crate std_unicode;
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
@@ -384,7 +384,7 @@ pub use core_collections::string;
 pub use core_collections::vec;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use rustc_unicode::char;
+pub use std_unicode::char;
 
 /* Exported macros */
 

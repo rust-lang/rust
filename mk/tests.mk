@@ -15,14 +15,14 @@
 
 # The names of crates that must be tested
 
-# libcore/librustc_unicode tests are in a separate crate
+# libcore/libstd_unicode tests are in a separate crate
 DEPS_coretest :=
 $(eval $(call RUST_CRATE,coretest))
 
 DEPS_collectionstest :=
 $(eval $(call RUST_CRATE,collectionstest))
 
-TEST_TARGET_CRATES = $(filter-out core rustc_unicode alloc_system libc \
+TEST_TARGET_CRATES = $(filter-out core std_unicode alloc_system libc \
 		     		  alloc_jemalloc panic_unwind \
 				  panic_abort,$(TARGET_CRATES)) \
 			collectionstest coretest
