@@ -155,7 +155,6 @@ impl<'a, 'tcx> FromIterator<Vec<&'a Pattern<'tcx>>> for Matrix<'a, 'tcx> {
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub param_env: ty::ParameterEnvironment<'tcx>,
     /// A wild pattern with an error type - it exists to avoid having to normalize
     /// associated types to get field types.
     pub wild_pattern: &'a Pattern<'tcx>,
@@ -165,7 +164,6 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub fn create_and_enter<F, R>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        param_env: ty::ParameterEnvironment<'tcx>,
         f: F) -> R
         where F: for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R
     {
@@ -179,7 +177,6 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
         f(MatchCheckCtxt {
             tcx: tcx,
-            param_env: param_env,
             wild_pattern: &wild_pattern,
             pattern_arena: &pattern_arena,
         })
@@ -674,19 +671,4 @@ fn specialize<'a, 'tcx>(
         head.extend_from_slice(&r[col + 1..]);
         head
     })
-}
-
-pub fn is_refutable<'a, 'tcx, A, F>(
-    cx: &MatchCheckCtxt<'a, 'tcx>,
-    pat: &'a Pattern<'tcx>,
-    refutable: F)
-    -> Option<A> where
-    F: FnOnce(&Witness) -> A,
-{
-    let pats = Matrix(vec![vec![pat]]);
-    match is_useful(cx, &pats, &[cx.wild_pattern], ConstructWitness) {
-        UsefulWithWitness(pats) => Some(refutable(&pats[0])),
-        NotUseful => None,
-        Useful => bug!()
-    }
 }
