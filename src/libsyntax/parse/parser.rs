@@ -5274,23 +5274,27 @@ impl<'a> Parser<'a> {
             }
         } else {
             let directory = self.directory.clone();
-            self.push_directory(id, &outer_attrs);
+            let restrictions = self.push_directory(id, &outer_attrs);
             self.expect(&token::OpenDelim(token::Brace))?;
             let mod_inner_lo = self.span.lo;
             let attrs = self.parse_inner_attributes()?;
-            let m = self.parse_mod_items(&token::CloseDelim(token::Brace), mod_inner_lo)?;
+            let m = self.with_res(restrictions, |this| {
+                this.parse_mod_items(&token::CloseDelim(token::Brace), mod_inner_lo)
+            })?;
             self.directory = directory;
             Ok((id, ItemKind::Mod(m), Some(attrs)))
         }
     }
 
-    fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
-        let default_path = self.id_to_interned_str(id);
-        let file_path = match ::attr::first_attr_value_str_by_name(attrs, "path") {
-            Some(d) => d,
-            None => default_path,
-        };
-        self.directory.push(&*file_path)
+    fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) -> Restrictions {
+        if let Some(path) = ::attr::first_attr_value_str_by_name(attrs, "path") {
+            self.directory.push(&*path);
+            self.restrictions - Restrictions::NO_NONINLINE_MOD
+        } else {
+            let default_path = self.id_to_interned_str(id);
+            self.directory.push(&*default_path);
+            self.restrictions
+        }
     }
 
     pub fn submod_path_from_attr(attrs: &[ast::Attribute], dir_path: &Path) -> Option<PathBuf> {

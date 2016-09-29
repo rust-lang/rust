@@ -667,9 +667,9 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {
-        let orig_in_block = mem::replace(&mut self.cx.current_expansion.in_block, true);
+        let no_noninline_mod = mem::replace(&mut self.cx.current_expansion.no_noninline_mod, true);
         let result = noop_fold_block(block, self);
-        self.cx.current_expansion.in_block = orig_in_block;
+        self.cx.current_expansion.no_noninline_mod = no_noninline_mod;
         result
     }
 
@@ -708,6 +708,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     return noop_fold_item(item, self);
                 }
 
+                let orig_no_noninline_mod = self.cx.current_expansion.no_noninline_mod;
                 let mut module = (*self.cx.current_expansion.module).clone();
                 module.mod_path.push(item.ident);
 
@@ -717,11 +718,14 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 let inline_module = item.span.contains(inner) || inner == syntax_pos::DUMMY_SP;
 
                 if inline_module {
-                    module.directory.push(&*{
-                        ::attr::first_attr_value_str_by_name(&item.attrs, "path")
-                            .unwrap_or(item.ident.name.as_str())
-                    });
+                    if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, "path") {
+                        self.cx.current_expansion.no_noninline_mod = false;
+                        module.directory.push(&*path);
+                    } else {
+                        module.directory.push(&*item.ident.name.as_str());
+                    }
                 } else {
+                    self.cx.current_expansion.no_noninline_mod = false;
                     module.directory =
                         PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(inner));
                     module.directory.pop();
@@ -731,6 +735,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
                 let result = noop_fold_item(item, self);
                 self.cx.current_expansion.module = orig_module;
+                self.cx.current_expansion.no_noninline_mod = orig_no_noninline_mod;
                 return result;
             }
             // Ensure that test functions are accessible from the test harness.
