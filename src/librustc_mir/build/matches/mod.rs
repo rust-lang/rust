@@ -123,7 +123,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                    var,
                                    subpattern: None, .. } => {
                 self.storage_live_for_bindings(block, &irrefutable_pat);
-                let lvalue = Lvalue::Var(self.var_indices[&var]);
+                let lvalue = Lvalue::Local(self.var_indices[&var]);
                 return self.into(&lvalue, block, initializer);
             }
             _ => {}
@@ -214,7 +214,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      pattern: &Pattern<'tcx>) {
         match *pattern.kind {
             PatternKind::Binding { var, ref subpattern, .. } => {
-                let lvalue = Lvalue::Var(self.var_indices[&var]);
+                let lvalue = Lvalue::Local(self.var_indices[&var]);
                 let source_info = self.source_info(pattern.span);
                 self.cfg.push(block, Statement {
                     source_info: source_info,
@@ -705,10 +705,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let source_info = self.source_info(binding.span);
             self.cfg.push(block, Statement {
                 source_info: source_info,
-                kind: StatementKind::StorageLive(Lvalue::Var(var_index))
+                kind: StatementKind::StorageLive(Lvalue::Local(var_index))
             });
             self.cfg.push_assign(block, source_info,
-                                 &Lvalue::Var(var_index), rvalue);
+                                 &Lvalue::Local(var_index), rvalue);
         }
     }
 
@@ -718,19 +718,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                        name: Name,
                        var_id: NodeId,
                        var_ty: Ty<'tcx>)
-                       -> Var
+                       -> Local
     {
         debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, source_info={:?})",
                var_id, name, var_ty, source_info);
 
-        let var = self.var_decls.push(VarDecl::<'tcx> {
-            source_info: source_info,
+        let var = self.local_decls.push(LocalDecl::<'tcx> {
             mutability: mutability,
-            name: name,
             ty: var_ty.clone(),
+            name: Some(name),
+            source_info: Some(source_info),
         });
         let extent = self.extent_of_innermost_scope();
-        self.schedule_drop(source_info.span, extent, &Lvalue::Var(var), var_ty);
+        self.schedule_drop(source_info.span, extent, &Lvalue::Local(var), var_ty);
         self.var_indices.insert(var_id, var);
 
         debug!("declare_binding: var={:?}", var);

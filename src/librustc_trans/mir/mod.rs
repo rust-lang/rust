@@ -237,51 +237,61 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     // Allocate variable and temp allocas
     mircx.locals = {
         let args = arg_local_refs(&bcx, &mir, &mircx.scopes, &lvalue_locals);
-        let vars = mir.var_decls.iter().enumerate().map(|(i, decl)| {
+
+        let mut allocate_local = |local| {
+            let decl = &mir.local_decls[local];
             let ty = bcx.monomorphize(&decl.ty);
-            let debug_scope = mircx.scopes[decl.source_info.scope];
-            let dbg = debug_scope.is_valid() && bcx.sess().opts.debuginfo == FullDebugInfo;
 
-            let local = mir.local_index(&mir::Lvalue::Var(mir::Var::new(i))).unwrap();
-            if !lvalue_locals.contains(local.index()) && !dbg {
-                return LocalRef::new_operand(bcx.ccx(), ty);
-            }
+            if let Some(name) = decl.name {
+                // User variable
+                let source_info = decl.source_info.unwrap();
+                let debug_scope = mircx.scopes[source_info.scope];
+                let dbg = debug_scope.is_valid() && bcx.sess().opts.debuginfo == FullDebugInfo;
 
-            let lvalue = LvalueRef::alloca(&bcx, ty, &decl.name.as_str());
-            if dbg {
-                let dbg_loc = mircx.debug_loc(decl.source_info);
-                if let DebugLoc::ScopeAt(scope, span) = dbg_loc {
-                    bcx.with_block(|bcx| {
-                        declare_local(bcx, decl.name, ty, scope,
-                                    VariableAccess::DirectVariable { alloca: lvalue.llval },
-                                    VariableKind::LocalVariable, span);
-                    });
+                if !lvalue_locals.contains(local.index()) && !dbg {
+                    debug!("alloc: {:?} ({}) -> operand", local, name);
+                    return LocalRef::new_operand(bcx.ccx(), ty);
+                }
+
+                debug!("alloc: {:?} ({}) -> lvalue", local, name);
+                let lvalue = LvalueRef::alloca(&bcx, ty, &name.as_str());
+                if dbg {
+                    let dbg_loc = mircx.debug_loc(source_info);
+                    if let DebugLoc::ScopeAt(scope, span) = dbg_loc {
+                        bcx.with_block(|bcx| {
+                            declare_local(bcx, name, ty, scope,
+                                        VariableAccess::DirectVariable { alloca: lvalue.llval },
+                                        VariableKind::LocalVariable, span);
+                        });
+                    } else {
+                        panic!("Unexpected");
+                    }
+                }
+                LocalRef::Lvalue(lvalue)
+            } else {
+                // Temporary or return pointer
+                if local == mir::RETURN_POINTER && fcx.fn_ty.ret.is_indirect() {
+                    debug!("alloc: {:?} (return pointer) -> lvalue", local);
+                    let llretptr = llvm::get_param(fcx.llfn, 0);
+                    LocalRef::Lvalue(LvalueRef::new_sized(llretptr, LvalueTy::from_ty(ty)))
+                } else if lvalue_locals.contains(local.index()) {
+                    debug!("alloc: {:?} -> lvalue", local);
+                    LocalRef::Lvalue(LvalueRef::alloca(&bcx, ty, &format!("{:?}", local)))
                 } else {
-                    panic!("Unexpected");
+                    // If this is an immediate local, we do not create an
+                    // alloca in advance. Instead we wait until we see the
+                    // definition and update the operand there.
+                    debug!("alloc: {:?} -> operand", local);
+                    LocalRef::new_operand(bcx.ccx(), ty)
                 }
             }
-            LocalRef::Lvalue(lvalue)
-        });
+        };
 
-        let locals = mir.temp_decls.iter().enumerate().map(|(i, decl)| {
-            (mir::Lvalue::Temp(mir::Temp::new(i)), decl.ty)
-        }).chain(iter::once((mir::Lvalue::ReturnPointer, mir.return_ty)));
-
-        args.into_iter().chain(vars).chain(locals.map(|(lvalue, ty)| {
-            let ty = bcx.monomorphize(&ty);
-            let local = mir.local_index(&lvalue).unwrap();
-            if lvalue == mir::Lvalue::ReturnPointer && fcx.fn_ty.ret.is_indirect() {
-                let llretptr = llvm::get_param(fcx.llfn, 0);
-                LocalRef::Lvalue(LvalueRef::new_sized(llretptr, LvalueTy::from_ty(ty)))
-            } else if lvalue_locals.contains(local.index()) {
-                LocalRef::Lvalue(LvalueRef::alloca(&bcx, ty, &format!("{:?}", lvalue)))
-            } else {
-                // If this is an immediate local, we do not create an
-                // alloca in advance. Instead we wait until we see the
-                // definition and update the operand there.
-                LocalRef::new_operand(bcx.ccx(), ty)
-            }
-        })).collect()
+        let retptr = allocate_local(mir::RETURN_POINTER);
+        iter::once(retptr)
+            .chain(args.into_iter())
+            .chain(mir.vars_and_temps_iter().map(allocate_local))
+            .collect()
     };
 
     // Branch to the START block
@@ -346,10 +356,11 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
         None
     };
 
-    mir.arg_decls.iter().enumerate().map(|(arg_index, arg_decl)| {
+    mir.args_iter().enumerate().map(|(arg_index, local)| {
+        let arg_decl = &mir.local_decls[local];
         let arg_ty = bcx.monomorphize(&arg_decl.ty);
-        let local = mir.local_index(&mir::Lvalue::Arg(mir::Arg::new(arg_index))).unwrap();
-        if arg_decl.spread {
+
+        if Some(local) == mir.spread_arg {
             // This argument (e.g. the last argument in the "rust-call" ABI)
             // is a tuple that was spread at the ABI level and now we have
             // to reconstruct it into a tuple local variable, from multiple
@@ -467,8 +478,8 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
         bcx.with_block(|bcx| arg_scope.map(|scope| {
             // Is this a regular argument?
             if arg_index > 0 || mir.upvar_decls.is_empty() {
-                declare_local(bcx, arg_decl.debug_name, arg_ty, scope,
-                              VariableAccess::DirectVariable { alloca: llval },
+                declare_local(bcx, arg_decl.name.unwrap_or(keywords::Invalid.name()), arg_ty,
+                              scope, VariableAccess::DirectVariable { alloca: llval },
                               VariableKind::ArgumentVariable(arg_index + 1),
                               bcx.fcx().span.unwrap_or(DUMMY_SP));
                 return;

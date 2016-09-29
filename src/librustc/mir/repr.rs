@@ -70,28 +70,36 @@ pub struct Mir<'tcx> {
 
     /// Rvalues promoted from this function, such as borrows of constants.
     /// Each of them is the Mir of a constant with the fn's type parameters
-    /// in scope, but no vars or args and a separate set of temps.
+    /// in scope, but a separate set of locals.
     pub promoted: IndexVec<Promoted, Mir<'tcx>>,
 
     /// Return type of the function.
     pub return_ty: Ty<'tcx>,
 
-    /// Variables: these are stack slots corresponding to user variables. They may be
-    /// assigned many times.
-    pub var_decls: IndexVec<Var, VarDecl<'tcx>>,
+    /// Declarations of locals.
+    ///
+    /// The first local is the return value pointer, followed by `arg_count`
+    /// locals for the function arguments, followed by any user-declared
+    /// variables and temporaries.
+    pub local_decls: IndexVec<Local, LocalDecl<'tcx>>,
 
-    /// Args: these are stack slots corresponding to the input arguments.
-    pub arg_decls: IndexVec<Arg, ArgDecl<'tcx>>,
-
-    /// Temp declarations: stack slots that for temporaries created by
-    /// the compiler. These are assigned once, but they are not SSA
-    /// values in that it is possible to borrow them and mutate them
-    /// through the resulting reference.
-    pub temp_decls: IndexVec<Temp, TempDecl<'tcx>>,
+    /// Number of arguments this function takes.
+    ///
+    /// Starting at local 1, `arg_count` locals will be provided by the caller
+    /// and can be assumed to be initialized.
+    ///
+    /// If this MIR was built for a constant, this will be 0.
+    pub arg_count: usize,
 
     /// Names and capture modes of all the closure upvars, assuming
     /// the first argument is either the closure or a reference to it.
     pub upvar_decls: Vec<UpvarDecl>,
+
+    /// Mark an argument local (which must be a tuple) as getting passed as
+    /// its individual components at the LLVM level.
+    ///
+    /// This is used for the "rust-call" ABI.
+    pub spread_arg: Option<Local>,
 
     /// A span representing this MIR, for error reporting
     pub span: Span,
@@ -108,21 +116,25 @@ impl<'tcx> Mir<'tcx> {
                visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
                promoted: IndexVec<Promoted, Mir<'tcx>>,
                return_ty: Ty<'tcx>,
-               var_decls: IndexVec<Var, VarDecl<'tcx>>,
-               arg_decls: IndexVec<Arg, ArgDecl<'tcx>>,
-               temp_decls: IndexVec<Temp, TempDecl<'tcx>>,
+               local_decls: IndexVec<Local, LocalDecl<'tcx>>,
+               arg_count: usize,
                upvar_decls: Vec<UpvarDecl>,
                span: Span) -> Self
     {
+        // We need `arg_count` locals, and one for the return pointer
+        assert!(local_decls.len() >= arg_count + 1,
+            "expected at least {} locals, got {}", arg_count + 1, local_decls.len());
+        assert_eq!(local_decls[RETURN_POINTER].ty, return_ty);
+
         Mir {
             basic_blocks: basic_blocks,
             visibility_scopes: visibility_scopes,
             promoted: promoted,
             return_ty: return_ty,
-            var_decls: var_decls,
-            arg_decls: arg_decls,
-            temp_decls: temp_decls,
+            local_decls: local_decls,
+            arg_count: arg_count,
             upvar_decls: upvar_decls,
+            spread_arg: None,
             span: span,
             cache: Cache::new()
         }
@@ -154,56 +166,66 @@ impl<'tcx> Mir<'tcx> {
         dominators(self)
     }
 
-    /// Maps locals (Arg's, Var's, Temp's and ReturnPointer, in that order)
-    /// to their index in the whole list of locals. This is useful if you
-    /// want to treat all locals the same instead of repeating yourself.
-    pub fn local_index(&self, lvalue: &Lvalue<'tcx>) -> Option<Local> {
-        let idx = match *lvalue {
-            Lvalue::Arg(arg) => arg.index(),
-            Lvalue::Var(var) => {
-                self.arg_decls.len() +
-                var.index()
-            }
-            Lvalue::Temp(temp) => {
-                self.arg_decls.len() +
-                self.var_decls.len() +
-                temp.index()
-            }
-            Lvalue::ReturnPointer => {
-                self.arg_decls.len() +
-                self.var_decls.len() +
-                self.temp_decls.len()
-            }
-            Lvalue::Static(_) |
-            Lvalue::Projection(_) => return None
-        };
-        Some(Local::new(idx))
+    #[inline]
+    pub fn local_kind(&self, local: Local) -> LocalKind {
+        let index = local.0 as usize;
+        if index == 0 {
+            debug_assert!(self.local_decls[local].mutability == Mutability::Mut,
+                          "return pointer should be mutable");
+
+            LocalKind::ReturnPointer
+        } else if index < self.arg_count + 1 {
+            LocalKind::Arg
+        } else if self.local_decls[local].name.is_some() {
+            LocalKind::Var
+        } else {
+            debug_assert!(self.local_decls[local].mutability == Mutability::Mut,
+                          "temp should be mutable");
+
+            LocalKind::Temp
+        }
     }
 
-    /// Counts the number of locals, such that local_index
-    /// will always return an index smaller than this count.
-    pub fn count_locals(&self) -> usize {
-        self.arg_decls.len() +
-        self.var_decls.len() +
-        self.temp_decls.len() + 1
+    /// Returns an iterator over all temporaries.
+    #[inline]
+    pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
+        (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
+            let local = Local::new(index);
+            if self.local_decls[local].source_info.is_none() {
+                Some(local)
+            } else {
+                None
+            }
+        })
     }
 
-    pub fn format_local(&self, local: Local) -> String {
-        let mut index = local.index();
-        index = match index.checked_sub(self.arg_decls.len()) {
-            None => return format!("{:?}", Arg::new(index)),
-            Some(index) => index,
-        };
-        index = match index.checked_sub(self.var_decls.len()) {
-            None => return format!("{:?}", Var::new(index)),
-            Some(index) => index,
-        };
-        index = match index.checked_sub(self.temp_decls.len()) {
-            None => return format!("{:?}", Temp::new(index)),
-            Some(index) => index,
-        };
-        debug_assert!(index == 0);
-        return "ReturnPointer".to_string()
+    /// Returns an iterator over all user-declared locals.
+    #[inline]
+    pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
+        (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
+            let local = Local::new(index);
+            if self.local_decls[local].source_info.is_none() {
+                None
+            } else {
+                Some(local)
+            }
+        })
+    }
+
+    /// Returns an iterator over all function arguments.
+    #[inline]
+    pub fn args_iter(&self) -> impl Iterator<Item=Local> {
+        let arg_count = self.arg_count;
+        (1..arg_count+1).map(Local::new)
+    }
+
+    /// Returns an iterator over all user-defined variables and compiler-generated temporaries (all
+    /// locals that are neither arguments nor the return pointer).
+    #[inline]
+    pub fn vars_and_temps_iter(&self) -> impl Iterator<Item=Local> {
+        let arg_count = self.arg_count;
+        let local_count = self.local_decls.len();
+        (arg_count+1..local_count).map(Local::new)
     }
 
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
@@ -301,53 +323,76 @@ pub enum BorrowKind {
 ///////////////////////////////////////////////////////////////////////////
 // Variables and temps
 
-/// A "variable" is a binding declared by the user as part of the fn
-/// decl, a let, etc.
+newtype_index!(Local, "_");
+
+pub const RETURN_POINTER: Local = Local(0);
+
+/// Classifies locals into categories. See `Mir::local_kind`.
+#[derive(PartialEq, Eq, Debug)]
+pub enum LocalKind {
+    /// User-declared variable binding
+    Var,
+    /// Compiler-introduced temporary
+    Temp,
+    /// Function argument
+    Arg,
+    /// Location of function's return value
+    ReturnPointer,
+}
+
+/// A MIR local.
+///
+/// This can be a binding declared by the user, a temporary inserted by the compiler, a function
+/// argument, or the return pointer.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct VarDecl<'tcx> {
-    /// `let mut x` vs `let x`
+pub struct LocalDecl<'tcx> {
+    /// `let mut x` vs `let x`.
+    ///
+    /// Temporaries and the return pointer are always mutable.
     pub mutability: Mutability,
 
-    /// name that user gave the variable; not that, internally,
-    /// mir references variables by index
-    pub name: Name,
-
-    /// type inferred for this variable (`let x: ty = ...`)
+    /// Type of this local.
     pub ty: Ty<'tcx>,
 
-    /// source information (span, scope, etc.) for the declaration
-    pub source_info: SourceInfo,
+    /// Name of the local, used in debuginfo and pretty-printing.
+    ///
+    /// Note that function arguments can also have this set to `Some(_)`
+    /// to generate better debuginfo.
+    pub name: Option<Name>,
+
+    /// For user-declared variables, stores their source information.
+    ///
+    /// For temporaries, this is `None`.
+    ///
+    /// This is the primary way to differentiate between user-declared
+    /// variables and compiler-generated temporaries.
+    pub source_info: Option<SourceInfo>,
 }
 
-/// A "temp" is a temporary that we place on the stack. They are
-/// anonymous, always mutable, and have only a type.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct TempDecl<'tcx> {
-    pub ty: Ty<'tcx>,
-}
+impl<'tcx> LocalDecl<'tcx> {
+    /// Create a new `LocalDecl` for a temporary.
+    #[inline]
+    pub fn new_temp(ty: Ty<'tcx>) -> Self {
+        LocalDecl {
+            mutability: Mutability::Mut,
+            ty: ty,
+            name: None,
+            source_info: None,
+        }
+    }
 
-/// A "arg" is one of the function's formal arguments. These are
-/// anonymous and distinct from the bindings that the user declares.
-///
-/// For example, in this function:
-///
-/// ```
-/// fn foo((x, y): (i32, u32)) { ... }
-/// ```
-///
-/// there is only one argument, of type `(i32, u32)`, but two bindings
-/// (`x` and `y`).
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct ArgDecl<'tcx> {
-    pub ty: Ty<'tcx>,
-
-    /// If true, this argument is a tuple after monomorphization,
-    /// and has to be collected from multiple actual arguments.
-    pub spread: bool,
-
-    /// Either keywords::Invalid or the name of a single-binding
-    /// pattern associated with this argument. Useful for debuginfo.
-    pub debug_name: Name
+    /// Builds a `LocalDecl` for the return pointer.
+    ///
+    /// This must be inserted into the `local_decls` list as the first local.
+    #[inline]
+    pub fn new_return_pointer(return_ty: Ty) -> LocalDecl {
+        LocalDecl {
+            mutability: Mutability::Mut,
+            ty: return_ty,
+            source_info: None,
+            name: None,     // FIXME maybe we do want some name here?
+        }
+    }
 }
 
 /// A closure capture, with its name and mode.
@@ -439,7 +484,7 @@ pub enum TerminatorKind<'tcx> {
     /// continue. Emitted by build::scope::diverge_cleanup.
     Resume,
 
-    /// Indicates a normal return. The ReturnPointer lvalue should
+    /// Indicates a normal return. The return pointer lvalue should
     /// have been filled in by now. This should occur at most once.
     Return,
 
@@ -756,30 +801,15 @@ impl<'tcx> Debug for Statement<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Lvalues
 
-newtype_index!(Var, "var");
-newtype_index!(Temp, "tmp");
-newtype_index!(Arg, "arg");
-newtype_index!(Local, "local");
-
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Lvalue<'tcx> {
-    /// local variable declared by the user
-    Var(Var),
-
-    /// temporary introduced during lowering into MIR
-    Temp(Temp),
-
-    /// formal parameter of the function; note that these are NOT the
-    /// bindings that the user declares, which are vars
-    Arg(Arg),
+    /// local variable
+    Local(Local),
 
     /// static or static mut variable
     Static(DefId),
-
-    /// the return pointer of the fn
-    ReturnPointer,
 
     /// projection out of an lvalue (access a field, deref a pointer, etc)
     Projection(Box<LvalueProjection<'tcx>>),
@@ -862,24 +892,6 @@ impl<'tcx> Lvalue<'tcx> {
             elem: elem,
         }))
     }
-
-    pub fn from_local(mir: &Mir<'tcx>, local: Local) -> Lvalue<'tcx> {
-        let mut index = local.index();
-        index = match index.checked_sub(mir.arg_decls.len()) {
-            None => return Lvalue::Arg(Arg(index as u32)),
-            Some(index) => index,
-        };
-        index = match index.checked_sub(mir.var_decls.len()) {
-            None => return Lvalue::Var(Var(index as u32)),
-            Some(index) => index,
-        };
-        index = match index.checked_sub(mir.temp_decls.len()) {
-            None => return Lvalue::Temp(Temp(index as u32)),
-            Some(index) => index,
-        };
-        debug_assert!(index == 0);
-        Lvalue::ReturnPointer
-    }
 }
 
 impl<'tcx> Debug for Lvalue<'tcx> {
@@ -887,13 +899,9 @@ impl<'tcx> Debug for Lvalue<'tcx> {
         use self::Lvalue::*;
 
         match *self {
-            Var(id) => write!(fmt, "{:?}", id),
-            Arg(id) => write!(fmt, "{:?}", id),
-            Temp(id) => write!(fmt, "{:?}", id),
+            Local(id) => write!(fmt, "{:?}", id),
             Static(def_id) =>
                 write!(fmt, "{}", ty::tls::with(|tcx| tcx.item_path_str(def_id))),
-            ReturnPointer =>
-                write!(fmt, "return"),
             Projection(ref data) =>
                 match data.elem {
                     ProjectionElem::Downcast(ref adt_def, index) =>

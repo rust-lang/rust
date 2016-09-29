@@ -236,19 +236,9 @@ macro_rules! make_mir_visitor {
                 self.super_typed_const_val(val, location);
             }
 
-            fn visit_var_decl(&mut self,
-                              var_decl: & $($mutability)* VarDecl<'tcx>) {
-                self.super_var_decl(var_decl);
-            }
-
-            fn visit_temp_decl(&mut self,
-                               temp_decl: & $($mutability)* TempDecl<'tcx>) {
-                self.super_temp_decl(temp_decl);
-            }
-
-            fn visit_arg_decl(&mut self,
-                              arg_decl: & $($mutability)* ArgDecl<'tcx>) {
-                self.super_arg_decl(arg_decl);
+            fn visit_local_decl(&mut self,
+                                local_decl: & $($mutability)* LocalDecl<'tcx>) {
+                self.super_local_decl(local_decl);
             }
 
             fn visit_visibility_scope(&mut self,
@@ -272,16 +262,8 @@ macro_rules! make_mir_visitor {
 
                 self.visit_ty(&$($mutability)* mir.return_ty);
 
-                for var_decl in &$($mutability)* mir.var_decls {
-                    self.visit_var_decl(var_decl);
-                }
-
-                for arg_decl in &$($mutability)* mir.arg_decls {
-                    self.visit_arg_decl(arg_decl);
-                }
-
-                for temp_decl in &$($mutability)* mir.temp_decls {
-                    self.visit_temp_decl(temp_decl);
+                for local_decl in &$($mutability)* mir.local_decls {
+                    self.visit_local_decl(local_decl);
                 }
 
                 self.visit_span(&$($mutability)* mir.span);
@@ -584,10 +566,7 @@ macro_rules! make_mir_visitor {
                             context: LvalueContext<'tcx>,
                             location: Location) {
                 match *lvalue {
-                    Lvalue::Var(_) |
-                    Lvalue::Temp(_) |
-                    Lvalue::Arg(_) |
-                    Lvalue::ReturnPointer => {
+                    Lvalue::Local(_) => {
                     }
                     Lvalue::Static(ref $($mutability)* def_id) => {
                         self.visit_def_id(def_id, location);
@@ -639,37 +618,19 @@ macro_rules! make_mir_visitor {
                 }
             }
 
-            fn super_var_decl(&mut self,
-                              var_decl: & $($mutability)* VarDecl<'tcx>) {
-                let VarDecl {
+            fn super_local_decl(&mut self,
+                                local_decl: & $($mutability)* LocalDecl<'tcx>) {
+                let LocalDecl {
                     mutability: _,
+                    ref $($mutability)* ty,
                     name: _,
-                    ref $($mutability)* ty,
                     ref $($mutability)* source_info,
-                } = *var_decl;
+                } = *local_decl;
 
                 self.visit_ty(ty);
-                self.visit_source_info(source_info);
-            }
-
-            fn super_temp_decl(&mut self,
-                               temp_decl: & $($mutability)* TempDecl<'tcx>) {
-                let TempDecl {
-                    ref $($mutability)* ty,
-                } = *temp_decl;
-
-                self.visit_ty(ty);
-            }
-
-            fn super_arg_decl(&mut self,
-                              arg_decl: & $($mutability)* ArgDecl<'tcx>) {
-                let ArgDecl {
-                    ref $($mutability)* ty,
-                    spread: _,
-                    debug_name: _
-                } = *arg_decl;
-
-                self.visit_ty(ty);
+                if let Some(ref $($mutability)* info) = *source_info {
+                    self.visit_source_info(info);
+                }
             }
 
             fn super_visibility_scope(&mut self,

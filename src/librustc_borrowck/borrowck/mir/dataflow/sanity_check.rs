@@ -73,11 +73,13 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     assert!(args.len() == 1);
     let peek_arg_lval = match args[0] {
-        repr::Operand::Consume(ref lval @ repr::Lvalue::Temp(_)) => {
-            lval
-        }
-        repr::Operand::Consume(_) |
-        repr::Operand::Constant(_) => {
+        repr::Operand::Consume(ref lval @ repr::Lvalue::Local(_)) => Some(lval),
+        _ => None,
+    };
+
+    let peek_arg_lval = match peek_arg_lval {
+        Some(arg) => arg,
+        None => {
             tcx.sess.diagnostic().span_err(
                 span, "dataflow::sanity_check cannot feed a non-temp to rustc_peek.");
             return;

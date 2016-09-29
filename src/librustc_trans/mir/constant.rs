@@ -221,16 +221,17 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     fn new(ccx: &'a CrateContext<'a, 'tcx>,
            mir: &'a mir::Mir<'tcx>,
            substs: &'tcx Substs<'tcx>,
-           args: IndexVec<mir::Arg, Const<'tcx>>)
+           args: IndexVec<mir::Local, Const<'tcx>>)
            -> MirConstContext<'a, 'tcx> {
         let mut context = MirConstContext {
             ccx: ccx,
             mir: mir,
             substs: substs,
-            locals: (0..mir.count_locals()).map(|_| None).collect(),
+            locals: (0..mir.local_decls.len()).map(|_| None).collect(),
         };
         for (i, arg) in args.into_iter().enumerate() {
-            let index = mir.local_index(&mir::Lvalue::Arg(mir::Arg::new(i))).unwrap();
+            // Locals after local 0 are the function arguments
+            let index = mir::Local::new(i + 1);
             context.locals[index] = Some(arg);
         }
         context
@@ -238,7 +239,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
     fn trans_def(ccx: &'a CrateContext<'a, 'tcx>,
                  mut instance: Instance<'tcx>,
-                 args: IndexVec<mir::Arg, Const<'tcx>>)
+                 args: IndexVec<mir::Local, Const<'tcx>>)
                  -> Result<Const<'tcx>, ConstEvalErr> {
         // Try to resolve associated constants.
         if let Some(trait_id) = ccx.tcx().trait_of_item(instance.def) {
@@ -311,8 +312,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 mir::TerminatorKind::Goto { target } => target,
                 mir::TerminatorKind::Return => {
                     failure?;
-                    let index = self.mir.local_index(&mir::Lvalue::ReturnPointer).unwrap();
-                    return Ok(self.locals[index].unwrap_or_else(|| {
+                    return Ok(self.locals[mir::RETURN_POINTER].unwrap_or_else(|| {
                         span_bug!(span, "no returned value in constant");
                     }));
                 }
@@ -376,7 +376,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     }
 
     fn store(&mut self, dest: &mir::Lvalue<'tcx>, value: Const<'tcx>, span: Span) {
-        if let Some(index) = self.mir.local_index(dest) {
+        if let mir::Lvalue::Local(index) = *dest {
             self.locals[index] = Some(value);
         } else {
             span_bug!(span, "assignment to {:?} in constant", dest);
@@ -387,17 +387,14 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     -> Result<ConstLvalue<'tcx>, ConstEvalErr> {
         let tcx = self.ccx.tcx();
 
-        if let Some(index) = self.mir.local_index(lvalue) {
+        if let mir::Lvalue::Local(index) = *lvalue {
             return Ok(self.locals[index].unwrap_or_else(|| {
                 span_bug!(span, "{:?} not initialized", lvalue)
             }).as_lvalue());
         }
 
         let lvalue = match *lvalue {
-            mir::Lvalue::Var(_) |
-            mir::Lvalue::Temp(_) |
-            mir::Lvalue::Arg(_) |
-            mir::Lvalue::ReturnPointer => bug!(), // handled above
+            mir::Lvalue::Local(_)  => bug!(), // handled above
             mir::Lvalue::Static(def_id) => {
                 ConstLvalue {
                     base: Base::Static(consts::get_static(self.ccx, def_id)),
