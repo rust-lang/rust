@@ -172,10 +172,13 @@ impl<'a> Resolver<'a> {
 
         let mut def_collector = DefCollector::new(&mut self.definitions);
         def_collector.visit_macro_invoc = Some(visit_macro_invoc);
-        def_collector.with_parent(def_index, |def_collector| if !const_integer {
+        def_collector.with_parent(def_index, |def_collector| {
+            if const_integer {
+                if let Expansion::Expr(ref expr) = *expansion {
+                    def_collector.visit_ast_const_integer(expr);
+                }
+            }
             expansion.visit_with(def_collector)
-        } else if let Expansion::Expr(ref expr) = *expansion {
-            def_collector.visit_ast_const_integer(expr);
         });
     }
 }
