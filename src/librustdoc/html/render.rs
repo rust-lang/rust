@@ -89,9 +89,6 @@ pub struct Context {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
     pub current: Vec<String>,
-    /// String representation of how to get back to the root path of the 'doc/'
-    /// folder in terms of a relative URL.
-    pub root_path: String,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     pub dst: PathBuf,
@@ -496,7 +493,6 @@ pub fn run(mut krate: clean::Crate,
     krate = render_sources(&dst, &mut scx, krate)?;
     let cx = Context {
         current: Vec::new(),
-        root_path: String::new(),
         dst: dst,
         render_redirect_pages: false,
         shared: Arc::new(scx),
@@ -1225,6 +1221,12 @@ impl<'a> Cache {
 }
 
 impl Context {
+    /// String representation of how to get back to the root path of the 'doc/'
+    /// folder in terms of a relative URL.
+    fn root_path(&self) -> String {
+        repeat("../").take(self.current.len()).collect::<String>()
+    }
+
     /// Recurse in the directory structure and change the "root path" to make
     /// sure it always points to the top (relatively)
     fn recurse<T, F>(&mut self, s: String, f: F) -> T where
@@ -1235,7 +1237,6 @@ impl Context {
         }
         let prev = self.dst.clone();
         self.dst.push(&s);
-        self.root_path.push_str("../");
         self.current.push(s);
 
         info!("Recursing into {}", self.dst.display());
@@ -1246,8 +1247,6 @@ impl Context {
 
         // Go back to where we were at
         self.dst = prev;
-        let len = self.root_path.len();
-        self.root_path.truncate(len - 3);
         self.current.pop().unwrap();
 
         return ret;
@@ -1310,7 +1309,7 @@ impl Context {
         let keywords = make_item_keywords(it);
         let page = layout::Page {
             css_class: tyname,
-            root_path: &self.root_path,
+            root_path: &self.root_path(),
             title: &title,
             description: &desc,
             keywords: &keywords,
@@ -1324,8 +1323,7 @@ impl Context {
                            &Item{ cx: self, item: it },
                            self.shared.css_file_extension.is_some())?;
         } else {
-            let mut url = repeat("../").take(self.current.len())
-                                       .collect::<String>();
+            let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {
                 for name in &names[..names.len() - 1] {
                     url.push_str(name);
@@ -1487,7 +1485,7 @@ impl<'a> Item<'a> {
             }).map(|l| &l.1);
             let root = match root {
                 Some(&Remote(ref s)) => s.to_string(),
-                Some(&Local) => self.cx.root_path.clone(),
+                Some(&Local) => self.cx.root_path(),
                 None | Some(&Unknown) => return None,
             };
             Some(format!("{root}/{krate}/macro.{name}.html?gotomacrosrc=1",
@@ -1502,7 +1500,7 @@ impl<'a> Item<'a> {
             let path = PathBuf::from(&self.item.source.filename);
             self.cx.shared.local_sources.get(&path).map(|path| {
                 format!("{root}src/{krate}/{path}#{href}",
-                        root = self.cx.root_path,
+                        root = self.cx.root_path(),
                         krate = self.cx.shared.layout.krate,
                         path = path,
                         href = href)
@@ -1526,7 +1524,7 @@ impl<'a> Item<'a> {
             };
             let mut path = match cache.extern_locations.get(&self.item.def_id.krate) {
                 Some(&(_, Remote(ref s))) => s.to_string(),
-                Some(&(_, Local)) => self.cx.root_path.clone(),
+                Some(&(_, Local)) => self.cx.root_path(),
                 Some(&(_, Unknown)) => return None,
                 None => return None,
             };
@@ -2913,7 +2911,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 write!(fmt, "::<wbr>")?;
             }
             write!(fmt, "<a href='{}index.html'>{}</a>",
-                   &cx.root_path[..(cx.current.len() - i - 1) * 3],
+                   &cx.root_path()[..(cx.current.len() - i - 1) * 3],
                    *name)?;
         }
         write!(fmt, "</p>")?;
