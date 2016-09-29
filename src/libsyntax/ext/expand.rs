@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, Ident, Mac_, PatKind};
+use ast::{Block, Ident, Mac_, PatKind};
 use ast::{Name, MacStmtStyle, StmtKind, ItemKind};
 use ast;
 use ext::hygiene::Mark;
@@ -26,6 +26,7 @@ use parse::parser::Parser;
 use parse::token::{self, intern, keywords};
 use print::pprust;
 use ptr::P;
+use std_inject;
 use tokenstream::{TokenTree, TokenStream};
 use util::small_vector::SmallVector;
 use visit::Visitor;
@@ -186,8 +187,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         MacroExpander { cx: cx, monotonic: monotonic }
     }
 
-    fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
-        let err_count = self.cx.parse_sess.span_diagnostic.err_count();
+    pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
+        self.cx.crate_root = std_inject::injected_crate_name(&krate);
+        let mut module = ModuleData {
+            mod_path: vec![token::str_to_ident(&self.cx.ecfg.crate_name)],
+            directory: PathBuf::from(self.cx.codemap().span_to_filename(krate.span)),
+        };
+        module.directory.pop();
+        self.cx.current_expansion.module = Rc::new(module);
 
         let krate_item = Expansion::Items(SmallVector::one(P(ast::Item {
             attrs: krate.attrs,
@@ -205,10 +212,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             },
             _ => unreachable!(),
         };
-
-        if self.cx.parse_sess.span_diagnostic.err_count() - self.cx.resolve_err_count > err_count {
-            self.cx.parse_sess.span_diagnostic.abort_if_errors();
-        }
 
         krate
     }
@@ -864,18 +867,6 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_pushpop_unsafe = pushpop_unsafe,
         fn enable_rustc_macro = rustc_macro,
     }
-}
-
-pub fn expand_crate(cx: &mut ExtCtxt, c: Crate) -> Crate {
-    cx.initialize(&c);
-    cx.monotonic_expander().expand_crate(c)
-}
-
-// Expands crate using supplied MacroExpander - allows for
-// non-standard expansion behaviour (e.g. step-wise).
-pub fn expand_crate_with_expander(expander: &mut MacroExpander, c: Crate) -> Crate {
-    expander.cx.initialize(&c);
-    expander.expand_crate(c)
 }
 
 // A Marker adds the given mark to the syntax context and
