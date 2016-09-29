@@ -10,6 +10,20 @@
 
 #![crate_type="rlib"]
 
+pub trait Foo {
+  fn foo<T>();
+}
+
+pub struct Bar;
+
+impl Foo for Bar {
+  fn foo<T>() {}
+}
+
+pub fn bar() {
+  Bar::foo::<Bar>();
+}
+
 pub fn some_test_function<T>(t: T) -> T {
   t
 }
