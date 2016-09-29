@@ -99,8 +99,10 @@ impl EmitterWriter {
     pub fn new(dst: Box<Write + Send>,
                code_map: Option<Rc<CodeMapper>>)
                -> EmitterWriter {
-        EmitterWriter { dst: Raw(dst),
-                        cm: code_map}
+        EmitterWriter {
+            dst: Raw(dst),
+            cm: code_map,
+        }
     }
 
     fn preprocess_annotations(&self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {

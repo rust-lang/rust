@@ -79,8 +79,8 @@ fn main() {
         format!("_ _ --sysroot {} --crate-type dylib", path.to_str().unwrap())
         .split(' ').map(|s| s.to_string()).collect();
 
-    let (result, _) = rustc_driver::run_compiler_with_file_loader(
-        &args, &mut JitCalls, box JitLoader);
+    let (result, _) = rustc_driver::run_compiler(
+        &args, &mut JitCalls, Some(box JitLoader), None);
     if let Err(n) = result {
         panic!("Error {}", n);
     }
