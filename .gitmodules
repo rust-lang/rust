@@ -17,3 +17,7 @@
 [submodule "src/liblibc"]
 	path = src/liblibc
 	url = https://github.com/rust-lang/libc.git
+[submodule "src/lld"]
+	path = src/lld
+	url = git://github.com/japaric/lld.git
+	branch = rust-lld-2016-07-09

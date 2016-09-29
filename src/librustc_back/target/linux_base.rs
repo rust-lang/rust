@@ -30,6 +30,11 @@ pub fn opts() -> TargetOptions {
             // Always enable NX protection when it is available
             "-Wl,-z,noexecstack".to_string(),
         ],
+        pre_lld_args: vec![
+            "--as-needed".to_string(),
+            "-z".to_string(),
+            "noexecstack".to_string(),
+        ],
         position_independent_executables: true,
         exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: true,

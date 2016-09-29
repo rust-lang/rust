@@ -196,6 +196,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_lld"
+version = "0.0.0"
+dependencies = [
+ "build_helper 0.1.0",
+ "gcc 0.3.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_llvm 0.0.0",
+]
+
+[[package]]
 name = "rustc_llvm"
 version = "0.0.0"
 dependencies = [
@@ -324,6 +333,7 @@ dependencies = [
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_incremental 0.0.0",
+ "rustc_lld 0.0.0",
  "rustc_llvm 0.0.0",
  "rustc_platform_intrinsics 0.0.0",
  "serialize 0.0.0",

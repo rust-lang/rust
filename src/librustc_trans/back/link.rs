@@ -10,6 +10,8 @@
 
 use super::archive::{ArchiveBuilder, ArchiveConfig};
 use super::linker::Linker;
+#[cfg(feature = "lld")]
+use super::linker::LldLinker;
 use super::rpath::RPathConfig;
 use super::rpath;
 use super::msvc;
@@ -30,6 +32,8 @@ use rustc::hir::def_id::CrateNum;
 use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
 use rustc_incremental::IncrementalHashesMap;
+#[cfg(feature = "lld")]
+use lld::ffi;
 
 use std::ascii;
 use std::char;
@@ -351,9 +355,20 @@ fn link_binary_output(sess: &Session,
         config::CrateTypeStaticlib => {
             link_staticlib(sess, &objects, &out_filename, tmpdir.path());
         }
+        #[cfg(not(feature = "lld"))]
         _ => {
             link_natively(sess, crate_type, &objects, &out_filename, trans,
                           outputs, tmpdir.path());
+        }
+        #[cfg(feature = "lld")]
+        _ => {
+            if sess.opts.debugging_opts.use_lld {
+                link_natively_using_lld(sess, crate_type, &objects, &out_filename,
+                                        outputs, tmpdir.path());
+            } else {
+                link_natively(sess, crate_type, &objects, &out_filename, trans,
+                              outputs, tmpdir.path());
+            }
         }
     }
 
@@ -604,6 +619,51 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
     }
 }
 
+#[cfg(feature = "lld")]
+fn link_natively_using_lld(sess: &Session,
+                           crate_type: config::CrateType,
+                           objects: &[PathBuf],
+                           out_filename: &Path,
+                           outputs: &OutputFilenames,
+                           tmpdir: &Path) {
+    let mut lld = LldLinker::new();
+
+    let root = sess.target_filesearch(PathKind::Native).get_lib_path();
+    lld.cmd_like_args(&sess.target.target.options.pre_lld_args);
+
+    let pre_link_objects = if crate_type == config::CrateTypeExecutable {
+        &sess.target.target.options.pre_link_objects_exe
+    } else {
+        &sess.target.target.options.pre_link_objects_dll
+    };
+    for obj in pre_link_objects {
+        lld.cmd_like_arg(root.join(obj));
+    }
+
+    link_args(&mut lld, sess, crate_type, tmpdir,
+                objects, out_filename, outputs);
+    lld.cmd_like_args(&sess.target.target.options.late_link_args);
+    for obj in &sess.target.target.options.post_link_objects {
+        lld.cmd_like_arg(root.join(obj));
+    }
+    lld.cmd_like_args(&sess.target.target.options.post_lld_args);
+
+    if sess.opts.debugging_opts.print_link_args {
+        println!("{:?}", lld.args());
+    }
+
+    // May have not found libraries in the right formats.
+    sess.abort_if_errors();
+
+    // Invoke the linker
+    time(sess.time_passes(), "running linker", || {
+        let args = lld.args().iter().map(|s| s.as_ptr()).collect::<Vec<_>>();
+        unsafe {
+            assert!(ffi::LldRustElfLink(args.as_ptr(), args.len() as u32));
+        }
+    });
+}
+
 // Create a dynamic library or executable
 //
 // This will invoke the system linker/cc to create the resulting file. This
@@ -661,8 +721,8 @@ fn link_natively(sess: &Session,
                     .unwrap_or_else(|_| {
                         let mut x = "Non-UTF-8 output: ".to_string();
                         x.extend(s.iter()
-                                 .flat_map(|&b| ascii::escape_default(b))
-                                 .map(|b| char::from_u32(b as u32).unwrap()));
+                                .flat_map(|&b| ascii::escape_default(b))
+                                .map(|b| char::from_u32(b as u32).unwrap()));
                         x
                     })
             }
@@ -670,8 +730,8 @@ fn link_natively(sess: &Session,
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
                 sess.struct_err(&format!("linking with `{}` failed: {}",
-                                         pname,
-                                         prog.status))
+                                        pname,
+                                        prog.status))
                     .note(&format!("{:?}", &cmd))
                     .note(&escape_string(&output[..]))
                     .emit();

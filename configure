@@ -628,6 +628,7 @@ opt rustbuild 0 "use the rust and cargo based build system"
 opt codegen-tests 1 "run the src/test/codegen tests"
 opt option-checking 1 "complain about unrecognized options in this configure script"
 opt ninja 0 "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)"
+opt lld 1 "Build and embed lld, the LLVM linker, into rustc"
 
 # Optimization and debugging options. These may be overridden by the release channel, etc.
 opt_nosave optimize 1 "build optimized rust code"

@@ -308,6 +308,11 @@ pub fn krate(build: &Build,
             continue
         }
 
+        // FIXME(maybe) rustc_lld doesn't work right now but it doesn't have any tests anyway
+        if crate_name.contains("rustc_lld") {
+            continue
+        }
+
         cargo.arg("-p").arg(crate_name);
     }
 

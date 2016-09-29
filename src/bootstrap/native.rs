@@ -75,6 +75,11 @@ pub fn llvm(build: &Build, target: &str) {
        .define("LLVM_ENABLE_LIBEDIT", "OFF")
        .define("LLVM_PARALLEL_COMPILE_JOBS", build.jobs().to_string());
 
+    if build.config.lld {
+        cfg.define("LLVM_EXTERNAL_LLD_SOURCE_DIR", build.src.join("src/lld"));
+        cfg.define("LLVM_EXTERNAL_PROJECTS", "lld");
+    }
+
     if target.starts_with("i686") {
         cfg.define("LLVM_BUILD_32_BITS", "ON");
     }

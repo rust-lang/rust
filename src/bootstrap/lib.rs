@@ -557,6 +557,11 @@ impl Build {
                 continue
             }
 
+            if submodule.path.components().any(|c| c == Component::Normal("lld".as_ref())) &&
+                !self.config.lld {
+                    continue
+            }
+
             match submodule.state {
                 State::MaybeDirty => {
                     // drop staged changes
@@ -732,6 +737,9 @@ impl Build {
         let mut features = String::new();
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
+        }
+        if self.config.lld {
+            features.push_str(" lld");
         }
         return features
     }

@@ -10,6 +10,8 @@
 
 use std::collections::HashMap;
 use std::ffi::OsString;
+#[cfg(feature = "lld")]
+use std::ffi::{CString, OsStr};
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
@@ -92,6 +94,161 @@ pub trait Linker {
     fn whole_archives(&mut self);
     fn no_whole_archives(&mut self);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType);
+}
+
+#[cfg(feature = "lld")]
+pub struct LldLinker {
+    args: Vec<CString>,
+}
+
+#[cfg(feature = "lld")]
+fn cstring<S>(s: S) -> CString
+    where S: Into<Vec<u8>>
+{
+    CString::new(s).unwrap()
+}
+
+#[cfg(feature = "lld")]
+impl LldLinker {
+    pub fn new() -> Self {
+        // NOTE The first argument will be skipped, but we must set it to something. Using lld here
+        // matches the behavior of the `lld` tool.
+        LldLinker { args: vec![cstring("lld")] }
+    }
+
+    pub fn cmd_like_arg<S>(&mut self, arg: S)
+        where S: AsRef<OsStr>
+    {
+        self.args.push(cstring(arg.as_ref().to_string_lossy().into_owned()))
+    }
+
+    pub fn cmd_like_args<S>(&mut self, args: &[S])
+        where S: AsRef<OsStr>
+    {
+        for arg in args {
+            self.cmd_like_arg(arg)
+        }
+    }
+
+    pub fn args(&self) -> &[CString] {
+        &self.args
+    }
+}
+
+#[cfg(feature = "lld")]
+impl Linker for LldLinker {
+    fn link_dylib(&mut self, lib: &str) {
+        self.args.push(cstring("-l"));
+        self.args.push(cstring(lib));
+    }
+
+    fn link_staticlib(&mut self, lib: &str) {
+        self.args.push(cstring("-l"));
+        self.args.push(cstring(lib));
+    }
+
+    fn link_rlib(&mut self, lib: &Path) {
+        self.cmd_like_arg(lib);
+    }
+
+    fn include_path(&mut self, path: &Path) {
+        self.args.push(cstring("-L"));
+        self.cmd_like_arg(path);
+    }
+
+    fn framework_path(&mut self, _: &Path) {
+        // TODO
+    }
+
+    fn output_filename(&mut self, path: &Path) {
+        self.args.push(cstring("-o"));
+        self.cmd_like_arg(path);
+    }
+
+    fn add_object(&mut self, path: &Path) {
+        self.cmd_like_arg(path);
+    }
+
+    fn position_independent_executable(&mut self) {
+        // TODO --pie support disabled. Raise a warning
+    }
+
+    fn args(&mut self, args: &[String]) {
+        self.args.extend(args.iter().cloned().map(cstring))
+    }
+
+    fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
+        self.args.push(cstring("-l"));
+        self.args.push(cstring(lib));
+    }
+
+    fn link_framework(&mut self, _: &str) {
+        // TODO
+    }
+
+    fn link_whole_staticlib(&mut self, lib: &str, _: &[PathBuf]) {
+        // TODO OSX
+        self.whole_archives();
+        self.args.push(cstring("-l"));
+        self.args.push(cstring(lib));
+        self.no_whole_archives();
+    }
+
+    fn link_whole_rlib(&mut self, lib: &Path) {
+        // TODO OSX
+        self.whole_archives();
+        self.cmd_like_arg(lib);
+        self.no_whole_archives();
+    }
+
+    fn gc_sections(&mut self, _: bool) {
+        self.args.push(cstring("--gc-sections"));
+    }
+
+    fn optimize(&mut self) {
+        // TODO
+    }
+
+    fn debuginfo(&mut self) {
+        // TODO fact check this
+        // Don't do anything special here for GNU-style linkers.
+    }
+
+    fn no_default_libraries(&mut self) {
+        // NOTE lld doesn't pass any library by default
+    }
+
+    fn build_dylib(&mut self, _: &Path) {
+        // TODO
+    }
+
+    fn whole_archives(&mut self) {
+        // TODO take_hints?
+        // if !self.takes_hints() { return }
+        self.args.push(cstring("--whole-archive"));
+    }
+
+    fn no_whole_archives(&mut self) {
+        // TODO take_hints?
+        // if !self.takes_hints() { return }
+        self.args.push(cstring("--no-whole-archive"));
+    }
+
+    fn hint_static(&mut self) {
+        // TODO take_hints?
+        // if !self.takes_hints() { return }
+        self.args.push(cstring("--Bstatic"));
+    }
+
+    fn hint_dynamic(&mut self) {
+        // TODO take_hints?
+        // if !self.takes_hints() { return }
+        self.args.push(cstring("--Bdynamic"));
+    }
+
+    fn export_symbols(&mut self, _: &Path, _: CrateType) {
+        // TODO
+    }
 }
 
 pub struct GnuLinker<'a> {
