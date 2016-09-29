@@ -8,7 +8,6 @@ install:
   - curl -sSf -o rustup-init.exe https://win.rustup.rs
   - rustup-init.exe --default-host %TARGET% --default-toolchain nightly -y
   - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
-  - gem install gist
   - rustc -Vv
   - cargo -V
 
@@ -19,11 +18,6 @@ test_script:
   - cargo build --release
   - cargo test
   - cargo test --release
-
-on_success:
-  - cmd: |
-      CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat"
-      dumpbin /disasm target/release/librustc_builtins.rlib | gist -d "'%TARGET%/rustc-builtins.rlib' from commit '%APPVEYOR_REPO_COMMIT%' on branch '%APPVEYOR_REPO_branch%'"
 
 branches:
   only:
