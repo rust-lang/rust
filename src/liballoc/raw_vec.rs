@@ -44,7 +44,6 @@ use core::cmp;
 /// `shrink_to_fit`, and `from_box` will actually set RawVec's private capacity
 /// field. This allows zero-sized types to not be special-cased by consumers of
 /// this type.
-#[cfg_attr(stage0, unsafe_no_drop_flag)]
 pub struct RawVec<T> {
     ptr: Unique<T>,
     cap: usize,

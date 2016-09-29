@@ -268,7 +268,6 @@ use super::range::RangeArgument;
 /// Vec does not currently guarantee the order in which elements are dropped
 /// (the order has changed in the past, and may change again).
 ///
-#[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
     buf: RawVec<T>,
