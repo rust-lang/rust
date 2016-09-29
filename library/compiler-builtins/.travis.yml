@@ -3,7 +3,6 @@ language: rust
 services: docker
 sudo: required
 rust: nightly
-cache: cargo
 
 matrix:
   include:
@@ -25,18 +24,11 @@ matrix:
     - env: TARGET=mipsel-unknown-linux-gnu
     - env: TARGET=powerpc-unknown-linux-gnu
     - env: TARGET=powerpc64-unknown-linux-gnu
-    # QEMU crashes even when executing the simplest cross compiled C program:
-    # `int main() { return 0; }`
-    - env: TARGET=powerpc64le-unknown-linux-gnu NO_RUN=1
+    - env: TARGET=powerpc64le-unknown-linux-gnu
     - env: TARGET=thumbv6m-none-eabi
-      install: cargo install xargo --debug -f
-      script: $HOME/.cargo/bin/xargo build --target $TARGET
     - env: TARGET=thumbv7em-none-eabi
-      install: cargo install xargo --debug -f
-      script: $HOME/.cargo/bin/xargo build --target $TARGET
     - env: TARGET=thumbv7em-none-eabihf
-      install: cargo install xargo --debug -f
-      script: $HOME/.cargo/bin/xargo build --target $TARGET
+    - env: TARGET=thumbv7m-none-eabi
     - env: TARGET=x86_64-apple-darwin
       os: osx
 env: TARGET=x86_64-unknown-linux-gnu
@@ -45,8 +37,10 @@ before_install:
   - test "$TRAVIS_OS_NAME" = "osx" || docker run --rm --privileged multiarch/qemu-user-static:register
 
 install:
-  - curl https://static.rust-lang.org/rustup.sh |
-    sh -s -- --add-target=$TARGET --disable-sudo -y --prefix=`rustc --print sysroot`
+  - if case $TARGET in thumb*) false;; *) true;; esac; then
+      curl https://static.rust-lang.org/rustup.sh |
+      sh -s -- --add-target=$TARGET --disable-sudo -y --prefix=`rustc --print sysroot`;
+    fi
 
 script:
   - cargo generate-lockfile
