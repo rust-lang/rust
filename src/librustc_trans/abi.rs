@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, ValueRef};
+use llvm::{self, ValueRef, Integer, Pointer, Float, Double, Struct, Array, Vector};
 use base;
 use build::AllocaFcx;
 use common::{type_is_fat_ptr, BlockAndBuilder, C_uint};
@@ -596,5 +596,75 @@ impl FnType {
         if self.cconv != llvm::CCallConv {
             llvm::SetInstructionCallConv(callsite, self.cconv);
         }
+    }
+}
+
+pub fn align_up_to(off: usize, a: usize) -> usize {
+    return (off + a - 1) / a * a;
+}
+
+fn align(off: usize, ty: Type, pointer: usize) -> usize {
+    let a = ty_align(ty, pointer);
+    return align_up_to(off, a);
+}
+
+pub fn ty_align(ty: Type, pointer: usize) -> usize {
+    match ty.kind() {
+        Integer => ((ty.int_width() as usize) + 7) / 8,
+        Pointer => pointer,
+        Float => 4,
+        Double => 8,
+        Struct => {
+            if ty.is_packed() {
+                1
+            } else {
+                let str_tys = ty.field_types();
+                str_tys.iter().fold(1, |a, t| cmp::max(a, ty_align(*t, pointer)))
+            }
+        }
+        Array => {
+            let elt = ty.element_type();
+            ty_align(elt, pointer)
+        }
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            ty_align(elt, pointer) * len
+        }
+        _ => bug!("ty_align: unhandled type")
+    }
+}
+
+pub fn ty_size(ty: Type, pointer: usize) -> usize {
+    match ty.kind() {
+        Integer => ((ty.int_width() as usize) + 7) / 8,
+        Pointer => pointer,
+        Float => 4,
+        Double => 8,
+        Struct => {
+            if ty.is_packed() {
+                let str_tys = ty.field_types();
+                str_tys.iter().fold(0, |s, t| s + ty_size(*t, pointer))
+            } else {
+                let str_tys = ty.field_types();
+                let size = str_tys.iter().fold(0, |s, t| {
+                    align(s, *t, pointer) + ty_size(*t, pointer)
+                });
+                align(size, ty, pointer)
+            }
+        }
+        Array => {
+            let len = ty.array_length();
+            let elt = ty.element_type();
+            let eltsz = ty_size(elt, pointer);
+            len * eltsz
+        }
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            let eltsz = ty_size(elt, pointer);
+            len * eltsz
+        },
+        _ => bug!("ty_size: unhandled type")
     }
 }
