@@ -74,6 +74,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::session::config::nightly_options;
+use rustc::session::early_error;
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc_metadata::loader;
@@ -92,8 +93,6 @@ use std::rc::Rc;
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
-
-use rustc::session::early_error;
 
 use syntax::{ast, json};
 use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
@@ -131,17 +130,18 @@ pub fn abort_on_err<T>(result: Result<T, usize>, sess: &Session) -> T {
     }
 }
 
-pub fn run(args: Vec<String>) -> isize {
+pub fn run<F>(run_compiler: F) -> isize
+    where F: FnOnce() -> (CompileResult, Option<Session>) + Send + 'static
+{
     monitor(move || {
-        let (result, session) = run_compiler(&args, &mut RustcDefaultCalls);
+        let (result, session) = run_compiler();
         if let Err(err_count) = result {
             if err_count > 0 {
                 match session {
                     Some(sess) => sess.fatal(&abort_msg(err_count)),
                     None => {
                         let emitter =
-                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
-                                                                   None);
+                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto, None);
                         let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
                         handler.emit(&MultiSpan::new(),
                                      &abort_msg(err_count),
@@ -155,20 +155,15 @@ pub fn run(args: Vec<String>) -> isize {
     0
 }
 
-pub fn run_compiler<'a>(args: &[String],
-                        callbacks: &mut CompilerCalls<'a>)
-                        -> (CompileResult, Option<Session>) {
-    run_compiler_with_file_loader(args, callbacks, box RealFileLoader)
-}
-
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
-pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
-                                            callbacks: &mut CompilerCalls<'a>,
-                                            loader: Box<L>)
-                                            -> (CompileResult, Option<Session>)
-    where L: FileLoader + 'static {
+pub fn run_compiler<'a>(args: &[String],
+                        callbacks: &mut CompilerCalls<'a>,
+                        file_loader: Option<Box<FileLoader + 'static>>,
+                        emitter_dest: Option<Box<Write + Send>>)
+                        -> (CompileResult, Option<Session>)
+{
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
             Compilation::Stop => return (Ok(()), $sess),
@@ -207,13 +202,16 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
 
     let dep_graph = DepGraph::new(sopts.build_dep_graph());
     let cstore = Rc::new(CStore::new(&dep_graph));
+
+    let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader));
     let sess = session::build_session_with_codemap(sopts,
                                                    &dep_graph,
                                                    input_file_path,
                                                    descriptions,
                                                    cstore.clone(),
-                                                   codemap);
+                                                   codemap,
+                                                   emitter_dest);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let mut cfg = config::build_configuration(&sess, cfg);
     target_features::add_configuration(&mut cfg, &sess);
@@ -1144,6 +1142,9 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
 }
 
 pub fn main() {
-    let result = run(env::args().collect());
+    let result = run(|| run_compiler(&env::args().collect::<Vec<_>>(),
+                                     &mut RustcDefaultCalls,
+                                     None,
+                                     None));
     process::exit(result as i32);
 }
