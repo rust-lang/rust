@@ -314,9 +314,11 @@ impl CString {
 }
 
 // Turns this `CString` into an empty string to prevent
-// memory unsafe code from working by accident.
+// memory unsafe code from working by accident. Inline
+// to prevent LLVM from optimizing it away in debug builds.
 #[stable(feature = "cstring_drop", since = "1.13.0")]
 impl Drop for CString {
+    #[inline]
     fn drop(&mut self) {
         unsafe { *self.inner.get_unchecked_mut(0) = 0; }
     }
