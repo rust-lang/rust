@@ -30,7 +30,6 @@
 use syntax::ast;
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
@@ -43,10 +42,12 @@ use rustc::session::config::DebugInfoLevel::NoDebugInfo;
 use self::def_path_hash::DefPathHashes;
 use self::svh_visitor::StrictVersionHashVisitor;
 use self::caching_codemap_view::CachingCodemapView;
+use self::hasher::IchHasher;
 
 mod def_path_hash;
 mod svh_visitor;
 mod caching_codemap_view;
+mod hasher;
 
 pub struct IncrementalHashesMap {
     hashes: FnvHashMap<DepNode<DefId>, u64>,
@@ -73,6 +74,10 @@ impl IncrementalHashesMap {
 
     pub fn iter<'a>(&'a self) -> ::std::collections::hash_map::Iter<'a, DepNode<DefId>, u64> {
         self.hashes.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.hashes.len()
     }
 }
 
@@ -102,6 +107,9 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                  |v| visit::walk_crate(v, krate));
         krate.visit_all_items(&mut visitor);
     });
+
+    tcx.sess.perf_stats.incr_comp_hashes_count.set(visitor.hashes.len() as u64);
+
     record_time(&tcx.sess.perf_stats.svh_time, || visitor.compute_crate_hash());
     visitor.hashes
 }
@@ -127,9 +135,7 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
     {
         assert!(def_id.is_local());
         debug!("HashItemsVisitor::calculate(def_id={:?})", def_id);
-        // FIXME: this should use SHA1, not DefaultHasher. DefaultHasher is not
-        // built to avoid collisions.
-        let mut state = DefaultHasher::new();
+        let mut state = IchHasher::new();
         walk_op(&mut StrictVersionHashVisitor::new(&mut state,
                                                    self.tcx,
                                                    &mut self.def_path_hashes,
@@ -138,12 +144,16 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
         let item_hash = state.finish();
         self.hashes.insert(DepNode::Hir(def_id), item_hash);
         debug!("calculate_item_hash: def_id={:?} hash={:?}", def_id, item_hash);
+
+        let bytes_hashed = self.tcx.sess.perf_stats.incr_comp_bytes_hashed.get() +
+                           state.bytes_hashed();
+        self.tcx.sess.perf_stats.incr_comp_bytes_hashed.set(bytes_hashed);
     }
 
     fn compute_crate_hash(&mut self) {
         let krate = self.tcx.map.krate();
 
-        let mut crate_state = DefaultHasher::new();
+        let mut crate_state = IchHasher::new();
 
         let crate_disambiguator = self.tcx.sess.local_crate_disambiguator();
         "crate_disambiguator".hash(&mut crate_state);
