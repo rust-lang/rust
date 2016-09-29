@@ -756,6 +756,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                skol_map,
                value);
 
+        if skol_map.is_empty() {
+            return self.resolve_type_vars_if_possible(value);
+        }
+
         // Compute a mapping from the "taint set" of each skolemized
         // region back to the `ty::BoundRegion` that it originally
         // represented. Because `leak_check` passed, we know that
@@ -812,9 +816,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         });
-
-        debug!("plug_leaks: result={:?}",
-               result);
 
         self.pop_skolemized(skol_map, snapshot);
 
