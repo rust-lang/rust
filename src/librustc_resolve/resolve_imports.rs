@@ -683,9 +683,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         };
 
         match (value_result, type_result) {
-            // With `#![feature(item_like_imports)]`, all namespaces
-            // must be re-exported with extra visibility for an error to occur.
-            (Ok(value_binding), Ok(type_binding)) if self.new_import_semantics => {
+            // All namespaces must be re-exported with extra visibility for an error to occur.
+            (Ok(value_binding), Ok(type_binding)) => {
                 let vis = directive.vis.get();
                 if !value_binding.pseudo_vis().is_at_least(vis, self) &&
                    !type_binding.pseudo_vis().is_at_least(vis, self) {

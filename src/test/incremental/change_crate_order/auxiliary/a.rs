@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(compiler_builtins)]
-#![no_std]
-#![compiler_builtins]
-#![unstable(feature = "compiler_builtins_lib",
-            reason = "internal implementation detail of rustc right now",
-            issue = "0")]
-#![crate_name = "compiler_builtins"]
-#![crate_type = "rlib"]
-#![feature(staged_api)]
+#![crate_type="rlib"]
+
+pub static A : u32 = 32;
+

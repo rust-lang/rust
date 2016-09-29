@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,24 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
+// aux-build:a.rs
+// aux-build:b.rs
+// revisions:rpass1 rpass2
 
-mod mod_dir_simple {
-    #[path = "test.rs"]
-    pub mod syrup;
-}
+#![feature(rustc_attrs)]
 
+
+#[cfg(rpass1)]
+extern crate a;
+#[cfg(rpass1)]
+extern crate b;
+
+#[cfg(rpass2)]
+extern crate b;
+#[cfg(rpass2)]
+extern crate a;
+
+use a::A;
+use b::B;
+
+//? #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
 pub fn main() {
-    assert_eq!(mod_dir_simple::syrup::foo(), 10);
-
-    #[path = "auxiliary"]
-    mod foo {
-        mod two_macros;
-    }
-
-    #[path = "auxiliary"]
-    mod bar {
-        macro_rules! m { () => { mod two_macros; } }
-        m!();
-    }
+    A + B;
 }

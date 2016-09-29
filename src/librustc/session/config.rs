@@ -19,6 +19,7 @@ pub use self::DebugInfoLevel::*;
 use session::{early_error, early_warn, Session};
 use session::search_paths::SearchPaths;
 
+use rustc_back::PanicStrategy;
 use rustc_back::target::Target;
 use lint;
 use middle::cstore;
@@ -492,21 +493,6 @@ impl Passes {
     }
 }
 
-#[derive(Clone, PartialEq, Hash, RustcEncodable, RustcDecodable)]
-pub enum PanicStrategy {
-    Unwind,
-    Abort,
-}
-
-impl PanicStrategy {
-    pub fn desc(&self) -> &str {
-        match *self {
-            PanicStrategy::Unwind => "unwind",
-            PanicStrategy::Abort => "abort",
-        }
-    }
-}
-
 /// Declare a macro that will define all CodegenOptions/DebuggingOptions fields and parsers all
 /// at once. The goal of this macro is to define an interface that can be
 /// programmatically used by the option parser in order to initialize the struct
@@ -620,7 +606,8 @@ macro_rules! options {
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses, PanicStrategy};
+        use super::{$struct_name, Passes, SomePasses, AllPasses};
+        use rustc_back::PanicStrategy;
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -732,10 +719,10 @@ macro_rules! options {
             }
         }
 
-        fn parse_panic_strategy(slot: &mut PanicStrategy, v: Option<&str>) -> bool {
+        fn parse_panic_strategy(slot: &mut Option<PanicStrategy>, v: Option<&str>) -> bool {
             match v {
-                Some("unwind") => *slot = PanicStrategy::Unwind,
-                Some("abort") => *slot = PanicStrategy::Abort,
+                Some("unwind") => *slot = Some(PanicStrategy::Unwind),
+                Some("abort") => *slot = Some(PanicStrategy::Abort),
                 _ => return false
             }
             true
@@ -809,7 +796,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "explicitly enable the cfg(debug_assertions) directive"),
     inline_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
         "set the inlining threshold for"),
-    panic: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy,
+    panic: Option<PanicStrategy> = (None, parse_panic_strategy,
         [TRACKED], "panic strategy to compile crate with"),
 }
 
@@ -1665,9 +1652,10 @@ mod dep_tracking {
     use std::collections::BTreeMap;
     use std::hash::{Hash, SipHasher};
     use std::path::PathBuf;
-    use super::{Passes, PanicStrategy, CrateType, OptLevel, DebugInfoLevel,
+    use super::{Passes, CrateType, OptLevel, DebugInfoLevel,
                 OutputTypes, Externs, ErrorOutputType};
     use syntax::feature_gate::UnstableFeatures;
+    use rustc_back::PanicStrategy;
 
     pub trait DepTrackingHash {
         fn hash(&self, &mut SipHasher, ErrorOutputType);
@@ -1706,6 +1694,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<bool>);
     impl_dep_tracking_hash_via_hash!(Option<usize>);
     impl_dep_tracking_hash_via_hash!(Option<String>);
+    impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
     impl_dep_tracking_hash_via_hash!(CrateType);
@@ -1772,7 +1761,8 @@ mod tests {
     use std::iter::FromIterator;
     use std::path::PathBuf;
     use std::rc::Rc;
-    use super::{OutputType, OutputTypes, Externs, PanicStrategy};
+    use super::{OutputType, OutputTypes, Externs};
+    use rustc_back::PanicStrategy;
     use syntax::{ast, attr};
     use syntax::parse::token::InternedString;
     use syntax::codemap::dummy_spanned;
@@ -2318,7 +2308,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.cg.panic = PanicStrategy::Abort;
+        opts.cg.panic = Some(PanicStrategy::Abort);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 

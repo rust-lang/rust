@@ -32,7 +32,6 @@ use ty::{self, Ty, TyCtxt};
 use mir::repr::Mir;
 use mir::mir_map::MirMap;
 use session::Session;
-use session::config::PanicStrategy;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeSet, DefIdMap};
 use std::path::PathBuf;
@@ -46,6 +45,7 @@ use syntax_pos::Span;
 use rustc_back::target::Target;
 use hir;
 use hir::intravisit::Visitor;
+use rustc_back::PanicStrategy;
 
 pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};
 

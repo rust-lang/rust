@@ -764,6 +764,13 @@ bound-list := bound | bound '+' bound-list
 bound := path | lifetime
 ```
 
+### Never type
+An empty type
+
+```antlr
+never_type : "!" ;
+```
+
 ### Object types
 
 **FIXME:** grammar?

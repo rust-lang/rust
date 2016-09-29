@@ -127,7 +127,6 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// }
 /// ```
 
-#[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
     ptr: Shared<ArcInner<T>>,
@@ -153,7 +152,6 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 /// nodes behind strong `Arc<T>` pointers, and then storing the parent pointers
 /// as `Weak<T>` pointers.
 
-#[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     ptr: Shared<ArcInner<T>>,

@@ -12,15 +12,11 @@
 // for a pre-z13 machine or using -mno-vx.
 
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
-use abi::{FnType, ArgType};
+use abi::{align_up_to, FnType, ArgType};
 use context::CrateContext;
 use type_::Type;
 
 use std::cmp;
-
-fn align_up_to(off: usize, a: usize) -> usize {
-    return (off + a - 1) / a * a;
-}
 
 fn align(off: usize, ty: Type) -> usize {
     let a = ty_align(ty);

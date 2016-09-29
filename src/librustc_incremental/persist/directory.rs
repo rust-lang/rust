@@ -20,6 +20,7 @@ use rustc::ty::TyCtxt;
 use rustc::util::nodemap::DefIdMap;
 use std::fmt::{self, Debug};
 use std::iter::once;
+use std::collections::HashMap;
 
 /// Index into the DefIdDirectory
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, Hash, PartialEq, Eq,
@@ -90,18 +91,29 @@ impl DefIdDirectory {
     }
 
     pub fn retrace(&self, tcx: TyCtxt) -> RetracedDefIdDirectory {
-        let max_current_crate = self.max_current_crate(tcx);
+
+        fn make_key(name: &str, disambiguator: &str) -> String {
+            format!("{}/{}", name, disambiguator)
+        }
+
+        let new_krates: HashMap<_, _> =
+            once(LOCAL_CRATE)
+            .chain(tcx.sess.cstore.crates())
+            .map(|krate| (make_key(&tcx.crate_name(krate),
+                                   &tcx.crate_disambiguator(krate)), krate))
+            .collect();
 
         let ids = self.paths.iter()
                             .map(|path| {
-                                if self.krate_still_valid(tcx, max_current_crate, path.krate) {
-                                    tcx.retrace_path(path)
+                                let old_krate_id = path.krate.as_usize();
+                                assert!(old_krate_id < self.krates.len());
+                                let old_crate_info = &self.krates[old_krate_id];
+                                let old_crate_key = make_key(&old_crate_info.name,
+                                                         &old_crate_info.disambiguator);
+                                if let Some(&new_crate_key) = new_krates.get(&old_crate_key) {
+                                    tcx.retrace_path(new_crate_key, &path.data)
                                 } else {
-                                    debug!("crate {} changed from {:?} to {:?}/{:?}",
-                                           path.krate,
-                                           self.krates[path.krate.as_usize()],
-                                           tcx.crate_name(path.krate),
-                                           tcx.crate_disambiguator(path.krate));
+                                    debug!("crate {:?} no longer exists", old_crate_key);
                                     None
                                 }
                             })

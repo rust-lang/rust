@@ -15,7 +15,7 @@ use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{DebugInfoLevel, PanicStrategy};
+use session::config::DebugInfoLevel;
 use ty::tls;
 use util::nodemap::{NodeMap, FnvHashMap};
 use util::common::duration_to_secs_str;
@@ -33,6 +33,7 @@ use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{Span, MultiSpan};
 
+use rustc_back::PanicStrategy;
 use rustc_back::target::Target;
 use rustc_data_structures::flock;
 use llvm;
@@ -42,6 +43,7 @@ use std::cell::{self, Cell, RefCell};
 use std::collections::HashMap;
 use std::env;
 use std::ffi::CString;
+use std::io::Write;
 use std::rc::Rc;
 use std::fmt;
 use std::time::Duration;
@@ -306,9 +308,13 @@ impl Session {
     pub fn lto(&self) -> bool {
         self.opts.cg.lto
     }
+    /// Returns the panic strategy for this compile session. If the user explicitly selected one
+    /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
+    pub fn panic_strategy(&self) -> PanicStrategy {
+        self.opts.cg.panic.unwrap_or(self.target.target.options.panic_strategy)
+    }
     pub fn no_landing_pads(&self) -> bool {
-        self.opts.debugging_opts.no_landing_pads ||
-            self.opts.cg.panic == PanicStrategy::Abort
+        self.opts.debugging_opts.no_landing_pads || self.panic_strategy() == PanicStrategy::Abort
     }
     pub fn unstable_options(&self) -> bool {
         self.opts.debugging_opts.unstable_options
@@ -449,7 +455,8 @@ pub fn build_session(sopts: config::Options,
                                local_crate_source_file,
                                registry,
                                cstore,
-                               Rc::new(codemap::CodeMap::new()))
+                               Rc::new(codemap::CodeMap::new()),
+                               None)
 }
 
 pub fn build_session_with_codemap(sopts: config::Options,
@@ -457,7 +464,8 @@ pub fn build_session_with_codemap(sopts: config::Options,
                                   local_crate_source_file: Option<PathBuf>,
                                   registry: errors::registry::Registry,
                                   cstore: Rc<for<'a> CrateStore<'a>>,
-                                  codemap: Rc<codemap::CodeMap>)
+                                  codemap: Rc<codemap::CodeMap>,
+                                  emitter_dest: Option<Box<Write + Send>>)
                                   -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -470,13 +478,20 @@ pub fn build_session_with_codemap(sopts: config::Options,
         .unwrap_or(true);
     let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
 
-    let emitter: Box<Emitter> = match sopts.error_format {
-        config::ErrorOutputType::HumanReadable(color_config) => {
+    let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
+        (config::ErrorOutputType::HumanReadable(color_config), None) => {
             Box::new(EmitterWriter::stderr(color_config,
                                            Some(codemap.clone())))
         }
-        config::ErrorOutputType::Json => {
+        (config::ErrorOutputType::HumanReadable(_), Some(dst)) => {
+            Box::new(EmitterWriter::new(dst,
+                                        Some(codemap.clone())))
+        }
+        (config::ErrorOutputType::Json, None) => {
             Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))
+        }
+        (config::ErrorOutputType::Json, Some(dst)) => {
+            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone()))
         }
     };
 
