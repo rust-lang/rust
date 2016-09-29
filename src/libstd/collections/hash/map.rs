@@ -218,7 +218,7 @@ fn test_resize_policy() {
 /// The hashing algorithm can be replaced on a per-`HashMap` basis using the
 /// `HashMap::default`, `HashMap::with_hasher`, and
 /// `HashMap::with_capacity_and_hasher` methods. Many alternative algorithms
-/// are available on crates.io.
+/// are available on crates.io, such as the `fnv` crate.
 ///
 /// It is required that the keys implement the [`Eq`] and [`Hash`] traits, although
 /// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
