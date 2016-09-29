@@ -18,6 +18,7 @@ use time::Duration;
 
 #[macro_use] pub mod compat;
 
+pub mod args;
 pub mod backtrace;
 pub mod c;
 pub mod condvar;

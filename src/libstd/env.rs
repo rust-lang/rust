@@ -21,6 +21,7 @@ use ffi::{OsStr, OsString};
 use fmt;
 use io;
 use path::{Path, PathBuf};
+use sys;
 use sys::os as os_imp;
 
 /// Returns the current working directory as a `PathBuf`.
@@ -557,7 +558,7 @@ pub struct Args { inner: ArgsOs }
 ///
 /// This structure is created through the `std::env::args_os` method.
 #[stable(feature = "env", since = "1.0.0")]
-pub struct ArgsOs { inner: os_imp::Args }
+pub struct ArgsOs { inner: sys::args::Args }
 
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
@@ -606,7 +607,7 @@ pub fn args() -> Args {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn args_os() -> ArgsOs {
-    ArgsOs { inner: os_imp::args() }
+    ArgsOs { inner: sys::args::args() }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
