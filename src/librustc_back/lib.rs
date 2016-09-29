@@ -45,8 +45,36 @@ extern crate libc;
 extern crate serialize;
 #[macro_use] extern crate log;
 
+extern crate serialize as rustc_serialize; // used by deriving
+
 pub mod tempdir;
 pub mod sha2;
 pub mod target;
 pub mod slice;
 pub mod dynamic_lib;
+
+use serialize::json::{Json, ToJson};
+
+#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+pub enum PanicStrategy {
+    Unwind,
+    Abort,
+}
+
+impl PanicStrategy {
+    pub fn desc(&self) -> &str {
+        match *self {
+            PanicStrategy::Unwind => "unwind",
+            PanicStrategy::Abort => "abort",
+        }
+    }
+}
+
+impl ToJson for PanicStrategy {
+    fn to_json(&self) -> Json {
+        match *self {
+            PanicStrategy::Abort => "abort".to_json(),
+            PanicStrategy::Unwind => "unwind".to_json(),
+        }
+    }
+}

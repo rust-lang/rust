@@ -252,7 +252,6 @@ struct RcBox<T: ?Sized> {
 /// that you have to call them as e.g. `Rc::get_mut(&value)` instead of
 /// `value.get_mut()`.  This avoids conflicts with methods of the inner
 /// type `T`.
-#[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T: ?Sized> {
     ptr: Shared<RcBox<T>>,
@@ -873,7 +872,6 @@ impl<T> From<T> for Rc<T> {
 ///
 /// [rc]: struct.Rc.html
 /// [downgrade]: struct.Rc.html#method.downgrade
-#[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "rc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     ptr: Shared<RcBox<T>>,

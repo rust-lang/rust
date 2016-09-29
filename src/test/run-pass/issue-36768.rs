@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(compiler_builtins)]
-#![no_std]
-#![compiler_builtins]
-#![unstable(feature = "compiler_builtins_lib",
-            reason = "internal implementation detail of rustc right now",
-            issue = "0")]
-#![crate_name = "compiler_builtins"]
-#![crate_type = "rlib"]
-#![feature(staged_api)]
+// compile-flags:--test
+#![deny(private_in_public)]
+
+#[test] fn foo() {}
+mod foo {}
+
+#[test] fn core() {}
+extern crate core;

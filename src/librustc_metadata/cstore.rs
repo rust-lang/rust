@@ -19,7 +19,7 @@ use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex, DefId};
 use rustc::hir::map::DefKey;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::ExternCrate;
-use rustc::session::config::PanicStrategy;
+use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap, FnvHashSet};
 
