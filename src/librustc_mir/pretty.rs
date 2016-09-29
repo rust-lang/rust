@@ -214,6 +214,9 @@ fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {
     format!("scope {} at {}", scope.index(), tcx.sess.codemap().span_to_string(span))
 }
 
+/// Prints user-defined variables in a scope tree.
+///
+/// Returns the total number of variables printed.
 fn write_scope_tree(tcx: TyCtxt,
                     mir: &Mir,
                     scope_tree: &FnvHashMap<VisibilityScope, Vec<VisibilityScope>>,
@@ -234,11 +237,14 @@ fn write_scope_tree(tcx: TyCtxt,
         writeln!(w, "{0:1$}scope {2} {{", "", indent, child.index())?;
 
         // User variable types (including the user's name in a comment).
-        for (id, var) in mir.var_decls.iter_enumerated() {
-            // Skip if not declared in this scope.
-            if var.source_info.scope != child {
+        for local in mir.vars_iter() {
+            let var = &mir.local_decls[local];
+            let (name, source_info) = if var.source_info.unwrap().scope == child {
+                (var.name.unwrap(), var.source_info.unwrap())
+            } else {
+                // Not a variable or not declared in this scope.
                 continue;
-            }
+            };
 
             let mut_str = if var.mutability == Mutability::Mut {
                 "mut "
@@ -251,13 +257,13 @@ fn write_scope_tree(tcx: TyCtxt,
                                        INDENT,
                                        indent,
                                        mut_str,
-                                       id,
+                                       local,
                                        var.ty);
             writeln!(w, "{0:1$} // \"{2}\" in {3}",
                      indented_var,
                      ALIGN,
-                     var.name,
-                     comment(tcx, var.source_info))?;
+                     name,
+                     comment(tcx, source_info))?;
         }
 
         write_scope_tree(tcx, mir, scope_tree, w, child, depth + 1)?;
@@ -291,9 +297,23 @@ fn write_mir_intro<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
+    // Print return pointer
+    let indented_retptr = format!("{}let mut {:?}: {};",
+                                  INDENT,
+                                  RETURN_POINTER,
+                                  mir.return_ty);
+    writeln!(w, "{0:1$} // return pointer",
+             indented_retptr,
+             ALIGN)?;
+
     write_scope_tree(tcx, mir, &scope_tree, w, ARGUMENT_VISIBILITY_SCOPE, 1)?;
 
-    write_mir_decls(mir, w)
+    write_temp_decls(mir, w)?;
+
+    // Add an empty line before the first block is printed.
+    writeln!(w, "")?;
+
+    Ok(())
 }
 
 fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
@@ -313,29 +333,24 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
         write!(w, "(")?;
 
         // fn argument types.
-        for (i, arg) in mir.arg_decls.iter_enumerated() {
-            if i.index() != 0 {
+        for (i, arg) in mir.args_iter().enumerate() {
+            if i != 0 {
                 write!(w, ", ")?;
             }
-            write!(w, "{:?}: {}", Lvalue::Arg(i), arg.ty)?;
+            write!(w, "{:?}: {}", Lvalue::Local(arg), mir.local_decls[arg].ty)?;
         }
 
         write!(w, ") -> {}", mir.return_ty)
     } else {
-        assert!(mir.arg_decls.is_empty());
+        assert_eq!(mir.arg_count, 0);
         write!(w, ": {} =", mir.return_ty)
     }
 }
 
-fn write_mir_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
+fn write_temp_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
     // Compiler-introduced temporary types.
-    for (id, temp) in mir.temp_decls.iter_enumerated() {
-        writeln!(w, "{}let mut {:?}: {};", INDENT, id, temp.ty)?;
-    }
-
-    // Wrote any declaration? Add an empty line before the first block is printed.
-    if !mir.var_decls.is_empty() || !mir.temp_decls.is_empty() {
-        writeln!(w, "")?;
+    for temp in mir.temps_iter() {
+        writeln!(w, "{}let mut {:?}: {};", INDENT, temp, mir.local_decls[temp].ty)?;
     }
 
     Ok(())

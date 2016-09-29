@@ -143,11 +143,11 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     param_env: ty::ParameterEnvironment<'tcx>,
     qualif_map: &'a mut DefIdMap<Qualif>,
     mir_map: Option<&'a MirMap<'tcx>>,
-    temp_qualif: IndexVec<Temp, Option<Qualif>>,
+    temp_qualif: IndexVec<Local, Option<Qualif>>,
     return_qualif: Option<Qualif>,
     qualif: Qualif,
     const_fn_arg_vars: BitVector,
-    temp_promotion_state: IndexVec<Temp, TempState>,
+    temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>
 }
 
@@ -173,10 +173,10 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             param_env: param_env,
             qualif_map: qualif_map,
             mir_map: mir_map,
-            temp_qualif: IndexVec::from_elem(None, &mir.temp_decls),
+            temp_qualif: IndexVec::from_elem(None, &mir.local_decls),
             return_qualif: None,
             qualif: Qualif::empty(),
-            const_fn_arg_vars: BitVector::new(mir.var_decls.len()),
+            const_fn_arg_vars: BitVector::new(mir.local_decls.len()),
             temp_promotion_state: temps,
             promotion_candidates: vec![]
         }
@@ -332,8 +332,10 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
         // Only handle promotable temps in non-const functions.
         if self.mode == Mode::Fn {
-            if let Lvalue::Temp(index) = *dest {
-                if self.temp_promotion_state[index].is_promotable() {
+            if let Lvalue::Local(index) = *dest {
+                if self.mir.local_kind(index) == LocalKind::Temp
+                && self.temp_promotion_state[index].is_promotable() {
+                    debug!("store to promotable temp {:?}", index);
                     store(&mut self.temp_qualif[index]);
                 }
             }
@@ -341,13 +343,20 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         }
 
         match *dest {
-            Lvalue::Temp(index) => store(&mut self.temp_qualif[index]),
-            Lvalue::ReturnPointer => store(&mut self.return_qualif),
+            Lvalue::Local(index) if self.mir.local_kind(index) == LocalKind::Temp => {
+                debug!("store to temp {:?}", index);
+                store(&mut self.temp_qualif[index])
+            }
+            Lvalue::Local(index) if self.mir.local_kind(index) == LocalKind::ReturnPointer => {
+                debug!("store to return pointer {:?}", index);
+                store(&mut self.return_qualif)
+            }
 
             Lvalue::Projection(box Projection {
-                base: Lvalue::Temp(index),
+                base: Lvalue::Local(index),
                 elem: ProjectionElem::Deref
-            }) if self.mir.temp_decls[index].ty.is_unique()
+            }) if self.mir.local_kind(index) == LocalKind::Temp
+               && self.mir.local_decls[index].ty.is_unique()
                && self.temp_qualif[index].map_or(false, |qualif| {
                     qualif.intersects(Qualif::NOT_CONST)
                }) => {
@@ -366,6 +375,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
     /// Qualify a whole const, static initializer or const fn.
     fn qualify_const(&mut self) -> Qualif {
+        debug!("qualifying {} {}", self.mode, self.tcx.item_path_str(self.def_id));
+
         let mir = self.mir;
 
         let mut seen_blocks = BitVector::new(mir.basic_blocks().len());
@@ -399,7 +410,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::Return => {
                     // Check for unused values. This usually means
                     // there are extra statements in the AST.
-                    for temp in mir.temp_decls.indices() {
+                    for temp in mir.temps_iter() {
                         if self.temp_qualif[temp].is_none() {
                             continue;
                         }
@@ -424,9 +435,10 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
                     // Make sure there are no extra unassigned variables.
                     self.qualif = Qualif::NOT_CONST;
-                    for index in 0..mir.var_decls.len() {
-                        if !self.const_fn_arg_vars.contains(index) {
-                            self.assign(&Lvalue::Var(Var::new(index)), Location {
+                    for index in mir.vars_iter() {
+                        if !self.const_fn_arg_vars.contains(index.index()) {
+                            debug!("unassigned variable {:?}", index);
+                            self.assign(&Lvalue::Local(index), Location {
                                 block: bb,
                                 statement_index: usize::MAX,
                             });
@@ -480,23 +492,28 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     context: LvalueContext<'tcx>,
                     location: Location) {
         match *lvalue {
-            Lvalue::Arg(_) => {
-                self.add(Qualif::FN_ARGUMENT);
-            }
-            Lvalue::Var(_) => {
-                self.add(Qualif::NOT_CONST);
-            }
-            Lvalue::Temp(index) => {
-                if !self.temp_promotion_state[index].is_promotable() {
-                    self.add(Qualif::NOT_PROMOTABLE);
-                }
-
-                if let Some(qualif) = self.temp_qualif[index] {
-                    self.add(qualif);
-                } else {
+            Lvalue::Local(local) => match self.mir.local_kind(local) {
+                LocalKind::ReturnPointer => {
                     self.not_const();
                 }
-            }
+                LocalKind::Arg => {
+                    self.add(Qualif::FN_ARGUMENT);
+                }
+                LocalKind::Var => {
+                    self.add(Qualif::NOT_CONST);
+                }
+                LocalKind::Temp => {
+                    if !self.temp_promotion_state[local].is_promotable() {
+                        self.add(Qualif::NOT_PROMOTABLE);
+                    }
+
+                    if let Some(qualif) = self.temp_qualif[local] {
+                        self.add(qualif);
+                    } else {
+                        self.not_const();
+                    }
+                }
+            },
             Lvalue::Static(_) => {
                 self.add(Qualif::STATIC);
                 if self.mode == Mode::Const || self.mode == Mode::ConstFn {
@@ -504,9 +521,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                               "{}s cannot refer to statics, use \
                                a constant instead", self.mode);
                 }
-            }
-            Lvalue::ReturnPointer => {
-                self.not_const();
             }
             Lvalue::Projection(ref proj) => {
                 self.nest(|this| {
@@ -685,8 +699,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 if self.mode == Mode::Fn || self.mode == Mode::ConstFn {
                     if !self.qualif.intersects(Qualif::NEVER_PROMOTE) {
                         // We can only promote direct borrows of temps.
-                        if let Lvalue::Temp(_) = *lvalue {
-                            self.promotion_candidates.push(candidate);
+                        if let Lvalue::Local(local) = *lvalue {
+                            if self.mir.local_kind(local) == LocalKind::Temp {
+                                self.promotion_candidates.push(candidate);
+                            }
                         }
                     }
                 }
@@ -879,17 +895,21 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         self.visit_rvalue(rvalue, location);
 
         // Check the allowed const fn argument forms.
-        if let (Mode::ConstFn, &Lvalue::Var(index)) = (self.mode, dest) {
-            if self.const_fn_arg_vars.insert(index.index()) {
+        if let (Mode::ConstFn, &Lvalue::Local(index)) = (self.mode, dest) {
+            if self.mir.local_kind(index) == LocalKind::Var &&
+               self.const_fn_arg_vars.insert(index.index()) {
+
                 // Direct use of an argument is permitted.
-                if let Rvalue::Use(Operand::Consume(Lvalue::Arg(_))) = *rvalue {
-                    return;
+                if let Rvalue::Use(Operand::Consume(Lvalue::Local(local))) = *rvalue {
+                    if self.mir.local_kind(local) == LocalKind::Arg {
+                        return;
+                    }
                 }
 
                 // Avoid a generic error for other uses of arguments.
                 if self.qualif.intersects(Qualif::FN_ARGUMENT) {
-                    let decl = &self.mir.var_decls[index];
-                    span_err!(self.tcx.sess, decl.source_info.span, E0022,
+                    let decl = &self.mir.local_decls[index];
+                    span_err!(self.tcx.sess, decl.source_info.unwrap().span, E0022,
                               "arguments of constant functions can only \
                                be immutable by-value bindings");
                     return;

@@ -19,9 +19,9 @@ pub struct MirPatch<'tcx> {
     patch_map: IndexVec<BasicBlock, Option<TerminatorKind<'tcx>>>,
     new_blocks: Vec<BasicBlockData<'tcx>>,
     new_statements: Vec<(Location, StatementKind<'tcx>)>,
-    new_temps: Vec<TempDecl<'tcx>>,
+    new_locals: Vec<LocalDecl<'tcx>>,
     resume_block: BasicBlock,
-    next_temp: usize,
+    next_local: usize,
 }
 
 impl<'tcx> MirPatch<'tcx> {
@@ -29,9 +29,9 @@ impl<'tcx> MirPatch<'tcx> {
         let mut result = MirPatch {
             patch_map: IndexVec::from_elem(None, mir.basic_blocks()),
             new_blocks: vec![],
-            new_temps: vec![],
             new_statements: vec![],
-            next_temp: mir.temp_decls.len(),
+            new_locals: vec![],
+            next_local: mir.local_decls.len(),
             resume_block: START_BLOCK
         };
 
@@ -92,11 +92,11 @@ impl<'tcx> MirPatch<'tcx> {
         }
     }
 
-    pub fn new_temp(&mut self, ty: Ty<'tcx>) -> Temp {
-        let index = self.next_temp;
-        self.next_temp += 1;
-        self.new_temps.push(TempDecl { ty: ty });
-        Temp::new(index as usize)
+    pub fn new_temp(&mut self, ty: Ty<'tcx>) -> Local {
+        let index = self.next_local;
+        self.next_local += 1;
+        self.new_locals.push(LocalDecl::new_temp(ty));
+        Local::new(index as usize)
     }
 
     pub fn new_block(&mut self, data: BasicBlockData<'tcx>) -> BasicBlock {
@@ -124,11 +124,11 @@ impl<'tcx> MirPatch<'tcx> {
 
     pub fn apply(self, mir: &mut Mir<'tcx>) {
         debug!("MirPatch: {:?} new temps, starting from index {}: {:?}",
-               self.new_temps.len(), mir.temp_decls.len(), self.new_temps);
+               self.new_locals.len(), mir.local_decls.len(), self.new_locals);
         debug!("MirPatch: {} new blocks, starting from index {}",
                self.new_blocks.len(), mir.basic_blocks().len());
         mir.basic_blocks_mut().extend(self.new_blocks);
-        mir.temp_decls.extend(self.new_temps);
+        mir.local_decls.extend(self.new_locals);
         for (src, patch) in self.patch_map.into_iter_enumerated() {
             if let Some(patch) = patch {
                 debug!("MirPatch: patching block {:?}", src);

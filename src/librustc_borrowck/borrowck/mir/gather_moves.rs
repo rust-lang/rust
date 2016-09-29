@@ -173,13 +173,7 @@ impl fmt::Debug for MoveOut {
 /// Tables mapping from an l-value to its MovePathIndex.
 #[derive(Debug)]
 pub struct MovePathLookup<'tcx> {
-    vars: IndexVec<Var, MovePathIndex>,
-    temps: IndexVec<Temp, MovePathIndex>,
-    args: IndexVec<Arg, MovePathIndex>,
-
-    /// The move path representing the return value is constructed
-    /// lazily when we first encounter it in the input MIR.
-    return_ptr: Option<MovePathIndex>,
+    locals: IndexVec<Local, MovePathIndex>,
 
     /// projections are made from a base-lvalue and a projection
     /// elem. The base-lvalue will have a unique MovePathIndex; we use
@@ -218,16 +212,9 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(mir),
                 rev_lookup: MovePathLookup {
-                    vars: mir.var_decls.indices().map(Lvalue::Var).map(|v| {
+                    locals: mir.local_decls.indices().map(Lvalue::Local).map(|v| {
                         Self::new_move_path(&mut move_paths, &mut path_map, None, v)
                     }).collect(),
-                    temps: mir.temp_decls.indices().map(Lvalue::Temp).map(|t| {
-                        Self::new_move_path(&mut move_paths, &mut path_map, None, t)
-                    }).collect(),
-                    args: mir.arg_decls.indices().map(Lvalue::Arg).map(|a| {
-                        Self::new_move_path(&mut move_paths, &mut path_map, None, a)
-                    }).collect(),
-                    return_ptr: None,
                     projections: FnvHashMap(),
                 },
                 move_paths: move_paths,
@@ -272,23 +259,9 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     {
         debug!("lookup({:?})", lval);
         match *lval {
-            Lvalue::Var(var) => Ok(self.data.rev_lookup.vars[var]),
-            Lvalue::Arg(arg) => Ok(self.data.rev_lookup.args[arg]),
-            Lvalue::Temp(temp) => Ok(self.data.rev_lookup.temps[temp]),
+            Lvalue::Local(local) => Ok(self.data.rev_lookup.locals[local]),
             // error: can't move out of a static
             Lvalue::Static(..) => Err(MovePathError::IllegalMove),
-            Lvalue::ReturnPointer => match self.data.rev_lookup.return_ptr {
-                Some(ptr) => Ok(ptr),
-                ref mut ptr @ None => {
-                    let path = Self::new_move_path(
-                        &mut self.data.move_paths,
-                        &mut self.data.path_map,
-                        None,
-                        lval.clone());
-                    *ptr = Some(path);
-                    Ok(path)
-                }
-            },
             Lvalue::Projection(ref proj) => {
                 self.move_path_for_projection(lval, proj)
             }
@@ -373,11 +346,8 @@ impl<'tcx> MovePathLookup<'tcx> {
     // parent.
     pub fn find(&self, lval: &Lvalue<'tcx>) -> LookupResult {
         match *lval {
-            Lvalue::Var(var) => LookupResult::Exact(self.vars[var]),
-            Lvalue::Temp(temp) => LookupResult::Exact(self.temps[temp]),
-            Lvalue::Arg(arg) => LookupResult::Exact(self.args[arg]),
+            Lvalue::Local(local) => LookupResult::Exact(self.locals[local]),
             Lvalue::Static(..) => LookupResult::Parent(None),
-            Lvalue::ReturnPointer => LookupResult::Exact(self.return_ptr.unwrap()),
             Lvalue::Projection(ref proj) => {
                 match self.find(&proj.base) {
                     LookupResult::Exact(base_path) => {
@@ -486,7 +456,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             TerminatorKind::Unreachable => { }
 
             TerminatorKind::Return => {
-                self.gather_move(loc, &Lvalue::ReturnPointer);
+                self.gather_move(loc, &Lvalue::Local(RETURN_POINTER));
             }
 
             TerminatorKind::If { .. } |

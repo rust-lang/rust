@@ -10,11 +10,12 @@
 
 //! Performs various peephole optimizations.
 
-use rustc::mir::repr::{Location, Lvalue, Mir, Operand, ProjectionElem, Rvalue};
+use rustc::mir::repr::{Location, Lvalue, Mir, Operand, ProjectionElem, Rvalue, Local};
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FnvHashSet;
+use rustc_data_structures::indexed_vec::Idx;
 use std::mem;
 
 pub struct InstCombine {
@@ -61,7 +62,8 @@ impl<'tcx> MutVisitor<'tcx> for InstCombine {
             debug!("Replacing `&*`: {:?}", rvalue);
             let new_lvalue = match *rvalue {
                 Rvalue::Ref(_, _, Lvalue::Projection(ref mut projection)) => {
-                    mem::replace(&mut projection.base, Lvalue::ReturnPointer)
+                    // Replace with dummy
+                    mem::replace(&mut projection.base, Lvalue::Local(Local::new(0)))
                 }
                 _ => bug!("Detected `&*` but didn't find `&*`!"),
             };
@@ -107,4 +109,3 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
 struct OptimizationList {
     and_stars: FnvHashSet<Location>,
 }
-
