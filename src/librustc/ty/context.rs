@@ -17,7 +17,7 @@ use hir::TraitMap;
 use hir::def::DefMap;
 use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use hir::map as ast_map;
-use hir::map::{DefKey, DefPath, DefPathData, DisambiguatedDefPathData};
+use hir::map::{DefKey, DefPathData, DisambiguatedDefPathData};
 use middle::free_region::FreeRegionMap;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime;
@@ -546,8 +546,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn retrace_path(self, path: &DefPath) -> Option<DefId> {
-        debug!("retrace_path(path={:?}, krate={:?})", path, self.crate_name(path.krate));
+    pub fn retrace_path(self,
+                        krate: CrateNum,
+                        path_data: &[DisambiguatedDefPathData])
+                        -> Option<DefId> {
+        debug!("retrace_path(path={:?}, krate={:?})", path_data, self.crate_name(krate));
 
         let root_key = DefKey {
             parent: None,
@@ -557,22 +560,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             },
         };
 
-        let root_index = self.def_index_for_def_key(path.krate, root_key)
+        let root_index = self.def_index_for_def_key(krate, root_key)
                              .expect("no root key?");
 
         debug!("retrace_path: root_index={:?}", root_index);
 
         let mut index = root_index;
-        for data in &path.data {
+        for data in path_data {
             let key = DefKey { parent: Some(index), disambiguated_data: data.clone() };
             debug!("retrace_path: key={:?}", key);
-            match self.def_index_for_def_key(path.krate, key) {
+            match self.def_index_for_def_key(krate, key) {
                 Some(i) => index = i,
                 None => return None,
             }
         }
 
-        Some(DefId { krate: path.krate, index: index })
+        Some(DefId { krate: krate, index: index })
     }
 
     pub fn type_parameter_def(self,
