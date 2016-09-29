@@ -127,8 +127,9 @@ use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
 use rustc::ty::TyCtxt;
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use std::cmp::Ordering;
-use std::hash::{Hash, Hasher, SipHasher};
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
+use std::collections::hash_map::DefaultHasher;
 use symbol_map::SymbolMap;
 use syntax::ast::NodeId;
 use syntax::parse::token::{self, InternedString};
@@ -188,7 +189,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn compute_symbol_name_hash(&self, tcx: TyCtxt, symbol_map: &SymbolMap) -> u64 {
-        let mut state = SipHasher::new();
+        let mut state = DefaultHasher::new();
         let all_items = self.items_in_deterministic_order(tcx, symbol_map);
         for (item, _) in all_items {
             let symbol_name = symbol_map.get(item).unwrap();

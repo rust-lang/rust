@@ -535,6 +535,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// #![feature(binary_heap_extras)]
+    /// #![allow(deprecated)]
     ///
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
@@ -549,6 +550,7 @@ impl<T: Ord> BinaryHeap<T> {
     #[unstable(feature = "binary_heap_extras",
                reason = "needs to be audited",
                issue = "28147")]
+    #[rustc_deprecated(since = "1.13.0", reason = "use `peek_mut` instead")]
     pub fn push_pop(&mut self, mut item: T) -> T {
         match self.data.get_mut(0) {
             None => return item,
@@ -575,6 +577,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// #![feature(binary_heap_extras)]
+    /// #![allow(deprecated)]
     ///
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
@@ -587,6 +590,7 @@ impl<T: Ord> BinaryHeap<T> {
     #[unstable(feature = "binary_heap_extras",
                reason = "needs to be audited",
                issue = "28147")]
+    #[rustc_deprecated(since = "1.13.0", reason = "use `peek_mut` instead")]
     pub fn replace(&mut self, mut item: T) -> Option<T> {
         if !self.is_empty() {
             swap(&mut item, &mut self.data[0]);
