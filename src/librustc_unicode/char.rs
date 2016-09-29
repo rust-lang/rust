@@ -37,7 +37,7 @@ use tables::{conversions, derived_property, general_category, property};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::char::{MAX, from_digit, from_u32, from_u32_unchecked};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::char::{EncodeUtf16, EncodeUtf8, EscapeDebug, EscapeDefault, EscapeUnicode};
+pub use core::char::{EscapeDebug, EscapeDefault, EscapeUnicode};
 
 // unstable reexports
 #[unstable(feature = "try_from", issue = "33417")]
@@ -435,50 +435,96 @@ impl char {
         C::len_utf16(self)
     }
 
-    /// Returns an iterator over the bytes of this character as UTF-8.
+    /// Encodes this character as UTF-8 into the provided byte buffer,
+    /// and then returns the subslice of the buffer that contains the encoded character.
     ///
-    /// The returned iterator also has an `as_slice()` method to view the
-    /// encoded bytes as a byte slice.
+    /// # Panics
+    ///
+    /// Panics if the buffer is not large enough.
+    /// A buffer of length four is large enough to encode any `char`.
     ///
     /// # Examples
+    ///
+    /// In both of these examples, 'ß' takes two bytes to encode.
     ///
     /// ```
     /// #![feature(unicode)]
     ///
-    /// let iterator = 'ß'.encode_utf8();
-    /// assert_eq!(iterator.as_slice(), [0xc3, 0x9f]);
+    /// let mut b = [0; 2];
     ///
-    /// for (i, byte) in iterator.enumerate() {
-    ///     println!("byte {}: {:x}", i, byte);
-    /// }
+    /// let result = 'ß'.encode_utf8(&mut b);
+    ///
+    /// assert_eq!(result, "ß");
+    ///
+    /// assert_eq!(result.len(), 2);
     /// ```
-    #[unstable(feature = "unicode", issue = "27784")]
+    ///
+    /// A buffer that's too small:
+    ///
+    /// ```
+    /// #![feature(unicode)]
+    /// use std::thread;
+    ///
+    /// let result = thread::spawn(|| {
+    ///     let mut b = [0; 1];
+    ///
+    ///     // this panics
+    ///    'ß'.encode_utf8(&mut b);
+    /// }).join();
+    ///
+    /// assert!(result.is_err());
+    /// ```
+    #[unstable(feature = "unicode",
+               reason = "pending decision about Iterator/Writer/Reader",
+               issue = "27784")]
     #[inline]
-    pub fn encode_utf8(self) -> EncodeUtf8 {
-        C::encode_utf8(self)
+    pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
+        C::encode_utf8(self, dst)
     }
 
-    /// Returns an iterator over the `u16` entries of this character as UTF-16.
+    /// Encodes this character as UTF-16 into the provided `u16` buffer,
+    /// and then returns the subslice of the buffer that contains the encoded character.
     ///
-    /// The returned iterator also has an `as_slice()` method to view the
-    /// encoded form as a slice.
+    /// # Panics
+    ///
+    /// Panics if the buffer is not large enough.
+    /// A buffer of length 2 is large enough to encode any `char`.
     ///
     /// # Examples
+    ///
+    /// In both of these examples, '𝕊' takes two `u16`s to encode.
     ///
     /// ```
     /// #![feature(unicode)]
     ///
-    /// let iterator = '𝕊'.encode_utf16();
-    /// assert_eq!(iterator.as_slice(), [0xd835, 0xdd4a]);
+    /// let mut b = [0; 2];
     ///
-    /// for (i, val) in iterator.enumerate() {
-    ///     println!("entry {}: {:x}", i, val);
-    /// }
+    /// let result = '𝕊'.encode_utf16(&mut b);
+    ///
+    /// assert_eq!(result.len(), 2);
     /// ```
-    #[unstable(feature = "unicode", issue = "27784")]
+    ///
+    /// A buffer that's too small:
+    ///
+    /// ```
+    /// #![feature(unicode)]
+    /// use std::thread;
+    ///
+    /// let result = thread::spawn(|| {
+    ///     let mut b = [0; 1];
+    ///
+    ///     // this panics
+    ///     '𝕊'.encode_utf16(&mut b);
+    /// }).join();
+    ///
+    /// assert!(result.is_err());
+    /// ```
+    #[unstable(feature = "unicode",
+               reason = "pending decision about Iterator/Writer/Reader",
+               issue = "27784")]
     #[inline]
-    pub fn encode_utf16(self) -> EncodeUtf16 {
-        C::encode_utf16(self)
+    pub fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
+        C::encode_utf16(self, dst)
     }
 
     /// Returns true if this `char` is an alphabetic code point, and false if not.
