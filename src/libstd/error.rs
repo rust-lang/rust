@@ -288,15 +288,15 @@ impl Error for fmt::Error {
     }
 }
 
-#[unstable(feature = "try_borrow", issue = "35070")]
-impl<'a, T: ?Sized + Reflect> Error for cell::BorrowError<'a, T> {
+#[stable(feature = "try_borrow", since = "1.13.0")]
+impl Error for cell::BorrowError {
     fn description(&self) -> &str {
         "already mutably borrowed"
     }
 }
 
-#[unstable(feature = "try_borrow", issue = "35070")]
-impl<'a, T: ?Sized + Reflect> Error for cell::BorrowMutError<'a, T> {
+#[stable(feature = "try_borrow", since = "1.13.0")]
+impl Error for cell::BorrowMutError {
     fn description(&self) -> &str {
         "already borrowed"
     }

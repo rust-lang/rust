@@ -656,13 +656,14 @@ fn crate_path(sess: &Session,
               crate_name: &str,
               crate_disambiguator: &str)
               -> PathBuf {
-    use std::hash::{SipHasher, Hasher, Hash};
+    use std::hash::{Hasher, Hash};
+    use std::collections::hash_map::DefaultHasher;
 
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
     // The full crate disambiguator is really long. A hash of it should be
     // sufficient.
-    let mut hasher = SipHasher::new();
+    let mut hasher = DefaultHasher::new();
     crate_disambiguator.hash(&mut hasher);
 
     let crate_name = format!("{}-{}", crate_name, encode_base_36(hasher.finish()));

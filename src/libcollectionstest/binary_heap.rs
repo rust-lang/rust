@@ -139,6 +139,7 @@ fn test_push_unique() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_push_pop() {
     let mut heap = BinaryHeap::from(vec![5, 5, 2, 1, 3]);
     assert_eq!(heap.len(), 5);
@@ -153,6 +154,7 @@ fn test_push_pop() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_replace() {
     let mut heap = BinaryHeap::from(vec![5, 5, 2, 1, 3]);
     assert_eq!(heap.len(), 5);
@@ -212,6 +214,7 @@ fn test_empty_peek_mut() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_empty_replace() {
     let mut heap = BinaryHeap::new();
     assert!(heap.replace(5).is_none());

@@ -16,10 +16,11 @@ use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
-use std::hash::{Hash, Hasher, SipHasher};
+use std::hash::{Hash, Hasher};
 use std::io::{self, Cursor, Write};
 use std::fs::{self, File};
 use std::path::PathBuf;
+use std::collections::hash_map::DefaultHasher;
 
 use IncrementalHashesMap;
 use super::data::*;
@@ -241,7 +242,7 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
             .collect();
 
         hashes.sort();
-        let mut state = SipHasher::new();
+        let mut state = DefaultHasher::new();
         hashes.hash(&mut state);
         let hash = state.finish();
 
