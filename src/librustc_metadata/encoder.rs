@@ -1293,7 +1293,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator().to_string(),
-            panic_strategy: tcx.sess.opts.cg.panic.clone(),
+            panic_strategy: tcx.sess.panic_strategy(),
             plugin_registrar_fn: tcx.sess.plugin_registrar_fn.get().map(|id| {
                 tcx.map.local_def_id(id).index
             }),

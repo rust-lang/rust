@@ -19,7 +19,7 @@ use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::LoadedMacro;
 use rustc::session::{config, Session};
-use rustc::session::config::PanicStrategy;
+use rustc_back::PanicStrategy;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
 use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
@@ -710,7 +710,7 @@ impl<'a> CrateReader<'a> {
         // The logic for finding the panic runtime here is pretty much the same
         // as the allocator case with the only addition that the panic strategy
         // compilation mode also comes into play.
-        let desired_strategy = self.sess.opts.cg.panic.clone();
+        let desired_strategy = self.sess.panic_strategy();
         let mut runtime_found = false;
         let mut needs_panic_runtime = attr::contains_name(&krate.attrs,
                                                           "needs_panic_runtime");

@@ -18,7 +18,7 @@ use rustc::middle::cstore::{LinkagePreference, NativeLibraryKind};
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc::session::config::PanicStrategy;
+use rustc_back::PanicStrategy;
 
 use rustc_serialize as serialize;
 use syntax::{ast, attr};
