@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![cfg_attr(not(stage0), feature(compiler_builtins))]
+#![feature(compiler_builtins)]
 #![no_std]
-#![cfg_attr(not(stage0), compiler_builtins)]
+#![compiler_builtins]
 #![unstable(feature = "compiler_builtins_lib",
             reason = "internal implementation detail of rustc right now",
             issue = "0")]
