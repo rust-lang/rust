@@ -433,9 +433,7 @@ fn escape_str(wr: &mut fmt::Write, v: &str) -> EncodeResult {
 }
 
 fn escape_char(writer: &mut fmt::Write, v: char) -> EncodeResult {
-    escape_str(writer, unsafe {
-        str::from_utf8_unchecked(v.encode_utf8().as_slice())
-    })
+    escape_str(writer, v.encode_utf8(&mut [0; 4]))
 }
 
 fn spaces(wr: &mut fmt::Write, mut n: usize) -> EncodeResult {

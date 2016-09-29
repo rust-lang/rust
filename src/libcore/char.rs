@@ -18,6 +18,7 @@
 use char_private::is_printable;
 use convert::TryFrom;
 use fmt;
+use slice;
 use iter::FusedIterator;
 use mem::transmute;
 
@@ -327,9 +328,9 @@ pub trait CharExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn len_utf16(self) -> usize;
     #[unstable(feature = "unicode", issue = "27784")]
-    fn encode_utf8(self) -> EncodeUtf8;
+    fn encode_utf8(self, dst: &mut [u8]) -> &mut str;
     #[unstable(feature = "unicode", issue = "27784")]
-    fn encode_utf16(self) -> EncodeUtf16;
+    fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16];
 }
 
 #[stable(feature = "core", since = "1.6.0")]
@@ -419,47 +420,59 @@ impl CharExt for char {
     }
 
     #[inline]
-    fn encode_utf8(self) -> EncodeUtf8 {
+    fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
         let code = self as u32;
-        let mut buf = [0; 4];
-        let pos = if code < MAX_ONE_B {
-            buf[3] = code as u8;
-            3
-        } else if code < MAX_TWO_B {
-            buf[2] = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-            buf[3] = (code & 0x3F) as u8 | TAG_CONT;
-            2
-        } else if code < MAX_THREE_B {
-            buf[1] = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-            buf[2] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
-            buf[3] = (code & 0x3F) as u8 | TAG_CONT;
-            1
-        } else {
-            buf[0] = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-            buf[1] = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-            buf[2] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
-            buf[3] = (code & 0x3F) as u8 | TAG_CONT;
-            0
-        };
-        EncodeUtf8 { buf: buf, pos: pos }
+        unsafe {
+            let len =
+            if code < MAX_ONE_B && !dst.is_empty() {
+                *dst.get_unchecked_mut(0) = code as u8;
+                1
+            } else if code < MAX_TWO_B && dst.len() >= 2 {
+                *dst.get_unchecked_mut(0) = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+                *dst.get_unchecked_mut(1) = (code & 0x3F) as u8 | TAG_CONT;
+                2
+            } else if code < MAX_THREE_B && dst.len() >= 3  {
+                *dst.get_unchecked_mut(0) = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+                *dst.get_unchecked_mut(1) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(2) = (code & 0x3F) as u8 | TAG_CONT;
+                3
+            } else if dst.len() >= 4 {
+                *dst.get_unchecked_mut(0) = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
+                *dst.get_unchecked_mut(1) = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(2) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(3) = (code & 0x3F) as u8 | TAG_CONT;
+                4
+            } else {
+                panic!("encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
+                    from_u32_unchecked(code).len_utf8(),
+                    code,
+                    dst.len())
+            };
+            transmute(slice::from_raw_parts_mut(dst.as_mut_ptr(), len))
+        }
     }
 
     #[inline]
-    fn encode_utf16(self) -> EncodeUtf16 {
-        let mut buf = [0; 2];
+    fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
         let mut code = self as u32;
-        let pos = if (code & 0xFFFF) == code {
-            // The BMP falls through (assuming non-surrogate, as it should)
-            buf[1] = code as u16;
-            1
-        } else {
-            // Supplementary planes break into surrogates.
-            code -= 0x1_0000;
-            buf[0] = 0xD800 | ((code >> 10) as u16);
-            buf[1] = 0xDC00 | ((code as u16) & 0x3FF);
-            0
-        };
-        EncodeUtf16 { buf: buf, pos: pos }
+        unsafe {
+            if (code & 0xFFFF) == code && !dst.is_empty() {
+                // The BMP falls through (assuming non-surrogate, as it should)
+                *dst.get_unchecked_mut(0) = code as u16;
+                slice::from_raw_parts_mut(dst.as_mut_ptr(), 1)
+            } else if dst.len() >= 2 {
+                // Supplementary planes break into surrogates.
+                code -= 0x1_0000;
+                *dst.get_unchecked_mut(0) = 0xD800 | ((code >> 10) as u16);
+                *dst.get_unchecked_mut(1) = 0xDC00 | ((code as u16) & 0x3FF);
+                slice::from_raw_parts_mut(dst.as_mut_ptr(), 2)
+            } else {
+                panic!("encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
+                    from_u32_unchecked(code).len_utf16(),
+                    code,
+                    dst.len())
+            }
+        }
     }
 }
 
@@ -702,88 +715,7 @@ impl ExactSizeIterator for EscapeDebug { }
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeDebug {}
 
-/// An iterator over `u8` entries represending the UTF-8 encoding of a `char`
-/// value.
-///
-/// Constructed via the `.encode_utf8()` method on `char`.
-#[unstable(feature = "unicode", issue = "27784")]
-#[derive(Debug)]
-pub struct EncodeUtf8 {
-    buf: [u8; 4],
-    pos: usize,
-}
 
-impl EncodeUtf8 {
-    /// Returns the remaining bytes of this iterator as a slice.
-    #[unstable(feature = "unicode", issue = "27784")]
-    pub fn as_slice(&self) -> &[u8] {
-        &self.buf[self.pos..]
-    }
-}
-
-#[unstable(feature = "unicode", issue = "27784")]
-impl Iterator for EncodeUtf8 {
-    type Item = u8;
-
-    fn next(&mut self) -> Option<u8> {
-        if self.pos == self.buf.len() {
-            None
-        } else {
-            let ret = Some(self.buf[self.pos]);
-            self.pos += 1;
-            ret
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.as_slice().iter().size_hint()
-    }
-}
-
-#[unstable(feature = "fused", issue = "35602")]
-impl FusedIterator for EncodeUtf8 {}
-
-/// An iterator over `u16` entries represending the UTF-16 encoding of a `char`
-/// value.
-///
-/// Constructed via the `.encode_utf16()` method on `char`.
-#[unstable(feature = "unicode", issue = "27784")]
-#[derive(Debug)]
-pub struct EncodeUtf16 {
-    buf: [u16; 2],
-    pos: usize,
-}
-
-impl EncodeUtf16 {
-    /// Returns the remaining bytes of this iterator as a slice.
-    #[unstable(feature = "unicode", issue = "27784")]
-    pub fn as_slice(&self) -> &[u16] {
-        &self.buf[self.pos..]
-    }
-}
-
-
-#[unstable(feature = "unicode", issue = "27784")]
-impl Iterator for EncodeUtf16 {
-    type Item = u16;
-
-    fn next(&mut self) -> Option<u16> {
-        if self.pos == self.buf.len() {
-            None
-        } else {
-            let ret = Some(self.buf[self.pos]);
-            self.pos += 1;
-            ret
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.as_slice().iter().size_hint()
-    }
-}
-
-#[unstable(feature = "fused", issue = "35602")]
-impl FusedIterator for EncodeUtf16 {}
 
 /// An iterator over an iterator of bytes of the characters the bytes represent
 /// as UTF-8
