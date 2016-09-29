@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use _match::{MatchCheckCtxt, Matrix, lower_pat, is_refutable, is_useful};
+use _match::{MatchCheckCtxt, Matrix, lower_pat, is_useful};
 use _match::{DUMMY_WILD_PAT};
 use _match::Usefulness::*;
 use _match::WitnessPreference::*;
@@ -44,23 +44,47 @@ use syntax::ptr::P;
 use syntax::util::move_map::MoveMap;
 use syntax_pos::Span;
 
-impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &hir::Expr) {
-        check_expr(self, ex);
+struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
+
+impl<'a, 'v, 'tcx> Visitor<'v> for OuterVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, _expr: &hir::Expr) {
+        return // const, static and N in [T; N] - shouldn't contain anything
     }
-    fn visit_local(&mut self, l: &hir::Local) {
-        check_local(self, l);
+
+    fn visit_trait_item(&mut self, item: &hir::TraitItem) {
+        if let hir::ConstTraitItem(..) = item.node {
+            return // nothing worth match checking in a constant
+        } else {
+            intravisit::walk_trait_item(self, item);
+        }
     }
+
+    fn visit_impl_item(&mut self, item: &hir::ImplItem) {
+        if let hir::ImplItemKind::Const(..) = item.node {
+            return // nothing worth match checking in a constant
+        } else {
+            intravisit::walk_impl_item(self, item);
+        }
+    }
+
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Block, s: Span, n: ast::NodeId) {
-        check_fn(self, fk, fd, b, s, n);
+                b: &'v hir::Block, s: Span, id: ast::NodeId) {
+        if let FnKind::Closure(..) = fk {
+            span_bug!(s, "check_match: closure outside of function")
+        }
+
+        MatchVisitor {
+            tcx: self.tcx,
+            param_env: &ty::ParameterEnvironment::for_item(self.tcx, id)
+        }.visit_fn(fk, fd, b, s, id);
     }
 }
 
+impl<'a, 'tcx> OuterVisitor<'a, 'tcx> {
+}
+
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    MatchCheckCtxt::create_and_enter(tcx, tcx.empty_parameter_environment(), |mut cx| {
-        tcx.visit_all_items_in_krate(DepNode::MatchCheck, &mut cx);
-    });
+    tcx.visit_all_items_in_krate(DepNode::MatchCheck, &mut OuterVisitor { tcx: tcx });
     tcx.sess.abort_if_errors();
 }
 
@@ -68,65 +92,108 @@ fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> Diagn
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
-fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
-    intravisit::walk_expr(cx, ex);
-    match ex.node {
-        hir::ExprMatch(ref scrut, ref arms, source) => {
-            for arm in arms {
-                // First, check legality of move bindings.
-                check_legality_of_move_bindings(cx,
-                                                arm.guard.is_some(),
-                                                &arm.pats);
+struct MatchVisitor<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    param_env: &'a ty::ParameterEnvironment<'tcx>
+}
 
-                // Second, if there is a guard on each arm, make sure it isn't
-                // assigning or borrowing anything mutably.
-                if let Some(ref guard) = arm.guard {
-                    check_for_mutation_in_guard(cx, &guard);
-                }
+impl<'a, 'tcx, 'v> Visitor<'v> for MatchVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, ex: &hir::Expr) {
+        intravisit::walk_expr(self, ex);
+
+        match ex.node {
+            hir::ExprMatch(ref scrut, ref arms, source) => {
+                self.check_match(scrut, arms, source, ex.span);
             }
+            _ => {}
+        }
+    }
 
-            let mut static_inliner = StaticInliner::new(cx.tcx);
-            let inlined_arms = arms.iter().map(|arm| {
-                (arm.pats.iter().map(|pat| {
-                    static_inliner.fold_pat((*pat).clone())
-                }).collect(), arm.guard.as_ref().map(|e| &**e))
-            }).collect::<Vec<(Vec<P<Pat>>, Option<&hir::Expr>)>>();
+    fn visit_local(&mut self, loc: &hir::Local) {
+        intravisit::walk_local(self, loc);
 
-            // Bail out early if inlining failed.
-            if static_inliner.failed {
-                return;
+        let pat = StaticInliner::new(self.tcx).fold_pat(loc.pat.clone());
+        self.check_irrefutable(&pat, false);
+
+        // Check legality of move bindings and `@` patterns.
+        self.check_patterns(false, slice::ref_slice(&loc.pat));
+    }
+
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
+                b: &'v hir::Block, s: Span, n: ast::NodeId) {
+        intravisit::walk_fn(self, fk, fd, b, s, n);
+
+        for input in &fd.inputs {
+            self.check_irrefutable(&input.pat, true);
+            self.check_patterns(false, slice::ref_slice(&input.pat));
+        }
+    }
+}
+
+impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
+    fn check_patterns(&self, has_guard: bool, pats: &[P<Pat>]) {
+        check_legality_of_move_bindings(self, has_guard, pats);
+        for pat in pats {
+            check_legality_of_bindings_in_at_patterns(self, pat);
+        }
+    }
+
+    fn check_match(
+        &self,
+        scrut: &hir::Expr,
+        arms: &[hir::Arm],
+        source: hir::MatchSource,
+        span: Span)
+    {
+        for arm in arms {
+            // First, check legality of move bindings.
+            self.check_patterns(arm.guard.is_some(), &arm.pats);
+
+            // Second, if there is a guard on each arm, make sure it isn't
+            // assigning or borrowing anything mutably.
+            if let Some(ref guard) = arm.guard {
+                check_for_mutation_in_guard(self, &guard);
             }
+        }
 
-            for pat in inlined_arms
-                .iter()
-                .flat_map(|&(ref pats, _)| pats) {
-                // Third, check legality of move bindings.
-                check_legality_of_bindings_in_at_patterns(cx, &pat);
+        let mut static_inliner = StaticInliner::new(self.tcx);
+        let inlined_arms = arms.iter().map(|arm| {
+            (arm.pats.iter().map(|pat| {
+                static_inliner.fold_pat((*pat).clone())
+            }).collect(), arm.guard.as_ref().map(|e| &**e))
+        }).collect::<Vec<(Vec<P<Pat>>, Option<&hir::Expr>)>>();
 
-                // Fourth, check if there are any references to NaN that we should warn about.
-                check_for_static_nan(cx, &pat);
+        // Bail out early if inlining failed.
+        if static_inliner.failed {
+            return;
+        }
 
-                // Fifth, check if for any of the patterns that match an enumerated type
-                // are bindings with the same name as one of the variants of said type.
-                check_for_bindings_named_the_same_as_variants(cx, &pat);
-            }
+        for pat in inlined_arms.iter().flat_map(|&(ref pats, _)| pats) {
+            // Fourth, check if there are any references to NaN that we should warn about.
+            check_for_static_nan(self, &pat);
 
+            // Fifth, check if for any of the patterns that match an enumerated type
+            // are bindings with the same name as one of the variants of said type.
+            check_for_bindings_named_the_same_as_variants(self, &pat);
+        }
+
+        MatchCheckCtxt::create_and_enter(self.tcx, |ref cx| {
             // Fourth, check for unreachable arms.
             check_arms(cx, &inlined_arms[..], source);
 
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
-            let pat_ty = cx.tcx.node_id_to_type(scrut.id);
+            let pat_ty = self.tcx.node_id_to_type(scrut.id);
             if inlined_arms.is_empty() {
-                if !pat_ty.is_uninhabited(cx.tcx) {
+                if !pat_ty.is_uninhabited(self.tcx) {
                     // We know the type is inhabited, so this must be wrong
-                    let mut err = create_e0004(cx.tcx.sess, ex.span,
+                    let mut err = create_e0004(self.tcx.sess, span,
                                                format!("non-exhaustive patterns: type {} \
                                                         is non-empty",
                                                        pat_ty));
-                    span_help!(&mut err, ex.span,
-                        "Please ensure that all possible cases are being handled; \
-                         possibly adding wildcards or more match arms.");
+                    span_help!(&mut err, span,
+                               "Please ensure that all possible cases are being handled; \
+                                possibly adding wildcards or more match arms.");
                     err.emit();
                 }
                 // If the type *is* uninhabited, it's vacuously exhaustive
@@ -140,12 +207,40 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
                 .map(|pat| vec![lower_pat(cx, &pat)])
                 .collect();
             check_exhaustive(cx, scrut.span, &matrix, source);
-        },
-        _ => ()
+        })
+    }
+
+    fn check_irrefutable(&self, pat: &Pat, is_fn_arg: bool) {
+        let origin = if is_fn_arg {
+            "function argument"
+        } else {
+            "local binding"
+        };
+
+        MatchCheckCtxt::create_and_enter(self.tcx, |ref cx| {
+            let pats : Matrix = vec![vec![
+                lower_pat(cx, pat)
+            ]].into_iter().collect();
+
+            let witness = match is_useful(cx, &pats, &[cx.wild_pattern], ConstructWitness) {
+                UsefulWithWitness(witness) => witness,
+                NotUseful => return,
+                Useful => bug!()
+            };
+
+            let pattern_string = pat_to_string(witness[0].single_pattern());
+            let mut diag = struct_span_err!(
+                self.tcx.sess, pat.span, E0005,
+                "refutable pattern in {}: `{}` not covered",
+                origin, pattern_string
+            );
+            diag.span_label(pat.span, &format!("pattern `{}` not covered", pattern_string));
+            diag.emit();
+        });
     }
 }
 
-fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat) {
+fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
         if let PatKind::Binding(hir::BindByValue(hir::MutImmutable), name, None) = p.node {
             let pat_ty = cx.tcx.pat_ty(p);
@@ -175,7 +270,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
 }
 
 // Check that we do not match against a static NaN (#6804)
-fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
+fn check_for_static_nan(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
         if let PatKind::Lit(ref expr) = p.node {
             match eval_const_expr_partial(cx.tcx, &expr, ExprTypeChecked, None) {
@@ -444,56 +539,8 @@ impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
     }
 }
 
-fn check_local(cx: &mut MatchCheckCtxt, loc: &hir::Local) {
-    intravisit::walk_local(cx, loc);
-
-    let pat = StaticInliner::new(cx.tcx).fold_pat(loc.pat.clone());
-    check_irrefutable(cx, &pat, false);
-
-    // Check legality of move bindings and `@` patterns.
-    check_legality_of_move_bindings(cx, false, slice::ref_slice(&loc.pat));
-    check_legality_of_bindings_in_at_patterns(cx, &loc.pat);
-}
-
-fn check_fn(cx: &mut MatchCheckCtxt,
-            kind: FnKind,
-            decl: &hir::FnDecl,
-            body: &hir::Block,
-            sp: Span,
-            fn_id: ast::NodeId) {
-    match kind {
-        FnKind::Closure(_) => {}
-        _ => cx.param_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_id),
-    }
-
-    intravisit::walk_fn(cx, kind, decl, body, sp, fn_id);
-
-    for input in &decl.inputs {
-        check_irrefutable(cx, &input.pat, true);
-        check_legality_of_move_bindings(cx, false, slice::ref_slice(&input.pat));
-        check_legality_of_bindings_in_at_patterns(cx, &input.pat);
-    }
-}
-
-fn check_irrefutable(cx: &MatchCheckCtxt, pat: &Pat, is_fn_arg: bool) {
-    let origin = if is_fn_arg {
-        "function argument"
-    } else {
-        "local binding"
-    };
-
-    is_refutable(cx, &lower_pat(cx, pat), |uncovered_pat| {
-        let pattern_string = pat_to_string(uncovered_pat.single_pattern());
-        struct_span_err!(cx.tcx.sess, pat.span, E0005,
-            "refutable pattern in {}: `{}` not covered",
-            origin,
-            pattern_string,
-        ).span_label(pat.span, &format!("pattern `{}` not covered", pattern_string)).emit();
-    });
-}
-
 // Legality of move bindings checking
-fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
+fn check_legality_of_move_bindings(cx: &MatchVisitor,
                                    has_guard: bool,
                                    pats: &[P<Pat>]) {
     let mut by_ref_span = None;
@@ -532,13 +579,9 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
         pat.walk(|p| {
             if let PatKind::Binding(hir::BindByValue(..), _, ref sub) = p.node {
                 let pat_ty = cx.tcx.node_id_to_type(p.id);
-                //FIXME: (@jroesch) this code should be floated up as well
-                cx.tcx.infer_ctxt(None, Some(cx.param_env.clone()),
-                                  Reveal::NotSpecializable).enter(|infcx| {
-                    if infcx.type_moves_by_default(pat_ty, pat.span) {
-                        check_move(p, sub.as_ref().map(|p| &**p));
-                    }
-                });
+                if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
+                    check_move(p, sub.as_ref().map(|p| &**p));
+                }
             }
             true
         });
@@ -547,8 +590,9 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 
 /// Ensures that a pattern guard doesn't borrow by mutable reference or
 /// assign.
-fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
-                                         guard: &hir::Expr) {
+///
+/// FIXME: this should be done by borrowck.
+fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
     cx.tcx.infer_ctxt(None, Some(cx.param_env.clone()),
                       Reveal::NotSpecializable).enter(|infcx| {
         let mut checker = MutationChecker {
@@ -560,7 +604,7 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
 }
 
 struct MutationChecker<'a, 'gcx: 'a> {
-    cx: &'a MatchCheckCtxt<'a, 'gcx>,
+    cx: &'a MatchVisitor<'a, 'gcx>,
 }
 
 impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
@@ -600,12 +644,12 @@ impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
 /// Forbids bindings in `@` patterns. This is necessary for memory safety,
 /// because of the way rvalues are handled in the borrow check. (See issue
 /// #14587.)
-fn check_legality_of_bindings_in_at_patterns(cx: &MatchCheckCtxt, pat: &Pat) {
+fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor, pat: &Pat) {
     AtBindingPatternVisitor { cx: cx, bindings_allowed: true }.visit_pat(pat);
 }
 
 struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
-    cx: &'a MatchCheckCtxt<'b, 'tcx>,
+    cx: &'a MatchVisitor<'b, 'tcx>,
     bindings_allowed: bool
 }
 
