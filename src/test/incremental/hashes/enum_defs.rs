@@ -10,7 +10,7 @@
 
 
 // This test case tests the incremental compilation hash (ICH) implementation
-// for struct definitions.
+// for enum definitions.
 
 // The general pattern followed here is: Change one thing between rev1 and rev2
 // and make sure that the hash has changed, then change nothing between rev2 and
