@@ -703,18 +703,23 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                          sess.diagnostic())
     });
 
-    krate = time(time_passes, "maybe creating a macro crate", || {
-        let crate_types = sess.crate_types.borrow();
-        let is_rustc_macro_crate = crate_types.contains(&config::CrateTypeRustcMacro);
-        let num_crate_types = crate_types.len();
-        syntax_ext::rustc_macro_registrar::modify(&sess.parse_sess,
-                                                  &mut resolver,
-                                                  krate,
-                                                  is_rustc_macro_crate,
-                                                  num_crate_types,
-                                                  sess.diagnostic(),
-                                                  &sess.features.borrow())
-    });
+    // If we're in rustdoc we're always compiling as an rlib, but that'll trip a
+    // bunch of checks in the `modify` function below. For now just skip this
+    // step entirely if we're rustdoc as it's not too useful anyway.
+    if !sess.opts.actually_rustdoc {
+        krate = time(time_passes, "maybe creating a macro crate", || {
+            let crate_types = sess.crate_types.borrow();
+            let num_crate_types = crate_types.len();
+            let is_rustc_macro_crate = crate_types.contains(&config::CrateTypeRustcMacro);
+            syntax_ext::rustc_macro_registrar::modify(&sess.parse_sess,
+                                                      &mut resolver,
+                                                      krate,
+                                                      is_rustc_macro_crate,
+                                                      num_crate_types,
+                                                      sess.diagnostic(),
+                                                      &sess.features.borrow())
+        });
+    }
 
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
