@@ -456,8 +456,7 @@ pub mod time;
 mod memchr;
 
 #[macro_use]
-#[path = "sys/common/mod.rs"] mod sys_common;
-
+mod sys_common;
 mod sys;
 
 pub mod rt;
