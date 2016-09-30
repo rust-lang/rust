@@ -1042,7 +1042,9 @@ fn create_fn_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let concrete_substs = monomorphize::apply_param_substs(tcx,
                                                            param_substs,
                                                            &fn_substs);
-    assert!(concrete_substs.is_normalized_for_trans());
+    assert!(concrete_substs.is_normalized_for_trans(),
+            "concrete_substs not normalized for trans: {:?}",
+            concrete_substs);
     TransItem::Fn(Instance::new(def_id, concrete_substs))
 }
 

@@ -105,7 +105,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
                              TypeFlags::HAS_FREE_REGIONS |
                              TypeFlags::HAS_TY_INFER |
                              TypeFlags::HAS_PARAMS |
-                             TypeFlags::HAS_PROJECTION |
+                             TypeFlags::HAS_NORMALIZABLE_PROJECTION |
                              TypeFlags::HAS_TY_ERR |
                              TypeFlags::HAS_SELF)
     }
