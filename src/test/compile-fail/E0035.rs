@@ -17,4 +17,5 @@ impl Test {
 fn main() {
     let x = Test;
     x.method::<i32>(); //~ ERROR E0035
+                       //~| NOTE called with unneeded type parameters
 }
