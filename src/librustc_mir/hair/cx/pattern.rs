@@ -113,7 +113,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 PatternKind::Deref { subpattern: self.to_pattern(subpattern) }
             }
 
-            PatKind::Vec(ref prefix, ref slice, ref suffix) => {
+            PatKind::Slice(ref prefix, ref slice, ref suffix) => {
                 let ty = self.cx.tcx.node_id_to_type(pat.id);
                 match ty.sty {
                     ty::TyRef(_, mt) =>

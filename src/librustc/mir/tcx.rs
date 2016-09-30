@@ -174,7 +174,7 @@ impl<'tcx> Rvalue<'tcx> {
             }
             &Rvalue::Aggregate(ref ak, ref ops) => {
                 match *ak {
-                    AggregateKind::Vec => {
+                    AggregateKind::Array => {
                         if let Some(operand) = ops.get(0) {
                             let ty = operand.ty(mir, tcx);
                             Some(tcx.mk_array(ty, ops.len()))

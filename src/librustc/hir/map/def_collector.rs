@@ -286,7 +286,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
     fn visit_ty(&mut self, ty: &Ty) {
         match ty.node {
             TyKind::Mac(..) => return self.visit_macro_invoc(ty.id, false),
-            TyKind::FixedLengthVec(_, ref length) => self.visit_ast_const_integer(length),
+            TyKind::Array(_, ref length) => self.visit_ast_const_integer(length),
             TyKind::ImplTrait(..) => {
                 self.create_def(ty.id, DefPathData::ImplTrait);
             }
@@ -448,7 +448,7 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     }
 
     fn visit_ty(&mut self, ty: &'ast hir::Ty) {
-        if let hir::TyFixedLengthVec(_, ref length) = ty.node {
+        if let hir::TyArray(_, ref length) = ty.node {
             self.visit_hir_const_integer(length);
         }
         if let hir::TyImplTrait(..) = ty.node {

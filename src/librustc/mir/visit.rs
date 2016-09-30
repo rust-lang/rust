@@ -513,7 +513,7 @@ macro_rules! make_mir_visitor {
                     Rvalue::Aggregate(ref $($mutability)* kind,
                                       ref $($mutability)* operands) => {
                         match *kind {
-                            AggregateKind::Vec => {
+                            AggregateKind::Array => {
                             }
                             AggregateKind::Tuple => {
                             }
