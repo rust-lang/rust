@@ -150,6 +150,7 @@ pub fn run_core(search_paths: SearchPaths,
         target_triple: triple.unwrap_or(config::host_triple().to_string()),
         // Ensure that rustdoc works even if rustc is feature-staged
         unstable_features: UnstableFeatures::Allow,
+        actually_rustdoc: true,
         ..config::basic_options().clone()
     };
 
