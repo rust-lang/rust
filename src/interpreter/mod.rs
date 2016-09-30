@@ -838,8 +838,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                         let offset = variant.field_offset(field.index()).bytes();
                         let ptr = base.ptr.offset(offset as isize);
-                        trace!("{:?}", base);
-                        trace!("{:?}", field_ty);
                         if self.type_is_sized(field_ty) {
                             ptr
                         } else {
