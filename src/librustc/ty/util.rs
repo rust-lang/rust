@@ -12,6 +12,7 @@
 
 use hir::def_id::DefId;
 use infer::InferCtxt;
+use hir::map as ast_map;
 use hir::pat_util;
 use traits::{self, Reveal};
 use ty::{self, Ty, AdtKind, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
@@ -388,16 +389,77 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
+// When hashing a type this ends up affecting properties like symbol names. We
+// want these symbol names to be calculated independent of other factors like
+// what architecture you're compiling *from*.
+//
+// The hashing just uses the standard `Hash` trait, but the implementations of
+// `Hash` for the `usize` and `isize` types are *not* architecture independent
+// (e.g. they has 4 or 8 bytes). As a result we want to avoid `usize` and
+// `isize` completely when hashing. To ensure that these don't leak in we use a
+// custom hasher implementation here which inflates the size of these to a `u64`
+// and `i64`.
+struct WidenUsizeHasher<H> {
+    inner: H,
+}
+
+impl<H> WidenUsizeHasher<H> {
+    fn new(inner: H) -> WidenUsizeHasher<H> {
+        WidenUsizeHasher { inner: inner }
+    }
+}
+
+impl<H: Hasher> Hasher for WidenUsizeHasher<H> {
+    fn write(&mut self, bytes: &[u8]) {
+        self.inner.write(bytes)
+    }
+
+    fn finish(&self) -> u64 {
+        self.inner.finish()
+    }
+
+    fn write_u8(&mut self, i: u8) {
+        self.inner.write_u8(i)
+    }
+    fn write_u16(&mut self, i: u16) {
+        self.inner.write_u16(i)
+    }
+    fn write_u32(&mut self, i: u32) {
+        self.inner.write_u32(i)
+    }
+    fn write_u64(&mut self, i: u64) {
+        self.inner.write_u64(i)
+    }
+    fn write_usize(&mut self, i: usize) {
+        self.inner.write_u64(i as u64)
+    }
+    fn write_i8(&mut self, i: i8) {
+        self.inner.write_i8(i)
+    }
+    fn write_i16(&mut self, i: i16) {
+        self.inner.write_i16(i)
+    }
+    fn write_i32(&mut self, i: i32) {
+        self.inner.write_i32(i)
+    }
+    fn write_i64(&mut self, i: i64) {
+        self.inner.write_i64(i)
+    }
+    fn write_isize(&mut self, i: isize) {
+        self.inner.write_i64(i as i64)
+    }
+}
+
 pub struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a, H> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    state: H
+    state: WidenUsizeHasher<H>,
 }
 
 impl<'a, 'gcx, 'tcx, H: Hasher> TypeIdHasher<'a, 'gcx, 'tcx, H> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, state: H) -> Self {
         TypeIdHasher {
             tcx: tcx,
-            state: state
+            state: WidenUsizeHasher::new(state),
         }
     }
 
@@ -421,9 +483,12 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeIdHasher<'a, 'gcx, 'tcx, H> {
     fn def_id(&mut self, did: DefId) {
         // Hash the DefPath corresponding to the DefId, which is independent
         // of compiler internal state.
-        let tcx = self.tcx;
-        let def_path = tcx.def_path(did);
-        def_path.deterministic_hash_to(tcx, &mut self.state);
+        let path = self.tcx.def_path(did);
+        self.def_path(&path)
+    }
+
+    pub fn def_path(&mut self, def_path: &ast_map::DefPath) {
+        def_path.deterministic_hash_to(self.tcx, &mut self.state);
     }
 }
 
@@ -436,7 +501,7 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
             TyInt(i) => self.hash(i),
             TyUint(u) => self.hash(u),
             TyFloat(f) => self.hash(f),
-            TyArray(_, n) => self.hash(n as u64),
+            TyArray(_, n) => self.hash(n),
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
@@ -447,14 +512,14 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
                 self.hash(f.unsafety);
                 self.hash(f.abi);
                 self.hash(f.sig.variadic());
-                self.hash(f.sig.inputs().skip_binder().len() as u64);
+                self.hash(f.sig.inputs().skip_binder().len());
             }
             TyTrait(ref data) => {
                 self.def_id(data.principal.def_id());
                 self.hash(data.builtin_bounds);
             }
             TyTuple(tys) => {
-                self.hash(tys.len() as u64);
+                self.hash(tys.len());
             }
             TyParam(p) => {
                 self.hash(p.idx);
