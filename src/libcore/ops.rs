@@ -140,6 +140,26 @@
 //!
 //! // `consume_and_return_x` can no longer be invoked at this point
 //! ```
+//!
+//! This example shows the behavior of the various `Range*` structs.
+//!
+//! ```rust
+//! #![feature(inclusive_range_syntax)]
+//! fn main() {
+//!     let arr = [0, 1, 2, 3, 4];
+//!
+//!     assert_eq!(arr[ .. ], [0,1,2,3,4]); // RangeFull
+//!     assert_eq!(arr[ ..3], [0,1,2    ]); // RangeTo
+//!     assert_eq!(arr[1.. ], [  1,2,3,4]); // RangeFrom
+//!     assert_eq!(arr[1..3], [  1,2    ]); // Range
+//!
+//!     assert_eq!(arr[ ...3], [0,1,2,3 ]); // RangeToIncusive
+//!     assert_eq!(arr[1...3], [  1,2,3 ]); // RangeInclusive
+//! }
+//! ```
+//!
+//! Note: whitespace alignment is not idiomatic Rust. An exception is made in
+//! this case to facilitate comparison.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -1998,11 +2018,12 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3];
-/// assert_eq!(arr[ .. ], [0,1,2,3]);  // RangeFull
-/// assert_eq!(arr[ ..3], [0,1,2  ]);
-/// assert_eq!(arr[1.. ], [  1,2,3]);
-/// assert_eq!(arr[1..3], [  1,2  ]);
+/// assert_eq!(arr[ .. ], [0, 1, 2, 3]);
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../index.html#examples
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
@@ -2027,12 +2048,13 @@ impl fmt::Debug for RangeFull {
 ///     assert_eq!(3+4+5, (3..6).sum());
 ///
 ///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ .. ], [0,1,2,3]);
-///     assert_eq!(arr[ ..3], [0,1,2  ]);
-///     assert_eq!(arr[1.. ], [  1,2,3]);
-///     assert_eq!(arr[1..3], [  1,2  ]);  // Range
+///     assert_eq!(arr[1..3], [1, 2]);
 /// }
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../index.html#examples
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
@@ -2090,12 +2112,13 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///     assert_eq!(2+3+4, (2..).take(3).sum());
 ///
 ///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ .. ], [0,1,2,3]);
-///     assert_eq!(arr[ ..3], [0,1,2  ]);
-///     assert_eq!(arr[1.. ], [  1,2,3]);  // RangeFrom
-///     assert_eq!(arr[1..3], [  1,2  ]);
+///     assert_eq!(arr[1.. ], [1, 2, 3]);
 /// }
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../index.html#examples
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
@@ -2157,11 +2180,12 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3];
-/// assert_eq!(arr[ .. ], [0,1,2,3]);
-/// assert_eq!(arr[ ..3], [0,1,2  ]);  // RangeTo
-/// assert_eq!(arr[1.. ], [  1,2,3]);
-/// assert_eq!(arr[1..3], [  1,2  ]);
+/// assert_eq!(arr[ ..3], [0, 1, 2]);
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../index.html#examples
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
@@ -2208,10 +2232,13 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 ///     assert_eq!(3+4+5, (3...5).sum());
 ///
 ///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ ...2], [0,1,2  ]);
-///     assert_eq!(arr[1...2], [  1,2  ]);  // RangeInclusive
+///     assert_eq!(arr[1...2], [1, 2]);
 /// }
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../index.html#examples
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub enum RangeInclusive<Idx> {
@@ -2311,9 +2338,12 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// ```
 /// #![feature(inclusive_range_syntax)]
 /// let arr = [0, 1, 2, 3];
-/// assert_eq!(arr[ ...2], [0,1,2  ]);  // RangeToInclusive
-/// assert_eq!(arr[1...2], [  1,2  ]);
+/// assert_eq!(arr[ ...2], [0, 1, 2]);
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../index.html#examples
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub struct RangeToInclusive<Idx> {
