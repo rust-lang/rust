@@ -662,8 +662,13 @@ pub fn noop_fold_ty_param_bound<T>(tpb: TyParamBound, fld: &mut T)
 }
 
 pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
-    let TyParam {id, ident, bounds, default, span} = tp;
+    let TyParam {attrs, id, ident, bounds, default, span} = tp;
+    let attrs: Vec<_> = attrs.into();
     TyParam {
+        attrs: attrs.into_iter()
+            .flat_map(|x| fld.fold_attribute(x).into_iter())
+            .collect::<Vec<_>>()
+            .into(),
         id: fld.new_id(id),
         ident: ident,
         bounds: fld.fold_bounds(bounds),
@@ -687,7 +692,12 @@ pub fn noop_fold_lifetime<T: Folder>(l: Lifetime, fld: &mut T) -> Lifetime {
 
 pub fn noop_fold_lifetime_def<T: Folder>(l: LifetimeDef, fld: &mut T)
                                          -> LifetimeDef {
+    let attrs: Vec<_> = l.attrs.into();
     LifetimeDef {
+        attrs: attrs.into_iter()
+            .flat_map(|x| fld.fold_attribute(x).into_iter())
+            .collect::<Vec<_>>()
+            .into(),
         lifetime: fld.fold_lifetime(l.lifetime),
         bounds: fld.fold_lifetimes(l.bounds),
     }

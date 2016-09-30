@@ -201,6 +201,7 @@ pub fn walk_lifetime<V: Visitor>(visitor: &mut V, lifetime: &Lifetime) {
 pub fn walk_lifetime_def<V: Visitor>(visitor: &mut V, lifetime_def: &LifetimeDef) {
     visitor.visit_lifetime(&lifetime_def.lifetime);
     walk_list!(visitor, visit_lifetime, &lifetime_def.bounds);
+    walk_list!(visitor, visit_attribute, &*lifetime_def.attrs);
 }
 
 pub fn walk_poly_trait_ref<V>(visitor: &mut V, trait_ref: &PolyTraitRef, _: &TraitBoundModifier)
@@ -474,6 +475,7 @@ pub fn walk_generics<V: Visitor>(visitor: &mut V, generics: &Generics) {
         visitor.visit_ident(param.span, param.ident);
         walk_list!(visitor, visit_ty_param_bound, &param.bounds);
         walk_list!(visitor, visit_ty, &param.default);
+        walk_list!(visitor, visit_attribute, &*param.attrs);
     }
     walk_list!(visitor, visit_lifetime_def, &generics.lifetimes);
     for predicate in &generics.where_clause.predicates {
