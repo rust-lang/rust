@@ -152,17 +152,17 @@ fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     let mut hash_state = scx.symbol_hasher().borrow_mut();
     record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
         hash_state.reset();
-        let mut hasher = Sha256Hasher(&mut hash_state);
+        let hasher = Sha256Hasher(&mut hash_state);
+        let mut hasher = ty::util::TypeIdHasher::new(tcx, hasher);
 
         // the main symbol name is not necessarily unique; hash in the
         // compiler's internal def-path, guaranteeing each symbol has a
         // truly unique path
-        def_path.deterministic_hash_to(tcx, &mut hasher);
+        hasher.def_path(def_path);
 
         // Include the main item-type. Note that, in this case, the
         // assertions about `needs_subst` may not hold, but this item-type
         // ought to be the same for every reference anyway.
-        let mut hasher = ty::util::TypeIdHasher::new(tcx, hasher);
         assert!(!item_type.has_erasable_regions());
         hasher.visit_ty(item_type);
 
