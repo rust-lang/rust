@@ -66,7 +66,6 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     "src/libstd/lib.rs", // This could probably be done within the sys directory
     "src/libstd/rtdeps.rs", // Until rustbuild replaces make
     "src/libstd/path.rs",
-    "src/libstd/io/stdio.rs",
     "src/libstd/num/f32.rs",
     "src/libstd/num/f64.rs",
     "src/libstd/sys/common/mod.rs",
