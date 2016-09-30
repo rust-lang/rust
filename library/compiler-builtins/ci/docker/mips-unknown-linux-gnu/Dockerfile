@@ -7,6 +7,5 @@ RUN apt-get install -y --no-install-recommends \
         binfmt-support qemu-user-static qemu-system-mips
 
 ENV CARGO_TARGET_MIPS_UNKNOWN_LINUX_GNU_LINKER=mips-linux-gnu-gcc \
-    PATH=$PATH:/rust/bin \
     QEMU_LD_PREFIX=/usr/mips-linux-gnu \
     RUST_TEST_THREADS=1

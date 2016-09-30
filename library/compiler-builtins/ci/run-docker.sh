@@ -4,16 +4,30 @@
 set -ex
 
 run() {
-    echo $1
-    docker build -t $1 ci/docker/$1
+    local gid=$(id -g) \
+          group=$(id -g -n) \
+          target=$1 \
+          uid=$(id -u) \
+          user=$(id -u -n)
+
+    echo $target
+    docker build -t $target ci/docker/$target
     docker run \
-      -v `rustc --print sysroot`:/rust:ro \
-      -v `pwd`:/checkout:ro \
-      -e CARGO_TARGET_DIR=/tmp/target \
-      -w /checkout \
-      --privileged \
-      -it $1 \
-      sh ci/run.sh $1
+           --rm \
+           -e CARGO_HOME=/cargo \
+           -e CARGO_TARGET_DIR=/target \
+           -v $HOME/.cargo:/cargo \
+           -v `pwd`/target:/target \
+           -v `pwd`:/checkout:ro \
+           -v `rustc --print sysroot`:/rust:ro \
+           -w /checkout \
+           -it $target \
+           sh -c "
+groupadd -g $gid $group
+useradd -m -g $gid -u $uid $user
+chown $user /cargo /target
+su -c 'PATH=\$PATH:/rust/bin ci/run.sh $target' $user
+"
 }
 
 if [ -z "$1" ]; then
