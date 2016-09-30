@@ -107,6 +107,11 @@ impl FlagComputation {
             }
 
             &ty::TyProjection(ref data) => {
+                // currently we can't normalize projections that
+                // include bound regions, so track those separately.
+                if !data.has_escaping_regions() {
+                    self.add_flags(TypeFlags::HAS_NORMALIZABLE_PROJECTION);
+                }
                 self.add_flags(TypeFlags::HAS_PROJECTION);
                 self.add_projection_ty(data);
             }
