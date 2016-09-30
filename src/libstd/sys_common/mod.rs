@@ -8,6 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Platform-independent platform abstraction
+//!
+//! This is the platform-independent portion of the standard libraries
+//! platform abstraction layer, whereas `std::sys` is the
+//! platform-specific portion.
+//!
+//! The relationship between `std::sys_common`, `std::sys` and the
+//! rest of `std` is complex, with dependencies going in all
+//! directions: `std` depending on `sys_common`, `sys_common`
+//! depending on `sys`, and `sys` depending on `sys_common` and `std`.
+//! Ideally `sys_common` would be split into two and the dependencies
+//! between them all would form a dag, facilitating the extraction of
+//! `std::sys` from the standard library.
+
 #![allow(missing_docs)]
 
 use sync::Once;
