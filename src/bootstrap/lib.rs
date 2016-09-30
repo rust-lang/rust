@@ -557,17 +557,22 @@ impl Build {
                 continue
             }
 
-            if !submodule.path.exists() {
-                t!(fs::create_dir_all(&submodule.path));
-            }
+            // `submodule.path` is the relative path to a submodule (from the repository root)
+            // `submodule_path` is the path to a submodule from the cwd
+
+            // use `submodule.path` when e.g. executing a submodule specific command from the
+            // repository root
+            // use `submodule_path` when e.g. executing a normal git command for the submodule
+            // (set via `current_dir`)
+            let submodule_path = self.src.join(submodule.path);
 
             match submodule.state {
                 State::MaybeDirty => {
                     // drop staged changes
-                    self.run(git().current_dir(submodule.path)
+                    self.run(git().current_dir(&submodule_path)
                                   .args(&["reset", "--hard"]));
                     // drops unstaged changes
-                    self.run(git().current_dir(submodule.path)
+                    self.run(git().current_dir(&submodule_path)
                                   .args(&["clean", "-fdx"]));
                 },
                 State::NotInitialized => {
@@ -577,9 +582,9 @@ impl Build {
                 State::OutOfSync => {
                     // drops submodule commits that weren't reported to the (outer) git repository
                     self.run(git_submodule().arg("update").arg(submodule.path));
-                    self.run(git().current_dir(submodule.path)
+                    self.run(git().current_dir(&submodule_path)
                                   .args(&["reset", "--hard"]));
-                    self.run(git().current_dir(submodule.path)
+                    self.run(git().current_dir(&submodule_path)
                                   .args(&["clean", "-fdx"]));
                 },
             }
