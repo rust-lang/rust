@@ -1333,7 +1333,7 @@ impl<'a> Resolver<'a> {
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             }),
-            new_import_semantics: session.features.borrow().item_like_imports,
+            new_import_semantics: true,
             use_extern_macros: session.features.borrow().use_extern_macros,
 
             exported_macros: Vec::new(),
