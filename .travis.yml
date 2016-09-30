@@ -19,9 +19,9 @@ install:
   - npm install remark-cli remark-lint
 
 script:
- - set -e
  - remark -f README.md > /dev/null
  - python util/update_lints.py -c
+ - set -e
  - cargo build --features debugging
  - cargo test --features debugging
  - mkdir -p ~/rust/cargo/bin
