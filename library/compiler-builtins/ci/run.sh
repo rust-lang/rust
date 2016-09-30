@@ -55,8 +55,9 @@ case $TRAVIS_OS_NAME in
         ;;
 esac
 
+# NOTE On i586, It's normal that the get_pc_thunk symbol appears several times so ignore it
 $PREFIX$NM -g --defined-only /tmp/target/${1}/debug/librustc_builtins.rlib | \
-    sort | uniq -d | grep 'T __'
+    sort | uniq -d | grep -v __x86.get_pc_thunk | grep 'T __'
 
 if test $? = 0; then
     exit 1
