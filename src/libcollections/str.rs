@@ -697,7 +697,7 @@ impl str {
     ///
     /// Basic usage:
     ///
-    /// ```rust
+    /// ```
     /// let bananas = "bananas";
     ///
     /// assert!(bananas.ends_with("anas"));
@@ -900,7 +900,7 @@ impl str {
     ///
     /// It does _not_ give you:
     ///
-    /// ```rust,ignore
+    /// ```,ignore
     /// assert_eq!(d, &["a", "b", "c"]);
     /// ```
     ///
