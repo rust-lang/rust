@@ -16,7 +16,7 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// We also test the ICH for struct definitions exported in metadata. Same as
+// We also test the ICH for enum definitions exported in metadata. Same as
 // above, we want to make sure that the change between rev1 and rev2 also
 // results in a change of the ICH for the struct's metadata, and that it stays
 // the same between rev2 and rev3.
@@ -325,7 +325,7 @@ enum EnumChangeFieldOrderStructStyleVariant {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeFieldOrderStructStyleVariant {
-    Variant1 { b: u32, a: u32 },
+    Variant1 { b: f32, a: u32 },
 }
 
 
