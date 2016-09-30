@@ -37,7 +37,7 @@ case $1 in
     thumb*)
         PREFIX=arm-none-eabi-
         ;;
-    *-unknown-linux-gnu | *-apple-darwin)
+    *86*-*)
         PREFIX=
         ;;
 esac
