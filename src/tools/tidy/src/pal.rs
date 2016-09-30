@@ -69,7 +69,6 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     "src/libstd/io/stdio.rs",
     "src/libstd/num/f32.rs",
     "src/libstd/num/f64.rs",
-    "src/libstd/thread/local.rs",
     "src/libstd/sys/common/mod.rs",
     "src/libstd/sys/common/net.rs",
     "src/libstd/sys/common/util.rs",
