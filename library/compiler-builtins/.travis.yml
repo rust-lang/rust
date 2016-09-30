@@ -51,8 +51,6 @@ script:
       cargo test --target $TARGET &&
       cargo test --target $TARGET --release;
     fi
-
-after_success:
   # Travis can't cache files that are not readable by "others"
   - chmod -R a+r /home/travis/.cargo
 
