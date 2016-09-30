@@ -1,10 +1,10 @@
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
-use rustc::ty::TyArray;
+use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_math::ConstInt;
-use rustc::hir::*;
+use rustc::hir;
 use syntax::ast::RangeLimits;
 use utils::{self, higher};
 
@@ -56,11 +56,11 @@ impl LintPass for ArrayIndexing {
 }
 
 impl LateLintPass for ArrayIndexing {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
-        if let ExprIndex(ref array, ref index) = e.node {
+    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
+        if let hir::ExprIndex(ref array, ref index) = e.node {
             // Array with known size can be checked statically
             let ty = cx.tcx.expr_ty(array);
-            if let TyArray(_, size) = ty.sty {
+            if let ty::TyArray(_, size) = ty.sty {
                 let size = ConstInt::Infer(size as u64);
 
                 // Index is a constant uint

@@ -281,7 +281,7 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
         ExprLoop(ref block, _) => check_block(cx, block, bindings),
         // ExprCall
         // ExprMethodCall
-        ExprVec(ref v) | ExprTup(ref v) => {
+        ExprArray(ref v) | ExprTup(ref v) => {
             for e in v {
                 check_expr(cx, e, bindings)
             }
@@ -319,8 +319,8 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
 fn check_ty(cx: &LateContext, ty: &Ty, bindings: &mut Vec<(Name, Span)>) {
     match ty.node {
         TyObjectSum(ref sty, _) |
-        TyVec(ref sty) => check_ty(cx, sty, bindings),
-        TyFixedLengthVec(ref fty, ref expr) => {
+        TySlice(ref sty) => check_ty(cx, sty, bindings),
+        TyArray(ref fty, ref expr) => {
             check_ty(cx, fty, bindings);
             check_expr(cx, expr, bindings);
         }

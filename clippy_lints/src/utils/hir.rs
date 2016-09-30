@@ -125,7 +125,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprTup(ref l_tup), &ExprTup(ref r_tup)) => self.eq_exprs(l_tup, r_tup),
             (&ExprTupField(ref le, li), &ExprTupField(ref re, ri)) => li.node == ri.node && self.eq_expr(le, re),
             (&ExprUnary(l_op, ref le), &ExprUnary(r_op, ref re)) => l_op == r_op && self.eq_expr(le, re),
-            (&ExprVec(ref l), &ExprVec(ref r)) => self.eq_exprs(l, r),
+            (&ExprArray(ref l), &ExprArray(ref r)) => self.eq_exprs(l, r),
             (&ExprWhile(ref lc, ref lb, ref ll), &ExprWhile(ref rc, ref rb, ref rl)) => {
                 self.eq_expr(lc, rc) && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.node.as_str() == r.node.as_str())
             }
@@ -166,7 +166,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 self.eq_expr(ls, rs) && self.eq_expr(le, re)
             }
             (&PatKind::Ref(ref le, ref lm), &PatKind::Ref(ref re, ref rm)) => lm == rm && self.eq_pat(le, re),
-            (&PatKind::Vec(ref ls, ref li, ref le), &PatKind::Vec(ref rs, ref ri, ref re)) => {
+            (&PatKind::Slice(ref ls, ref li, ref le), &PatKind::Slice(ref rs, ref ri, ref re)) => {
                 over(ls, rs, |l, r| self.eq_pat(l, r)) && over(le, re, |l, r| self.eq_pat(l, r)) &&
                 both(li, ri, |l, r| self.eq_pat(l, r))
             }
@@ -211,8 +211,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
     fn eq_ty(&self, left: &Ty, right: &Ty) -> bool {
         match (&left.node, &right.node) {
-            (&TyVec(ref l_vec), &TyVec(ref r_vec)) => self.eq_ty(l_vec, r_vec),
-            (&TyFixedLengthVec(ref lt, ref ll), &TyFixedLengthVec(ref rt, ref rl)) => {
+            (&TySlice(ref l_vec), &TySlice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
+            (&TyArray(ref lt, ref ll), &TyArray(ref rt, ref rl)) => {
                 self.eq_ty(lt, rt) && self.eq_expr(ll, rl)
             }
             (&TyPtr(ref l_mut), &TyPtr(ref r_mut)) => l_mut.mutbl == r_mut.mutbl && self.eq_ty(&*l_mut.ty, &*r_mut.ty),
@@ -490,8 +490,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 lop.hash(&mut self.s);
                 self.hash_expr(le);
             }
-            ExprVec(ref v) => {
-                let c: fn(_) -> _ = ExprVec;
+            ExprArray(ref v) => {
+                let c: fn(_) -> _ = ExprArray;
                 c.hash(&mut self.s);
 
                 self.hash_exprs(v);

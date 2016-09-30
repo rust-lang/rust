@@ -50,7 +50,7 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
         Expr_::ExprPath(..) => true,
         Expr_::ExprIndex(ref a, ref b) |
         Expr_::ExprBinary(_, ref a, ref b) => has_no_effect(cx, a) && has_no_effect(cx, b),
-        Expr_::ExprVec(ref v) |
+        Expr_::ExprArray(ref v) |
         Expr_::ExprTup(ref v) => v.iter().all(|val| has_no_effect(cx, val)),
         Expr_::ExprRepeat(ref inner, _) |
         Expr_::ExprCast(ref inner, _) |
@@ -130,7 +130,7 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
     match expr.node {
         Expr_::ExprIndex(ref a, ref b) |
         Expr_::ExprBinary(_, ref a, ref b) => Some(vec![&**a, &**b]),
-        Expr_::ExprVec(ref v) |
+        Expr_::ExprArray(ref v) |
         Expr_::ExprTup(ref v) => Some(v.iter().map(Deref::deref).collect()),
         Expr_::ExprRepeat(ref inner, _) |
         Expr_::ExprCast(ref inner, _) |

@@ -213,7 +213,7 @@ fn check_expr<'v, 't>(vis: & mut ReadVisitor<'v, 't>, expr: &'v Expr) -> StopEar
     }
 
     match expr.node {
-        ExprVec(_) |
+        ExprArray(_) |
         ExprTup(_) |
         ExprMethodCall(_, _, _) |
         ExprCall(_, _) |

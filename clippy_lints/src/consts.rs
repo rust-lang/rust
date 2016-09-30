@@ -257,7 +257,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprBlock(ref block) => self.block(block),
             ExprIf(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, otherwise),
             ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
-            ExprVec(ref vec) => self.multi(vec).map(Constant::Vec),
+            ExprArray(ref vec) => self.multi(vec).map(Constant::Vec),
             ExprTup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprRepeat(ref value, ref number) => {
                 self.binop_apply(value, number, |v, n| Some(Constant::Repeat(Box::new(v), n.as_u64() as usize)))

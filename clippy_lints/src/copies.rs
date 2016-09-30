@@ -265,7 +265,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                     bindings_impl(cx, pat, map);
                 }
             }
-            PatKind::Vec(ref lhs, ref mid, ref rhs) => {
+            PatKind::Slice(ref lhs, ref mid, ref rhs) => {
                 for pat in lhs {
                     bindings_impl(cx, pat, map);
                 }

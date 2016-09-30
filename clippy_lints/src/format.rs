@@ -82,7 +82,7 @@ pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Exp
         decl.name.as_str() == "__STATIC_FMTSTR",
         let ItemStatic(_, _, ref expr) = decl.node,
         let ExprAddrOf(_, ref expr) = expr.node, // &["…", "…", …]
-        let ExprVec(ref exprs) = expr.node,
+        let ExprArray(ref exprs) = expr.node,
     ], {
         let mut result = Vec::new();
         for expr in exprs {
@@ -123,7 +123,7 @@ fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
         arms[0].pats.len() == 1,
         let PatKind::Tuple(ref pat, None) = arms[0].pats[0].node,
         pat.len() == 1,
-        let ExprVec(ref exprs) = arms[0].body.node,
+        let ExprArray(ref exprs) = arms[0].body.node,
         exprs.len() == 1,
         let ExprCall(_, ref args) = exprs[0].node,
         args.len() == 2,
