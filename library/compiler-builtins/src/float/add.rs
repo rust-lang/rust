@@ -9,27 +9,27 @@ macro_rules! add {
         #[allow(unused_parens)]
         #[cfg_attr(not(test), no_mangle)]
         pub extern fn $intrinsic(a: $ty, b: $ty) -> $ty {
-            let one = Wrapping(1 as <$ty as Float>::Int);
-            let zero = Wrapping(0 as <$ty as Float>::Int);
+            let one =               Wrapping(1 as <$ty as Float>::Int);
+            let zero =              Wrapping(0 as <$ty as Float>::Int);
 
-            let bits =             Wrapping(<$ty>::bits() as <$ty as Float>::Int);
-            let significand_bits = Wrapping(<$ty>::significand_bits() as <$ty as Float>::Int);
-            let exponent_bits =    Wrapping(<$ty>::exponent_bits() as <$ty as Float>::Int);
-            let max_exponent =     (one << exponent_bits.0 as usize) - one;
+            let bits =              Wrapping(<$ty>::bits() as <$ty as Float>::Int);
+            let significand_bits =  Wrapping(<$ty>::significand_bits() as <$ty as Float>::Int);
+            let exponent_bits =     Wrapping(<$ty>::exponent_bits() as <$ty as Float>::Int);
+            let max_exponent =      (one << exponent_bits.0 as usize) - one;
 
-            let implicit_bit =     one << significand_bits.0 as usize;
-            let significand_mask = implicit_bit - one;
-            let sign_bit =         one << (significand_bits + exponent_bits).0 as usize;
-            let abs_mask =         sign_bit - one;
-            let exponent_mask =    abs_mask ^ significand_mask;
-            let inf_rep =          exponent_mask;
-            let quiet_bit =        implicit_bit >> 1;
-            let qnan_rep =         exponent_mask | quiet_bit;
+            let implicit_bit =      one << significand_bits.0 as usize;
+            let significand_mask =  implicit_bit - one;
+            let sign_bit =          one << (significand_bits + exponent_bits).0 as usize;
+            let abs_mask =          sign_bit - one;
+            let exponent_mask =     abs_mask ^ significand_mask;
+            let inf_rep =           exponent_mask;
+            let quiet_bit =         implicit_bit >> 1;
+            let qnan_rep =          exponent_mask | quiet_bit;
 
-            let mut a_rep = Wrapping(a.repr());
-            let mut b_rep = Wrapping(b.repr());
-            let a_abs = a_rep & abs_mask;
-            let b_abs = b_rep & abs_mask;
+            let mut a_rep =         Wrapping(a.repr());
+            let mut b_rep =         Wrapping(b.repr());
+            let a_abs =             a_rep & abs_mask;
+            let b_abs =             b_rep & abs_mask;
 
             // Detect if a or b is zero, infinity, or NaN.
             if a_abs - one >= inf_rep - one ||
