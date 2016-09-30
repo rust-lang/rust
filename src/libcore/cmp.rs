@@ -10,10 +10,13 @@
 
 //! Functionality for ordering and comparison.
 //!
-//! This module defines both `PartialOrd` and `PartialEq` traits which are used
+//! This module defines both [`PartialOrd`] and [`PartialEq`] traits which are used
 //! by the compiler to implement comparison operators. Rust programs may
-//! implement `PartialOrd` to overload the `<`, `<=`, `>`, and `>=` operators,
-//! and may implement `PartialEq` to overload the `==` and `!=` operators.
+//! implement [`PartialOrd`] to overload the `<`, `<=`, `>`, and `>=` operators,
+//! and may implement [`PartialEq`] to overload the `==` and `!=` operators.
+//!
+//! [`PartialOrd`]: trait.PartialOrd.html
+//! [`PartialEq`]: trait.PartialEq.html
 //!
 //! # Examples
 //!
