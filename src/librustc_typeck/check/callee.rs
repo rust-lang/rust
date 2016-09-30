@@ -47,8 +47,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       expected: Expectation<'tcx>) -> Ty<'tcx>
     {
         let original_callee_ty = self.check_expr(callee_expr);
+        let expr_ty = self.structurally_resolved_type(call_expr.span, original_callee_ty);
 
-        let mut autoderef = self.autoderef(callee_expr.span, original_callee_ty);
+        let mut autoderef = self.autoderef(callee_expr.span, expr_ty);
         let result = autoderef.by_ref().flat_map(|(adj_ty, idx)| {
             self.try_overloaded_call_step(call_expr, callee_expr, adj_ty, idx)
         }).next();
