@@ -151,7 +151,7 @@
 //!
 //! [`Cell`]: ../cell/struct.Cell.html
 //! [`RefCell`]: ../cell/struct.RefCell.html
-//! [`thread_local!`]: ../macro.thread_local!.html
+//! [`thread_local!`]: ../macro.thread_local.html
 //! [`with`]: struct.LocalKey.html#method.with
 
 #![stable(feature = "rust1", since = "1.0.0")]

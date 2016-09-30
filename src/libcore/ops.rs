@@ -14,7 +14,7 @@
 //!
 //! Some of these traits are imported by the prelude, so they are available in
 //! every Rust program. Only operators backed by traits can be overloaded. For
-//! example, the addition operator (`+`) can be overloaded through the `Add`
+//! example, the addition operator (`+`) can be overloaded through the [`Add`]
 //! trait, but since the assignment operator (`=`) has no backing trait, there
 //! is no way of overloading its semantics. Additionally, this module does not
 //! provide any mechanism to create new operators. If traitless overloading or
@@ -30,17 +30,18 @@
 //! contexts involving built-in types, this is usually not a problem.
 //! However, using these operators in generic code, requires some
 //! attention if values have to be reused as opposed to letting the operators
-//! consume them. One option is to occasionally use `clone()`.
+//! consume them. One option is to occasionally use [`clone()`].
 //! Another option is to rely on the types involved providing additional
 //! operator implementations for references. For example, for a user-defined
 //! type `T` which is supposed to support addition, it is probably a good
-//! idea to have both `T` and `&T` implement the traits `Add<T>` and `Add<&T>`
-//! so that generic code can be written without unnecessary cloning.
+//! idea to have both `T` and `&T` implement the traits [`Add<T>`][`Add`] and
+//! [`Add<&T>`][`Add`] so that generic code can be written without unnecessary
+//! cloning.
 //!
 //! # Examples
 //!
-//! This example creates a `Point` struct that implements `Add` and `Sub`, and
-//! then demonstrates adding and subtracting two `Point`s.
+//! This example creates a `Point` struct that implements [`Add`] and [`Sub`],
+//! and then demonstrates adding and subtracting two `Point`s.
 //!
 //! ```rust
 //! use std::ops::{Add, Sub};
@@ -75,18 +76,14 @@
 //! See the documentation for each trait for an example implementation.
 //!
 //! The [`Fn`], [`FnMut`], and [`FnOnce`] traits are implemented by types that can be
-//! invoked like functions. Note that `Fn` takes `&self`, `FnMut` takes `&mut
-//! self` and `FnOnce` takes `self`. These correspond to the three kinds of
+//! invoked like functions. Note that [`Fn`] takes `&self`, [`FnMut`] takes `&mut
+//! self` and [`FnOnce`] takes `self`. These correspond to the three kinds of
 //! methods that can be invoked on an instance: call-by-reference,
 //! call-by-mutable-reference, and call-by-value. The most common use of these
 //! traits is to act as bounds to higher-level functions that take functions or
 //! closures as arguments.
 //!
-//! [`Fn`]: trait.Fn.html
-//! [`FnMut`]: trait.FnMut.html
-//! [`FnOnce`]: trait.FnOnce.html
-//!
-//! Taking a `Fn` as a parameter:
+//! Taking a [`Fn`] as a parameter:
 //!
 //! ```rust
 //! fn call_with_one<F>(func: F) -> usize
@@ -99,7 +96,7 @@
 //! assert_eq!(call_with_one(double), 2);
 //! ```
 //!
-//! Taking a `FnMut` as a parameter:
+//! Taking a [`FnMut`] as a parameter:
 //!
 //! ```rust
 //! fn do_twice<F>(mut func: F)
@@ -118,7 +115,7 @@
 //! assert_eq!(x, 5);
 //! ```
 //!
-//! Taking a `FnOnce` as a parameter:
+//! Taking a [`FnOnce`] as a parameter:
 //!
 //! ```rust
 //! fn consume_with_relish<F>(func: F)
@@ -140,6 +137,13 @@
 //!
 //! // `consume_and_return_x` can no longer be invoked at this point
 //! ```
+//!
+//! [`Fn`]: trait.Fn.html
+//! [`FnMut`]: trait.FnMut.html
+//! [`FnOnce`]: trait.FnOnce.html
+//! [`Add`]: trait.Add.html
+//! [`Sub`]: trait.Sub.html
+//! [`clone()`]: ../clone/trait.Clone.html#tymethod.clone
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -1873,7 +1877,7 @@ macro_rules! shr_assign_impl_all {
 shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
 /// The `Index` trait is used to specify the functionality of indexing operations
-/// like `arr[idx]` when used in an immutable context.
+/// like `container[index]` when used in an immutable context.
 ///
 /// # Examples
 ///
@@ -1924,50 +1928,50 @@ pub trait Index<Idx: ?Sized> {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output: ?Sized;
 
-    /// The method for the indexing (`Foo[Bar]`) operation
+    /// The method for the indexing (`container[index]`) operation
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index(&self, index: Idx) -> &Self::Output;
 }
 
 /// The `IndexMut` trait is used to specify the functionality of indexing
-/// operations like `arr[idx]`, when used in a mutable context.
+/// operations like `container[index]`, when used in a mutable context.
 ///
 /// # Examples
 ///
-/// A trivial implementation of `IndexMut`. When `Foo[Bar]` happens, it ends up
-/// calling `index_mut`, and therefore, `main` prints `Indexing!`.
+/// A trivial implementation of `IndexMut` for a type `Foo`. When `&mut Foo[2]`
+/// happens, it ends up calling `index_mut`, and therefore, `main` prints
+/// `Mutable indexing with 2!`.
 ///
 /// ```
 /// use std::ops::{Index, IndexMut};
 ///
 /// #[derive(Copy, Clone)]
 /// struct Foo;
-/// struct Bar;
 ///
-/// impl Index<Bar> for Foo {
+/// impl Index<usize> for Foo {
 ///     type Output = Foo;
 ///
-///     fn index<'a>(&'a self, _index: Bar) -> &'a Foo {
+///     fn index(&self, _index: usize) -> &Foo {
 ///         self
 ///     }
 /// }
 ///
-/// impl IndexMut<Bar> for Foo {
-///     fn index_mut<'a>(&'a mut self, _index: Bar) -> &'a mut Foo {
-///         println!("Indexing!");
+/// impl IndexMut<usize> for Foo {
+///     fn index_mut(&mut self, index: usize) -> &mut Foo {
+///         println!("Mutable indexing with {}!", index);
 ///         self
 ///     }
 /// }
 ///
 /// fn main() {
-///     &mut Foo[Bar];
+///     &mut Foo[2];
 /// }
 /// ```
 #[lang = "index_mut"]
 #[rustc_on_unimplemented = "the type `{Self}` cannot be mutably indexed by `{Idx}`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
-    /// The method for the indexing (`Foo[Bar]`) operation
+    /// The method for the mutable indexing (`container[index]`) operation
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
 }

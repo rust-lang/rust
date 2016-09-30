@@ -54,7 +54,7 @@ Diagnostics
   Most common editors supporting Rust have been updated to work with it. It was
   previously described [on the Rust blog]
   (https://blog.rust-lang.org/2016/08/10/Shape-of-errors-to-come.html).
-* [In error descriptions, references are now described in plain english,
+* [In error descriptions, references are now described in plain English,
   instead of as "&-ptr"]
   (https://github.com/rust-lang/rust/pull/35611)
 * [In error type descriptions, unknown numeric types are named `{integer}` or
@@ -148,7 +148,7 @@ Libraries
   (https://github.com/rust-lang/rust/pull/34946)
 * [`hash_map::Entry`, `hash_map::VacantEntry` and `hash_map::OccupiedEntry`
   implement `Debug`]
-  (https://github.com/rust-lang/rust/pull/34946)
+  (https://github.com/rust-lang/rust/pull/34937)
 * [`btree_map::Entry`, `btree_map::VacantEntry` and `btree_map::OccupiedEntry`
   implement `Debug`]
   (https://github.com/rust-lang/rust/pull/34885)
@@ -885,7 +885,7 @@ Cargo
 Performance
 -----------
 
-* [The time complexity of comparing variables for equivalence during type 
+* [The time complexity of comparing variables for equivalence during type
   unification is reduced from _O_(_n_!) to _O_(_n_)][1.9tu]. This leads
   to major compilation time improvement in some scenarios.
 * [`ToString` is specialized for `str`, giving it the same performance
