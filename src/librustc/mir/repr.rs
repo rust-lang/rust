@@ -1024,7 +1024,7 @@ pub enum CastKind {
 
 #[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum AggregateKind<'tcx> {
-    Vec,
+    Array,
     Tuple,
     /// The second field is variant number (discriminant), it's equal to 0
     /// for struct and union expressions. The fourth field is active field
@@ -1115,8 +1115,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
 
             Aggregate(ref kind, ref lvs) => {
-                use self::AggregateKind::*;
-
                 fn fmt_tuple(fmt: &mut Formatter, lvs: &[Operand]) -> fmt::Result {
                     let mut tuple_fmt = fmt.debug_tuple("");
                     for lv in lvs {
@@ -1126,9 +1124,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 }
 
                 match *kind {
-                    Vec => write!(fmt, "{:?}", lvs),
+                    AggregateKind::Array => write!(fmt, "{:?}", lvs),
 
-                    Tuple => {
+                    AggregateKind::Tuple => {
                         match lvs.len() {
                             0 => write!(fmt, "()"),
                             1 => write!(fmt, "({:?},)", lvs[0]),
@@ -1136,7 +1134,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }
 
-                    Adt(adt_def, variant, substs, _) => {
+                    AggregateKind::Adt(adt_def, variant, substs, _) => {
                         let variant_def = &adt_def.variants[variant];
 
                         ppaux::parameterized(fmt, substs, variant_def.did,
@@ -1155,7 +1153,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }
 
-                    Closure(def_id, _) => ty::tls::with(|tcx| {
+                    AggregateKind::Closure(def_id, _) => ty::tls::with(|tcx| {
                         if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
                             let name = format!("[closure@{:?}]", tcx.map.span(node_id));
                             let mut struct_fmt = fmt.debug_struct(&name);

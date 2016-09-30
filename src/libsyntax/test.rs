@@ -572,7 +572,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     let static_lt = ecx.lifetime(sp, keywords::StaticLifetime.name());
     // &'static [self::test::TestDescAndFn]
     let static_type = ecx.ty_rptr(sp,
-                                  ecx.ty(sp, ast::TyKind::Vec(struct_type)),
+                                  ecx.ty(sp, ast::TyKind::Slice(struct_type)),
                                   Some(static_lt),
                                   ast::Mutability::Immutable);
     // static TESTS: $static_type = &[...];

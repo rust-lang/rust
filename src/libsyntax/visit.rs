@@ -313,7 +313,7 @@ pub fn walk_variant<V>(visitor: &mut V, variant: &Variant, generics: &Generics, 
 
 pub fn walk_ty<V: Visitor>(visitor: &mut V, typ: &Ty) {
     match typ.node {
-        TyKind::Vec(ref ty) | TyKind::Paren(ref ty) => {
+        TyKind::Slice(ref ty) | TyKind::Paren(ref ty) => {
             visitor.visit_ty(ty)
         }
         TyKind::Ptr(ref mutable_type) => {
@@ -341,7 +341,7 @@ pub fn walk_ty<V: Visitor>(visitor: &mut V, typ: &Ty) {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
-        TyKind::FixedLengthVec(ref ty, ref expression) => {
+        TyKind::Array(ref ty, ref expression) => {
             visitor.visit_ty(ty);
             visitor.visit_expr(expression)
         }
@@ -434,7 +434,7 @@ pub fn walk_pat<V: Visitor>(visitor: &mut V, pattern: &Pat) {
             visitor.visit_expr(upper_bound)
         }
         PatKind::Wild => (),
-        PatKind::Vec(ref prepatterns, ref slice_pattern, ref postpatterns) => {
+        PatKind::Slice(ref prepatterns, ref slice_pattern, ref postpatterns) => {
             walk_list!(visitor, visit_pat, prepatterns);
             walk_list!(visitor, visit_pat, slice_pattern);
             walk_list!(visitor, visit_pat, postpatterns);

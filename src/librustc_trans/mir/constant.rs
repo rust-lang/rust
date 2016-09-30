@@ -569,7 +569,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 }
 
                 match *kind {
-                    mir::AggregateKind::Vec => {
+                    mir::AggregateKind::Array => {
                         self.const_array(dest_ty, &fields)
                     }
                     mir::AggregateKind::Adt(..) |

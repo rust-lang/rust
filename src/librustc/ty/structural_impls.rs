@@ -296,13 +296,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             UnsafetyMismatch(x) => UnsafetyMismatch(x),
             AbiMismatch(x) => AbiMismatch(x),
             Mutability => Mutability,
-            BoxMutability => BoxMutability,
-            PtrMutability => PtrMutability,
-            RefMutability => RefMutability,
-            VecMutability => VecMutability,
             TupleSize(x) => TupleSize(x),
             FixedArraySize(x) => FixedArraySize(x),
-            TyParamSize(x) => TyParamSize(x),
             ArgCount => ArgCount,
             RegionsDoesNotOutlive(a, b) => {
                 return tcx.lift(&(a, b)).map(|(a, b)| RegionsDoesNotOutlive(a, b))
@@ -319,14 +314,12 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             RegionsOverlyPolymorphic(a, b) => {
                 return tcx.lift(&b).map(|b| RegionsOverlyPolymorphic(a, b))
             }
-            IntegerAsChar => IntegerAsChar,
             IntMismatch(x) => IntMismatch(x),
             FloatMismatch(x) => FloatMismatch(x),
             Traits(x) => Traits(x),
             BuiltinBoundsMismatch(x) => BuiltinBoundsMismatch(x),
             VariadicMismatch(x) => VariadicMismatch(x),
             CyclicTy => CyclicTy,
-            ConvergenceMismatch(x) => ConvergenceMismatch(x),
             ProjectionNameMismatched(x) => ProjectionNameMismatched(x),
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
 

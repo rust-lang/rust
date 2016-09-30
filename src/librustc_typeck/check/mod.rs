@@ -450,7 +450,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
 
     fn visit_ty(&mut self, t: &'tcx hir::Ty) {
         match t.node {
-            hir::TyFixedLengthVec(_, ref expr) => {
+            hir::TyArray(_, ref expr) => {
                 check_const_with_type(self.ccx, &expr, self.ccx.tcx.types.usize, expr.id);
             }
             _ => {}
@@ -626,7 +626,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
     // need to record the type for that node
     fn visit_ty(&mut self, t: &'gcx hir::Ty) {
         match t.node {
-            hir::TyFixedLengthVec(ref ty, ref count_expr) => {
+            hir::TyArray(ref ty, ref count_expr) => {
                 self.visit_ty(&ty);
                 self.fcx.check_expr_with_hint(&count_expr, self.fcx.tcx.types.usize);
             }
@@ -3590,7 +3590,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref)
           }
           hir::ExprCast(ref e, ref t) => {
-            if let hir::TyFixedLengthVec(_, ref count_expr) = t.node {
+            if let hir::TyArray(_, ref count_expr) = t.node {
                 self.check_expr_with_hint(&count_expr, tcx.types.usize);
             }
 
@@ -3623,7 +3623,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.check_expr_eq_type(&e, typ);
             typ
           }
-          hir::ExprVec(ref args) => {
+          hir::ExprArray(ref args) => {
             let uty = expected.to_option(self).and_then(|uty| {
                 match uty.sty {
                     ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),

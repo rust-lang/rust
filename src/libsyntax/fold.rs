@@ -356,7 +356,7 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
         id: fld.new_id(id),
         node: match node {
             TyKind::Infer | TyKind::ImplicitSelf => node,
-            TyKind::Vec(ty) => TyKind::Vec(fld.fold_ty(ty)),
+            TyKind::Slice(ty) => TyKind::Slice(fld.fold_ty(ty)),
             TyKind::Ptr(mt) => TyKind::Ptr(fld.fold_mt(mt)),
             TyKind::Rptr(region, mt) => {
                 TyKind::Rptr(fld.fold_opt_lifetime(region), fld.fold_mt(mt))
@@ -385,8 +385,8 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                 TyKind::ObjectSum(fld.fold_ty(ty),
                             fld.fold_bounds(bounds))
             }
-            TyKind::FixedLengthVec(ty, e) => {
-                TyKind::FixedLengthVec(fld.fold_ty(ty), fld.fold_expr(e))
+            TyKind::Array(ty, e) => {
+                TyKind::Array(fld.fold_ty(ty), fld.fold_expr(e))
             }
             TyKind::Typeof(expr) => {
                 TyKind::Typeof(fld.fold_expr(expr))
@@ -1092,8 +1092,8 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
             PatKind::Range(e1, e2) => {
                 PatKind::Range(folder.fold_expr(e1), folder.fold_expr(e2))
             },
-            PatKind::Vec(before, slice, after) => {
-                PatKind::Vec(before.move_map(|x| folder.fold_pat(x)),
+            PatKind::Slice(before, slice, after) => {
+                PatKind::Slice(before.move_map(|x| folder.fold_pat(x)),
                        slice.map(|x| folder.fold_pat(x)),
                        after.move_map(|x| folder.fold_pat(x)))
             }

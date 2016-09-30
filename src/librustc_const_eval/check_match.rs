@@ -536,10 +536,10 @@ impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
                 }
                 PatKind::Box(inner) => PatKind::Box(self.fold_pat(inner)),
                 PatKind::Ref(inner, mutbl) => PatKind::Ref(self.fold_pat(inner), mutbl),
-                PatKind::Vec(before, slice, after) => {
-                    PatKind::Vec(before.move_map(|x| self.fold_pat(x)),
-                                 slice.map(|x| self.fold_pat(x)),
-                                 after.move_map(|x| self.fold_pat(x)))
+                PatKind::Slice(before, slice, after) => {
+                    PatKind::Slice(before.move_map(|x| self.fold_pat(x)),
+                                   slice.map(|x| self.fold_pat(x)),
+                                   after.move_map(|x| self.fold_pat(x)))
                 }
                 PatKind::Wild |
                 PatKind::Lit(_) |
@@ -610,14 +610,14 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
         ty::TySlice(_) => match ctor {
             &Slice(n) => {
                 assert_eq!(pats_len, n);
-                PatKind::Vec(pats.collect(), None, hir::HirVec::new())
+                PatKind::Slice(pats.collect(), None, hir::HirVec::new())
             },
             _ => unreachable!()
         },
 
         ty::TyArray(_, len) => {
             assert_eq!(pats_len, len);
-            PatKind::Vec(pats.collect(), None, hir::HirVec::new())
+            PatKind::Slice(pats.collect(), None, hir::HirVec::new())
         }
 
         _ => {
@@ -713,7 +713,7 @@ fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
     };
 
     let max_slice_length = rows.iter().filter_map(|row| match row[0].0.node {
-        PatKind::Vec(ref before, _, ref after) => Some(before.len() + after.len()),
+        PatKind::Slice(ref before, _, ref after) => Some(before.len() + after.len()),
         _ => None
     }).max().map_or(0, |v| v + 1);
 
@@ -812,7 +812,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
             vec![ConstantValue(eval_const_expr(cx.tcx, &expr))],
         PatKind::Range(ref lo, ref hi) =>
             vec![ConstantRange(eval_const_expr(cx.tcx, &lo), eval_const_expr(cx.tcx, &hi))],
-        PatKind::Vec(ref before, ref slice, ref after) =>
+        PatKind::Slice(ref before, ref slice, ref after) =>
             match left_ty.sty {
                 ty::TyArray(..) => vec![Single],
                 ty::TySlice(_) if slice.is_some() => {
@@ -1001,7 +1001,7 @@ pub fn specialize<'a, 'b, 'tcx>(
             }
         }
 
-        PatKind::Vec(ref before, ref slice, ref after) => {
+        PatKind::Slice(ref before, ref slice, ref after) => {
             let pat_len = before.len() + after.len();
             match *constructor {
                 Single => {

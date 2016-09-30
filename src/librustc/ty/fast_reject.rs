@@ -24,7 +24,7 @@ pub enum SimplifiedType {
     FloatSimplifiedType(ast::FloatTy),
     AdtSimplifiedType(DefId),
     StrSimplifiedType,
-    VecSimplifiedType,
+    ArraySimplifiedType,
     PtrSimplifiedType,
     NeverSimplifiedType,
     TupleSimplifiedType(usize),
@@ -57,7 +57,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyFloat(float_type) => Some(FloatSimplifiedType(float_type)),
         ty::TyAdt(def, _) => Some(AdtSimplifiedType(def.did)),
         ty::TyStr => Some(StrSimplifiedType),
-        ty::TyArray(..) | ty::TySlice(_) => Some(VecSimplifiedType),
+        ty::TyArray(..) | ty::TySlice(_) => Some(ArraySimplifiedType),
         ty::TyRawPtr(_) => Some(PtrSimplifiedType),
         ty::TyTrait(ref trait_info) => {
             Some(TraitSimplifiedType(trait_info.principal.def_id()))

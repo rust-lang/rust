@@ -972,7 +972,7 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ty.span.lo));
         try!(self.ibox(0));
         match ty.node {
-            ast::TyKind::Vec(ref ty) => {
+            ast::TyKind::Slice(ref ty) => {
                 try!(word(&mut self.s, "["));
                 try!(self.print_type(&ty));
                 try!(word(&mut self.s, "]"));
@@ -1039,7 +1039,7 @@ impl<'a> State<'a> {
             ast::TyKind::ImplTrait(ref bounds) => {
                 try!(self.print_bounds("impl ", &bounds[..]));
             }
-            ast::TyKind::FixedLengthVec(ref ty, ref v) => {
+            ast::TyKind::Array(ref ty, ref v) => {
                 try!(word(&mut self.s, "["));
                 try!(self.print_type(&ty));
                 try!(word(&mut self.s, "; "));
@@ -2573,7 +2573,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "..."));
                 try!(self.print_expr(&end));
             }
-            PatKind::Vec(ref before, ref slice, ref after) => {
+            PatKind::Slice(ref before, ref slice, ref after) => {
                 try!(word(&mut self.s, "["));
                 try!(self.commasep(Inconsistent,
                                    &before[..],

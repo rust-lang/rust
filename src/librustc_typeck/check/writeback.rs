@@ -247,7 +247,7 @@ impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_ty(&mut self, t: &hir::Ty) {
         match t.node {
-            hir::TyFixedLengthVec(ref ty, ref count_expr) => {
+            hir::TyArray(ref ty, ref count_expr) => {
                 self.visit_ty(&ty);
                 write_ty_to_tcx(self.fcx.ccx, count_expr.id, self.tcx().types.usize);
             }
