@@ -54,7 +54,7 @@ Diagnostics
   Most common editors supporting Rust have been updated to work with it. It was
   previously described [on the Rust blog]
   (https://blog.rust-lang.org/2016/08/10/Shape-of-errors-to-come.html).
-* [In error descriptions, references are now described in plain english,
+* [In error descriptions, references are now described in plain English,
   instead of as "&-ptr"]
   (https://github.com/rust-lang/rust/pull/35611)
 * [In error type descriptions, unknown numeric types are named `{integer}` or
