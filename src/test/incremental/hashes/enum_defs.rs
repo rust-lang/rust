@@ -18,7 +18,7 @@
 
 // We also test the ICH for enum definitions exported in metadata. Same as
 // above, we want to make sure that the change between rev1 and rev2 also
-// results in a change of the ICH for the struct's metadata, and that it stays
+// results in a change of the ICH for the enum's metadata, and that it stays
 // the same between rev2 and rev3.
 
 // must-compile-successfully
