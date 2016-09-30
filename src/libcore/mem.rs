@@ -15,7 +15,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use clone;
+use cmp;
+use fmt;
+use hash;
 use intrinsics;
+use marker::{Copy, PhantomData, Sized};
 use ptr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -647,3 +652,80 @@ pub fn drop<T>(_x: T) { }
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     ptr::read(src as *const T as *const U)
 }
+
+/// Opaque type representing the discriminant of an enum.
+///
+/// See the `discriminant` function in this module for more information.
+#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+pub struct Discriminant<T>(u64, PhantomData<*const T>);
+
+// N.B. These trait implementations cannot be derived because we don't want any bounds on T.
+
+#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+impl<T> Copy for Discriminant<T> {}
+
+#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+impl<T> clone::Clone for Discriminant<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+impl<T> cmp::PartialEq for Discriminant<T> {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.0 == rhs.0
+    }
+}
+
+#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+impl<T> cmp::Eq for Discriminant<T> {}
+
+#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+impl<T> hash::Hash for Discriminant<T> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+impl<T> fmt::Debug for Discriminant<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_tuple("Discriminant")
+           .field(&self.0)
+           .finish()
+    }
+}
+
+/// Returns a value uniquely identifying the enum variant in `v`.
+///
+/// If `T` is not an enum, calling this function will not result in undefined behavior, but the
+/// return value is unspecified.
+///
+/// # Stability
+///
+/// The discriminant of an enum variant may change if the enum definition changes. A discriminant
+/// of some variant will not change between compilations with the same compiler.
+///
+/// # Examples
+///
+/// This can be used to compare enums that carry data, while disregarding
+/// the actual data:
+///
+/// ```
+/// #![feature(discriminant_value)]
+/// use std::mem;
+///
+/// enum Foo { A(&'static str), B(i32), C(i32) }
+///
+/// assert!(mem::discriminant(&Foo::A("bar")) == mem::discriminant(&Foo::A("baz")));
+/// assert!(mem::discriminant(&Foo::B(1))     == mem::discriminant(&Foo::B(2)));
+/// assert!(mem::discriminant(&Foo::B(3))     != mem::discriminant(&Foo::C(3)));
+/// ```
+#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+pub fn discriminant<T>(v: &T) -> Discriminant<T> {
+    unsafe {
+        Discriminant(intrinsics::discriminant_value(v), PhantomData)
+    }
+}
+
