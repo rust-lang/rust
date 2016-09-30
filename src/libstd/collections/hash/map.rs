@@ -196,15 +196,29 @@ fn test_resize_policy() {
 //
 // FIXME(Gankro, pczarn): review the proof and put it all in a separate README.md
 
-/// A hash map implementation which uses linear probing with Robin
-/// Hood bucket stealing.
+/// A hash map implementation which uses linear probing with Robin Hood bucket
+/// stealing.
 ///
-/// By default, HashMap uses a somewhat slow hashing algorithm which can provide resistance
-/// to DoS attacks. Rust makes a best attempt at acquiring random numbers without IO
-/// blocking from your system. Because of this HashMap is not guaranteed to provide
-/// DoS resistance since the numbers generated might not be truly random. If you do
-/// require this behavior you can create your own hashing function using
-/// [BuildHasherDefault](../hash/struct.BuildHasherDefault.html).
+/// By default, `HashMap` uses a hashing algorithm selected to provide
+/// resistance against HashDoS attacks. The algorithm is randomly seeded, and a
+/// reasonable best-effort is made to generate this seed from a high quality,
+/// secure source of randomness provided by the host without blocking the
+/// program. Because of this, the randomness of the seed is dependant on the
+/// quality of the system's random number generator at the time it is created.
+/// In particular, seeds generated when the system's entropy pool is abnormally
+/// low such as during system boot may be of a lower quality.
+///
+/// The default hashing algorithm is currently SipHash 1-3, though this is
+/// subject to change at any point in the future. While its performance is very
+/// competitive for medium sized keys, other hashing algorithms will outperform
+/// it for small keys such as integers as well as large keys such as long
+/// strings, though those algorithms will typically *not* protect against
+/// attacks such as HashDoS.
+///
+/// The hashing algorithm can be replaced on a per-`HashMap` basis using the
+/// `HashMap::default`, `HashMap::with_hasher`, and
+/// `HashMap::with_capacity_and_hasher` methods. Many alternative algorithms
+/// are available on crates.io, such as the `fnv` crate.
 ///
 /// It is required that the keys implement the [`Eq`] and [`Hash`] traits, although
 /// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
