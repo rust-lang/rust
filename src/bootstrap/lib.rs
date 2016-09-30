@@ -543,43 +543,44 @@ impl Build {
         self.run(git_submodule().arg("sync"));
 
         for submodule in submodules {
+            let path = self.src.join(submodule.path);
             // If using llvm-root then don't touch the llvm submodule.
-            if submodule.path.components().any(|c| c == Component::Normal("llvm".as_ref())) &&
+            if path.components().any(|c| c == Component::Normal("llvm".as_ref())) &&
                 self.config.target_config.get(&self.config.build)
                     .and_then(|c| c.llvm_config.as_ref()).is_some()
             {
                 continue
             }
 
-            if submodule.path.components().any(|c| c == Component::Normal("jemalloc".as_ref())) &&
+            if path.components().any(|c| c == Component::Normal("jemalloc".as_ref())) &&
                 !self.config.use_jemalloc
             {
                 continue
             }
 
-            if !submodule.path.exists() {
-                t!(fs::create_dir_all(&submodule.path));
+            if !path.exists() {
+                t!(fs::create_dir_all(&path));
             }
 
             match submodule.state {
                 State::MaybeDirty => {
                     // drop staged changes
-                    self.run(git().current_dir(submodule.path)
+                    self.run(git().current_dir(&path)
                                   .args(&["reset", "--hard"]));
                     // drops unstaged changes
-                    self.run(git().current_dir(submodule.path)
+                    self.run(git().current_dir(&path)
                                   .args(&["clean", "-fdx"]));
                 },
                 State::NotInitialized => {
-                    self.run(git_submodule().arg("init").arg(submodule.path));
-                    self.run(git_submodule().arg("update").arg(submodule.path));
+                    self.run(git_submodule().arg("init").arg(&path));
+                    self.run(git_submodule().arg("update").arg(&path));
                 },
                 State::OutOfSync => {
                     // drops submodule commits that weren't reported to the (outer) git repository
-                    self.run(git_submodule().arg("update").arg(submodule.path));
-                    self.run(git().current_dir(submodule.path)
+                    self.run(git_submodule().arg("update").arg(&path));
+                    self.run(git().current_dir(&path)
                                   .args(&["reset", "--hard"]));
-                    self.run(git().current_dir(submodule.path)
+                    self.run(git().current_dir(&path)
                                   .args(&["clean", "-fdx"]));
                 },
             }
