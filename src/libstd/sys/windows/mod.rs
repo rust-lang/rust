@@ -179,7 +179,7 @@ pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
     }
 }
 
-trait IsZero {
+pub trait IsZero {
     fn is_zero(&self) -> bool;
 }
 
@@ -193,7 +193,7 @@ macro_rules! impl_is_zero {
 
 impl_is_zero! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
 
-fn cvt<I: IsZero>(i: I) -> io::Result<I> {
+pub fn cvt<I: IsZero>(i: I) -> io::Result<I> {
     if i.is_zero() {
         Err(io::Error::last_os_error())
     } else {
@@ -201,7 +201,7 @@ fn cvt<I: IsZero>(i: I) -> io::Result<I> {
     }
 }
 
-fn dur2timeout(dur: Duration) -> c::DWORD {
+pub fn dur2timeout(dur: Duration) -> c::DWORD {
     // Note that a duration is a (u64, u32) (seconds, nanoseconds) pair, and the
     // timeouts in windows APIs are typically u32 milliseconds. To translate, we
     // have two pieces to take care of:

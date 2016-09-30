@@ -57,13 +57,13 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     "src/libpanic_abort",
     "src/libpanic_unwind",
     "src/libunwind",
-    "src/libstd/sys/unix", // This is where platform-specific code for std should live
-    "src/libstd/sys/windows", // Ditto
+    "src/libstd/sys/unix", // This is where platform-specific code for unix
+    "src/libstd/sys/windows", // Ditto for windows
+    "src/libstd/sys/mod.rs", // This file chooses the platform
     "src/libstd/os", // Platform-specific public interfaces
     "src/rtstartup", // Not sure what to do about this. magic stuff for mingw
 
     // temporary exceptions
-    "src/libstd/lib.rs", // This could probably be done within the sys directory
     "src/libstd/rtdeps.rs", // Until rustbuild replaces make
     "src/libstd/path.rs",
     "src/libstd/num/f32.rs",
