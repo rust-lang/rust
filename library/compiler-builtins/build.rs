@@ -406,7 +406,9 @@ fn main() {
         }
 
         for src in sources.map.values() {
-            cfg.file(Path::new("compiler-rt/compiler-rt-cdylib/compiler-rt/lib/builtins").join(src));
+            let src = Path::new("compiler-rt/compiler-rt-cdylib/compiler-rt/lib/builtins").join(src);
+            cfg.file(&src);
+            println!("cargo:rerun-if-changed={}", src.display());
         }
 
         cfg.compile("libcompiler-rt.a");
