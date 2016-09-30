@@ -170,7 +170,7 @@ pub fn main() {
         // this check ensures that dependencies are built but not linted and the final crate is
         // linted but not built
         let mut ccc = ClippyCompilerCalls::new(env::args().any(|s| s == "-Zno-trans"));
-        let (result, _) = rustc_driver::run_compiler(&args, &mut ccc);
+        let (result, _) = rustc_driver::run_compiler(&args, &mut ccc, None, None);
 
         if let Err(err_count) = result {
             if err_count > 0 {
