@@ -70,7 +70,6 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     "src/libstd/num/f64.rs",
     "src/libstd/sys/common/mod.rs",
     "src/libstd/sys/common/net.rs",
-    "src/libstd/sys/common/util.rs",
     "src/libterm", // Not sure how to make this crate portable, but test needs it
     "src/libtest", // Probably should defer to unstable std::sys APIs
 

@@ -221,3 +221,17 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
         }
     }).unwrap_or(c::INFINITE)
 }
+
+// On Windows, use the processor-specific __fastfail mechanism.  In Windows 8
+// and later, this will terminate the process immediately without running any
+// in-process exception handlers.  In earlier versions of Windows, this
+// sequence of instructions will be treated as an access violation,
+// terminating the process but without necessarily bypassing all exception
+// handlers.
+//
+// https://msdn.microsoft.com/en-us/library/dn774154.aspx
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+pub unsafe fn abort_internal() -> ! {
+    asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+    ::intrinsics::unreachable();
+}
