@@ -1,4 +1,4 @@
-use core::mem;
+use core::{intrinsics, mem};
 use int::{Int, LargeInt};
 
 /// Returns `n / d`
@@ -7,7 +7,11 @@ use int::{Int, LargeInt};
 pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
     // Special cases
     if d == 0 {
-        panic!("Division by zero");
+        // NOTE This should be unreachable in safe Rust because the program will panic before
+        // this intrinsic is called
+        unsafe {
+            intrinsics::abort()
+        }
     }
 
     if n == 0 {
@@ -129,7 +133,11 @@ pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
             // K X
             // ---
             // 0 0
-            panic!("Division by zero");
+            // NOTE This should be unreachable in safe Rust because the program will panic before
+            // this intrinsic is called
+            unsafe {
+                intrinsics::abort()
+            }
         }
 
         if n.low() == 0 {
