@@ -171,7 +171,7 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
             Ok(result) => {
                 let span = obligation.cause.span;
                 match infcx.leak_check(false, span, &skol_map, snapshot) {
-                    Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, &result)),
+                    Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, result)),
                     Err(e) => Err(MismatchedProjectionTypes { err: e }),
                 }
             }
