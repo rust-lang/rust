@@ -1873,7 +1873,7 @@ macro_rules! shr_assign_impl_all {
 shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
 /// The `Index` trait is used to specify the functionality of indexing operations
-/// like `arr[idx]` when used in an immutable context.
+/// like `container[index]` when used in an immutable context.
 ///
 /// # Examples
 ///
@@ -1924,50 +1924,50 @@ pub trait Index<Idx: ?Sized> {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output: ?Sized;
 
-    /// The method for the indexing (`Foo[Bar]`) operation
+    /// The method for the indexing (`container[index]`) operation
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index(&self, index: Idx) -> &Self::Output;
 }
 
 /// The `IndexMut` trait is used to specify the functionality of indexing
-/// operations like `arr[idx]`, when used in a mutable context.
+/// operations like `container[index]`, when used in a mutable context.
 ///
 /// # Examples
 ///
-/// A trivial implementation of `IndexMut`. When `Foo[Bar]` happens, it ends up
-/// calling `index_mut`, and therefore, `main` prints `Indexing!`.
+/// A trivial implementation of `IndexMut` for a type `Foo`. When `&mut Foo[2]`
+/// happens, it ends up calling `index_mut`, and therefore, `main` prints
+/// `Mutable indexing with 2!`.
 ///
 /// ```
 /// use std::ops::{Index, IndexMut};
 ///
 /// #[derive(Copy, Clone)]
 /// struct Foo;
-/// struct Bar;
 ///
-/// impl Index<Bar> for Foo {
+/// impl Index<usize> for Foo {
 ///     type Output = Foo;
 ///
-///     fn index<'a>(&'a self, _index: Bar) -> &'a Foo {
+///     fn index(&self, _index: usize) -> &Foo {
 ///         self
 ///     }
 /// }
 ///
-/// impl IndexMut<Bar> for Foo {
-///     fn index_mut<'a>(&'a mut self, _index: Bar) -> &'a mut Foo {
-///         println!("Indexing!");
+/// impl IndexMut<usize> for Foo {
+///     fn index_mut(&mut self, index: usize) -> &mut Foo {
+///         println!("Mutable indexing with {}!", index);
 ///         self
 ///     }
 /// }
 ///
 /// fn main() {
-///     &mut Foo[Bar];
+///     &mut Foo[2];
 /// }
 /// ```
 #[lang = "index_mut"]
 #[rustc_on_unimplemented = "the type `{Self}` cannot be mutably indexed by `{Idx}`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
-    /// The method for the indexing (`Foo[Bar]`) operation
+    /// The method for the mutable indexing (`container[index]`) operation
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
 }
