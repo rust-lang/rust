@@ -52,7 +52,7 @@ script:
       cargo test --target $TARGET --release;
     fi
   # Travis can't cache files that are not readable by "others"
-  - chmod -R a+r /home/travis/.cargo
+  - chmod -R a+r $HOME/.cargo
 
 branches:
   only:
