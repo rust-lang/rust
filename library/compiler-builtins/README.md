@@ -159,8 +159,8 @@ porting that particular intrinsic.
 - [x] mulodi4.c
 - [x] mulosi4.c
 - [ ] mulsf3.c
-- [ ] powidf2.c
-- [ ] powisf2.c
+- [x] powidf2.c
+- [x] powisf2.c
 - [ ] subdf3.c
 - [ ] subsf3.c
 - [ ] truncdfhf2.c

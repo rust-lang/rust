@@ -22,6 +22,8 @@ extern {
     fn __umodsi3();
     fn __addsf3();
     fn __adddf3();
+    fn __powisf2();
+    fn __powidf2();
 }
 
 macro_rules! declare {
@@ -53,6 +55,8 @@ declare!(___umoddi3, __umoddi3);
 declare!(___umodsi3, __umodsi3);
 declare!(___addsf3, __addsf3);
 declare!(___adddf3, __adddf3);
+declare!(___powisf2, __powisf2);
+declare!(___powidf2, __powidf2);
 
 #[lang = "eh_personality"]
 fn eh_personality() {}

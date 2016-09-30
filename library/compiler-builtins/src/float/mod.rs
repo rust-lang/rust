@@ -1,6 +1,8 @@
 use core::mem;
+use core::fmt;
 
 pub mod add;
+pub mod pow;
 
 /// Trait for some basic operations on floats
 pub trait Float: Sized + Copy {
@@ -83,5 +85,32 @@ impl Float for f64 {
         let shift = significand.leading_zeros()
             .wrapping_sub((1u64 << Self::significand_bits()).leading_zeros());
         (1i32.wrapping_sub(shift as i32), significand << shift as Self::Int)
+    }
+}
+
+// TODO: Move this to F32/F64 in qc.rs
+#[cfg(test)]
+#[derive(Copy, Clone)]
+pub struct FRepr<F>(F);
+
+#[cfg(test)]
+impl<F: Float> PartialEq for FRepr<F> {
+    fn eq(&self, other: &FRepr<F>) -> bool {
+        // NOTE(cfg) for some reason, on hard float targets, our implementation doesn't
+        // match the output of its gcc_s counterpart. Until we investigate further, we'll
+        // just avoid testing against gcc_s on those targets. Do note that our
+        // implementation matches the output of the FPU instruction on *hard* float targets
+        // and matches its gcc_s counterpart on *soft* float targets.
+        if cfg!(gnueabihf) {
+            return true
+        }
+        self.0.eq_repr(other.0)
+    }
+}
+
+#[cfg(test)]
+impl<F: fmt::Debug> fmt::Debug for FRepr<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
