@@ -819,11 +819,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Field(field, field_ty) => {
                         let field_ty = self.monomorphize(field_ty, self.substs());
                         use rustc::ty::layout::Layout::*;
-                        let variant = match *base_layout {
-                            Univariant { ref variant, .. } => variant,
+                        let field = field.index();
+                        let offset = match *base_layout {
+                            Univariant { ref variant, .. } => variant.field_offset(field),
                             General { ref variants, .. } => {
                                 if let LvalueExtra::DowncastVariant(variant_idx) = base.extra {
-                                    &variants[variant_idx]
+                                    // +1 for the discriminant, which is field 0
+                                    variants[variant_idx].field_offset(field + 1)
                                 } else {
                                     bug!("field access on enum had no variant index");
                                 }
@@ -832,12 +834,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 assert_eq!(field.index(), 0);
                                 return Ok(base);
                             }
-                            StructWrappedNullablePointer { ref nonnull, .. } => nonnull,
+                            StructWrappedNullablePointer { ref nonnull, .. } => nonnull.field_offset(field),
                             _ => bug!("field access on non-product type: {:?}", base_layout),
                         };
 
-                        let offset = variant.field_offset(field.index()).bytes();
-                        let ptr = base.ptr.offset(offset as isize);
+                        let ptr = base.ptr.offset(offset.bytes() as isize);
                         if self.type_is_sized(field_ty) {
                             ptr
                         } else {
@@ -857,9 +858,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Downcast(_, variant) => {
                         use rustc::ty::layout::Layout::*;
                         match *base_layout {
-                            General { ref variants, .. } => {
+                            General { .. } => {
                                 return Ok(Lvalue {
-                                    ptr: base.ptr.offset(variants[variant].field_offset(1).bytes() as isize),
+                                    ptr: base.ptr,
                                     extra: LvalueExtra::DowncastVariant(variant),
                                 });
                             }
