@@ -1769,7 +1769,7 @@ impl<T> IntoIter<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// # #![feature(vec_into_iter_as_slice)]
     /// let vec = vec!['a', 'b', 'c'];
     /// let mut into_iter = vec.into_iter();
@@ -1788,7 +1788,7 @@ impl<T> IntoIter<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// # #![feature(vec_into_iter_as_slice)]
     /// let vec = vec!['a', 'b', 'c'];
     /// let mut into_iter = vec.into_iter();
