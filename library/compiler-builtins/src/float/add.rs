@@ -14,7 +14,7 @@ macro_rules! add {
 
             let bits =             Wrapping(<$ty>::bits() as <$ty as Float>::Int);
             let significand_bits = Wrapping(<$ty>::significand_bits() as <$ty as Float>::Int);
-            let exponent_bits =    bits - significand_bits - one;
+            let exponent_bits =    Wrapping(<$ty>::exponent_bits() as <$ty as Float>::Int);
             let max_exponent =     (one << exponent_bits.0 as usize) - one;
 
             let implicit_bit =     one << significand_bits.0 as usize;
