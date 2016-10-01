@@ -85,7 +85,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprCall(ref l_fun, ref l_args), &ExprCall(ref r_fun, ref r_args)) => {
                 !self.ignore_fn && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
             }
-            (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) => self.eq_expr(lx, rx) && self.eq_ty(lt, rt),
+            (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) |
+            (&ExprType(ref lx, ref lt), &ExprType(ref rx, ref rt)) => {
+                self.eq_expr(lx, rx) && self.eq_ty(lt, rt)
+            }
             (&ExprField(ref l_f_exp, ref l_f_ident), &ExprField(ref r_f_exp, ref r_f_ident)) => {
                 l_f_ident.node == r_f_ident.node && self.eq_expr(l_f_exp, r_f_exp)
             }
@@ -474,10 +477,11 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(le);
                 li.node.hash(&mut self.s);
             }
-            ExprType(_, _) => {
+            ExprType(ref e, ref _ty) => {
                 let c: fn(_, _) -> _ = ExprType;
                 c.hash(&mut self.s);
-                // what’s an ExprType anyway?
+                self.hash_expr(e);
+                // TODO: _ty
             }
             ExprUnary(lop, ref le) => {
                 let c: fn(_, _) -> _ = ExprUnary;
