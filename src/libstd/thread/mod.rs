@@ -741,7 +741,7 @@ fn _assert_sync_and_send() {
 // Tests
 ////////////////////////////////////////////////////////////////////////////////
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use any::Any;
     use sync::mpsc::{channel, Sender};

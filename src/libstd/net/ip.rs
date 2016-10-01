@@ -669,7 +669,7 @@ impl From<[u8; 16]> for Ipv6Addr {
 }
 
 // Tests for this module
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use net::*;
     use net::Ipv6MulticastScope::*;

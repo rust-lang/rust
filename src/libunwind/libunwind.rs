@@ -65,7 +65,7 @@ pub const unwinder_private_data_size: usize = 2;
 #[cfg(target_arch = "s390x")]
 pub const unwinder_private_data_size: usize = 2;
 
-#[cfg(target_arch = "asmjs")]
+#[cfg(target_os = "emscripten")]
 pub const unwinder_private_data_size: usize = 20;
 
 #[repr(C)]

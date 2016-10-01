@@ -242,6 +242,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_os_rng_tasks() {
 
         let mut txs = vec!();

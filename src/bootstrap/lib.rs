@@ -975,7 +975,8 @@ impl Build {
         // than an entry here.
 
         let mut base = Vec::new();
-        if target != self.config.build && !target.contains("msvc") {
+        if target != self.config.build && !target.contains("msvc") &&
+            !target.contains("emscripten") {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }
         return base

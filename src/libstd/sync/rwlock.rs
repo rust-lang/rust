@@ -380,7 +380,7 @@ impl<'a, T: ?Sized> Drop for RwLockWriteGuard<'a, T> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     #![allow(deprecated)] // rand
 

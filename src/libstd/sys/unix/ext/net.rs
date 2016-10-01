@@ -786,7 +786,7 @@ impl IntoRawFd for UnixDatagram {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod test {
     use thread;
     use io;

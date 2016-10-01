@@ -366,7 +366,7 @@ impl<'rx, T:Send+'rx> fmt::Debug for Handle<'rx, T> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 #[allow(unused_imports)]
 mod tests {
     use thread;

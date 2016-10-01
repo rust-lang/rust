@@ -31,7 +31,8 @@ mod addr;
 mod tcp;
 mod udp;
 mod parser;
-#[cfg(test)] mod test;
+#[cfg(all(test, not(target_os = "emscripten")))]
+mod test;
 
 /// Possible values which can be passed to the [`shutdown`] method of
 /// [`TcpStream`].
