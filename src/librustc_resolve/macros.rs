@@ -23,6 +23,11 @@ use syntax::ext::tt::macro_rules;
 use syntax::parse::token::intern;
 use syntax::util::lev_distance::find_best_match_for_name;
 
+// FIXME(jseyfried) Merge with `::NameBinding`.
+pub struct NameBinding {
+    ext: Rc<SyntaxExtension>,
+}
+
 #[derive(Clone)]
 pub struct ExpansionData<'a> {
     pub module: Module<'a>,
@@ -87,7 +92,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         while module.macros_escape {
             module = module.parent.unwrap();
         }
-        module.macros.borrow_mut().insert(ident.name, ext);
+        module.macros.borrow_mut().insert(ident.name, NameBinding {
+            ext: ext,
+        });
     }
 
     fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>) {
@@ -98,7 +105,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         for i in 0..attrs.len() {
             let name = intern(&attrs[i].name());
             match self.expansion_data[&0].module.macros.borrow().get(&name) {
-                Some(ext) => match **ext {
+                Some(binding) => match *binding.ext {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))
                     }
@@ -127,8 +134,8 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         let mut module = self.expansion_data[&scope.as_u32()].module;
         loop {
-            if let Some(ext) = module.macros.borrow().get(&name) {
-                return Some(ext.clone());
+            if let Some(binding) = module.macros.borrow().get(&name) {
+                return Some(binding.ext.clone());
             }
             match module.parent {
                 Some(parent) => module = parent,
