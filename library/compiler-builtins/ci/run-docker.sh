@@ -24,7 +24,7 @@ run() {
            -v `rustc --print sysroot`:/rust:ro \
            -w /checkout \
            -it $target \
-           sh -c "PATH=\$PATH:/rust/bin ci/run.sh $target"
+           sh -c "HOME=/tmp PATH=\$PATH:/rust/bin ci/run.sh $target"
 }
 
 if [ -z "$1" ]; then
