@@ -423,8 +423,8 @@ pub use core_collections::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use rustc_unicode::char;
 
-#[path = "num/f32.rs"]   pub mod f32;
-#[path = "num/f64.rs"]   pub mod f64;
+pub mod f32;
+pub mod f64;
 
 #[macro_use]
 pub mod thread;
