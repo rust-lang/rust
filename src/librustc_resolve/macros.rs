@@ -18,7 +18,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, MultiModifier, MultiDecorator, MultiItemModifier};
 use syntax::ext::base::{NormalTT, SyntaxExtension};
 use syntax::ext::expand::{Expansion, Invocation, InvocationKind};
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ext::tt::macro_rules;
 use syntax::parse::token::intern;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -30,6 +30,7 @@ pub struct NameBinding {
 
 #[derive(Clone)]
 pub struct ExpansionData<'a> {
+    backtrace: SyntaxContext,
     pub module: Module<'a>,
     def_index: DefIndex,
     // True if this expansion is in a `const_integer` position, for example `[u32; m!()]`.
@@ -40,6 +41,7 @@ pub struct ExpansionData<'a> {
 impl<'a> ExpansionData<'a> {
     pub fn root(graph_root: Module<'a>) -> Self {
         ExpansionData {
+            backtrace: SyntaxContext::empty(),
             module: graph_root,
             def_index: CRATE_DEF_INDEX,
             const_integer: false,
@@ -56,6 +58,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         let mark = Mark::fresh();
         let module = self.module_map[&id];
         self.expansion_data.insert(mark, ExpansionData {
+            backtrace: SyntaxContext::empty(),
             module: module,
             def_index: module.def_id().unwrap().index,
             const_integer: false,
@@ -171,9 +174,10 @@ impl<'a> Resolver<'a> {
 
     fn collect_def_ids(&mut self, mark: Mark, expansion: &Expansion) {
         let expansion_data = &mut self.expansion_data;
-        let ExpansionData { def_index, const_integer, module } = expansion_data[&mark];
+        let ExpansionData { backtrace, def_index, const_integer, module } = expansion_data[&mark];
         let visit_macro_invoc = &mut |invoc: map::MacroInvocationData| {
             expansion_data.entry(invoc.mark).or_insert(ExpansionData {
+                backtrace: backtrace.apply_mark(invoc.mark),
                 def_index: invoc.def_index,
                 const_integer: invoc.const_integer,
                 module: module,
