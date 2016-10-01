@@ -312,13 +312,25 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         if num_supplied_types > 0 && num_supplied_types != num_method_types {
             if num_method_types == 0 {
-                span_err!(self.tcx.sess, self.span, E0035,
-                    "does not take type parameters");
+                struct_span_err!(self.tcx.sess, self.span, E0035,
+                                 "does not take type parameters")
+                    .span_label(self.span, &"called with unneeded type parameters")
+                    .emit();
             } else {
-                span_err!(self.tcx.sess, self.span, E0036,
+                struct_span_err!(self.tcx.sess, self.span, E0036,
                     "incorrect number of type parameters given for this method: \
                      expected {}, found {}",
-                    num_method_types, num_supplied_types);
+                    num_method_types, num_supplied_types)
+                    .span_label(self.span,
+                                &format!("Passed {} type argument{}, expected {}",
+                                         num_supplied_types,
+                                         if num_supplied_types != 1 {
+                                            "s"
+                                         } else {
+                                            ""
+                                         },
+                                         num_method_types))
+                    .emit();
             }
             supplied_method_types = vec![self.tcx.types.err; num_method_types];
         }

@@ -1288,7 +1288,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let link_meta = self.link_meta;
         let is_rustc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeRustcMacro);
         let root = self.lazy(&CrateRoot {
-            rustc_version: RUSTC_VERSION.to_string(),
+            rustc_version: rustc_version(),
             name: link_meta.crate_name.clone(),
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
