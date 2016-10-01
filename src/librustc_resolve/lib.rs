@@ -57,7 +57,6 @@ use syntax::ext::base::MultiItemModifier;
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, IntTy, UintTy};
-use syntax::ext::base::SyntaxExtension;
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -793,7 +792,7 @@ pub struct ModuleS<'a> {
     // `populate_module_if_necessary` call.
     populated: Cell<bool>,
 
-    macros: RefCell<FnvHashMap<Name, Rc<SyntaxExtension>>>,
+    macros: RefCell<FnvHashMap<Name, macros::NameBinding>>,
     macros_escape: bool,
 }
 
