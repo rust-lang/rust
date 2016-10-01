@@ -288,15 +288,14 @@ pub fn main_args(args: &[String]) -> isize {
                               passes.into_iter().collect(),
                               css_file_extension,
                               renderinfo)
-                .expect("failed to generate documentation")
+                .expect("failed to generate documentation");
+            0
         }
         Some(s) => {
             println!("unknown output format: {}", s);
-            return 1;
+            1
         }
     }
-
-    return 0;
 }
 
 /// Looks inside the command line arguments to extract the relevant input format

@@ -764,7 +764,7 @@ impl Lifetime {
     pub fn get_ref<'a>(&'a self) -> &'a str {
         let Lifetime(ref s) = *self;
         let s: &'a str = s;
-        return s;
+        s
     }
 
     pub fn statik() -> Lifetime {
@@ -1129,7 +1129,7 @@ pub struct FnDecl {
 
 impl FnDecl {
     pub fn has_self(&self) -> bool {
-        return self.inputs.values.len() > 0 && self.inputs.values[0].name == "self";
+        self.inputs.values.len() > 0 && self.inputs.values[0].name == "self"
     }
 
     pub fn self_type(&self) -> Option<SelfTy> {

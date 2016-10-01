@@ -328,7 +328,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             _ => false,
         };
         self.view_item_stack.remove(&def_node_id);
-        return ret;
+        ret
     }
 
     pub fn visit_item(&mut self, item: &hir::Item,
