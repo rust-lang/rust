@@ -65,8 +65,8 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     // temporary exceptions
     "src/libstd/rtdeps.rs", // Until rustbuild replaces make
     "src/libstd/path.rs",
-    "src/libstd/num/f32.rs",
-    "src/libstd/num/f64.rs",
+    "src/libstd/f32.rs",
+    "src/libstd/f64.rs",
     "src/libstd/sys_common/mod.rs",
     "src/libstd/sys_common/net.rs",
     "src/libterm", // Not sure how to make this crate portable, but test needs it
