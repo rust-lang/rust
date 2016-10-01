@@ -168,8 +168,8 @@ supported_targets! {
     ("x86_64-unknown-netbsd", x86_64_unknown_netbsd),
     ("x86_64-rumprun-netbsd", x86_64_rumprun_netbsd),
 
-    ("i686_unknown_haiku", i686_unknown_haiku),
-    ("x86_64_unknown_haiku", x86_64_unknown_haiku),
+    ("i686-unknown-haiku", i686_unknown_haiku),
+    ("x86_64-unknown-haiku", x86_64_unknown_haiku),
 
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
