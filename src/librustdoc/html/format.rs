@@ -708,17 +708,17 @@ impl fmt::Display for ConstnessSpace {
 impl fmt::Display for clean::Import {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            clean::SimpleImport(ref name, ref src) => {
+            clean::Import::Simple(ref name, ref src) => {
                 if *name == src.path.last_name() {
                     write!(f, "use {};", *src)
                 } else {
                     write!(f, "use {} as {};", *src, *name)
                 }
             }
-            clean::GlobImport(ref src) => {
+            clean::Import::Glob(ref src) => {
                 write!(f, "use {}::*;", *src)
             }
-            clean::ImportList(ref src, ref names) => {
+            clean::Import::List(ref src, ref names) => {
                 write!(f, "use {}::{{", *src)?;
                 for (i, n) in names.iter().enumerate() {
                     if i > 0 {
