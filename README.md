@@ -174,7 +174,7 @@ You can check out this great service at [clippy.bashy.io](https://clippy.bashy.i
 
 ## Lints
 
-There are 171 lints included in this crate:
+There are 172 lints included in this crate:
 
 name                                                                                                                 | default | triggers on
 ---------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -220,6 +220,7 @@ name                                                                            
 [eval_order_dependence](https://github.com/Manishearth/rust-clippy/wiki#eval_order_dependence)                       | warn    | whether a variable read occurs before a write depends on sub-expression evaluation order
 [expl_impl_clone_on_copy](https://github.com/Manishearth/rust-clippy/wiki#expl_impl_clone_on_copy)                   | warn    | implementing `Clone` explicitly on `Copy` types
 [explicit_counter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_counter_loop)                       | warn    | for-looping with an explicit counter when `_.enumerate()` would do
+[explicit_into_iter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_into_iter_loop)                   | warn    | for-looping over `_.into_iter()` when `_` would do
 [explicit_iter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop)                             | warn    | for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do
 [extend_from_slice](https://github.com/Manishearth/rust-clippy/wiki#extend_from_slice)                               | warn    | `.extend_from_slice(_)` is a faster way to extend a Vec by a slice
 [filter_map](https://github.com/Manishearth/rust-clippy/wiki#filter_map)                                             | allow   | using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call

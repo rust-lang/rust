@@ -58,6 +58,24 @@ declare_lint! {
     "for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do"
 }
 
+/// **What it does:** Checks for loops on `y.into_iter()` where `y` will do, and
+/// suggests the latter.
+///
+/// **Why is this bad?** Readability.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+/// ```rust
+/// // with `y` a `Vec` or slice:
+/// for x in y.into_iter() { .. }
+/// ```
+declare_lint! {
+    pub EXPLICIT_INTO_ITER_LOOP,
+    Warn,
+    "for-looping over `_.into_iter()` when `_` would do"
+}
+
 /// **What it does:** Checks for loops on `x.next()`.
 ///
 /// **Why is this bad?** `next()` returns either `Some(value)` if there was a
@@ -275,6 +293,7 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RANGE_LOOP,
                     EXPLICIT_ITER_LOOP,
+                    EXPLICIT_INTO_ITER_LOOP,
                     ITER_NEXT_LOOP,
                     FOR_LOOP_OVER_RESULT,
                     FOR_LOOP_OVER_OPTION,
@@ -577,6 +596,16 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                                        object,
                                        method_name));
                 }
+            } else if method_name.as_str() == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
+                    let object = snippet(cx, args[0].span, "_");
+                    span_lint(cx,
+                              EXPLICIT_INTO_ITER_LOOP,
+                              expr.span,
+                              &format!("it is more idiomatic to loop over `{}` instead of `{}.{}()`",
+                                       object,
+                                       object,
+                                       method_name));
+
             } else if method_name.as_str() == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
                 span_lint(cx,
                           ITER_NEXT_LOOP,

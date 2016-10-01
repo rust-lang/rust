@@ -23,6 +23,7 @@ pub const HASH: [&'static str; 2] = ["hash", "Hash"];
 pub const HASHMAP: [&'static str; 5] = ["std", "collections", "hash", "map", "HashMap"];
 pub const HASHMAP_ENTRY: [&'static str; 5] = ["std", "collections", "hash", "map", "Entry"];
 pub const HASHSET: [&'static str; 5] = ["std", "collections", "hash", "set", "HashSet"];
+pub const INTO_ITERATOR: [&'static str; 4] = ["core", "iter", "traits", "IntoIterator"];
 pub const IO_PRINT: [&'static str; 3] = ["std", "io", "_print"];
 pub const ITERATOR: [&'static str; 4] = ["core", "iter", "iterator", "Iterator"];
 pub const LINKED_LIST: [&'static str; 3] = ["collections", "linked_list", "LinkedList"];

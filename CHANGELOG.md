@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.93 — ?
+* New lint: [`explicit_into_iter_loop`]
+
 ## 0.0.92 — 2016-09-30
 * Rustup to *rustc 1.14.0-nightly (289f3a4ca 2016-09-29)*
 
@@ -230,6 +233,7 @@ All notable changes to this project will be documented in this file.
 [`eval_order_dependence`]: https://github.com/Manishearth/rust-clippy/wiki#eval_order_dependence
 [`expl_impl_clone_on_copy`]: https://github.com/Manishearth/rust-clippy/wiki#expl_impl_clone_on_copy
 [`explicit_counter_loop`]: https://github.com/Manishearth/rust-clippy/wiki#explicit_counter_loop
+[`explicit_into_iter_loop`]: https://github.com/Manishearth/rust-clippy/wiki#explicit_into_iter_loop
 [`explicit_iter_loop`]: https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop
 [`extend_from_slice`]: https://github.com/Manishearth/rust-clippy/wiki#extend_from_slice
 [`filter_map`]: https://github.com/Manishearth/rust-clippy/wiki#filter_map
