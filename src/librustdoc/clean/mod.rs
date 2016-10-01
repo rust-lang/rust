@@ -2026,7 +2026,7 @@ impl Clean<Item> for doctree::Variant {
             deprecation: self.depr.clean(cx),
             def_id: cx.map.local_def_id(self.def.id()),
             inner: VariantItem(Variant {
-                kind: struct_def_to_variant_kind(&self.def, cx),
+                kind: VariantKind::from_struct_def(&self.def, cx),
             }),
         }
     }
@@ -2080,13 +2080,15 @@ pub enum VariantKind {
     StructVariant(VariantStruct),
 }
 
-fn struct_def_to_variant_kind(struct_def: &hir::VariantData, cx: &DocContext) -> VariantKind {
-    if struct_def.is_struct() {
-        StructVariant(struct_def.clean(cx))
-    } else if struct_def.is_unit() {
-        CLikeVariant
-    } else {
-        TupleVariant(struct_def.fields().iter().map(|x| x.ty.clean(cx)).collect())
+impl VariantKind {
+    fn from_struct_def(struct_def: &hir::VariantData, cx: &DocContext) -> VariantKind {
+        if struct_def.is_struct() {
+            StructVariant(struct_def.clean(cx))
+        } else if struct_def.is_unit() {
+            CLikeVariant
+        } else {
+            TupleVariant(struct_def.fields().iter().map(|x| x.ty.clean(cx)).collect())
+        }
     }
 }
 
