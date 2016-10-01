@@ -3534,7 +3534,7 @@ fn module_to_string(module: Module) -> String {
         } else {
             // danger, shouldn't be ident?
             names.push(token::intern("<opaque>"));
-            collect_mod(names, module);
+            collect_mod(names, module.parent.unwrap());
         }
     }
     collect_mod(&mut names, module);
