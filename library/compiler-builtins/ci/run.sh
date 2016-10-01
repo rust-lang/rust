@@ -3,8 +3,6 @@ set -e
 # Test our implementation
 case $1 in
     thumb*)
-        curl -sf "https://raw.githubusercontent.com/japaric/rust-everywhere/master/install.sh" | \
-            bash -s -- --at /usr/bin --from japaric/xargo --tag v0.1.10
         xargo build --target $1
         xargo build --target $1 --release
         ;;
