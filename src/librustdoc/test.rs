@@ -169,7 +169,7 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
         }
     }
 
-    return opts;
+    opts
 }
 
 fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
@@ -363,7 +363,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
 
     info!("final test program: {}", prog);
 
-    return prog
+    prog
 }
 
 fn partition_source(s: &str) -> (String, String) {
@@ -387,7 +387,7 @@ fn partition_source(s: &str) -> (String, String) {
         }
     }
 
-    return (before, after);
+    (before, after)
 }
 
 pub struct Collector {

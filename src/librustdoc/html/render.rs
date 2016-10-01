@@ -722,7 +722,7 @@ fn write_shared(cx: &Context,
                 ret.push(line.to_string());
             }
         }
-        return Ok(ret);
+        Ok(ret)
     }
 
     // Update the search index
@@ -1208,7 +1208,7 @@ impl DocFolder for Cache {
         self.seen_mod = orig_seen_mod;
         self.stripped_mod = orig_stripped_mod;
         self.parent_is_trait_impl = orig_parent_is_trait_impl;
-        return ret;
+        ret
     }
 }
 
@@ -1249,7 +1249,7 @@ impl Context {
         self.dst = prev;
         self.current.pop().unwrap();
 
-        return ret;
+        ret
     }
 
     /// Main method for rendering a crate.
@@ -1450,7 +1450,7 @@ impl Context {
         for (_, items) in &mut map {
             items.sort();
         }
-        return map;
+        map
     }
 }
 
@@ -1647,7 +1647,7 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
     let mut s = cx.current.join("::");
     s.push_str("::");
     s.push_str(item.name.as_ref().unwrap());
-    return s
+    s
 }
 
 fn shorter<'a>(s: Option<&'a str>) -> String {

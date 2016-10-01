@@ -577,7 +577,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics)
             _ => true,
         }
     });
-    return g;
+    g
 }
 
 /// Supertrait bounds for a trait are also listed in the generics coming from
