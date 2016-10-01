@@ -7,6 +7,5 @@ RUN apt-get install -y --no-install-recommends \
         binfmt-support qemu-user-static
 
 ENV CARGO_TARGET_MIPSEL_UNKNOWN_LINUX_GNU_LINKER=mipsel-linux-gnu-gcc \
-    PATH=$PATH:/rust/bin \
     QEMU_LD_PREFIX=/usr/mipsel-linux-gnu \
     RUST_TEST_THREADS=1

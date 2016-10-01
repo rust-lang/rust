@@ -7,6 +7,5 @@ RUN apt-get install -y --no-install-recommends \
         qemu-system-ppc
 
 ENV CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_LINKER=powerpc-linux-gnu-gcc \
-    PATH=$PATH:/rust/bin \
     QEMU_LD_PREFIX=/usr/powerpc-linux-gnu \
     RUST_TEST_THREADS=1

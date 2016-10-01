@@ -5,6 +5,5 @@ RUN apt-get install -y --no-install-recommends \
   gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
   qemu-user-static
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-    PATH=$PATH:/rust/bin \
     QEMU_LD_PREFIX=/usr/aarch64-linux-gnu \
     RUST_TEST_THREADS=1

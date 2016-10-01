@@ -5,4 +5,3 @@ RUN apt-get install -y --no-install-recommends \
 ENV AR_thumbv7em_none_eabihf=arm-none-eabi-ar \
     CARGO_TARGET_THUMBV7EM_NONE_EABIHF_LINKER=arm-none-eabi-gcc \
     CC_thumbv7em_none_eabihf=arm-none-eabi-gcc \
-    PATH=$PATH:/rust/bin

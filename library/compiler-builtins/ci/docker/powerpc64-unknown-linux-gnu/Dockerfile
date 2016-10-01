@@ -8,6 +8,5 @@ RUN apt-get install -y --no-install-recommends \
 
 ENV CARGO_TARGET_POWERPC64_UNKNOWN_LINUX_GNU_LINKER=powerpc64-linux-gnu-gcc \
     CC_powerpc64_unknown_linux_gnu=powerpc64-linux-gnu-gcc \
-    PATH=$PATH:/rust/bin \
     QEMU_LD_PREFIX=/usr/powerpc64-linux-gnu \
     RUST_TEST_THREADS=1

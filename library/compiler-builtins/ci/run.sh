@@ -44,10 +44,9 @@ esac
 
 case $TRAVIS_OS_NAME in
     osx)
-        NM=gnm
-
         # NOTE OSx's nm doesn't accept the `--defined-only` or provide an equivalent.
         # Use GNU nm instead
+        NM=gnm
         brew install binutils
         ;;
     *)
@@ -56,7 +55,7 @@ case $TRAVIS_OS_NAME in
 esac
 
 # NOTE On i586, It's normal that the get_pc_thunk symbol appears several times so ignore it
-$PREFIX$NM -g --defined-only /tmp/target/${1}/debug/librustc_builtins.rlib | \
+$PREFIX$NM -g --defined-only /target/${1}/debug/librustc_builtins.rlib | \
     sort | uniq -d | grep -v __x86.get_pc_thunk | grep 'T __'
 
 if test $? = 0; then
