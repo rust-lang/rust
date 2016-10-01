@@ -113,6 +113,8 @@ impl<T> Packet<T> {
             // Couldn't send the data, the port hung up first. Return the data
             // back up the stack.
             DISCONNECTED => {
+                self.state.swap(DISCONNECTED, Ordering::SeqCst);
+                self.upgrade = NothingSent;
                 Err(self.data.take().unwrap())
             }
 
