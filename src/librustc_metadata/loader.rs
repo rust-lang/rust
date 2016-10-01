@@ -213,7 +213,7 @@
 //! metadata::loader or metadata::creader for all the juicy details!
 
 use cstore::MetadataBlob;
-use schema::{METADATA_HEADER, RUSTC_VERSION};
+use schema::{METADATA_HEADER, rustc_version};
 
 use rustc::hir::svh::Svh;
 use rustc::session::Session;
@@ -382,7 +382,7 @@ impl<'a> Context<'a> {
         }
         if !self.rejected_via_version.is_empty() {
             err.help(&format!("please recompile that crate using this compiler ({})",
-                              RUSTC_VERSION));
+                              rustc_version()));
             let mismatches = self.rejected_via_version.iter();
             for (i, &CrateMismatch { ref path, ref got }) in mismatches.enumerate() {
                 err.note(&format!("crate `{}` path #{}: {} compiled by {:?}",
@@ -597,9 +597,10 @@ impl<'a> Context<'a> {
 
     fn crate_matches(&mut self, metadata: &MetadataBlob, libpath: &Path) -> Option<Svh> {
         let root = metadata.get_root();
-        if root.rustc_version != RUSTC_VERSION {
+        let rustc_version = rustc_version();
+        if root.rustc_version != rustc_version {
             info!("Rejecting via version: expected {} got {}",
-                  RUSTC_VERSION, root.rustc_version);
+                  rustc_version, root.rustc_version);
             self.rejected_via_version.push(CrateMismatch {
                 path: libpath.to_path_buf(),
                 got: root.rustc_version
