@@ -1,3 +1,5 @@
+set -e
+
 # Test our implementation
 case $1 in
     thumb*)
@@ -29,7 +31,7 @@ case $1 in
 esac
 
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
-PREFIX=$(echo $1 | sed -e 's/unknown-//')
+PREFIX=$(echo $1 | sed -e 's/unknown-//')-
 case $1 in
     armv7-*)
         PREFIX=arm-linux-gnueabihf-
@@ -55,8 +57,10 @@ case $TRAVIS_OS_NAME in
 esac
 
 # NOTE On i586, It's normal that the get_pc_thunk symbol appears several times so ignore it
-$PREFIX$NM -g --defined-only /target/${1}/debug/librustc_builtins.rlib | \
-    sort | uniq -d | grep -v __x86.get_pc_thunk | grep 'T __'
+stdout=$($PREFIX$NM -g --defined-only /target/${1}/debug/librustc_builtins.rlib)
+
+set +e
+echo $stdout | sort | uniq -d | grep -v __x86.get_pc_thunk | grep 'T __'
 
 if test $? = 0; then
     exit 1
