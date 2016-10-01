@@ -12,7 +12,6 @@
 //! that clean them.
 
 pub use self::Type::*;
-pub use self::TypeKind::*;
 pub use self::VariantKind::*;
 pub use self::Mutability::*;
 pub use self::Import::*;
@@ -688,7 +687,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
                 (tcx.lang_items.sync_trait().unwrap(),
                  external_path(cx, "Sync", None, false, vec![], empty)),
         };
-        inline::record_extern_fqn(cx, did, TypeTrait);
+        inline::record_extern_fqn(cx, did, TypeKind::Trait);
         TraitBound(PolyTrait {
             trait_: ResolvedPath {
                 path: path,
@@ -707,7 +706,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
             Some(tcx) => tcx,
             None => return RegionBound(Lifetime::statik())
         };
-        inline::record_extern_fqn(cx, self.def_id, TypeTrait);
+        inline::record_extern_fqn(cx, self.def_id, TypeKind::Trait);
         let path = external_path(cx, &tcx.item_name(self.def_id).as_str(),
                                  Some(self.def_id), true, vec![], self.substs);
 
@@ -1480,16 +1479,16 @@ pub enum PrimitiveType {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
 pub enum TypeKind {
-    TypeEnum,
-    TypeFunction,
-    TypeModule,
-    TypeConst,
-    TypeStatic,
-    TypeStruct,
-    TypeUnion,
-    TypeTrait,
-    TypeVariant,
-    TypeTypedef,
+    Enum,
+    Function,
+    Module,
+    Const,
+    Static,
+    Struct,
+    Union,
+    Trait,
+    Variant,
+    Typedef,
 }
 
 pub trait GetDefId {
@@ -1795,9 +1794,9 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyAdt(def, substs) => {
                 let did = def.did;
                 let kind = match def.adt_kind() {
-                    AdtKind::Struct => TypeStruct,
-                    AdtKind::Union => TypeUnion,
-                    AdtKind::Enum => TypeEnum,
+                    AdtKind::Struct => TypeKind::Struct,
+                    AdtKind::Union => TypeKind::Union,
+                    AdtKind::Enum => TypeKind::Enum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
                 let path = external_path(cx, &cx.tcx().item_name(did).as_str(),
@@ -1811,7 +1810,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             }
             ty::TyTrait(ref obj) => {
                 let did = obj.principal.def_id();
-                inline::record_extern_fqn(cx, did, TypeTrait);
+                inline::record_extern_fqn(cx, did, TypeKind::Trait);
 
                 let mut typarams = vec![];
                 obj.region_bound.clean(cx).map(|b| typarams.push(RegionBound(b)));
@@ -2761,16 +2760,16 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
     let tcx = cx.tcx();
 
     let (did, kind) = match def {
-        Def::Fn(i) => (i, TypeFunction),
-        Def::TyAlias(i) => (i, TypeTypedef),
-        Def::Enum(i) => (i, TypeEnum),
-        Def::Trait(i) => (i, TypeTrait),
-        Def::Struct(i) => (i, TypeStruct),
-        Def::Union(i) => (i, TypeUnion),
-        Def::Mod(i) => (i, TypeModule),
-        Def::Static(i, _) => (i, TypeStatic),
-        Def::Variant(i) => (tcx.parent_def_id(i).unwrap(), TypeEnum),
-        Def::SelfTy(Some(def_id), _) => (def_id, TypeTrait),
+        Def::Fn(i) => (i, TypeKind::Function),
+        Def::TyAlias(i) => (i, TypeKind::Typedef),
+        Def::Enum(i) => (i, TypeKind::Enum),
+        Def::Trait(i) => (i, TypeKind::Trait),
+        Def::Struct(i) => (i, TypeKind::Struct),
+        Def::Union(i) => (i, TypeKind::Union),
+        Def::Mod(i) => (i, TypeKind::Module),
+        Def::Static(i, _) => (i, TypeKind::Static),
+        Def::Variant(i) => (tcx.parent_def_id(i).unwrap(), TypeKind::Enum),
+        Def::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
         Def::SelfTy(_, Some(impl_def_id)) => {
             return impl_def_id
         }
@@ -2778,7 +2777,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
     };
     if did.is_local() { return did }
     inline::record_extern_fqn(cx, did, kind);
-    if let TypeTrait = kind {
+    if let TypeKind::Trait = kind {
         let t = inline::build_external_trait(cx, tcx, did);
         cx.external_traits.borrow_mut().insert(did, t);
     }
@@ -2966,7 +2965,7 @@ fn lang_struct(cx: &DocContext, did: Option<DefId>,
         Some(did) => did,
         None => return fallback(box t.clean(cx)),
     };
-    inline::record_extern_fqn(cx, did, TypeStruct);
+    inline::record_extern_fqn(cx, did, TypeKind::Struct);
     ResolvedPath {
         typarams: None,
         did: did,

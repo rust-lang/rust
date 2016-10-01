@@ -90,16 +90,16 @@ impl<'a> From<&'a clean::Item> for ItemType {
 impl From<clean::TypeKind> for ItemType {
     fn from(kind: clean::TypeKind) -> ItemType {
         match kind {
-            clean::TypeStruct   => ItemType::Struct,
-            clean::TypeUnion    => ItemType::Union,
-            clean::TypeEnum     => ItemType::Enum,
-            clean::TypeFunction => ItemType::Function,
-            clean::TypeTrait    => ItemType::Trait,
-            clean::TypeModule   => ItemType::Module,
-            clean::TypeStatic   => ItemType::Static,
-            clean::TypeConst    => ItemType::Constant,
-            clean::TypeVariant  => ItemType::Variant,
-            clean::TypeTypedef  => ItemType::Typedef,
+            clean::TypeKind::Struct   => ItemType::Struct,
+            clean::TypeKind::Union    => ItemType::Union,
+            clean::TypeKind::Enum     => ItemType::Enum,
+            clean::TypeKind::Function => ItemType::Function,
+            clean::TypeKind::Trait    => ItemType::Trait,
+            clean::TypeKind::Module   => ItemType::Module,
+            clean::TypeKind::Static   => ItemType::Static,
+            clean::TypeKind::Const    => ItemType::Constant,
+            clean::TypeKind::Variant  => ItemType::Variant,
+            clean::TypeKind::Typedef  => ItemType::Typedef,
         }
     }
 }
