@@ -388,8 +388,8 @@ impl<'tcx> Method<'tcx> {
         };
 
         // unsafe fn name<'a, T>(args) -> ReturnType
-        //format!("{}fn {}{}({}){};", unsafety, name, type_args, args, return_signature)
-        format!("{}fn {}", unsafety, self.fty.sig.0)//name, type_args, args, return_signature)
+        format!("{}fn {}{}({}){};", unsafety, name, type_args, args, return_signature)
+        //format!("{}fn {}", unsafety, self.fty.sig.0)//name, type_args, args, return_signature)
     }
 }
 

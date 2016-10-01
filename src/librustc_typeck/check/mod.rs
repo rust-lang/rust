@@ -1113,22 +1113,33 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 
     if !missing_items.is_empty() {
-        let mut err = struct_span_err!(tcx.sess, impl_span, E0046,
+        let codemap = tcx.sess.codemap();
+        let start = codemap.lookup_line(impl_span.lo);
+        let end = codemap.lookup_line(impl_span.hi);
+        let sp = if let (Ok(start), Ok(end)) = (start, end) {
+            if start.line != end.line {
+                impl_span.start_point()
+            } else {
+                impl_span
+            }
+        } else {
+            impl_span
+        };
+        let mut err = struct_span_err!(tcx.sess, sp, E0046,
             "not all trait items implemented, missing: `{}`",
             missing_items.iter()
                   .map(|trait_item| trait_item.name().to_string())
                   .collect::<Vec<_>>().join("`, `"));
-        err.span_label(impl_span, &format!("missing `{}` in implementation",
+        err.span_label(sp, &format!("missing `{}` in implementation",
                 missing_items.iter()
                     .map(|name| name.name().to_string())
                     .collect::<Vec<_>>().join("`, `"))
             );
         for trait_item in missing_items {
-            err.note(&format!("definition {}", trait_item.signature(tcx)));
-            //err.note(&format!("node {:?}", tcx.map.trait_item.signature(tcx)));
             if let Some(span) = tcx.map.span_if_local(trait_item.def_id()) {
-                //struct_span_err!(tcx.sess, span, E0046, "definition").emit();
-                err.span_note(span, "definition");//.emit();
+                err.span_label(span, &"missing definition in implementation");
+            } else {
+                err.note(&format!("infered definition: `{}`", trait_item.signature(tcx)));
             }
         }
         err.emit();
