@@ -31,6 +31,10 @@ fn foobar() {
             8 => break,
             9 => diverge(),
             3 => (println!("moo"), diverge()), //~ ERROR sub-expression diverges
+            10 => match 42 {
+                99 => return,
+                _ => ((), panic!("boo")),
+            },
             _ => (println!("boo"), break), //~ ERROR sub-expression diverges
         };
     }
