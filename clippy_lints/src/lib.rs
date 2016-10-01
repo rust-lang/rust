@@ -346,6 +346,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         lifetimes::UNUSED_LIFETIMES,
         loops::EMPTY_LOOP,
         loops::EXPLICIT_COUNTER_LOOP,
+        loops::EXPLICIT_INTO_ITER_LOOP,
         loops::EXPLICIT_ITER_LOOP,
         loops::FOR_KV_MAP,
         loops::FOR_LOOP_OVER_OPTION,
