@@ -1566,11 +1566,11 @@ floating! { f64 }
 // Implementation of Display/Debug for various core types
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Debug for *const T {
+impl<T: ?Sized> Debug for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Debug for *mut T {
+impl<T: ?Sized> Debug for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 
