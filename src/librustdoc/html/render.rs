@@ -89,9 +89,6 @@ pub struct Context {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
     pub current: Vec<String>,
-    /// String representation of how to get back to the root path of the 'doc/'
-    /// folder in terms of a relative URL.
-    pub root_path: String,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     pub dst: PathBuf,
@@ -496,7 +493,6 @@ pub fn run(mut krate: clean::Crate,
     krate = render_sources(&dst, &mut scx, krate)?;
     let cx = Context {
         current: Vec::new(),
-        root_path: String::new(),
         dst: dst,
         render_redirect_pages: false,
         shared: Arc::new(scx),
@@ -591,7 +587,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     for &(did, ref item) in orphan_impl_items {
         if let Some(&(ref fqp, _)) = paths.get(&did) {
             search_index.push(IndexItem {
-                ty: item_type(item),
+                ty: item.type_(),
                 name: item.name.clone().unwrap(),
                 path: fqp[..fqp.len() - 1].join("::"),
                 desc: Escape(&shorter(item.doc_value())).to_string(),
@@ -835,11 +831,6 @@ fn mkdir(path: &Path) -> io::Result<()> {
     }
 }
 
-/// Returns a documentation-level item type from the item.
-fn item_type(item: &clean::Item) -> ItemType {
-    ItemType::from(item)
-}
-
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
 /// things like ".." to components which preserve the "top down" hierarchy of a
 /// static HTML tree. Each component in the cleaned path will be passed as an
@@ -1075,7 +1066,7 @@ impl DocFolder for Cache {
                     // inserted later on when serializing the search-index.
                     if item.def_id.index != CRATE_DEF_INDEX {
                         self.search_index.push(IndexItem {
-                            ty: item_type(&item),
+                            ty: item.type_(),
                             name: s.to_string(),
                             path: path.join("::").to_string(),
                             desc: Escape(&shorter(item.doc_value())).to_string(),
@@ -1122,7 +1113,7 @@ impl DocFolder for Cache {
                     self.access_levels.is_public(item.def_id)
                 {
                     self.paths.insert(item.def_id,
-                                      (self.stack.clone(), item_type(&item)));
+                                      (self.stack.clone(), item.type_()));
                 }
             }
             // link variants to their parent enum because pages aren't emitted
@@ -1135,7 +1126,7 @@ impl DocFolder for Cache {
 
             clean::PrimitiveItem(..) if item.visibility.is_some() => {
                 self.paths.insert(item.def_id, (self.stack.clone(),
-                                                item_type(&item)));
+                                                item.type_()));
             }
 
             _ => {}
@@ -1230,6 +1221,12 @@ impl<'a> Cache {
 }
 
 impl Context {
+    /// String representation of how to get back to the root path of the 'doc/'
+    /// folder in terms of a relative URL.
+    fn root_path(&self) -> String {
+        repeat("../").take(self.current.len()).collect::<String>()
+    }
+
     /// Recurse in the directory structure and change the "root path" to make
     /// sure it always points to the top (relatively)
     fn recurse<T, F>(&mut self, s: String, f: F) -> T where
@@ -1240,7 +1237,6 @@ impl Context {
         }
         let prev = self.dst.clone();
         self.dst.push(&s);
-        self.root_path.push_str("../");
         self.current.push(s);
 
         info!("Recursing into {}", self.dst.display());
@@ -1251,8 +1247,6 @@ impl Context {
 
         // Go back to where we were at
         self.dst = prev;
-        let len = self.root_path.len();
-        self.root_path.truncate(len - 3);
         self.current.pop().unwrap();
 
         return ret;
@@ -1304,7 +1298,7 @@ impl Context {
             title.push_str(it.name.as_ref().unwrap());
         }
         title.push_str(" - Rust");
-        let tyname = item_type(it).css_class();
+        let tyname = it.type_().css_class();
         let desc = if it.is_crate() {
             format!("API documentation for the Rust `{}` crate.",
                     self.shared.layout.krate)
@@ -1315,7 +1309,7 @@ impl Context {
         let keywords = make_item_keywords(it);
         let page = layout::Page {
             css_class: tyname,
-            root_path: &self.root_path,
+            root_path: &self.root_path(),
             title: &title,
             description: &desc,
             keywords: &keywords,
@@ -1329,8 +1323,7 @@ impl Context {
                            &Item{ cx: self, item: it },
                            self.shared.css_file_extension.is_some())?;
         } else {
-            let mut url = repeat("../").take(self.current.len())
-                                       .collect::<String>();
+            let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {
                 for name in &names[..names.len() - 1] {
                     url.push_str(name);
@@ -1407,7 +1400,7 @@ impl Context {
             // buf will be empty if the item is stripped and there is no redirect for it
             if !buf.is_empty() {
                 let name = item.name.as_ref().unwrap();
-                let item_type = item_type(&item);
+                let item_type = item.type_();
                 let file_name = &item_path(item_type, name);
                 let joint_dst = self.dst.join(file_name);
                 try_err!(fs::create_dir_all(&self.dst), &self.dst);
@@ -1444,7 +1437,7 @@ impl Context {
         for item in &m.items {
             if maybe_ignore_item(item) { continue }
 
-            let short = item_type(item).css_class();
+            let short = item.type_().css_class();
             let myname = match item.name {
                 None => continue,
                 Some(ref s) => s.to_string(),
@@ -1492,7 +1485,7 @@ impl<'a> Item<'a> {
             }).map(|l| &l.1);
             let root = match root {
                 Some(&Remote(ref s)) => s.to_string(),
-                Some(&Local) => self.cx.root_path.clone(),
+                Some(&Local) => self.cx.root_path(),
                 None | Some(&Unknown) => return None,
             };
             Some(format!("{root}/{krate}/macro.{name}.html?gotomacrosrc=1",
@@ -1507,7 +1500,7 @@ impl<'a> Item<'a> {
             let path = PathBuf::from(&self.item.source.filename);
             self.cx.shared.local_sources.get(&path).map(|path| {
                 format!("{root}src/{krate}/{path}#{href}",
-                        root = self.cx.root_path,
+                        root = self.cx.root_path(),
                         krate = self.cx.shared.layout.krate,
                         path = path,
                         href = href)
@@ -1531,7 +1524,7 @@ impl<'a> Item<'a> {
             };
             let mut path = match cache.extern_locations.get(&self.item.def_id.krate) {
                 Some(&(_, Remote(ref s))) => s.to_string(),
-                Some(&(_, Local)) => self.cx.root_path.clone(),
+                Some(&(_, Local)) => self.cx.root_path(),
                 Some(&(_, Unknown)) => return None,
                 None => return None,
             };
@@ -1541,7 +1534,7 @@ impl<'a> Item<'a> {
             }
             Some(format!("{path}{file}?gotosrc={goto}",
                          path = path,
-                         file = item_path(item_type(self.item), external_path.last().unwrap()),
+                         file = item_path(self.item.type_(), external_path.last().unwrap()),
                          goto = self.item.def_id.index.as_usize()))
         }
     }
@@ -1586,7 +1579,7 @@ impl<'a> fmt::Display for Item<'a> {
             }
         }
         write!(fmt, "<a class='{}' href=''>{}</a>",
-               item_type(self.item), self.item.name.as_ref().unwrap())?;
+               self.item.type_(), self.item.name.as_ref().unwrap())?;
 
         write!(fmt, "</span>")?; // in-band
         write!(fmt, "<span class='out-of-band'>")?;
@@ -1739,8 +1732,8 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     }
 
     fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: usize, idx2: usize) -> Ordering {
-        let ty1 = item_type(i1);
-        let ty2 = item_type(i2);
+        let ty1 = i1.type_();
+        let ty2 = i2.type_();
         if ty1 != ty2 {
             return (reorder(ty1), idx1).cmp(&(reorder(ty2), idx2))
         }
@@ -1764,7 +1757,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             continue;
         }
 
-        let myty = Some(item_type(myitem));
+        let myty = Some(myitem.type_());
         if curty == Some(ItemType::ExternCrate) && myty == Some(ItemType::Import) {
             // Put `extern crate` and `use` re-exports in the same section.
             curty = myty;
@@ -1851,9 +1844,9 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        name = *myitem.name.as_ref().unwrap(),
                        stab_docs = stab_docs,
                        docs = shorter(Some(&Markdown(doc_value).to_string())),
-                       class = item_type(myitem),
+                       class = myitem.type_(),
                        stab = myitem.stability_class(),
-                       href = item_path(item_type(myitem), myitem.name.as_ref().unwrap()),
+                       href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
                        title = full_path(cx, myitem))?;
             }
         }
@@ -2059,7 +2052,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     fn trait_item(w: &mut fmt::Formatter, cx: &Context, m: &clean::Item, t: &clean::Item)
                   -> fmt::Result {
         let name = m.name.as_ref().unwrap();
-        let item_type = item_type(m);
+        let item_type = m.type_();
         let id = derive_id(format!("{}.{}", item_type, name));
         let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
         write!(w, "<h3 id='{id}' class='method stab {stab}'>\
@@ -2145,7 +2138,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                let (ref path, _) = cache.external_paths[&it.def_id];
                path[..path.len() - 1].join("/")
            },
-           ty = item_type(it).css_class(),
+           ty = it.type_().css_class(),
            name = *it.name.as_ref().unwrap())?;
     Ok(())
 }
@@ -2154,7 +2147,7 @@ fn naive_assoc_href(it: &clean::Item, link: AssocItemLink) -> String {
     use html::item_type::ItemType::*;
 
     let name = it.name.as_ref().unwrap();
-    let ty = match item_type(it) {
+    let ty = match it.type_() {
         Typedef | AssociatedType => AssociatedType,
         s@_ => s,
     };
@@ -2232,7 +2225,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
               link: AssocItemLink)
               -> fmt::Result {
         let name = meth.name.as_ref().unwrap();
-        let anchor = format!("#{}.{}", item_type(meth), name);
+        let anchor = format!("#{}.{}", meth.type_(), name);
         let href = match link {
             AssocItemLink::Anchor(Some(ref id)) => format!("#{}", id),
             AssocItemLink::Anchor(None) => anchor,
@@ -2740,7 +2733,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                      link: AssocItemLink, render_mode: RenderMode,
                      is_default_item: bool, outer_version: Option<&str>,
                      trait_: Option<&clean::Trait>) -> fmt::Result {
-        let item_type = item_type(item);
+        let item_type = item.type_();
         let name = item.name.as_ref().unwrap();
 
         let render_method_item: bool = match render_mode {
@@ -2918,7 +2911,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 write!(fmt, "::<wbr>")?;
             }
             write!(fmt, "<a href='{}index.html'>{}</a>",
-                   &cx.root_path[..(cx.current.len() - i - 1) * 3],
+                   &cx.root_path()[..(cx.current.len() - i - 1) * 3],
                    *name)?;
         }
         write!(fmt, "</p>")?;
@@ -2932,7 +2925,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                    relpath: '{path}'\
                 }};</script>",
                name = it.name.as_ref().map(|x| &x[..]).unwrap_or(""),
-               ty = item_type(it).css_class(),
+               ty = it.type_().css_class(),
                path = relpath)?;
         if parentlen == 0 {
             // there is no sidebar-items.js beyond the crate root path
