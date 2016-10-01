@@ -302,52 +302,70 @@ mod intrinsics {
 
 #[cfg(feature = "c")]
 fn run() {
+    use core::ptr;
     use intrinsics::*;
 
-    aeabi_d2f(2.);
-    aeabi_d2i(2.);
-    aeabi_d2l(2.);
-    aeabi_d2uiz(2.);
-    aeabi_d2ulz(2.);
-    aeabi_dadd(2., 3.);
-    aeabi_dcmpeq(2., 3.);
-    aeabi_dcmpgt(2., 3.);
-    aeabi_dcmplt(2., 3.);
-    aeabi_ddiv(2., 3.);
-    aeabi_dmul(2., 3.);
-    aeabi_dsub(2., 3.);
-    aeabi_f2d(2.);
-    aeabi_f2iz(2.);
-    aeabi_f2lz(2.);
-    aeabi_f2uiz(2.);
-    aeabi_f2ulz(2.);
-    aeabi_fadd(2., 3.);
-    aeabi_fcmpeq(2., 3.);
-    aeabi_fcmpgt(2., 3.);
-    aeabi_fcmplt(2., 3.);
-    aeabi_fdiv(2., 3.);
-    aeabi_fmul(2., 3.);
-    aeabi_fsub(2., 3.);
-    aeabi_i2d(2);
-    aeabi_i2f(2);
-    aeabi_idiv(2, 3);
-    aeabi_idivmod(2, 3);
-    aeabi_l2d(2);
-    aeabi_l2f(2);
-    aeabi_ldivmod(2, 3);
-    aeabi_lmul(2, 3);
-    aeabi_ui2d(2);
-    aeabi_ui2f(2);
-    aeabi_uidiv(2, 3);
-    aeabi_uidivmod(2, 3);
-    aeabi_ul2d(2);
-    aeabi_ul2f(2);
-    aeabi_uldivmod(2, 3);
-    moddi3(2, 3);
-    mulodi4(2, 3);
-    powidf2(2., 3);
-    powisf2(2., 3);
-    umoddi3(2, 3);
+    // We use volatile load/stores to prevent LLVM from optimizing away the intrinsics during LTO
+    macro_rules! arg {
+        () => {
+            unsafe {
+                ptr::read_volatile(0x0 as *const _)
+            }
+        }
+    }
+
+    macro_rules! ret {
+        ($e:expr) => {
+            unsafe {
+                ptr::write_volatile(0x0 as *mut _, $e)
+            }
+        }
+    }
+
+    ret!(aeabi_d2f(arg!()));
+    ret!(aeabi_d2i(arg!()));
+    ret!(aeabi_d2l(arg!()));
+    ret!(aeabi_d2uiz(arg!()));
+    ret!(aeabi_d2ulz(arg!()));
+    ret!(aeabi_dadd(arg!(), arg!()));
+    ret!(aeabi_dcmpeq(arg!(), arg!()));
+    ret!(aeabi_dcmpgt(arg!(), arg!()));
+    ret!(aeabi_dcmplt(arg!(), arg!()));
+    ret!(aeabi_ddiv(arg!(), arg!()));
+    ret!(aeabi_dmul(arg!(), arg!()));
+    ret!(aeabi_dsub(arg!(), arg!()));
+    ret!(aeabi_f2d(arg!()));
+    ret!(aeabi_f2iz(arg!()));
+    ret!(aeabi_f2lz(arg!()));
+    ret!(aeabi_f2uiz(arg!()));
+    ret!(aeabi_f2ulz(arg!()));
+    ret!(aeabi_fadd(arg!(), arg!()));
+    ret!(aeabi_fcmpeq(arg!(), arg!()));
+    ret!(aeabi_fcmpgt(arg!(), arg!()));
+    ret!(aeabi_fcmplt(arg!(), arg!()));
+    ret!(aeabi_fdiv(arg!(), arg!()));
+    ret!(aeabi_fmul(arg!(), arg!()));
+    ret!(aeabi_fsub(arg!(), arg!()));
+    ret!(aeabi_i2d(arg!()));
+    ret!(aeabi_i2f(arg!()));
+    ret!(aeabi_idiv(arg!(), arg!()));
+    ret!(aeabi_idivmod(arg!(), arg!()));
+    ret!(aeabi_l2d(arg!()));
+    ret!(aeabi_l2f(arg!()));
+    ret!(aeabi_ldivmod(arg!(), arg!()));
+    ret!(aeabi_lmul(arg!(), arg!()));
+    ret!(aeabi_ui2d(arg!()));
+    ret!(aeabi_ui2f(arg!()));
+    ret!(aeabi_uidiv(arg!(), arg!()));
+    ret!(aeabi_uidivmod(arg!(), arg!()));
+    ret!(aeabi_ul2d(arg!()));
+    ret!(aeabi_ul2f(arg!()));
+    ret!(aeabi_uldivmod(arg!(), arg!()));
+    ret!(moddi3(arg!(), arg!()));
+    ret!(mulodi4(arg!(), arg!()));
+    ret!(powidf2(arg!(), arg!()));
+    ret!(powisf2(arg!(), arg!()));
+    ret!(umoddi3(arg!(), arg!()));
 }
 
 #[cfg(all(feature = "c", not(thumb)))]

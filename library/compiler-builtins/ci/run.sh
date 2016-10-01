@@ -28,6 +28,16 @@ case $1 in
         ;;
 esac
 
+# Verify that there are no undefined symbols to `panic` within our implementations
+case $1 in
+    thumb*)
+        xargo build --features c --target $1 --bin intrinsics --release
+        ;;
+    *)
+        cargo build --features c --target $1 --bin intrinsics --release
+        ;;
+esac
+
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
 PREFIX=$(echo $1 | sed -e 's/unknown-//')-
 case $1 in

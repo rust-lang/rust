@@ -26,3 +26,6 @@ c = []
 weak = ["rlibc/weak"]
 
 [workspace]
+
+[profile.release]
+lto = true
