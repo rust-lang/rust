@@ -55,7 +55,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark {
         let mark = Mark::fresh();
         let module = self.module_map[&id];
-        self.expansion_data.insert(mark.as_u32(), ExpansionData {
+        self.expansion_data.insert(mark, ExpansionData {
             module: module,
             def_index: module.def_id().unwrap().index,
             const_integer: false,
@@ -65,7 +65,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion) {
         self.collect_def_ids(mark, expansion);
-        self.current_module = self.expansion_data[&mark.as_u32()].module;
+        self.current_module = self.expansion_data[&mark].module;
         expansion.visit_with(&mut BuildReducedGraphVisitor { resolver: self });
     }
 
@@ -88,7 +88,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.macro_names.insert(ident.name);
         }
 
-        let mut module = self.expansion_data[&scope.as_u32()].module;
+        let mut module = self.expansion_data[&scope].module;
         while module.macros_escape {
             module = module.parent.unwrap();
         }
@@ -104,7 +104,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn find_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
             let name = intern(&attrs[i].name());
-            match self.expansion_data[&0].module.macros.borrow().get(&name) {
+            match self.expansion_data[&Mark::root()].module.macros.borrow().get(&name) {
                 Some(binding) => match *binding.ext {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))
@@ -132,7 +132,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Attr { ref attr, .. } => (intern(&*attr.name()), attr.span),
         };
 
-        let mut module = self.expansion_data[&scope.as_u32()].module;
+        let mut module = self.expansion_data[&scope].module;
         loop {
             if let Some(binding) = module.macros.borrow().get(&name) {
                 return Some(binding.ext.clone());
@@ -168,9 +168,9 @@ impl<'a> Resolver<'a> {
 
     fn collect_def_ids(&mut self, mark: Mark, expansion: &Expansion) {
         let expansion_data = &mut self.expansion_data;
-        let ExpansionData { def_index, const_integer, module } = expansion_data[&mark.as_u32()];
+        let ExpansionData { def_index, const_integer, module } = expansion_data[&mark];
         let visit_macro_invoc = &mut |invoc: map::MacroInvocationData| {
-            expansion_data.entry(invoc.id.as_u32()).or_insert(ExpansionData {
+            expansion_data.entry(invoc.mark).or_insert(ExpansionData {
                 def_index: invoc.def_index,
                 const_integer: invoc.const_integer,
                 module: module,

@@ -531,7 +531,7 @@ pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) {
-        self.resolver.expansion_data.get_mut(&id.as_u32()).unwrap().module =
+        self.resolver.expansion_data.get_mut(&Mark::from_placeholder_id(id)).unwrap().module =
             self.resolver.current_module;
     }
 }
