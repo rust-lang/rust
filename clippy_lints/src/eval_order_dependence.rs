@@ -104,7 +104,7 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
                         self.visit_expr(guard);
                     }
                     // make sure top level arm expressions aren't linted
-                    walk_expr(self, &*arm.body);
+                    self.maybe_walk_expr(&*arm.body);
                 }
             }
             _ => walk_expr(self, e),
