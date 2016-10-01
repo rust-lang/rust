@@ -1646,8 +1646,8 @@ impl Clean<Type> for hir::Ty {
             TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)},
-            TyVec(ref ty) => Vector(box ty.clean(cx)),
-            TyFixedLengthVec(ref ty, ref e) => {
+            TySlice(ref ty) => Vector(box ty.clean(cx)),
+            TyArray(ref ty, ref e) => {
                 let n = if let Some(tcx) = cx.tcx_opt() {
                     use rustc_const_math::{ConstInt, ConstUsize};
                     use rustc_const_eval::eval_const_expr;
@@ -2699,7 +2699,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
         },
         PatKind::Range(..) => panic!("tried to get argument name from PatKind::Range, \
                               which is not allowed in function arguments"),
-        PatKind::Vec(ref begin, ref mid, ref end) => {
+        PatKind::Slice(ref begin, ref mid, ref end) => {
             let begin = begin.iter().map(|p| name_from_pat(&**p));
             let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(&**p))).into_iter();
             let end = end.iter().map(|p| name_from_pat(&**p));

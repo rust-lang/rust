@@ -73,6 +73,7 @@ pub trait AstBuilder {
     fn typaram(&self,
                span: Span,
                id: ast::Ident,
+               attrs: Vec<ast::Attribute>,
                bounds: ast::TyParamBounds,
                default: Option<P<ast::Ty>>) -> ast::TyParam;
 
@@ -83,6 +84,7 @@ pub trait AstBuilder {
     fn lifetime_def(&self,
                     span: Span,
                     name: ast::Name,
+                    attrs: Vec<ast::Attribute>,
                     bounds: Vec<ast::Lifetime>)
                     -> ast::LifetimeDef;
 
@@ -96,7 +98,7 @@ pub trait AstBuilder {
                       ident: ast::Ident,
                       typ: P<ast::Ty>,
                       ex: P<ast::Expr>)
-                      -> P<ast::Stmt>;
+                      -> ast::Stmt;
     fn stmt_let_type_only(&self, span: Span, ty: P<ast::Ty>) -> ast::Stmt;
     fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt;
 
@@ -452,11 +454,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn typaram(&self,
                span: Span,
                id: ast::Ident,
+               attrs: Vec<ast::Attribute>,
                bounds: ast::TyParamBounds,
                default: Option<P<ast::Ty>>) -> ast::TyParam {
         ast::TyParam {
             ident: id,
             id: ast::DUMMY_NODE_ID,
+            attrs: attrs.into(),
             bounds: bounds,
             default: default,
             span: span
@@ -503,9 +507,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn lifetime_def(&self,
                     span: Span,
                     name: ast::Name,
+                    attrs: Vec<ast::Attribute>,
                     bounds: Vec<ast::Lifetime>)
                     -> ast::LifetimeDef {
         ast::LifetimeDef {
+            attrs: attrs.into(),
             lifetime: self.lifetime(span, name),
             bounds: bounds
         }
@@ -556,7 +562,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                       ident: ast::Ident,
                       typ: P<ast::Ty>,
                       ex: P<ast::Expr>)
-                      -> P<ast::Stmt> {
+                      -> ast::Stmt {
         let pat = if mutbl {
             let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Mutable);
             self.pat_ident_binding_mode(sp, ident, binding_mode)
@@ -571,11 +577,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             span: sp,
             attrs: ast::ThinVec::new(),
         });
-        P(ast::Stmt {
+        ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             node: ast::StmtKind::Local(local),
             span: sp,
-        })
+        }
     }
 
     // Generate `let _: Type;`, usually used for type assertions.

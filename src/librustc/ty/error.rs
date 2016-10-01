@@ -33,13 +33,8 @@ pub enum TypeError<'tcx> {
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
-    BoxMutability,
-    PtrMutability,
-    RefMutability,
-    VecMutability,
     TupleSize(ExpectedFound<usize>),
     FixedArraySize(ExpectedFound<usize>),
-    TyParamSize(ExpectedFound<usize>),
     ArgCount,
     RegionsDoesNotOutlive(&'tcx Region, &'tcx Region),
     RegionsNotSame(&'tcx Region, &'tcx Region),
@@ -47,14 +42,12 @@ pub enum TypeError<'tcx> {
     RegionsInsufficientlyPolymorphic(BoundRegion, &'tcx Region),
     RegionsOverlyPolymorphic(BoundRegion, &'tcx Region),
     Sorts(ExpectedFound<Ty<'tcx>>),
-    IntegerAsChar,
     IntMismatch(ExpectedFound<ty::IntVarValue>),
     FloatMismatch(ExpectedFound<ast::FloatTy>),
     Traits(ExpectedFound<DefId>),
     BuiltinBoundsMismatch(ExpectedFound<ty::BuiltinBounds>),
     VariadicMismatch(ExpectedFound<bool>),
     CyclicTy,
-    ConvergenceMismatch(ExpectedFound<bool>),
     ProjectionNameMismatched(ExpectedFound<Name>),
     ProjectionBoundsLength(ExpectedFound<usize>),
     TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>)
@@ -99,18 +92,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        values.found)
             }
             Mutability => write!(f, "types differ in mutability"),
-            BoxMutability => {
-                write!(f, "boxed types differ in mutability")
-            }
-            VecMutability => write!(f, "vectors differ in mutability"),
-            PtrMutability => write!(f, "pointers differ in mutability"),
-            RefMutability => write!(f, "references differ in mutability"),
-            TyParamSize(values) => {
-                write!(f, "expected a type with {} type params, \
-                           found one with {} type params",
-                       values.expected,
-                       values.found)
-            }
             FixedArraySize(values) => {
                 write!(f, "expected an array with a fixed size of {} elements, \
                            found one with {} elements",
@@ -167,9 +148,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                            values.found)
                 }
             }
-            IntegerAsChar => {
-                write!(f, "expected an integral type, found `char`")
-            }
             IntMismatch(ref values) => {
                 write!(f, "expected `{:?}`, found `{:?}`",
                        values.expected,
@@ -184,11 +162,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 write!(f, "expected {} fn, found {} function",
                        if values.expected { "variadic" } else { "non-variadic" },
                        if values.found { "variadic" } else { "non-variadic" })
-            }
-            ConvergenceMismatch(ref values) => {
-                write!(f, "expected {} fn, found {} function",
-                       if values.expected { "converging" } else { "diverging" },
-                       if values.found { "converging" } else { "diverging" })
             }
             ProjectionNameMismatched(ref values) => {
                 write!(f, "expected {}, found {}",

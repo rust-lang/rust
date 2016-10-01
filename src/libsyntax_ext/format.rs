@@ -506,7 +506,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     -> P<ast::Expr> {
         let sp = piece_ty.span;
         let ty = ecx.ty_rptr(sp,
-                             ecx.ty(sp, ast::TyKind::Vec(piece_ty)),
+                             ecx.ty(sp, ast::TyKind::Slice(piece_ty)),
                              Some(ecx.lifetime(sp, keywords::StaticLifetime.name())),
                              ast::Mutability::Immutable);
         let slice = ecx.expr_vec_slice(sp, pieces);

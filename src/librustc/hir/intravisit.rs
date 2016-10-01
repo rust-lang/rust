@@ -394,7 +394,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
     visitor.visit_id(typ.id);
 
     match typ.node {
-        TyVec(ref ty) => {
+        TySlice(ref ty) => {
             visitor.visit_ty(ty)
         }
         TyPtr(ref mutable_type) => {
@@ -422,7 +422,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
-        TyFixedLengthVec(ref ty, ref expression) => {
+        TyArray(ref ty, ref expression) => {
             visitor.visit_ty(ty);
             visitor.visit_expr(expression)
         }
@@ -520,7 +520,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
             visitor.visit_expr(upper_bound)
         }
         PatKind::Wild => (),
-        PatKind::Vec(ref prepatterns, ref slice_pattern, ref postpatterns) => {
+        PatKind::Slice(ref prepatterns, ref slice_pattern, ref postpatterns) => {
             walk_list!(visitor, visit_pat, prepatterns);
             walk_list!(visitor, visit_pat, slice_pattern);
             walk_list!(visitor, visit_pat, postpatterns);
@@ -749,7 +749,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprBox(ref subexpression) => {
             visitor.visit_expr(subexpression)
         }
-        ExprVec(ref subexpressions) => {
+        ExprArray(ref subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
         ExprRepeat(ref element, ref count) => {

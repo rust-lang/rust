@@ -961,7 +961,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
                 field_pats.iter().any(|fp| is_binding_pat(&fp.node.pat))
             }
 
-            PatKind::Vec(ref pats1, ref pats2, ref pats3) => {
+            PatKind::Slice(ref pats1, ref pats2, ref pats3) => {
                 pats1.iter().any(|p| is_binding_pat(&p)) ||
                 pats2.iter().any(|p| is_binding_pat(&p)) ||
                 pats3.iter().any(|p| is_binding_pat(&p))
@@ -1012,7 +1012,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
                         visitor, &field.expr, blk_id);
                 }
             }
-            hir::ExprVec(ref subexprs) |
+            hir::ExprArray(ref subexprs) |
             hir::ExprTup(ref subexprs) => {
                 for subexpr in subexprs {
                     record_rvalue_scope_if_borrow_expr(

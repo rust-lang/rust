@@ -1623,7 +1623,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         let result_ty = match ast_ty.node {
-            hir::TyVec(ref ty) => {
+            hir::TySlice(ref ty) => {
                 tcx.mk_slice(self.ast_ty_to_ty(rscope, &ty))
             }
             hir::TyObjectSum(ref ty, ref bounds) => {
@@ -1758,7 +1758,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
                 ty
             }
-            hir::TyFixedLengthVec(ref ty, ref e) => {
+            hir::TyArray(ref ty, ref e) => {
                 if let Ok(length) = eval_length(tcx.global_tcx(), &e, "array length") {
                     tcx.mk_array(self.ast_ty_to_ty(rscope, &ty), length)
                 } else {
