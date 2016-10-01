@@ -33,6 +33,14 @@ use libc::SOCK_CLOEXEC;
 #[cfg(not(target_os = "linux"))]
 const SOCK_CLOEXEC: c_int = 0;
 
+// Another conditional contant for name resolution: Macos et iOS use
+// SO_NOSIGPIPE as a setsockopt flag to disable SIGPIPE emission on socket.
+// Other platforms do otherwise.
+#[cfg(target_vendor = "apple")]
+use libc::SO_NOSIGPIPE;
+#[cfg(not(target_vendor = "apple"))]
+const SO_NOSIGPIPE: c_int = 0;
+
 pub struct Socket(FileDesc);
 
 pub fn init() {}
@@ -81,7 +89,11 @@ impl Socket {
             let fd = cvt(libc::socket(fam, ty, 0))?;
             let fd = FileDesc::new(fd);
             fd.set_cloexec()?;
-            Ok(Socket(fd))
+            let socket = Socket(fd);
+            if cfg!(target_vendor = "apple") {
+                setsockopt(&socket, libc::SOL_SOCKET, SO_NOSIGPIPE, 1)?;
+            }
+            Ok(socket)
         }
     }
 
