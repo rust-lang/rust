@@ -17,6 +17,7 @@ use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 use middle::cstore::InlinedItem;
 
 use syntax::ast::*;
+use syntax::ext::hygiene::Mark;
 use syntax::visit;
 use syntax::parse::token::{self, keywords};
 
@@ -31,7 +32,7 @@ pub struct DefCollector<'a> {
 }
 
 pub struct MacroInvocationData {
-    pub id: NodeId,
+    pub mark: Mark,
     pub def_index: DefIndex,
     pub const_integer: bool,
 }
@@ -126,7 +127,7 @@ impl<'a> DefCollector<'a> {
     fn visit_macro_invoc(&mut self, id: NodeId, const_integer: bool) {
         if let Some(ref mut visit) = self.visit_macro_invoc {
             visit(MacroInvocationData {
-                id: id,
+                mark: Mark::from_placeholder_id(id),
                 const_integer: const_integer,
                 def_index: self.parent_def.unwrap(),
             })
