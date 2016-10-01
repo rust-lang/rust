@@ -20,4 +20,5 @@ fn main() {
     let x = Test;
     let v = &[0];
     x.method::<i32, i32>(v); //~ ERROR E0036
+                             //~| NOTE Passed 2 type arguments, expected 1
 }
