@@ -73,22 +73,12 @@ pub struct Frame<'a, 'tcx: 'a> {
     // Return pointer and local allocations
     ////////////////////////////////////////////////////////////////////////////////
 
-    /// A pointer for writing the return value of the current call if it's not a diverging call.
-    pub return_ptr: Option<Pointer>,
-
     /// The block to return to when returning from the current stack frame
     pub return_to_block: StackPopCleanup,
 
     /// The list of locals for the current function, stored in order as
-    /// `[arguments..., variables..., temporaries...]`. The variables begin at `self.var_offset`
-    /// and the temporaries at `self.temp_offset`.
+    /// `[return_ptr, arguments..., variables..., temporaries...]`.
     pub locals: Vec<Pointer>,
-
-    /// The offset of the first variable in `self.locals`.
-    pub var_offset: usize,
-
-    /// The offset of the first temporary in `self.locals`.
-    pub temp_offset: usize,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -336,32 +326,26 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         span: codemap::Span,
         mir: CachedMir<'a, 'tcx>,
         substs: &'tcx Substs<'tcx>,
-        return_ptr: Option<Pointer>,
+        return_ptr: Pointer,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx, ()> {
-        let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
-        let var_tys = mir.var_decls.iter().map(|v| v.ty);
-        let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
-
-        let num_args = mir.arg_decls.len();
-        let num_vars = mir.var_decls.len();
+        let local_tys = mir.local_decls.iter().map(|a| a.ty);
 
         ::log_settings::settings().indentation += 1;
 
-        let locals: EvalResult<'tcx, Vec<Pointer>> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
+        // directly change the first allocation (the return value) to *be* the allocation where the
+        // caller stores the result
+        let locals: EvalResult<'tcx, Vec<Pointer>> = iter::once(Ok(return_ptr)).chain(local_tys.skip(1).map(|ty| {
             let size = self.type_size_with_substs(ty, substs);
             let align = self.type_align_with_substs(ty, substs);
             self.memory.allocate(size, align)
-        }).collect();
+        })).collect();
 
         self.stack.push(Frame {
             mir: mir.clone(),
             block: mir::START_BLOCK,
-            return_ptr: return_ptr,
             return_to_block: return_to_block,
             locals: locals?,
-            var_offset: num_args,
-            temp_offset: num_args + num_vars,
             span: span,
             def_id: def_id,
             substs: substs,
@@ -793,11 +777,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue> {
         use rustc::mir::repr::Lvalue::*;
         let ptr = match *lvalue {
-            ReturnPointer => self.frame().return_ptr
-                .expect("ReturnPointer used in a function with no return value"),
-            Arg(i) => self.frame().locals[i.index()],
-            Var(i) => self.frame().locals[self.frame().var_offset + i.index()],
-            Temp(i) => self.frame().locals[self.frame().temp_offset + i.index()],
+            Local(i) => self.frame().locals[i.index()],
 
             Static(def_id) => {
                 let substs = subst::Substs::empty(self.tcx);
@@ -1219,18 +1199,17 @@ pub fn eval_main<'a, 'tcx: 'a>(
     let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs)
         .expect("should at least be able to allocate space for the main function's return value");
 
-    ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, Some(return_ptr), StackPopCleanup::None)
+    ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, return_ptr, StackPopCleanup::None)
         .expect("could not allocate first stack frame");
 
-    if mir.arg_decls.len() == 2 {
+    // FIXME: this is a horrible and wrong way to detect the start function, but overwriting the first two locals shouldn't do much
+    if mir.local_decls.len() > 2 {
         // start function
-        let ptr_size = ecx.memory().pointer_size();
-        let nargs = ecx.memory_mut().allocate(ptr_size, ptr_size).expect("can't allocate memory for nargs");
-        ecx.memory_mut().write_usize(nargs, 0).unwrap();
-        let args = ecx.memory_mut().allocate(ptr_size, ptr_size).expect("can't allocate memory for arg pointer");
-        ecx.memory_mut().write_usize(args, 0).unwrap();
-        ecx.frame_mut().locals[0] = nargs;
-        ecx.frame_mut().locals[1] = args;
+        let nargs = ecx.frame_mut().locals[1];
+        let args = ecx.frame_mut().locals[2];
+        // ignore errors, if the locals are too small this is not the start function
+        let _ = ecx.memory_mut().write_usize(nargs, 0);
+        let _ = ecx.memory_mut().write_usize(args, 0);
     }
 
     for _ in 0..step_limit {

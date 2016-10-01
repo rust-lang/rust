@@ -134,7 +134,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
             } else {
                 StackPopCleanup::None
             };
-            this.ecx.push_stack_frame(def_id, span, mir, substs, Some(ptr), cleanup)
+            this.ecx.push_stack_frame(def_id, span, mir, substs, ptr, cleanup)
         });
     }
     fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx, ()>>(&mut self, f: F) {
@@ -183,7 +183,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                                               constant.span,
                                               mir,
                                               this.substs,
-                                              Some(return_ptr),
+                                              return_ptr,
                                               StackPopCleanup::Freeze(return_ptr.alloc_id))
                 });
             }

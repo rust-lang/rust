@@ -56,10 +56,10 @@ impl Pointer {
         self.alloc_id == ZST_ALLOC_ID
     }
     pub fn to_int<'tcx>(&self) -> EvalResult<'tcx, usize> {
-        if self.points_to_zst() {
-            Ok(self.offset)
-        } else {
-            Err(EvalError::ReadPointerAsBytes)
+        match self.alloc_id {
+            NEVER_ALLOC_ID |
+            ZST_ALLOC_ID => Ok(self.offset),
+            _ => Err(EvalError::ReadPointerAsBytes),
         }
     }
     pub fn from_int(i: usize) -> Self {
@@ -71,6 +71,12 @@ impl Pointer {
     fn zst_ptr() -> Self {
         Pointer {
             alloc_id: ZST_ALLOC_ID,
+            offset: 0,
+        }
+    }
+    pub fn never_ptr() -> Self {
+        Pointer {
+            alloc_id: NEVER_ALLOC_ID,
             offset: 0,
         }
     }
@@ -115,6 +121,7 @@ pub struct Memory<'a, 'tcx> {
 }
 
 const ZST_ALLOC_ID: AllocId = AllocId(0);
+const NEVER_ALLOC_ID: AllocId = AllocId(1);
 
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn new(layout: &'a TargetDataLayout, max_memory: usize) -> Self {
@@ -122,7 +129,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
             function_alloc_cache: HashMap::new(),
-            next_id: AllocId(1),
+            next_id: AllocId(2),
             layout: layout,
             memory_size: max_memory,
             memory_usage: 0,

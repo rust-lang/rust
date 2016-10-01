@@ -138,5 +138,5 @@ fn main() {
         args.push(find_sysroot());
     }
 
-    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls);
+    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls, None, None);
 }
