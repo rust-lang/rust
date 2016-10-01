@@ -1164,10 +1164,12 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         } else if let Some(disr) = repr_type.disr_incr(tcx, prev_disr) {
             Some(disr)
         } else {
-            span_err!(tcx.sess, v.span, E0370,
-                      "enum discriminant overflowed on value after {}; \
-                       set explicitly via {} = {} if that is desired outcome",
-                      prev_disr.unwrap(), v.node.name, wrapped_disr);
+            struct_span_err!(tcx.sess, v.span, E0370,
+                             "enum discriminant overflowed")
+                .span_label(v.span, &format!("overflowed on value after {}", prev_disr.unwrap()))
+                .note(&format!("explicitly set `{} = {}` if that is desired outcome",
+                               v.node.name, wrapped_disr))
+                .emit();
             None
         }.unwrap_or(wrapped_disr);
         prev_disr = Some(disr);

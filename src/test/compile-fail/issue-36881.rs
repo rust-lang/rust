@@ -8,14 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Test;
-
-impl Test {
-    fn method(&self) {}
-}
-
 fn main() {
-    let x = Test;
-    x.method::<i32>(); //~ ERROR E0035
-                       //~| NOTE called with unneeded type parameters
+    extern crate rand;
+    use rand::Rng; //~ ERROR unresolved import
 }
