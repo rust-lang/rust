@@ -1168,7 +1168,6 @@ actual:\n\
             "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => {
                 self._arm_exec_compiled_test(env)
             }
-
             _=> {
                 let aux_dir = self.aux_output_dir_name();
                 self.compose_and_run(self.make_run_args(),
@@ -1421,7 +1420,7 @@ actual:\n\
     fn make_exe_name(&self) -> PathBuf {
         let mut f = self.output_base_name();
         // FIXME: This is using the host architecture exe suffix, not target!
-        if self.config.target == "asmjs-unknown-emscripten" {
+        if self.config.target.contains("emscripten") {
             let mut fname = f.file_name().unwrap().to_os_string();
             fname.push(".js");
             f.set_file_name(&fname);
@@ -1439,8 +1438,9 @@ actual:\n\
         let mut args = self.split_maybe_args(&self.config.runtool);
 
         // If this is emscripten, then run tests under nodejs
-        if self.config.target == "asmjs-unknown-emscripten" {
-            args.push("nodejs".to_owned());
+        if self.config.target.contains("emscripten") {
+            let nodejs = self.config.nodejs.clone().unwrap_or("nodejs".to_string());
+            args.push(nodejs);
         }
 
         let exe_file = self.make_exe_name();

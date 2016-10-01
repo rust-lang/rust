@@ -1182,26 +1182,59 @@ pub fn run_test(opts: &TestOpts,
             }
         }
 
-        thread::spawn(move || {
-            let data = Arc::new(Mutex::new(Vec::new()));
-            let data2 = data.clone();
-            let cfg = thread::Builder::new().name(match desc.name {
-                DynTestName(ref name) => name.clone(),
-                StaticTestName(name) => name.to_owned(),
-            });
+        // If the platform is single-threaded we're just going to run
+        // the test synchronously, regardless of the concurrency
+        // level.
+        let supports_threads = !cfg!(target_os = "emscripten");
 
-            let result_guard = cfg.spawn(move || {
-                                      if !nocapture {
-                                          io::set_print(box Sink(data2.clone()));
-                                          io::set_panic(box Sink(data2));
-                                      }
-                                      testfn()
-                                  })
-                                  .unwrap();
-            let test_result = calc_result(&desc, result_guard.join());
+        // Buffer for capturing standard I/O
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let data2 = data.clone();
+
+        if supports_threads {
+            thread::spawn(move || {
+                let cfg = thread::Builder::new().name(match desc.name {
+                    DynTestName(ref name) => name.clone(),
+                    StaticTestName(name) => name.to_owned(),
+                });
+
+                let result_guard = cfg.spawn(move || {
+                    if !nocapture {
+                        io::set_print(Some(box Sink(data2.clone())));
+                        io::set_panic(Some(box Sink(data2)));
+                    }
+                    testfn()
+                })
+                    .unwrap();
+                let test_result = calc_result(&desc, result_guard.join());
+                let stdout = data.lock().unwrap().to_vec();
+                monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();
+            });
+        } else {
+            let oldio = if !nocapture {
+                Some((
+                    io::set_print(Some(box Sink(data2.clone()))),
+                    io::set_panic(Some(box Sink(data2)))
+                ))
+            } else {
+                None
+            };
+
+            use std::panic::{catch_unwind, AssertUnwindSafe};
+
+            let result = catch_unwind(AssertUnwindSafe(|| {
+                testfn()
+            }));
+
+            if let Some((printio, panicio)) = oldio {
+                io::set_print(printio);
+                io::set_panic(panicio);
+            };
+
+            let test_result = calc_result(&desc, result);
             let stdout = data.lock().unwrap().to_vec();
             monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();
-        });
+        }
     }
 
     match testfn {
@@ -1291,7 +1324,7 @@ impl MetricMap {
 ///
 /// This function is a no-op, and does not even read from `dummy`.
 #[cfg(not(any(all(target_os = "nacl", target_arch = "le32"),
-              target_arch = "asmjs")))]
+              target_arch = "asmjs", target_arch = "wasm32")))]
 pub fn black_box<T>(dummy: T) -> T {
     // we need to "use" the argument in some way LLVM can't
     // introspect.
@@ -1299,7 +1332,7 @@ pub fn black_box<T>(dummy: T) -> T {
     dummy
 }
 #[cfg(any(all(target_os = "nacl", target_arch = "le32"),
-          target_arch = "asmjs"))]
+          target_arch = "asmjs", target_arch = "wasm32"))]
 #[inline(never)]
 pub fn black_box<T>(dummy: T) -> T {
     dummy

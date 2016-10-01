@@ -118,6 +118,7 @@ mod tests {
     use thread;
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_barrier() {
         const N: usize = 10;
 

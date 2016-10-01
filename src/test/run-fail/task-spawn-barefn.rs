@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // error-pattern:Ensure that the child thread runs by panicking
+// ignore-emscripten Needs threads.
 
 use std::thread;
 

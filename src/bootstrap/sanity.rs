@@ -95,6 +95,13 @@ pub fn check(build: &mut Build) {
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in build.config.target.iter() {
+        // On emscripten we don't actually need the C compiler to just
+        // build the target artifacts, only for testing. For the sake
+        // of easier bot configuration, just skip detection.
+        if target.contains("emscripten") {
+            continue;
+        }
+
         need_cmd(build.cc(target).as_ref());
         if let Some(ar) = build.ar(target) {
             need_cmd(ar.as_ref());
@@ -104,6 +111,14 @@ pub fn check(build: &mut Build) {
         need_cmd(build.cxx(host).as_ref());
     }
 
+    // The msvc hosts don't use jemalloc, turn it off globally to
+    // avoid packaging the dummy liballoc_jemalloc on that platform.
+    for host in build.config.host.iter() {
+        if host.contains("msvc") {
+            build.config.use_jemalloc = false;
+        }
+    }
+
     // Externally configured LLVM requires FileCheck to exist
     let filecheck = build.llvm_filecheck(&build.config.build);
     if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
@@ -111,15 +126,6 @@ pub fn check(build: &mut Build) {
     }
 
     for target in build.config.target.iter() {
-        // Either can't build or don't want to run jemalloc on these targets
-        if target.contains("rumprun") ||
-           target.contains("bitrig") ||
-           target.contains("openbsd") ||
-           target.contains("msvc") ||
-           target.contains("emscripten") {
-            build.config.use_jemalloc = false;
-        }
-
         // Can't compile for iOS unless we're on OSX
         if target.contains("apple-ios") &&
            !build.config.build.contains("apple-darwin") {

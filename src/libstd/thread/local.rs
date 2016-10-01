@@ -524,7 +524,7 @@ pub mod os {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use sync::mpsc::{channel, Sender};
     use cell::{Cell, UnsafeCell};

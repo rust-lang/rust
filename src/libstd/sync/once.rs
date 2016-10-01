@@ -367,7 +367,7 @@ impl OnceState {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use panic;
     use sync::mpsc::channel;

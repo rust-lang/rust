@@ -353,7 +353,7 @@ impl fmt::Debug for UdpSocket {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use io::ErrorKind;
     use net::*;

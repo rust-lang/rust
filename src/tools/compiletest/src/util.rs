@@ -43,7 +43,8 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[("aarch64", "aarch
                                                               ("sparc", "sparc"),
                                                               ("x86_64", "x86_64"),
                                                               ("xcore", "xcore"),
-                                                              ("asmjs", "asmjs")];
+                                                              ("asmjs", "asmjs"),
+                                                              ("wasm32", "wasm32")];
 
 pub fn get_os(triple: &str) -> &'static str {
     for &(triple_os, os) in OS_TABLE {

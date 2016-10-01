@@ -892,7 +892,18 @@ mod os {
     pub const EXE_EXTENSION: &'static str = "pexe";
 }
 
-#[cfg(target_os = "emscripten")]
+#[cfg(all(target_os = "emscripten", target_arch = "asmjs"))]
+mod os {
+    pub const FAMILY: &'static str = "unix";
+    pub const OS: &'static str = "emscripten";
+    pub const DLL_PREFIX: &'static str = "lib";
+    pub const DLL_SUFFIX: &'static str = ".so";
+    pub const DLL_EXTENSION: &'static str = "so";
+    pub const EXE_SUFFIX: &'static str = ".js";
+    pub const EXE_EXTENSION: &'static str = "js";
+}
+
+#[cfg(all(target_os = "emscripten", target_arch = "wasm32"))]
 mod os {
     pub const FAMILY: &'static str = "unix";
     pub const OS: &'static str = "emscripten";
@@ -969,6 +980,11 @@ mod arch {
     pub const ARCH: &'static str = "asmjs";
 }
 
+#[cfg(target_arch = "wasm32")]
+mod arch {
+    pub const ARCH: &'static str = "wasm32";
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1017,6 +1033,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_var_big() {
         let mut s = "".to_string();
         let mut i = 0;
@@ -1030,6 +1047,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_self_exe_path() {
         let path = current_exe();
         assert!(path.is_ok());
@@ -1040,6 +1058,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_env_set_get_huge() {
         let n = make_rand_name();
         let s = repeat("x").take(10000).collect::<String>();

@@ -16,6 +16,8 @@
 // Ensure that rust dynamic libraries use jemalloc as their allocator, verifying
 // by linking in the system allocator here and ensuring that we get a complaint.
 
+// ignore-emscripten FIXME: What "other allocator" is correct for emscripten?
+
 #![feature(alloc_system)]
 
 extern crate allocator_dylib2;

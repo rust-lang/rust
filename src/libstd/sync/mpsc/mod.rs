@@ -1268,7 +1268,7 @@ impl error::Error for TryRecvError {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use env;
     use super::*;
@@ -1942,7 +1942,7 @@ mod tests {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod sync_tests {
     use env;
     use thread;

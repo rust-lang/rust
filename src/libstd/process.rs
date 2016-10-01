@@ -825,7 +825,7 @@ pub fn exit(code: i32) -> ! {
     ::sys::os::exit(code)
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use io::prelude::*;
 

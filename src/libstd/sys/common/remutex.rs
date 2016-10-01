@@ -156,7 +156,7 @@ impl<'a, T> Drop for ReentrantMutexGuard<'a, T> {
 }
 
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
     use cell::RefCell;
