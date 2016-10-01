@@ -46,6 +46,8 @@ install:
 script:
   - cargo generate-lockfile
   - if [[ $TRAVIS_OS_NAME = "linux" ]]; then
+      sudo apt-get remove -y qemu-user-static &&
+      sudo apt-get install -y qemu-user-static &&
       sh ci/run-docker.sh $TARGET;
     else
       cargo test --target $TARGET &&
