@@ -9,27 +9,27 @@ macro_rules! add {
         #[allow(unused_parens)]
         #[cfg_attr(not(test), no_mangle)]
         pub extern fn $intrinsic(a: $ty, b: $ty) -> $ty {
-            let one =               Wrapping(1 as <$ty as Float>::Int);
-            let zero =              Wrapping(0 as <$ty as Float>::Int);
+            let one = Wrapping(1 as <$ty as Float>::Int);
+            let zero = Wrapping(0 as <$ty as Float>::Int);
 
-            let bits =              Wrapping(<$ty>::bits() as <$ty as Float>::Int);
-            let significand_bits =  Wrapping(<$ty>::significand_bits() as <$ty as Float>::Int);
-            let exponent_bits =     Wrapping(<$ty>::exponent_bits() as <$ty as Float>::Int);
-            let max_exponent =      (one << exponent_bits.0 as usize) - one;
+            let bits =             Wrapping(<$ty>::bits() as <$ty as Float>::Int);
+            let significand_bits = Wrapping(<$ty>::significand_bits() as <$ty as Float>::Int);
+            let exponent_bits =    bits - significand_bits - one;
+            let max_exponent =     (one << exponent_bits.0 as usize) - one;
 
-            let implicit_bit =      one << significand_bits.0 as usize;
-            let significand_mask =  implicit_bit - one;
-            let sign_bit =          one << (significand_bits + exponent_bits).0 as usize;
-            let abs_mask =          sign_bit - one;
-            let exponent_mask =     abs_mask ^ significand_mask;
-            let inf_rep =           exponent_mask;
-            let quiet_bit =         implicit_bit >> 1;
-            let qnan_rep =          exponent_mask | quiet_bit;
+            let implicit_bit =     one << significand_bits.0 as usize;
+            let significand_mask = implicit_bit - one;
+            let sign_bit =         one << (significand_bits + exponent_bits).0 as usize;
+            let abs_mask =         sign_bit - one;
+            let exponent_mask =    abs_mask ^ significand_mask;
+            let inf_rep =          exponent_mask;
+            let quiet_bit =        implicit_bit >> 1;
+            let qnan_rep =         exponent_mask | quiet_bit;
 
-            let mut a_rep =         Wrapping(a.repr());
-            let mut b_rep =         Wrapping(b.repr());
-            let a_abs =             a_rep & abs_mask;
-            let b_abs =             b_rep & abs_mask;
+            let mut a_rep = Wrapping(a.repr());
+            let mut b_rep = Wrapping(b.repr());
+            let a_abs = a_rep & abs_mask;
+            let b_abs = b_rep & abs_mask;
 
             // Detect if a or b is zero, infinity, or NaN.
             if a_abs - one >= inf_rep - one ||
@@ -188,7 +188,7 @@ mod tests {
     use core::{f32, f64};
 
     use float::Float;
-    use qc::{F32, F64};
+    use qc::{U32, U64};
 
     // NOTE The tests below have special handing for NaN values.
     // Because NaN != NaN, the floating-point representations must be used
@@ -212,18 +212,107 @@ mod tests {
         }
     }
 
+    // TODO: Add F32/F64 to qc so that they print the right values (at the very least)
     check! {
         fn __addsf3(f: extern fn(f32, f32) -> f32,
-                    a: F32,
-                    b: F32)
+                    a: U32,
+                    b: U32)
                     -> Option<FRepr<f32> > {
-            Some(FRepr(f(a.0, b.0)))
+            let (a, b) = (f32::from_repr(a.0), f32::from_repr(b.0));
+            Some(FRepr(f(a, b)))
         }
 
         fn __adddf3(f: extern fn(f64, f64) -> f64,
-                    a: F64,
-                    b: F64) -> Option<FRepr<f64> > {
-            Some(FRepr(f(a.0, b.0)))
+                    a: U64,
+                    b: U64) -> Option<FRepr<f64> > {
+            let (a, b) = (f64::from_repr(a.0), f64::from_repr(b.0));
+            Some(FRepr(f(a, b)))
         }
+    }
+
+    // More tests for special float values
+
+    #[test]
+    fn test_float_tiny_plus_tiny() {
+        let tiny = f32::from_repr(1);
+        let r = super::__addsf3(tiny, tiny);
+        assert!(r.eq_repr(tiny + tiny));
+    }
+
+    #[test]
+    fn test_double_tiny_plus_tiny() {
+        let tiny = f64::from_repr(1);
+        let r = super::__adddf3(tiny, tiny);
+        assert!(r.eq_repr(tiny + tiny));
+    }
+
+    #[test]
+    fn test_float_small_plus_small() {
+        let a = f32::from_repr(327);
+        let b = f32::from_repr(256);
+        let r = super::__addsf3(a, b);
+        assert!(r.eq_repr(a + b));
+    }
+
+    #[test]
+    fn test_double_small_plus_small() {
+        let a = f64::from_repr(327);
+        let b = f64::from_repr(256);
+        let r = super::__adddf3(a, b);
+        assert!(r.eq_repr(a + b));
+    }
+
+    #[test]
+    fn test_float_one_plus_one() {
+        let r = super::__addsf3(1f32, 1f32);
+        assert!(r.eq_repr(1f32 + 1f32));
+    }
+
+    #[test]
+    fn test_double_one_plus_one() {
+        let r = super::__adddf3(1f64, 1f64);
+        assert!(r.eq_repr(1f64 + 1f64));
+    }
+
+    #[test]
+    fn test_float_different_nan() {
+        let a = f32::from_repr(1);
+        let b = f32::from_repr(0b11111111100100010001001010101010);
+        let x = super::__addsf3(a, b);
+        let y = a + b;
+        assert!(x.eq_repr(y));
+    }
+
+    #[test]
+    fn test_double_different_nan() {
+        let a = f64::from_repr(1);
+        let b = f64::from_repr(0b1111111111110010001000100101010101001000101010000110100011101011);
+        let x = super::__adddf3(a, b);
+        let y = a + b;
+        assert!(x.eq_repr(y));
+    }
+
+    #[test]
+    fn test_float_nan() {
+        let r = super::__addsf3(f32::NAN, 1.23);
+        assert_eq!(r.repr(), f32::NAN.repr());
+    }
+
+    #[test]
+    fn test_double_nan() {
+        let r = super::__adddf3(f64::NAN, 1.23);
+        assert_eq!(r.repr(), f64::NAN.repr());
+    }
+
+    #[test]
+    fn test_float_inf() {
+        let r = super::__addsf3(f32::INFINITY, -123.4);
+        assert_eq!(r, f32::INFINITY);
+    }
+
+    #[test]
+    fn test_double_inf() {
+        let r = super::__adddf3(f64::INFINITY, -123.4);
+        assert_eq!(r, f64::INFINITY);
     }
 }
