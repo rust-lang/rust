@@ -1571,7 +1571,7 @@ impl PrimitiveType {
         None
     }
 
-    pub fn to_string(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match *self {
             PrimitiveType::Isize => "isize",
             PrimitiveType::I8 => "i8",
@@ -1596,7 +1596,7 @@ impl PrimitiveType {
     }
 
     pub fn to_url_str(&self) -> &'static str {
-        self.to_string()
+        self.as_str()
     }
 
     /// Creates a rustdoc-specific node id for primitive types.
