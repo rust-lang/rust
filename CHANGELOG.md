@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.93 — ?
+* New lint: [`explicit_into_iter_loop`]
+
 ## 0.0.92 — 2016-09-30
 * Rustup to *rustc 1.14.0-nightly (289f3a4ca 2016-09-29)*
 
