@@ -457,7 +457,7 @@ impl fmt::Display for clean::Type {
                 tybounds(f, typarams)
             }
             clean::Infer => write!(f, "_"),
-            clean::Primitive(prim) => primitive_link(f, prim, prim.to_string()),
+            clean::Primitive(prim) => primitive_link(f, prim, prim.as_str()),
             clean::BareFunction(ref decl) => {
                 write!(f, "{}{}fn{}{}",
                        UnsafetySpace(decl.unsafety),
