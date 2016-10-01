@@ -87,7 +87,7 @@ impl Unrelated {
     }
 }
 
-#[deny(needless_range_loop, explicit_iter_loop, iter_next_loop, reverse_range_loop, explicit_counter_loop)]
+#[deny(needless_range_loop, explicit_iter_loop, explicit_into_iter_loop, iter_next_loop, reverse_range_loop, explicit_counter_loop)]
 #[deny(unused_collect)]
 #[allow(linkedlist, shadow_unrelated, unnecessary_mut_passed, cyclomatic_complexity, similar_names)]
 #[allow(many_single_char_names)]
@@ -293,6 +293,10 @@ fn main() {
 
     for _v in vec.iter() { } //~ERROR it is more idiomatic to loop over `&vec`
     for _v in vec.iter_mut() { } //~ERROR it is more idiomatic to loop over `&mut vec`
+
+
+    let out_vec = vec![1,2,3];
+    for _v in out_vec.into_iter() { } //~ERROR it is more idiomatic to loop over `out_vec` instead of `out_vec.into_iter()`
 
     for _v in &vec { } // these are fine
     for _v in &mut vec { } // these are fine
