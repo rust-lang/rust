@@ -536,7 +536,7 @@ impl<'a> TraitDef<'a> {
                 bounds.push((*declared_bound).clone());
             }
 
-            cx.typaram(self.span, ty_param.ident, P::from_vec(bounds), None)
+            cx.typaram(self.span, ty_param.ident, vec![], P::from_vec(bounds), None)
         }));
 
         // and similarly for where clauses

@@ -121,6 +121,7 @@ impl fmt::Debug for Lifetime {
 /// A lifetime definition, e.g. `'a: 'b+'c+'d`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct LifetimeDef {
+    pub attrs: ThinVec<Attribute>,
     pub lifetime: Lifetime,
     pub bounds: Vec<Lifetime>
 }
@@ -370,6 +371,7 @@ pub type TyParamBounds = P<[TyParamBound]>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TyParam {
+    pub attrs: ThinVec<Attribute>,
     pub ident: Ident,
     pub id: NodeId,
     pub bounds: TyParamBounds,
@@ -593,7 +595,7 @@ impl Pat {
             PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
                 s.walk(it)
             }
-            PatKind::Vec(ref before, ref slice, ref after) => {
+            PatKind::Slice(ref before, ref slice, ref after) => {
                 before.iter().all(|p| p.walk(it)) &&
                 slice.iter().all(|p| p.walk(it)) &&
                 after.iter().all(|p| p.walk(it))
@@ -669,8 +671,8 @@ pub enum PatKind {
     /// A range pattern, e.g. `1...2`
     Range(P<Expr>, P<Expr>),
     /// `[a, b, ..i, y, z]` is represented as:
-    ///     `PatKind::Vec(box [a, b], Some(i), box [y, z])`
-    Vec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
+    ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
+    Slice(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
     /// A macro pattern; pre-expansion
     Mac(Mac),
 }
@@ -1431,10 +1433,10 @@ pub struct BareFnTy {
 /// The different kinds of types recognized by the compiler
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum TyKind {
-    /// A variable-length array (`[T]`)
-    Vec(P<Ty>),
+    /// A variable-length slice (`[T]`)
+    Slice(P<Ty>),
     /// A fixed length array (`[T; n]`)
-    FixedLengthVec(P<Ty>, P<Expr>),
+    Array(P<Ty>, P<Expr>),
     /// A raw pointer (`*const T` or `*mut T`)
     Ptr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)

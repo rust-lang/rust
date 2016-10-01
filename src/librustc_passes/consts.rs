@@ -602,7 +602,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         hir::ExprIndex(..) |
         hir::ExprField(..) |
         hir::ExprTupField(..) |
-        hir::ExprVec(_) |
+        hir::ExprArray(_) |
         hir::ExprType(..) |
         hir::ExprTup(..) => {}
 

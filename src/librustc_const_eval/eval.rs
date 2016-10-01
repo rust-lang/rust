@@ -317,11 +317,11 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             PatKind::Struct(path.clone(), field_pats, false)
         }
 
-        hir::ExprVec(ref exprs) => {
+        hir::ExprArray(ref exprs) => {
             let pats = exprs.iter()
                             .map(|expr| const_expr_to_pat(tcx, &expr, pat_id, span))
                             .collect::<Result<_, _>>()?;
-            PatKind::Vec(pats, None, hir::HirVec::new())
+            PatKind::Slice(pats, None, hir::HirVec::new())
         }
 
         hir::ExprPath(_, ref path) => {
@@ -898,7 +898,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Array(_, n) if idx >= n => {
                 signal!(e, IndexOutOfBounds { len: n, index: idx })
             }
-            Array(v, n) => if let hir::ExprVec(ref v) = tcx.map.expect_expr(v).node {
+            Array(v, n) => if let hir::ExprArray(ref v) = tcx.map.expect_expr(v).node {
                 assert_eq!(n as usize as u64, n);
                 eval_const_expr_partial(tcx, &v[idx as usize], ty_hint, fn_args)?
             } else {
@@ -925,7 +925,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             _ => signal!(e, IndexedNonVec),
         }
       }
-      hir::ExprVec(ref v) => Array(e.id, v.len() as u64),
+      hir::ExprArray(ref v) => Array(e.id, v.len() as u64),
       hir::ExprRepeat(_, ref n) => {
           let len_hint = ty_hint.checked_or(tcx.types.usize);
           Repeat(

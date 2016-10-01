@@ -1179,7 +1179,7 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
 
         let (name, node) = if self.eat_keyword(keywords::Type) {
-            let TyParam {ident, bounds, default, ..} = self.parse_ty_param()?;
+            let TyParam {ident, bounds, default, ..} = self.parse_ty_param(vec![])?;
             self.expect(&token::Semi)?;
             (ident, TraitItemKind::Type(bounds, default))
         } else if self.is_const_item() {
@@ -1386,8 +1386,8 @@ impl<'a> Parser<'a> {
             // Parse the `; e` in `[ i32; e ]`
             // where `e` is a const expression
             let t = match self.maybe_parse_fixed_length_of_vec()? {
-                None => TyKind::Vec(t),
-                Some(suffix) => TyKind::FixedLengthVec(t, suffix)
+                None => TyKind::Slice(t),
+                Some(suffix) => TyKind::Array(t, suffix)
             };
             self.expect(&token::CloseDelim(token::Bracket))?;
             t
@@ -1910,10 +1910,22 @@ impl<'a> Parser<'a> {
 
     /// Parses `lifetime_defs = [ lifetime_defs { ',' lifetime_defs } ]` where `lifetime_def  =
     /// lifetime [':' lifetimes]`
-    pub fn parse_lifetime_defs(&mut self) -> PResult<'a, Vec<ast::LifetimeDef>> {
-
+    ///
+    /// If `followed_by_ty_params` is None, then we are in a context
+    /// where only lifetime parameters are allowed, and thus we should
+    /// error if we encounter attributes after the bound lifetimes.
+    ///
+    /// If `followed_by_ty_params` is Some(r), then there may be type
+    /// parameter bindings after the lifetimes, so we should pass
+    /// along the parsed attributes to be attached to the first such
+    /// type parmeter.
+    pub fn parse_lifetime_defs(&mut self,
+                               followed_by_ty_params: Option<&mut Vec<ast::Attribute>>)
+                               -> PResult<'a, Vec<ast::LifetimeDef>>
+    {
         let mut res = Vec::new();
         loop {
+            let attrs = self.parse_outer_attributes()?;
             match self.token {
                 token::Lifetime(_) => {
                     let lifetime = self.parse_lifetime()?;
@@ -1923,11 +1935,20 @@ impl<'a> Parser<'a> {
                         } else {
                             Vec::new()
                         };
-                    res.push(ast::LifetimeDef { lifetime: lifetime,
+                    res.push(ast::LifetimeDef { attrs: attrs.into(),
+                                                lifetime: lifetime,
                                                 bounds: bounds });
                 }
 
                 _ => {
+                    if let Some(recv) = followed_by_ty_params {
+                        assert!(recv.is_empty());
+                        *recv = attrs;
+                    } else {
+                        let msg = "trailing attribute after lifetime parameters";
+                        return Err(self.fatal(msg));
+                    }
+                    debug!("parse_lifetime_defs ret {:?}", res);
                     return Ok(res);
                 }
             }
@@ -3587,7 +3608,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let (before, slice, after) = self.parse_pat_vec_elements()?;
                 self.expect(&token::CloseDelim(token::Bracket))?;
-                pat = PatKind::Vec(before, slice, after);
+                pat = PatKind::Slice(before, slice, after);
             }
             // At this point, token != _, &, &&, (, [
             _ => if self.eat_keyword(keywords::Mut) {
@@ -4228,7 +4249,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?
-    fn parse_ty_param(&mut self) -> PResult<'a, TyParam> {
+    fn parse_ty_param(&mut self, preceding_attrs: Vec<ast::Attribute>) -> PResult<'a, TyParam> {
         let span = self.span;
         let ident = self.parse_ident()?;
 
@@ -4242,6 +4263,7 @@ impl<'a> Parser<'a> {
         };
 
         Ok(TyParam {
+            attrs: preceding_attrs.into(),
             ident: ident,
             id: ast::DUMMY_NODE_ID,
             bounds: bounds,
@@ -4262,11 +4284,27 @@ impl<'a> Parser<'a> {
         let span_lo = self.span.lo;
 
         if self.eat(&token::Lt) {
-            let lifetime_defs = self.parse_lifetime_defs()?;
+            // Upon encountering attribute in generics list, we do not
+            // know if it is attached to lifetime or to type param.
+            //
+            // Solution: 1. eagerly parse attributes in tandem with
+            // lifetime defs, 2. store last set of parsed (and unused)
+            // attributes in `attrs`, and 3. pass in those attributes
+            // when parsing formal type param after lifetime defs.
+            let mut attrs = vec![];
+            let lifetime_defs = self.parse_lifetime_defs(Some(&mut attrs))?;
             let mut seen_default = false;
+            let mut post_lifetime_attrs = Some(attrs);
             let ty_params = self.parse_seq_to_gt(Some(token::Comma), |p| {
                 p.forbid_lifetime()?;
-                let ty_param = p.parse_ty_param()?;
+                // Move out of `post_lifetime_attrs` if present. O/w
+                // not first type param: parse attributes anew.
+                let attrs = match post_lifetime_attrs.as_mut() {
+                    None => p.parse_outer_attributes()?,
+                    Some(attrs) => mem::replace(attrs, vec![]),
+                };
+                post_lifetime_attrs = None;
+                let ty_param = p.parse_ty_param(attrs)?;
                 if ty_param.default.is_some() {
                     seen_default = true;
                 } else if seen_default {
@@ -4276,6 +4314,12 @@ impl<'a> Parser<'a> {
                 }
                 Ok(ty_param)
             })?;
+            if let Some(attrs) = post_lifetime_attrs {
+                if !attrs.is_empty() {
+                    self.span_err(attrs[0].span,
+                                  "trailing attribute after lifetime parameters");
+                }
+            }
             Ok(ast::Generics {
                 lifetimes: lifetime_defs,
                 ty_params: ty_params,
@@ -4423,7 +4467,7 @@ impl<'a> Parser<'a> {
                     let bound_lifetimes = if self.eat_keyword(keywords::For) {
                         // Higher ranked constraint.
                         self.expect(&token::Lt)?;
-                        let lifetime_defs = self.parse_lifetime_defs()?;
+                        let lifetime_defs = self.parse_lifetime_defs(None)?;
                         self.expect_gt()?;
                         lifetime_defs
                     } else {
@@ -4991,7 +5035,7 @@ impl<'a> Parser<'a> {
     fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<ast::LifetimeDef>> {
         if self.eat_keyword(keywords::For) {
             self.expect(&token::Lt)?;
-            let lifetime_defs = self.parse_lifetime_defs()?;
+            let lifetime_defs = self.parse_lifetime_defs(None)?;
             self.expect_gt()?;
             Ok(lifetime_defs)
         } else {
