@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
+use std::fs::File;
 use std::io::prelude::*;
 use std::io;
 use std::path::PathBuf;
@@ -96,13 +98,24 @@ pub fn run(input: &str,
         link::find_crate_name(None, &hir_forest.krate().attrs, &input)
     });
     let opts = scrape_test_config(hir_forest.krate());
+    let filename = input_path.to_str().unwrap_or("").to_owned();
+    let mut f = match File::open(input_path) {
+        Ok(f) => f,
+        _ => return 1,
+    };
+    let mut file_content = String::new();
+    if let Err(_) = f.read_to_string(&mut file_content) {
+        return 1;
+    }
     let mut collector = Collector::new(crate_name,
                                        cfgs,
                                        libs,
                                        externs,
                                        false,
                                        opts,
-                                       maybe_sysroot);
+                                       maybe_sysroot,
+                                       &file_content,
+                                       filename);
 
     {
         let dep_graph = DepGraph::new(false);
@@ -162,11 +175,12 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
            should_panic: bool, no_run: bool, as_test_harness: bool,
            compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
            maybe_sysroot: Option<PathBuf>,
-           original: &str) {
+           original: &str, line_number: u32, filename: &str) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let new_test = maketest(test, Some(cratename), as_test_harness, opts);
-    let test = format!("```{}\n{}\n```\n", original, test);
+    let test = format!("Error on {}:{}\n\n```{}\n{}\n```\n",
+                       filename, line_number, original, test);
     let input = config::Input::Str {
         name: driver::anon_src(),
         input: new_test.to_owned(),
@@ -389,11 +403,27 @@ pub struct Collector {
     cratename: String,
     opts: TestOptions,
     maybe_sysroot: Option<PathBuf>,
+    code_blocks: HashMap<String, Vec<u32>>,
+    filename: String,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
-               use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>) -> Collector {
+               use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
+               file_content: &str, filename: String) -> Collector {
+        let mut line_number = 1;
+        let mut block_lines = HashMap::new();
+        for (pos, block) in file_content.split("```").enumerate() {
+            if (pos & 1) != 0 {
+                let key = format!("{}", block.replace("/// ", "").replace("//!", ""));
+                if !block_lines.contains_key(&key) {
+                    block_lines.insert(key.clone(), Vec::new());
+                }
+                block_lines.get_mut(&key).unwrap().push(line_number);
+            }
+            line_number += block.lines().count() as u32 - 1;
+        }
+
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -406,7 +436,22 @@ impl Collector {
             cratename: cratename,
             opts: opts,
             maybe_sysroot: maybe_sysroot,
+            code_blocks: block_lines,
+            filename: filename,
         }
+    }
+
+    fn get_line_from_key(&mut self, key: &String) -> u32 {
+        let (line, need_removal) = if let Some(l) = self.code_blocks.get_mut(key) {
+            let need_removal = l.len() > 1;
+            (l.pop().unwrap_or(1), need_removal)
+        } else {
+            return 1;
+        };
+        if need_removal {
+            self.code_blocks.remove(key);
+        }
+        line
     }
 
     pub fn add_test(&mut self, test: String,
@@ -427,6 +472,8 @@ impl Collector {
         let opts = self.opts.clone();
         let maybe_sysroot = self.maybe_sysroot.clone();
         debug!("Creating test {}: {}", name, test);
+        let line_number = self.get_line_from_key(&format!("{}\n{}\n", original, test));
+        let filename = self.filename.clone();
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
                 name: testing::DynTestName(name),
@@ -453,7 +500,9 @@ impl Collector {
                                 error_codes,
                                 &opts,
                                 maybe_sysroot,
-                                &original)
+                                &original,
+                                line_number,
+                                &filename)
                     })
                 } {
                     Ok(()) => (),
