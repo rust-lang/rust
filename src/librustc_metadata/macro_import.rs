@@ -18,7 +18,7 @@ use std::mem;
 use creader::{CrateLoader, Macros};
 
 use rustc::hir::def_id::DefIndex;
-use rustc::middle::cstore::LoadedMacro;
+use rustc::middle::cstore::{LoadedMacro, LoadedMacroKind};
 use rustc::session::Session;
 use rustc::util::nodemap::FnvHashMap;
 use rustc_back::dynamic_lib::DynamicLibrary;
@@ -28,13 +28,18 @@ use syntax::ast;
 use syntax::attr;
 use syntax::parse::token;
 use syntax_ext::deriving::custom::CustomDerive;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 pub fn call_bad_macro_reexport(a: &Session, b: Span) {
     span_err!(a, b, E0467, "bad macro reexport");
 }
 
 pub type MacroSelection = FnvHashMap<token::InternedString, Span>;
+
+enum ImportSelection {
+    All(Span),
+    Some(MacroSelection),
+}
 
 pub fn load_macros(loader: &mut CrateLoader, extern_crate: &ast::Item, allows_macros: bool)
                    -> Vec<LoadedMacro> {
@@ -46,7 +51,7 @@ impl<'a> CrateLoader<'a> {
                   extern_crate: &ast::Item,
                   allows_macros: bool) -> Vec<LoadedMacro> {
         // Parse the attributes relating to macros.
-        let mut import = Some(FnvHashMap());  // None => load all
+        let mut import = ImportSelection::Some(FnvHashMap());
         let mut reexport = FnvHashMap();
 
         for attr in &extern_crate.attrs {
@@ -55,11 +60,9 @@ impl<'a> CrateLoader<'a> {
                 "macro_use" => {
                     let names = attr.meta_item_list();
                     if names.is_none() {
-                        // no names => load all
-                        import = None;
-                    }
-                    if let (Some(sel), Some(names)) = (import.as_mut(), names) {
-                        for attr in names {
+                        import = ImportSelection::All(attr.span);
+                    } else if let ImportSelection::Some(ref mut sel) = import {
+                        for attr in names.unwrap() {
                             if let Some(word) = attr.word() {
                                 sel.insert(word.name().clone(), attr.span());
                             } else {
@@ -98,10 +101,10 @@ impl<'a> CrateLoader<'a> {
     fn load_macros<'b>(&mut self,
                        vi: &ast::Item,
                        allows_macros: bool,
-                       import: Option<MacroSelection>,
+                       import: ImportSelection,
                        reexport: MacroSelection)
                        -> Vec<LoadedMacro> {
-        if let Some(sel) = import.as_ref() {
+        if let ImportSelection::Some(ref sel) = import {
             if sel.is_empty() && reexport.is_empty() {
                 return Vec::new();
             }
@@ -120,15 +123,19 @@ impl<'a> CrateLoader<'a> {
         for mut def in macros.macro_rules.drain(..) {
             let name = def.ident.name.as_str();
 
-            def.use_locally = match import.as_ref() {
-                None => true,
-                Some(sel) => sel.contains_key(&name),
+            let import_site = match import {
+                ImportSelection::All(span) => Some(span),
+                ImportSelection::Some(ref sel) => sel.get(&name).cloned()
             };
+            def.use_locally = import_site.is_some();
             def.export = reexport.contains_key(&name);
             def.allow_internal_unstable = attr::contains_name(&def.attrs,
                                                               "allow_internal_unstable");
             debug!("load_macros: loaded: {:?}", def);
-            ret.push(LoadedMacro::Def(def));
+            ret.push(LoadedMacro {
+                kind: LoadedMacroKind::Def(def),
+                import_site: import_site.unwrap_or(DUMMY_SP),
+            });
             seen.insert(name);
         }
 
@@ -137,7 +144,7 @@ impl<'a> CrateLoader<'a> {
             // exported macros, enforced elsewhere
             assert_eq!(ret.len(), 0);
 
-            if import.is_some() {
+            if let ImportSelection::Some(..) = import {
                 self.sess.span_err(vi.span, "`rustc-macro` crates cannot be \
                                              selectively imported from, must \
                                              use `#[macro_use]`");
@@ -151,10 +158,10 @@ impl<'a> CrateLoader<'a> {
             self.load_derive_macros(vi.span, &macros, index, &mut ret);
         }
 
-        if let Some(sel) = import.as_ref() {
+        if let ImportSelection::Some(sel) = import {
             for (name, span) in sel {
                 if !seen.contains(&name) {
-                    span_err!(self.sess, *span, E0469,
+                    span_err!(self.sess, span, E0469,
                               "imported macro not found");
                 }
             }
@@ -199,18 +206,21 @@ impl<'a> CrateLoader<'a> {
             mem::transmute::<*mut u8, fn(&mut Registry)>(sym)
         };
 
-        struct MyRegistrar<'a>(&'a mut Vec<LoadedMacro>);
+        struct MyRegistrar<'a>(&'a mut Vec<LoadedMacro>, Span);
 
         impl<'a> Registry for MyRegistrar<'a> {
             fn register_custom_derive(&mut self,
                                       trait_name: &str,
                                       expand: fn(TokenStream) -> TokenStream) {
                 let derive = Rc::new(CustomDerive::new(expand));
-                self.0.push(LoadedMacro::CustomDerive(trait_name.to_string(), derive));
+                self.0.push(LoadedMacro {
+                    kind: LoadedMacroKind::CustomDerive(trait_name.to_string(), derive),
+                    import_site: self.1,
+                });
             }
         }
 
-        registrar(&mut MyRegistrar(ret));
+        registrar(&mut MyRegistrar(ret, span));
 
         // Intentionally leak the dynamic library. We can't ever unload it
         // since the library can make things that will live arbitrarily long.
