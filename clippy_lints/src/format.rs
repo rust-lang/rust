@@ -81,7 +81,7 @@ pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Exp
         let Some(NodeItem(decl)) = cx.tcx.map.find(decl.id),
         decl.name.as_str() == "__STATIC_FMTSTR",
         let ItemStatic(_, _, ref expr) = decl.node,
-        let ExprAddrOf(_, ref expr) = expr.node, // &[""]
+        let ExprAddrOf(_, ref expr) = expr.node, // &["…", "…", …]
         let ExprVec(ref exprs) = expr.node,
     ], {
         let mut result = Vec::new();
@@ -99,7 +99,7 @@ pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Exp
 
 /// Checks if the expressions matches
 /// ```rust
-/// { static __STATIC_FMTSTR: &[""] = _; __STATIC_FMTSTR }
+/// { static __STATIC_FMTSTR: … = &["…", "…", …]; __STATIC_FMTSTR }
 /// ```
 fn check_static_str(cx: &LateContext, expr: &Expr) -> bool {
     if let Some(expr) = get_argument_fmtstr_parts(cx, expr) {
