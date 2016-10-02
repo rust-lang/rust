@@ -70,20 +70,27 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         foo();
     }
 
-    let _ = if true {
-        //~^NOTE same as this
-        foo();
-        let mut a = 42 + [23].len() as i32;
-        a += 7;
-        a = -31-a;
-        a
-    }
-    else { //~ERROR this `if` has identical blocks
-        foo();
-        let mut a = 42 + [23].len() as i32;
-        a += 7;
-        a = -31-a;
-        a
+    let _ = match 42 {
+        42 => {
+            //~^ NOTE same as this
+            //~| NOTE refactoring
+            foo();
+            let mut a = 42 + [23].len() as i32;
+            if true {
+                a += 7;
+            }
+            a = -31-a;
+            a
+        }
+        _ => { //~ERROR this `match` has identical arm bodies
+            foo();
+            let mut a = 42 + [23].len() as i32;
+            if true {
+                a += 7;
+            }
+            a = -31-a;
+            a
+        }
     };
 
     if true {

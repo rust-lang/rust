@@ -528,10 +528,15 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_stmt(&mut self, b: &Stmt) {
         match b.node {
-            StmtDecl(ref _decl, _) => {
+            StmtDecl(ref decl, _) => {
                 let c: fn(_, _) -> _ = StmtDecl;
                 c.hash(&mut self.s);
-                // TODO: decl
+
+                if let DeclLocal(ref local) = decl.node {
+                    if let Some(ref init) = local.init {
+                        self.hash_expr(init);
+                    }
+                }
             }
             StmtExpr(ref expr, _) => {
                 let c: fn(_, _) -> _ = StmtExpr;
