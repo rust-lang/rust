@@ -35,7 +35,7 @@ impl LateLintPass for OkIfLetPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_let_chain! {[ //begin checking variables
             let ExprMatch(ref op, ref body, ref source) = expr.node, //test if expr is a match
-            let MatchSource::IfLetDesugar { contains_else_clause: _ } = *source, //test if it is an If Let
+            let MatchSource::IfLetDesugar { .. } = *source, //test if it is an If Let
             let ExprMethodCall(_, _, ref result_types) = op.node, //check is expr.ok() has type Result<T,E>.ok()
             let PatKind::TupleStruct(ref x, ref y, _)  = body[0].pats[0].node, //get operation
             let Some(_) = method_chain_args(op, &["ok"]) //test to see if using ok() methoduse std::marker::Sized;
