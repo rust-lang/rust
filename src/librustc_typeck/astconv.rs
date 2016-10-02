@@ -1241,10 +1241,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
     {
         if bounds.is_empty() {
-            span_err!(self.tcx().sess, span, E0220,
+            struct_span_err!(self.tcx().sess, span, E0220,
                       "associated type `{}` not found for `{}`",
                       assoc_name,
-                      ty_param_name);
+                      ty_param_name)
+              .span_label(span, &format!("associated type `{}` not found", assoc_name))
+              .emit();
             return Err(ErrorReported);
         }
 
