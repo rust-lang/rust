@@ -577,10 +577,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                          terr: &TypeError<'tcx>)
                                          -> DiagnosticBuilder<'tcx>
     {
-        // FIXME: do we want to use a different error code for each origin?
-        let mut diag = struct_span_err!(
-            self.tcx.sess, trace.origin.span(), E0308,
-            "{}", trace.origin.as_failure_str()
+        let mut diag = self.tcx.sess.struct_span_err_with_code(
+            trace.origin.span(),
+            trace.origin.as_failure_str(),
+            trace.origin.as_error_code()
         );
         self.note_type_err(&mut diag, trace.origin, None, Some(trace.values), terr);
         diag

@@ -1431,6 +1431,21 @@ fn make_child<'elve>(x: &mut &'elve isize, y: &mut &'elve isize) {
 ```
 "##,
 
+E0317: r##"
+An `if` expression without an `else` block is required to have the type `()`.
+This error occurs when the `if` block has a type other than `()`. For example:
+
+```compile_fail,E0317
+fn main() {
+    let x = 5;
+    let a = if x == 5 { 1 };
+}
+```
+
+To resolve this error, either add an `else` block having the same type as the
+`if` block, or adjust the `if` block so that it has the type `()`.
+"##,
+
 E0398: r##"
 In Rust 1.3, the default object lifetime bounds are expected to change, as
 described in RFC #1156 [1]. You are getting a warning because the compiler
