@@ -22,10 +22,14 @@ use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ext::tt::macro_rules;
 use syntax::parse::token::intern;
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax_pos::{Span, DUMMY_SP};
 
 // FIXME(jseyfried) Merge with `::NameBinding`.
 pub struct NameBinding {
-    ext: Rc<SyntaxExtension>,
+    pub ext: Rc<SyntaxExtension>,
+    pub expansion: Mark,
+    pub shadowing: bool,
+    pub span: Span,
 }
 
 #[derive(Clone)]
@@ -69,7 +73,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion) {
         self.collect_def_ids(mark, expansion);
         self.current_module = self.expansion_data[&mark].module;
-        expansion.visit_with(&mut BuildReducedGraphVisitor { resolver: self });
+        expansion.visit_with(&mut BuildReducedGraphVisitor { resolver: self, expansion: mark });
     }
 
     fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef) {
@@ -77,16 +81,18 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.session.span_err(def.span, "user-defined macros may not be named `macro_rules`");
         }
         if def.use_locally {
-            self.macro_names.insert(def.ident.name);
-            let ext = macro_rules::compile(&self.session.parse_sess, &def);
-
-            let mut module = self.expansion_data[&scope].module;
+            let ExpansionData { mut module, backtrace, .. } = self.expansion_data[&scope];
             while module.macros_escape {
                 module = module.parent.unwrap();
             }
-            module.macros.borrow_mut().insert(def.ident.name, NameBinding {
-                ext: Rc::new(ext),
-            });
+            let binding = NameBinding {
+                ext: Rc::new(macro_rules::compile(&self.session.parse_sess, &def)),
+                expansion: backtrace.data().prev_ctxt.data().outer_mark,
+                shadowing: self.resolve_macro_name(scope, def.ident.name, false).is_some(),
+                span: def.span,
+            };
+            module.macros.borrow_mut().insert(def.ident.name, binding);
+            self.macro_names.insert(def.ident.name);
         }
         if def.export {
             def.id = self.next_node_id();
@@ -100,6 +106,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         }
         self.graph_root.macros.borrow_mut().insert(ident.name, NameBinding {
             ext: ext,
+            expansion: Mark::root(),
+            shadowing: false,
+            span: DUMMY_SP,
         });
     }
 
@@ -138,7 +147,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Attr { ref attr, .. } => (intern(&*attr.name()), attr.span),
         };
 
-        self.resolve_macro_name(scope, name).or_else(|| {
+        self.resolve_macro_name(scope, name, true).or_else(|| {
             let mut err =
                 self.session.struct_span_err(span, &format!("macro undefined: '{}!'", name));
             self.suggest_macro_name(&name.as_str(), &mut err);
@@ -153,10 +162,28 @@ impl<'a> base::Resolver for Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    fn resolve_macro_name(&mut self, scope: Mark, name: ast::Name) -> Option<Rc<SyntaxExtension>> {
-        let mut module = self.expansion_data[&scope].module;
+    pub fn resolve_macro_name(&mut self, scope: Mark, name: ast::Name, record_used: bool)
+                              -> Option<Rc<SyntaxExtension>> {
+        let ExpansionData { mut module, backtrace, .. } = self.expansion_data[&scope];
         loop {
             if let Some(binding) = module.macros.borrow().get(&name) {
+                let mut backtrace = backtrace.data();
+                while binding.expansion != backtrace.outer_mark {
+                    if backtrace.outer_mark != Mark::root() {
+                        backtrace = backtrace.prev_ctxt.data();
+                        continue
+                    }
+
+                    if record_used && binding.shadowing &&
+                       self.macro_shadowing_errors.insert(binding.span) {
+                        let msg = format!("`{}` is already in scope", name);
+                        self.session.struct_span_err(binding.span, &msg)
+                            .note("macro-expanded `macro_rules!`s and `#[macro_use]`s \
+                                   may not shadow existing macros (see RFC 1560)")
+                            .emit();
+                    }
+                    break
+                }
                 return Some(binding.ext.clone());
             }
             match module.parent {

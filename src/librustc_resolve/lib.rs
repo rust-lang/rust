@@ -1073,6 +1073,7 @@ pub struct Resolver<'a> {
 
     privacy_errors: Vec<PrivacyError<'a>>,
     ambiguity_errors: Vec<AmbiguityError<'a>>,
+    macro_shadowing_errors: FnvHashSet<Span>,
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
@@ -1248,6 +1249,7 @@ impl<'a> Resolver<'a> {
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
+            macro_shadowing_errors: FnvHashSet(),
 
             arenas: arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
