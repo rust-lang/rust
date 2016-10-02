@@ -54,27 +54,16 @@ pub enum Constant {
 }
 
 impl Constant {
-    /// convert to u64 if possible
+    /// Convert to `u64` if possible.
     ///
     /// # panics
     ///
-    /// if the constant could not be converted to u64 losslessly
+    /// If the constant could not be converted to `u64` losslessly.
     fn as_u64(&self) -> u64 {
         if let Constant::Int(val) = *self {
-            val.to_u64().expect("negative constant can't be casted to u64")
+            val.to_u64().expect("negative constant can't be casted to `u64`")
         } else {
-            panic!("Could not convert a {:?} to u64", self);
-        }
-    }
-
-    /// convert this constant to a f64, if possible
-    #[allow(cast_precision_loss, cast_possible_wrap)]
-    pub fn as_float(&self) -> Option<f64> {
-        match *self {
-            Constant::Float(ref s, _) => s.parse().ok(),
-            Constant::Int(i) if i.is_negative() => Some(i.to_u64_unchecked() as i64 as f64),
-            Constant::Int(i) => Some(i.to_u64_unchecked() as f64),
-            _ => None,
+            panic!("Could not convert a `{:?}` to `u64`", self);
         }
     }
 }
