@@ -262,7 +262,7 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, pattern_span: Span, 
         span_lint_and_then(cx,
                            SHADOW_UNRELATED,
                            span,
-                           &format!("{} shadows a previous declaration", snippet(cx, pattern_span, "_")),
+                           &format!("`{}` shadows a previous declaration", snippet(cx, pattern_span, "_")),
                            |db| { db.span_note(prev_span, "previous binding is here"); });
     }
 }
