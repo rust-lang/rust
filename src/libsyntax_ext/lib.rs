@@ -51,13 +51,12 @@ pub mod deriving;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, IdentTT, MultiModifier};
-use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules::MacroRulesExpander;
 use syntax::parse::token::intern;
 
 pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver, enable_quotes: bool) {
     let mut register = |name, ext| {
-        resolver.add_ext(Mark::root(), ast::Ident::with_empty_ctxt(intern(name)), Rc::new(ext));
+        resolver.add_ext(ast::Ident::with_empty_ctxt(intern(name)), Rc::new(ext));
     };
 
     register("macro_rules", IdentTT(Box::new(MacroRulesExpander), None, false));

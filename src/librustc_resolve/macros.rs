@@ -74,8 +74,16 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.session.span_err(def.span, "user-defined macros may not be named `macro_rules`");
         }
         if def.use_locally {
+            self.macro_names.insert(def.ident.name);
             let ext = macro_rules::compile(&self.session.parse_sess, &def);
-            self.add_ext(scope, def.ident, Rc::new(ext));
+
+            let mut module = self.expansion_data[&scope].module;
+            while module.macros_escape {
+                module = module.parent.unwrap();
+            }
+            module.macros.borrow_mut().insert(def.ident.name, NameBinding {
+                ext: Rc::new(ext),
+            });
         }
         if def.export {
             def.id = self.next_node_id();
@@ -83,16 +91,11 @@ impl<'a> base::Resolver for Resolver<'a> {
         }
     }
 
-    fn add_ext(&mut self, scope: Mark, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
+    fn add_ext(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
         if let NormalTT(..) = *ext {
             self.macro_names.insert(ident.name);
         }
-
-        let mut module = self.expansion_data[&scope].module;
-        while module.macros_escape {
-            module = module.parent.unwrap();
-        }
-        module.macros.borrow_mut().insert(ident.name, NameBinding {
+        self.graph_root.macros.borrow_mut().insert(ident.name, NameBinding {
             ext: ext,
         });
     }
