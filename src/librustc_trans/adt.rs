@@ -632,7 +632,7 @@ fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     let meta = val.meta;
 
 
-    let offset = st.offset_of_field(ix).bytes();
+    let offset = st.offsets[ix].bytes();
     let unaligned_offset = C_uint(bcx.ccx(), offset);
 
     // Get the alignment of the field
@@ -695,9 +695,9 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>, discr: D
             let lldiscr = C_integral(Type::from_integer(ccx, d), discr.0 as u64, true);
             let mut vals_with_discr = vec![lldiscr];
             vals_with_discr.extend_from_slice(vals);
-            let mut contents = build_const_struct(ccx, &variant.offset_after_field[..],
-                &vals_with_discr[..], variant.packed);
-            let needed_padding = l.size(dl).bytes() - variant.min_size().bytes();
+            let mut contents = build_const_struct(ccx, &variant,
+                &vals_with_discr[..]);
+            let needed_padding = l.size(dl).bytes() - variant.min_size.bytes();
             if needed_padding > 0 {
                 contents.push(padding(ccx, needed_padding));
             }
@@ -711,7 +711,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>, discr: D
         layout::Univariant { ref variant, .. } => {
             assert_eq!(discr, Disr(0));
             let contents = build_const_struct(ccx,
-                &variant.offset_after_field[..], vals, variant.packed);
+                &variant, vals);
             C_struct(ccx, &contents[..], variant.packed)
         }
         layout::Vector { .. } => {
@@ -728,9 +728,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>, discr: D
         }
         layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             if discr.0 == nndiscr {
-                C_struct(ccx, &build_const_struct(ccx,
-                                                 &nonnull.offset_after_field[..],
-                                                 vals, nonnull.packed),
+                C_struct(ccx, &build_const_struct(ccx, &nonnull, vals),
                          false)
             } else {
                 let fields = compute_fields(ccx, t, nndiscr as usize, false);
@@ -739,10 +737,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>, discr: D
                     // field; see #8506.
                     C_null(type_of::sizing_type_of(ccx, ty))
                 }).collect::<Vec<ValueRef>>();
-                C_struct(ccx, &build_const_struct(ccx,
-                                                 &nonnull.offset_after_field[..],
-                                                 &vals[..],
-                                                 false),
+                C_struct(ccx, &build_const_struct(ccx, &nonnull, &vals[..]),
                          false)
             }
         }
@@ -759,11 +754,10 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>, discr: D
 /// a two-element struct will locate it at offset 4, and accesses to it
 /// will read the wrong memory.
 fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                offset_after_field: &[layout::Size],
-                                vals: &[ValueRef],
-                                packed: bool)
+                                st: &layout::Struct,
+                                vals: &[ValueRef])
                                 -> Vec<ValueRef> {
-    assert_eq!(vals.len(), offset_after_field.len());
+    assert_eq!(vals.len(), st.offsets.len());
 
     if vals.len() == 0 {
         return Vec::new();
@@ -772,24 +766,19 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // offset of current value
     let mut offset = 0;
     let mut cfields = Vec::new();
-    let target_offsets = offset_after_field.iter().map(|i| i.bytes());
-    for (&val, target_offset) in vals.iter().zip(target_offsets) {
-        assert!(!is_undef(val));
-        cfields.push(val);
-        offset += machine::llsize_of_alloc(ccx, val_ty(val));
-        if !packed {
-            let val_align = machine::llalign_of_min(ccx, val_ty(val));
-            offset = roundup(offset, val_align);
-        }
-        if offset != target_offset {
+    let offsets = st.offsets.iter().map(|i| i.bytes());
+    for (&val, target_offset) in vals.iter().zip(offsets) {
+        if offset < target_offset {
             cfields.push(padding(ccx, target_offset - offset));
             offset = target_offset;
         }
+        assert!(!is_undef(val));
+        cfields.push(val);
+        offset += machine::llsize_of_alloc(ccx, val_ty(val));
     }
 
-    let size = offset_after_field.last().unwrap();
-    if offset < size.bytes() {
-        cfields.push(padding(ccx, size.bytes() - offset));
+    if offset < st.min_size.bytes() {
+        cfields.push(padding(ccx, st.min_size.bytes() - offset));
     }
 
     cfields
