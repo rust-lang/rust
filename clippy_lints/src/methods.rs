@@ -168,7 +168,7 @@ declare_lint! {
 /// ```
 declare_lint! {
     pub OPTION_MAP_UNWRAP_OR,
-    Warn,
+    Allow,
     "using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as \
      `map_or(a, f)`"
 }
@@ -186,7 +186,7 @@ declare_lint! {
 /// ```
 declare_lint! {
     pub OPTION_MAP_UNWRAP_OR_ELSE,
-    Warn,
+    Allow,
     "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
      `map_or_else(g, f)`"
 }
