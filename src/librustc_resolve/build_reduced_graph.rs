@@ -20,7 +20,7 @@ use {NameBinding, NameBindingKind, ToNameBinding};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
-use rustc::middle::cstore::LoadedMacro;
+use rustc::middle::cstore::LoadedMacroKind;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::map::DefPathData;
@@ -189,9 +189,9 @@ impl<'b> Resolver<'b> {
                 // crate root, because `$crate` won't work properly.
                 let is_crate_root = self.current_module.parent.is_none();
                 for def in self.crate_loader.load_macros(item, is_crate_root) {
-                    match def {
-                        LoadedMacro::Def(def) => self.add_macro(Mark::root(), def),
-                        LoadedMacro::CustomDerive(name, ext) => {
+                    match def.kind {
+                        LoadedMacroKind::Def(def) => self.add_macro(Mark::root(), def),
+                        LoadedMacroKind::CustomDerive(name, ext) => {
                             self.insert_custom_derive(&name, ext, item.span);
                         }
                     }
