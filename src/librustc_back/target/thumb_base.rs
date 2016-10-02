@@ -15,6 +15,7 @@ pub fn opts() -> TargetOptions {
     TargetOptions {
         executables: true,
         linker: "arm-none-eabi-gcc".to_string(),
+        relocation_model: "static".to_string(),
         .. Default::default()
     }
 }
