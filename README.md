@@ -174,7 +174,7 @@ You can check out this great service at [clippy.bashy.io](https://clippy.bashy.i
 
 ## Lints
 
-There are 172 lints included in this crate:
+There are 173 lints included in this crate:
 
 name                                                                                                                 | default | triggers on
 ---------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -231,6 +231,7 @@ name                                                                            
 [for_loop_over_option](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option)                         | warn    | for-looping over an `Option`, which is more clearly expressed as an `if let`
 [for_loop_over_result](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_result)                         | warn    | for-looping over a `Result`, which is more clearly expressed as an `if let`
 [identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                                           | warn    | using identity operations, e.g. `x + 0` or `y / 1`
+[if_let_some_result](https://github.com/Manishearth/rust-clippy/wiki#if_let_some_result)                             | warn    | usage of `ok()` in `if let Some(x)` statements is unnecessary, match on `Ok(expr)` instead
 [if_not_else](https://github.com/Manishearth/rust-clippy/wiki#if_not_else)                                           | allow   | `if` branches that could be swapped so no negation operation is necessary on the condition
 [if_same_then_else](https://github.com/Manishearth/rust-clippy/wiki#if_same_then_else)                               | warn    | if with the same *then* and *else* blocks
 [ifs_same_cond](https://github.com/Manishearth/rust-clippy/wiki#ifs_same_cond)                                       | warn    | consecutive `ifs` with the same condition

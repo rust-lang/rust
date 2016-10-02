@@ -244,6 +244,7 @@ All notable changes to this project will be documented in this file.
 [`for_loop_over_option`]: https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option
 [`for_loop_over_result`]: https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_result
 [`identity_op`]: https://github.com/Manishearth/rust-clippy/wiki#identity_op
+[`if_let_some_result`]: https://github.com/Manishearth/rust-clippy/wiki#if_let_some_result
 [`if_not_else`]: https://github.com/Manishearth/rust-clippy/wiki#if_not_else
 [`if_same_then_else`]: https://github.com/Manishearth/rust-clippy/wiki#if_same_then_else
 [`ifs_same_cond`]: https://github.com/Manishearth/rust-clippy/wiki#ifs_same_cond
