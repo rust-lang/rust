@@ -14,6 +14,7 @@ fn main() {
     &x[1..5]; //~ERROR: range is out of bounds
     &x[0..3];
     &x[0...4]; //~ERROR: range is out of bounds
+    &x[...4]; //~ERROR: range is out of bounds
     &x[..];
     &x[1..];
     &x[4..];
@@ -26,15 +27,18 @@ fn main() {
     &y[1..2]; //~ERROR: slicing may panic
     &y[..];
     &y[0...4]; //~ERROR: slicing may panic
+    &y[...4]; //~ERROR: slicing may panic
 
     let empty: [i8; 0] = [];
     empty[0]; //~ERROR: const index is out of bounds
     &empty[1..5]; //~ERROR: range is out of bounds
     &empty[0...4]; //~ERROR: range is out of bounds
+    &empty[...4]; //~ERROR: range is out of bounds
     &empty[..];
     &empty[0..];
     &empty[0..0];
     &empty[0...0]; //~ERROR: range is out of bounds
+    &empty[...0]; //~ERROR: range is out of bounds
     &empty[..0];
     &empty[1..]; //~ERROR: range is out of bounds
     &empty[..4]; //~ERROR: range is out of bounds
