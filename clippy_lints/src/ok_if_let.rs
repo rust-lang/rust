@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{paths, method_chain_args, span_help_and_lint, match_type, snippet_opt};
+use utils::{paths, method_chain_args, span_help_and_lint, match_type, snippet};
 
 /// **What it does:*** Checks for unnecessary `ok()` in if let.
 ///
@@ -42,12 +42,7 @@ impl LateLintPass for OkIfLetPass {
 
         ], {
             let is_result_type = match_type(cx, cx.tcx.expr_ty(&result_types[0]), &paths::RESULT);
-            let mut some_expr_string = String::from("");
-            if y.len() > 0 {
-                if let Some(x) = snippet_opt(cx, y[0].span) {
-                    some_expr_string = x;
-                }
-            }
+            let some_expr_string = snippet(cx, y[0].span, "");
             if print::path_to_string(x) == "Some" && is_result_type {
                 span_help_and_lint(cx, IF_LET_SOME_RESULT, expr.span,
                 "Matching on `Some` with `ok()` is redundant",
