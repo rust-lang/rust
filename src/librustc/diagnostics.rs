@@ -1432,8 +1432,9 @@ fn make_child<'elve>(x: &mut &'elve isize, y: &mut &'elve isize) {
 "##,
 
 E0317: r##"
-An `if` expression without an `else` block is required to have the type `()`.
-This error occurs when the `if` block has a type other than `()`. For example:
+This error occurs when an `if` expression without an `else` block is used in a
+context where a type other than `()` is expected, for example a `let`
+expression:
 
 ```compile_fail,E0317
 fn main() {
@@ -1442,8 +1443,9 @@ fn main() {
 }
 ```
 
-To resolve this error, either add an `else` block having the same type as the
-`if` block, or adjust the `if` block so that it has the type `()`.
+An `if` expression without an `else` block has the type `()`, so this is a type
+error. To resolve it, add an `else` block having the same type as the `if`
+block.
 "##,
 
 E0398: r##"
