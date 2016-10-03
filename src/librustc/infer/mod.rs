@@ -219,25 +219,6 @@ pub enum TypeOrigin {
 }
 
 impl TypeOrigin {
-    fn as_error_code(&self) -> &'static str {
-        match self {
-            // FIXME: use distinct codes for each case
-            &TypeOrigin::Misc(_) => "E0308",
-            &TypeOrigin::RelateOutputImplTypes(_) => "E0308",
-            &TypeOrigin::ExprAssignable(_) => "E0308",
-            &TypeOrigin::MethodCompatCheck(_) => "E0308",
-            &TypeOrigin::MatchExpressionArm(..) => "E0308",
-            &TypeOrigin::IfExpression(_) => "E0308",
-            &TypeOrigin::IfExpressionWithNoElse(_) => "E0317",
-            &TypeOrigin::RangeExpression(_) => "E0308",
-            &TypeOrigin::EquatePredicate(_) => "E0308",
-            &TypeOrigin::MainFunctionType(_) => "E0308",
-            &TypeOrigin::StartFunctionType(_) => "E0308",
-            &TypeOrigin::IntrinsicType(_) => "E0308",
-            &TypeOrigin::MethodReceiver(_) => "E0308",
-        }
-    }
-
     fn as_failure_str(&self) -> &'static str {
         match self {
             &TypeOrigin::Misc(_) |
