@@ -667,8 +667,9 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
-        let min_cap = self.len().checked_add(additional).expect("reserve overflow");
-        if self.capacity() < min_cap {
+        let remaining = self.capacity() - self.len(); // this can't overflow
+        if remaining < additional {
+            let min_cap = self.len().checked_add(additional).expect("reserve overflow");
             let raw_cap = self.resize_policy.raw_capacity(min_cap);
             self.resize(raw_cap);
         }
