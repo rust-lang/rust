@@ -175,7 +175,7 @@
 
 use cmp::Ordering;
 use fmt::{self, Debug, Display};
-use marker::{PhantomData, Unsize};
+use marker::Unsize;
 use ops::{Deref, DerefMut, CoerceUnsized};
 
 /// A mutable memory location that admits only `Copy` data.
@@ -403,40 +403,40 @@ pub enum BorrowState {
 }
 
 /// An error returned by [`RefCell::try_borrow`](struct.RefCell.html#method.try_borrow).
-#[unstable(feature = "try_borrow", issue = "35070")]
-pub struct BorrowError<'a, T: 'a + ?Sized> {
-    marker: PhantomData<&'a RefCell<T>>,
+#[stable(feature = "try_borrow", since = "1.13.0")]
+pub struct BorrowError {
+    _private: (),
 }
 
-#[unstable(feature = "try_borrow", issue = "35070")]
-impl<'a, T: ?Sized> Debug for BorrowError<'a, T> {
+#[stable(feature = "try_borrow", since = "1.13.0")]
+impl Debug for BorrowError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BorrowError").finish()
     }
 }
 
-#[unstable(feature = "try_borrow", issue = "35070")]
-impl<'a, T: ?Sized> Display for BorrowError<'a, T> {
+#[stable(feature = "try_borrow", since = "1.13.0")]
+impl Display for BorrowError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt("already mutably borrowed", f)
     }
 }
 
 /// An error returned by [`RefCell::try_borrow_mut`](struct.RefCell.html#method.try_borrow_mut).
-#[unstable(feature = "try_borrow", issue = "35070")]
-pub struct BorrowMutError<'a, T: 'a + ?Sized> {
-    marker: PhantomData<&'a RefCell<T>>,
+#[stable(feature = "try_borrow", since = "1.13.0")]
+pub struct BorrowMutError {
+    _private: (),
 }
 
-#[unstable(feature = "try_borrow", issue = "35070")]
-impl<'a, T: ?Sized> Debug for BorrowMutError<'a, T> {
+#[stable(feature = "try_borrow", since = "1.13.0")]
+impl Debug for BorrowMutError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BorrowMutError").finish()
     }
 }
 
-#[unstable(feature = "try_borrow", issue = "35070")]
-impl<'a, T: ?Sized> Display for BorrowMutError<'a, T> {
+#[stable(feature = "try_borrow", since = "1.13.0")]
+impl Display for BorrowMutError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt("already borrowed", f)
     }
@@ -573,8 +573,6 @@ impl<T: ?Sized> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(try_borrow)]
-    ///
     /// use std::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
@@ -589,15 +587,15 @@ impl<T: ?Sized> RefCell<T> {
     ///     assert!(c.try_borrow().is_ok());
     /// }
     /// ```
-    #[unstable(feature = "try_borrow", issue = "35070")]
+    #[stable(feature = "try_borrow", since = "1.13.0")]
     #[inline]
-    pub fn try_borrow(&self) -> Result<Ref<T>, BorrowError<T>> {
+    pub fn try_borrow(&self) -> Result<Ref<T>, BorrowError> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => Ok(Ref {
                 value: unsafe { &*self.value.get() },
                 borrow: b,
             }),
-            None => Err(BorrowError { marker: PhantomData }),
+            None => Err(BorrowError { _private: () }),
         }
     }
 
@@ -654,8 +652,6 @@ impl<T: ?Sized> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(try_borrow)]
-    ///
     /// use std::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
@@ -667,15 +663,15 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// assert!(c.try_borrow_mut().is_ok());
     /// ```
-    #[unstable(feature = "try_borrow", issue = "35070")]
+    #[stable(feature = "try_borrow", since = "1.13.0")]
     #[inline]
-    pub fn try_borrow_mut(&self) -> Result<RefMut<T>, BorrowMutError<T>> {
+    pub fn try_borrow_mut(&self) -> Result<RefMut<T>, BorrowMutError> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => Ok(RefMut {
                 value: unsafe { &mut *self.value.get() },
                 borrow: b,
             }),
-            None => Err(BorrowMutError { marker: PhantomData }),
+            None => Err(BorrowMutError { _private: () }),
         }
     }
 

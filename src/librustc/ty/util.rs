@@ -24,7 +24,8 @@ use ty::TypeVariants::*;
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 
 use std::cmp;
-use std::hash::{Hash, SipHasher, Hasher};
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 use std::intrinsics;
 use syntax::ast::{self, Name};
 use syntax::attr::{self, SignedInt, UnsignedInt};
@@ -353,7 +354,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
-        let mut hasher = TypeIdHasher::new(self, SipHasher::new());
+        let mut hasher = TypeIdHasher::new(self, DefaultHasher::default());
         hasher.visit_ty(ty);
         hasher.finish()
     }

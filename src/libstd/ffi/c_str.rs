@@ -726,7 +726,8 @@ mod tests {
     use super::*;
     use os::raw::c_char;
     use borrow::Cow::{Borrowed, Owned};
-    use hash::{SipHasher, Hash, Hasher};
+    use hash::{Hash, Hasher};
+    use collections::hash_map::DefaultHasher;
 
     #[test]
     fn c_to_rust() {
@@ -808,10 +809,10 @@ mod tests {
         let ptr = data.as_ptr() as *const c_char;
         let cstr: &'static CStr = unsafe { CStr::from_ptr(ptr) };
 
-        let mut s = SipHasher::new_with_keys(0, 0);
+        let mut s = DefaultHasher::new();
         cstr.hash(&mut s);
         let cstr_hash = s.finish();
-        let mut s = SipHasher::new_with_keys(0, 0);
+        let mut s = DefaultHasher::new();
         CString::new(&data[..data.len() - 1]).unwrap().hash(&mut s);
         let cstring_hash = s.finish();
 

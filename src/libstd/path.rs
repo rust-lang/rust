@@ -3387,10 +3387,11 @@ mod tests {
 
     #[test]
     pub fn test_compare() {
-        use hash::{Hash, Hasher, SipHasher};
+        use hash::{Hash, Hasher};
+        use collections::hash_map::DefaultHasher;
 
         fn hash<T: Hash>(t: T) -> u64 {
-            let mut s = SipHasher::new_with_keys(0, 0);
+            let mut s = DefaultHasher::new();
             t.hash(&mut s);
             s.finish()
         }

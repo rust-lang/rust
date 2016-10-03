@@ -14,6 +14,7 @@ use self::VacantEntryState::*;
 use borrow::Borrow;
 use cmp::max;
 use fmt::{self, Debug};
+#[allow(deprecated)]
 use hash::{Hash, Hasher, BuildHasher, SipHasher13};
 use iter::{FromIterator, FusedIterator};
 use mem::{self, replace};
@@ -2018,6 +2019,7 @@ impl RandomState {
 impl BuildHasher for RandomState {
     type Hasher = DefaultHasher;
     #[inline]
+    #[allow(deprecated)]
     fn build_hasher(&self) -> DefaultHasher {
         DefaultHasher(SipHasher13::new_with_keys(self.k0, self.k1))
     }
@@ -2030,10 +2032,32 @@ impl BuildHasher for RandomState {
 ///
 /// [`RandomState`]: struct.RandomState.html
 /// [`Hasher`]: ../../hash/trait.Hasher.html
-#[unstable(feature = "hashmap_default_hasher", issue = "0")]
+#[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
+#[allow(deprecated)]
+#[derive(Debug)]
 pub struct DefaultHasher(SipHasher13);
 
-#[unstable(feature = "hashmap_default_hasher", issue = "0")]
+impl DefaultHasher {
+    /// Creates a new `DefaultHasher`.
+    ///
+    /// This hasher is not guaranteed to be the same as all other
+    /// `DefaultHasher` instances, but is the same as all other `DefaultHasher`
+    /// instances created through `new` or `default`.
+    #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
+    #[allow(deprecated)]
+    pub fn new() -> DefaultHasher {
+        DefaultHasher(SipHasher13::new_with_keys(0, 0))
+    }
+}
+
+#[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
+impl Default for DefaultHasher {
+    fn default() -> DefaultHasher {
+        DefaultHasher::new()
+    }
+}
+
+#[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 impl Hasher for DefaultHasher {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
