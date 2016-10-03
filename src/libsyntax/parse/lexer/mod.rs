@@ -417,11 +417,9 @@ impl<'a> StringReader<'a> {
         self.last_pos = self.pos;
         let current_byte_offset = self.byte_offset(self.pos).to_usize();
         if current_byte_offset < self.source_text.len() {
-            assert!(self.curr.is_some());
             let last_char = self.curr.unwrap();
             let ch = char_at(&self.source_text, current_byte_offset);
-            let next = current_byte_offset + ch.len_utf8();
-            let byte_offset_diff = next - current_byte_offset;
+            let byte_offset_diff = ch.len_utf8();
             self.pos = self.pos + Pos::from_usize(byte_offset_diff);
             self.curr = Some(ch);
             self.col = self.col + CharPos(1);
