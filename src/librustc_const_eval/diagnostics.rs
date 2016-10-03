@@ -71,7 +71,7 @@ fn foo(x: Option<String>) {
 "##,*/
 
 
-E0003: r##"
+/*E0003: r##"
 Not-a-Number (NaN) values cannot be compared for equality and hence can never
 match the input to a match expression. So, the following will not compile:
 
@@ -100,7 +100,7 @@ match number {
 }
 ```
 "##,
-
+*/
 
 E0004: r##"
 This error indicates that the compiler cannot guarantee a matching pattern for

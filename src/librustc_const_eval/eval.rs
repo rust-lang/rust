@@ -392,7 +392,7 @@ pub fn note_const_eval_err<'a, 'tcx>(
 
 pub fn eval_const_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  e: &Expr) -> ConstVal {
-    match eval_const_expr_partial(tcx, e, ExprTypeChecked, None) {
+    match eval_const_expr_checked(tcx, e) {
         Ok(r) => r,
         // non-const path still needs to be a fatal error, because enums are funky
         Err(s) => {
@@ -407,15 +407,21 @@ pub fn eval_const_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+pub fn eval_const_expr_checked<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                         e: &Expr) -> EvalResult
+{
+    eval_const_expr_partial(tcx, e, ExprTypeChecked, None)
+}
+
 pub type FnArgMap<'a> = Option<&'a NodeMap<ConstVal>>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ConstEvalErr {
     pub span: Span,
     pub kind: ErrKind,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ErrKind {
     CannotCast,
     CannotCastTo(&'static str),
