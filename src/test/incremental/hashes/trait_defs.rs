@@ -964,7 +964,8 @@ trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferenceT
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferenceTrait0 + ReferenceTrait1 { }
+trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T>
+    where T: ReferenceTrait0 + ReferenceTrait1 { }
 
 
 
@@ -1063,7 +1064,8 @@ mod change_method_parameter_type_bound_indirectly_by_use {
 
 
 
-// Change trait bound of method type parameter in where clause indirectly by modifying a use statement
+// Change trait bound of method type parameter in where clause indirectly
+// by modifying a use statement
 mod change_method_parameter_type_bound_indirectly_by_use_where {
     #[cfg(cfail1)]
     use super::ReferenceTrait0 as Bound;
@@ -1099,7 +1101,8 @@ mod change_method_type_parameter_bound_indirectly {
 
 
 
-// Change trait bound of trait type parameter in where clause indirectly by modifying a use statement
+// Change trait bound of trait type parameter in where clause indirectly
+// by modifying a use statement
 mod change_method_type_parameter_bound_indirectly_where {
     #[cfg(cfail1)]
     use super::ReferenceTrait0 as Bound;
