@@ -240,10 +240,12 @@ pub fn prepare_session_directory(tcx: TyCtxt) -> Result<bool, ()> {
                    source_directory.display());
 
             if !allows_links {
-                tcx.sess.warn(&format!("Hard linking files in the incremental compilation
-                    cache failed. Copying files instead. Consider moving the cache directory to a
-                    file system which supports hard linking in session dir `{}`"
-                    , session_dir.display())
+                tcx.sess.warn(&format!("Hard linking files in the incremental \
+                                        compilation cache failed. Copying files \
+                                        instead. Consider moving the cache \
+                                        directory to a file system which supports \
+                                        hard linking in session dir `{}`",
+                                        session_dir.display())
                     );
             }
 
