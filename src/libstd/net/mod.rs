@@ -31,7 +31,7 @@ mod addr;
 mod tcp;
 mod udp;
 mod parser;
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(test)]
 mod test;
 
 /// Possible values which can be passed to the [`shutdown`] method of
