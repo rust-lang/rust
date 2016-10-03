@@ -288,6 +288,11 @@ top_level_options!(
         alt_std_name: Option<String> [TRACKED],
         // Indicates how the compiler should treat unstable features
         unstable_features: UnstableFeatures [TRACKED],
+
+        // Indicates whether this run of the compiler is actually rustdoc. This
+        // is currently just a hack and will be removed eventually, so please
+        // try to not rely on this too much.
+        actually_rustdoc: bool [TRACKED],
     }
 );
 
@@ -440,6 +445,7 @@ pub fn basic_options() -> Options {
         libs: Vec::new(),
         unstable_features: UnstableFeatures::Disallow,
         debug_assertions: true,
+        actually_rustdoc: false,
     }
 }
 
@@ -1523,6 +1529,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         libs: libs,
         unstable_features: UnstableFeatures::from_environment(),
         debug_assertions: debug_assertions,
+        actually_rustdoc: false,
     },
     cfg)
 }

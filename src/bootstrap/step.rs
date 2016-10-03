@@ -488,7 +488,6 @@ impl<'a> Step<'a> {
             Source::CheckCodegenUnits { compiler } |
             Source::CheckIncremental { compiler } |
             Source::CheckUi { compiler } |
-            Source::CheckRustdoc { compiler } |
             Source::CheckPretty { compiler } |
             Source::CheckCFail { compiler } |
             Source::CheckRPassValgrind { compiler } |
@@ -511,6 +510,7 @@ impl<'a> Step<'a> {
                     self.debugger_scripts(compiler.stage),
                 ]
             }
+            Source::CheckRustdoc { compiler } |
             Source::CheckRPassFull { compiler } |
             Source::CheckRFailFull { compiler } |
             Source::CheckCFailFull { compiler } |
