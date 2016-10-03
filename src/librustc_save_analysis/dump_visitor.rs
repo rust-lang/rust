@@ -35,6 +35,7 @@ use rustc::session::Session;
 use rustc::ty::{self, TyCtxt, ImplOrTraitItem, ImplOrTraitItemContainer};
 
 use std::collections::HashSet;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::*;
 
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
@@ -1064,7 +1065,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             None => return,
             Some(data) => data,
         };
-        let mut hasher = SipHasher::new();
+        let mut hasher = DefaultHasher::new();
         data.callee_span.hash(&mut hasher);
         let hash = hasher.finish();
         let qualname = format!("{}::{}", data.name, hash);

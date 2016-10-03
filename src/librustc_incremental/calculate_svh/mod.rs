@@ -29,7 +29,8 @@
 
 use syntax::ast;
 use std::cell::RefCell;
-use std::hash::{Hash, SipHasher, Hasher};
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
@@ -126,9 +127,9 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
     {
         assert!(def_id.is_local());
         debug!("HashItemsVisitor::calculate(def_id={:?})", def_id);
-        // FIXME: this should use SHA1, not SipHash. SipHash is not
+        // FIXME: this should use SHA1, not DefaultHasher. DefaultHasher is not
         // built to avoid collisions.
-        let mut state = SipHasher::new();
+        let mut state = DefaultHasher::new();
         walk_op(&mut StrictVersionHashVisitor::new(&mut state,
                                                    self.tcx,
                                                    &mut self.def_path_hashes,
@@ -142,7 +143,7 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
     fn compute_crate_hash(&mut self) {
         let krate = self.tcx.map.krate();
 
-        let mut crate_state = SipHasher::new();
+        let mut crate_state = DefaultHasher::new();
 
         let crate_disambiguator = self.tcx.sess.local_crate_disambiguator();
         "crate_disambiguator".hash(&mut crate_state);
