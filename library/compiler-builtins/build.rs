@@ -2,8 +2,9 @@ extern crate gcc;
 extern crate rustc_cfg;
 
 use std::collections::BTreeMap;
-use std::env;
+use std::io::Write;
 use std::path::Path;
+use std::{env, io, process};
 
 use rustc_cfg::Cfg;
 
@@ -50,7 +51,10 @@ fn main() {
 
     let target = env::var("TARGET").unwrap();
     let Cfg { ref target_arch, ref target_os, ref target_env, ref target_vendor, .. } =
-        Cfg::new(&target).unwrap();
+        Cfg::new(&target).unwrap_or_else(|e| {
+            writeln!(io::stderr(), "{}", e).ok();
+            process::exit(1)
+        });
     // NOTE we are going to assume that llvm-target, what determines our codegen option, matches the
     // target triple. This is usually correct for our built-in targets but can break in presence of
     // custom targets, which can have arbitrary names.

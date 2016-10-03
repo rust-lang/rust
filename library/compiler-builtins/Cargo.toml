@@ -6,7 +6,7 @@ version = "0.1.0"
 
 [build-dependencies]
 gcc = "0.3.35"
-rustc-cfg = "0.1.2"
+rustc-cfg = "0.2.0"
 
 [dependencies]
 
