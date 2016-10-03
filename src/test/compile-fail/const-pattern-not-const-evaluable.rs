@@ -19,9 +19,7 @@ use Cake::*;
 const BOO: (Cake, Cake) = (Marmor, BlackForest);
 //~^ ERROR: constant evaluation error [E0080]
 //~| unimplemented constant expression: enum variants
-//~^^^ ERROR: constant evaluation error [E0080]
-//~| unimplemented constant expression: enum variants
-const FOO: Cake = BOO.1; //~ NOTE for expression here
+const FOO: Cake = BOO.1;
 
 const fn foo() -> Cake {
     Marmor

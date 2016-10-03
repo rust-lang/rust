@@ -8,20 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use _match::{MatchCheckCtxt, Matrix, lower_pat, is_useful};
+use _match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
 use _match::{DUMMY_WILD_PAT};
 use _match::Usefulness::*;
 use _match::WitnessPreference::*;
 
+use pattern::{Pattern, PatternContext, PatternError};
+
 use eval::report_const_eval_err;
-use eval::{eval_const_expr_partial, const_expr_to_pat, lookup_const_by_id};
-use eval::EvalHint::ExprTypeChecked;
 
 use rustc::dep_graph::DepNode;
 
 use rustc::hir::pat_util::{pat_bindings, pat_contains_bindings};
 
-use rustc::middle::const_val::ConstVal;
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
@@ -39,9 +38,7 @@ use rustc::hir::{self, Pat, PatKind};
 use rustc_back::slice;
 
 use syntax::ast;
-use syntax::codemap::Spanned;
 use syntax::ptr::P;
-use syntax::util::move_map::MoveMap;
 use syntax_pos::Span;
 
 struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
@@ -80,9 +77,6 @@ impl<'a, 'v, 'tcx> Visitor<'v> for OuterVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> OuterVisitor<'a, 'tcx> {
-}
-
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.visit_all_items_in_krate(DepNode::MatchCheck, &mut OuterVisitor { tcx: tcx });
     tcx.sess.abort_if_errors();
@@ -112,8 +106,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchVisitor<'a, 'tcx> {
     fn visit_local(&mut self, loc: &hir::Local) {
         intravisit::walk_local(self, loc);
 
-        let pat = StaticInliner::new(self.tcx).fold_pat(loc.pat.clone());
-        self.check_irrefutable(&pat, false);
+        self.check_irrefutable(&loc.pat, false);
 
         // Check legality of move bindings and `@` patterns.
         self.check_patterns(false, slice::ref_slice(&loc.pat));
@@ -138,6 +131,27 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
         }
     }
 
+    fn report_inlining_errors(&self, patcx: PatternContext, pat_span: Span) {
+        for error in patcx.errors {
+            match error {
+                PatternError::BadConstInPattern(span, def_id) => {
+                    self.tcx.sess.span_err(
+                        span,
+                        &format!("constants of the type `{}` \
+                                  cannot be used in patterns",
+                                 self.tcx.item_path_str(def_id)));
+                }
+                PatternError::StaticInPattern(span) => {
+                    span_err!(self.tcx.sess, span, E0158,
+                              "statics cannot be referenced in patterns");
+                }
+                PatternError::ConstEval(err) => {
+                    report_const_eval_err(self.tcx, &err, pat_span, "pattern").emit();
+                }
+            }
+        }
+    }
+
     fn check_match(
         &self,
         scrut: &hir::Expr,
@@ -154,32 +168,36 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             if let Some(ref guard) = arm.guard {
                 check_for_mutation_in_guard(self, &guard);
             }
-        }
 
-        let mut static_inliner = StaticInliner::new(self.tcx);
-        let inlined_arms = arms.iter().map(|arm| {
-            (arm.pats.iter().map(|pat| {
-                static_inliner.fold_pat((*pat).clone())
-            }).collect(), arm.guard.as_ref().map(|e| &**e))
-        }).collect::<Vec<(Vec<P<Pat>>, Option<&hir::Expr>)>>();
-
-        // Bail out early if inlining failed.
-        if static_inliner.failed {
-            return;
-        }
-
-        for pat in inlined_arms.iter().flat_map(|&(ref pats, _)| pats) {
-            // Fourth, check if there are any references to NaN that we should warn about.
-            check_for_static_nan(self, &pat);
-
-            // Fifth, check if for any of the patterns that match an enumerated type
-            // are bindings with the same name as one of the variants of said type.
-            check_for_bindings_named_the_same_as_variants(self, &pat);
+            // Third, perform some lints.
+            for pat in &arm.pats {
+                check_for_bindings_named_the_same_as_variants(self, pat);
+            }
         }
 
         MatchCheckCtxt::create_and_enter(self.tcx, |ref cx| {
+            let mut have_errors = false;
+
+            let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
+                arm.pats.iter().map(|pat| {
+                    let mut patcx = PatternContext::new(self.tcx);
+                    let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
+                    if !patcx.errors.is_empty() {
+                        self.report_inlining_errors(patcx, pat.span);
+                        have_errors = true;
+                    }
+                    (pattern, &**pat)
+                }).collect(),
+                arm.guard.as_ref().map(|e| &**e)
+            )).collect();
+
+            // Bail out early if inlining failed.
+            if have_errors {
+                return;
+            }
+
             // Fourth, check for unreachable arms.
-            check_arms(cx, &inlined_arms[..], source);
+            check_arms(cx, &inlined_arms, source);
 
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
@@ -204,7 +222,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
                 .flat_map(|arm| &arm.0)
-                .map(|pat| vec![lower_pat(cx, &pat)])
+                .map(|pat| vec![pat.0])
                 .collect();
             check_exhaustive(cx, scrut.span, &matrix, source);
         })
@@ -218,8 +236,9 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
         };
 
         MatchCheckCtxt::create_and_enter(self.tcx, |ref cx| {
+            let mut patcx = PatternContext::new(self.tcx);
             let pats : Matrix = vec![vec![
-                lower_pat(cx, pat)
+                expand_pattern(cx, patcx.lower_pattern(pat))
             ]].into_iter().collect();
 
             let witness = match is_useful(cx, &pats, &[cx.wild_pattern], ConstructWitness) {
@@ -269,27 +288,6 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     });
 }
 
-// Check that we do not match against a static NaN (#6804)
-fn check_for_static_nan(cx: &MatchVisitor, pat: &Pat) {
-    pat.walk(|p| {
-        if let PatKind::Lit(ref expr) = p.node {
-            match eval_const_expr_partial(cx.tcx, &expr, ExprTypeChecked, None) {
-                Ok(ConstVal::Float(f)) if f.is_nan() => {
-                    span_warn!(cx.tcx.sess, p.span, E0003,
-                               "unmatchable NaN in pattern, \
-                                use the is_nan method in a guard instead");
-                }
-                Ok(_) => {}
-
-                Err(err) => {
-                    report_const_eval_err(cx.tcx, &err, p.span, "pattern").emit();
-                }
-            }
-        }
-        true
-    });
-}
-
 /// Checks for common cases of "catchall" patterns that may not be intended as such.
 fn pat_is_catchall(dm: &DefMap, pat: &Pat) -> bool {
     match pat.node {
@@ -304,15 +302,16 @@ fn pat_is_catchall(dm: &DefMap, pat: &Pat) -> bool {
 }
 
 // Check for unreachable patterns
-fn check_arms(cx: &MatchCheckCtxt,
-              arms: &[(Vec<P<Pat>>, Option<&hir::Expr>)],
-              source: hir::MatchSource) {
+fn check_arms<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
+                        arms: &[(Vec<(&Pattern<'tcx>, &'a hir::Pat)>, Option<&hir::Expr>)],
+                        source: hir::MatchSource)
+{
     let mut seen = Matrix::empty();
     let mut catchall = None;
     let mut printed_if_let_err = false;
     for &(ref pats, guard) in arms {
-        for pat in pats {
-            let v = vec![lower_pat(cx, &pat)];
+        for &(pat, hir_pat) in pats {
+            let v = vec![pat];
 
             match is_useful(cx, &seen, &v[..], LeaveOutWitness) {
                 NotUseful => {
@@ -325,7 +324,7 @@ fn check_arms(cx: &MatchCheckCtxt,
                                 // find the first arm pattern so we can use its span
                                 let &(ref first_arm_pats, _) = &arms[0];
                                 let first_pat = &first_arm_pats[0];
-                                let span = first_pat.span;
+                                let span = first_pat.0.span;
                                 struct_span_err!(cx.tcx.sess, span, E0162,
                                                 "irrefutable if-let pattern")
                                     .span_label(span, &format!("irrefutable pattern"))
@@ -338,7 +337,7 @@ fn check_arms(cx: &MatchCheckCtxt,
                             // find the first arm pattern so we can use its span
                             let &(ref first_arm_pats, _) = &arms[0];
                             let first_pat = &first_arm_pats[0];
-                            let span = first_pat.span;
+                            let span = first_pat.0.span;
                             struct_span_err!(cx.tcx.sess, span, E0165,
                                              "irrefutable while-let pattern")
                                 .span_label(span, &format!("irrefutable pattern"))
@@ -374,7 +373,7 @@ fn check_arms(cx: &MatchCheckCtxt,
             }
             if guard.is_none() {
                 seen.push(v);
-                if catchall.is_none() && pat_is_catchall(&cx.tcx.def_map.borrow(), pat) {
+                if catchall.is_none() && pat_is_catchall(&cx.tcx.def_map.borrow(), hir_pat) {
                     catchall = Some(pat.span);
                 }
             }
@@ -445,97 +444,6 @@ fn check_exhaustive<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
             // This is good, wildcard pattern isn't reachable
         },
         _ => bug!()
-    }
-}
-
-
-struct StaticInliner<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    failed: bool
-}
-
-impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    pub fn new<'b>(tcx: TyCtxt<'b, 'tcx, 'tcx>) -> StaticInliner<'b, 'tcx> {
-        StaticInliner {
-            tcx: tcx,
-            failed: false
-        }
-    }
-}
-
-impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
-        match pat.node {
-            PatKind::Path(..) => {
-                match self.tcx.expect_def(pat.id) {
-                    Def::AssociatedConst(did) | Def::Const(did) => {
-                        let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
-                        if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, did, substs) {
-                            match const_expr_to_pat(self.tcx, const_expr, pat.id, pat.span) {
-                                Ok(new_pat) => return new_pat,
-                                Err(def_id) => {
-                                    self.failed = true;
-                                    self.tcx.sess.span_err(
-                                        pat.span,
-                                        &format!("constants of the type `{}` \
-                                                  cannot be used in patterns",
-                                                 self.tcx.item_path_str(def_id)));
-                                }
-                            }
-                        } else {
-                            self.failed = true;
-                            span_err!(self.tcx.sess, pat.span, E0158,
-                                "statics cannot be referenced in patterns");
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-
-        pat.map(|Pat { id, node, span }| {
-            let node = match node {
-                PatKind::Binding(binding_mode, pth1, sub) => {
-                    PatKind::Binding(binding_mode, pth1, sub.map(|x| self.fold_pat(x)))
-                }
-                PatKind::TupleStruct(pth, pats, ddpos) => {
-                    PatKind::TupleStruct(pth, pats.move_map(|x| self.fold_pat(x)), ddpos)
-                }
-                PatKind::Struct(pth, fields, etc) => {
-                    let fs = fields.move_map(|f| {
-                        Spanned {
-                            span: f.span,
-                            node: hir::FieldPat {
-                                name: f.node.name,
-                                pat: self.fold_pat(f.node.pat),
-                                is_shorthand: f.node.is_shorthand,
-                            },
-                        }
-                    });
-                    PatKind::Struct(pth, fs, etc)
-                }
-                PatKind::Tuple(elts, ddpos) => {
-                    PatKind::Tuple(elts.move_map(|x| self.fold_pat(x)), ddpos)
-                }
-                PatKind::Box(inner) => PatKind::Box(self.fold_pat(inner)),
-                PatKind::Ref(inner, mutbl) => PatKind::Ref(self.fold_pat(inner), mutbl),
-                PatKind::Slice(before, slice, after) => {
-                    PatKind::Slice(before.move_map(|x| self.fold_pat(x)),
-                                   slice.map(|x| self.fold_pat(x)),
-                                   after.move_map(|x| self.fold_pat(x)))
-                }
-                PatKind::Wild |
-                PatKind::Lit(_) |
-                PatKind::Range(..) |
-                PatKind::Path(..) => node
-            };
-            Pat {
-                id: id,
-                node: node,
-                span: span
-            }
-        })
     }
 }
 

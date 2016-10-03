@@ -40,12 +40,10 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
 
-pub fn lower_pat<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: &Pat)
-                           -> &'a Pattern<'tcx>
+pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx>)
+                                -> &'a Pattern<'tcx>
 {
-    cx.pattern_arena.alloc(
-        LiteralExpander.fold_pattern(&Pattern::from_hir(cx.tcx, pat))
-    )
+    cx.pattern_arena.alloc(LiteralExpander.fold_pattern(&pat))
 }
 
 struct LiteralExpander;
