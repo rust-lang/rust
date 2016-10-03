@@ -13,6 +13,7 @@
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
 
+use macros;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport};
 use {Module, ModuleS, ModuleKind};
 use Namespace::{self, TypeNS, ValueNS};
@@ -20,7 +21,7 @@ use {NameBinding, NameBindingKind, ToNameBinding};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
-use rustc::middle::cstore::LoadedMacro;
+use rustc::middle::cstore::LoadedMacroKind;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::map::DefPathData;
@@ -39,6 +40,7 @@ use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ext::base::{MultiItemModifier, Resolver as SyntaxResolver};
 use syntax::ext::hygiene::Mark;
 use syntax::feature_gate::{self, emit_feature_err};
+use syntax::ext::tt::macro_rules;
 use syntax::parse::token::keywords;
 use syntax::visit::{self, Visitor};
 
@@ -77,7 +79,7 @@ impl<'b> Resolver<'b> {
     }
 
     /// Constructs the reduced graph for one item.
-    fn build_reduced_graph_for_item(&mut self, item: &Item) {
+    fn build_reduced_graph_for_item(&mut self, item: &Item, expansion: Mark) {
         let parent = self.current_module;
         let name = item.ident.name;
         let sp = item.span;
@@ -188,10 +190,29 @@ impl<'b> Resolver<'b> {
                 // We need to error on `#[macro_use] extern crate` when it isn't at the
                 // crate root, because `$crate` won't work properly.
                 let is_crate_root = self.current_module.parent.is_none();
-                for def in self.crate_loader.load_macros(item, is_crate_root) {
-                    match def {
-                        LoadedMacro::Def(def) => self.add_macro(Mark::root(), def),
-                        LoadedMacro::CustomDerive(name, ext) => {
+                for loaded_macro in self.crate_loader.load_macros(item, is_crate_root) {
+                    match loaded_macro.kind {
+                        LoadedMacroKind::Def(mut def) => {
+                            let name = def.ident.name;
+                            if def.use_locally {
+                                let ext = macro_rules::compile(&self.session.parse_sess, &def);
+                                let shadowing =
+                                    self.resolve_macro_name(Mark::root(), name, false).is_some();
+                                self.expansion_data[&Mark::root()].module.macros.borrow_mut()
+                                    .insert(name, macros::NameBinding {
+                                        ext: Rc::new(ext),
+                                        expansion: expansion,
+                                        shadowing: shadowing,
+                                        span: loaded_macro.import_site,
+                                    });
+                                self.macro_names.insert(name);
+                            }
+                            if def.export {
+                                def.id = self.next_node_id();
+                                self.exported_macros.push(def);
+                            }
+                        }
+                        LoadedMacroKind::CustomDerive(name, ext) => {
                             self.insert_custom_derive(&name, ext, item.span);
                         }
                     }
@@ -527,11 +548,12 @@ impl<'b> Resolver<'b> {
 
 pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
     pub resolver: &'a mut Resolver<'b>,
+    pub expansion: Mark,
 }
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) {
-        self.resolver.expansion_data.get_mut(&id.as_u32()).unwrap().module =
+        self.resolver.expansion_data.get_mut(&Mark::from_placeholder_id(id)).unwrap().module =
             self.resolver.current_module;
     }
 }
@@ -562,7 +584,7 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
         }
 
         let parent = self.resolver.current_module;
-        self.resolver.build_reduced_graph_for_item(item);
+        self.resolver.build_reduced_graph_for_item(item, self.expansion);
         visit::walk_item(self, item);
         self.resolver.current_module = parent;
     }

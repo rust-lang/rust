@@ -519,7 +519,7 @@ pub trait Resolver {
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion);
     fn add_macro(&mut self, scope: Mark, def: ast::MacroDef);
-    fn add_ext(&mut self, scope: Mark, ident: ast::Ident, ext: Rc<SyntaxExtension>);
+    fn add_ext(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>);
     fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>);
 
     fn find_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
@@ -535,7 +535,7 @@ impl Resolver for DummyResolver {
 
     fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion) {}
     fn add_macro(&mut self, _scope: Mark, _def: ast::MacroDef) {}
-    fn add_ext(&mut self, _scope: Mark, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}
+    fn add_ext(&mut self, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}
     fn add_expansions_at_stmt(&mut self, _id: ast::NodeId, _macros: Vec<Mark>) {}
 
     fn find_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
@@ -749,7 +749,7 @@ impl<'a> ExtCtxt<'a> {
 
         for (name, extension) in user_exts {
             let ident = ast::Ident::with_empty_ctxt(name);
-            self.resolver.add_ext(Mark::root(), ident, Rc::new(extension));
+            self.resolver.add_ext(ident, Rc::new(extension));
         }
 
         let mut module = ModuleData {

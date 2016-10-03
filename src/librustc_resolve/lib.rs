@@ -57,7 +57,6 @@ use syntax::ext::base::MultiItemModifier;
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, IntTy, UintTy};
-use syntax::ext::base::SyntaxExtension;
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -793,7 +792,7 @@ pub struct ModuleS<'a> {
     // `populate_module_if_necessary` call.
     populated: Cell<bool>,
 
-    macros: RefCell<FnvHashMap<Name, Rc<SyntaxExtension>>>,
+    macros: RefCell<FnvHashMap<Name, macros::NameBinding>>,
     macros_escape: bool,
 }
 
@@ -1074,6 +1073,7 @@ pub struct Resolver<'a> {
 
     privacy_errors: Vec<PrivacyError<'a>>,
     ambiguity_errors: Vec<AmbiguityError<'a>>,
+    macro_shadowing_errors: FnvHashSet<Span>,
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
@@ -1085,7 +1085,7 @@ pub struct Resolver<'a> {
     macro_names: FnvHashSet<Name>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
-    expansion_data: FnvHashMap<u32, macros::ExpansionData<'a>>,
+    expansion_data: FnvHashMap<Mark, macros::ExpansionData<'a>>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1203,7 +1203,7 @@ impl<'a> Resolver<'a> {
         DefCollector::new(&mut definitions).collect_root();
 
         let mut expansion_data = FnvHashMap();
-        expansion_data.insert(0, macros::ExpansionData::root(graph_root)); // Crate root expansion
+        expansion_data.insert(Mark::root(), macros::ExpansionData::root(graph_root));
 
         Resolver {
             session: session,
@@ -1249,6 +1249,7 @@ impl<'a> Resolver<'a> {
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
+            macro_shadowing_errors: FnvHashSet(),
 
             arenas: arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
