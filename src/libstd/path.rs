@@ -113,7 +113,7 @@ use ops::{self, Deref};
 
 use ffi::{OsStr, OsString};
 
-use self::platform::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
+use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 
 ////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
@@ -124,130 +124,6 @@ use self::platform::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 // as-is.  Eventually, this transmutation should be replaced by direct uses of
 // OsStr APIs for parsing, but it will take a while for those to become
 // available.
-
-////////////////////////////////////////////////////////////////////////////////
-// Platform-specific definitions
-////////////////////////////////////////////////////////////////////////////////
-
-// The following modules give the most basic tools for parsing paths on various
-// platforms. The bulk of the code is devoted to parsing prefixes on Windows.
-
-#[cfg(unix)]
-mod platform {
-    use super::Prefix;
-    use ffi::OsStr;
-
-    #[inline]
-    pub fn is_sep_byte(b: u8) -> bool {
-        b == b'/'
-    }
-
-    #[inline]
-    pub fn is_verbatim_sep(b: u8) -> bool {
-        b == b'/'
-    }
-
-    pub fn parse_prefix(_: &OsStr) -> Option<Prefix> {
-        None
-    }
-
-    pub const MAIN_SEP_STR: &'static str = "/";
-    pub const MAIN_SEP: char = '/';
-}
-
-#[cfg(windows)]
-mod platform {
-    use ascii::*;
-
-    use super::{os_str_as_u8_slice, u8_slice_as_os_str, Prefix};
-    use ffi::OsStr;
-
-    #[inline]
-    pub fn is_sep_byte(b: u8) -> bool {
-        b == b'/' || b == b'\\'
-    }
-
-    #[inline]
-    pub fn is_verbatim_sep(b: u8) -> bool {
-        b == b'\\'
-    }
-
-    pub fn parse_prefix<'a>(path: &'a OsStr) -> Option<Prefix> {
-        use super::Prefix::*;
-        unsafe {
-            // The unsafety here stems from converting between &OsStr and &[u8]
-            // and back. This is safe to do because (1) we only look at ASCII
-            // contents of the encoding and (2) new &OsStr values are produced
-            // only from ASCII-bounded slices of existing &OsStr values.
-            let mut path = os_str_as_u8_slice(path);
-
-            if path.starts_with(br"\\") {
-                // \\
-                path = &path[2..];
-                if path.starts_with(br"?\") {
-                    // \\?\
-                    path = &path[2..];
-                    if path.starts_with(br"UNC\") {
-                        // \\?\UNC\server\share
-                        path = &path[4..];
-                        let (server, share) = match parse_two_comps(path, is_verbatim_sep) {
-                            Some((server, share)) =>
-                                (u8_slice_as_os_str(server), u8_slice_as_os_str(share)),
-                            None => (u8_slice_as_os_str(path), u8_slice_as_os_str(&[])),
-                        };
-                        return Some(VerbatimUNC(server, share));
-                    } else {
-                        // \\?\path
-                        let idx = path.iter().position(|&b| b == b'\\');
-                        if idx == Some(2) && path[1] == b':' {
-                            let c = path[0];
-                            if c.is_ascii() && (c as char).is_alphabetic() {
-                                // \\?\C:\ path
-                                return Some(VerbatimDisk(c.to_ascii_uppercase()));
-                            }
-                        }
-                        let slice = &path[..idx.unwrap_or(path.len())];
-                        return Some(Verbatim(u8_slice_as_os_str(slice)));
-                    }
-                } else if path.starts_with(b".\\") {
-                    // \\.\path
-                    path = &path[2..];
-                    let pos = path.iter().position(|&b| b == b'\\');
-                    let slice = &path[..pos.unwrap_or(path.len())];
-                    return Some(DeviceNS(u8_slice_as_os_str(slice)));
-                }
-                match parse_two_comps(path, is_sep_byte) {
-                    Some((server, share)) if !server.is_empty() && !share.is_empty() => {
-                        // \\server\share
-                        return Some(UNC(u8_slice_as_os_str(server), u8_slice_as_os_str(share)));
-                    }
-                    _ => (),
-                }
-            } else if path.get(1) == Some(& b':') {
-                // C:
-                let c = path[0];
-                if c.is_ascii() && (c as char).is_alphabetic() {
-                    return Some(Disk(c.to_ascii_uppercase()));
-                }
-            }
-            return None;
-        }
-
-        fn parse_two_comps(mut path: &[u8], f: fn(u8) -> bool) -> Option<(&[u8], &[u8])> {
-            let first = match path.iter().position(|x| f(*x)) {
-                None => return None,
-                Some(x) => &path[..x],
-            };
-            path = &path[(first.len() + 1)..];
-            let idx = path.iter().position(|x| f(*x));
-            let second = &path[..idx.unwrap_or(path.len())];
-            Some((first, second))
-        }
-    }
-
-    pub const MAIN_SEP_STR: &'static str = "\\";
-    pub const MAIN_SEP: char = '\\';
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Windows Prefixes
@@ -373,7 +249,7 @@ pub fn is_separator(c: char) -> bool {
 
 /// The primary separator for the current platform
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MAIN_SEPARATOR: char = platform::MAIN_SEP;
+pub const MAIN_SEPARATOR: char = ::sys::path::MAIN_SEP;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Misc helpers

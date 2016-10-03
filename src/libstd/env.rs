@@ -21,6 +21,7 @@ use ffi::{OsStr, OsString};
 use fmt;
 use io;
 use path::{Path, PathBuf};
+use sys;
 use sys::os as os_imp;
 
 /// Returns the current working directory as a `PathBuf`.
@@ -557,7 +558,7 @@ pub struct Args { inner: ArgsOs }
 ///
 /// This structure is created through the `std::env::args_os` method.
 #[stable(feature = "env", since = "1.0.0")]
-pub struct ArgsOs { inner: os_imp::Args }
+pub struct ArgsOs { inner: sys::args::Args }
 
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
@@ -606,7 +607,7 @@ pub fn args() -> Args {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn args_os() -> ArgsOs {
-    ArgsOs { inner: os_imp::args() }
+    ArgsOs { inner: sys::args::args() }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
@@ -649,6 +650,8 @@ impl DoubleEndedIterator for ArgsOs {
 /// Constants associated with the current target
 #[stable(feature = "env", since = "1.0.0")]
 pub mod consts {
+    use sys::env::os;
+
     /// A string describing the architecture of the CPU that is currently
     /// in use.
     ///
@@ -673,7 +676,7 @@ pub mod consts {
     /// - unix
     /// - windows
     #[stable(feature = "env", since = "1.0.0")]
-    pub const FAMILY: &'static str = super::os::FAMILY;
+    pub const FAMILY: &'static str = os::FAMILY;
 
     /// A string describing the specific operating system in use.
     /// Example value is `linux`.
@@ -692,7 +695,7 @@ pub mod consts {
     /// - android
     /// - windows
     #[stable(feature = "env", since = "1.0.0")]
-    pub const OS: &'static str = super::os::OS;
+    pub const OS: &'static str = os::OS;
 
     /// Specifies the filename prefix used for shared libraries on this
     /// platform. Example value is `lib`.
@@ -702,7 +705,7 @@ pub mod consts {
     /// - lib
     /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
-    pub const DLL_PREFIX: &'static str = super::os::DLL_PREFIX;
+    pub const DLL_PREFIX: &'static str = os::DLL_PREFIX;
 
     /// Specifies the filename suffix used for shared libraries on this
     /// platform. Example value is `.so`.
@@ -713,7 +716,7 @@ pub mod consts {
     /// - .dylib
     /// - .dll
     #[stable(feature = "env", since = "1.0.0")]
-    pub const DLL_SUFFIX: &'static str = super::os::DLL_SUFFIX;
+    pub const DLL_SUFFIX: &'static str = os::DLL_SUFFIX;
 
     /// Specifies the file extension used for shared libraries on this
     /// platform that goes after the dot. Example value is `so`.
@@ -724,7 +727,7 @@ pub mod consts {
     /// - dylib
     /// - dll
     #[stable(feature = "env", since = "1.0.0")]
-    pub const DLL_EXTENSION: &'static str = super::os::DLL_EXTENSION;
+    pub const DLL_EXTENSION: &'static str = os::DLL_EXTENSION;
 
     /// Specifies the filename suffix used for executable binaries on this
     /// platform. Example value is `.exe`.
@@ -736,7 +739,7 @@ pub mod consts {
     /// - .pexe
     /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
-    pub const EXE_SUFFIX: &'static str = super::os::EXE_SUFFIX;
+    pub const EXE_SUFFIX: &'static str = os::EXE_SUFFIX;
 
     /// Specifies the file extension, if any, used for executable binaries
     /// on this platform. Example value is `exe`.
@@ -746,183 +749,7 @@ pub mod consts {
     /// - exe
     /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
-    pub const EXE_EXTENSION: &'static str = super::os::EXE_EXTENSION;
-
-}
-
-#[cfg(target_os = "linux")]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "linux";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = "";
-    pub const EXE_EXTENSION: &'static str = "";
-}
-
-#[cfg(target_os = "macos")]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "macos";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".dylib";
-    pub const DLL_EXTENSION: &'static str = "dylib";
-    pub const EXE_SUFFIX: &'static str = "";
-    pub const EXE_EXTENSION: &'static str = "";
-}
-
-#[cfg(target_os = "ios")]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "ios";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".dylib";
-    pub const DLL_EXTENSION: &'static str = "dylib";
-    pub const EXE_SUFFIX: &'static str = "";
-    pub const EXE_EXTENSION: &'static str = "";
-}
-
-#[cfg(target_os = "freebsd")]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "freebsd";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = "";
-    pub const EXE_EXTENSION: &'static str = "";
-}
-
-#[cfg(target_os = "dragonfly")]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "dragonfly";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = "";
-    pub const EXE_EXTENSION: &'static str = "";
-}
-
-#[cfg(target_os = "bitrig")]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "bitrig";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = "";
-    pub const EXE_EXTENSION: &'static str = "";
-}
-
-#[cfg(target_os = "netbsd")]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "netbsd";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = "";
-    pub const EXE_EXTENSION: &'static str = "";
-}
-
-#[cfg(target_os = "openbsd")]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "openbsd";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = "";
-    pub const EXE_EXTENSION: &'static str = "";
-}
-
-#[cfg(target_os = "android")]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "android";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = "";
-    pub const EXE_EXTENSION: &'static str = "";
-}
-
-#[cfg(target_os = "solaris")]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "solaris";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = "";
-    pub const EXE_EXTENSION: &'static str = "";
-}
-
-#[cfg(target_os = "windows")]
-mod os {
-    pub const FAMILY: &'static str = "windows";
-    pub const OS: &'static str = "windows";
-    pub const DLL_PREFIX: &'static str = "";
-    pub const DLL_SUFFIX: &'static str = ".dll";
-    pub const DLL_EXTENSION: &'static str = "dll";
-    pub const EXE_SUFFIX: &'static str = ".exe";
-    pub const EXE_EXTENSION: &'static str = "exe";
-}
-
-#[cfg(all(target_os = "nacl", not(target_arch = "le32")))]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "nacl";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = ".nexe";
-    pub const EXE_EXTENSION: &'static str = "nexe";
-}
-#[cfg(all(target_os = "nacl", target_arch = "le32"))]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "pnacl";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".pso";
-    pub const DLL_EXTENSION: &'static str = "pso";
-    pub const EXE_SUFFIX: &'static str = ".pexe";
-    pub const EXE_EXTENSION: &'static str = "pexe";
-}
-
-#[cfg(all(target_os = "emscripten", target_arch = "asmjs"))]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "emscripten";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = ".js";
-    pub const EXE_EXTENSION: &'static str = "js";
-}
-
-#[cfg(all(target_os = "emscripten", target_arch = "wasm32"))]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "emscripten";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = ".js";
-    pub const EXE_EXTENSION: &'static str = "js";
-}
-
-#[cfg(target_os = "haiku")]
-mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "haiku";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = "";
-    pub const EXE_EXTENSION: &'static str = "";
+    pub const EXE_EXTENSION: &'static str = os::EXE_EXTENSION;
 }
 
 #[cfg(target_arch = "x86")]

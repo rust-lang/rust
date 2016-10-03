@@ -30,17 +30,21 @@ use libc;
 #[macro_use]
 pub mod weak;
 
+pub mod args;
 pub mod android;
 #[cfg(any(not(cargobuild), feature = "backtrace"))]
 pub mod backtrace;
 pub mod condvar;
+pub mod env;
 pub mod ext;
 pub mod fd;
 pub mod fs;
+pub mod memchr;
 pub mod mutex;
 pub mod net;
 pub mod os;
 pub mod os_str;
+pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;

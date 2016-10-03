@@ -65,3 +65,5 @@ impl io::Write for Stderr {
     }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
+
+pub const EBADF_ERR: i32 = ::libc::EBADF as i32;
