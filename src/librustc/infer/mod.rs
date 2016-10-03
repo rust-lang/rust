@@ -1069,7 +1069,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.probe(|_| {
             let origin = TypeOrigin::Misc(syntax_pos::DUMMY_SP);
             let trace = TypeTrace::types(origin, true, a, b);
-            self.sub(true, trace, &a, &b).map(|_| ())
+            self.sub(true, trace, &a, &b).map(|InferOk { obligations, .. }| {
+                // FIXME(#32730) propagate obligations
+                assert!(obligations.is_empty());
+            })
         })
     }
 
@@ -1592,8 +1595,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // anyhow. We should make this typetrace stuff more
             // generic so we don't have to do anything quite this
             // terrible.
-            self.equate(true, TypeTrace::dummy(self.tcx), a, b)
-        }).map(|_| ())
+            let trace = TypeTrace::dummy(self.tcx);
+            self.equate(true, trace, a, b).map(|InferOk { obligations, .. }| {
+                // FIXME(#32730) propagate obligations
+                assert!(obligations.is_empty());
+            })
+        })
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
