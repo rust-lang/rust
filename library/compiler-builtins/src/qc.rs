@@ -195,7 +195,7 @@ macro_rules! check {
             }
         )*
 
-        mod _compiler_rt {
+        mod _test {
             use qc::*;
             use std::mem;
             use quickcheck::TestResult;
@@ -207,54 +207,38 @@ macro_rules! check {
                         let my_answer = super::$name(super::super::$name,
                                                      $($arg),*);
                         let compiler_rt_fn = ::compiler_rt::get(stringify!($name));
-                        unsafe {
-                            let compiler_rt_answer =
-                                super::$name(mem::transmute(compiler_rt_fn),
-                                             $($arg),*);
-                            match (my_answer, compiler_rt_answer) {
-                                (None, _) | (_, None) => TestResult::discard(),
-                                (Some(a), Some(b)) => {
-                                    TestResult::from_bool(a == b)
-                                }
-                            }
+                        let compiler_rt_answer = unsafe {
+                            super::$name(mem::transmute(compiler_rt_fn),
+                                            $($arg),*)
+                        };
+                        let gcc_s_answer = 
+                        match ::gcc_s::get(stringify!($name)) {
+                            Some(f) => unsafe {
+                                Some(super::$name(mem::transmute(f), 
+                                                  $($arg),*))
+                            },
+                            None => None,
+                        };
+
+                        let print_values = || {
+                            print!("{} - Args: ", stringify!($name));
+                            $(print!("{:?} ", $arg);)*
+                            print!("\n");
+                            println!("  rustc-builtins: {:?}", my_answer);
+                            println!("  compiler_rt:    {:?}", compiler_rt_answer);
+                            println!("  gcc_s:          {:?}", gcc_s_answer);
+                        };
+
+                        if my_answer != compiler_rt_answer {
+                            print_values();
+                            TestResult::from_bool(false)
+                        } else if gcc_s_answer.is_some() && 
+                                  my_answer != gcc_s_answer.unwrap() {
+                            print_values();
+                            TestResult::from_bool(false)
+                        } else {
+                            TestResult::from_bool(true)
                         }
-                    }
-
-                    ::quickcheck::quickcheck(my_check as fn($($t),*) -> TestResult)
-                }
-            )*
-        }
-
-        mod _gcc_s {
-            use qc::*;
-            use std::mem;
-            use quickcheck::TestResult;
-
-            $(
-                #[test]
-                fn $name() {
-                    fn my_check($($arg:$t),*) -> TestResult {
-                        let my_answer = super::$name(super::super::$name,
-                                                     $($arg),*);
-                        let gcc_s_fn = ::gcc_s::get(stringify!($name)).unwrap();
-                        unsafe {
-                            let gcc_s_answer =
-                                super::$name(mem::transmute(gcc_s_fn),
-                                             $($arg),*);
-                            match (my_answer, gcc_s_answer) {
-                                (None, _) | (_, None) => TestResult::discard(),
-                                (Some(a), Some(b)) => {
-                                    TestResult::from_bool(a == b)
-                                }
-                            }
-                        }
-                    }
-
-                    // If it's not in libgcc, or we couldn't find libgcc, then
-                    // just ignore this. We should have tests through
-                    // compiler-rt in any case
-                    if ::gcc_s::get(stringify!($name)).is_none() {
-                        return
                     }
 
                     ::quickcheck::quickcheck(my_check as fn($($t),*) -> TestResult)

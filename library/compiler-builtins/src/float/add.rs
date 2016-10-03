@@ -186,16 +186,13 @@ add!(__adddf3: f64);
 #[cfg(test)]
 mod tests {
     use core::{f32, f64};
+    use core::fmt;
 
     use float::Float;
     use qc::{U32, U64};
 
-    // NOTE The tests below have special handing for NaN values.
-    // Because NaN != NaN, the floating-point representations must be used
-    // Because there are many diffferent values of NaN, and the implementation
-    // doesn't care about calculating the 'correct' one, if both values are NaN
-    // the values are considered equivalent.
-
+    // TODO: Move this to F32/F64 in qc.rs
+    #[derive(Copy, Clone)]
     struct FRepr<F>(F);
 
     impl<F: Float> PartialEq for FRepr<F> {
@@ -209,6 +206,12 @@ mod tests {
                 return true
             }
             self.0.eq_repr(other.0)
+        }
+    }
+
+    impl<F: fmt::Debug> fmt::Debug for FRepr<F> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            self.0.fmt(f)
         }
     }
 
