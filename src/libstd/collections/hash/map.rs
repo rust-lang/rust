@@ -34,13 +34,9 @@ use super::table::BucketState::{
     Full,
 };
 
-const INITIAL_LOG2_CAP: usize = 5;
-const INITIAL_CAPACITY: usize = 1 << INITIAL_LOG2_CAP; // 2^5
+const MIN_NONZERO_RAW_CAPACITY: usize = 32;     // must be a power of two
 
-/// The default behavior of HashMap implements a load factor of 90.9%.
-/// This behavior is characterized by the following condition:
-///
-/// - if size > 0.909 * capacity: grow the map
+/// The default behavior of HashMap implements a maximum load factor of 90.9%.
 #[derive(Clone)]
 struct DefaultResizePolicy;
 
@@ -49,40 +45,35 @@ impl DefaultResizePolicy {
         DefaultResizePolicy
     }
 
+    /// A hash map's "capacity" is the number of elements it can hold without
+    /// being resized. Its "raw capacity" is the number of slots required to
+    /// provide that capacity, accounting for maximum loading. The raw capacity
+    /// is always zero or a power of two.
     #[inline]
-    fn min_capacity(&self, usable_size: usize) -> usize {
-        // Here, we are rephrasing the logic by specifying the lower limit
-        // on capacity:
-        //
-        // - if `cap < size * 1.1`: grow the map
-        usable_size * 11 / 10
+    fn raw_capacity(&self, len: usize) -> usize {
+        if len == 0 {
+            0
+        } else {
+            // 1. Account for loading: `raw_capacity >= len * 1.1`.
+            // 2. Ensure it is a power of two.
+            // 3. Ensure it is at least the minimum size.
+            let mut raw_cap = len * 11 / 10;
+            assert!(raw_cap >= len, "raw_cap overflow");
+            raw_cap = raw_cap.checked_next_power_of_two().expect("raw_capacity overflow");
+            raw_cap = max(MIN_NONZERO_RAW_CAPACITY, raw_cap);
+            raw_cap
+        }
     }
 
-    /// An inverse of `min_capacity`, approximately.
+    /// The capacity of the given raw capacity.
     #[inline]
-    fn usable_capacity(&self, cap: usize) -> usize {
-        // As the number of entries approaches usable capacity,
-        // min_capacity(size) must be smaller than the internal capacity,
-        // so that the map is not resized:
-        // `min_capacity(usable_capacity(x)) <= x`.
-        // The left-hand side can only be smaller due to flooring by integer
-        // division.
-        //
+    fn capacity(&self, raw_cap: usize) -> usize {
         // This doesn't have to be checked for overflow since allocation size
         // in bytes will overflow earlier than multiplication by 10.
         //
         // As per https://github.com/rust-lang/rust/pull/30991 this is updated
-        // to be: (cap * den + den - 1) / num
-        (cap * 10 + 10 - 1) / 11
-    }
-}
-
-#[test]
-fn test_resize_policy() {
-    let rp = DefaultResizePolicy;
-    for n in 0..1000 {
-        assert!(rp.min_capacity(rp.usable_capacity(n)) <= n);
-        assert!(rp.usable_capacity(rp.min_capacity(n)) <= n);
+        // to be: (raw_cap * den + den - 1) / num
+        (raw_cap * 10 + 10 - 1) / 11
     }
 }
 
@@ -540,11 +531,11 @@ impl<K, V, S> HashMap<K, V, S>
 
     // The caller should ensure that invariants by Robin Hood Hashing hold.
     fn insert_hashed_ordered(&mut self, hash: SafeHash, k: K, v: V) {
-        let cap = self.table.capacity();
+        let raw_cap = self.raw_capacity();
         let mut buckets = Bucket::new(&mut self.table, hash);
         let ib = buckets.index();
 
-        while buckets.index() != ib + cap {
+        while buckets.index() != ib + raw_cap {
             // We don't need to compare hashes for value swap.
             // Not even DIBs for Robin Hood.
             buckets = match buckets.peek() {
@@ -575,7 +566,10 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
         Default::default()
     }
 
-    /// Creates an empty `HashMap` with the given initial capacity.
+    /// Creates an empty `HashMap` with the specified capacity.
+    ///
+    /// The hash map will be able to hold at least `capacity` elements without
+    /// reallocating. If `capacity` is 0, the hash map will not allocate.
     ///
     /// # Examples
     ///
@@ -623,9 +617,11 @@ impl<K, V, S> HashMap<K, V, S>
         }
     }
 
-    /// Creates an empty `HashMap` with space for at least `capacity`
-    /// elements, using `hasher` to hash the keys.
+    /// Creates an empty `HashMap` with the specified capacity, using `hasher`
+    /// to hash the keys.
     ///
+    /// The hash map will be able to hold at least `capacity` elements without
+    /// reallocating. If `capacity` is 0, the hash map will not allocate.
     /// Warning: `hasher` is normally randomly generated, and
     /// is designed to allow HashMaps to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting it
@@ -646,13 +642,11 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S)
                                     -> HashMap<K, V, S> {
         let resize_policy = DefaultResizePolicy::new();
-        let min_cap = max(INITIAL_CAPACITY, resize_policy.min_capacity(capacity));
-        let internal_cap = min_cap.checked_next_power_of_two().expect("capacity overflow");
-        assert!(internal_cap >= capacity, "capacity overflow");
+        let raw_cap = resize_policy.raw_capacity(capacity);
         HashMap {
             hash_builder: hash_builder,
             resize_policy: resize_policy,
-            table: RawTable::new(internal_cap),
+            table: RawTable::new(raw_cap),
         }
     }
 
@@ -677,7 +671,13 @@ impl<K, V, S> HashMap<K, V, S>
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
-        self.resize_policy.usable_capacity(self.table.capacity())
+        self.resize_policy.capacity(self.raw_capacity())
+    }
+
+    /// Returns the hash map's raw capacity.
+    #[inline]
+    fn raw_capacity(&self) -> usize {
+        self.table.capacity()
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted
@@ -697,28 +697,24 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
-        let new_size = self.len().checked_add(additional).expect("capacity overflow");
-        let min_cap = self.resize_policy.min_capacity(new_size);
-
-        // An invalid value shouldn't make us run out of space. This includes
-        // an overflow check.
-        assert!(new_size <= min_cap);
-
-        if self.table.capacity() < min_cap {
-            let new_capacity = max(min_cap.next_power_of_two(), INITIAL_CAPACITY);
-            self.resize(new_capacity);
+        let remaining = self.capacity() - self.len(); // this can't overflow
+        if remaining < additional {
+            let min_cap = self.len().checked_add(additional).expect("reserve overflow");
+            let raw_cap = self.resize_policy.raw_capacity(min_cap);
+            self.resize(raw_cap);
         }
     }
 
-    /// Resizes the internal vectors to a new capacity. It's your responsibility to:
-    ///   1) Make sure the new capacity is enough for all the elements, accounting
+    /// Resizes the internal vectors to a new capacity. It's your
+    /// responsibility to:
+    ///   1) Ensure `new_raw_cap` is enough for all the elements, accounting
     ///      for the load factor.
-    ///   2) Ensure `new_capacity` is a power of two or zero.
-    fn resize(&mut self, new_capacity: usize) {
-        assert!(self.table.size() <= new_capacity);
-        assert!(new_capacity.is_power_of_two() || new_capacity == 0);
+    ///   2) Ensure `new_raw_cap` is a power of two or zero.
+    fn resize(&mut self, new_raw_cap: usize) {
+        assert!(self.table.size() <= new_raw_cap);
+        assert!(new_raw_cap.is_power_of_two() || new_raw_cap == 0);
 
-        let mut old_table = replace(&mut self.table, RawTable::new(new_capacity));
+        let mut old_table = replace(&mut self.table, RawTable::new(new_raw_cap));
         let old_size = old_table.size();
 
         if old_table.capacity() == 0 || old_table.size() == 0 {
@@ -808,14 +804,9 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
-        let min_capacity = self.resize_policy.min_capacity(self.len());
-        let min_capacity = max(min_capacity.next_power_of_two(), INITIAL_CAPACITY);
-
-        // An invalid value shouldn't make us run out of space.
-        debug_assert!(self.len() <= min_capacity);
-
-        if self.table.capacity() != min_capacity {
-            let old_table = replace(&mut self.table, RawTable::new(min_capacity));
+        let new_raw_cap = self.resize_policy.raw_capacity(self.len());
+        if self.raw_capacity() != new_raw_cap {
+            let old_table = replace(&mut self.table, RawTable::new(new_raw_cap));
             let old_size = old_table.size();
 
             // Shrink the table. Naive algorithm for resizing:
@@ -2122,7 +2113,7 @@ mod test_map {
     use rand::{thread_rng, Rng};
 
     #[test]
-    fn test_create_capacities() {
+    fn test_zero_capacities() {
         type HM = HashMap<i32, i32>;
 
         let m = HM::new();
@@ -2132,6 +2123,24 @@ mod test_map {
         assert_eq!(m.capacity(), 0);
 
         let m = HM::with_hasher(RandomState::new());
+        assert_eq!(m.capacity(), 0);
+
+        let m = HM::with_capacity(0);
+        assert_eq!(m.capacity(), 0);
+
+        let m = HM::with_capacity_and_hasher(0, RandomState::new());
+        assert_eq!(m.capacity(), 0);
+
+        let mut m = HM::new();
+        m.insert(1, 1);
+        m.insert(2, 2);
+        m.remove(&1);
+        m.remove(&2);
+        m.shrink_to_fit();
+        assert_eq!(m.capacity(), 0);
+
+        let mut m = HM::new();
+        m.reserve(0);
         assert_eq!(m.capacity(), 0);
     }
 
@@ -2592,8 +2601,8 @@ mod test_map {
         assert!(m.is_empty());
 
         let mut i = 0;
-        let old_cap = m.table.capacity();
-        while old_cap == m.table.capacity() {
+        let old_raw_cap = m.raw_capacity();
+        while old_raw_cap == m.raw_capacity() {
             m.insert(i, i);
             i += 1;
         }
@@ -2607,47 +2616,47 @@ mod test_map {
         let mut m = HashMap::new();
 
         assert_eq!(m.len(), 0);
-        assert_eq!(m.table.capacity(), 0);
+        assert_eq!(m.raw_capacity(), 0);
         assert!(m.is_empty());
 
         m.insert(0, 0);
         m.remove(&0);
         assert!(m.is_empty());
-        let initial_cap = m.table.capacity();
-        m.reserve(initial_cap);
-        let cap = m.table.capacity();
+        let initial_raw_cap = m.raw_capacity();
+        m.reserve(initial_raw_cap);
+        let raw_cap = m.raw_capacity();
 
-        assert_eq!(cap, initial_cap * 2);
+        assert_eq!(raw_cap, initial_raw_cap * 2);
 
         let mut i = 0;
-        for _ in 0..cap * 3 / 4 {
+        for _ in 0..raw_cap * 3 / 4 {
             m.insert(i, i);
             i += 1;
         }
         // three quarters full
 
         assert_eq!(m.len(), i);
-        assert_eq!(m.table.capacity(), cap);
+        assert_eq!(m.raw_capacity(), raw_cap);
 
-        for _ in 0..cap / 4 {
+        for _ in 0..raw_cap / 4 {
             m.insert(i, i);
             i += 1;
         }
         // half full
 
-        let new_cap = m.table.capacity();
-        assert_eq!(new_cap, cap * 2);
+        let new_raw_cap = m.raw_capacity();
+        assert_eq!(new_raw_cap, raw_cap * 2);
 
-        for _ in 0..cap / 2 - 1 {
+        for _ in 0..raw_cap / 2 - 1 {
             i -= 1;
             m.remove(&i);
-            assert_eq!(m.table.capacity(), new_cap);
+            assert_eq!(m.raw_capacity(), new_raw_cap);
         }
         // A little more than one quarter full.
         m.shrink_to_fit();
-        assert_eq!(m.table.capacity(), cap);
+        assert_eq!(m.raw_capacity(), raw_cap);
         // again, a little more than half full
-        for _ in 0..cap / 2 - 1 {
+        for _ in 0..raw_cap / 2 - 1 {
             i -= 1;
             m.remove(&i);
         }
@@ -2655,7 +2664,7 @@ mod test_map {
 
         assert_eq!(m.len(), i);
         assert!(!m.is_empty());
-        assert_eq!(m.table.capacity(), initial_cap);
+        assert_eq!(m.raw_capacity(), initial_raw_cap);
     }
 
     #[test]
