@@ -491,7 +491,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }).collect();
 
         if !obligations.is_empty() {
-            assert!(self.fcx.ccx.deferred_obligations.borrow_mut()
+            assert!(self.fcx.tcx.deferred_obligations.borrow_mut()
                                 .insert(item_id, obligations).is_none());
         }
     }
@@ -499,7 +499,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn visit_type_nodes(&self) {
         for (&id, ty) in self.fcx.ast_ty_to_ty_cache.borrow().iter() {
             let ty = self.resolve(ty, ResolvingTyNode(id));
-            self.fcx.ccx.ast_ty_to_ty_cache.borrow_mut().insert(id, ty);
+            self.fcx.tcx.ast_ty_to_ty_cache.borrow_mut().insert(id, ty);
         }
     }
 

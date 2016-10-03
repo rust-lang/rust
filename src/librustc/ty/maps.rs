@@ -37,6 +37,7 @@ macro_rules! define_maps {
        pub $name:ident: $node:ident($K:ty) -> $V:ty),*) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
+            pub query_stack: RefCell<Vec<Query>>,
             $($(#[$attr])* pub $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>),*
         }
 
@@ -46,9 +47,16 @@ macro_rules! define_maps {
                        -> Self {
                 Maps {
                     providers,
+                    query_stack: RefCell::new(vec![]),
                     $($name: RefCell::new(DepTrackingMap::new(dep_graph.clone()))),*
                 }
             }
+        }
+
+        #[allow(bad_style)]
+        #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+        pub enum Query {
+            $($(#[$attr])* $name($K)),*
         }
 
         pub mod queries {
@@ -118,6 +126,11 @@ define_maps! { <'tcx>
     /// full predicates are available (note that supertraits have
     /// additional acyclicity requirements).
     pub super_predicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
+
+    /// To avoid cycles within the predicates of a single item we compute
+    /// per-type-parameter predicates for resolving `T::AssocTy`.
+    pub type_param_predicates: ItemSignature(DefId)
+        -> ty::GenericPredicates<'tcx>,
 
     pub trait_def: ItemSignature(DefId) -> &'tcx ty::TraitDef,
     pub adt_def: ItemSignature(DefId) -> &'tcx ty::AdtDef,

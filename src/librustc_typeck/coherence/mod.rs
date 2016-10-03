@@ -24,7 +24,6 @@ use rustc::ty::{TyRef, TyAdt, TyDynamic, TyNever, TyTuple};
 use rustc::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
 use rustc::ty::{TyUint, TyClosure, TyFnDef, TyFnPtr};
 use rustc::ty::{TyProjection, TyAnon};
-use CrateCtxt;
 use syntax_pos::Span;
 use rustc::dep_graph::DepNode;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -176,12 +175,12 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, sp: Span, trait_def_id: Def
     err.emit();
 }
 
-pub fn check_coherence(ccx: &CrateCtxt) {
-    CoherenceCollect::check(ccx.tcx);
+pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    CoherenceCollect::check(tcx);
 
-    let _task = ccx.tcx.dep_graph.in_task(DepNode::Coherence);
-    unsafety::check(ccx.tcx);
-    orphan::check(ccx.tcx);
-    overlap::check(ccx.tcx);
-    builtin::check(ccx.tcx);
+    let _task = tcx.dep_graph.in_task(DepNode::Coherence);
+    unsafety::check(tcx);
+    orphan::check(tcx);
+    overlap::check(tcx);
+    builtin::check(tcx);
 }

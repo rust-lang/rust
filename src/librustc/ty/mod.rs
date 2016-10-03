@@ -31,7 +31,7 @@ use ty::subst::{Subst, Substs};
 use ty::util::IntTypeExt;
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
-use util::nodemap::{NodeSet, NodeMap, FxHashMap};
+use util::nodemap::{NodeSet, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
@@ -104,13 +104,12 @@ mod sty;
 /// The complete set of all analyses described in this module. This is
 /// produced by the driver and fed to trans and later passes.
 #[derive(Clone)]
-pub struct CrateAnalysis<'tcx> {
+pub struct CrateAnalysis {
     pub export_map: ExportMap,
     pub access_levels: middle::privacy::AccessLevels,
     pub reachable: NodeSet,
     pub name: String,
     pub glob_map: Option<hir::GlobMap>,
-    pub hir_ty_to_ty: NodeMap<Ty<'tcx>>,
 }
 
 #[derive(Clone)]
@@ -1383,7 +1382,7 @@ pub struct ReprOptions {
 }
 
 impl ReprOptions {
-    pub fn new<'a, 'gcx, 'tcx>(tcx: &TyCtxt<'a, 'gcx, 'tcx>, did: DefId) -> ReprOptions {
+    pub fn new(tcx: TyCtxt, did: DefId) -> ReprOptions {
         let mut ret = ReprOptions::default();
         let attrs = tcx.lookup_repr_hints(did);
         for r in attrs.iter() {
@@ -1400,7 +1399,7 @@ impl ReprOptions {
 }
 
 impl<'a, 'gcx, 'tcx> AdtDef {
-    fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    fn new(tcx: TyCtxt,
            did: DefId,
            kind: AdtKind,
            variants: Vec<VariantDef>,

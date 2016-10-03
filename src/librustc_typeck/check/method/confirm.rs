@@ -566,7 +566,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
         match pick.item.container {
             ty::TraitContainer(trait_def_id) => {
-                callee::check_legal_trait_for_method_call(self.ccx, self.span, trait_def_id)
+                callee::check_legal_trait_for_method_call(self.tcx, self.span, trait_def_id)
             }
             ty::ImplContainer(..) => {}
         }

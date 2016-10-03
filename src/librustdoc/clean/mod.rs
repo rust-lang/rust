@@ -1772,7 +1772,7 @@ impl Clean<Type> for hir::Ty {
             }
             TyPath(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 let mut def = Def::Err;
-                if let Some(ty) = cx.hir_ty_to_ty.get(&self.id) {
+                if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&self.id) {
                     if let ty::TyProjection(proj) = ty.sty {
                         def = Def::Trait(proj.trait_ref.def_id);
                     }

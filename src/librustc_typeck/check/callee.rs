@@ -10,11 +10,10 @@
 
 use super::{DeferredCallResolution, Expectation, FnCtxt, TupleArgumentsFlag};
 
-use CrateCtxt;
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
-use rustc::ty::{self, LvaluePreference, Ty};
+use rustc::ty::{self, TyCtxt, LvaluePreference, Ty};
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
@@ -23,12 +22,9 @@ use rustc::hir;
 /// Check that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called)
-pub fn check_legal_trait_for_method_call(ccx: &CrateCtxt, span: Span, trait_id: DefId) {
-    if ccx.tcx.lang_items.drop_trait() == Some(trait_id) {
-        struct_span_err!(ccx.tcx.sess,
-                         span,
-                         E0040,
-                         "explicit use of destructor method")
+pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefId) {
+    if tcx.lang_items.drop_trait() == Some(trait_id) {
+        struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method")
             .span_label(span, &format!("explicit destructor calls not allowed"))
             .emit();
     }
