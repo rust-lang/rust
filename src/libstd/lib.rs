@@ -230,6 +230,7 @@
 #![feature(core_intrinsics)]
 #![feature(dotdot_in_tuple_patterns)]
 #![feature(dropck_parametricity)]
+#![feature(drop_types_in_const)]
 #![feature(float_extras)]
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
