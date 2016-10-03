@@ -12,8 +12,7 @@
 // refers to rules defined in RFC 1214 (`OutlivesFooBar`), so see that
 // RFC for reference.
 
-use infer::InferCtxt;
-use ty::{self, Ty, TypeFoldable};
+use ty::{self, Ty, TyCtxt, TypeFoldable};
 
 #[derive(Debug)]
 pub enum Component<'tcx> {
@@ -55,9 +54,9 @@ pub enum Component<'tcx> {
     EscapingProjection(Vec<Component<'tcx>>),
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns all the things that must outlive `'a` for the condition
-    /// `ty0: 'a` to hold.
+    /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
     pub fn outlives_components(&self, ty0: Ty<'tcx>)
                                -> Vec<Component<'tcx>> {
         let mut components = vec![];
@@ -148,16 +147,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            // If we encounter an inference variable, try to resolve it
-            // and proceed with resolved version. If we cannot resolve it,
-            // then record the unresolved variable as a component.
-            ty::TyInfer(_) => {
-                let ty = self.resolve_type_vars_if_possible(&ty);
-                if let ty::TyInfer(infer_ty) = ty.sty {
-                    out.push(Component::UnresolvedInferenceVariable(infer_ty));
-                } else {
-                    self.compute_components(ty, out);
-                }
+            // We assume that inference variables are fully resolved.
+            // So, if we encounter an inference variable, just record
+            // the unresolved variable as a component.
+            ty::TyInfer(infer_ty) => {
+                out.push(Component::UnresolvedInferenceVariable(infer_ty));
             }
 
             // Most types do not introduce any region binders, nor
