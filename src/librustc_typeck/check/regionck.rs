@@ -1474,7 +1474,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         assert!(!ty.has_escaping_regions());
 
-        let components = self.outlives_components(ty);
+        let components = self.tcx.outlives_components(ty);
         self.components_must_outlive(origin, components, region);
     }
 

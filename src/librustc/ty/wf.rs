@@ -178,7 +178,8 @@ pub fn implied_bounds<'a, 'gcx, 'tcx>(
                         match infcx.tcx.no_late_bound_regions(data) {
                             None => vec![],
                             Some(ty::OutlivesPredicate(ty_a, r_b)) => {
-                                let components = infcx.outlives_components(ty_a);
+                                let ty_a = infcx.resolve_type_vars_if_possible(&ty_a);
+                                let components = infcx.tcx.outlives_components(ty_a);
                                 implied_bounds_from_components(r_b, components)
                             }
                         },
