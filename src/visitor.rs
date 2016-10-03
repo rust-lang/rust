@@ -66,7 +66,6 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, _macro_style, _) = **mac;
-                self.format_missing_with_indent(source!(self, stmt.span).lo);
                 self.visit_mac(mac, None);
             }
         }
@@ -281,7 +280,6 @@ impl<'a> FmtVisitor<'a> {
                 self.format_mod(module, &item.vis, item.span, item.ident);
             }
             ast::ItemKind::Mac(ref mac) => {
-                self.format_missing_with_indent(source!(self, item.span).lo);
                 self.visit_mac(mac, Some(item.ident));
             }
             ast::ItemKind::ForeignMod(ref foreign_mod) => {
@@ -418,7 +416,6 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(ii.span, rewrite);
             }
             ast::ImplItemKind::Macro(ref mac) => {
-                self.format_missing_with_indent(source!(self, ii.span).lo);
                 self.visit_mac(mac, Some(ii.ident));
             }
         }
@@ -428,11 +425,7 @@ impl<'a> FmtVisitor<'a> {
         // 1 = ;
         let width = self.config.max_width - self.block_indent.width() - 1;
         let rewrite = rewrite_macro(mac, ident, &self.get_context(), width, self.block_indent);
-
-        if let Some(res) = rewrite {
-            self.buffer.push_str(&res);
-            self.last_pos = source!(self, mac.span).hi;
-        }
+        self.push_rewrite(mac.span, rewrite);
     }
 
     fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {

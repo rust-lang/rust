@@ -30,7 +30,6 @@ use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
 use expr::{rewrite_call, rewrite_array};
 use comment::{FindUncommented, contains_comment};
-use utils::wrap_str;
 
 const FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
 
@@ -141,10 +140,7 @@ pub fn rewrite_macro(mac: &ast::Mac,
         }
         MacroStyle::Braces => {
             // Skip macro invocations with braces, for now.
-            wrap_str(context.snippet(mac.span),
-                     context.config.max_width,
-                     width,
-                     offset)
+            None
         }
     }
 }
