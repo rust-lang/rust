@@ -1,5 +1,5 @@
 #![feature(plugin)]
-#![plugin(clippy(conf_file="./tests/compile-fail/conf_french_blacklisted_name.toml"))]
+#![plugin(clippy(conf_file="./tests/aux/conf_french_blacklisted_name.toml"))]
 
 #![allow(dead_code)]
 #![allow(single_match)]
