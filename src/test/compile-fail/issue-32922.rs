@@ -17,7 +17,7 @@ macro_rules! foo { () => {
     let _ = bar!();
 }}
 
-macro_rules! bar { // test issue #31856
+macro_rules! m { // test issue #31856
     ($n:ident) => (
         let a = 1;
         let $n = a;

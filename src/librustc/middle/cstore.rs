@@ -423,7 +423,12 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 
-pub enum LoadedMacro {
+pub struct LoadedMacro {
+    pub import_site: Span,
+    pub kind: LoadedMacroKind,
+}
+
+pub enum LoadedMacroKind {
     Def(ast::MacroDef),
     CustomDerive(String, Rc<MultiItemModifier>),
 }

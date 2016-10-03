@@ -18,13 +18,23 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, MultiModifier, MultiDecorator, MultiItemModifier};
 use syntax::ext::base::{NormalTT, SyntaxExtension};
 use syntax::ext::expand::{Expansion, Invocation, InvocationKind};
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ext::tt::macro_rules;
 use syntax::parse::token::intern;
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax_pos::{Span, DUMMY_SP};
+
+// FIXME(jseyfried) Merge with `::NameBinding`.
+pub struct NameBinding {
+    pub ext: Rc<SyntaxExtension>,
+    pub expansion: Mark,
+    pub shadowing: bool,
+    pub span: Span,
+}
 
 #[derive(Clone)]
 pub struct ExpansionData<'a> {
+    backtrace: SyntaxContext,
     pub module: Module<'a>,
     def_index: DefIndex,
     // True if this expansion is in a `const_integer` position, for example `[u32; m!()]`.
@@ -35,6 +45,7 @@ pub struct ExpansionData<'a> {
 impl<'a> ExpansionData<'a> {
     pub fn root(graph_root: Module<'a>) -> Self {
         ExpansionData {
+            backtrace: SyntaxContext::empty(),
             module: graph_root,
             def_index: CRATE_DEF_INDEX,
             const_integer: false,
@@ -50,7 +61,8 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark {
         let mark = Mark::fresh();
         let module = self.module_map[&id];
-        self.expansion_data.insert(mark.as_u32(), ExpansionData {
+        self.expansion_data.insert(mark, ExpansionData {
+            backtrace: SyntaxContext::empty(),
             module: module,
             def_index: module.def_id().unwrap().index,
             const_integer: false,
@@ -60,8 +72,8 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion) {
         self.collect_def_ids(mark, expansion);
-        self.current_module = self.expansion_data[&mark.as_u32()].module;
-        expansion.visit_with(&mut BuildReducedGraphVisitor { resolver: self });
+        self.current_module = self.expansion_data[&mark].module;
+        expansion.visit_with(&mut BuildReducedGraphVisitor { resolver: self, expansion: mark });
     }
 
     fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef) {
@@ -69,8 +81,18 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.session.span_err(def.span, "user-defined macros may not be named `macro_rules`");
         }
         if def.use_locally {
-            let ext = macro_rules::compile(&self.session.parse_sess, &def);
-            self.add_ext(scope, def.ident, Rc::new(ext));
+            let ExpansionData { mut module, backtrace, .. } = self.expansion_data[&scope];
+            while module.macros_escape {
+                module = module.parent.unwrap();
+            }
+            let binding = NameBinding {
+                ext: Rc::new(macro_rules::compile(&self.session.parse_sess, &def)),
+                expansion: backtrace.data().prev_ctxt.data().outer_mark,
+                shadowing: self.resolve_macro_name(scope, def.ident.name, false).is_some(),
+                span: def.span,
+            };
+            module.macros.borrow_mut().insert(def.ident.name, binding);
+            self.macro_names.insert(def.ident.name);
         }
         if def.export {
             def.id = self.next_node_id();
@@ -78,16 +100,16 @@ impl<'a> base::Resolver for Resolver<'a> {
         }
     }
 
-    fn add_ext(&mut self, scope: Mark, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
+    fn add_ext(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
         if let NormalTT(..) = *ext {
             self.macro_names.insert(ident.name);
         }
-
-        let mut module = self.expansion_data[&scope.as_u32()].module;
-        while module.macros_escape {
-            module = module.parent.unwrap();
-        }
-        module.macros.borrow_mut().insert(ident.name, ext);
+        self.graph_root.macros.borrow_mut().insert(ident.name, NameBinding {
+            ext: ext,
+            expansion: Mark::root(),
+            shadowing: false,
+            span: DUMMY_SP,
+        });
     }
 
     fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>) {
@@ -97,8 +119,8 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn find_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
             let name = intern(&attrs[i].name());
-            match self.expansion_data[&0].module.macros.borrow().get(&name) {
-                Some(ext) => match **ext {
+            match self.expansion_data[&Mark::root()].module.macros.borrow().get(&name) {
+                Some(binding) => match *binding.ext {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))
                     }
@@ -125,22 +147,13 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Attr { ref attr, .. } => (intern(&*attr.name()), attr.span),
         };
 
-        let mut module = self.expansion_data[&scope.as_u32()].module;
-        loop {
-            if let Some(ext) = module.macros.borrow().get(&name) {
-                return Some(ext.clone());
-            }
-            match module.parent {
-                Some(parent) => module = parent,
-                None => break,
-            }
-        }
-
-        let mut err =
-            self.session.struct_span_err(span, &format!("macro undefined: '{}!'", name));
-        self.suggest_macro_name(&name.as_str(), &mut err);
-        err.emit();
-        None
+        self.resolve_macro_name(scope, name, true).or_else(|| {
+            let mut err =
+                self.session.struct_span_err(span, &format!("macro undefined: '{}!'", name));
+            self.suggest_macro_name(&name.as_str(), &mut err);
+            err.emit();
+            None
+        })
     }
 
     fn resolve_derive_mode(&mut self, ident: ast::Ident) -> Option<Rc<MultiItemModifier>> {
@@ -149,6 +162,38 @@ impl<'a> base::Resolver for Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
+    pub fn resolve_macro_name(&mut self, scope: Mark, name: ast::Name, record_used: bool)
+                              -> Option<Rc<SyntaxExtension>> {
+        let ExpansionData { mut module, backtrace, .. } = self.expansion_data[&scope];
+        loop {
+            if let Some(binding) = module.macros.borrow().get(&name) {
+                let mut backtrace = backtrace.data();
+                while binding.expansion != backtrace.outer_mark {
+                    if backtrace.outer_mark != Mark::root() {
+                        backtrace = backtrace.prev_ctxt.data();
+                        continue
+                    }
+
+                    if record_used && binding.shadowing &&
+                       self.macro_shadowing_errors.insert(binding.span) {
+                        let msg = format!("`{}` is already in scope", name);
+                        self.session.struct_span_err(binding.span, &msg)
+                            .note("macro-expanded `macro_rules!`s and `#[macro_use]`s \
+                                   may not shadow existing macros (see RFC 1560)")
+                            .emit();
+                    }
+                    break
+                }
+                return Some(binding.ext.clone());
+            }
+            match module.parent {
+                Some(parent) => module = parent,
+                None => break,
+            }
+        }
+        None
+    }
+
     fn suggest_macro_name(&mut self, name: &str, err: &mut DiagnosticBuilder<'a>) {
         if let Some(suggestion) = find_best_match_for_name(self.macro_names.iter(), name, None) {
             if suggestion != name {
@@ -161,9 +206,10 @@ impl<'a> Resolver<'a> {
 
     fn collect_def_ids(&mut self, mark: Mark, expansion: &Expansion) {
         let expansion_data = &mut self.expansion_data;
-        let ExpansionData { def_index, const_integer, module } = expansion_data[&mark.as_u32()];
+        let ExpansionData { backtrace, def_index, const_integer, module } = expansion_data[&mark];
         let visit_macro_invoc = &mut |invoc: map::MacroInvocationData| {
-            expansion_data.entry(invoc.id.as_u32()).or_insert(ExpansionData {
+            expansion_data.entry(invoc.mark).or_insert(ExpansionData {
+                backtrace: backtrace.apply_mark(invoc.mark),
                 def_index: invoc.def_index,
                 const_integer: invoc.const_integer,
                 module: module,
