@@ -23,13 +23,11 @@ use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::def_id::DefId;
-use rustc::ty;
+use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use syntax_pos::Span;
-
-use CrateCtxt;
 
 /// Checks that all the type/lifetime parameters on an impl also
 /// appear in the trait ref or self-type (or are constrained by a
@@ -61,27 +59,27 @@ use CrateCtxt;
 /// impl<'a> Trait<Foo> for Bar { type X = &'a i32; }
 ///      ^ 'a is unused and appears in assoc type, error
 /// ```
-pub fn impl_wf_check<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>) {
+pub fn impl_wf_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // We will tag this as part of the WF check -- logically, it is,
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
-    ccx.tcx.visit_all_item_likes_in_krate(DepNode::WfCheck, &mut ImplWfCheck { ccx: ccx });
+    tcx.visit_all_item_likes_in_krate(DepNode::WfCheck, &mut ImplWfCheck { tcx: tcx });
 }
 
 struct ImplWfCheck<'a, 'tcx: 'a> {
-    ccx: &'a CrateCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
             hir::ItemImpl(.., ref generics, _, _, ref impl_item_refs) => {
-                let impl_def_id = self.ccx.tcx.hir.local_def_id(item.id);
-                enforce_impl_params_are_constrained(self.ccx,
+                let impl_def_id = self.tcx.hir.local_def_id(item.id);
+                enforce_impl_params_are_constrained(self.tcx,
                                                     generics,
                                                     impl_def_id,
                                                     impl_item_refs);
-                enforce_impl_items_are_distinct(self.ccx, impl_item_refs);
+                enforce_impl_items_are_distinct(self.tcx, impl_item_refs);
             }
             _ => { }
         }
@@ -92,16 +90,16 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
     fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) { }
 }
 
-fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                  impl_hir_generics: &hir::Generics,
                                                  impl_def_id: DefId,
                                                  impl_item_refs: &[hir::ImplItemRef])
 {
     // Every lifetime used in an associated type must be constrained.
-    let impl_self_ty = ccx.tcx.item_type(impl_def_id);
-    let impl_generics = ccx.tcx.item_generics(impl_def_id);
-    let impl_predicates = ccx.tcx.item_predicates(impl_def_id);
-    let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
+    let impl_self_ty = tcx.item_type(impl_def_id);
+    let impl_generics = tcx.item_generics(impl_def_id);
+    let impl_predicates = tcx.item_predicates(impl_def_id);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
 
     let mut input_parameters = ctp::parameters_for_impl(impl_self_ty, impl_trait_ref);
     ctp::identify_constrained_type_params(
@@ -111,19 +109,19 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     for (ty_param, param) in impl_generics.types.iter().zip(&impl_hir_generics.ty_params) {
         let param_ty = ty::ParamTy::for_def(ty_param);
         if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
-            report_unused_parameter(ccx, param.span, "type", &param_ty.to_string());
+            report_unused_parameter(tcx, param.span, "type", &param_ty.to_string());
         }
     }
 
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs.iter()
-        .map(|item_ref|  ccx.tcx.hir.local_def_id(item_ref.id.node_id))
+        .map(|item_ref|  tcx.hir.local_def_id(item_ref.id.node_id))
         .filter(|&def_id| {
-            let item = ccx.tcx.associated_item(def_id);
+            let item = tcx.associated_item(def_id);
             item.kind == ty::AssociatedKind::Type && item.defaultness.has_value()
         })
         .flat_map(|def_id| {
-            ctp::parameters_for(&ccx.tcx.item_type(def_id), true)
+            ctp::parameters_for(&tcx.item_type(def_id), true)
         }).collect();
     for (ty_lifetime, lifetime) in impl_generics.regions.iter()
         .zip(&impl_hir_generics.lifetimes)
@@ -134,7 +132,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             lifetimes_in_associated_types.contains(&param) && // (*)
             !input_parameters.contains(&param)
         {
-            report_unused_parameter(ccx, lifetime.lifetime.span,
+            report_unused_parameter(tcx, lifetime.lifetime.span,
                                     "lifetime", &lifetime.lifetime.name.to_string());
         }
     }
@@ -159,13 +157,13 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // used elsewhere are not projected back out.
 }
 
-fn report_unused_parameter(ccx: &CrateCtxt,
+fn report_unused_parameter(tcx: TyCtxt,
                            span: Span,
                            kind: &str,
                            name: &str)
 {
     struct_span_err!(
-        ccx.tcx.sess, span, E0207,
+        tcx.sess, span, E0207,
         "the {} parameter `{}` is not constrained by the \
         impl trait, self type, or predicates",
         kind, name)
@@ -174,10 +172,9 @@ fn report_unused_parameter(ccx: &CrateCtxt,
 }
 
 /// Enforce that we do not have two items in an impl with the same name.
-fn enforce_impl_items_are_distinct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+fn enforce_impl_items_are_distinct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              impl_item_refs: &[hir::ImplItemRef])
 {
-    let tcx = ccx.tcx;
     let mut seen_type_items = FxHashMap();
     let mut seen_value_items = FxHashMap();
     for impl_item_ref in impl_item_refs {

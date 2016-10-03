@@ -525,6 +525,20 @@ pub struct GlobalCtxt<'tcx> {
     stability_interner: RefCell<FxHashSet<&'tcx attr::Stability>>,
 
     layout_interner: RefCell<FxHashSet<&'tcx Layout>>,
+
+    /// A vector of every trait accessible in the whole crate
+    /// (i.e. including those from subcrates). This is used only for
+    /// error reporting, and so is lazily initialised and generally
+    /// shouldn't taint the common path (hence the RefCell).
+    pub all_traits: RefCell<Option<Vec<DefId>>>,
+
+    /// Obligations which will have to be checked at the end of
+    /// type-checking, after all functions have been inferred.
+    /// The key is the NodeId of the item the obligations were from.
+    pub deferred_obligations: RefCell<NodeMap<Vec<traits::DeferredObligation<'tcx>>>>,
+
+    /// HIR Ty -> Ty lowering cache.
+    pub ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -720,6 +734,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             layout_depth: Cell::new(0),
             derive_macros: RefCell::new(NodeMap()),
             stability_interner: RefCell::new(FxHashSet()),
+            all_traits: RefCell::new(None),
+            deferred_obligations: RefCell::new(NodeMap()),
+            ast_ty_to_ty_cache: RefCell::new(NodeMap()),
        }, f)
     }
 }
