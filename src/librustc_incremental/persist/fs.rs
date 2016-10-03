@@ -234,9 +234,20 @@ pub fn prepare_session_directory(tcx: TyCtxt) -> Result<bool, ()> {
         let print_file_copy_stats = tcx.sess.opts.debugging_opts.incremental_info;
 
         // Try copying over all files from the source directory
-        if copy_files(&session_dir, &source_directory, print_file_copy_stats).is_ok() {
+        if let Ok(allows_links) = copy_files(&session_dir, &source_directory,
+                                             print_file_copy_stats) {
             debug!("successfully copied data from: {}",
                    source_directory.display());
+
+            if !allows_links {
+                tcx.sess.warn(&format!("Hard linking files in the incremental \
+                                        compilation cache failed. Copying files \
+                                        instead. Consider moving the cache \
+                                        directory to a file system which supports \
+                                        hard linking in session dir `{}`",
+                                        session_dir.display())
+                    );
+            }
 
             tcx.sess.init_incr_comp_session(session_dir, directory_lock);
             return Ok(true)
@@ -357,7 +368,7 @@ pub fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
 fn copy_files(target_dir: &Path,
               source_dir: &Path,
               print_stats_on_success: bool)
-              -> Result<(), ()> {
+              -> Result<bool, ()> {
     // We acquire a shared lock on the lock file of the directory, so that
     // nobody deletes it out from under us while we are reading from it.
     let lock_file_path = lock_file_path(source_dir);
@@ -409,7 +420,7 @@ fn copy_files(target_dir: &Path,
         println!("incr. comp. session directory: {} files copied", files_copied);
     }
 
-    Ok(())
+    Ok(files_linked > 0 || files_copied == 0)
 }
 
 /// Generate unique directory path of the form:
