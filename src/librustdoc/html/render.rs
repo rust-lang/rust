@@ -2378,8 +2378,8 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             match v.inner {
                 clean::VariantItem(ref var) => {
                     match var.kind {
-                        clean::CLikeVariant => write!(w, "{}", name)?,
-                        clean::TupleVariant(ref tys) => {
+                        clean::VariantKind::CLike => write!(w, "{}", name)?,
+                        clean::VariantKind::Tuple(ref tys) => {
                             write!(w, "{}(", name)?;
                             for (i, ty) in tys.iter().enumerate() {
                                 if i > 0 {
@@ -2389,7 +2389,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                             }
                             write!(w, ")")?;
                         }
-                        clean::StructVariant(ref s) => {
+                        clean::VariantKind::Struct(ref s) => {
                             render_struct(w,
                                           v,
                                           None,
@@ -2429,7 +2429,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                    ns_id = ns_id,
                    name = variant.name.as_ref().unwrap())?;
             if let clean::VariantItem(ref var) = variant.inner {
-                if let clean::TupleVariant(ref tys) = var.kind {
+                if let clean::VariantKind::Tuple(ref tys) = var.kind {
                     write!(w, "(")?;
                     for (i, ty) in tys.iter().enumerate() {
                         if i > 0 {
@@ -2443,8 +2443,10 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             write!(w, "</code></span></span>")?;
             document(w, cx, variant)?;
 
-            use clean::{Variant, StructVariant};
-            if let clean::VariantItem( Variant { kind: StructVariant(ref s) } ) = variant.inner {
+            use clean::{Variant, VariantKind};
+            if let clean::VariantItem(Variant {
+                kind: VariantKind::Struct(ref s)
+            }) = variant.inner {
                 write!(w, "<h3 class='fields'>Fields</h3>\n
                            <table>")?;
                 for field in &s.fields {

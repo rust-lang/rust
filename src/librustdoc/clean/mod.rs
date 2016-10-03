@@ -12,7 +12,6 @@
 //! that clean them.
 
 pub use self::Type::*;
-pub use self::VariantKind::*;
 pub use self::Mutability::*;
 pub use self::ItemEnum::*;
 pub use self::Attribute::*;
@@ -317,7 +316,7 @@ impl Item {
         match self.inner {
             StructItem(ref _struct) => Some(_struct.fields_stripped),
             UnionItem(ref union) => Some(union.fields_stripped),
-            VariantItem(Variant { kind: StructVariant(ref vstruct)} ) => {
+            VariantItem(Variant { kind: VariantKind::Struct(ref vstruct)} ) => {
                 Some(vstruct.fields_stripped)
             },
             _ => None,
@@ -2034,14 +2033,14 @@ impl Clean<Item> for doctree::Variant {
 impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
         let kind = match self.kind {
-            ty::VariantKind::Unit => CLikeVariant,
+            ty::VariantKind::Unit => VariantKind::CLike,
             ty::VariantKind::Tuple => {
-                TupleVariant(
+                VariantKind::Tuple(
                     self.fields.iter().map(|f| f.unsubst_ty().clean(cx)).collect()
                 )
             }
             ty::VariantKind::Struct => {
-                StructVariant(VariantStruct {
+                VariantKind::Struct(VariantStruct {
                     struct_type: doctree::Plain,
                     fields_stripped: false,
                     fields: self.fields.iter().map(|field| {
@@ -2074,19 +2073,19 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum VariantKind {
-    CLikeVariant,
-    TupleVariant(Vec<Type>),
-    StructVariant(VariantStruct),
+    CLike,
+    Tuple(Vec<Type>),
+    Struct(VariantStruct),
 }
 
 impl Clean<VariantKind> for hir::VariantData {
     fn clean(&self, cx: &DocContext) -> VariantKind {
         if self.is_struct() {
-            StructVariant(self.clean(cx))
+            VariantKind::Struct(self.clean(cx))
         } else if self.is_unit() {
-            CLikeVariant
+            VariantKind::CLike
         } else {
-            TupleVariant(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
+            VariantKind::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
         }
     }
 }
@@ -2552,8 +2551,7 @@ impl Clean<Vec<Item>> for doctree::Import {
                 if remaining.is_empty() {
                     return ret;
                 }
-                (ret, Import::List(resolve_use_source(cx, p.clean(cx), self.id),
-                                   remaining))
+                (ret, Import::List(resolve_use_source(cx, p.clean(cx), self.id), remaining))
             }
             hir::ViewPathSimple(name, ref p) => {
                 if !denied {
