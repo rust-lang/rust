@@ -190,7 +190,7 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
 fn check_set(cx: &LateContext, expr: &Expr, utf8: bool) {
     if_let_chain! {[
         let ExprAddrOf(_, ref expr) = expr.node,
-        let ExprVec(ref exprs) = expr.node,
+        let ExprArray(ref exprs) = expr.node,
     ], {
         for expr in exprs {
             check_regex(cx, expr, utf8);

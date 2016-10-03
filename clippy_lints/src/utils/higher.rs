@@ -180,7 +180,7 @@ pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e
             // `vec![a, b, c]` case
             if_let_chain!{[
                 let hir::ExprBox(ref boxed) = args[0].node,
-                let hir::ExprVec(ref args) = boxed.node
+                let hir::ExprArray(ref args) = boxed.node
             ], {
                 return Some(VecArgs::Vec(&*args));
             }}

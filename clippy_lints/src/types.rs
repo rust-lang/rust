@@ -627,9 +627,9 @@ impl<'v> Visitor<'v> for TypeComplexityVisitor {
 
             // the "normal" components of a type: named types, arrays/tuples
             TyPath(..) |
-            TyVec(..) |
+            TySlice(..) |
             TyTup(..) |
-            TyFixedLengthVec(..) => (10 * self.nest, 1),
+            TyArray(..) => (10 * self.nest, 1),
 
             // "Sum" of trait bounds
             TyObjectSum(..) => (20 * self.nest, 0),

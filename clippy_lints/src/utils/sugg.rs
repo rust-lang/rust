@@ -50,6 +50,7 @@ impl<'a> Sugg<'a> {
                 hir::ExprUnary(..) |
                 hir::ExprMatch(..) => Sugg::MaybeParen(snippet),
                 hir::ExprAgain(..) |
+                hir::ExprArray(..) |
                 hir::ExprBlock(..) |
                 hir::ExprBreak(..) |
                 hir::ExprCall(..) |
@@ -65,7 +66,6 @@ impl<'a> Sugg<'a> {
                 hir::ExprStruct(..) |
                 hir::ExprTup(..) |
                 hir::ExprTupField(..) |
-                hir::ExprVec(..) |
                 hir::ExprWhile(..) => Sugg::NonParen(snippet),
                 hir::ExprAssign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
                 hir::ExprAssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),

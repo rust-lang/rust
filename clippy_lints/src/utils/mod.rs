@@ -750,7 +750,7 @@ pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
                 are_refutable(cx, pats.iter().map(|pat| &**pat))
             }
         }
-        PatKind::Vec(ref head, ref middle, ref tail) => {
+        PatKind::Slice(ref head, ref middle, ref tail) => {
             are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat))
         }
     }
