@@ -11,7 +11,7 @@
 use std::panic;
 
 use errors::FatalError;
-use rustc_macro::{TokenStream, __internal};
+use proc_macro::{TokenStream, __internal};
 use syntax::ast::{self, ItemKind};
 use syntax::codemap::{ExpnInfo, MacroAttribute, NameAndSpan, Span};
 use syntax::ext::base::*;

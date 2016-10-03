@@ -311,7 +311,7 @@ impl<'a> CrateReader<'a> {
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span);
 
         if crate_root.macro_derive_registrar.is_some() {
-            self.sess.span_err(span, "crates of the `rustc-macro` crate type \
+            self.sess.span_err(span, "crates of the `proc-macro` crate type \
                                       cannot be linked at runtime");
         }
 
@@ -609,11 +609,11 @@ impl<'a> CrateReader<'a> {
         match root.macro_derive_registrar {
             Some(id) => ret.custom_derive_registrar = Some(id),
 
-            // If this crate is not a rustc-macro crate then we might be able to
+            // If this crate is not a proc-macro crate then we might be able to
             // register it with the local crate store to prevent loading the
             // metadata twice.
             //
-            // If it's a rustc-macro crate, though, then we definitely don't
+            // If it's a proc-macro crate, though, then we definitely don't
             // want to register it with the local crate store as we're just
             // going to use it as we would a plugin.
             None => {
@@ -625,11 +625,11 @@ impl<'a> CrateReader<'a> {
         self.cstore.add_used_for_derive_macros(item);
         ret.dylib = ekrate.dylib.clone();
         if ret.dylib.is_none() {
-            span_bug!(item.span, "rustc-macro crate not dylib");
+            span_bug!(item.span, "proc-macro crate not dylib");
         }
 
         if ekrate.target_only {
-            let message = format!("rustc-macro crate is not available for \
+            let message = format!("proc-macro crate is not available for \
                                    triple `{}` (only found {})",
                                   config::host_triple(),
                                   self.sess.opts.target_triple);
@@ -804,7 +804,7 @@ impl<'a> CrateReader<'a> {
             match *ct {
                 config::CrateTypeExecutable => need_exe_alloc = true,
                 config::CrateTypeDylib |
-                config::CrateTypeRustcMacro |
+                config::CrateTypeProcMacro |
                 config::CrateTypeCdylib |
                 config::CrateTypeStaticlib => need_lib_alloc = true,
                 config::CrateTypeRlib => {}

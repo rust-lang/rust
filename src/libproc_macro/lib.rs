@@ -8,130 +8,160 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! # Proc_Macro
+//! A support library for macro authors when defining new macros.
 //!
-//! A library for procedural macro writers.
+//! This library, provided by the standard distribution, provides the types
+//! consumed in the interfaces of procedurally defined macro definitions.
+//! Currently the primary use of this crate is to provide the ability to define
+//! new custom derive modes through `#[proc_macro_derive]`.
 //!
-//! ## Usage
-//! This package provides the `qquote!` macro for syntax creation, and the prelude
-//! (at libproc_macro::prelude) provides a number of operations:
-//! - `concat`, for concatenating two TokenStreams.
-//! - `ident_eq`, for checking if two identifiers are equal regardless of syntax context.
-//! - `str_to_token_ident`, for converting an `&str` into a Token.
-//! - `keyword_to_token_delim`, for converting a `parse::token::keywords::Keyword` into a
-//!    Token.
-//! - `build_delimited`, for creating a new TokenStream from an existing one and a delimiter
-//!    by wrapping the TokenStream in the delimiter.
-//! - `build_bracket_delimited`, `build_brace_delimited`, and `build_paren_delimited`, for
-//!    easing the above.
-//! - `build_empty_args`, which returns a TokenStream containing `()`.
-//! - `lex`, which takes an `&str` and returns the TokenStream it represents.
+//! Added recently as part of [RFC 1681] this crate is currently *unstable* and
+//! requires the `#![feature(proc_macro_lib)]` directive to use.
 //!
-//! The `qquote!` macro also imports `syntax::ext::proc_macro_shim::prelude::*`, so you
-//! will need to `extern crate syntax` for usage. (This is a temporary solution until more
-//! of the external API in libproc_macro is stabilized to support the token construction
-//! operations that the qausiquoter relies on.) The shim file also provides additional
-//! operations, such as `build_block_emitter` (as used in the `cond` example below).
+//! [RFC 1681]: https://github.com/rust-lang/rfcs/blob/master/text/1681-macros-1.1.md
 //!
-//! ## TokenStreams
-//!
-//! TokenStreams serve as the basis of the macro system. They are, in essence, vectors of
-//! TokenTrees, where indexing treats delimited values as a single term. That is, the term
-//! `even(a+c) && even(b)` will be indexibly encoded as `even | (a+c) | even | (b)` where,
-//! in reality, `(a+c)` is actually a decorated pointer to `a | + | c`.
-//!
-//! If a user has a TokenStream that is a single, delimited value, they can use
-//! `maybe_delimited` to destruct it and receive the internal vector as a new TokenStream
-//! as:
-//! ```
-//! `(a+c)`.maybe_delimited() ~> Some(a | + | c)`
-//! ```
-//!
-//! Check the TokenStream documentation for more information; the structure also provides
-//! cheap concatenation and slicing.
-//!
-//! ## Quasiquotation
-//!
-//! The quasiquoter creates output that, when run, constructs the tokenstream specified as
-//! input. For example, `qquote!(5 + 5)` will produce a program, that, when run, will
-//! construct the TokenStream `5 | + | 5`.
-//!
-//! ### Unquoting
-//!
-//! Unquoting is currently done as `unquote`, and works by taking the single next
-//! TokenTree in the TokenStream as the unquoted term. Ergonomically, `unquote(foo)` works
-//! fine, but `unquote foo` is also supported.
-//!
-//! A simple example might be:
-//!
-//!```
-//!fn double(tmp: TokenStream) -> TokenStream {
-//!    qquote!(unquote(tmp) * 2)
-//!}
-//!```
-//!
-//! ### Large Example: Implementing Scheme's `cond`
-//!
-//! Below is the full implementation of Scheme's `cond` operator.
-//!
-//! ```
-//! fn cond_rec(input: TokenStream) -> TokenStream {
-//!   if input.is_empty() { return quote!(); }
-//!
-//!   let next = input.slice(0..1);
-//!   let rest = input.slice_from(1..);
-//!
-//!   let clause : TokenStream = match next.maybe_delimited() {
-//!     Some(ts) => ts,
-//!     _ => panic!("Invalid input"),
-//!   };
-//!
-//!   // clause is ([test]) [rhs]
-//!   if clause.len() < 2 { panic!("Invalid macro usage in cond: {:?}", clause) }
-//!
-//!   let test: TokenStream = clause.slice(0..1);
-//!   let rhs: TokenStream = clause.slice_from(1..);
-//!
-//!   if ident_eq(&test[0], str_to_ident("else")) || rest.is_empty() {
-//!     quote!({unquote(rhs)})
-//!   } else {
-//!     quote!({if unquote(test) { unquote(rhs) } else { cond!(unquote(rest)) } })
-//!   }
-//! }
-//! ```
-//!
+//! Note that this crate is intentionally very bare-bones currently. The main
+//! type, `TokenStream`, only supports `fmt::Display` and `FromStr`
+//! implementations, indicating that it can only go to and come from a string.
+//! This functionality is intended to be expanded over time as more surface
+//! area for macro authors is stabilized.
 
 #![crate_name = "proc_macro"]
-#![unstable(feature = "rustc_private", issue = "27812")]
-#![feature(plugin_registrar)]
-#![crate_type = "dylib"]
+#![unstable(feature = "proc_macro_lib", issue = "27812")]
 #![crate_type = "rlib"]
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![crate_type = "dylib"]
 #![cfg_attr(not(stage0), deny(warnings))]
+#![deny(missing_docs)]
 
-#![feature(staged_api)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
+#![feature(staged_api)]
+#![feature(lang_items)]
 
-extern crate rustc_plugin;
 extern crate syntax;
-extern crate syntax_pos;
-#[macro_use] extern crate log;
 
-mod qquote;
-pub mod build;
-pub mod parse;
-pub mod prelude;
-use qquote::qquote;
+use std::fmt;
+use std::str::FromStr;
 
-use rustc_plugin::Registry;
+use syntax::ast;
+use syntax::parse;
+use syntax::ptr::P;
 
-// ____________________________________________________________________________________________
-// Main macro definition
+/// The main type provided by this crate, representing an abstract stream of
+/// tokens.
+///
+/// This is both the input and output of `#[proc_macro_derive]` definitions.
+/// Currently it's required to be a list of valid Rust items, but this
+/// restriction may be lifted in the future.
+///
+/// The API of this type is intentionally bare-bones, but it'll be expanded over
+/// time!
+pub struct TokenStream {
+    inner: Vec<P<ast::Item>>,
+}
 
-#[plugin_registrar]
-pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_macro("qquote", qquote);
+/// Error returned from `TokenStream::from_str`.
+#[derive(Debug)]
+pub struct LexError {
+    _inner: (),
+}
+
+/// Permanently unstable internal implementation details of this crate. This
+/// should not be used.
+///
+/// These methods are used by the rest of the compiler to generate instances of
+/// `TokenStream` to hand to macro definitions, as well as consume the output.
+///
+/// Note that this module is also intentionally separate from the rest of the
+/// crate. This allows the `#[unstable]` directive below to naturally apply to
+/// all of the contents.
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
+#[doc(hidden)]
+pub mod __internal {
+    use std::cell::Cell;
+
+    use syntax::ast;
+    use syntax::ptr::P;
+    use syntax::parse::ParseSess;
+    use super::TokenStream;
+
+    pub fn new_token_stream(item: P<ast::Item>) -> TokenStream {
+        TokenStream { inner: vec![item] }
+    }
+
+    pub fn token_stream_items(stream: TokenStream) -> Vec<P<ast::Item>> {
+        stream.inner
+    }
+
+    pub trait Registry {
+        fn register_custom_derive(&mut self,
+                                  trait_name: &str,
+                                  expand: fn(TokenStream) -> TokenStream);
+    }
+
+    // Emulate scoped_thread_local!() here essentially
+    thread_local! {
+        static CURRENT_SESS: Cell<*const ParseSess> = Cell::new(0 as *const _);
+    }
+
+    pub fn set_parse_sess<F, R>(sess: &ParseSess, f: F) -> R
+        where F: FnOnce() -> R
+    {
+        struct Reset { prev: *const ParseSess }
+
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                CURRENT_SESS.with(|p| p.set(self.prev));
+            }
+        }
+
+        CURRENT_SESS.with(|p| {
+            let _reset = Reset { prev: p.get() };
+            p.set(sess);
+            f()
+        })
+    }
+
+    pub fn with_parse_sess<F, R>(f: F) -> R
+        where F: FnOnce(&ParseSess) -> R
+    {
+        let p = CURRENT_SESS.with(|p| p.get());
+        assert!(!p.is_null());
+        f(unsafe { &*p })
+    }
+}
+
+impl FromStr for TokenStream {
+    type Err = LexError;
+
+    fn from_str(src: &str) -> Result<TokenStream, LexError> {
+        __internal::with_parse_sess(|sess| {
+            let src = src.to_string();
+            let cfg = Vec::new();
+            let name = "<proc-macro source code>".to_string();
+            let mut parser = parse::new_parser_from_source_str(sess, cfg, name,
+                                                               src);
+            let mut ret = TokenStream { inner: Vec::new() };
+            loop {
+                match parser.parse_item() {
+                    Ok(Some(item)) => ret.inner.push(item),
+                    Ok(None) => return Ok(ret),
+                    Err(mut err) => {
+                        err.cancel();
+                        return Err(LexError { _inner: () })
+                    }
+                }
+            }
+        })
+    }
+}
+
+impl fmt::Display for TokenStream {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for item in self.inner.iter() {
+            let item = syntax::print::pprust::item_to_string(item);
+            try!(f.write_str(&item));
+            try!(f.write_str("\n"));
+        }
+        Ok(())
+    }
 }
