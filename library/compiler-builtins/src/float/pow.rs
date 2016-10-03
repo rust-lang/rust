@@ -31,22 +31,19 @@ pow!(__powidf2: f64, i32);
 
 #[cfg(test)]
 mod tests {
-    use float::{Float, FRepr};
-    use qc::{I32, U32, U64};
+    use qc::{I32, F32, F64};
 
     check! {
         fn __powisf2(f: extern fn(f32, i32) -> f32, 
-                     a: U32, 
-                     b: I32) -> Option<FRepr<f32> > {
-            let (a, b) = (f32::from_repr(a.0), b.0);
-            Some(FRepr(f(a, b)))
+                     a: F32,
+                     b: I32) -> Option<F32> {
+            Some(F32(f(a.0, b.0)))
         }
 
         fn __powidf2(f: extern fn(f64, i32) -> f64, 
-                     a: U64, 
-                     b: I32) -> Option<FRepr<f64> > {
-            let (a, b) = (f64::from_repr(a.0), b.0);
-            Some(FRepr(f(a, b)))
+                     a: F64,
+                     b: I32) -> Option<F64> {
+            Some(F64(f(a.0, b.0)))
         }
     }
 }

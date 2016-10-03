@@ -424,8 +424,8 @@ fn main() {
     }
 
     // To filter away some flaky test (see src/float/add.rs for details)
-    if llvm_target.last() == Some(&"gnueabihf") {
-        println!("cargo:rustc-cfg=gnueabihf")
+    if llvm_target.last().unwrap().contains("gnueabi") {
+        println!("cargo:rustc-cfg=gnueabi")
     }
 
     // To compile intrinsics.rs for thumb targets, where there is no libc

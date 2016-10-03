@@ -5,10 +5,12 @@
 
 use std::boxed::Box;
 use std::fmt;
+use core::{f32, f64};
 
 use quickcheck::{Arbitrary, Gen};
 
 use int::LargeInt;
+use float::Float;
 
 // Generates values in the full range of the integer type
 macro_rules! arbitrary {
@@ -142,6 +144,61 @@ macro_rules! arbitrary_large {
 
 arbitrary_large!(I64: i64);
 arbitrary_large!(U64: u64);
+
+macro_rules! arbitrary_float {
+    ($TY:ident : $ty:ident) => {
+        #[derive(Clone, Copy)]
+        pub struct $TY(pub $ty);
+
+        impl Arbitrary for $TY {
+            fn arbitrary<G>(g: &mut G) -> $TY
+                where G: Gen
+            {
+                let special = [
+                    -0.0, 0.0, $ty::NAN, $ty::INFINITY, -$ty::INFINITY
+                ];
+
+                if g.gen_weighted_bool(10) { // Random special case
+                    $TY(*g.choose(&special).unwrap())
+                } else if g.gen_weighted_bool(10) { // NaN variants
+                    let sign: bool = g.gen();
+                    let exponent: <$ty as Float>::Int = g.gen();
+                    let significand: <$ty as Float>::Int = 0;
+                    $TY($ty::from_parts(sign, exponent, significand))
+                } else if g.gen() { // Denormalized
+                    let sign: bool = g.gen();
+                    let exponent: <$ty as Float>::Int = 0;
+                    let significand: <$ty as Float>::Int = g.gen();
+                    $TY($ty::from_parts(sign, exponent, significand))
+                } else { // Random anything
+                    let sign: bool = g.gen();
+                    let exponent: <$ty as Float>::Int = g.gen();
+                    let significand: <$ty as Float>::Int = g.gen();
+                    $TY($ty::from_parts(sign, exponent, significand))
+                }
+            }
+
+            fn shrink(&self) -> Box<Iterator<Item=$TY>> {
+                ::quickcheck::empty_shrinker()
+            }
+        }
+
+        impl fmt::Debug for $TY {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Debug::fmt(&self.0, f)
+            }
+        }
+
+        impl PartialEq for $TY {
+            fn eq(&self, other: &$TY) -> bool {
+                self.0.eq_repr(other.0)
+            }
+        }
+    }
+}
+
+arbitrary_float!(F32: f32);
+arbitrary_float!(F64: f64);
 
 // Convenience macro to test intrinsics against their reference implementations.
 //

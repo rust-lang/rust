@@ -1,6 +1,4 @@
 use core::mem;
-#[cfg(test)]
-use core::fmt;
 
 pub mod add;
 pub mod pow;
@@ -16,22 +14,41 @@ pub trait Float: Sized + Copy {
     /// Returns the bitwidth of the significand
     fn significand_bits() -> u32;
 
+    /// Returns the bitwidth of the exponent
+    fn exponent_bits() -> u32 {
+        Self::bits() - Self::significand_bits() - 1
+    }
+
+    /// Returns a mask for the sign bit
+    fn sign_mask() -> Self::Int;
+
+    /// Returns a mask for the significand
+    fn significand_mask() -> Self::Int;
+
+    /// Returns a mask for the exponent
+    fn exponent_mask() -> Self::Int;
+
     /// Returns `self` transmuted to `Self::Int`
     fn repr(self) -> Self::Int;
 
     #[cfg(test)]
     /// Checks if two floats have the same bit representation. *Except* for NaNs! NaN can be
-    /// represented in multiple different ways. This methods returns `true` if two NaNs are
+    /// represented in multiple different ways. This method returns `true` if two NaNs are
     /// compared.
     fn eq_repr(self, rhs: Self) -> bool;
 
     /// Returns a `Self::Int` transmuted back to `Self`
     fn from_repr(a: Self::Int) -> Self;
 
+    /// Constructs a `Self` from its parts. Inputs are treated as bits and shifted into position.
+    fn from_parts(sign: bool, exponent: Self::Int, significand: Self::Int) -> Self;
+
     /// Returns (normalized exponent, normalized significand)
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
 }
 
+// FIXME: Some of this can be removed if RFC Issue #1424 is resolved
+//        https://github.com/rust-lang/rfcs/issues/1424
 impl Float for f32 {
     type Int = u32;
     fn bits() -> u32 {
@@ -39,6 +56,15 @@ impl Float for f32 {
     }
     fn significand_bits() -> u32 {
         23
+    }
+    fn sign_mask() -> Self::Int {
+        1 << (Self::bits() - 1)
+    }
+    fn significand_mask() -> Self::Int {
+        (1 << Self::significand_bits()) - 1
+    }
+    fn exponent_mask() -> Self::Int {
+        !(Self::sign_mask() | Self::significand_mask())
     }
     fn repr(self) -> Self::Int {
         unsafe { mem::transmute(self) }
@@ -53,6 +79,11 @@ impl Float for f32 {
     }
     fn from_repr(a: Self::Int) -> Self {
         unsafe { mem::transmute(a) }
+    }
+    fn from_parts(sign: bool, exponent: Self::Int, significand: Self::Int) -> Self {
+        Self::from_repr(((sign as Self::Int) << (Self::bits() - 1)) |
+            ((exponent << Self::significand_bits()) & Self::exponent_mask()) |
+            (significand & Self::significand_mask()))
     }
     fn normalize(significand: Self::Int) -> (i32, Self::Int) {
         let shift = significand.leading_zeros()
@@ -68,6 +99,15 @@ impl Float for f64 {
     fn significand_bits() -> u32 {
         52
     }
+    fn sign_mask() -> Self::Int {
+        1 << (Self::bits() - 1)
+    }
+    fn significand_mask() -> Self::Int {
+        (1 << Self::significand_bits()) - 1
+    }
+    fn exponent_mask() -> Self::Int {
+        !(Self::sign_mask() | Self::significand_mask())
+    }
     fn repr(self) -> Self::Int {
         unsafe { mem::transmute(self) }
     }
@@ -82,36 +122,14 @@ impl Float for f64 {
     fn from_repr(a: Self::Int) -> Self {
         unsafe { mem::transmute(a) }
     }
+    fn from_parts(sign: bool, exponent: Self::Int, significand: Self::Int) -> Self {
+        Self::from_repr(((sign as Self::Int) << (Self::bits() - 1)) |
+            ((exponent << Self::significand_bits()) & Self::exponent_mask()) |
+            (significand & Self::significand_mask()))
+    }
     fn normalize(significand: Self::Int) -> (i32, Self::Int) {
         let shift = significand.leading_zeros()
             .wrapping_sub((1u64 << Self::significand_bits()).leading_zeros());
         (1i32.wrapping_sub(shift as i32), significand << shift as Self::Int)
-    }
-}
-
-// TODO: Move this to F32/F64 in qc.rs
-#[cfg(test)]
-#[derive(Copy, Clone)]
-pub struct FRepr<F>(F);
-
-#[cfg(test)]
-impl<F: Float> PartialEq for FRepr<F> {
-    fn eq(&self, other: &FRepr<F>) -> bool {
-        // NOTE(cfg) for some reason, on hard float targets, our implementation doesn't
-        // match the output of its gcc_s counterpart. Until we investigate further, we'll
-        // just avoid testing against gcc_s on those targets. Do note that our
-        // implementation matches the output of the FPU instruction on *hard* float targets
-        // and matches its gcc_s counterpart on *soft* float targets.
-        if cfg!(gnueabihf) {
-            return true
-        }
-        self.0.eq_repr(other.0)
-    }
-}
-
-#[cfg(test)]
-impl<F: fmt::Debug> fmt::Debug for FRepr<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
