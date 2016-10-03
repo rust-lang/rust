@@ -186,13 +186,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let mir = self.load_mir(resolved_def_id)?;
                 let (return_ptr, return_to_block) = match destination {
-                    Some((ptr, block)) => (Some(ptr), StackPopCleanup::Goto(block)),
-                    None => (None, StackPopCleanup::None),
+                    Some((ptr, block)) => (ptr, StackPopCleanup::Goto(block)),
+                    None => (Pointer::never_ptr(), StackPopCleanup::None),
                 };
                 self.push_stack_frame(resolved_def_id, span, mir, resolved_substs, return_ptr, return_to_block)?;
 
                 for (i, (arg_val, arg_ty)) in args.into_iter().enumerate() {
-                    let dest = self.frame().locals[i];
+                    // argument start at index 1, since index 0 is reserved for the return allocation
+                    let dest = self.frame().locals[i + 1];
                     self.write_value(arg_val, dest, arg_ty)?;
                 }
 
