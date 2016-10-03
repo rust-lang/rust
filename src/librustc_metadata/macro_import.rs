@@ -17,13 +17,13 @@ use std::mem;
 
 use creader::{CrateLoader, Macros};
 
+use proc_macro::TokenStream;
+use proc_macro::__internal::Registry;
 use rustc::hir::def_id::DefIndex;
 use rustc::middle::cstore::{LoadedMacro, LoadedMacroKind};
 use rustc::session::Session;
 use rustc::util::nodemap::FnvHashMap;
 use rustc_back::dynamic_lib::DynamicLibrary;
-use rustc_macro::TokenStream;
-use rustc_macro::__internal::Registry;
 use syntax::ast;
 use syntax::attr;
 use syntax::parse::token;
@@ -145,13 +145,13 @@ impl<'a> CrateLoader<'a> {
             assert_eq!(ret.len(), 0);
 
             if let ImportSelection::Some(..) = import {
-                self.sess.span_err(vi.span, "`rustc-macro` crates cannot be \
+                self.sess.span_err(vi.span, "`proc-macro` crates cannot be \
                                              selectively imported from, must \
                                              use `#[macro_use]`");
             }
 
             if reexport.len() > 0 {
-                self.sess.span_err(vi.span, "`rustc-macro` crates cannot be \
+                self.sess.span_err(vi.span, "`proc-macro` crates cannot be \
                                              reexported from");
             }
 

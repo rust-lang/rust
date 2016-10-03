@@ -493,7 +493,7 @@ pub struct GlobalCtxt<'tcx> {
     pub layout_depth: Cell<usize>,
 
     /// Map from function to the `#[derive]` mode that it's defining. Only used
-    /// by `rustc-macro` crates.
+    /// by `proc-macro` crates.
     pub derive_macros: RefCell<NodeMap<token::InternedString>>,
 }
 

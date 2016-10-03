@@ -710,14 +710,14 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         krate = time(time_passes, "maybe creating a macro crate", || {
             let crate_types = sess.crate_types.borrow();
             let num_crate_types = crate_types.len();
-            let is_rustc_macro_crate = crate_types.contains(&config::CrateTypeRustcMacro);
-            syntax_ext::rustc_macro_registrar::modify(&sess.parse_sess,
-                                                      &mut resolver,
-                                                      krate,
-                                                      is_rustc_macro_crate,
-                                                      num_crate_types,
-                                                      sess.diagnostic(),
-                                                      &sess.features.borrow())
+            let is_proc_macro_crate = crate_types.contains(&config::CrateTypeProcMacro);
+            syntax_ext::proc_macro_registrar::modify(&sess.parse_sess,
+                                                     &mut resolver,
+                                                     krate,
+                                                     is_proc_macro_crate,
+                                                     num_crate_types,
+                                                     sess.diagnostic(),
+                                                     &sess.features.borrow())
         });
     }
 
@@ -1181,8 +1181,8 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                          Some(ref n) if *n == "staticlib" => {
                              Some(config::CrateTypeStaticlib)
                          }
-                         Some(ref n) if *n == "rustc-macro" => {
-                             Some(config::CrateTypeRustcMacro)
+                         Some(ref n) if *n == "proc-macro" => {
+                             Some(config::CrateTypeProcMacro)
                          }
                          Some(ref n) if *n == "bin" => Some(config::CrateTypeExecutable),
                          Some(_) => {

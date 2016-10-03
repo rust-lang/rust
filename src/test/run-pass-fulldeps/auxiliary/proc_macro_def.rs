@@ -10,11 +10,11 @@
 
 #![feature(plugin, plugin_registrar, rustc_private)]
 
-extern crate proc_macro;
+extern crate proc_macro_plugin;
 extern crate rustc_plugin;
 extern crate syntax;
 
-use proc_macro::prelude::*;
+use proc_macro_plugin::prelude::*;
 use rustc_plugin::Registry;
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::proc_macro_shim::prelude::*;
