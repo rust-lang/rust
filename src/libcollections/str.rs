@@ -1053,10 +1053,10 @@ impl str {
     }
 
     /// An iterator over substrings of the given string slice, separated by a
-    /// pattern, restricted to returning at most `count` items.
+    /// pattern, restricted to returning at most `n` items.
     ///
-    /// The last element returned, if any, will contain the remainder of the
-    /// string slice.
+    /// If `n` substrings are returned, the last substring (the `n`th substring)
+    /// will contain the remainder of the string.
     ///
     /// The pattern can be a `&str`, [`char`], or a closure that determines the
     /// split.
@@ -1098,16 +1098,16 @@ impl str {
     /// assert_eq!(v, ["abc", "defXghi"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
-        core_str::StrExt::splitn(self, count, pat)
+    pub fn splitn<'a, P: Pattern<'a>>(&'a self, n: usize, pat: P) -> SplitN<'a, P> {
+        core_str::StrExt::splitn(self, n, pat)
     }
 
     /// An iterator over substrings of this string slice, separated by a
     /// pattern, starting from the end of the string, restricted to returning
-    /// at most `count` items.
+    /// at most `n` items.
     ///
-    /// The last element returned, if any, will contain the remainder of the
-    /// string slice.
+    /// If `n` substrings are returned, the last substring (the `n`th substring)
+    /// will contain the remainder of the string.
     ///
     /// The pattern can be a `&str`, [`char`], or a closure that
     /// determines the split.
@@ -1145,10 +1145,10 @@ impl str {
     /// assert_eq!(v, ["ghi", "abc1def"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
+    pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, n: usize, pat: P) -> RSplitN<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
-        core_str::StrExt::rsplitn(self, count, pat)
+        core_str::StrExt::rsplitn(self, n, pat)
     }
 
     /// An iterator over the matches of a pattern within the given string
