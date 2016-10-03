@@ -2,6 +2,8 @@
 All notable changes to this project will be documented in this file.
 
 ## 0.0.93 — ?
+* [`option_map_unwrap_or`] and [`option_map_unwrap_or_else`] are now
+  allowed by default.
 * New lint: [`explicit_into_iter_loop`]
 
 ## 0.0.92 — 2016-09-30
