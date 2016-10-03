@@ -37,8 +37,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         match (&left.node, &right.node) {
             (&StmtDecl(ref l, _), &StmtDecl(ref r, _)) => {
                 if let (&DeclLocal(ref l), &DeclLocal(ref r)) = (&l.node, &r.node) {
-                    // TODO: tys
-                    l.ty.is_none() && r.ty.is_none() && both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
+                    both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r)) &&
+                    both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
                 } else {
                     false
                 }
@@ -85,7 +85,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprCall(ref l_fun, ref l_args), &ExprCall(ref r_fun, ref r_args)) => {
                 !self.ignore_fn && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
             }
-            (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) => self.eq_expr(lx, rx) && self.eq_ty(lt, rt),
+            (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) |
+            (&ExprType(ref lx, ref lt), &ExprType(ref rx, ref rt)) => {
+                self.eq_expr(lx, rx) && self.eq_ty(lt, rt)
+            }
             (&ExprField(ref l_f_exp, ref l_f_ident), &ExprField(ref r_f_exp, ref r_f_ident)) => {
                 l_f_ident.node == r_f_ident.node && self.eq_expr(l_f_exp, r_f_exp)
             }
@@ -106,8 +109,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             }
             (&ExprMethodCall(ref l_name, ref l_tys, ref l_args),
              &ExprMethodCall(ref r_name, ref r_tys, ref r_args)) => {
-                // TODO: tys
-                !self.ignore_fn && l_name.node == r_name.node && l_tys.is_empty() && r_tys.is_empty() &&
+                !self.ignore_fn && l_name.node == r_name.node &&
+                over(l_tys, r_tys, |l, r| self.eq_ty(l, r)) &&
                 self.eq_exprs(l_args, r_args)
             }
             (&ExprRepeat(ref le, ref ll), &ExprRepeat(ref re, ref rl)) => self.eq_expr(le, re) && self.eq_expr(ll, rl),
@@ -136,6 +139,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
     fn eq_field(&self, left: &Field, right: &Field) -> bool {
         left.name.node == right.name.node && self.eq_expr(&left.expr, &right.expr)
+    }
+
+    fn eq_lifetime(&self, left: &Lifetime, right: &Lifetime) -> bool {
+        left.name == right.name
     }
 
     /// Check whether two patterns are the same.
@@ -169,12 +176,33 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     }
 
     fn eq_path(&self, left: &Path, right: &Path) -> bool {
+        left.global == right.global &&
+        over(&left.segments, &right.segments, |l, r| self.eq_path_segment(l, r))
+    }
+
+    fn eq_path_parameters(&self, left: &PathParameters, right: &PathParameters) -> bool {
+        match (left, right) {
+            (&AngleBracketedParameters(ref left), &AngleBracketedParameters(ref right)) => {
+                over(&left.lifetimes, &right.lifetimes, |l, r| self.eq_lifetime(l, r)) &&
+                over(&left.types, &right.types, |l, r| self.eq_ty(l, r)) &&
+                over(&left.bindings, &right.bindings, |l, r| self.eq_type_binding(l, r))
+            }
+            (&ParenthesizedParameters(ref left), &ParenthesizedParameters(ref right)) => {
+                over(&left.inputs, &right.inputs, |l, r| self.eq_ty(l, r)) &&
+                both(&left.output, &right.output, |l, r| self.eq_ty(l, r))
+            }
+            (&AngleBracketedParameters(_), &ParenthesizedParameters(_)) |
+            (&ParenthesizedParameters(_), &AngleBracketedParameters(_)) => {
+                false
+            }
+        }
+    }
+
+    fn eq_path_segment(&self, left: &PathSegment, right: &PathSegment) -> bool {
         // The == of idents doesn't work with different contexts,
         // we have to be explicit about hygiene
-        left.global == right.global &&
-        over(&left.segments,
-             &right.segments,
-             |l, r| l.name.as_str() == r.name.as_str() && l.parameters == r.parameters)
+        left.name.as_str() == right.name.as_str() &&
+        self.eq_path_parameters(&left.parameters, &right.parameters)
     }
 
     fn eq_qself(&self, left: &QSelf, right: &QSelf) -> bool {
@@ -198,6 +226,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&TyInfer, &TyInfer) => true,
             _ => false,
         }
+    }
+
+    fn eq_type_binding(&self, left: &TypeBinding, right: &TypeBinding) -> bool {
+        left.name == right.name && self.eq_ty(&left.ty, &right.ty)
     }
 }
 
@@ -445,10 +477,11 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(le);
                 li.node.hash(&mut self.s);
             }
-            ExprType(_, _) => {
+            ExprType(ref e, ref _ty) => {
                 let c: fn(_, _) -> _ = ExprType;
                 c.hash(&mut self.s);
-                // what’s an ExprType anyway?
+                self.hash_expr(e);
+                // TODO: _ty
             }
             ExprUnary(lop, ref le) => {
                 let c: fn(_, _) -> _ = ExprUnary;
@@ -495,10 +528,15 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_stmt(&mut self, b: &Stmt) {
         match b.node {
-            StmtDecl(ref _decl, _) => {
+            StmtDecl(ref decl, _) => {
                 let c: fn(_, _) -> _ = StmtDecl;
                 c.hash(&mut self.s);
-                // TODO: decl
+
+                if let DeclLocal(ref local) = decl.node {
+                    if let Some(ref init) = local.init {
+                        self.hash_expr(init);
+                    }
+                }
             }
             StmtExpr(ref expr, _) => {
                 let c: fn(_, _) -> _ = StmtExpr;

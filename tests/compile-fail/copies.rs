@@ -49,6 +49,13 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
+        ();
+    }
+    else {
+        ()
+    }
+
+    if true {
         0..10;
     }
     else {
@@ -63,14 +70,27 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         foo();
     }
 
-    let _ = if true {
-        //~^NOTE same as this
-        foo();
-        42
-    }
-    else { //~ERROR this `if` has identical blocks
-        foo();
-        42
+    let _ = match 42 {
+        42 => {
+            //~^ NOTE same as this
+            //~| NOTE refactoring
+            foo();
+            let mut a = 42 + [23].len() as i32;
+            if true {
+                a += 7;
+            }
+            a = -31-a;
+            a
+        }
+        _ => { //~ERROR this `match` has identical arm bodies
+            foo();
+            let mut a = 42 + [23].len() as i32;
+            if true {
+                a += 7;
+            }
+            a = -31-a;
+            a
+        }
     };
 
     if true {
@@ -84,6 +104,28 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     else { //~ERROR this `if` has identical blocks
         42
     };
+
+    if true {
+        //~^NOTE same as this
+        for _ in &[42] {
+            let foo: &Option<_> = &Some::<u8>(42);
+            if true {
+                break;
+            } else {
+                continue;
+            }
+        }
+    }
+    else { //~ERROR this `if` has identical blocks
+        for _ in &[42] {
+            let foo: &Option<_> = &Some::<u8>(42);
+            if true {
+                break;
+            } else {
+                continue;
+            }
+        }
+    }
 
     if true {
         //~^NOTE same as this
@@ -165,6 +207,20 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
     else {
         if let (.., 1, 3) = (1, 2, 3) {}
+    }
+
+    if true {
+        if let Some(42) = None {}
+    }
+    else {
+        if let Option::Some(42) = None {}
+    }
+
+    if true {
+        if let Some(42) = None::<u8> {}
+    }
+    else {
+        if let Some(42) = None {}
     }
 
     if true {
