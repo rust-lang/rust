@@ -604,6 +604,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             TypeOrigin::IfExpressionWithNoElse(_) => {
                 struct_span_err!(self.tcx.sess, span, E0317, "{}", failure_str)
             },
+            TypeOrigin::MainFunctionType(_) => {
+                struct_span_err!(self.tcx.sess, span, E0330, "{}", failure_str)
+            },
             _ => {
                 struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str)
             },

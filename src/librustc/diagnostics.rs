@@ -1310,6 +1310,14 @@ error. To resolve it, add an `else` block having the same type as the `if`
 block.
 "##,
 
+E0330: r##"
+The `main` function is required to have the signature `fn main() { ... }`, with
+no arguments and a return type of `()`.
+
+To access command-line arguments, use `std::env::args`. To terminate the process
+with a specified exit code, use `std::process::exit`.
+"##,
+
 E0398: r##"
 In Rust 1.3, the default object lifetime bounds are expected to change, as
 described in RFC #1156 [1]. You are getting a warning because the compiler
