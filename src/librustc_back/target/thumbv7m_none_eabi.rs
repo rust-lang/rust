@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Targets the Cortex-M3 processor (ARMv7-M)
+
 use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {

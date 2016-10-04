@@ -8,6 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Targets the Cortex-M4 and Cortex-M7 processors (ARMv7E-M)
+//
+// This target assumes that the device doesn't have a FPU (Floating Point Unit) and lowers all the
+// floating point operations to software routines (intrinsics).
+//
+// As such, this target uses the "soft" calling convention (ABI) where floating point values are
+// passed to/from subroutines via general purpose registers (R0, R1, etc.).
+//
+// To opt-in to hardware accelerated floating point operations, you can use, for example,
+// `-C target-feature=+vfp4` or `-C target-cpu=cortex-m4`.
+
 use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
