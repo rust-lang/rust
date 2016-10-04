@@ -160,8 +160,16 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         debug!("collapsing goto chain from {:?} to {:?}", *start, target);
 
         *changed |= *start != target;
-        self.pred_count[target] += 1;
-        self.pred_count[*start] -= 1;
+
+        if self.pred_count[*start] == 1 {
+            // This is the last reference to *start, so the pred-count to
+            // to target is moved into the current block.
+            self.pred_count[*start] = 0;
+        } else {
+            self.pred_count[target] += 1;
+            self.pred_count[*start] -= 1;
+        }
+
         *start = target;
     }
 
