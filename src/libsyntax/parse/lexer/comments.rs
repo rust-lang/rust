@@ -149,7 +149,7 @@ fn push_blank_line_comment(rdr: &StringReader, comments: &mut Vec<Comment>) {
     comments.push(Comment {
         style: BlankLine,
         lines: Vec::new(),
-        pos: rdr.last_pos,
+        pos: rdr.pos,
     });
 }
 
@@ -167,7 +167,7 @@ fn read_shebang_comment(rdr: &mut StringReader,
                         code_to_the_left: bool,
                         comments: &mut Vec<Comment>) {
     debug!(">>> shebang comment");
-    let p = rdr.last_pos;
+    let p = rdr.pos;
     debug!("<<< shebang comment");
     comments.push(Comment {
         style: if code_to_the_left { Trailing } else { Isolated },
@@ -180,7 +180,7 @@ fn read_line_comments(rdr: &mut StringReader,
                       code_to_the_left: bool,
                       comments: &mut Vec<Comment>) {
     debug!(">>> line comments");
-    let p = rdr.last_pos;
+    let p = rdr.pos;
     let mut lines: Vec<String> = Vec::new();
     while rdr.curr_is('/') && rdr.nextch_is('/') {
         let line = rdr.read_one_line_comment();
@@ -240,7 +240,7 @@ fn read_block_comment(rdr: &mut StringReader,
                       code_to_the_left: bool,
                       comments: &mut Vec<Comment>) {
     debug!(">>> block comment");
-    let p = rdr.last_pos;
+    let p = rdr.pos;
     let mut lines: Vec<String> = Vec::new();
     let col = rdr.col;
     rdr.bump();
@@ -369,7 +369,7 @@ pub fn gather_comments_and_literals(span_diagnostic: &errors::Handler,
         }
 
 
-        let bstart = rdr.last_pos;
+        let bstart = rdr.pos;
         rdr.next_token();
         // discard, and look ahead; we're working with internal state
         let TokenAndSpan { tok, sp } = rdr.peek();
