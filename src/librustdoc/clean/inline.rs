@@ -301,8 +301,8 @@ pub fn build_impls<'a, 'tcx>(cx: &DocContext,
         tcx.lang_items.char_impl(),
         tcx.lang_items.str_impl(),
         tcx.lang_items.slice_impl(),
-        tcx.lang_items.slice_impl(),
-        tcx.lang_items.const_ptr_impl()
+        tcx.lang_items.const_ptr_impl(),
+        tcx.lang_items.mut_ptr_impl(),
     ];
 
     for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {
