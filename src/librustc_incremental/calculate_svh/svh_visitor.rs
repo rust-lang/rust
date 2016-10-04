@@ -611,11 +611,13 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             Def::Mod(..) |
             Def::Static(..) |
             Def::Variant(..) |
+            Def::VariantCtor(..) |
             Def::Enum(..) |
             Def::TyAlias(..) |
             Def::AssociatedTy(..) |
             Def::TyParam(..) |
             Def::Struct(..) |
+            Def::StructCtor(..) |
             Def::Union(..) |
             Def::Trait(..) |
             Def::Method(..) |

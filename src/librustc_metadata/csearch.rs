@@ -149,7 +149,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.dep_graph.read(DepNode::MetaData(def_id));
         let mut result = vec![];
         self.get_crate_data(def_id.krate)
-            .each_child_of_item(def_id.index, |child| result.push(child.def_id));
+            .each_child_of_item(def_id.index, |child| result.push(child.def.def_id()));
         result
     }
 
@@ -340,18 +340,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         //
         // self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).def_path(def.index)
-    }
-
-    fn variant_kind(&self, def_id: DefId) -> Option<ty::VariantKind>
-    {
-        self.dep_graph.read(DepNode::MetaData(def_id));
-        self.get_crate_data(def_id.krate).get_variant_kind(def_id.index)
-    }
-
-    fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
-    {
-        self.dep_graph.read(DepNode::MetaData(struct_def_id));
-        self.get_crate_data(struct_def_id.krate).get_struct_ctor_def_id(struct_def_id.index)
     }
 
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>
@@ -566,7 +554,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
             let mut bfs_queue = &mut VecDeque::new();
             let mut add_child = |bfs_queue: &mut VecDeque<_>, child: def::Export, parent: DefId| {
-                let child = child.def_id;
+                let child = child.def.def_id();
 
                 if self.visibility(child) != ty::Visibility::Public {
                     return;

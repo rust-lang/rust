@@ -485,7 +485,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              E0531,
                              "unresolved {} `{}`",
                              expected_what,
-                             path.segments.last().unwrap().identifier)
+                             path)
         }
         ResolutionError::PatPathUnexpected(expected_what, found_what, path) => {
             struct_span_err!(resolver.session,
@@ -494,7 +494,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "expected {}, found {} `{}`",
                              expected_what,
                              found_what,
-                             path.segments.last().unwrap().identifier)
+                             path)
         }
     }
 }
@@ -924,7 +924,8 @@ impl<'a> NameBinding<'a> {
 
     fn is_variant(&self) -> bool {
         match self.kind {
-            NameBindingKind::Def(Def::Variant(..)) => true,
+            NameBindingKind::Def(Def::Variant(..)) |
+            NameBindingKind::Def(Def::VariantCtor(..)) => true,
             _ => false,
         }
     }
@@ -1005,7 +1006,9 @@ pub struct Resolver<'a> {
 
     trait_item_map: FnvHashMap<(Name, DefId), bool /* is static method? */>,
 
-    structs: FnvHashMap<DefId, Vec<Name>>,
+    // Names of fields of an item `DefId` accessible with dot syntax.
+    // Used for hints during error reporting.
+    field_names: FnvHashMap<DefId, Vec<Name>>,
 
     // All imports known to succeed or fail.
     determined_imports: Vec<&'a ImportDirective<'a>>,
@@ -1217,7 +1220,7 @@ impl<'a> Resolver<'a> {
             prelude: None,
 
             trait_item_map: FnvHashMap(),
-            structs: FnvHashMap(),
+            field_names: FnvHashMap(),
 
             determined_imports: Vec::new(),
             indeterminate_imports: Vec::new(),
@@ -2373,15 +2376,16 @@ impl<'a> Resolver<'a> {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
                                              bmode != BindingMode::ByValue(Mutability::Immutable);
                         match def {
-                            Def::Struct(..) | Def::Variant(..) |
-                            Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
-                                // A constant, unit variant, etc pattern.
+                            Def::StructCtor(_, CtorKind::Const) |
+                            Def::VariantCtor(_, CtorKind::Const) |
+                            Def::Const(..) if !always_binding => {
+                                // A unit struct/variant or constant pattern.
                                 let name = ident.node.name;
                                 self.record_use(name, ValueNS, binding.unwrap(), ident.span);
                                 Some(PathResolution::new(def))
                             }
-                            Def::Struct(..) | Def::Variant(..) |
-                            Def::Const(..) | Def::AssociatedConst(..) | Def::Static(..) => {
+                            Def::StructCtor(..) | Def::VariantCtor(..) |
+                            Def::Const(..) | Def::Static(..) => {
                                 // A fresh binding that shadows something unacceptable.
                                 resolve_error(
                                     self,
@@ -2398,7 +2402,7 @@ impl<'a> Resolver<'a> {
                             }
                             def => {
                                 span_bug!(ident.span, "unexpected definition for an \
-                                                       identifier in pattern {:?}", def);
+                                                       identifier in pattern: {:?}", def);
                             }
                         }
                     }).unwrap_or_else(|| {
@@ -2408,23 +2412,29 @@ impl<'a> Resolver<'a> {
                     self.record_def(pat.id, resolution);
                 }
 
-                PatKind::TupleStruct(ref path, ..) => {
+                PatKind::TupleStruct(ref path, ref pats, ddpos) => {
                     self.resolve_pattern_path(pat.id, None, path, ValueNS, |def| {
                         match def {
-                            Def::Struct(..) | Def::Variant(..) => true,
+                            Def::StructCtor(_, CtorKind::Fn) |
+                            Def::VariantCtor(_, CtorKind::Fn) => true,
+                            // `UnitVariant(..)` is accepted for backward compatibility.
+                            Def::StructCtor(_, CtorKind::Const) |
+                            Def::VariantCtor(_, CtorKind::Const)
+                                if pats.is_empty() && ddpos.is_some() => true,
                             _ => false,
                         }
-                    }, "variant or struct");
+                    }, "tuple struct/variant");
                 }
 
                 PatKind::Path(ref qself, ref path) => {
                     self.resolve_pattern_path(pat.id, qself.as_ref(), path, ValueNS, |def| {
                         match def {
-                            Def::Struct(..) | Def::Variant(..) |
+                            Def::StructCtor(_, CtorKind::Const) |
+                            Def::VariantCtor(_, CtorKind::Const) |
                             Def::Const(..) | Def::AssociatedConst(..) => true,
                             _ => false,
                         }
-                    }, "variant, struct or constant");
+                    }, "unit struct/variant or constant");
                 }
 
                 PatKind::Struct(ref path, ..) => {
@@ -2776,10 +2786,9 @@ impl<'a> Resolver<'a> {
             // Look for a field with the same name in the current self_type.
             if let Some(resolution) = self.def_map.get(&node_id) {
                 match resolution.base_def {
-                    Def::Enum(did) | Def::TyAlias(did) | Def::Union(did) |
-                    Def::Struct(did) | Def::Variant(did) if resolution.depth == 0 => {
-                        if let Some(fields) = self.structs.get(&did) {
-                            if fields.iter().any(|&field_name| name == field_name) {
+                    Def::Struct(did) | Def::Union(did) if resolution.depth == 0 => {
+                        if let Some(field_names) = self.field_names.get(&did) {
+                            if field_names.iter().any(|&field_name| name == field_name) {
                                 return Field;
                             }
                         }
@@ -2846,13 +2855,11 @@ impl<'a> Resolver<'a> {
                 if let Some(path_res) = self.resolve_possibly_assoc_item(expr.id,
                                                             maybe_qself.as_ref(), path, ValueNS) {
                     // Check if struct variant
-                    let is_struct_variant = if let Def::Variant(variant_id) = path_res.base_def {
-                        self.structs.contains_key(&variant_id)
-                    } else {
-                        false
+                    let is_struct_variant = match path_res.base_def {
+                        Def::VariantCtor(_, CtorKind::Fictive) => true,
+                        _ => false,
                     };
                     if is_struct_variant {
-                        let _ = self.structs.contains_key(&path_res.base_def.def_id());
                         let path_name = path_names_to_string(path, 0);
 
                         let mut err = resolve_struct_error(self,
@@ -2885,9 +2892,6 @@ impl<'a> Resolver<'a> {
                     }
                 } else {
                     // Be helpful if the name refers to a struct
-                    // (The pattern matching def_tys where the id is in self.structs
-                    // matches on regular structs while excluding tuple- and enum-like
-                    // structs, which wouldn't result in this error.)
                     let path_name = path_names_to_string(path, 0);
                     let type_res = self.with_no_errors(|this| {
                         this.resolve_path(expr.id, path, 0, TypeNS)

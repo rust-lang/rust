@@ -12,7 +12,6 @@ use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::ty::VariantKind;
 
 pub struct Deaggregator;
 
@@ -129,10 +128,7 @@ fn get_aggregate_statement_index<'a, 'tcx, 'b>(start: usize,
         }
         debug!("getting variant {:?}", variant);
         debug!("for adt_def {:?}", adt_def);
-        let variant_def = &adt_def.variants[variant];
-        if variant_def.kind == VariantKind::Struct {
-            return Some(i);
-        }
+        return Some(i);
     };
     None
 }

@@ -58,7 +58,7 @@ pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
         PatKind::Path(..) |
         PatKind::Struct(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
-                Some(Def::Variant(..)) => true,
+                Some(Def::Variant(..)) | Some(Def::VariantCtor(..)) => true,
                 _ => false
             }
         }
@@ -173,10 +173,9 @@ pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<DefId> {
             PatKind::TupleStruct(..) |
             PatKind::Path(..) |
             PatKind::Struct(..) => {
-                match dm.get(&p.id) {
-                    Some(&PathResolution { base_def: Def::Variant(id), .. }) => {
-                        variants.push(id);
-                    }
+                match dm.get(&p.id).map(|d| d.full_def()) {
+                    Some(Def::Variant(id)) |
+                    Some(Def::VariantCtor(id, ..)) => variants.push(id),
                     _ => ()
                 }
             }

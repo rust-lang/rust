@@ -12,7 +12,7 @@ use astencode;
 use index;
 
 use rustc::hir;
-use rustc::hir::def;
+use rustc::hir::def::{self, CtorKind};
 use rustc::hir::def_id::{DefIndex, DefId};
 use rustc::middle::cstore::{LinkagePreference, NativeLibraryKind};
 use rustc::middle::lang_items;
@@ -261,7 +261,7 @@ pub struct FnData {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct VariantData {
-    pub kind: ty::VariantKind,
+    pub ctor_kind: CtorKind,
     pub disr: u64,
 
     /// If this is a struct's only variant, this

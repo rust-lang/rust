@@ -14,33 +14,45 @@ use syntax::ast;
 use hir;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum CtorKind {
+    // Constructor function automatically created by a tuple struct/variant.
+    Fn,
+    // Constructor constant automatically created by a unit struct/variant.
+    Const,
+    // Unusable name in value namespace created by a struct variant.
+    Fictive,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
-    Fn(DefId),
-    SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
+    // Type namespace
     Mod(DefId),
-    Static(DefId, bool /* is_mutbl */),
-    Const(DefId),
-    AssociatedConst(DefId),
-    Local(DefId),
-    Variant(DefId),
+    Struct(DefId), // DefId refers to NodeId of the struct itself
+    Union(DefId),
     Enum(DefId),
+    Variant(DefId),
+    Trait(DefId),
     TyAlias(DefId),
     AssociatedTy(DefId),
-    Trait(DefId),
     PrimTy(hir::PrimTy),
     TyParam(DefId),
-    Upvar(DefId,        // def id of closed over local
-             usize,        // index in the freevars list of the closure
-             ast::NodeId), // expr node that creates the closure
+    SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
 
-    // If Def::Struct lives in type namespace it denotes a struct item and its DefId refers
-    // to NodeId of the struct itself.
-    // If Def::Struct lives in value namespace (e.g. tuple struct, unit struct expressions)
-    // it denotes a constructor and its DefId refers to NodeId of the struct's constructor.
-    Struct(DefId),
-    Union(DefId),
-    Label(ast::NodeId),
+    // Value namespace
+    Fn(DefId),
+    Const(DefId),
+    Static(DefId, bool /* is_mutbl */),
+    StructCtor(DefId, CtorKind), // DefId refers to NodeId of the struct's constructor
+    VariantCtor(DefId, CtorKind),
     Method(DefId),
+    AssociatedConst(DefId),
+    Local(DefId),
+    Upvar(DefId,        // def id of closed over local
+          usize,        // index in the freevars list of the closure
+          ast::NodeId), // expr node that creates the closure
+    Label(ast::NodeId),
+
+    // Both namespaces
     Err,
 }
 
@@ -93,18 +105,35 @@ pub type ExportMap = NodeMap<Vec<Export>>;
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct Export {
-    pub name: ast::Name,    // The name of the target.
-    pub def_id: DefId, // The definition of the target.
+    pub name: ast::Name, // The name of the target.
+    pub def: Def, // The definition of the target.
+}
+
+impl CtorKind {
+    pub fn from_ast(vdata: &ast::VariantData) -> CtorKind {
+        match *vdata {
+            ast::VariantData::Tuple(..) => CtorKind::Fn,
+            ast::VariantData::Unit(..) => CtorKind::Const,
+            ast::VariantData::Struct(..) => CtorKind::Fictive,
+        }
+    }
+    pub fn from_hir(vdata: &hir::VariantData) -> CtorKind {
+        match *vdata {
+            hir::VariantData::Tuple(..) => CtorKind::Fn,
+            hir::VariantData::Unit(..) => CtorKind::Const,
+            hir::VariantData::Struct(..) => CtorKind::Fictive,
+        }
+    }
 }
 
 impl Def {
     pub fn def_id(&self) -> DefId {
         match *self {
             Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
-            Def::Variant(id) | Def::Enum(id) | Def::TyAlias(id) | Def::AssociatedTy(id) |
-            Def::TyParam(id) | Def::Struct(id) | Def::Union(id) | Def::Trait(id) |
-            Def::Method(id) | Def::Const(id) | Def::AssociatedConst(id) |
-            Def::Local(id) | Def::Upvar(id, ..) => {
+            Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) | Def::TyAlias(id) |
+            Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
+            Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
+            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) => {
                 id
             }
 
@@ -123,10 +152,16 @@ impl Def {
             Def::Mod(..) => "module",
             Def::Static(..) => "static",
             Def::Variant(..) => "variant",
+            Def::VariantCtor(.., CtorKind::Fn) => "tuple variant",
+            Def::VariantCtor(.., CtorKind::Const) => "unit variant",
+            Def::VariantCtor(.., CtorKind::Fictive) => "struct variant",
             Def::Enum(..) => "enum",
-            Def::TyAlias(..) => "type",
+            Def::TyAlias(..) => "type alias",
             Def::AssociatedTy(..) => "associated type",
             Def::Struct(..) => "struct",
+            Def::StructCtor(.., CtorKind::Fn) => "tuple struct",
+            Def::StructCtor(.., CtorKind::Const) => "unit struct",
+            Def::StructCtor(.., CtorKind::Fictive) => bug!("impossible struct constructor"),
             Def::Union(..) => "union",
             Def::Trait(..) => "trait",
             Def::Method(..) => "method",
