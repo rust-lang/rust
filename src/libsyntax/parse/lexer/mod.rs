@@ -77,7 +77,7 @@ pub struct TokenAndSpan {
 pub struct StringReader<'a> {
     pub span_diagnostic: &'a Handler,
     /// The absolute offset within the codemap of the next character to read
-    pub pos: BytePos,
+    pub next_pos: BytePos,
     /// The absolute offset within the codemap of the last character read(curr)
     pub last_pos: BytePos,
     /// The column of the next character to read
@@ -107,7 +107,7 @@ impl<'a> Reader for StringReader<'a> {
         }
 
         match self.terminator {
-            Some(t) => self.pos > t,
+            Some(t) => self.next_pos > t,
             None => false,
         }
     }
@@ -173,7 +173,7 @@ impl<'a> Reader for TtReader<'a> {
 }
 
 impl<'a> StringReader<'a> {
-    /// For comments.rs, which hackily pokes into pos and curr
+    /// For comments.rs, which hackily pokes into next_pos and curr
     pub fn new_raw<'b>(span_diagnostic: &'b Handler,
                        filemap: Rc<syntax_pos::FileMap>)
                        -> StringReader<'b> {
@@ -195,7 +195,7 @@ impl<'a> StringReader<'a> {
 
         StringReader {
             span_diagnostic: span_diagnostic,
-            pos: filemap.start_pos,
+            next_pos: filemap.start_pos,
             last_pos: filemap.start_pos,
             col: CharPos(0),
             curr: Some('\n'),
@@ -414,13 +414,13 @@ impl<'a> StringReader<'a> {
     /// Advance the StringReader by one character. If a newline is
     /// discovered, add it to the FileMap's list of line start offsets.
     pub fn bump(&mut self) {
-        self.last_pos = self.pos;
-        let current_byte_offset = self.byte_offset(self.pos).to_usize();
+        self.last_pos = self.next_pos;
+        let current_byte_offset = self.byte_offset(self.next_pos).to_usize();
         if current_byte_offset < self.source_text.len() {
             let last_char = self.curr.unwrap();
             let ch = char_at(&self.source_text, current_byte_offset);
             let byte_offset_diff = ch.len_utf8();
-            self.pos = self.pos + Pos::from_usize(byte_offset_diff);
+            self.next_pos = self.next_pos + Pos::from_usize(byte_offset_diff);
             self.curr = Some(ch);
             self.col = self.col + CharPos(1);
             if last_char == '\n' {
@@ -439,7 +439,7 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn nextch(&self) -> Option<char> {
-        let offset = self.byte_offset(self.pos).to_usize();
+        let offset = self.byte_offset(self.next_pos).to_usize();
         if offset < self.source_text.len() {
             Some(char_at(&self.source_text, offset))
         } else {
@@ -452,7 +452,7 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn nextnextch(&self) -> Option<char> {
-        let offset = self.byte_offset(self.pos).to_usize();
+        let offset = self.byte_offset(self.next_pos).to_usize();
         let s = &self.source_text[..];
         if offset >= s.len() {
             return None;
@@ -518,7 +518,7 @@ impl<'a> StringReader<'a> {
                                     break;
                                 } else if doc_comment {
                                     self.err_span_(self.last_pos,
-                                                   self.pos,
+                                                   self.next_pos,
                                                    "bare CR not allowed in doc-comment");
                                 }
                             }
@@ -695,7 +695,7 @@ impl<'a> StringReader<'a> {
                     // in range for the true radix
                     if c.unwrap().to_digit(real_radix).is_none() {
                         self.err_span_(self.last_pos,
-                                       self.pos,
+                                       self.next_pos,
                                        &format!("invalid digit for a base {} literal", real_radix));
                     }
                     len += 1;
@@ -809,7 +809,7 @@ impl<'a> StringReader<'a> {
             accum_int *= 16;
             accum_int += c.to_digit(16).unwrap_or_else(|| {
                 self.err_span_char(self.last_pos,
-                                   self.pos,
+                                   self.next_pos,
                                    "invalid character in numeric character escape",
                                    c);
 
@@ -980,11 +980,11 @@ impl<'a> StringReader<'a> {
             accum_int += c.to_digit(16).unwrap_or_else(|| {
                 if c == delim {
                     panic!(self.fatal_span_(self.last_pos,
-                                            self.pos,
+                                            self.next_pos,
                                             "unterminated unicode escape (needed a `}`)"));
                 } else {
                     self.err_span_char(self.last_pos,
-                                       self.pos,
+                                       self.next_pos,
                                        "invalid character in unicode escape",
                                        c);
                 }
@@ -1022,7 +1022,7 @@ impl<'a> StringReader<'a> {
             }
             if self.scan_digits(10, 10) == 0 {
                 self.err_span_(self.last_pos,
-                               self.pos,
+                               self.next_pos,
                                "expected at least one digit in exponent")
             }
         }
@@ -1259,7 +1259,7 @@ impl<'a> StringReader<'a> {
                     // if we find one, then this is an invalid character literal
                     if self.curr_is('\'') {
                         panic!(self.fatal_span_verbose(
-                               start_with_quote, self.pos,
+                               start_with_quote, self.next_pos,
                                String::from("character literal may only contain one codepoint")));
 
                     }
@@ -1467,7 +1467,7 @@ impl<'a> StringReader<'a> {
             }
             c => {
                 let last_bpos = self.last_pos;
-                let bpos = self.pos;
+                let bpos = self.next_pos;
                 let mut err = self.struct_fatal_span_char(last_bpos,
                                                           bpos,
                                                           "unknown start of token",
