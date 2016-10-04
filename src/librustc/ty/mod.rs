@@ -462,6 +462,10 @@ bitflags! {
         // Only set for TyInfer other than Fresh.
         const KEEP_IN_LOCAL_TCX  = 1 << 11,
 
+        // Is there a projection that does not involve a bound region?
+        // Currently we can't normalize projections w/ bound regions.
+        const HAS_NORMALIZABLE_PROJECTION = 1 << 12,
+
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits,
