@@ -722,7 +722,7 @@ fn write_shared(cx: &Context,
                 ret.push(line.to_string());
             }
         }
-        return Ok(ret);
+        Ok(ret)
     }
 
     // Update the search index
@@ -1208,7 +1208,7 @@ impl DocFolder for Cache {
         self.seen_mod = orig_seen_mod;
         self.stripped_mod = orig_stripped_mod;
         self.parent_is_trait_impl = orig_parent_is_trait_impl;
-        return ret;
+        ret
     }
 }
 
@@ -1249,7 +1249,7 @@ impl Context {
         self.dst = prev;
         self.current.pop().unwrap();
 
-        return ret;
+        ret
     }
 
     /// Main method for rendering a crate.
@@ -1450,7 +1450,7 @@ impl Context {
         for (_, items) in &mut map {
             items.sort();
         }
-        return map;
+        map
     }
 }
 
@@ -1647,7 +1647,7 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
     let mut s = cx.current.join("::");
     s.push_str("::");
     s.push_str(item.name.as_ref().unwrap());
-    return s
+    s
 }
 
 fn shorter<'a>(s: Option<&'a str>) -> String {
@@ -2378,8 +2378,8 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             match v.inner {
                 clean::VariantItem(ref var) => {
                     match var.kind {
-                        clean::CLikeVariant => write!(w, "{}", name)?,
-                        clean::TupleVariant(ref tys) => {
+                        clean::VariantKind::CLike => write!(w, "{}", name)?,
+                        clean::VariantKind::Tuple(ref tys) => {
                             write!(w, "{}(", name)?;
                             for (i, ty) in tys.iter().enumerate() {
                                 if i > 0 {
@@ -2389,7 +2389,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                             }
                             write!(w, ")")?;
                         }
-                        clean::StructVariant(ref s) => {
+                        clean::VariantKind::Struct(ref s) => {
                             render_struct(w,
                                           v,
                                           None,
@@ -2429,7 +2429,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                    ns_id = ns_id,
                    name = variant.name.as_ref().unwrap())?;
             if let clean::VariantItem(ref var) = variant.inner {
-                if let clean::TupleVariant(ref tys) = var.kind {
+                if let clean::VariantKind::Tuple(ref tys) = var.kind {
                     write!(w, "(")?;
                     for (i, ty) in tys.iter().enumerate() {
                         if i > 0 {
@@ -2443,8 +2443,10 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             write!(w, "</code></span></span>")?;
             document(w, cx, variant)?;
 
-            use clean::{Variant, StructVariant};
-            if let clean::VariantItem( Variant { kind: StructVariant(ref s) } ) = variant.inner {
+            use clean::{Variant, VariantKind};
+            if let clean::VariantItem(Variant {
+                kind: VariantKind::Struct(ref s)
+            }) = variant.inner {
                 write!(w, "<h3 class='fields'>Fields</h3>\n
                            <table>")?;
                 for field in &s.fields {
