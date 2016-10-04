@@ -28,7 +28,7 @@ use Disr;
 use super::MirContext;
 use super::constant::const_scalar_checked_binop;
 use super::operand::{OperandRef, OperandValue};
-use super::lvalue::{LvalueRef, get_dataptr};
+use super::lvalue::{LvalueRef};
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_rvalue(&mut self,
@@ -98,7 +98,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let tr_elem = self.trans_operand(&bcx, elem);
                 let size = count.value.as_u64(bcx.tcx().sess.target.uint_type);
                 let size = C_uint(bcx.ccx(), size);
-                let base = get_dataptr(&bcx, dest.llval);
+                let base = base::get_dataptr_builder(&bcx, dest.llval);
                 let bcx = bcx.map_block(|block| {
                     tvec::slice_for_each(block, base, tr_elem.ty, size, |block, llslot| {
                         self.store_operand_direct(block, llslot, tr_elem);
