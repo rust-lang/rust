@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.94 — 2016-10-04
+* Fixes bustage on Windows due to forbidden directory name
+
 ## 0.0.93 — 2016-10-03
 * Rustup to *rustc 1.14.0-nightly (144af3e97 2016-10-02)*
 * [`option_map_unwrap_or`] and [`option_map_unwrap_or_else`] are now
