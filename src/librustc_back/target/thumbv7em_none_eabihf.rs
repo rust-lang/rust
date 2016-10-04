@@ -38,6 +38,9 @@ pub fn target() -> TargetResult {
             // available
             // `+fp-only-sp` The Cortex-M4 only supports single precision floating point operations
             // whereas in the Cortex-M7 double precision is optional
+            //
+            // Reference:
+            // ARMv7-M Architecture Reference Manual - A2.5 The optional floating-point extension
             features: "+vfp4,+d16,+fp-only-sp".to_string(),
             max_atomic_width: 32,
             .. super::thumb_base::opts()
