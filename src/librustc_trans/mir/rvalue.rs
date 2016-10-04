@@ -20,6 +20,7 @@ use common::{self, val_ty, C_bool, C_null, C_uint, BlockAndBuilder, Result};
 use debuginfo::DebugLoc;
 use adt;
 use machine;
+use type_::Type;
 use type_of;
 use tvec;
 use value::Value;
@@ -382,13 +383,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     match (lhs.val, rhs.val) {
                         (OperandValue::Pair(lhs_addr, lhs_extra),
                          OperandValue::Pair(rhs_addr, rhs_extra)) => {
-                            bcx.with_block(|bcx| {
-                                base::compare_fat_ptrs(bcx,
-                                                       lhs_addr, lhs_extra,
-                                                       rhs_addr, rhs_extra,
-                                                       lhs.ty, op.to_hir_binop(),
-                                                       debug_loc)
-                            })
+                            self.trans_fat_ptr_binop(&bcx, op,
+                                                     lhs_addr, lhs_extra,
+                                                     rhs_addr, rhs_extra,
+                                                     lhs.ty)
                         }
                         _ => bug!()
                     }
@@ -485,6 +483,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                               input_ty: Ty<'tcx>) -> ValueRef {
         let is_float = input_ty.is_fp();
         let is_signed = input_ty.is_signed();
+        let is_nil = input_ty.is_nil();
+        let is_bool = input_ty.is_bool();
         match op {
             mir::BinOp::Add => if is_float {
                 bcx.fadd(lhs, rhs)
@@ -535,12 +535,79 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                    DebugLoc::None)
                 })
             }
-            mir::BinOp::Eq | mir::BinOp::Lt | mir::BinOp::Gt |
-            mir::BinOp::Ne | mir::BinOp::Le | mir::BinOp::Ge => {
-                bcx.with_block(|bcx| {
-                    base::compare_scalar_types(bcx, lhs, rhs, input_ty,
-                                               op.to_hir_binop(), DebugLoc::None)
+            mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt |
+            mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_nil {
+                C_bool(bcx.ccx(), match op {
+                    mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt => false,
+                    mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => true,
+                    _ => unreachable!()
                 })
+            } else if is_float {
+                bcx.fcmp(
+                    base::bin_op_to_fcmp_predicate(op.to_hir_binop()),
+                    lhs, rhs
+                )
+            } else {
+                let (lhs, rhs) = if is_bool {
+                    // FIXME(#36856) -- extend the bools into `i8` because
+                    // LLVM's i1 comparisons are broken.
+                    (bcx.zext(lhs, Type::i8(bcx.ccx())),
+                     bcx.zext(rhs, Type::i8(bcx.ccx())))
+                } else {
+                    (lhs, rhs)
+                };
+
+                bcx.icmp(
+                    base::bin_op_to_icmp_predicate(op.to_hir_binop(), is_signed),
+                    lhs, rhs
+                )
+            }
+        }
+    }
+
+    pub fn trans_fat_ptr_binop(&mut self,
+                               bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                               op: mir::BinOp,
+                               lhs_addr: ValueRef,
+                               lhs_extra: ValueRef,
+                               rhs_addr: ValueRef,
+                               rhs_extra: ValueRef,
+                               _input_ty: Ty<'tcx>)
+                               -> ValueRef {
+        match op {
+            mir::BinOp::Eq => {
+                bcx.and(
+                    bcx.icmp(llvm::IntEQ, lhs_addr, rhs_addr),
+                    bcx.icmp(llvm::IntEQ, lhs_extra, rhs_extra)
+                )
+            }
+            mir::BinOp::Ne => {
+                bcx.or(
+                    bcx.icmp(llvm::IntNE, lhs_addr, rhs_addr),
+                    bcx.icmp(llvm::IntNE, lhs_extra, rhs_extra)
+                )
+            }
+            mir::BinOp::Le | mir::BinOp::Lt |
+            mir::BinOp::Ge | mir::BinOp::Gt => {
+                // a OP b ~ a.0 STRICT(OP) b.0 | (a.0 == b.0 && a.1 OP a.1)
+                let (op, strict_op) = match op {
+                    mir::BinOp::Lt => (llvm::IntULT, llvm::IntULT),
+                    mir::BinOp::Le => (llvm::IntULE, llvm::IntULT),
+                    mir::BinOp::Gt => (llvm::IntUGT, llvm::IntUGT),
+                    mir::BinOp::Ge => (llvm::IntUGE, llvm::IntUGT),
+                    _ => bug!(),
+                };
+
+                bcx.or(
+                    bcx.icmp(strict_op, lhs_addr, rhs_addr),
+                    bcx.and(
+                        bcx.icmp(llvm::IntEQ, lhs_addr, rhs_addr),
+                        bcx.icmp(op, lhs_extra, rhs_extra)
+                    )
+                )
+            }
+            _ => {
+                bug!("unexpected fat ptr binop");
             }
         }
     }
