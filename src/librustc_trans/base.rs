@@ -522,6 +522,11 @@ pub fn need_invoke(bcx: Block) -> bool {
     }
 }
 
+pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
+    let assume_intrinsic = b.ccx.get_intrinsic("llvm.assume");
+    b.call(assume_intrinsic, &[val], None);
+}
+
 /// Helper for loading values from memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values. Also handles various special cases where the type
 /// gives us better information about what we are loading.
