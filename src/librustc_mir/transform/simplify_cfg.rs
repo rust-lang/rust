@@ -50,6 +50,7 @@ impl<'a> SimplifyCfg<'a> {
 
 impl<'l, 'tcx> MirPass<'tcx> for SimplifyCfg<'l> {
     fn run_pass<'a>(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
+        debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, mir);
         CfgSimplifier::new(mir).simplify();
         remove_dead_blocks(mir);
 
@@ -78,6 +79,8 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
 
         // we can't use mir.predecessors() here because that counts
         // dead blocks, which we don't want to.
+        pred_count[START_BLOCK] = 1;
+
         for (_, data) in traversal::preorder(mir) {
             if let Some(ref term) = data.terminator {
                 for &tgt in term.successors().iter() {
