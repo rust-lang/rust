@@ -122,7 +122,7 @@ pub struct EncodeUtf16<'a> {
     encoder: Utf16Encoder<Chars<'a>>,
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "encode_utf16", since = "1.8.0")]
 impl<'a> Iterator for EncodeUtf16<'a> {
     type Item = u16;
 

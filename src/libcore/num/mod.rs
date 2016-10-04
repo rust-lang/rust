@@ -2570,7 +2570,7 @@ impl fmt::Display for TryFromIntError {
 
 macro_rules! same_sign_from_int_impl {
     ($storage:ty, $target:ty, $($source:ty),*) => {$(
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$source> for $target {
             type Err = TryFromIntError;
 
@@ -2600,7 +2600,7 @@ same_sign_from_int_impl!(i64, isize, i8, i16, i32, i64, isize);
 
 macro_rules! cross_sign_from_int_impl {
     ($unsigned:ty, $($signed:ty),*) => {$(
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$unsigned> for $signed {
             type Err = TryFromIntError;
 
@@ -2614,7 +2614,7 @@ macro_rules! cross_sign_from_int_impl {
             }
         }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$signed> for $unsigned {
             type Err = TryFromIntError;
 

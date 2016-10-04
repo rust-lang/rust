@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    1.create_a_type_error[ //~ no field `create_a_type_error` on type `{integer}`
-        ()+() //~ ERROR binary operation `+` cannot be applied
-              //   ^ ensure that we typeck the inner expression ^
-    ];
-}
+pub trait Bound {}
+pub struct Foo<T: Bound>(T);
+
+pub trait Trait1 {}
+impl<T: Bound> Trait1 for Foo<T> {}
+
+pub trait Trait2 {}
+impl<T> Trait2 for Foo<T> {} //~ ERROR the trait bound `T: Bound` is not satisfied
+
+fn main() {}

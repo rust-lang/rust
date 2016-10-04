@@ -386,7 +386,7 @@ pub struct Cloned<I> {
     it: I,
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "iter_cloned", since = "1.1.0")]
 impl<'a, I, T: 'a> Iterator for Cloned<I>
     where I: Iterator<Item=&'a T>, T: Clone
 {
@@ -401,7 +401,7 @@ impl<'a, I, T: 'a> Iterator for Cloned<I>
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "iter_cloned", since = "1.1.0")]
 impl<'a, I, T: 'a> DoubleEndedIterator for Cloned<I>
     where I: DoubleEndedIterator<Item=&'a T>, T: Clone
 {
@@ -410,7 +410,7 @@ impl<'a, I, T: 'a> DoubleEndedIterator for Cloned<I>
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "iter_cloned", since = "1.1.0")]
 impl<'a, I, T: 'a> ExactSizeIterator for Cloned<I>
     where I: ExactSizeIterator<Item=&'a T>, T: Clone
 {}

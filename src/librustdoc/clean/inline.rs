@@ -73,33 +73,33 @@ fn try_inline_def<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let did = def.def_id();
     let inner = match def {
         Def::Trait(did) => {
-            record_extern_fqn(cx, did, clean::TypeTrait);
+            record_extern_fqn(cx, did, clean::TypeKind::Trait);
             ret.extend(build_impls(cx, tcx, did));
             clean::TraitItem(build_external_trait(cx, tcx, did))
         }
         Def::Fn(did) => {
-            record_extern_fqn(cx, did, clean::TypeFunction);
+            record_extern_fqn(cx, did, clean::TypeKind::Function);
             clean::FunctionItem(build_external_function(cx, tcx, did))
         }
         Def::Struct(did)
                 // If this is a struct constructor, we skip it
                 if tcx.def_key(did).disambiguated_data.data != DefPathData::StructCtor => {
-            record_extern_fqn(cx, did, clean::TypeStruct);
+            record_extern_fqn(cx, did, clean::TypeKind::Struct);
             ret.extend(build_impls(cx, tcx, did));
             clean::StructItem(build_struct(cx, tcx, did))
         }
         Def::Union(did) => {
-            record_extern_fqn(cx, did, clean::TypeUnion);
+            record_extern_fqn(cx, did, clean::TypeKind::Union);
             ret.extend(build_impls(cx, tcx, did));
             clean::UnionItem(build_union(cx, tcx, did))
         }
         Def::TyAlias(did) => {
-            record_extern_fqn(cx, did, clean::TypeTypedef);
+            record_extern_fqn(cx, did, clean::TypeKind::Typedef);
             ret.extend(build_impls(cx, tcx, did));
             clean::TypedefItem(build_type_alias(cx, tcx, did), false)
         }
         Def::Enum(did) => {
-            record_extern_fqn(cx, did, clean::TypeEnum);
+            record_extern_fqn(cx, did, clean::TypeKind::Enum);
             ret.extend(build_impls(cx, tcx, did));
             clean::EnumItem(build_enum(cx, tcx, did))
         }
@@ -107,15 +107,15 @@ fn try_inline_def<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // variants don't show up in documentation specially.
         Def::Variant(..) => return Some(Vec::new()),
         Def::Mod(did) => {
-            record_extern_fqn(cx, did, clean::TypeModule);
+            record_extern_fqn(cx, did, clean::TypeKind::Module);
             clean::ModuleItem(build_module(cx, tcx, did))
         }
         Def::Static(did, mtbl) => {
-            record_extern_fqn(cx, did, clean::TypeStatic);
+            record_extern_fqn(cx, did, clean::TypeKind::Static);
             clean::StaticItem(build_static(cx, tcx, did, mtbl))
         }
         Def::Const(did) | Def::AssociatedConst(did) => {
-            record_extern_fqn(cx, did, clean::TypeConst);
+            record_extern_fqn(cx, did, clean::TypeKind::Const);
             clean::ConstantItem(build_const(cx, tcx, did))
         }
         _ => return None,
@@ -577,7 +577,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics)
             _ => true,
         }
     });
-    return g;
+    g
 }
 
 /// Supertrait bounds for a trait are also listed in the generics coming from
