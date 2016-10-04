@@ -24,7 +24,7 @@ pub fn target() -> TargetResult {
             // NOTE(mips64r2) matches C toolchain
             cpu: "mips64r2".to_string(),
             features: "+mips64r2".to_string(),
-            max_atomic_width: 64,
+            max_atomic_width: Some(64),
             ..super::linux_base::opts()
         },
     })

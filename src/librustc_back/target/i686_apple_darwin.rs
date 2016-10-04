@@ -13,7 +13,7 @@ use target::{Target, TargetResult};
 pub fn target() -> TargetResult {
     let mut base = super::apple_base::opts();
     base.cpu = "yonah".to_string();
-    base.max_atomic_width = 64;
+    base.max_atomic_width = Some(64);
     base.pre_link_args.push("-m32".to_string());
 
     Ok(Target {
