@@ -26,7 +26,7 @@ fn f(p: *const Rec) -> isize {
     // are prohibited by various checks, such as that the enum is
     // instantiable and so forth).
 
-    return p.f; //~ ERROR attempted access of field `f` on type `*const Rec`
+    return p.f; //~ ERROR no field `f` on type `*const Rec`
 }
 
 fn main() {

@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct Foo {
+    bar: u8
+}
+
 fn main() {
-    1.create_a_type_error[ //~ no field `create_a_type_error` on type `{integer}`
-        ()+() //~ ERROR binary operation `+` cannot be applied
-              //   ^ ensure that we typeck the inner expression ^
-    ];
+    let f = Foo { bar: 22 };
+    f.zz;
 }

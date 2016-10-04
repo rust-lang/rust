@@ -10,6 +10,5 @@
 
 fn main() {
     let foo = "str";
-    println!("{}", foo.desc); //~ ERROR attempted access of field `desc` on type `&str`,
-                              //        but no field with that name was found
+    println!("{}", foo.desc); //~ no field `desc` on type `&str`
 }
