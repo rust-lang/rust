@@ -60,7 +60,7 @@ esac
 stdout=$($PREFIX$NM -g --defined-only /target/${1}/debug/librustc_builtins.rlib)
 
 set +e
-echo $stdout | sort | uniq -d | grep -v __x86.get_pc_thunk | grep 'T __'
+echo "$stdout" | sort | uniq -d | grep -v __x86.get_pc_thunk | grep 'T __'
 
 if test $? = 0; then
     exit 1
