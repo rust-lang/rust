@@ -13,7 +13,7 @@ use target::{Target, TargetResult};
 pub fn target() -> TargetResult {
     let mut base = super::apple_base::opts();
     base.cpu = "core2".to_string();
-    base.max_atomic_width = 128; // core2 support cmpxchg16b
+    base.max_atomic_width = Some(128); // core2 support cmpxchg16b
     base.eliminate_frame_pointer = false;
     base.pre_link_args.push("-m64".to_string());
 

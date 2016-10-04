@@ -8,27 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Targets the Cortex-M0, Cortex-M0+ and Cortex-M1 processors (ARMv6-M architecture)
+
 use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
-    let base = super::linux_base::opts();
     Ok(Target {
-        llvm_target: "armv7-unknown-linux-gnueabihf".to_string(),
+        llvm_target: "thumbv6m-none-eabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
         data_layout: "e-m:e-p:32:32-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         arch: "arm".to_string(),
-        target_os: "linux".to_string(),
-        target_env: "gnu".to_string(),
-        target_vendor: "unknown".to_string(),
+        target_os: "none".to_string(),
+        target_env: "".to_string(),
+        target_vendor: "".to_string(),
 
         options: TargetOptions {
-            // Info about features at https://wiki.debian.org/ArmHardFloatPort
-            features: "+v7,+vfp3,+d16,+thumb2".to_string(),
-            cpu: "generic".to_string(),
-            max_atomic_width: Some(64),
-            .. base
+            // The ARMv6-M architecture doesn't support unaligned loads/stores so we disable them
+            // with +strict-align.
+            features: "+strict-align".to_string(),
+            // There are no atomic instructions available in the instruction set of the ARMv6-M
+            // architecture
+            max_atomic_width: Some(0),
+            .. super::thumb_base::opts()
         }
     })
 }
-

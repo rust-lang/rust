@@ -933,7 +933,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let os = &sess.target.target.target_os;
     let env = &sess.target.target.target_env;
     let vendor = &sess.target.target.target_vendor;
-    let max_atomic_width = sess.target.target.options.max_atomic_width;
+    let max_atomic_width = sess.target.target.max_atomic_width();
 
     let fam = if let Some(ref fam) = sess.target.target.options.target_family {
         intern(fam)

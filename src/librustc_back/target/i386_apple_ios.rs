@@ -23,7 +23,7 @@ pub fn target() -> TargetResult {
         target_env: "".to_string(),
         target_vendor: "apple".to_string(),
         options: TargetOptions {
-            max_atomic_width: 64,
+            max_atomic_width: Some(64),
             .. base
         }
     })
