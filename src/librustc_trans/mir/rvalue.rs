@@ -11,12 +11,14 @@
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
+use rustc::ty::layout::Layout;
 use rustc::mir::repr as mir;
 
 use asm;
 use base;
 use callee::Callee;
 use common::{self, val_ty, C_bool, C_null, C_uint, BlockAndBuilder, Result};
+use common::{C_integral};
 use debuginfo::DebugLoc;
 use adt;
 use machine;
@@ -282,7 +284,26 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 }
                                 OperandValue::Pair(..) => bug!("Unexpected Pair operand")
                             };
-                            (discr, adt::is_discr_signed(&l))
+                            let (signed, min, max) = match l {
+                                &Layout::CEnum { signed, min, max, .. } => {
+                                    (signed, min, max)
+                                }
+                                _ => bug!("CEnum {:?} is not an enum", operand)
+                            };
+
+                            if max > min {
+                                // We want `table[e as usize]` to not
+                                // have bound checks, and this is the most
+                                // convenient place to put the `assume`.
+
+                                base::call_assume(&bcx, bcx.icmp(
+                                    llvm::IntULE,
+                                    discr,
+                                    C_integral(common::val_ty(discr), max, false)
+                                ))
+                            }
+
+                            (discr, signed)
                         } else {
                             (operand.immediate(), operand.ty.is_signed())
                         };
