@@ -17,6 +17,9 @@ use ptr;
 
 /// An implementation of SipHash 1-3.
 ///
+/// This is currently the default hashing function used by standard library
+/// (eg. `collections::HashMap` uses it by default).
+///
 /// See: https://131002.net/siphash/
 #[unstable(feature = "sip_hash_13", issue = "34767")]
 #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
@@ -38,9 +41,6 @@ pub struct SipHasher24 {
 /// An implementation of SipHash 2-4.
 ///
 /// See: https://131002.net/siphash/
-///
-/// This is currently the default hashing function used by standard library
-/// (eg. `collections::HashMap` uses it by default).
 ///
 /// SipHash is a general-purpose hashing function: it runs at a good
 /// speed (competitive with Spooky and City) and permits strong _keyed_
@@ -117,23 +117,18 @@ unsafe fn load_u64_le(buf: &[u8], i: usize) -> u64 {
     data.to_le()
 }
 
-macro_rules! rotl {
-    ($x:expr, $b:expr) =>
-    (($x << $b) | ($x >> (64_i32.wrapping_sub($b))))
-}
-
 macro_rules! compress {
     ($state:expr) => ({
         compress!($state.v0, $state.v1, $state.v2, $state.v3)
     });
     ($v0:expr, $v1:expr, $v2:expr, $v3:expr) =>
     ({
-        $v0 = $v0.wrapping_add($v1); $v1 = rotl!($v1, 13); $v1 ^= $v0;
-        $v0 = rotl!($v0, 32);
-        $v2 = $v2.wrapping_add($v3); $v3 = rotl!($v3, 16); $v3 ^= $v2;
-        $v0 = $v0.wrapping_add($v3); $v3 = rotl!($v3, 21); $v3 ^= $v0;
-        $v2 = $v2.wrapping_add($v1); $v1 = rotl!($v1, 17); $v1 ^= $v2;
-        $v2 = rotl!($v2, 32);
+        $v0 = $v0.wrapping_add($v1); $v1 = $v1.rotate_left(13); $v1 ^= $v0;
+        $v0 = $v0.rotate_left(32);
+        $v2 = $v2.wrapping_add($v3); $v3 = $v3.rotate_left(16); $v3 ^= $v2;
+        $v0 = $v0.wrapping_add($v3); $v3 = $v3.rotate_left(21); $v3 ^= $v0;
+        $v2 = $v2.wrapping_add($v1); $v1 = $v1.rotate_left(17); $v1 ^= $v2;
+        $v2 = $v2.rotate_left(32);
     });
 }
 
