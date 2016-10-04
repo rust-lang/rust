@@ -5,7 +5,6 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, BareFnTy};
-use std::iter;
 use std::rc::Rc;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::{ast, attr};
@@ -343,9 +342,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             match (&last_ty.sty, last_layout) {
                 (&ty::TyTuple(fields),
                  &Layout::Univariant { ref variant, .. }) => {
-                    let offsets = iter::once(0)
-                        .chain(variant.offset_after_field.iter()
-                            .map(|s| s.bytes()));
+                    let offsets = variant.offsets.iter().map(|s| s.bytes());
                     let last_ptr = match last {
                         Value::ByRef(ptr) => ptr,
                         _ => bug!("rust-call ABI tuple argument wasn't Value::ByRef"),

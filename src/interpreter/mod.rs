@@ -387,7 +387,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         };
 
         let overflowed = self.intrinsic_overflowing(op, left, right, dest)?;
-        let offset = tup_layout.field_offset(1).bytes() as isize;
+        let offset = tup_layout.offsets[1].bytes() as isize;
         self.memory.write_bool(dest.offset(offset), overflowed)
     }
 
@@ -460,8 +460,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 use rustc::ty::layout::Layout::*;
                 match *dest_layout {
                     Univariant { ref variant, .. } => {
-                        let offsets = iter::once(0)
-                            .chain(variant.offset_after_field.iter().map(|s| s.bytes()));
+                        let offsets = variant.offsets.iter().map(|s| s.bytes());
                         self.assign_fields(dest, offsets, operands)?;
                     }
 
@@ -478,11 +477,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
                             let discr_val = adt_def.variants[variant].disr_val.to_u64_unchecked();
                             let discr_size = discr.size().bytes() as usize;
-                            self.memory.write_uint(dest, discr_val, discr_size)?;
+                            let discr_offset = variants[variant].offsets[0].bytes() as isize;
+                            let discr_dest = dest.offset(discr_offset);
+                            self.memory.write_uint(discr_dest, discr_val, discr_size)?;
 
-                            let offsets = variants[variant].offset_after_field.iter()
+                            // Don't include the first offset; it's for the discriminant.
+                            let field_offsets = variants[variant].offsets.iter().skip(1)
                                 .map(|s| s.bytes());
-                            self.assign_fields(dest, offsets, operands)?;
+                            self.assign_fields(dest, field_offsets, operands)?;
                         } else {
                             bug!("tried to assign {:?} to Layout::General", kind);
                         }
@@ -508,8 +510,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield } => {
                         if let mir::AggregateKind::Adt(_, variant, _, _) = *kind {
                             if nndiscr == variant as u64 {
-                                let offsets = iter::once(0)
-                                    .chain(nonnull.offset_after_field.iter().map(|s| s.bytes()));
+                                let offsets = nonnull.offsets.iter().map(|s| s.bytes());
                                 try!(self.assign_fields(dest, offsets, operands));
                             } else {
                                 for operand in operands {
@@ -715,7 +716,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::ty::layout::Layout::*;
         match *layout {
             Univariant { ref variant, .. } => {
-                Ok(variant.field_offset(field_index))
+                Ok(variant.offsets[field_index])
             }
             FatPointer { .. } => {
                 let bytes = layout::FAT_PTR_ADDR * self.memory.pointer_size();
@@ -801,11 +802,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         use rustc::ty::layout::Layout::*;
                         let field = field.index();
                         let offset = match *base_layout {
-                            Univariant { ref variant, .. } => variant.field_offset(field),
+                            Univariant { ref variant, .. } => variant.offsets[field],
                             General { ref variants, .. } => {
                                 if let LvalueExtra::DowncastVariant(variant_idx) = base.extra {
                                     // +1 for the discriminant, which is field 0
-                                    variants[variant_idx].field_offset(field + 1)
+                                    variants[variant_idx].offsets[field + 1]
                                 } else {
                                     bug!("field access on enum had no variant index");
                                 }
@@ -814,7 +815,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 assert_eq!(field.index(), 0);
                                 return Ok(base);
                             }
-                            StructWrappedNullablePointer { ref nonnull, .. } => nonnull.field_offset(field),
+                            StructWrappedNullablePointer { ref nonnull, .. } => {
+                                nonnull.offsets[field]
+                            }
                             _ => bug!("field access on non-product type: {:?}", base_layout),
                         };
 
@@ -1286,20 +1289,6 @@ impl IntegerExt for layout::Integer {
             I16 => Size::from_bits(16),
             I32 => Size::from_bits(32),
             I64 => Size::from_bits(64),
-        }
-    }
-}
-
-trait StructExt {
-    fn field_offset(&self, index: usize) -> Size;
-}
-
-impl StructExt for layout::Struct {
-    fn field_offset(&self, index: usize) -> Size {
-        if index == 0 {
-            Size::from_bytes(0)
-        } else {
-            self.offset_after_field[index - 1]
         }
     }
 }

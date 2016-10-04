@@ -246,20 +246,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let layout = self.type_layout(ty);
                     debug!("DST {} layout: {:?}", ty, layout);
 
-                    // Returns size in bytes of all fields except the last one
-                    // (we will be recursing on the last one).
-                    fn local_prefix_bytes(variant: &ty::layout::Struct) -> u64 {
-                        let fields = variant.offset_after_field.len();
-                        if fields > 1 {
-                            variant.offset_after_field[fields - 2].bytes()
-                        } else {
-                            0
-                        }
-                    }
-
                     let (sized_size, sized_align) = match *layout {
                         ty::layout::Layout::Univariant { ref variant, .. } => {
-                            (local_prefix_bytes(variant), variant.align.abi())
+                            // The offset of the start of the last field gives the size of the
+                            // sized part of the type.
+                            let size = variant.offsets.last().map_or(0, |f| f.bytes());
+                            (size, variant.align.abi())
                         }
                         _ => {
                             bug!("size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
