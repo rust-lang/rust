@@ -605,6 +605,10 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
         let parent = self.resolver.current_module;
         let def_id = parent.def_id().unwrap();
 
+        if let TraitItemKind::Macro(_) = item.node {
+            return self.visit_invoc(item.id);
+        }
+
         // Add the item to the trait info.
         let item_def_id = self.resolver.definitions.local_def_id(item.id);
         let mut is_static_method = false;
@@ -615,7 +619,7 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
                 (Def::Method(item_def_id), ValueNS)
             }
             TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS),
-            TraitItemKind::Macro(_) => return self.visit_invoc(item.id),
+            TraitItemKind::Macro(_) => bug!(),  // handled above
         };
 
         self.resolver.trait_item_map.insert((item.ident.name, def_id), is_static_method);
