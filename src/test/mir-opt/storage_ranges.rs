@@ -38,10 +38,6 @@ fn main() {
 //         _0 = ();
 //         StorageDead(_6);
 //         StorageDead(_1);
-//         goto -> bb1;
-//     }
-//
-//     bb1: {
 //         return;
 //     }
 // END rustc.node4.TypeckMir.before.mir
