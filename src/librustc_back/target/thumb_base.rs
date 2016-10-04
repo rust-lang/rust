@@ -35,8 +35,9 @@
 // differentiate these targets from our other `arm(v7)-*-*-gnueabi(hf)` targets in the context of
 // build scripts / gcc flags.
 
-use target::TargetOptions;
+use PanicStrategy;
 use std::default::Default;
+use target::TargetOptions;
 
 pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
@@ -47,7 +48,7 @@ pub fn opts() -> TargetOptions {
         linker: "arm-none-eabi-gcc".to_string(),
         // Because these devices have very little resources having an unwinder is too onerous so we
         // default to "abort" because the "unwind" strategy is very rare.
-        panic_strategy: "abort".to_string(),
+        panic_strategy: PanicStrategy::Abort,
         // Similarly, one almost always never wants to use relocatable code because of the extra
         // costs it involves.
         relocation_model: "static".to_string(),
