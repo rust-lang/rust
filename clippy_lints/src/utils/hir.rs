@@ -1,7 +1,8 @@
 use consts::constant;
 use rustc::lint::*;
 use rustc::hir::*;
-use std::hash::{Hash, Hasher, SipHasher};
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 use syntax::ast::Name;
 use syntax::ptr::P;
 use utils::differing_macro_contexts;
@@ -272,14 +273,14 @@ fn over<X, F>(left: &[X], right: &[X], mut eq_fn: F) -> bool
 pub struct SpanlessHash<'a, 'tcx: 'a> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'a, 'tcx>,
-    s: SipHasher,
+    s: DefaultHasher,
 }
 
 impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
         SpanlessHash {
             cx: cx,
-            s: SipHasher::new(),
+            s: DefaultHasher::new(),
         }
     }
 
