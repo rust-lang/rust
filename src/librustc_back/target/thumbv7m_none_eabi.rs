@@ -24,7 +24,7 @@ pub fn target() -> TargetResult {
         target_vendor: "".to_string(),
 
         options: TargetOptions {
-            max_atomic_width: 32,
+            max_atomic_width: Some(32),
             .. super::thumb_base::opts()
         },
     })

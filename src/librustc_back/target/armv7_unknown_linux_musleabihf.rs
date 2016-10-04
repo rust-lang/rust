@@ -17,7 +17,7 @@ pub fn target() -> TargetResult {
     // target.
     base.features = "+v7,+vfp3,+neon".to_string();
     base.cpu = "cortex-a8".to_string();
-    base.max_atomic_width = 64;
+    base.max_atomic_width = Some(64);
     Ok(Target {
         // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
         // uses it to determine the calling convention and float ABI, and LLVM

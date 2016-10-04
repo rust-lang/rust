@@ -26,7 +26,7 @@ pub fn target() -> TargetResult {
             // Info about features at https://wiki.debian.org/ArmHardFloatPort
             features: "+v7,+vfp3,+d16,+thumb2".to_string(),
             cpu: "generic".to_string(),
-            max_atomic_width: 64,
+            max_atomic_width: Some(64),
             .. base
         }
     })

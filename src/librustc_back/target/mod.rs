@@ -353,9 +353,8 @@ pub struct TargetOptions {
     // will 'just work'.
     pub obj_is_bitcode: bool,
 
-    /// Maximum integer size in bits that this target can perform atomic
-    /// operations on.
-    pub max_atomic_width: u64,
+    /// Don't use this field; instead use the `.max_atomic_width()` method.
+    pub max_atomic_width: Option<u64>,
 
     /// Panic strategy: "unwind" or "abort"
     pub panic_strategy: PanicStrategy,
@@ -407,10 +406,7 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
-            // NOTE 0 is *not* the real default value of max_atomic_width. The default value is
-            // actually the pointer_width of the target. This default is injected in the
-            // Target::from_json function.
-            max_atomic_width: 0,
+            max_atomic_width: None,
             panic_strategy: PanicStrategy::Unwind,
         }
     }
@@ -429,6 +425,12 @@ impl Target {
             },
             abi => abi
         }
+    }
+
+    /// Maximum integer size in bits that this target can perform atomic
+    /// operations on.
+    pub fn max_atomic_width(&self) -> u64 {
+        self.options.max_atomic_width.unwrap_or(self.target_pointer_width.parse().unwrap())
     }
 
     /// Load a target descriptor from a JSON object.
@@ -469,9 +471,6 @@ impl Target {
             options: Default::default(),
         };
 
-        // Default max-atomic-width to target-pointer-width
-        base.options.max_atomic_width = base.target_pointer_width.parse().unwrap();
-
         macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
@@ -484,11 +483,11 @@ impl Target {
                     .map(|o| o.as_boolean()
                          .map(|s| base.options.$key_name = s));
             } );
-            ($key_name:ident, u64) => ( {
+            ($key_name:ident, Option<u64>) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..])
                     .map(|o| o.as_u64()
-                         .map(|s| base.options.$key_name = s));
+                         .map(|s| base.options.$key_name = Some(s)));
             } );
             ($key_name:ident, PanicStrategy) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
@@ -562,7 +561,7 @@ impl Target {
         key!(exe_allocation_crate);
         key!(has_elf_tls, bool);
         key!(obj_is_bitcode, bool);
-        key!(max_atomic_width, u64);
+        key!(max_atomic_width, Option<u64>);
         try!(key!(panic_strategy, PanicStrategy));
 
         Ok(base)
@@ -707,10 +706,6 @@ impl ToJson for Target {
         target_option_val!(obj_is_bitcode);
         target_option_val!(max_atomic_width);
         target_option_val!(panic_strategy);
-
-        if self.options.max_atomic_width.to_string() != self.target_pointer_width {
-            d.insert("max-atomic-width".to_string(), self.options.max_atomic_width.to_json());
-        }
 
         Json::Object(d)
     }
