@@ -8,6 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Targets the Cortex-M4F and Cortex-M7F processors (ARMv7E-M)
+//
+// This target assumes that the device does have a FPU (Floating Point Unit) and lowers all (single
+// precision) floating point operations to hardware instructions.
+//
+// Additionally, this target uses the "hard" floating convention (ABI) where floating point values
+// are passed to/from subroutines via FPU registers (S0, S1, D0, D1, etc.).
+//
+// To opt into double precision hardware support, use the `-C target-feature=-fp-only-sp` flag.
+
 use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
@@ -22,8 +32,13 @@ pub fn target() -> TargetResult {
         target_vendor: "".to_string(),
 
         options: TargetOptions {
-            // vfp4 lowest common denominator between the Cortex-M4 (vfp4) and the Cortex-M7 (vfp5)
-            features: "+vfp4".to_string(),
+            // `+vfp4` is the lowest common denominator between the Cortex-M4 (vfp4-16) and the
+            // Cortex-M7 (vfp5)
+            // `+d16` both the Cortex-M4 and the Cortex-M7 only have 16 double-precision registers
+            // available
+            // `+fp-only-sp` The Cortex-M4 only supports single precision floating point operations
+            // whereas in the Cortex-M7 double precision is optional
+            features: "+vfp4,+d16,+fp-only-sp".to_string(),
             max_atomic_width: 32,
             .. super::thumb_base::opts()
         }

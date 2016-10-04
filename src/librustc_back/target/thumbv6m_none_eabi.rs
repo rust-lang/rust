@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Targets the Cortex-M0, Cortex-M0+ and Cortex-M1 processors (ARMv6-M architecture)
+
 use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
