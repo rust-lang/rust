@@ -106,6 +106,7 @@ pub mod neg_multiply;
 pub mod new_without_default;
 pub mod no_effect;
 pub mod non_expressive_names;
+pub mod ok_if_let;
 pub mod open_options;
 pub mod overflow_check_conditional;
 pub mod panic;
@@ -254,6 +255,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box let_if_seq::LetIfSeq);
     reg.register_late_lint_pass(box eval_order_dependence::EvalOrderDependence);
     reg.register_late_lint_pass(box missing_doc::MissingDoc::new());
+    reg.register_late_lint_pass(box ok_if_let::OkIfLetPass);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -404,6 +406,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         no_effect::NO_EFFECT,
         no_effect::UNNECESSARY_OPERATION,
         non_expressive_names::MANY_SINGLE_CHAR_NAMES,
+        ok_if_let::IF_LET_SOME_RESULT,
         open_options::NONSENSICAL_OPEN_OPTIONS,
         overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
         panic::PANIC_PARAMS,
