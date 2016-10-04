@@ -13,7 +13,7 @@ use target::{Target, TargetResult};
 pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
 
-    base.max_atomic_width = 64;
+    base.max_atomic_width = Some(64);
 
     // http://developer.android.com/ndk/guides/abis.html#x86
     base.cpu = "pentiumpro".to_string();

@@ -13,7 +13,7 @@ use target::{Target, TargetResult};
 pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
     base.features = "+v7,+thumb2,+vfp3,+d16".to_string();
-    base.max_atomic_width = 64;
+    base.max_atomic_width = Some(64);
 
     Ok(Target {
         llvm_target: "armv7-none-linux-android".to_string(),

@@ -29,7 +29,7 @@ pub fn target() -> TargetResult {
             features: "+strict-align".to_string(),
             // There are no atomic instructions available in the instruction set of the ARMv6-M
             // architecture
-            max_atomic_width: 0,
+            max_atomic_width: Some(0),
             .. super::thumb_base::opts()
         }
     })

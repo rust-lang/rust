@@ -24,7 +24,7 @@ pub fn target() -> TargetResult {
         exe_suffix: ".pexe".to_string(),
         linker_is_gnu: true,
         allow_asm: false,
-        max_atomic_width: 32,
+        max_atomic_width: Some(32),
         .. Default::default()
     };
     Ok(Target {
