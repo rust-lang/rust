@@ -183,6 +183,14 @@ pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
     StructGEP(bcx, fat_ptr, abi::FAT_PTR_ADDR)
 }
 
+pub fn get_meta_builder(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
+    b.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
+}
+
+pub fn get_dataptr_builder(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
+    b.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
+}
+
 fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, info_ty: Ty<'tcx>, it: LangItem) -> DefId {
     match bcx.tcx().lang_items.require(it) {
         Ok(id) => id,
@@ -708,11 +716,36 @@ pub fn store_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
 pub fn load_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                 src: ValueRef,
-                                _ty: Ty<'tcx>)
-                                -> (ValueRef, ValueRef) {
-    // FIXME: emit metadata
-    (Load(cx, get_dataptr(cx, src)),
-     Load(cx, get_meta(cx, src)))
+                                ty: Ty<'tcx>)
+                                -> (ValueRef, ValueRef)
+{
+    if cx.unreachable.get() {
+        // FIXME: remove me
+        return (Load(cx, get_dataptr(cx, src)),
+                Load(cx, get_meta(cx, src)));
+    }
+
+    load_fat_ptr_builder(&B(cx), src, ty)
+}
+
+pub fn load_fat_ptr_builder<'a, 'tcx>(
+    b: &Builder<'a, 'tcx>,
+    src: ValueRef,
+    t: Ty<'tcx>)
+    -> (ValueRef, ValueRef)
+{
+
+    let ptr = get_dataptr_builder(b, src);
+    let ptr = if t.is_region_ptr() || t.is_unique() {
+        b.load_nonnull(ptr)
+    } else {
+        b.load(ptr)
+    };
+
+    // FIXME: emit metadata on `meta`.
+    let meta = b.load(get_meta_builder(b, src));
+
+    (ptr, meta)
 }
 
 pub fn from_immediate(bcx: Block, val: ValueRef) -> ValueRef {
