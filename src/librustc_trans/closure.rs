@@ -217,6 +217,10 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     llreffn: ValueRef)
     -> ValueRef
 {
+    if let Some(&llfn) = ccx.instances().borrow().get(&method_instance) {
+        return llfn;
+    }
+
     debug!("trans_fn_once_adapter_shim(closure_def_id={:?}, substs={:?}, llreffn={:?})",
            closure_def_id, substs, Value(llreffn));
 
@@ -311,6 +315,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 
     fcx.finish(bcx, DebugLoc::None);
+
+    ccx.instances().borrow_mut().insert(method_instance, lloncefn);
 
     lloncefn
 }
