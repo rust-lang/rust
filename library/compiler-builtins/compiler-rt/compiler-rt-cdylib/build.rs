@@ -58,6 +58,8 @@ fn main() {
         "udivmodsi4.c",
         "adddf3.c",
         "addsf3.c",
+        "powidf2.c",
+        "powisf2.c",
     ]);
 
     for src in sources.files.iter() {
