@@ -160,8 +160,6 @@ fn main() {
                          "paritysi2.c",
                          "popcountdi2.c",
                          "popcountsi2.c",
-                         "powidf2.c",
-                         "powisf2.c",
                          "powixf2.c",
                          "subdf3.c",
                          "subsf3.c",
