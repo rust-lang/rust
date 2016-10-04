@@ -12,10 +12,7 @@
 //! that clean them.
 
 pub use self::Type::*;
-pub use self::TypeKind::*;
-pub use self::VariantKind::*;
 pub use self::Mutability::*;
-pub use self::Import::*;
 pub use self::ItemEnum::*;
 pub use self::Attribute::*;
 pub use self::TyParamBound::*;
@@ -319,7 +316,7 @@ impl Item {
         match self.inner {
             StructItem(ref _struct) => Some(_struct.fields_stripped),
             UnionItem(ref union) => Some(union.fields_stripped),
-            VariantItem(Variant { kind: StructVariant(ref vstruct)} ) => {
+            VariantItem(Variant { kind: VariantKind::Struct(ref vstruct)} ) => {
                 Some(vstruct.fields_stripped)
             },
             _ => None,
@@ -688,7 +685,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
                 (tcx.lang_items.sync_trait().unwrap(),
                  external_path(cx, "Sync", None, false, vec![], empty)),
         };
-        inline::record_extern_fqn(cx, did, TypeTrait);
+        inline::record_extern_fqn(cx, did, TypeKind::Trait);
         TraitBound(PolyTrait {
             trait_: ResolvedPath {
                 path: path,
@@ -707,7 +704,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
             Some(tcx) => tcx,
             None => return RegionBound(Lifetime::statik())
         };
-        inline::record_extern_fqn(cx, self.def_id, TypeTrait);
+        inline::record_extern_fqn(cx, self.def_id, TypeKind::Trait);
         let path = external_path(cx, &tcx.item_name(self.def_id).as_str(),
                                  Some(self.def_id), true, vec![], self.substs);
 
@@ -765,7 +762,7 @@ impl Lifetime {
     pub fn get_ref<'a>(&'a self) -> &'a str {
         let Lifetime(ref s) = *self;
         let s: &'a str = s;
-        return s;
+        s
     }
 
     pub fn statik() -> Lifetime {
@@ -1130,7 +1127,7 @@ pub struct FnDecl {
 
 impl FnDecl {
     pub fn has_self(&self) -> bool {
-        return self.inputs.values.len() > 0 && self.inputs.values[0].name == "self";
+        self.inputs.values.len() > 0 && self.inputs.values[0].name == "self"
     }
 
     pub fn self_type(&self) -> Option<SelfTy> {
@@ -1480,16 +1477,16 @@ pub enum PrimitiveType {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
 pub enum TypeKind {
-    TypeEnum,
-    TypeFunction,
-    TypeModule,
-    TypeConst,
-    TypeStatic,
-    TypeStruct,
-    TypeUnion,
-    TypeTrait,
-    TypeVariant,
-    TypeTypedef,
+    Enum,
+    Function,
+    Module,
+    Const,
+    Static,
+    Struct,
+    Union,
+    Trait,
+    Variant,
+    Typedef,
 }
 
 pub trait GetDefId {
@@ -1572,7 +1569,7 @@ impl PrimitiveType {
         None
     }
 
-    pub fn to_string(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match *self {
             PrimitiveType::Isize => "isize",
             PrimitiveType::I8 => "i8",
@@ -1597,7 +1594,7 @@ impl PrimitiveType {
     }
 
     pub fn to_url_str(&self) -> &'static str {
-        self.to_string()
+        self.as_str()
     }
 
     /// Creates a rustdoc-specific node id for primitive types.
@@ -1795,9 +1792,9 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyAdt(def, substs) => {
                 let did = def.did;
                 let kind = match def.adt_kind() {
-                    AdtKind::Struct => TypeStruct,
-                    AdtKind::Union => TypeUnion,
-                    AdtKind::Enum => TypeEnum,
+                    AdtKind::Struct => TypeKind::Struct,
+                    AdtKind::Union => TypeKind::Union,
+                    AdtKind::Enum => TypeKind::Enum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
                 let path = external_path(cx, &cx.tcx().item_name(did).as_str(),
@@ -1811,7 +1808,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             }
             ty::TyTrait(ref obj) => {
                 let did = obj.principal.def_id();
-                inline::record_extern_fqn(cx, did, TypeTrait);
+                inline::record_extern_fqn(cx, did, TypeKind::Trait);
 
                 let mut typarams = vec![];
                 obj.region_bound.clean(cx).map(|b| typarams.push(RegionBound(b)));
@@ -2027,7 +2024,7 @@ impl Clean<Item> for doctree::Variant {
             deprecation: self.depr.clean(cx),
             def_id: cx.map.local_def_id(self.def.id()),
             inner: VariantItem(Variant {
-                kind: struct_def_to_variant_kind(&self.def, cx),
+                kind: self.def.clean(cx),
             }),
         }
     }
@@ -2036,14 +2033,14 @@ impl Clean<Item> for doctree::Variant {
 impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
         let kind = match self.kind {
-            ty::VariantKind::Unit => CLikeVariant,
+            ty::VariantKind::Unit => VariantKind::CLike,
             ty::VariantKind::Tuple => {
-                TupleVariant(
+                VariantKind::Tuple(
                     self.fields.iter().map(|f| f.unsubst_ty().clean(cx)).collect()
                 )
             }
             ty::VariantKind::Struct => {
-                StructVariant(VariantStruct {
+                VariantKind::Struct(VariantStruct {
                     struct_type: doctree::Plain,
                     fields_stripped: false,
                     fields: self.fields.iter().map(|field| {
@@ -2076,18 +2073,20 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum VariantKind {
-    CLikeVariant,
-    TupleVariant(Vec<Type>),
-    StructVariant(VariantStruct),
+    CLike,
+    Tuple(Vec<Type>),
+    Struct(VariantStruct),
 }
 
-fn struct_def_to_variant_kind(struct_def: &hir::VariantData, cx: &DocContext) -> VariantKind {
-    if struct_def.is_struct() {
-        StructVariant(struct_def.clean(cx))
-    } else if struct_def.is_unit() {
-        CLikeVariant
-    } else {
-        TupleVariant(struct_def.fields().iter().map(|x| x.ty.clean(cx)).collect())
+impl Clean<VariantKind> for hir::VariantData {
+    fn clean(&self, cx: &DocContext) -> VariantKind {
+        if self.is_struct() {
+            VariantKind::Struct(self.clean(cx))
+        } else if self.is_unit() {
+            VariantKind::CLike
+        } else {
+            VariantKind::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
+        }
     }
 }
 
@@ -2526,7 +2525,7 @@ impl Clean<Vec<Item>> for doctree::Import {
         });
         let (mut ret, inner) = match self.node {
             hir::ViewPathGlob(ref p) => {
-                (vec![], GlobImport(resolve_use_source(cx, p.clean(cx), self.id)))
+                (vec![], Import::Glob(resolve_use_source(cx, p.clean(cx), self.id)))
             }
             hir::ViewPathList(ref p, ref list) => {
                 // Attempt to inline all reexported items, but be sure
@@ -2552,8 +2551,7 @@ impl Clean<Vec<Item>> for doctree::Import {
                 if remaining.is_empty() {
                     return ret;
                 }
-                (ret, ImportList(resolve_use_source(cx, p.clean(cx), self.id),
-                                 remaining))
+                (ret, Import::List(resolve_use_source(cx, p.clean(cx), self.id), remaining))
             }
             hir::ViewPathSimple(name, ref p) => {
                 if !denied {
@@ -2561,8 +2559,8 @@ impl Clean<Vec<Item>> for doctree::Import {
                         return items;
                     }
                 }
-                (vec![], SimpleImport(name.clean(cx),
-                                      resolve_use_source(cx, p.clean(cx), self.id)))
+                (vec![], Import::Simple(name.clean(cx),
+                                        resolve_use_source(cx, p.clean(cx), self.id)))
             }
         };
         ret.push(Item {
@@ -2582,11 +2580,11 @@ impl Clean<Vec<Item>> for doctree::Import {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum Import {
     // use source as str;
-    SimpleImport(String, ImportSource),
+    Simple(String, ImportSource),
     // use source::*;
-    GlobImport(ImportSource),
+    Glob(ImportSource),
     // use source::{a, b, c};
-    ImportList(ImportSource, Vec<ViewListIdent>),
+    List(ImportSource, Vec<ViewListIdent>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -2761,16 +2759,16 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
     let tcx = cx.tcx();
 
     let (did, kind) = match def {
-        Def::Fn(i) => (i, TypeFunction),
-        Def::TyAlias(i) => (i, TypeTypedef),
-        Def::Enum(i) => (i, TypeEnum),
-        Def::Trait(i) => (i, TypeTrait),
-        Def::Struct(i) => (i, TypeStruct),
-        Def::Union(i) => (i, TypeUnion),
-        Def::Mod(i) => (i, TypeModule),
-        Def::Static(i, _) => (i, TypeStatic),
-        Def::Variant(i) => (tcx.parent_def_id(i).unwrap(), TypeEnum),
-        Def::SelfTy(Some(def_id), _) => (def_id, TypeTrait),
+        Def::Fn(i) => (i, TypeKind::Function),
+        Def::TyAlias(i) => (i, TypeKind::Typedef),
+        Def::Enum(i) => (i, TypeKind::Enum),
+        Def::Trait(i) => (i, TypeKind::Trait),
+        Def::Struct(i) => (i, TypeKind::Struct),
+        Def::Union(i) => (i, TypeKind::Union),
+        Def::Mod(i) => (i, TypeKind::Module),
+        Def::Static(i, _) => (i, TypeKind::Static),
+        Def::Variant(i) => (tcx.parent_def_id(i).unwrap(), TypeKind::Enum),
+        Def::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
         Def::SelfTy(_, Some(impl_def_id)) => {
             return impl_def_id
         }
@@ -2778,7 +2776,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
     };
     if did.is_local() { return did }
     inline::record_extern_fqn(cx, did, kind);
-    if let TypeTrait = kind {
+    if let TypeKind::Trait = kind {
         let t = inline::build_external_trait(cx, tcx, did);
         cx.external_traits.borrow_mut().insert(did, t);
     }
@@ -2966,7 +2964,7 @@ fn lang_struct(cx: &DocContext, did: Option<DefId>,
         Some(did) => did,
         None => return fallback(box t.clean(cx)),
     };
-    inline::record_extern_fqn(cx, did, TypeStruct);
+    inline::record_extern_fqn(cx, did, TypeKind::Struct);
     ResolvedPath {
         typarams: None,
         did: did,

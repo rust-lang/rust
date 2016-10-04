@@ -74,12 +74,12 @@ pub trait DocFolder : Sized {
             VariantItem(i) => {
                 let i2 = i.clone(); // this clone is small
                 match i.kind {
-                    StructVariant(mut j) => {
+                    VariantKind::Struct(mut j) => {
                         let num_fields = j.fields.len();
                         j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
                         j.fields_stripped |= num_fields != j.fields.len() ||
                                              j.fields.iter().any(|f| f.is_stripped());
-                        VariantItem(Variant {kind: StructVariant(j), ..i2})
+                        VariantItem(Variant {kind: VariantKind::Struct(j), ..i2})
                     },
                     _ => VariantItem(i2)
                 }

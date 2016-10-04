@@ -761,7 +761,7 @@ impl<T:?Sized> Deref for Unique<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T> fmt::Pointer for Unique<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&*self.pointer, f)

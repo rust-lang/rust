@@ -328,7 +328,8 @@ impl<A: Step> ops::RangeInclusive<A> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "step_by", reason = "recent addition",
+           issue = "27741")]
 impl<A> Iterator for StepBy<A, ops::RangeFrom<A>> where
     A: Clone,
     for<'a> &'a A: Add<&'a A, Output = A>
@@ -352,7 +353,8 @@ impl<A> Iterator for StepBy<A, ops::RangeFrom<A>> where
 impl<A> FusedIterator for StepBy<A, ops::RangeFrom<A>>
     where A: Clone, for<'a> &'a A: Add<&'a A, Output = A> {}
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "step_by", reason = "recent addition",
+           issue = "27741")]
 impl<A: Step + Clone> Iterator for StepBy<A, ops::Range<A>> {
     type Item = A;
 

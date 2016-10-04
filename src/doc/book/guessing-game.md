@@ -56,9 +56,7 @@ $ cargo build
 Excellent! Open up your `src/main.rs` again. We’ll be writing all of
 our code in this file.
 
-Before we move on, let me show you one more Cargo command: `run`. `cargo run`
-is kind of like `cargo build`, but it also then runs the produced executable.
-Try it out:
+Remember the `run` command from last chapter? Try it out again here:
 
 ```bash
 $ cargo run
@@ -67,9 +65,8 @@ $ cargo run
 Hello, world!
 ```
 
-Great! The `run` command comes in handy when you need to rapidly iterate on a
-project. Our game is such a project, we need to quickly test each
-iteration before moving on to the next one.
+Great! Our game is just the kind of project `run` is good for: we need
+to quickly test each iteration before moving on to the next one.
 
 # Processing a Guess
 

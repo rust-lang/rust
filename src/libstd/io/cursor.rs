@@ -10,6 +10,7 @@
 
 use io::prelude::*;
 
+use core::convert::TryInto;
 use cmp;
 use io::{self, SeekFrom, Error, ErrorKind};
 
@@ -242,18 +243,20 @@ impl<'a> Write for Cursor<&'a mut [u8]> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Cursor<Vec<u8>> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let pos: usize = self.position().try_into().map_err(|_| {
+            Error::new(ErrorKind::InvalidInput,
+                       "cursor position exceeds maximum possible vector length")
+        })?;
         // Make sure the internal buffer is as least as big as where we
         // currently are
-        let pos = self.position();
-        let amt = pos.saturating_sub(self.inner.len() as u64);
-        // use `resize` so that the zero filling is as efficient as possible
         let len = self.inner.len();
-        self.inner.resize(len + amt as usize, 0);
-
+        if len < pos {
+            // use `resize` so that the zero filling is as efficient as possible
+            self.inner.resize(pos, 0);
+        }
         // Figure out what bytes will be used to overwrite what's currently
         // there (left), and what will be appended on the end (right)
         {
-            let pos = pos as usize;
             let space = self.inner.len() - pos;
             let (left, right) = buf.split_at(cmp::min(space, buf.len()));
             self.inner[pos..pos + left.len()].copy_from_slice(left);
@@ -261,7 +264,7 @@ impl Write for Cursor<Vec<u8>> {
         }
 
         // Bump us forward
-        self.set_position(pos + buf.len() as u64);
+        self.set_position((pos + buf.len()) as u64);
         Ok(buf.len())
     }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
@@ -579,5 +582,13 @@ mod tests {
     fn vec_seek_before_0() {
         let mut r = Cursor::new(Vec::new());
         assert!(r.seek(SeekFrom::End(-2)).is_err());
+    }
+
+    #[test]
+    #[cfg(target_pointer_width = "32")]
+    fn vec_seek_and_write_past_usize_max() {
+        let mut c = Cursor::new(Vec::new());
+        c.set_position(<usize>::max_value() as u64 + 1);
+        assert!(c.write_all(&[1, 2, 3]).is_err());
     }
 }

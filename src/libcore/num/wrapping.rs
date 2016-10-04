@@ -28,7 +28,7 @@ macro_rules! sh_impl_signed {
             }
         }
 
-        #[stable(feature = "wrapping_impls", since = "1.7.0")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shl_assign(&mut self, other: $f) {
@@ -50,7 +50,7 @@ macro_rules! sh_impl_signed {
             }
         }
 
-        #[stable(feature = "wrapping_impls", since = "1.7.0")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shr_assign(&mut self, other: $f) {
@@ -72,7 +72,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
 
-        #[stable(feature = "wrapping_impls", since = "1.7.0")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shl_assign(&mut self, other: $f) {
@@ -90,7 +90,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
 
-        #[stable(feature = "wrapping_impls", since = "1.7.0")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shr_assign(&mut self, other: $f) {

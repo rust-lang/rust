@@ -505,6 +505,9 @@ $ cargo run
 Hello, world!
 ```
 
+The `run` command comes in handy when you need to rapidly iterate on a
+project.
+
 Notice that this example didn’t re-build the project. Cargo figured out that
 the file hasn’t changed, and so it just ran the binary. If you'd modified your
 source code, Cargo would have rebuilt the project before running it, and you

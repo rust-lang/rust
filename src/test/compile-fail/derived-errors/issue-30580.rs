@@ -19,7 +19,7 @@ impl<'a, 'tcx> Pass<'a, 'tcx>
     pub fn tcx(&self) -> &'a &'tcx () { self.1 }
     fn lol(&mut self, b: &Foo)
     {
-        b.c; //~ ERROR no field with that name was found
+        b.c; //~ ERROR no field `c` on type `&Foo`
         self.tcx();
     }
 }

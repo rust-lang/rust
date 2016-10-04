@@ -196,9 +196,9 @@ impl<'a, T: RefUnwindSafe + ?Sized> UnwindSafe for &'a T {}
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *const T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *mut T {}
-#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: UnwindSafe> UnwindSafe for Unique<T> {}
-#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[unstable(feature = "shared", issue = "27730")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Shared<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: ?Sized> UnwindSafe for Mutex<T> {}
