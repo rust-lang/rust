@@ -1520,7 +1520,7 @@ impl<T> Take<T> {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "io_take_into_inner", issue = "0")]
+    #[unstable(feature = "io_take_into_inner", issue = "23755")]
     pub fn into_inner(self) -> T {
         self.inner
     }
