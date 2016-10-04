@@ -797,7 +797,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                (binding.is_import() || binding.is_extern_crate()) {
                 let def = binding.def();
                 if def != Def::Err {
-                    reexports.push(Export { name: name, def_id: def.def_id() });
+                    reexports.push(Export { name: name, def: def });
                 }
             }
 

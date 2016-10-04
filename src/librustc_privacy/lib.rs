@@ -28,7 +28,7 @@ extern crate syntax_pos;
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::{self, PatKind};
-use rustc::hir::def::{self, Def};
+use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -286,7 +286,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         if self.prev_level.is_some() {
             if let Some(exports) = self.export_map.get(&id) {
                 for export in exports {
-                    if let Some(node_id) = self.tcx.map.as_local_node_id(export.def_id) {
+                    if let Some(node_id) = self.tcx.map.as_local_node_id(export.def.def_id()) {
                         self.update(node_id, Some(AccessLevel::Exported));
                     }
                 }
@@ -454,36 +454,25 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 }
             }
             hir::ExprPath(..) => {
-                if let Def::Struct(..) = self.tcx.expect_def(expr.id) {
-                    let expr_ty = self.tcx.expr_ty(expr);
-                    let def = match expr_ty.sty {
-                        ty::TyFnDef(.., &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
-                            output: ty, ..
-                        }), ..}) => ty,
-                        _ => expr_ty
-                    }.ty_adt_def().unwrap();
-
-                    let private_indexes : Vec<_> = def.struct_variant().fields.iter().enumerate()
-                        .filter(|&(_,f)| {
-                            !f.vis.is_accessible_from(self.curitem, &self.tcx.map)
-                    }).map(|(n,&_)|n).collect();
+                if let def @ Def::StructCtor(_, CtorKind::Fn) = self.tcx.expect_def(expr.id) {
+                    let adt_def = self.tcx.expect_variant_def(def);
+                    let private_indexes = adt_def.fields.iter().enumerate().filter(|&(_, field)| {
+                        !field.vis.is_accessible_from(self.curitem, &self.tcx.map)
+                    }).map(|(i, _)| i).collect::<Vec<_>>();
 
                     if !private_indexes.is_empty() {
-
                         let mut error = struct_span_err!(self.tcx.sess, expr.span, E0450,
                                                          "cannot invoke tuple struct constructor \
-                                                         with private fields");
+                                                          with private fields");
                         error.span_label(expr.span,
                                          &format!("cannot construct with a private field"));
 
-                        if let Some(def_id) = self.tcx.map.as_local_node_id(def.did) {
-                            if let Some(hir::map::NodeItem(node)) = self.tcx.map.find(def_id) {
-                                if let hir::Item_::ItemStruct(ref tuple_data, _) = node.node {
-
-                                    for i in private_indexes {
-                                        error.span_label(tuple_data.fields()[i].span,
-                                                         &format!("private field declared here"));
-                                    }
+                        if let Some(node_id) = self.tcx.map.as_local_node_id(adt_def.did) {
+                            let node = self.tcx.map.find(node_id);
+                            if let Some(hir::map::NodeStructCtor(vdata)) = node {
+                                for i in private_indexes {
+                                    error.span_label(vdata.fields()[i].span,
+                                                     &format!("private field declared here"));
                                 }
                             }
                         }

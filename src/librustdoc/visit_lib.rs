@@ -66,11 +66,12 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
 
     pub fn visit_mod(&mut self, def_id: DefId) {
         for item in self.cstore.item_children(def_id) {
-            self.visit_item(item.def_id);
+            self.visit_item(item.def);
         }
     }
 
-    fn visit_item(&mut self, def_id: DefId) {
+    fn visit_item(&mut self, def: Def) {
+        let def_id = def.def_id();
         let vis = self.cstore.visibility(def_id);
         let inherited_item_level = if vis == Visibility::Public {
             self.prev_level
@@ -80,7 +81,7 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
 
         let item_level = self.update(def_id, inherited_item_level);
 
-        if let Some(Def::Mod(_)) = self.cstore.describe_def(def_id) {
+        if let Def::Mod(..) = def {
             let orig_level = self.prev_level;
 
             self.prev_level = item_level;

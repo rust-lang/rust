@@ -14,7 +14,7 @@
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as ast_map;
 use rustc::session::{CompileResult, Session};
-use rustc::hir::def::{Def, DefMap};
+use rustc::hir::def::{Def, CtorKind, DefMap};
 use rustc::util::nodemap::NodeMap;
 
 use syntax::ast;
@@ -272,7 +272,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                     // affect the specific variant used, but we need to check
                     // the whole enum definition to see what expression that
                     // might be (if any).
-                    Some(Def::Variant(variant_id)) => {
+                    Some(Def::VariantCtor(variant_id, CtorKind::Const)) => {
                         if let Some(variant_id) = self.ast_map.as_local_node_id(variant_id) {
                             let variant = self.ast_map.expect_variant(variant_id);
                             let enum_id = self.ast_map.get_parent(variant_id);
@@ -283,7 +283,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                             } else {
                                 span_bug!(e.span,
                                           "`check_static_recursion` found \
-                                           non-enum in Def::Variant");
+                                           non-enum in Def::VariantCtor");
                             }
                         }
                     }

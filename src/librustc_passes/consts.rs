@@ -33,7 +33,7 @@ use rustc_const_eval::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonCo
 use rustc_const_eval::ErrKind::UnresolvedPath;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_math::{ConstMathErr, Op};
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
@@ -489,20 +489,12 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         }
         hir::ExprPath(..) => {
             match v.tcx.expect_def(e.id) {
-                Def::Variant(..) => {
-                    // Count the discriminator or function pointer.
+                Def::VariantCtor(_, CtorKind::Const) => {
+                    // Size is determined by the whole enum, may be non-zero.
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                 }
-                Def::Struct(..) => {
-                    if let ty::TyFnDef(..) = node_ty.sty {
-                        // Count the function pointer.
-                        v.add_qualif(ConstQualif::NON_ZERO_SIZED);
-                    }
-                }
-                Def::Fn(..) | Def::Method(..) => {
-                    // Count the function pointer.
-                    v.add_qualif(ConstQualif::NON_ZERO_SIZED);
-                }
+                Def::VariantCtor(..) | Def::StructCtor(..) |
+                Def::Fn(..) | Def::Method(..) => {}
                 Def::Static(..) => {
                     match v.mode {
                         Mode::Static | Mode::StaticMut => {}
@@ -539,9 +531,9 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
             // The callee is an arbitrary expression, it doesn't necessarily have a definition.
             let is_const = match v.tcx.expect_def_or_none(callee.id) {
-                Some(Def::Struct(..)) => true,
-                Some(Def::Variant(..)) => {
-                    // Count the discriminator.
+                Some(Def::StructCtor(_, CtorKind::Fn)) |
+                Some(Def::VariantCtor(_, CtorKind::Fn)) => {
+                    // `NON_ZERO_SIZED` is about the call result, not about the ctor itself.
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                     true
                 }

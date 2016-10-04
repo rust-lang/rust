@@ -15,6 +15,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
 use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
+use hir::def::CtorKind;
 use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{self, AdtDef, ClosureSubsts, Region, Ty};
@@ -1140,10 +1141,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         ppaux::parameterized(fmt, substs, variant_def.did,
                                              ppaux::Ns::Value, &[])?;
 
-                        match variant_def.kind {
-                            ty::VariantKind::Unit => Ok(()),
-                            ty::VariantKind::Tuple => fmt_tuple(fmt, lvs),
-                            ty::VariantKind::Struct => {
+                        match variant_def.ctor_kind {
+                            CtorKind::Const => Ok(()),
+                            CtorKind::Fn => fmt_tuple(fmt, lvs),
+                            CtorKind::Fictive => {
                                 let mut struct_fmt = fmt.debug_struct("");
                                 for (field, lv) in variant_def.fields.iter().zip(lvs) {
                                     struct_fmt.field(&field.name.as_str(), lv);
