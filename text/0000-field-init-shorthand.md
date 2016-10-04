@@ -1,4 +1,4 @@
-- Feature Name: named-field-puns
+- Feature Name: field-init-shorthand
 - Start Date: 2016-07-18
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
