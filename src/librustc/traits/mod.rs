@@ -138,7 +138,11 @@ pub enum ObligationCauseCode<'tcx> {
 
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
 
-    CompareImplMethodObligation,
+    CompareImplMethodObligation {
+        item_name: ast::Name,
+        impl_item_def_id: DefId,
+        trait_item_def_id: DefId
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

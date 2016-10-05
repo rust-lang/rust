@@ -363,7 +363,11 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let cause = traits::ObligationCause {
                 span: impl_m_span,
                 body_id: impl_m_body_id,
-                code: traits::ObligationCauseCode::CompareImplMethodObligation,
+                code: traits::ObligationCauseCode::CompareImplMethodObligation {
+                    item_name: impl_m.name,
+                    impl_item_def_id: impl_m.def_id,
+                    trait_item_def_id: trait_m.def_id,
+                },
             };
 
             fulfillment_cx.borrow_mut().register_predicate_obligation(

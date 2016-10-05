@@ -12,13 +12,13 @@
 
 // Test that we elaborate `Type: 'region` constraints and infer various important things.
 
-trait Master<'a, T: ?Sized, U> {
-    fn foo() where T: 'a;
+trait Master<'a, 'b> {
+    fn foo();
 }
 
-// `U::Item: 'a` does not imply that `U: 'a`
-impl<'a, U: Iterator> Master<'a, U::Item, U> for () {
-    fn foo() where U: 'a { }
+// `U: 'a` does not imply `V: 'a`
+impl<'a, 'b> Master<'a, 'b> for () {
+    fn foo() where 'a: 'b { }
     //~^ ERROR parameter type `V` may not live long enough
 }
 

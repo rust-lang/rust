@@ -36,6 +36,7 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
 use std::fmt;
+use syntax::ast;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 
@@ -417,6 +418,32 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.report_overflow_error(&cycle[0], false);
     }
 
+    pub fn report_extra_impl_obligation(&self,
+                                        error_span: Span,
+                                        item_name: ast::Name,
+                                        _impl_item_def_id: DefId,
+                                        trait_item_def_id: DefId,
+                                        requirement: &fmt::Display)
+                                        -> DiagnosticBuilder<'tcx>
+    {
+        let mut err =
+            struct_span_err!(self.tcx.sess,
+                             error_span,
+                             E0276,
+                             "impl has stricter requirements than trait");
+
+        if let Some(trait_item_span) = self.tcx.map.span_if_local(trait_item_def_id) {
+            err.span_label(trait_item_span,
+                           &format!("definition of `{}` from trait", item_name));
+        }
+
+        err.span_label(
+            error_span,
+            &format!("impl has extra requirement {}", requirement));
+
+        err
+    }
+
     pub fn report_selection_error(&self,
                                   obligation: &PredicateObligation<'tcx>,
                                   error: &SelectionError<'tcx>)
@@ -424,12 +451,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let span = obligation.cause.span;
         let mut err = match *error {
             SelectionError::Unimplemented => {
-                if let ObligationCauseCode::CompareImplMethodObligation = obligation.cause.code {
-                    span_err!(
-                        self.tcx.sess, span, E0276,
-                        "the requirement `{}` appears on the impl \
-                         method but not on the corresponding trait method",
-                        obligation.predicate);
+                if let ObligationCauseCode::CompareImplMethodObligation {
+                    item_name, impl_item_def_id, trait_item_def_id
+                } = obligation.cause.code {
+                    self.report_extra_impl_obligation(
+                        span,
+                        item_name,
+                        impl_item_def_id,
+                        trait_item_def_id,
+                        &format!("`{}`", obligation.predicate))
+                        .emit();
                     return;
                 } else {
                     match obligation.predicate {
@@ -492,7 +523,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                         ty::Predicate::RegionOutlives(ref predicate) => {
                             let predicate = self.resolve_type_vars_if_possible(predicate);
-                            let err = self.region_outlives_predicate(span,
+                            let err = self.region_outlives_predicate(&obligation.cause,
                                                                      &predicate).err().unwrap();
                             struct_span_err!(self.tcx.sess, span, E0279,
                                 "the requirement `{}` is not satisfied (`{}`)",
@@ -886,7 +917,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                 &parent_predicate,
                                                 &data.parent_code);
             }
-            ObligationCauseCode::CompareImplMethodObligation => {
+            ObligationCauseCode::CompareImplMethodObligation { .. } => {
                 err.note(
                     &format!("the requirement `{}` appears on the impl method \
                               but not on the corresponding trait method",
