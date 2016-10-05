@@ -349,7 +349,7 @@ enum SawTyComponent {
     SawTyArray,
     SawTyPtr(Mutability),
     SawTyRptr(Mutability),
-    SawTyBareFn,
+    SawTyBareFn(Unsafety, Abi),
     SawTyNever,
     SawTyTup,
     SawTyPath,
@@ -366,7 +366,10 @@ fn saw_ty(node: &Ty_) -> SawTyComponent {
       TyArray(..) => SawTyArray,
       TyPtr(ref mty) => SawTyPtr(mty.mutbl),
       TyRptr(_, ref mty) => SawTyRptr(mty.mutbl),
-      TyBareFn(..) => SawTyBareFn,
+      TyBareFn(ref barefnty) => {
+          let ref fnty = *barefnty;
+          SawTyBareFn(fnty.unsafety, fnty.abi)
+      },
       TyNever => SawTyNever,
       TyTup(..) => SawTyTup,
       TyPath(..) => SawTyPath,

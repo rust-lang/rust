@@ -84,14 +84,14 @@ fn type_of_parameter_ref(p: &mut i32) {}
 // Change Parameter Order ------------------------------------------------------
 
 #[cfg(cfail1)]
-fn order_of_parameters(p1: i32, p2: i32) {}
+fn order_of_parameters(p1: i32, p2: i64) {}
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-fn order_of_parameters(p2: i32, p1: i32) {}
+fn order_of_parameters(p2: i64, p1: i32) {}
 
 
 // Unsafe ----------------------------------------------------------------------
@@ -188,7 +188,7 @@ fn builtin_bound<T: Send>() {}
 // Lifetime Bound --------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn lifetime_bound<T>() {}
+fn lifetime_bound<'a, T>() {}
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -227,7 +227,7 @@ fn second_builtin_bound<T: Send + Sized>() {}
 // Second Lifetime Bound -------------------------------------------------------
 
 #[cfg(cfail1)]
-fn second_lifetime_bound<'a, T: 'a>() {}
+fn second_lifetime_bound<'a, 'b, T: 'a>() {}
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -254,6 +254,7 @@ fn inline() {}
 // Inline Never ----------------------------------------------------------------
 
 #[cfg(cfail1)]
+#[inline(always)]
 fn inline_never() {}
 
 #[cfg(not(cfail1))]
@@ -289,7 +290,7 @@ fn linkage() {}
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-#[linkage]
+#[linkage="weak_odr"]
 fn linkage() {}
 
 
@@ -306,6 +307,23 @@ fn return_impl_trait() -> i32 {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn return_impl_trait() -> impl Clone {
+    0
+}
+
+
+// Change Return Impl Trait ----------------------------------------------------
+
+#[cfg(cfail1)]
+fn change_return_impl_trait() -> impl Clone {
+    0
+}
+
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+fn change_return_impl_trait() -> impl Copy {
     0
 }
 
