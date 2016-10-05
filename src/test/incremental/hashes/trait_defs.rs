@@ -84,6 +84,7 @@ trait TraitChangeMethodName {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeMethodName {
     fn methodChanged();
@@ -197,7 +198,7 @@ trait TraitChangeMethodParameterType {
 // Change order of method parameters ----------------------------------------------
 #[cfg(cfail1)]
 trait TraitChangeMethodParametersOrder {
-    fn method(a: i32, b: i32);
+    fn method(a: i32, b: i64);
 }
 
 #[cfg(not(cfail1))]
@@ -206,7 +207,7 @@ trait TraitChangeMethodParametersOrder {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeMethodParametersOrder {
-    fn method(b: i32, a: i32);
+    fn method(b: i64, a: i32);
 }
 
 
@@ -385,8 +386,8 @@ trait TraitAddLifetimeParameterToMethod {
 
 
 // dummy trait for bound
-trait ReferenceTrait0 { }
-trait ReferenceTrait1 { }
+trait ReferencedTrait0 { }
+trait ReferencedTrait1 { }
 
 // Add trait bound to method type parameter ---------------------------------------
 #[cfg(cfail1)]
@@ -400,7 +401,7 @@ trait TraitAddTraitBoundToMethodTypeParameter {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddTraitBoundToMethodTypeParameter {
-    fn method<T: ReferenceTrait0>();
+    fn method<T: ReferencedTrait0>();
 }
 
 
@@ -442,7 +443,7 @@ trait TraitAddLifetimeBoundToMethodTypeParameter {
 // Add second trait bound to method type parameter --------------------------------
 #[cfg(cfail1)]
 trait TraitAddSecondTraitBoundToMethodTypeParameter {
-    fn method<T: ReferenceTrait0>();
+    fn method<T: ReferencedTrait0>();
 }
 
 #[cfg(not(cfail1))]
@@ -451,7 +452,7 @@ trait TraitAddSecondTraitBoundToMethodTypeParameter {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddSecondTraitBoundToMethodTypeParameter {
-    fn method<T: ReferenceTrait0 + ReferenceTrait1>();
+    fn method<T: ReferencedTrait0 + ReferencedTrait1>();
 }
 
 
@@ -476,7 +477,7 @@ trait TraitAddSecondBuiltinBoundToMethodTypeParameter {
 // Add second lifetime bound to method type parameter -----------------------------
 #[cfg(cfail1)]
 trait TraitAddSecondLifetimeBoundToMethodTypeParameter {
-    fn method<'a, 'b, 'c>(a: &'a u32, b: &'b u32);
+    fn method<'a, 'b, 'c: 'a>(a: &'a u32, b: &'b u32);
 }
 
 #[cfg(not(cfail1))]
@@ -523,7 +524,7 @@ trait TraitAddTraitBoundToAssociatedType {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddTraitBoundToAssociatedType {
-    type Associated: ReferenceTrait0;
+    type Associated: ReferencedTrait0;
 
     fn mathod();
 }
@@ -642,7 +643,7 @@ trait TraitAddSuperTrait { }
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddSuperTrait : ReferenceTrait0 { }
+trait TraitAddSuperTrait : ReferencedTrait0 { }
 
 
 
@@ -674,14 +675,14 @@ trait TraitAddStaticLifetimeBound : 'static { }
 
 // Add super trait as second bound ------------------------------------------------
 #[cfg(cfail1)]
-trait TraitAddTraitAsSecondBound : ReferenceTrait0 { }
+trait TraitAddTraitAsSecondBound : ReferencedTrait0 { }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddTraitAsSecondBound : ReferenceTrait0 + ReferenceTrait1 { }
+trait TraitAddTraitAsSecondBound : ReferencedTrait0 + ReferencedTrait1 { }
 
 #[cfg(cfail1)]
 trait TraitAddTraitAsSecondBoundFromBuiltin : Send { }
@@ -691,20 +692,20 @@ trait TraitAddTraitAsSecondBoundFromBuiltin : Send { }
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddTraitAsSecondBoundFromBuiltin : Send + ReferenceTrait0 { }
+trait TraitAddTraitAsSecondBoundFromBuiltin : Send + ReferencedTrait0 { }
 
 
 
 // Add builtin bound as second bound ----------------------------------------------
 #[cfg(cfail1)]
-trait TraitAddBuiltinBoundAsSecondBound : ReferenceTrait0 { }
+trait TraitAddBuiltinBoundAsSecondBound : ReferencedTrait0 { }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddBuiltinBoundAsSecondBound : ReferenceTrait0 + Send { }
+trait TraitAddBuiltinBoundAsSecondBound : ReferencedTrait0 + Send { }
 
 #[cfg(cfail1)]
 trait TraitAddBuiltinBoundAsSecondBoundFromBuiltin : Send { }
@@ -720,14 +721,14 @@ trait TraitAddBuiltinBoundAsSecondBoundFromBuiltin: Send + Copy { }
 
 // Add 'static bounds as second bound ---------------------------------------------
 #[cfg(cfail1)]
-trait TraitAddStaticBoundAsSecondBound : ReferenceTrait0 { }
+trait TraitAddStaticBoundAsSecondBound : ReferencedTrait0 { }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddStaticBoundAsSecondBound : ReferenceTrait0 + 'static { }
+trait TraitAddStaticBoundAsSecondBound : ReferencedTrait0 + 'static { }
 
 #[cfg(cfail1)]
 trait TraitAddStaticBoundAsSecondBoundFromBuiltin : Send { }
@@ -776,7 +777,7 @@ trait TraitAddTraitBoundToTypeParameterOfTrait<T> { }
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddTraitBoundToTypeParameterOfTrait<T: ReferenceTrait0> { }
+trait TraitAddTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0> { }
 
 
 
@@ -847,14 +848,14 @@ trait TraitAddSecondLifetimeParameterToTrait<'a, 'b> { }
 
 // Add second trait bound to type parameter of trait ------------------------------
 #[cfg(cfail1)]
-trait TraitAddSecondTraitBoundToTypeParameterOfTrait<T: ReferenceTrait0> { }
+trait TraitAddSecondTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0> { }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddSecondTraitBoundToTypeParameterOfTrait<T: ReferenceTrait0 + ReferenceTrait1> { }
+trait TraitAddSecondTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0 + ReferencedTrait1> { }
 
 
 
@@ -912,7 +913,7 @@ trait TraitAddTraitBoundToTypeParameterOfTraitWhere<T> { }
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferenceTrait0 { }
+trait TraitAddTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferencedTrait0 { }
 
 
 
@@ -957,7 +958,7 @@ trait TraitAddBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send { }
 
 // Add second trait bound to type parameter of trait in where clause---------------
 #[cfg(cfail1)]
-trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferenceTrait0 { }
+trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferencedTrait0 { }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -965,7 +966,7 @@ trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferenceT
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T>
-    where T: ReferenceTrait0 + ReferenceTrait1 { }
+    where T: ReferencedTrait0 + ReferencedTrait1 { }
 
 
 
@@ -1049,9 +1050,9 @@ mod change_method_parameter_type_indirectly_by_use {
 // Change trait bound of method type parameter indirectly by modifying a use statement
 mod change_method_parameter_type_bound_indirectly_by_use {
     #[cfg(cfail1)]
-    use super::ReferenceTrait0 as Bound;
+    use super::ReferencedTrait0 as Bound;
     #[cfg(not(cfail1))]
-    use super::ReferenceTrait1 as Bound;
+    use super::ReferencedTrait1 as Bound;
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
@@ -1068,9 +1069,9 @@ mod change_method_parameter_type_bound_indirectly_by_use {
 // by modifying a use statement
 mod change_method_parameter_type_bound_indirectly_by_use_where {
     #[cfg(cfail1)]
-    use super::ReferenceTrait0 as Bound;
+    use super::ReferencedTrait0 as Bound;
     #[cfg(not(cfail1))]
-    use super::ReferenceTrait1 as Bound;
+    use super::ReferencedTrait1 as Bound;
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
@@ -1086,9 +1087,9 @@ mod change_method_parameter_type_bound_indirectly_by_use_where {
 // Change trait bound of trait type parameter indirectly by modifying a use statement
 mod change_method_type_parameter_bound_indirectly {
     #[cfg(cfail1)]
-    use super::ReferenceTrait0 as Bound;
+    use super::ReferencedTrait0 as Bound;
     #[cfg(not(cfail1))]
-    use super::ReferenceTrait1 as Bound;
+    use super::ReferencedTrait1 as Bound;
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
@@ -1105,9 +1106,9 @@ mod change_method_type_parameter_bound_indirectly {
 // by modifying a use statement
 mod change_method_type_parameter_bound_indirectly_where {
     #[cfg(cfail1)]
-    use super::ReferenceTrait0 as Bound;
+    use super::ReferencedTrait0 as Bound;
     #[cfg(not(cfail1))]
-    use super::ReferenceTrait1 as Bound;
+    use super::ReferencedTrait1 as Bound;
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
