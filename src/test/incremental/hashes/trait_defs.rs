@@ -477,7 +477,7 @@ trait TraitAddSecondBuiltinBoundToMethodTypeParameter {
 // Add second lifetime bound to method type parameter -----------------------------
 #[cfg(cfail1)]
 trait TraitAddSecondLifetimeBoundToMethodTypeParameter {
-    fn method<'a, 'b, 'c: 'a>(a: &'a u32, b: &'b u32);
+    fn method<'a, 'b, 'c: 'a>(a: &'a u32, b: &'b u32, c: &'c u32);
 }
 
 #[cfg(not(cfail1))]
