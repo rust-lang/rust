@@ -324,7 +324,7 @@ enum SawPatComponent {
     SawPatRef(Mutability),
     SawPatLit,
     SawPatRange,
-    SawPathVec
+    SawPatSlice
 }
 
 fn saw_pat(node: &PatKind) -> SawPatComponent {
@@ -339,14 +339,14 @@ fn saw_pat(node: &PatKind) -> SawPatComponent {
         PatKind::Ref(_, mutability) => SawPatRef(mutability),
         PatKind::Lit(..) => SawPatLit,
         PatKind::Range(..) => SawPatRange,
-        PatKind::Vec(..) => SawPathVec
+        PatKind::Slice(..) => SawPatSlice
     }
 }
 
 #[derive(Hash)]
 enum SawTyComponent {
-    SawTyVec,
-    SawTyFixedLengthVec,
+    SawTySlice,
+    SawTyArray,
     SawTyPtr(Mutability),
     SawTyRptr(Mutability),
     SawTyBareFn,
@@ -362,8 +362,8 @@ enum SawTyComponent {
 
 fn saw_ty(node: &Ty_) -> SawTyComponent {
     match *node {
-      TyVec(..) => SawTyVec,
-      TyFixedLengthVec(..) => SawTyFixedLengthVec,
+      TySlice(..) => SawTySlice,
+      TyArray(..) => SawTyArray,
       TyPtr(ref mty) => SawTyPtr(mty.mutbl),
       TyRptr(_, ref mty) => SawTyRptr(mty.mutbl),
       TyBareFn(..) => SawTyBareFn,
