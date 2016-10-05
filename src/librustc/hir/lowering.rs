@@ -44,8 +44,9 @@ use hir;
 use hir::map::Definitions;
 use hir::map::definitions::DefPathData;
 use hir::def_id::{DefIndex, DefId};
-use hir::def::{Def, PathResolution};
+use hir::def::{Def, CtorKind, PathResolution};
 use session::Session;
+use lint;
 
 use std::collections::BTreeMap;
 use std::iter;
@@ -222,17 +223,16 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_ty(&mut self, t: &Ty) -> P<hir::Ty> {
-        use syntax::ast::TyKind::*;
         P(hir::Ty {
             id: t.id,
             node: match t.node {
-                Infer | ImplicitSelf => hir::TyInfer,
-                Vec(ref ty) => hir::TyVec(self.lower_ty(ty)),
-                Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
-                Rptr(ref region, ref mt) => {
+                TyKind::Infer | TyKind::ImplicitSelf => hir::TyInfer,
+                TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty)),
+                TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
+                TyKind::Rptr(ref region, ref mt) => {
                     hir::TyRptr(self.lower_opt_lifetime(region), self.lower_mt(mt))
                 }
-                BareFn(ref f) => {
+                TyKind::BareFn(ref f) => {
                     hir::TyBareFn(P(hir::BareFnTy {
                         lifetimes: self.lower_lifetime_defs(&f.lifetimes),
                         unsafety: self.lower_unsafety(f.unsafety),
@@ -240,12 +240,14 @@ impl<'a> LoweringContext<'a> {
                         decl: self.lower_fn_decl(&f.decl),
                     }))
                 }
-                Never => hir::TyNever,
-                Tup(ref tys) => hir::TyTup(tys.iter().map(|ty| self.lower_ty(ty)).collect()),
-                Paren(ref ty) => {
+                TyKind::Never => hir::TyNever,
+                TyKind::Tup(ref tys) => {
+                    hir::TyTup(tys.iter().map(|ty| self.lower_ty(ty)).collect())
+                }
+                TyKind::Paren(ref ty) => {
                     return self.lower_ty(ty);
                 }
-                Path(ref qself, ref path) => {
+                TyKind::Path(ref qself, ref path) => {
                     let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
                         hir::QSelf {
                             ty: self.lower_ty(ty),
@@ -254,22 +256,22 @@ impl<'a> LoweringContext<'a> {
                     });
                     hir::TyPath(qself, self.lower_path(path))
                 }
-                ObjectSum(ref ty, ref bounds) => {
+                TyKind::ObjectSum(ref ty, ref bounds) => {
                     hir::TyObjectSum(self.lower_ty(ty), self.lower_bounds(bounds))
                 }
-                FixedLengthVec(ref ty, ref e) => {
-                    hir::TyFixedLengthVec(self.lower_ty(ty), self.lower_expr(e))
+                TyKind::Array(ref ty, ref e) => {
+                    hir::TyArray(self.lower_ty(ty), self.lower_expr(e))
                 }
-                Typeof(ref expr) => {
+                TyKind::Typeof(ref expr) => {
                     hir::TyTypeof(self.lower_expr(expr))
                 }
-                PolyTraitRef(ref bounds) => {
+                TyKind::PolyTraitRef(ref bounds) => {
                     hir::TyPolyTraitRef(self.lower_bounds(bounds))
                 }
-                ImplTrait(ref bounds) => {
+                TyKind::ImplTrait(ref bounds) => {
                     hir::TyImplTrait(self.lower_bounds(bounds))
                 }
-                Mac(_) => panic!("TyMac should have been expanded by now."),
+                TyKind::Mac(_) => panic!("TyMac should have been expanded by now."),
             },
             span: t.span,
         })
@@ -854,10 +856,23 @@ impl<'a> LoweringContext<'a> {
                     })
                 }
                 PatKind::Lit(ref e) => hir::PatKind::Lit(self.lower_expr(e)),
-                PatKind::TupleStruct(ref pth, ref pats, ddpos) => {
-                    hir::PatKind::TupleStruct(self.lower_path(pth),
-                                              pats.iter().map(|x| self.lower_pat(x)).collect(),
-                                              ddpos)
+                PatKind::TupleStruct(ref path, ref pats, ddpos) => {
+                    match self.resolver.get_resolution(p.id).map(|d| d.base_def) {
+                        Some(def @ Def::StructCtor(_, CtorKind::Const)) |
+                        Some(def @ Def::VariantCtor(_, CtorKind::Const)) => {
+                            // Temporarily lower `UnitVariant(..)` into `UnitVariant`
+                            // for backward compatibility.
+                            let msg = format!("expected tuple struct/variant, found {} `{}`",
+                                            def.kind_name(), path);
+                            self.sess.add_lint(
+                                lint::builtin::MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
+                                p.id, p.span, msg
+                            );
+                            hir::PatKind::Path(None, self.lower_path(path))
+                        }
+                        _ => hir::PatKind::TupleStruct(self.lower_path(path),
+                                        pats.iter().map(|x| self.lower_pat(x)).collect(), ddpos)
+                    }
                 }
                 PatKind::Path(ref opt_qself, ref path) => {
                     let opt_qself = opt_qself.as_ref().map(|qself| {
@@ -891,8 +906,8 @@ impl<'a> LoweringContext<'a> {
                 PatKind::Range(ref e1, ref e2) => {
                     hir::PatKind::Range(self.lower_expr(e1), self.lower_expr(e2))
                 }
-                PatKind::Vec(ref before, ref slice, ref after) => {
-                    hir::PatKind::Vec(before.iter().map(|x| self.lower_pat(x)).collect(),
+                PatKind::Slice(ref before, ref slice, ref after) => {
+                    hir::PatKind::Slice(before.iter().map(|x| self.lower_pat(x)).collect(),
                                 slice.as_ref().map(|x| self.lower_pat(x)),
                                 after.iter().map(|x| self.lower_pat(x)).collect())
                 }
@@ -1031,7 +1046,7 @@ impl<'a> LoweringContext<'a> {
                 }
 
                 ExprKind::Vec(ref exprs) => {
-                    hir::ExprVec(exprs.iter().map(|x| self.lower_expr(x)).collect())
+                    hir::ExprArray(exprs.iter().map(|x| self.lower_expr(x)).collect())
                 }
                 ExprKind::Repeat(ref expr, ref count) => {
                     let expr = self.lower_expr(expr);

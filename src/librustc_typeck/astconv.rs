@@ -795,7 +795,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // For now, require that parenthetical notation be used
                 // only with `Fn()` etc.
                 if !self.tcx().sess.features.borrow().unboxed_closures && trait_def.paren_sugar {
-                    emit_feature_err(&self.tcx().sess.parse_sess.span_diagnostic,
+                    emit_feature_err(&self.tcx().sess.parse_sess,
                                      "unboxed_closures", span, GateIssue::Language,
                                      "\
                         the precise format of `Fn`-family traits' \
@@ -807,7 +807,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // For now, require that parenthetical notation be used
                 // only with `Fn()` etc.
                 if !self.tcx().sess.features.borrow().unboxed_closures && !trait_def.paren_sugar {
-                    emit_feature_err(&self.tcx().sess.parse_sess.span_diagnostic,
+                    emit_feature_err(&self.tcx().sess.parse_sess,
                                      "unboxed_closures", span, GateIssue::Language,
                                      "\
                         parenthetical notation is only stable when used with `Fn`-family traits");
@@ -1241,10 +1241,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
     {
         if bounds.is_empty() {
-            span_err!(self.tcx().sess, span, E0220,
+            struct_span_err!(self.tcx().sess, span, E0220,
                       "associated type `{}` not found for `{}`",
                       assoc_name,
-                      ty_param_name);
+                      ty_param_name)
+              .span_label(span, &format!("associated type `{}` not found", assoc_name))
+              .emit();
             return Err(ErrorReported);
         }
 
@@ -1623,7 +1625,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         let result_ty = match ast_ty.node {
-            hir::TyVec(ref ty) => {
+            hir::TySlice(ref ty) => {
                 tcx.mk_slice(self.ast_ty_to_ty(rscope, &ty))
             }
             hir::TyObjectSum(ref ty, ref bounds) => {
@@ -1758,7 +1760,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
                 ty
             }
-            hir::TyFixedLengthVec(ref ty, ref e) => {
+            hir::TyArray(ref ty, ref e) => {
                 if let Ok(length) = eval_length(tcx.global_tcx(), &e, "array length") {
                     tcx.mk_array(self.ast_ty_to_ty(rscope, &ty), length)
                 } else {

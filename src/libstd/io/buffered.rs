@@ -1107,6 +1107,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn panic_in_write_doesnt_flush_in_drop() {
         static WRITES: AtomicUsize = AtomicUsize::new(0);
 

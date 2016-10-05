@@ -53,8 +53,11 @@ impl<'a> AstValidator<'a> {
                                            span,
                                            E0449,
                                            "unnecessary visibility qualifier");
+            if vis == &Visibility::Public {
+                err.span_label(span, &format!("`pub` not needed here"));
+            }
             if let Some(note) = note {
-                err.span_note(span, note);
+                err.note(note);
             }
             err.emit();
         }

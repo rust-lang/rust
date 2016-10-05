@@ -19,6 +19,7 @@ pub use self::DebugInfoLevel::*;
 use session::{early_error, early_warn, Session};
 use session::search_paths::SearchPaths;
 
+use rustc_back::PanicStrategy;
 use rustc_back::target::Target;
 use lint;
 use middle::cstore;
@@ -37,9 +38,9 @@ use std::collections::btree_map::Iter as BTreeMapIter;
 use std::collections::btree_map::Keys as BTreeMapKeysIter;
 use std::collections::btree_map::Values as BTreeMapValuesIter;
 
-use std::env;
 use std::fmt;
-use std::hash::{Hasher, SipHasher};
+use std::hash::Hasher;
+use std::collections::hash_map::DefaultHasher;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
@@ -212,7 +213,7 @@ macro_rules! top_level_options {
                                                          $warn_text,
                                                          self.error_format)*]);
                 })*
-                let mut hasher =  SipHasher::new();
+                let mut hasher = DefaultHasher::new();
                 dep_tracking::stable_hash(sub_hashes,
                                           &mut hasher,
                                           self.error_format);
@@ -288,6 +289,11 @@ top_level_options!(
         alt_std_name: Option<String> [TRACKED],
         // Indicates how the compiler should treat unstable features
         unstable_features: UnstableFeatures [TRACKED],
+
+        // Indicates whether this run of the compiler is actually rustdoc. This
+        // is currently just a hack and will be removed eventually, so please
+        // try to not rely on this too much.
+        actually_rustdoc: bool [TRACKED],
     }
 );
 
@@ -440,6 +446,7 @@ pub fn basic_options() -> Options {
         libs: Vec::new(),
         unstable_features: UnstableFeatures::Disallow,
         debug_assertions: true,
+        actually_rustdoc: false,
     }
 }
 
@@ -489,21 +496,6 @@ impl Passes {
         match *self {
             SomePasses(ref v) => v.is_empty(),
             AllPasses => false,
-        }
-    }
-}
-
-#[derive(Clone, PartialEq, Hash, RustcEncodable, RustcDecodable)]
-pub enum PanicStrategy {
-    Unwind,
-    Abort,
-}
-
-impl PanicStrategy {
-    pub fn desc(&self) -> &str {
-        match *self {
-            PanicStrategy::Unwind => "unwind",
-            PanicStrategy::Abort => "abort",
         }
     }
 }
@@ -581,7 +573,7 @@ macro_rules! options {
 
     impl<'a> dep_tracking::DepTrackingHash for $struct_name {
 
-        fn hash(&self, hasher: &mut SipHasher, error_format: ErrorOutputType) {
+        fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
             let mut sub_hashes = BTreeMap::new();
             $({
                 hash_option!($opt,
@@ -606,6 +598,7 @@ macro_rules! options {
         pub const parse_opt_bool: Option<&'static str> =
             Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
         pub const parse_string: Option<&'static str> = Some("a string");
+        pub const parse_string_push: Option<&'static str> = Some("a string");
         pub const parse_opt_string: Option<&'static str> = Some("a string");
         pub const parse_list: Option<&'static str> = Some("a space-separated list of strings");
         pub const parse_opt_list: Option<&'static str> = Some("a space-separated list of strings");
@@ -620,7 +613,8 @@ macro_rules! options {
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses, PanicStrategy};
+        use super::{$struct_name, Passes, SomePasses, AllPasses};
+        use rustc_back::PanicStrategy;
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -664,6 +658,13 @@ macro_rules! options {
         fn parse_string(slot: &mut String, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.to_string(); true },
+                None => false,
+            }
+        }
+
+        fn parse_string_push(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => { slot.push(s.to_string()); true },
                 None => false,
             }
         }
@@ -725,10 +726,10 @@ macro_rules! options {
             }
         }
 
-        fn parse_panic_strategy(slot: &mut PanicStrategy, v: Option<&str>) -> bool {
+        fn parse_panic_strategy(slot: &mut Option<PanicStrategy>, v: Option<&str>) -> bool {
             match v {
-                Some("unwind") => *slot = PanicStrategy::Unwind,
-                Some("abort") => *slot = PanicStrategy::Abort,
+                Some("unwind") => *slot = Some(PanicStrategy::Unwind),
+                Some("abort") => *slot = Some(PanicStrategy::Abort),
                 _ => return false
             }
             true
@@ -743,6 +744,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "tool to assemble archives with"),
     linker: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "system linker to link outputs with"),
+    link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
+        "a single extra argument to pass to the linker (can be used several times)"),
     link_args: Option<Vec<String>> = (None, parse_opt_list, [UNTRACKED],
         "extra arguments to pass to the linker (space separated)"),
     link_dead_code: bool = (false, parse_bool, [UNTRACKED],
@@ -800,7 +803,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "explicitly enable the cfg(debug_assertions) directive"),
     inline_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
         "set the inlining threshold for"),
-    panic: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy,
+    panic: Option<PanicStrategy> = (None, parse_panic_strategy,
         [TRACKED], "panic strategy to compile crate with"),
 }
 
@@ -930,7 +933,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let os = &sess.target.target.target_os;
     let env = &sess.target.target.target_env;
     let vendor = &sess.target.target.target_vendor;
-    let max_atomic_width = sess.target.target.options.max_atomic_width;
+    let max_atomic_width = sess.target.target.max_atomic_width();
 
     let fam = if let Some(ref fam) = sess.target.target.options.target_family {
         intern(fam)
@@ -1525,25 +1528,11 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         crate_name: crate_name,
         alt_std_name: None,
         libs: libs,
-        unstable_features: get_unstable_features_setting(),
+        unstable_features: UnstableFeatures::from_environment(),
         debug_assertions: debug_assertions,
+        actually_rustdoc: false,
     },
     cfg)
-}
-
-pub fn get_unstable_features_setting() -> UnstableFeatures {
-    // Whether this is a feature-staged build, i.e. on the beta or stable channel
-    let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
-    // The secret key needed to get through the rustc build itself by
-    // subverting the unstable features lints
-    let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
-    // The matching key to the above, only known by the build system
-    let bootstrap_provided_key = env::var("RUSTC_BOOTSTRAP_KEY").ok();
-    match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
-        (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
-        (true, ..) => UnstableFeatures::Disallow,
-        (false, ..) => UnstableFeatures::Allow
-    }
 }
 
 pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateType>, String> {
@@ -1575,7 +1564,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
 pub mod nightly_options {
     use getopts;
     use syntax::feature_gate::UnstableFeatures;
-    use super::{ErrorOutputType, OptionStability, RustcOptGroup, get_unstable_features_setting};
+    use super::{ErrorOutputType, OptionStability, RustcOptGroup};
     use session::{early_error, early_warn};
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
@@ -1583,18 +1572,13 @@ pub mod nightly_options {
     }
 
     pub fn is_nightly_build() -> bool {
-        match get_unstable_features_setting() {
-            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
-            _ => false,
-        }
+        UnstableFeatures::from_environment().is_nightly_build()
     }
 
     pub fn check_nightly_options(matches: &getopts::Matches, flags: &[RustcOptGroup]) {
         let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
-        let really_allows_unstable_options = match get_unstable_features_setting() {
-            UnstableFeatures::Disallow => false,
-            _ => true,
-        };
+        let really_allows_unstable_options = UnstableFeatures::from_environment()
+            .is_nightly_build();
 
         for opt in flags.iter() {
             if opt.stability == OptionStability::Stable {
@@ -1674,20 +1658,22 @@ mod dep_tracking {
     use middle::cstore;
     use session::search_paths::{PathKind, SearchPaths};
     use std::collections::BTreeMap;
-    use std::hash::{Hash, SipHasher};
+    use std::hash::Hash;
     use std::path::PathBuf;
-    use super::{Passes, PanicStrategy, CrateType, OptLevel, DebugInfoLevel,
+    use std::collections::hash_map::DefaultHasher;
+    use super::{Passes, CrateType, OptLevel, DebugInfoLevel,
                 OutputTypes, Externs, ErrorOutputType};
     use syntax::feature_gate::UnstableFeatures;
+    use rustc_back::PanicStrategy;
 
     pub trait DepTrackingHash {
-        fn hash(&self, &mut SipHasher, ErrorOutputType);
+        fn hash(&self, &mut DefaultHasher, ErrorOutputType);
     }
 
     macro_rules! impl_dep_tracking_hash_via_hash {
         ($t:ty) => (
             impl DepTrackingHash for $t {
-                fn hash(&self, hasher: &mut SipHasher, _: ErrorOutputType) {
+                fn hash(&self, hasher: &mut DefaultHasher, _: ErrorOutputType) {
                     Hash::hash(self, hasher);
                 }
             }
@@ -1697,7 +1683,7 @@ mod dep_tracking {
     macro_rules! impl_dep_tracking_hash_for_sortable_vec_of {
         ($t:ty) => (
             impl DepTrackingHash for Vec<$t> {
-                fn hash(&self, hasher: &mut SipHasher, error_format: ErrorOutputType) {
+                fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
                     let mut elems: Vec<&$t> = self.iter().collect();
                     elems.sort();
                     Hash::hash(&elems.len(), hasher);
@@ -1717,6 +1703,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<bool>);
     impl_dep_tracking_hash_via_hash!(Option<usize>);
     impl_dep_tracking_hash_via_hash!(Option<String>);
+    impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
     impl_dep_tracking_hash_via_hash!(CrateType);
@@ -1735,7 +1722,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!((String, cstore::NativeLibraryKind));
 
     impl DepTrackingHash for SearchPaths {
-        fn hash(&self, hasher: &mut SipHasher, _: ErrorOutputType) {
+        fn hash(&self, hasher: &mut DefaultHasher, _: ErrorOutputType) {
             let mut elems: Vec<_> = self
                 .iter(PathKind::All)
                 .collect();
@@ -1748,7 +1735,7 @@ mod dep_tracking {
         where T1: DepTrackingHash,
               T2: DepTrackingHash
     {
-        fn hash(&self, hasher: &mut SipHasher, error_format: ErrorOutputType) {
+        fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
             Hash::hash(&0, hasher);
             DepTrackingHash::hash(&self.0, hasher, error_format);
             Hash::hash(&1, hasher);
@@ -1758,7 +1745,7 @@ mod dep_tracking {
 
     // This is a stable hash because BTreeMap is a sorted container
     pub fn stable_hash(sub_hashes: BTreeMap<&'static str, &DepTrackingHash>,
-                       hasher: &mut SipHasher,
+                       hasher: &mut DefaultHasher,
                        error_format: ErrorOutputType) {
         for (key, sub_hash) in sub_hashes {
             // Using Hash::hash() instead of DepTrackingHash::hash() is fine for
@@ -1783,7 +1770,8 @@ mod tests {
     use std::iter::FromIterator;
     use std::path::PathBuf;
     use std::rc::Rc;
-    use super::{OutputType, OutputTypes, Externs, PanicStrategy};
+    use super::{OutputType, OutputTypes, Externs};
+    use rustc_back::PanicStrategy;
     use syntax::{ast, attr};
     use syntax::parse::token::InternedString;
     use syntax::codemap::dummy_spanned;
@@ -2329,7 +2317,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.cg.panic = PanicStrategy::Abort;
+        opts.cg.panic = Some(PanicStrategy::Abort);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 

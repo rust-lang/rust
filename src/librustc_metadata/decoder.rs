@@ -22,7 +22,7 @@ use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
 use rustc::middle::cstore::{InlinedItem, LinkagePreference};
-use rustc::hir::def::{self, Def};
+use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -534,7 +534,7 @@ impl<'a, 'tcx> CrateMetadata {
             name: self.item_name(item),
             fields: fields,
             disr_val: ConstInt::Infer(data.disr),
-            kind: data.kind,
+            ctor_kind: data.ctor_kind,
         }, data.struct_ctor)
     }
 
@@ -670,10 +670,12 @@ impl<'a, 'tcx> CrateMetadata {
                     // FIXME(eddyb) Don't encode these in children.
                     EntryKind::ForeignMod => {
                         for child_index in child.children.decode(self) {
-                            callback(def::Export {
-                                def_id: self.local_def_id(child_index),
-                                name: self.item_name(&self.entry(child_index))
-                            });
+                            if let Some(def) = self.get_def(child_index) {
+                                callback(def::Export {
+                                    def: def,
+                                    name: self.item_name(&self.entry(child_index))
+                                });
+                            }
                         }
                         continue;
                     }
@@ -683,11 +685,28 @@ impl<'a, 'tcx> CrateMetadata {
                 }
 
                 let def_key = child.def_key.decode(self);
-                if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
-                    callback(def::Export {
-                        def_id: self.local_def_id(child_index),
-                        name: name
-                    });
+                if let (Some(def), Some(name)) = (self.get_def(child_index),
+                                                  def_key.disambiguated_data.data.get_opt_name()) {
+                    callback(def::Export { def: def, name: name });
+                    // For non-reexport structs and variants add their constructors to children.
+                    // Reexport lists automatically contain constructors when necessary.
+                    match def {
+                        Def::Struct(..) => {
+                            if let Some(ctor_def_id) = self.get_struct_ctor_def_id(child_index) {
+                                let ctor_kind = self.get_ctor_kind(child_index);
+                                let ctor_def = Def::StructCtor(ctor_def_id, ctor_kind);
+                                callback(def::Export { def: ctor_def, name: name });
+                            }
+                        }
+                        Def::Variant(def_id) => {
+                            // Braced variants, unlike structs, generate unusable names in
+                            // value namespace, they are reserved for possible future use.
+                            let ctor_kind = self.get_ctor_kind(child_index);
+                            let ctor_def = Def::VariantCtor(def_id, ctor_kind);
+                            callback(def::Export { def: ctor_def, name: name });
+                        }
+                        _ => {}
+                    }
                 }
             }
         }
@@ -787,12 +806,12 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(id).variances.decode(self).collect()
     }
 
-    pub fn get_variant_kind(&self, node_id: DefIndex) -> Option<ty::VariantKind> {
+    pub fn get_ctor_kind(&self, node_id: DefIndex) -> CtorKind {
         match self.entry(node_id).kind {
             EntryKind::Struct(data) |
             EntryKind::Union(data) |
-            EntryKind::Variant(data) => Some(data.decode(self).kind),
-            _ => None
+            EntryKind::Variant(data) => data.decode(self).ctor_kind,
+            _ => CtorKind::Fictive,
         }
     }
 

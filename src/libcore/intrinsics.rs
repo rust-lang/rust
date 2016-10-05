@@ -194,14 +194,12 @@ extern "rust-intrinsic" {
     /// own, or if it does not enable any significant optimizations.
     pub fn assume(b: bool);
 
-    #[cfg(not(stage0))]
     /// Hints to the compiler that branch condition is likely to be true.
     /// Returns the value passed to it.
     ///
     /// Any use other than with `if` statements will probably not have an effect.
     pub fn likely(b: bool) -> bool;
 
-    #[cfg(not(stage0))]
     /// Hints to the compiler that branch condition is likely to be false.
     /// Returns the value passed to it.
     ///
@@ -596,6 +594,19 @@ extern "rust-intrinsic" {
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `dst` to `val`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ptr;
+    ///
+    /// let mut vec = vec![0; 4];
+    /// unsafe {
+    ///     let vec_ptr = vec.as_mut_ptr();
+    ///     ptr::write_bytes(vec_ptr, b'a', 2);
+    /// }
+    /// assert_eq!(vec, [b'a', b'a', 0, 0]);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 

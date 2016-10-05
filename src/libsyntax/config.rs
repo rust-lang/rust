@@ -157,7 +157,7 @@ impl<'a> StripUnconfigured<'a> {
         // flag the offending attributes
         for attr in attrs.iter() {
             if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
-                emit_feature_err(&self.sess.span_diagnostic,
+                emit_feature_err(&self.sess,
                                  "stmt_expr_attributes",
                                  attr.span,
                                  GateIssue::Language,
@@ -303,6 +303,6 @@ fn is_cfg(attr: &ast::Attribute) -> bool {
     attr.check_name("cfg")
 }
 
-fn is_test_or_bench(attr: &ast::Attribute) -> bool {
+pub fn is_test_or_bench(attr: &ast::Attribute) -> bool {
     attr.check_name("test") || attr.check_name("bench")
 }

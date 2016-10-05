@@ -507,7 +507,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Def::Static(..) |
             Def::Const(..) |
             Def::AssociatedConst(..) |
-            Def::Variant(..) => {
+            Def::StructCtor(..) |
+            Def::VariantCtor(..) => {
                 Some(Data::VariableRefData(VariableRefData {
                     name: self.span_utils.snippet(sub_span.unwrap()),
                     span: sub_span.unwrap(),
@@ -516,9 +517,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             Def::Struct(def_id) |
+            Def::Variant(def_id, ..) |
             Def::Union(def_id) |
             Def::Enum(def_id) |
             Def::TyAlias(def_id) |
+            Def::AssociatedTy(def_id) |
             Def::Trait(def_id) |
             Def::TyParam(def_id) => {
                 Some(Data::TypeRefData(TypeRefData {
@@ -572,7 +575,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     qualname: String::new() // FIXME: generate the real qualname
                 }))
             }
-            _ => None,
+            Def::PrimTy(..) |
+            Def::SelfTy(..) |
+            Def::Label(..) |
+            Def::Err => None,
         }
     }
 

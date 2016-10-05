@@ -28,18 +28,18 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node10.Deaggregator.before.mir
 // bb0: {
-//     var0 = arg0;                     // scope 0 at main.rs:7:8: 7:9
-//     tmp0 = var0;                     // scope 1 at main.rs:8:19: 8:20
-//     return = Baz::Foo { x: tmp0 };   // scope 1 at main.rs:8:5: 8:21
-//     goto -> bb1;                     // scope 1 at main.rs:7:1: 9:2
+//     _2 = _1;
+//     _3 = _2;
+//     _0 = Baz::Foo { x: _3 };
+//     goto -> bb1;
 // }
 // END rustc.node10.Deaggregator.before.mir
 // START rustc.node10.Deaggregator.after.mir
 // bb0: {
-//     var0 = arg0;                     // scope 0 at main.rs:7:8: 7:9
-//     tmp0 = var0;                     // scope 1 at main.rs:8:19: 8:20
-//     ((return as Foo).0: usize) = tmp0; // scope 1 at main.rs:8:5: 8:21
-//     discriminant(return) = 1;         // scope 1 at main.rs:8:5: 8:21
-//     goto -> bb1;                     // scope 1 at main.rs:7:1: 9:2
+//     _2 = _1;
+//     _3 = _2;
+//     ((_0 as Foo).0: usize) = _3;
+//     discriminant(_0) = 1;
+//     goto -> bb1;
 // }
 // END rustc.node10.Deaggregator.after.mir

@@ -247,7 +247,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                 if edef.is_enum() {
                     if let Def::Local(..) = cx.tcx.expect_def(p.id) {
                         if edef.variants.iter().any(|variant| {
-                            variant.name == name.node && variant.kind == ty::VariantKind::Unit
+                            variant.name == name.node && variant.ctor_kind == CtorKind::Const
                         }) {
                             let ty_path = cx.tcx.item_path_str(edef.did);
                             let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
@@ -536,10 +536,10 @@ impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
                 }
                 PatKind::Box(inner) => PatKind::Box(self.fold_pat(inner)),
                 PatKind::Ref(inner, mutbl) => PatKind::Ref(self.fold_pat(inner), mutbl),
-                PatKind::Vec(before, slice, after) => {
-                    PatKind::Vec(before.move_map(|x| self.fold_pat(x)),
-                                 slice.map(|x| self.fold_pat(x)),
-                                 after.move_map(|x| self.fold_pat(x)))
+                PatKind::Slice(before, slice, after) => {
+                    PatKind::Slice(before.move_map(|x| self.fold_pat(x)),
+                                   slice.map(|x| self.fold_pat(x)),
+                                   after.move_map(|x| self.fold_pat(x)))
                 }
                 PatKind::Wild |
                 PatKind::Lit(_) |
@@ -577,8 +577,8 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
 
         ty::TyAdt(adt, _) => {
             let v = ctor.variant_for_adt(adt);
-            match v.kind {
-                ty::VariantKind::Struct => {
+            match v.ctor_kind {
+                CtorKind::Fictive => {
                     let field_pats: hir::HirVec<_> = v.fields.iter()
                         .zip(pats)
                         .filter(|&(_, ref pat)| pat.node != PatKind::Wild)
@@ -593,10 +593,10 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                     let has_more_fields = field_pats.len() < pats_len;
                     PatKind::Struct(def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
                 }
-                ty::VariantKind::Tuple => {
+                CtorKind::Fn => {
                     PatKind::TupleStruct(def_to_path(cx.tcx, v.did), pats.collect(), None)
                 }
-                ty::VariantKind::Unit => {
+                CtorKind::Const => {
                     PatKind::Path(None, def_to_path(cx.tcx, v.did))
                 }
             }
@@ -610,14 +610,14 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
         ty::TySlice(_) => match ctor {
             &Slice(n) => {
                 assert_eq!(pats_len, n);
-                PatKind::Vec(pats.collect(), None, hir::HirVec::new())
+                PatKind::Slice(pats.collect(), None, hir::HirVec::new())
             },
             _ => unreachable!()
         },
 
         ty::TyArray(_, len) => {
             assert_eq!(pats_len, len);
-            PatKind::Vec(pats.collect(), None, hir::HirVec::new())
+            PatKind::Slice(pats.collect(), None, hir::HirVec::new())
         }
 
         _ => {
@@ -713,7 +713,7 @@ fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
     };
 
     let max_slice_length = rows.iter().filter_map(|row| match row[0].0.node {
-        PatKind::Vec(ref before, _, ref after) => Some(before.len() + after.len()),
+        PatKind::Slice(ref before, _, ref after) => Some(before.len() + after.len()),
         _ => None
     }).max().map_or(0, |v| v + 1);
 
@@ -801,8 +801,8 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
     match pat.node {
         PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) =>
             match cx.tcx.expect_def(pat.id) {
-                Def::Variant(id) => vec![Variant(id)],
-                Def::Struct(..) | Def::Union(..) |
+                Def::Variant(id) | Def::VariantCtor(id, ..) => vec![Variant(id)],
+                Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
                 Def::TyAlias(..) | Def::AssociatedTy(..) => vec![Single],
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat.span, "const pattern should've been rewritten"),
@@ -812,7 +812,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
             vec![ConstantValue(eval_const_expr(cx.tcx, &expr))],
         PatKind::Range(ref lo, ref hi) =>
             vec![ConstantRange(eval_const_expr(cx.tcx, &lo), eval_const_expr(cx.tcx, &hi))],
-        PatKind::Vec(ref before, ref slice, ref after) =>
+        PatKind::Slice(ref before, ref slice, ref after) =>
             match left_ty.sty {
                 ty::TyArray(..) => vec![Single],
                 ty::TySlice(_) if slice.is_some() => {
@@ -913,10 +913,10 @@ pub fn specialize<'a, 'b, 'tcx>(
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
-                Def::Variant(id) if *constructor != Variant(id) => None,
-                Def::Variant(..) | Def::Struct(..) => Some(Vec::new()),
-                def => span_bug!(pat_span, "specialize: unexpected \
-                                          definition {:?}", def),
+                Def::VariantCtor(id, CtorKind::Const) if *constructor != Variant(id) => None,
+                Def::VariantCtor(_, CtorKind::Const) |
+                Def::StructCtor(_, CtorKind::Const) => Some(Vec::new()),
+                def => span_bug!(pat_span, "specialize: unexpected definition: {:?}", def),
             }
         }
 
@@ -925,8 +925,9 @@ pub fn specialize<'a, 'b, 'tcx>(
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
-                Def::Variant(id) if *constructor != Variant(id) => None,
-                Def::Variant(..) | Def::Struct(..) => {
+                Def::VariantCtor(id, CtorKind::Fn) if *constructor != Variant(id) => None,
+                Def::VariantCtor(_, CtorKind::Fn) |
+                Def::StructCtor(_, CtorKind::Fn) => {
                     match ddpos {
                         Some(ddpos) => {
                             let mut pats: Vec<_> = args[..ddpos].iter().map(|p| {
@@ -939,7 +940,7 @@ pub fn specialize<'a, 'b, 'tcx>(
                         None => Some(args.iter().map(|p| wpat(p)).collect())
                     }
                 }
-                _ => None
+                def => span_bug!(pat_span, "specialize: unexpected definition: {:?}", def),
             }
         }
 
@@ -1001,7 +1002,7 @@ pub fn specialize<'a, 'b, 'tcx>(
             }
         }
 
-        PatKind::Vec(ref before, ref slice, ref after) => {
+        PatKind::Slice(ref before, ref slice, ref after) => {
             let pat_len = before.len() + after.len();
             match *constructor {
                 Single => {

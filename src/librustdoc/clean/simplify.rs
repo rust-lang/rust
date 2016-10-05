@@ -141,7 +141,7 @@ pub fn ty_params(mut params: Vec<clean::TyParam>) -> Vec<clean::TyParam> {
     for param in &mut params {
         param.bounds = ty_bounds(mem::replace(&mut param.bounds, Vec::new()));
     }
-    return params;
+    params
 }
 
 fn ty_bounds(bounds: Vec<clean::TyParamBound>) -> Vec<clean::TyParamBound> {

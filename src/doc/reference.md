@@ -3959,6 +3959,16 @@ the top-level type for the implementation of the called method. If no such metho
 found, `.deref()` is called and the compiler continues to search for the method
 implementation in the returned type `U`.
 
+## The `Send` trait
+
+The `Send` trait indicates that a value of this type is safe to send from one 
+thread to another.
+
+## The 'Sync' trait
+
+The 'Sync' trait indicates that a value of this type is safe to share between
+multiple threads.
+
 # Memory model
 
 A Rust program's memory consists of a static set of *items* and a *heap*.

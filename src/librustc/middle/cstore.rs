@@ -32,7 +32,6 @@ use ty::{self, Ty, TyCtxt};
 use mir::repr::Mir;
 use mir::mir_map::MirMap;
 use session::Session;
-use session::config::PanicStrategy;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeSet, DefIdMap};
 use std::path::PathBuf;
@@ -46,6 +45,7 @@ use syntax_pos::Span;
 use rustc_back::target::Target;
 use hir;
 use hir::intravisit::Visitor;
+use rustc_back::PanicStrategy;
 
 pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};
 
@@ -201,8 +201,6 @@ pub trait CrateStore<'tcx> {
                              -> Option<DefIndex>;
     fn def_key(&self, def: DefId) -> hir_map::DefKey;
     fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath>;
-    fn variant_kind(&self, def_id: DefId) -> Option<ty::VariantKind>;
-    fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
 
@@ -378,9 +376,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath> {
         bug!("relative_def_path")
     }
-    fn variant_kind(&self, def_id: DefId) -> Option<ty::VariantKind> { bug!("variant_kind") }
-    fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
-        { bug!("struct_ctor_def_id") }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
     fn item_children(&self, did: DefId) -> Vec<def::Export> { bug!("item_children") }
 
@@ -423,7 +418,12 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 
-pub enum LoadedMacro {
+pub struct LoadedMacro {
+    pub import_site: Span,
+    pub kind: LoadedMacroKind,
+}
+
+pub enum LoadedMacroKind {
     Def(ast::MacroDef),
     CustomDerive(String, Rc<MultiItemModifier>),
 }

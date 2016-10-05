@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // error-pattern:thread '<unnamed>' panicked at 'test'
+// ignore-emscripten Needs threads
 
 use std::thread;
 

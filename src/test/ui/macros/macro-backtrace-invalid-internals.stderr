@@ -7,11 +7,11 @@ error: no method named `fake` found for type `{integer}` in the current scope
 50 |     fake_method_stmt!();
    |     -------------------- in this macro invocation
 
-error: attempted access of field `fake` on type `{integer}`, but no field with that name was found
-  --> $DIR/macro-backtrace-invalid-internals.rs:21:11
+error: no field `fake` on type `{integer}`
+  --> $DIR/macro-backtrace-invalid-internals.rs:21:13
    |
 21 |           1.fake
-   |           ^^^^^^
+   |             ^^^^
 ...
 51 |     fake_field_stmt!();
    |     ------------------- in this macro invocation
@@ -34,11 +34,11 @@ error: no method named `fake` found for type `{integer}` in the current scope
 54 |     let _ = fake_method_expr!();
    |             ------------------- in this macro invocation
 
-error: attempted access of field `fake` on type `{integer}`, but no field with that name was found
-  --> $DIR/macro-backtrace-invalid-internals.rs:39:11
+error: no field `fake` on type `{integer}`
+  --> $DIR/macro-backtrace-invalid-internals.rs:39:13
    |
 39 |           1.fake
-   |           ^^^^^^
+   |             ^^^^
 ...
 55 |     let _ = fake_field_expr!();
    |             ------------------ in this macro invocation

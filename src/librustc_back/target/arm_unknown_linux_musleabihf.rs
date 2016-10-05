@@ -16,7 +16,7 @@ pub fn target() -> TargetResult {
     // Most of these settings are copied from the arm_unknown_linux_gnueabihf
     // target.
     base.features = "+v6,+vfp2".to_string();
-    base.max_atomic_width = 64;
+    base.max_atomic_width = Some(64);
     Ok(Target {
         // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
         // uses it to determine the calling convention and float ABI, and it

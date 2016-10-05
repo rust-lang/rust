@@ -21,7 +21,7 @@
 //!
 //! There are multiple ways to create a new `String` from a string literal:
 //!
-//! ```rust
+//! ```
 //! let s = "Hello".to_string();
 //!
 //! let s = String::from("world");
@@ -31,7 +31,7 @@
 //! You can create a new `String` from an existing one by concatenating with
 //! `+`:
 //!
-//! ```rust
+//! ```
 //! let s = "Hello".to_string();
 //!
 //! let message = s + " world!";
@@ -40,7 +40,7 @@
 //! If you have a vector of valid UTF-8 bytes, you can make a `String` out of
 //! it. You can do the reverse too.
 //!
-//! ```rust
+//! ```
 //! let sparkle_heart = vec![240, 159, 146, 150];
 //!
 //! // We know these bytes are valid, so we'll use `unwrap()`.
@@ -975,7 +975,7 @@ impl String {
     pub fn push(&mut self, ch: char) {
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
-            _ => self.vec.extend_from_slice(ch.encode_utf8().as_slice()),
+            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0;4]).as_bytes()),
         }
     }
 
@@ -1131,10 +1131,11 @@ impl String {
         let len = self.len();
         assert!(idx <= len);
         assert!(self.is_char_boundary(idx));
-        let bits = ch.encode_utf8();
+        let mut bits = [0; 4];
+        let bits = ch.encode_utf8(&mut bits).as_bytes();
 
         unsafe {
-            self.insert_bytes(idx, bits.as_slice());
+            self.insert_bytes(idx, bits);
         }
     }
 

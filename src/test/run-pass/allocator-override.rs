@@ -10,6 +10,7 @@
 
 // no-prefer-dynamic
 // aux-build:allocator-dummy.rs
+// ignore-emscripten
 
 #![feature(test)]
 

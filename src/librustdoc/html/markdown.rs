@@ -27,7 +27,6 @@
 #![allow(non_camel_case_types)]
 
 use libc;
-use rustc::session::config::get_unstable_features_setting;
 use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::default::Default;
@@ -478,13 +477,10 @@ impl LangString {
         let mut data = LangString::all_false();
         let mut allow_compile_fail = false;
         let mut allow_error_code_check = false;
-        match get_unstable_features_setting() {
-            UnstableFeatures::Allow | UnstableFeatures::Cheat => {
-                allow_compile_fail = true;
-                allow_error_code_check = true;
-            }
-            _ => {},
-        };
+        if UnstableFeatures::from_environment().is_nightly_build() {
+            allow_compile_fail = true;
+            allow_error_code_check = true;
+        }
 
         let tokens = string.split(|c: char|
             !(c == '_' || c == '-' || c.is_alphanumeric())

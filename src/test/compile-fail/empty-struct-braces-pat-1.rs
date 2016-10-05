@@ -32,13 +32,13 @@ fn main() {
     }
     match e3 {
         E::Empty3 => ()
-        //~^ ERROR `E::Empty3` does not name a unit variant, unit struct or a constant
+        //~^ ERROR expected unit struct/variant or constant, found struct variant `E::Empty3`
     }
     match xe1 {
         XEmpty1 => () // Not an error, `XEmpty1` is interpreted as a new binding
     }
     match xe3 {
         XE::XEmpty3 => ()
-        //~^ ERROR `XE::XEmpty3` does not name a unit variant, unit struct or a constant
+        //~^ ERROR expected unit struct/variant or constant, found struct variant `XE::XEmpty3`
     }
 }

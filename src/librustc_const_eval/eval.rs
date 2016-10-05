@@ -19,7 +19,7 @@ use rustc::hir::map as ast_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::cstore::InlinedItem;
 use rustc::traits;
-use rustc::hir::def::{Def, PathResolution};
+use rustc::hir::def::{Def, CtorKind, PathResolution};
 use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util::def_to_path;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -287,8 +287,8 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                entry.insert(PathResolution::new(def));
             }
             let path = match def {
-                Def::Struct(def_id) => def_to_path(tcx, def_id),
-                Def::Variant(variant_did) => def_to_path(tcx, variant_did),
+                Def::StructCtor(def_id, CtorKind::Fn) |
+                Def::VariantCtor(def_id, CtorKind::Fn) => def_to_path(tcx, def_id),
                 Def::Fn(..) | Def::Method(..) => return Ok(P(hir::Pat {
                     id: expr.id,
                     node: PatKind::Lit(P(expr.clone())),
@@ -317,16 +317,17 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             PatKind::Struct(path.clone(), field_pats, false)
         }
 
-        hir::ExprVec(ref exprs) => {
+        hir::ExprArray(ref exprs) => {
             let pats = exprs.iter()
                             .map(|expr| const_expr_to_pat(tcx, &expr, pat_id, span))
                             .collect::<Result<_, _>>()?;
-            PatKind::Vec(pats, None, hir::HirVec::new())
+            PatKind::Slice(pats, None, hir::HirVec::new())
         }
 
         hir::ExprPath(_, ref path) => {
             match tcx.expect_def(expr.id) {
-                Def::Struct(..) | Def::Variant(..) => PatKind::Path(None, path.clone()),
+                Def::StructCtor(_, CtorKind::Const) |
+                Def::VariantCtor(_, CtorKind::Const) => PatKind::Path(None, path.clone()),
                 Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                     let substs = Some(tcx.node_id_item_substs(expr.id).substs);
                     let (expr, _ty) = lookup_const_by_id(tcx, def_id, substs).unwrap();
@@ -807,7 +808,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       signal!(e, NonConstPath);
                   }
               },
-              Def::Variant(variant_def) => {
+              Def::VariantCtor(variant_def, ..) => {
                   if let Some(const_expr) = lookup_variant_by_id(tcx, variant_def) {
                       match eval_const_expr_partial(tcx, const_expr, ty_hint, None) {
                           Ok(val) => val,
@@ -820,7 +821,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       signal!(e, UnimplementedConstVal("enum variants"));
                   }
               }
-              Def::Struct(..) => {
+              Def::StructCtor(..) => {
                   ConstVal::Struct(e.id)
               }
               Def::Local(def_id) => {
@@ -898,7 +899,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Array(_, n) if idx >= n => {
                 signal!(e, IndexOutOfBounds { len: n, index: idx })
             }
-            Array(v, n) => if let hir::ExprVec(ref v) = tcx.map.expect_expr(v).node {
+            Array(v, n) => if let hir::ExprArray(ref v) = tcx.map.expect_expr(v).node {
                 assert_eq!(n as usize as u64, n);
                 eval_const_expr_partial(tcx, &v[idx as usize], ty_hint, fn_args)?
             } else {
@@ -925,7 +926,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             _ => signal!(e, IndexedNonVec),
         }
       }
-      hir::ExprVec(ref v) => Array(e.id, v.len() as u64),
+      hir::ExprArray(ref v) => Array(e.id, v.len() as u64),
       hir::ExprRepeat(_, ref n) => {
           let len_hint = ty_hint.checked_or(tcx.types.usize);
           Repeat(

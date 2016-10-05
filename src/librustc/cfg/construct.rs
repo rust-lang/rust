@@ -126,7 +126,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_ast_node(pat.id, &[pats_exit])
             }
 
-            PatKind::Vec(ref pre, ref vec, ref post) => {
+            PatKind::Slice(ref pre, ref vec, ref post) => {
                 let pre_exit = self.pats_all(pre.iter(), pred);
                 let vec_exit = self.pats_all(vec.iter(), pre_exit);
                 let post_exit = self.pats_all(post.iter(), vec_exit);
@@ -298,7 +298,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_unreachable_node()
             }
 
-            hir::ExprVec(ref elems) => {
+            hir::ExprArray(ref elems) => {
                 self.straightline(expr, pred, elems.iter().map(|e| &**e))
             }
 

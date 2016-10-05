@@ -8,14 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let foo = 1;
+#![crate_type="rlib"]
 
-    // `foo` shouldn't be suggested, it is too dissimilar from `bar`.
-    println!("Hello {}", bar);
-    //~^ ERROR: unresolved name `bar`
+pub static B: u32 = 32;
 
-    // But this is close enough.
-    println!("Hello {}", fob);
-    //~^ ERROR: unresolved name `fob`. Did you mean `foo`?
-}

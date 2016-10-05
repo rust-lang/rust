@@ -28,10 +28,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// NB: **No cleanup is scheduled for this temporary.** You should
     /// call `schedule_drop` once the temporary is initialized.
     pub fn temp(&mut self, ty: Ty<'tcx>) -> Lvalue<'tcx> {
-        let temp = self.temp_decls.push(TempDecl { ty: ty });
-        let lvalue = Lvalue::Temp(temp);
+        let temp = self.local_decls.push(LocalDecl::new_temp(ty));
+        let lvalue = Lvalue::Local(temp);
         debug!("temp: created temp {:?} with type {:?}",
-               lvalue, self.temp_decls[temp].ty);
+               lvalue, self.local_decls[temp].ty);
         lvalue
     }
 

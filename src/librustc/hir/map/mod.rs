@@ -11,7 +11,7 @@
 pub use self::Node::*;
 use self::MapEntry::*;
 use self::collector::NodeCollector;
-use self::def_collector::DefCollector;
+pub use self::def_collector::{DefCollector, MacroInvocationData};
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
                             DisambiguatedDefPathData, InlinedRootPath};
 
@@ -260,7 +260,7 @@ impl<'ast> Map<'ast> {
                     EntryVariant(p, _) |
                     EntryExpr(p, _) |
                     EntryStmt(p, _) |
-                EntryTy(p, _) |
+                    EntryTy(p, _) |
                     EntryLocal(p, _) |
                     EntryPat(p, _) |
                     EntryBlock(p, _) |

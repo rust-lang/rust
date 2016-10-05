@@ -303,6 +303,7 @@ pub struct TestOpts {
     pub color: ColorConfig,
     pub quiet: bool,
     pub test_threads: Option<usize>,
+    pub skip: Vec<String>,
 }
 
 impl TestOpts {
@@ -318,6 +319,7 @@ impl TestOpts {
             color: AutoColor,
             quiet: false,
             test_threads: None,
+            skip: vec![],
         }
     }
 }
@@ -337,6 +339,8 @@ fn optgroups() -> Vec<getopts::OptGroup> {
                                          task, allow printing directly"),
       getopts::optopt("", "test-threads", "Number of threads used for running tests \
                                            in parallel", "n_threads"),
+      getopts::optmulti("", "skip", "Skip tests whose names contain FILTER (this flag can \
+                                     be used multiple times)","FILTER"),
       getopts::optflag("q", "quiet", "Display one character per test instead of one line"),
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
@@ -446,6 +450,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         color: color,
         quiet: quiet,
         test_threads: test_threads,
+        skip: matches.opt_strs("skip"),
     };
 
     Some(Ok(test_opts))
@@ -1080,6 +1085,12 @@ fn get_concurrency() -> usize {
         }
         cpus as usize
     }
+
+    #[cfg(target_os = "haiku")]
+    fn num_cpus() -> usize {
+        // FIXME: implement
+        1
+    }
 }
 
 pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
@@ -1094,6 +1105,11 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
                     .collect()
         }
     };
+
+    // Skip tests that match any of the skip filters
+    filtered = filtered.into_iter()
+        .filter(|t| !opts.skip.iter().any(|sf| t.desc.name.as_slice().contains(&sf[..])))
+        .collect();
 
     // Maybe pull out the ignored test and unignore them
     filtered = if !opts.run_ignored {
@@ -1166,26 +1182,59 @@ pub fn run_test(opts: &TestOpts,
             }
         }
 
-        thread::spawn(move || {
-            let data = Arc::new(Mutex::new(Vec::new()));
-            let data2 = data.clone();
-            let cfg = thread::Builder::new().name(match desc.name {
-                DynTestName(ref name) => name.clone(),
-                StaticTestName(name) => name.to_owned(),
-            });
+        // If the platform is single-threaded we're just going to run
+        // the test synchronously, regardless of the concurrency
+        // level.
+        let supports_threads = !cfg!(target_os = "emscripten");
 
-            let result_guard = cfg.spawn(move || {
-                                      if !nocapture {
-                                          io::set_print(box Sink(data2.clone()));
-                                          io::set_panic(box Sink(data2));
-                                      }
-                                      testfn()
-                                  })
-                                  .unwrap();
-            let test_result = calc_result(&desc, result_guard.join());
+        // Buffer for capturing standard I/O
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let data2 = data.clone();
+
+        if supports_threads {
+            thread::spawn(move || {
+                let cfg = thread::Builder::new().name(match desc.name {
+                    DynTestName(ref name) => name.clone(),
+                    StaticTestName(name) => name.to_owned(),
+                });
+
+                let result_guard = cfg.spawn(move || {
+                    if !nocapture {
+                        io::set_print(Some(box Sink(data2.clone())));
+                        io::set_panic(Some(box Sink(data2)));
+                    }
+                    testfn()
+                })
+                    .unwrap();
+                let test_result = calc_result(&desc, result_guard.join());
+                let stdout = data.lock().unwrap().to_vec();
+                monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();
+            });
+        } else {
+            let oldio = if !nocapture {
+                Some((
+                    io::set_print(Some(box Sink(data2.clone()))),
+                    io::set_panic(Some(box Sink(data2)))
+                ))
+            } else {
+                None
+            };
+
+            use std::panic::{catch_unwind, AssertUnwindSafe};
+
+            let result = catch_unwind(AssertUnwindSafe(|| {
+                testfn()
+            }));
+
+            if let Some((printio, panicio)) = oldio {
+                io::set_print(printio);
+                io::set_panic(panicio);
+            };
+
+            let test_result = calc_result(&desc, result);
             let stdout = data.lock().unwrap().to_vec();
             monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();
-        });
+        }
     }
 
     match testfn {
@@ -1275,7 +1324,7 @@ impl MetricMap {
 ///
 /// This function is a no-op, and does not even read from `dummy`.
 #[cfg(not(any(all(target_os = "nacl", target_arch = "le32"),
-              target_arch = "asmjs")))]
+              target_arch = "asmjs", target_arch = "wasm32")))]
 pub fn black_box<T>(dummy: T) -> T {
     // we need to "use" the argument in some way LLVM can't
     // introspect.
@@ -1283,7 +1332,7 @@ pub fn black_box<T>(dummy: T) -> T {
     dummy
 }
 #[cfg(any(all(target_os = "nacl", target_arch = "le32"),
-          target_arch = "asmjs"))]
+          target_arch = "asmjs", target_arch = "wasm32"))]
 #[inline(never)]
 pub fn black_box<T>(dummy: T) -> T {
     dummy

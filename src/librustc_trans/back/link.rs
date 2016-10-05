@@ -754,7 +754,8 @@ fn link_args(cmd: &mut Linker,
         let empty_vec = Vec::new();
         let empty_str = String::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
-        let mut args = args.iter().chain(used_link_args.iter());
+        let more_args = &sess.opts.cg.link_arg;
+        let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
         let relocation_model = sess.opts.cg.relocation_model.as_ref()
                                    .unwrap_or(&empty_str);
         if (t.options.relocation_model == "pic" || *relocation_model == "pic")
@@ -844,6 +845,7 @@ fn link_args(cmd: &mut Linker,
     if let Some(ref args) = sess.opts.cg.link_args {
         cmd.args(args);
     }
+    cmd.args(&sess.opts.cg.link_arg);
     cmd.args(&used_link_args);
 }
 

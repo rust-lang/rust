@@ -83,7 +83,7 @@ use self::TupleArgumentsFlag::*;
 use astconv::{AstConv, ast_region_to_region, PathParamMode};
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
-use hir::def::{Def, PathResolution};
+use hir::def::{Def, CtorKind, PathResolution};
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
@@ -450,7 +450,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
 
     fn visit_ty(&mut self, t: &'tcx hir::Ty) {
         match t.node {
-            hir::TyFixedLengthVec(_, ref expr) => {
+            hir::TyArray(_, ref expr) => {
                 check_const_with_type(self.ccx, &expr, self.ccx.tcx.types.usize, expr.id);
             }
             _ => {}
@@ -626,7 +626,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
     // need to record the type for that node
     fn visit_ty(&mut self, t: &'gcx hir::Ty) {
         match t.node {
-            hir::TyFixedLengthVec(ref ty, ref count_expr) => {
+            hir::TyArray(ref ty, ref count_expr) => {
                 self.visit_ty(&ty);
                 self.fcx.check_expr_with_hint(&count_expr, self.fcx.tcx.types.usize);
             }
@@ -1525,9 +1525,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match self.locals.borrow().get(&nid) {
             Some(&t) => t,
             None => {
-                span_err!(self.tcx.sess, span, E0513,
-                          "no type for local variable {}",
-                          nid);
+                struct_span_err!(self.tcx.sess, span, E0513,
+                                 "no type for local variable {}",
+                                 self.tcx.map.node_to_string(nid))
+                    .span_label(span, &"no type for variable")
+                    .emit();
                 self.tcx.types.err
             }
         }
@@ -2957,18 +2959,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .emit();
             self.tcx().types.err
         } else {
-            let mut err = self.type_error_struct(expr.span, |actual| {
-                format!("attempted access of field `{}` on type `{}`, \
-                         but no field with that name was found",
+            let mut err = self.type_error_struct(field.span, |actual| {
+                format!("no field `{}` on type `{}`",
                         field.node, actual)
             }, expr_t);
             match expr_t.sty {
                 ty::TyAdt(def, _) if !def.is_enum() => {
                     if let Some(suggested_field_name) =
                         Self::suggest_field_name(def.struct_variant(), field, vec![]) {
-                        err.span_help(field.span,
-                                      &format!("did you mean `{}`?", suggested_field_name));
-                    };
+                            err.span_label(field.span,
+                                           &format!("did you mean `{}`?", suggested_field_name));
+                        } else {
+                            err.span_label(field.span,
+                                           &format!("unknown field"));
+                        };
                 }
                 ty::TyRawPtr(..) => {
                     err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
@@ -3016,7 +3020,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         while let Some((base_t, autoderefs)) = autoderef.next() {
             let field = match base_t.sty {
                 ty::TyAdt(base_def, substs) if base_def.is_struct() => {
-                    tuple_like = base_def.struct_variant().kind == ty::VariantKind::Tuple;
+                    tuple_like = base_def.struct_variant().ctor_kind == CtorKind::Fn;
                     if !tuple_like { continue }
 
                     debug!("tuple struct named {:?}",  base_t);
@@ -3241,7 +3245,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Struct(type_did) | Def::Union(type_did) => {
                 Some((type_did, self.tcx.expect_variant_def(def)))
             }
-            Def::TyAlias(did) => {
+            Def::TyAlias(did) | Def::AssociatedTy(did) => {
                 match self.tcx.opt_lookup_item_type(did).map(|scheme| &scheme.ty.sty) {
                     Some(&ty::TyAdt(adt, _)) if !adt.is_enum() => {
                         Some((did, adt.struct_variant()))
@@ -3253,9 +3257,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         if let Some((def_id, variant)) = variant {
-            if variant.kind == ty::VariantKind::Tuple &&
+            if variant.ctor_kind == CtorKind::Fn &&
                     !self.tcx.sess.features.borrow().relaxed_adts {
-                emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
+                emit_feature_err(&self.tcx.sess.parse_sess,
                                  "relaxed_adts", span, GateIssue::Language,
                                  "tuple structs and variants in struct patterns are unstable");
             }
@@ -3588,7 +3592,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref)
           }
           hir::ExprCast(ref e, ref t) => {
-            if let hir::TyFixedLengthVec(_, ref count_expr) = t.node {
+            if let hir::TyArray(_, ref count_expr) = t.node {
                 self.check_expr_with_hint(&count_expr, tcx.types.usize);
             }
 
@@ -3621,7 +3625,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.check_expr_eq_type(&e, typ);
             typ
           }
-          hir::ExprVec(ref args) => {
+          hir::ExprArray(ref args) => {
             let uty = expected.to_option(self).and_then(|uty| {
                 match uty.sty {
                     ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
@@ -4060,34 +4064,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //
         // There are basically four cases to consider:
         //
-        // 1. Reference to a *type*, such as a struct or enum:
+        // 1. Reference to a constructor of enum variant or struct:
         //
-        //        mod a { struct Foo<T> { ... } }
-        //
-        //    Because we don't allow types to be declared within one
-        //    another, a path that leads to a type will always look like
-        //    `a::b::Foo<T>` where `a` and `b` are modules. This implies
-        //    that only the final segment can have type parameters, and
-        //    they are located in the TypeSpace.
-        //
-        //    *Note:* Generally speaking, references to types don't
-        //    actually pass through this function, but rather the
-        //    `ast_ty_to_ty` function in `astconv`. However, in the case
-        //    of struct patterns (and maybe literals) we do invoke
-        //    `instantiate_value_path` to get the general type of an instance of
-        //    a struct. (In these cases, there are actually no type
-        //    parameters permitted at present, but perhaps we will allow
-        //    them in the future.)
-        //
-        // 1b. Reference to an enum variant or tuple-like struct:
-        //
-        //        struct foo<T>(...)
-        //        enum E<T> { foo(...) }
+        //        struct Foo<T>(...)
+        //        enum E<T> { Foo(...) }
         //
         //    In these cases, the parameters are declared in the type
         //    space.
         //
-        // 2. Reference to a *fn item*:
+        // 2. Reference to a fn item or a free constant:
         //
         //        fn foo<T>() { }
         //
@@ -4096,7 +4081,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //    type parameters. However, in this case, those parameters are
         //    declared on a value, and hence are in the `FnSpace`.
         //
-        // 3. Reference to a *method*:
+        // 3. Reference to a method or an associated constant:
         //
         //        impl<A> SomeStruct<A> {
         //            fn foo<B>(...)
@@ -4108,15 +4093,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //    `SomeStruct::<A>`, contains parameters in TypeSpace, and the
         //    final segment, `foo::<B>` contains parameters in fn space.
         //
-        // 4. Reference to an *associated const*:
+        // 4. Reference to a local variable
         //
-        // impl<A> AnotherStruct<A> {
-        // const FOO: B = BAR;
-        // }
-        //
-        // The path in this case will look like
-        // `a::b::AnotherStruct::<A>::FOO`, so the penultimate segment
-        // only will have parameters in TypeSpace.
+        //    Local variables can't have any type parameters.
         //
         // The first step then is to categorize the segments appropriately.
 
@@ -4126,14 +4105,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut type_segment = None;
         let mut fn_segment = None;
         match def {
-            // Case 1 and 1b. Reference to a *type* or *enum variant*.
-            Def::Struct(def_id) |
-            Def::Union(def_id) |
-            Def::Variant(def_id) |
-            Def::Enum(def_id) |
-            Def::TyAlias(def_id) |
-            Def::AssociatedTy(def_id) |
-            Def::Trait(def_id) => {
+            // Case 1. Reference to a struct/variant constructor.
+            Def::StructCtor(def_id, ..) |
+            Def::VariantCtor(def_id, ..) => {
                 // Everything but the final segment should have no
                 // parameters at all.
                 let mut generics = self.tcx.lookup_generics(def_id);
@@ -4176,17 +4150,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 fn_segment = Some((segments.last().unwrap(), generics));
             }
 
-            // Other cases. Various nonsense that really shouldn't show up
-            // here. If they do, an error will have been reported
-            // elsewhere. (I hope)
-            Def::Mod(..) |
-            Def::PrimTy(..) |
-            Def::SelfTy(..) |
-            Def::TyParam(..) |
-            Def::Local(..) |
-            Def::Label(..) |
-            Def::Upvar(..) |
-            Def::Err => {}
+            // Case 4. Local variable, no generics.
+            Def::Local(..) | Def::Upvar(..) => {}
+
+            _ => bug!("unexpected definition: {:?}", def),
         }
 
         // In `<T as Trait<A, B>>::method`, `A` and `B` are mandatory, but

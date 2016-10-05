@@ -151,7 +151,7 @@
 //!
 //! [`Cell`]: ../cell/struct.Cell.html
 //! [`RefCell`]: ../cell/struct.RefCell.html
-//! [`thread_local!`]: ../macro.thread_local!.html
+//! [`thread_local!`]: ../macro.thread_local.html
 //! [`with`]: struct.LocalKey.html#method.with
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -741,7 +741,7 @@ fn _assert_sync_and_send() {
 // Tests
 ////////////////////////////////////////////////////////////////////////////////
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use any::Any;
     use sync::mpsc::{channel, Sender};

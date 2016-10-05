@@ -14,7 +14,7 @@
 
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use core::ops::Deref;
+use core::ops::{Add, AddAssign, Deref};
 
 use fmt;
 
@@ -268,5 +268,51 @@ impl<'a, B: ?Sized> Hash for Cow<'a, B> where B: Hash + ToOwned {
 impl<'a, T: ?Sized + ToOwned> AsRef<T> for Cow<'a, T> {
     fn as_ref(&self) -> &T {
         self
+    }
+}
+
+#[stable(feature = "cow_add", since = "1.13.0")]
+impl<'a> Add<&'a str> for Cow<'a, str> {
+    type Output = Cow<'a, str>;
+
+    fn add(self, rhs: &'a str) -> Self {
+        if self == "" {
+            Cow::Borrowed(rhs)
+        } else if rhs == "" {
+            self
+        } else {
+            Cow::Owned(self.into_owned() + rhs)
+        }
+    }
+}
+
+#[stable(feature = "cow_add", since = "1.13.0")]
+impl<'a> Add<Cow<'a, str>> for Cow<'a, str> {
+    type Output = Cow<'a, str>;
+
+    fn add(self, rhs: Cow<'a, str>) -> Self {
+        if self == "" {
+            rhs
+        } else if rhs == "" {
+            self
+        } else {
+            Cow::Owned(self.into_owned() + rhs.borrow())
+        }
+    }
+}
+
+#[stable(feature = "cow_add", since = "1.13.0")]
+impl<'a> AddAssign<&'a str> for Cow<'a, str> {
+    fn add_assign(&mut self, rhs: &'a str) {
+        if rhs == "" { return; }
+        self.to_mut().push_str(rhs);
+    }
+}
+
+#[stable(feature = "cow_add", since = "1.13.0")]
+impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
+    fn add_assign(&mut self, rhs: Cow<'a, str>) {
+        if rhs == "" { return; }
+        self.to_mut().push_str(rhs.borrow());
     }
 }

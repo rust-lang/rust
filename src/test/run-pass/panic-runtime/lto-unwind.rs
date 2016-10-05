@@ -10,6 +10,7 @@
 
 // compile-flags:-C lto -C panic=unwind
 // no-prefer-dynamic
+// ignore-emscripten Function not implemented.
 
 use std::process::Command;
 use std::env;

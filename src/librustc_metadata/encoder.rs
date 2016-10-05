@@ -258,7 +258,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let def_id = variant.did;
 
         let data = VariantData {
-            kind: variant.kind,
+            ctor_kind: variant.ctor_kind,
             disr: variant.disr_val.to_u64_unchecked(),
             struct_ctor: None
         };
@@ -406,17 +406,21 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_struct_ctor(&mut self, (adt_def_id, def_id): (DefId, DefId))
                           -> Entry<'tcx> {
-        let variant = self.tcx.lookup_adt_def(adt_def_id).struct_variant();
+        let tcx = self.tcx;
+        let variant = tcx.lookup_adt_def(adt_def_id).struct_variant();
 
         let data = VariantData {
-            kind: variant.kind,
+            ctor_kind: variant.ctor_kind,
             disr: variant.disr_val.to_u64_unchecked(),
             struct_ctor: Some(def_id.index)
         };
 
+        let struct_id = tcx.map.as_local_node_id(adt_def_id).unwrap();
+        let struct_vis = &tcx.map.expect_item(struct_id).vis;
+
         Entry {
             kind: EntryKind::Struct(self.lazy(&data)),
-            visibility: ty::Visibility::Public,
+            visibility: struct_vis.simplify(),
             def_key: self.encode_def_key(def_id),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),
@@ -671,7 +675,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     None
                 };
                 EntryKind::Struct(self.lazy(&VariantData {
-                    kind: variant.kind,
+                    ctor_kind: variant.ctor_kind,
                     disr: variant.disr_val.to_u64_unchecked(),
                     struct_ctor: struct_ctor
                 }))
@@ -680,7 +684,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let variant = tcx.lookup_adt_def(def_id).struct_variant();
 
                 EntryKind::Union(self.lazy(&VariantData {
-                    kind: variant.kind,
+                    ctor_kind: variant.ctor_kind,
                     disr: variant.disr_val.to_u64_unchecked(),
                     struct_ctor: None
                 }))
@@ -885,19 +889,12 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ItemStruct(ref struct_def, _) => {
                 self.encode_fields(def_id);
 
-                // If this is a tuple-like struct, encode the type of the constructor.
-                match self.tcx.lookup_adt_def(def_id).struct_variant().kind {
-                    ty::VariantKind::Struct => {
-                        // no value for structs like struct Foo { ... }
-                    }
-                    ty::VariantKind::Tuple | ty::VariantKind::Unit => {
-                        // there is a value for structs like `struct
-                        // Foo()` and `struct Foo`
-                        let ctor_def_id = self.tcx.map.local_def_id(struct_def.id());
-                        self.record(ctor_def_id,
-                                    EncodeContext::encode_struct_ctor,
-                                    (def_id, ctor_def_id));
-                    }
+                // If the struct has a constructor, encode it.
+                if !struct_def.is_struct() {
+                    let ctor_def_id = self.tcx.map.local_def_id(struct_def.id());
+                    self.record(ctor_def_id,
+                                EncodeContext::encode_struct_ctor,
+                                (def_id, ctor_def_id));
                 }
             }
             hir::ItemUnion(..) => {
@@ -1288,12 +1285,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let link_meta = self.link_meta;
         let is_rustc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeRustcMacro);
         let root = self.lazy(&CrateRoot {
-            rustc_version: RUSTC_VERSION.to_string(),
+            rustc_version: rustc_version(),
             name: link_meta.crate_name.clone(),
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator().to_string(),
-            panic_strategy: tcx.sess.opts.cg.panic.clone(),
+            panic_strategy: tcx.sess.panic_strategy(),
             plugin_registrar_fn: tcx.sess.plugin_registrar_fn.get().map(|id| {
                 tcx.map.local_def_id(id).index
             }),

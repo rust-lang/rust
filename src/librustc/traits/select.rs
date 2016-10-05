@@ -1980,7 +1980,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                                   normalized_ty,
                                                   &[]);
                 obligations.push(skol_obligation);
-                this.infcx().plug_leaks(skol_map, snapshot, &obligations)
+                this.infcx().plug_leaks(skol_map, snapshot, obligations)
             })
         }).collect()
     }
@@ -2899,7 +2899,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     predicate: predicate.value
                 }))
         }).collect();
-        self.infcx().plug_leaks(skol_map, snapshot, &predicates)
+        self.infcx().plug_leaks(skol_map, snapshot, predicates)
     }
 }
 

@@ -277,8 +277,7 @@ impl Ipv4Addr {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
+#[stable(feature = "ip_addr", since = "1.7.0")]
 impl fmt::Display for IpAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -669,7 +668,7 @@ impl From<[u8; 16]> for Ipv6Addr {
 }
 
 // Tests for this module
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use net::*;
     use net::Ipv6MulticastScope::*;

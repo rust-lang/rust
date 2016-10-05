@@ -91,7 +91,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let ccx = bcx.ccx();
         let tcx = bcx.tcx();
 
-        if let Some(index) = self.mir.local_index(lvalue) {
+        if let mir::Lvalue::Local(index) = *lvalue {
             match self.locals[index] {
                 LocalRef::Lvalue(lvalue) => {
                     return lvalue;
@@ -103,10 +103,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
 
         let result = match *lvalue {
-            mir::Lvalue::Var(_) |
-            mir::Lvalue::Temp(_) |
-            mir::Lvalue::Arg(_) |
-            mir::Lvalue::ReturnPointer => bug!(), // handled above
+            mir::Lvalue::Local(_) => bug!(), // handled above
             mir::Lvalue::Static(def_id) => {
                 let const_ty = self.monomorphized_lvalue_ty(lvalue);
                 LvalueRef::new_sized(consts::get_static(ccx, def_id),
@@ -235,7 +232,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                  lvalue: &mir::Lvalue<'tcx>, f: F) -> U
     where F: FnOnce(&mut Self, LvalueRef<'tcx>) -> U
     {
-        if let Some(index) = self.mir.local_index(lvalue) {
+        if let mir::Lvalue::Local(index) = *lvalue {
             match self.locals[index] {
                 LocalRef::Lvalue(lvalue) => f(self, lvalue),
                 LocalRef::Operand(None) => {

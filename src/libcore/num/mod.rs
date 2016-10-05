@@ -613,14 +613,12 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(no_panic_abs)]
-        ///
         /// use std::i32;
         ///
         /// assert_eq!((-5i32).checked_abs(), Some(5));
         /// assert_eq!(i32::MIN.checked_abs(), None);
         /// ```
-        #[unstable(feature = "no_panic_abs", issue = "35057")]
+        #[stable(feature = "no_panic_abs", since = "1.13.0")]
         #[inline]
         pub fn checked_abs(self) -> Option<Self> {
             if self.is_negative() {
@@ -895,14 +893,12 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(no_panic_abs)]
-        ///
         /// assert_eq!(100i8.wrapping_abs(), 100);
         /// assert_eq!((-100i8).wrapping_abs(), 100);
         /// assert_eq!((-128i8).wrapping_abs(), -128);
         /// assert_eq!((-128i8).wrapping_abs() as u8, 128);
         /// ```
-        #[unstable(feature = "no_panic_abs", issue = "35057")]
+        #[stable(feature = "no_panic_abs", since = "1.13.0")]
         #[inline(always)]
         pub fn wrapping_abs(self) -> Self {
             if self.is_negative() {
@@ -1133,13 +1129,11 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(no_panic_abs)]
-        ///
         /// assert_eq!(10i8.overflowing_abs(), (10,false));
         /// assert_eq!((-10i8).overflowing_abs(), (10,false));
         /// assert_eq!((-128i8).overflowing_abs(), (-128,true));
         /// ```
-        #[unstable(feature = "no_panic_abs", issue = "35057")]
+        #[stable(feature = "no_panic_abs", since = "1.13.0")]
         #[inline]
         pub fn overflowing_abs(self) -> (Self, bool) {
             if self.is_negative() {
@@ -2576,7 +2570,7 @@ impl fmt::Display for TryFromIntError {
 
 macro_rules! same_sign_from_int_impl {
     ($storage:ty, $target:ty, $($source:ty),*) => {$(
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$source> for $target {
             type Err = TryFromIntError;
 
@@ -2606,7 +2600,7 @@ same_sign_from_int_impl!(i64, isize, i8, i16, i32, i64, isize);
 
 macro_rules! cross_sign_from_int_impl {
     ($unsigned:ty, $($signed:ty),*) => {$(
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$unsigned> for $signed {
             type Err = TryFromIntError;
 
@@ -2620,7 +2614,7 @@ macro_rules! cross_sign_from_int_impl {
             }
         }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$signed> for $unsigned {
             type Err = TryFromIntError;
 

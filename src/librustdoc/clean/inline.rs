@@ -15,11 +15,10 @@ use std::iter::once;
 use syntax::ast;
 use rustc::hir;
 
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::DefPathData;
 use rustc::hir::print as pprust;
-use rustc::ty::{self, TyCtxt, VariantKind};
+use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::FnvHashSet;
 
 use rustc_const_eval::lookup_const_by_id;
@@ -73,49 +72,50 @@ fn try_inline_def<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let did = def.def_id();
     let inner = match def {
         Def::Trait(did) => {
-            record_extern_fqn(cx, did, clean::TypeTrait);
+            record_extern_fqn(cx, did, clean::TypeKind::Trait);
             ret.extend(build_impls(cx, tcx, did));
             clean::TraitItem(build_external_trait(cx, tcx, did))
         }
         Def::Fn(did) => {
-            record_extern_fqn(cx, did, clean::TypeFunction);
+            record_extern_fqn(cx, did, clean::TypeKind::Function);
             clean::FunctionItem(build_external_function(cx, tcx, did))
         }
-        Def::Struct(did)
-                // If this is a struct constructor, we skip it
-                if tcx.def_key(did).disambiguated_data.data != DefPathData::StructCtor => {
-            record_extern_fqn(cx, did, clean::TypeStruct);
+        Def::Struct(did) => {
+            record_extern_fqn(cx, did, clean::TypeKind::Struct);
             ret.extend(build_impls(cx, tcx, did));
             clean::StructItem(build_struct(cx, tcx, did))
         }
         Def::Union(did) => {
-            record_extern_fqn(cx, did, clean::TypeUnion);
+            record_extern_fqn(cx, did, clean::TypeKind::Union);
             ret.extend(build_impls(cx, tcx, did));
             clean::UnionItem(build_union(cx, tcx, did))
         }
         Def::TyAlias(did) => {
-            record_extern_fqn(cx, did, clean::TypeTypedef);
+            record_extern_fqn(cx, did, clean::TypeKind::Typedef);
             ret.extend(build_impls(cx, tcx, did));
             clean::TypedefItem(build_type_alias(cx, tcx, did), false)
         }
         Def::Enum(did) => {
-            record_extern_fqn(cx, did, clean::TypeEnum);
+            record_extern_fqn(cx, did, clean::TypeKind::Enum);
             ret.extend(build_impls(cx, tcx, did));
             clean::EnumItem(build_enum(cx, tcx, did))
         }
         // Assume that the enum type is reexported next to the variant, and
         // variants don't show up in documentation specially.
-        Def::Variant(..) => return Some(Vec::new()),
+        // Similarly, consider that struct type is reexported next to its constructor.
+        Def::Variant(..) |
+        Def::VariantCtor(..) |
+        Def::StructCtor(..) => return Some(Vec::new()),
         Def::Mod(did) => {
-            record_extern_fqn(cx, did, clean::TypeModule);
+            record_extern_fqn(cx, did, clean::TypeKind::Module);
             clean::ModuleItem(build_module(cx, tcx, did))
         }
         Def::Static(did, mtbl) => {
-            record_extern_fqn(cx, did, clean::TypeStatic);
+            record_extern_fqn(cx, did, clean::TypeKind::Static);
             clean::StaticItem(build_static(cx, tcx, did, mtbl))
         }
-        Def::Const(did) | Def::AssociatedConst(did) => {
-            record_extern_fqn(cx, did, clean::TypeConst);
+        Def::Const(did) => {
+            record_extern_fqn(cx, did, clean::TypeKind::Const);
             clean::ConstantItem(build_const(cx, tcx, did))
         }
         _ => return None,
@@ -219,10 +219,10 @@ fn build_struct<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let variant = tcx.lookup_adt_def(did).struct_variant();
 
     clean::Struct {
-        struct_type: match variant.kind {
-            VariantKind::Struct => doctree::Plain,
-            VariantKind::Tuple => doctree::Tuple,
-            VariantKind::Unit => doctree::Unit,
+        struct_type: match variant.ctor_kind {
+            CtorKind::Fictive => doctree::Plain,
+            CtorKind::Fn => doctree::Tuple,
+            CtorKind::Const => doctree::Unit,
         },
         generics: (t.generics, &predicates).clean(cx),
         fields: variant.fields.clean(cx),
@@ -498,12 +498,11 @@ fn build_module<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // visit each node at most once.
         let mut visited = FnvHashSet();
         for item in tcx.sess.cstore.item_children(did) {
-            if tcx.sess.cstore.visibility(item.def_id) == ty::Visibility::Public {
-                if !visited.insert(item.def_id) { continue }
-                if let Some(def) = tcx.sess.cstore.describe_def(item.def_id) {
-                    if let Some(i) = try_inline_def(cx, tcx, def) {
-                        items.extend(i)
-                    }
+            let def_id = item.def.def_id();
+            if tcx.sess.cstore.visibility(def_id) == ty::Visibility::Public {
+                if !visited.insert(def_id) { continue }
+                if let Some(i) = try_inline_def(cx, tcx, item.def) {
+                    items.extend(i)
                 }
             }
         }
@@ -577,7 +576,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics)
             _ => true,
         }
     });
-    return g;
+    g
 }
 
 /// Supertrait bounds for a trait are also listed in the generics coming from

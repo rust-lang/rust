@@ -27,6 +27,24 @@ fn main() {
     let build_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let src_dir = env::current_dir().unwrap();
 
+    // FIXME: This is a hack to support building targets that don't
+    // support jemalloc alongside hosts that do. The jemalloc build is
+    // controlled by a feature of the std crate, and if that feature
+    // changes between targets, it invalidates the fingerprint of
+    // std's build script (this is a cargo bug); so we must ensure
+    // that the feature set used by std is the same across all
+    // targets, which means we have to build the alloc_jemalloc crate
+    // for targets like emscripten, even if we don't use it.
+    if target.contains("rumprun") ||
+        target.contains("bitrig") ||
+        target.contains("openbsd") ||
+        target.contains("msvc") ||
+        target.contains("emscripten")
+    {
+        println!("cargo:rustc-cfg=dummy_jemalloc");
+        return;
+    }
+
     if let Some(jemalloc) = env::var_os("JEMALLOC_OVERRIDE") {
         let jemalloc = PathBuf::from(jemalloc);
         println!("cargo:rustc-link-search=native={}",

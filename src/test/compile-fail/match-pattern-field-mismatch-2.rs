@@ -20,7 +20,7 @@ fn main() {
           color::rgb(_, _, _) => { }
           color::cmyk(_, _, _, _) => { }
           color::no_color(_) => { }
-          //~^ ERROR `color::no_color` does not name a tuple variant or a tuple struct
+          //~^ ERROR expected tuple struct/variant, found unit variant `color::no_color`
         }
     }
 }

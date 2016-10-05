@@ -24,23 +24,28 @@ use time::Duration;
 #[cfg(any(target_os = "dragonfly", target_os = "freebsd",
           target_os = "ios", target_os = "macos",
           target_os = "openbsd", target_os = "netbsd",
-          target_os = "solaris"))]
+          target_os = "solaris", target_os = "haiku"))]
 use sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
 #[cfg(not(any(target_os = "dragonfly", target_os = "freebsd",
               target_os = "ios", target_os = "macos",
               target_os = "openbsd", target_os = "netbsd",
-              target_os = "solaris")))]
+              target_os = "solaris", taget_os = "haiku")))]
 use sys::net::netc::IPV6_ADD_MEMBERSHIP;
 #[cfg(any(target_os = "dragonfly", target_os = "freebsd",
           target_os = "ios", target_os = "macos",
           target_os = "openbsd", target_os = "netbsd",
-          target_os = "solaris"))]
+          target_os = "solaris", target_os = "haiku"))]
 use sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
 #[cfg(not(any(target_os = "dragonfly", target_os = "freebsd",
               target_os = "ios", target_os = "macos",
               target_os = "openbsd", target_os = "netbsd",
-              target_os = "solaris")))]
+              target_os = "solaris", target_os = "haiku")))]
 use sys::net::netc::IPV6_DROP_MEMBERSHIP;
+
+#[cfg(target_os = "linux")]
+use libc::MSG_NOSIGNAL;
+#[cfg(not(target_os = "linux"))]
+const MSG_NOSIGNAL: c_int = 0x0; // unused dummy value
 
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
@@ -225,7 +230,7 @@ impl TcpStream {
             c::send(*self.inner.as_inner(),
                     buf.as_ptr() as *const c_void,
                     len,
-                    0)
+                    MSG_NOSIGNAL)
         })?;
         Ok(ret as usize)
     }
@@ -449,7 +454,7 @@ impl UdpSocket {
         let ret = cvt(unsafe {
             c::sendto(*self.inner.as_inner(),
                       buf.as_ptr() as *const c_void, len,
-                      0, dstp, dstlen)
+                      MSG_NOSIGNAL, dstp, dstlen)
         })?;
         Ok(ret as usize)
     }
@@ -573,7 +578,7 @@ impl UdpSocket {
             c::send(*self.inner.as_inner(),
                     buf.as_ptr() as *const c_void,
                     len,
-                    0)
+                    MSG_NOSIGNAL)
         })?;
         Ok(ret as usize)
     }

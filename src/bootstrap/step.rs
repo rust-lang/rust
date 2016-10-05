@@ -171,6 +171,8 @@ targets!(define_source);
 /// into a topologically sorted list which when executed left-to-right will
 /// correctly sequence the entire build.
 pub fn all(build: &Build) -> Vec<Step> {
+    build.verbose("inferred build steps:");
+
     let mut ret = Vec::new();
     let mut all = HashSet::new();
     for target in top_level(build) {
@@ -184,6 +186,7 @@ pub fn all(build: &Build) -> Vec<Step> {
                 set: &mut HashSet<Step<'a>>) {
         if set.insert(target.clone()) {
             for dep in target.deps(build) {
+                build.verbose(&format!("{:?}\n  -> {:?}", target, dep));
                 fill(build, &dep, ret, set);
             }
             ret.push(target.clone());
@@ -415,7 +418,6 @@ impl<'a> Step<'a> {
                     self.check_crate_std(compiler),
                     self.check_crate_test(compiler),
                     self.check_debuginfo(compiler),
-                    self.dist(stage),
                 ];
 
                 // If we're testing the build triple, then we know we can
@@ -460,6 +462,9 @@ impl<'a> Step<'a> {
                         // misc
                         self.check_linkcheck(stage),
                         self.check_tidy(stage),
+
+                        // can we make the distributables?
+                        self.dist(stage),
                     ]);
                 }
                 return base
@@ -483,7 +488,6 @@ impl<'a> Step<'a> {
             Source::CheckCodegenUnits { compiler } |
             Source::CheckIncremental { compiler } |
             Source::CheckUi { compiler } |
-            Source::CheckRustdoc { compiler } |
             Source::CheckPretty { compiler } |
             Source::CheckCFail { compiler } |
             Source::CheckRPassValgrind { compiler } |
@@ -506,6 +510,7 @@ impl<'a> Step<'a> {
                     self.debugger_scripts(compiler.stage),
                 ]
             }
+            Source::CheckRustdoc { compiler } |
             Source::CheckRPassFull { compiler } |
             Source::CheckRFailFull { compiler } |
             Source::CheckCFailFull { compiler } |

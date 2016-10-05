@@ -478,7 +478,7 @@ impl Pat {
             PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
                 s.walk_(it)
             }
-            PatKind::Vec(ref before, ref slice, ref after) => {
+            PatKind::Slice(ref before, ref slice, ref after) => {
                 before.iter().all(|p| p.walk_(it)) &&
                 slice.iter().all(|p| p.walk_(it)) &&
                 after.iter().all(|p| p.walk_(it))
@@ -554,8 +554,8 @@ pub enum PatKind {
     /// A range pattern, e.g. `1...2`
     Range(P<Expr>, P<Expr>),
     /// `[a, b, ..i, y, z]` is represented as:
-    ///     `PatKind::Vec(box [a, b], Some(i), box [y, z])`
-    Vec(HirVec<P<Pat>>, Option<P<Pat>>, HirVec<P<Pat>>),
+    ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
+    Slice(HirVec<P<Pat>>, Option<P<Pat>>, HirVec<P<Pat>>),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -826,7 +826,7 @@ pub enum Expr_ {
     /// A `box x` expression.
     ExprBox(P<Expr>),
     /// An array (`[a, b, c, d]`)
-    ExprVec(HirVec<P<Expr>>),
+    ExprArray(HirVec<P<Expr>>),
     /// A function call
     ///
     /// The first field resolves to the function itself (usually an `ExprPath`),
@@ -1080,10 +1080,10 @@ pub struct BareFnTy {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 /// The different kinds of types recognized by the compiler
 pub enum Ty_ {
-    /// A variable length array (`[T]`)
-    TyVec(P<Ty>),
+    /// A variable length slice (`[T]`)
+    TySlice(P<Ty>),
     /// A fixed length array (`[T; n]`)
-    TyFixedLengthVec(P<Ty>, P<Expr>),
+    TyArray(P<Ty>, P<Expr>),
     /// A raw pointer (`*const T` or `*mut T`)
     TyPtr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)

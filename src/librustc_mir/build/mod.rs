@@ -28,6 +28,7 @@ pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     cfg: CFG<'tcx>,
 
     fn_span: Span,
+    arg_count: usize,
 
     /// the current set of scopes, updated as we traverse;
     /// see the `scope` module for more details
@@ -49,9 +50,9 @@ pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
     visibility_scope: VisibilityScope,
 
-    var_decls: IndexVec<Var, VarDecl<'tcx>>,
-    var_indices: NodeMap<Var>,
-    temp_decls: IndexVec<Temp, TempDecl<'tcx>>,
+    /// Maps node ids of variable bindings to the `Local`s created for them.
+    var_indices: NodeMap<Local>,
+    local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     unit_temp: Option<Lvalue<'tcx>>,
 
     /// cached block with the RESUME terminator; this is created
@@ -157,9 +158,11 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                        -> (Mir<'tcx>, ScopeAuxiliaryVec)
     where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
 {
+    let arguments: Vec<_> = arguments.collect();
+
     let tcx = hir.tcx();
     let span = tcx.map.span(fn_id);
-    let mut builder = Builder::new(hir, span);
+    let mut builder = Builder::new(hir, span, arguments.len(), return_ty);
 
     let body_id = ast_block.id;
     let call_site_extent =
@@ -169,9 +172,9 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         tcx.region_maps.lookup_code_extent(
             CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body_id });
     let mut block = START_BLOCK;
-    let mut arg_decls = unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
-        let arg_decls = unpack!(block = builder.in_scope(arg_extent, block, |builder| {
-            builder.args_and_body(block, return_ty, arguments, arg_extent, ast_block)
+    unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
+        unpack!(block = builder.in_scope(arg_extent, block, |builder| {
+            builder.args_and_body(block, return_ty, &arguments, arg_extent, ast_block)
         }));
 
         let source_info = builder.source_info(span);
@@ -180,16 +183,15 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                               TerminatorKind::Goto { target: return_block });
         builder.cfg.terminate(return_block, source_info,
                               TerminatorKind::Return);
-        return_block.and(arg_decls)
+        return_block.unit()
     }));
     assert_eq!(block, builder.return_block());
 
+    let mut spread_arg = None;
     match tcx.node_id_to_type(fn_id).sty {
         ty::TyFnDef(_, _, f) if f.abi == Abi::RustCall => {
             // RustCall pseudo-ABI untuples the last argument.
-            if let Some(last_arg) = arg_decls.last() {
-                arg_decls[last_arg].spread = true;
-            }
+            spread_arg = Some(Local::new(arguments.len()));
         }
         _ => {}
     }
@@ -218,7 +220,9 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         }).collect()
     });
 
-    builder.finish(upvar_decls, arg_decls, return_ty)
+    let (mut mir, aux) = builder.finish(upvar_decls, return_ty);
+    mir.spread_arg = spread_arg;
+    (mir, aux)
 }
 
 pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
@@ -226,15 +230,16 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
                                        ast_expr: &'tcx hir::Expr)
                                        -> (Mir<'tcx>, ScopeAuxiliaryVec) {
     let tcx = hir.tcx();
+    let ty = tcx.expr_ty_adjusted(ast_expr);
     let span = tcx.map.span(item_id);
-    let mut builder = Builder::new(hir, span);
+    let mut builder = Builder::new(hir, span, 0, ty);
 
     let extent = tcx.region_maps.temporary_scope(ast_expr.id)
                     .unwrap_or(ROOT_CODE_EXTENT);
     let mut block = START_BLOCK;
     let _ = builder.in_scope(extent, block, |builder| {
         let expr = builder.hir.mirror(ast_expr);
-        unpack!(block = builder.into(&Lvalue::ReturnPointer, block, expr));
+        unpack!(block = builder.into(&Lvalue::Local(RETURN_POINTER), block, expr));
 
         let source_info = builder.source_info(span);
         let return_block = builder.return_block();
@@ -246,23 +251,26 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
         return_block.unit()
     });
 
-    let ty = tcx.expr_ty_adjusted(ast_expr);
-    builder.finish(vec![], IndexVec::new(), ty)
+    builder.finish(vec![], ty)
 }
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    fn new(hir: Cx<'a, 'gcx, 'tcx>, span: Span) -> Builder<'a, 'gcx, 'tcx> {
+    fn new(hir: Cx<'a, 'gcx, 'tcx>,
+           span: Span,
+           arg_count: usize,
+           return_ty: Ty<'tcx>)
+           -> Builder<'a, 'gcx, 'tcx> {
         let mut builder = Builder {
             hir: hir,
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
+            arg_count: arg_count,
             scopes: vec![],
             visibility_scopes: IndexVec::new(),
             visibility_scope: ARGUMENT_VISIBILITY_SCOPE,
             scope_auxiliary: IndexVec::new(),
             loop_scopes: vec![],
-            temp_decls: IndexVec::new(),
-            var_decls: IndexVec::new(),
+            local_decls: IndexVec::from_elem_n(LocalDecl::new_return_pointer(return_ty), 1),
             var_indices: NodeMap(),
             unit_temp: None,
             cached_resume_block: None,
@@ -278,7 +286,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn finish(self,
               upvar_decls: Vec<UpvarDecl>,
-              arg_decls: IndexVec<Arg, ArgDecl<'tcx>>,
               return_ty: Ty<'tcx>)
               -> (Mir<'tcx>, ScopeAuxiliaryVec) {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
@@ -291,27 +298,45 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                   self.visibility_scopes,
                   IndexVec::new(),
                   return_ty,
-                  self.var_decls,
-                  arg_decls,
-                  self.temp_decls,
+                  self.local_decls,
+                  self.arg_count,
                   upvar_decls,
                   self.fn_span
         ), self.scope_auxiliary)
     }
 
-    fn args_and_body<A>(&mut self,
-                        mut block: BasicBlock,
-                        return_ty: Ty<'tcx>,
-                        arguments: A,
-                        argument_extent: CodeExtent,
-                        ast_block: &'gcx hir::Block)
-                        -> BlockAnd<IndexVec<Arg, ArgDecl<'tcx>>>
-        where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
+    fn args_and_body(&mut self,
+                     mut block: BasicBlock,
+                     return_ty: Ty<'tcx>,
+                     arguments: &[(Ty<'gcx>, Option<&'gcx hir::Pat>)],
+                     argument_extent: CodeExtent,
+                     ast_block: &'gcx hir::Block)
+                     -> BlockAnd<()>
     {
-        // to start, translate the argument patterns and collect the argument types.
+        // Allocate locals for the function arguments
+        for &(ty, pattern) in arguments.iter() {
+            // If this is a simple binding pattern, give the local a nice name for debuginfo.
+            let mut name = None;
+            if let Some(pat) = pattern {
+                if let hir::PatKind::Binding(_, ref ident, _) = pat.node {
+                    name = Some(ident.node);
+                }
+            }
+
+            self.local_decls.push(LocalDecl {
+                mutability: Mutability::Not,
+                ty: ty,
+                source_info: None,
+                name: name,
+            });
+        }
+
         let mut scope = None;
-        let arg_decls = arguments.enumerate().map(|(index, (ty, pattern))| {
-            let lvalue = Lvalue::Arg(Arg::new(index));
+        // Bind the argument patterns
+        for (index, &(ty, pattern)) in arguments.iter().enumerate() {
+            // Function arguments always get the first Local indices after the return pointer
+            let lvalue = Lvalue::Local(Local::new(index + 1));
+
             if let Some(pattern) = pattern {
                 let pattern = self.hir.irrefutable_pat(pattern);
                 scope = self.declare_bindings(scope, ast_block.span, &pattern);
@@ -322,19 +347,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.schedule_drop(pattern.as_ref().map_or(ast_block.span, |pat| pat.span),
                                argument_extent, &lvalue, ty);
 
-            let mut name = keywords::Invalid.name();
-            if let Some(pat) = pattern {
-                if let hir::PatKind::Binding(_, ref ident, _) = pat.node {
-                    name = ident.node;
-                }
-            }
-
-            ArgDecl {
-                ty: ty,
-                spread: false,
-                debug_name: name
-            }
-        }).collect();
+        }
 
         // Enter the argument pattern bindings visibility scope, if it exists.
         if let Some(visibility_scope) = scope {
@@ -344,9 +357,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // FIXME(#32959): temporary hack for the issue at hand
         let return_is_unit = return_ty.is_nil();
         // start the first basic block and translate the body
-        unpack!(block = self.ast_block(&Lvalue::ReturnPointer, return_is_unit, block, ast_block));
+        unpack!(block = self.ast_block(&Lvalue::Local(RETURN_POINTER),
+                return_is_unit, block, ast_block));
 
-        block.and(arg_decls)
+        block.unit()
     }
 
     fn get_unit_temp(&mut self) -> Lvalue<'tcx> {

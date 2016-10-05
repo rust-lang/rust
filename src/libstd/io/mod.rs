@@ -1264,15 +1264,13 @@ pub trait BufRead: Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn consume(&mut self, amt: usize);
 
-    /// Read all bytes into `buf` until the delimiter `byte` is reached.
+    /// Read all bytes into `buf` until the delimiter `byte` or EOF is reached.
     ///
     /// This function will read bytes from the underlying stream until the
     /// delimiter or EOF is found. Once found, all bytes up to, and including,
     /// the delimiter (if found) will be appended to `buf`.
     ///
-    /// If this reader is currently at EOF then this function will not modify
-    /// `buf` and will return `Ok(n)` where `n` is the number of bytes which
-    /// were read.
+    /// If successful, this function will return the total number of bytes read.
     ///
     /// # Errors
     ///
@@ -1315,9 +1313,7 @@ pub trait BufRead: Read {
     /// up to, and including, the delimiter (if found) will be appended to
     /// `buf`.
     ///
-    /// If this reader is currently at EOF then this function will not modify
-    /// `buf` and will return `Ok(n)` where `n` is the number of bytes which
-    /// were read.
+    /// If successful, this function will return the total number of bytes read.
     ///
     /// # Errors
     ///
@@ -1432,7 +1428,7 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         if !self.done_first {
             match self.first.read(buf)? {
-                0 => { self.done_first = true; }
+                0 if buf.len() != 0 => { self.done_first = true; }
                 n => return Ok(n),
             }
         }
@@ -1524,7 +1520,7 @@ impl<T> Take<T> {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "io_take_into_inner", issue = "0")]
+    #[unstable(feature = "io_take_into_inner", issue = "23755")]
     pub fn into_inner(self) -> T {
         self.inner
     }
@@ -1761,6 +1757,7 @@ mod tests {
     use super::repeat;
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn read_until() {
         let mut buf = Cursor::new(&b"12"[..]);
         let mut v = Vec::new();
@@ -1959,7 +1956,19 @@ mod tests {
         cmp_bufread(chain1, chain2, &testdata[..]);
     }
 
+    #[test]
+    fn chain_zero_length_read_is_not_eof() {
+        let a = b"A";
+        let b = b"B";
+        let mut s = String::new();
+        let mut chain = (&a[..]).chain(&b[..]);
+        chain.read(&mut []).unwrap();
+        chain.read_to_string(&mut s).unwrap();
+        assert_eq!("AB", s);
+    }
+
     #[bench]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn bench_read_to_end(b: &mut test::Bencher) {
         b.iter(|| {
             let mut lr = repeat(1).take(10000000);

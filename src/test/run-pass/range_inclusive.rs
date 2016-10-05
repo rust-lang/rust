@@ -75,7 +75,7 @@ pub fn main() {
 
     // test the size hints and emptying
     let mut long = 0...255u8;
-    let mut short = 42...42;
+    let mut short = 42...42u8;
     assert_eq!(long.size_hint(), (256, Some(256)));
     assert_eq!(short.size_hint(), (1, Some(1)));
     long.next();

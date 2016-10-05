@@ -26,15 +26,19 @@ fn main() {
     let xe3 = XE::XEmpty3 {};
 
     match e3 {
-        E::Empty3() => () //~ ERROR `E::Empty3` does not name a tuple variant or a tuple struct
+        E::Empty3() => ()
+        //~^ ERROR expected tuple struct/variant, found struct variant `E::Empty3`
     }
     match xe3 {
-        XE::XEmpty3() => () //~ ERROR `XE::XEmpty3` does not name a tuple variant or a tuple struct
+        XE::XEmpty3() => ()
+        //~^ ERROR expected tuple struct/variant, found struct variant `XE::XEmpty3`
     }
     match e3 {
-        E::Empty3(..) => () //~ ERROR `E::Empty3` does not name a tuple variant or a tuple struct
+        E::Empty3(..) => ()
+        //~^ ERROR expected tuple struct/variant, found struct variant `E::Empty3`
     }
     match xe3 {
-        XE::XEmpty3(..) => () //~ ERROR `XE::XEmpty3` does not name a tuple variant or a tuple
+        XE::XEmpty3(..) => ()
+        //~^ ERROR expected tuple struct/variant, found struct variant `XE::XEmpty3
     }
 }

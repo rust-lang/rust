@@ -13,9 +13,9 @@
 //! # The `Error` trait
 //!
 //! `Error` is a trait representing the basic expectations for error values,
-//! i.e. values of type `E` in `Result<T, E>`. At a minimum, errors must provide
+//! i.e. values of type `E` in [`Result<T, E>`]. At a minimum, errors must provide
 //! a description, but they may optionally provide additional detail (via
-//! `Display`) and cause chain information:
+//! [`Display`]) and cause chain information:
 //!
 //! ```
 //! use std::fmt::Display;
@@ -27,12 +27,16 @@
 //! }
 //! ```
 //!
-//! The `cause` method is generally used when errors cross "abstraction
+//! The [`cause`] method is generally used when errors cross "abstraction
 //! boundaries", i.e.  when a one module must report an error that is "caused"
 //! by an error from a lower-level module. This setup makes it possible for the
 //! high-level module to provide its own errors that do not commit to any
 //! particular implementation, but also reveal some of its implementation for
-//! debugging via `cause` chains.
+//! debugging via [`cause`] chains.
+//!
+//! [`Result<T, E>`]: ../result/enum.Result.html
+//! [`Display`]: ../fmt/trait.Display.html
+//! [`cause`]: trait.Error.html#method.cause
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -288,15 +292,15 @@ impl Error for fmt::Error {
     }
 }
 
-#[unstable(feature = "try_borrow", issue = "35070")]
-impl<'a, T: ?Sized + Reflect> Error for cell::BorrowError<'a, T> {
+#[stable(feature = "try_borrow", since = "1.13.0")]
+impl Error for cell::BorrowError {
     fn description(&self) -> &str {
         "already mutably borrowed"
     }
 }
 
-#[unstable(feature = "try_borrow", issue = "35070")]
-impl<'a, T: ?Sized + Reflect> Error for cell::BorrowMutError<'a, T> {
+#[stable(feature = "try_borrow", since = "1.13.0")]
+impl Error for cell::BorrowMutError {
     fn description(&self) -> &str {
         "already borrowed"
     }

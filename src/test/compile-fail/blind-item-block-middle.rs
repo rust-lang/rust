@@ -12,6 +12,6 @@ mod foo { pub struct bar; }
 
 fn main() {
     let bar = 5;
-    //~^ ERROR let bindings cannot shadow structs
+    //~^ ERROR let bindings cannot shadow unit structs
     use foo::bar;
 }

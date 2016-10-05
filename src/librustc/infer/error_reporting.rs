@@ -1433,8 +1433,8 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 hir::TyPtr(ref mut_ty) => {
                     ty_queue.push(&mut_ty.ty);
                 }
-                hir::TyVec(ref ty) |
-                hir::TyFixedLengthVec(ref ty, _) => {
+                hir::TySlice(ref ty) |
+                hir::TyArray(ref ty, _) => {
                     ty_queue.push(&ty);
                 }
                 hir::TyTup(ref tys) => ty_queue.extend(tys.iter().map(|ty| &**ty)),
@@ -1469,9 +1469,9 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                             ty: build_to(mut_ty.ty, to),
                         })
                     }
-                    hir::TyVec(ty) => hir::TyVec(build_to(ty, to)),
-                    hir::TyFixedLengthVec(ty, e) => {
-                        hir::TyFixedLengthVec(build_to(ty, to), e)
+                    hir::TySlice(ty) => hir::TySlice(build_to(ty, to)),
+                    hir::TyArray(ty, e) => {
+                        hir::TyArray(build_to(ty, to), e)
                     }
                     hir::TyTup(tys) => {
                         hir::TyTup(tys.into_iter().map(|ty| build_to(ty, to)).collect())

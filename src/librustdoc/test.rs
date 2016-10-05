@@ -25,8 +25,7 @@ use rustc_lint;
 use rustc::dep_graph::DepGraph;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
-use rustc::session::config::{get_unstable_features_setting, OutputType,
-                             OutputTypes, Externs};
+use rustc::session::config::{OutputType, OutputTypes, Externs};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
@@ -35,6 +34,7 @@ use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use syntax::codemap::CodeMap;
+use syntax::feature_gate::UnstableFeatures;
 use errors;
 use errors::emitter::ColorConfig;
 
@@ -68,7 +68,7 @@ pub fn run(input: &str,
         search_paths: libs.clone(),
         crate_types: vec!(config::CrateTypeDylib),
         externs: externs.clone(),
-        unstable_features: get_unstable_features_setting(),
+        unstable_features: UnstableFeatures::from_environment(),
         ..config::basic_options().clone()
     };
 
@@ -169,7 +169,7 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
         }
     }
 
-    return opts;
+    opts
 }
 
 fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
@@ -197,7 +197,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
             .. config::basic_codegen_options()
         },
         test: as_test_harness,
-        unstable_features: get_unstable_features_setting(),
+        unstable_features: UnstableFeatures::from_environment(),
         ..config::basic_options().clone()
     };
 
@@ -228,7 +228,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let codemap = Rc::new(CodeMap::new());
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
                                                       Some(codemap.clone()));
-    let old = io::set_panic(box Sink(data.clone()));
+    let old = io::set_panic(Some(box Sink(data.clone())));
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
     // Compile the code
@@ -264,9 +264,9 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         Ok(r) => {
             match r {
                 Err(count) => {
-                    if count > 0 && compile_fail == false {
+                    if count > 0 && !compile_fail {
                         sess.fatal("aborting due to previous error(s)")
-                    } else if count == 0 && compile_fail == true {
+                    } else if count == 0 && compile_fail {
                         panic!("test compiled while it wasn't supposed to")
                     }
                     if count > 0 && error_codes.len() > 0 {
@@ -279,7 +279,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
             }
         }
         Err(_) => {
-            if compile_fail == false {
+            if !compile_fail {
                 panic!("couldn't compile the test");
             }
             if error_codes.len() > 0 {
@@ -363,7 +363,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
 
     info!("final test program: {}", prog);
 
-    return prog
+    prog
 }
 
 fn partition_source(s: &str) -> (String, String) {
@@ -387,7 +387,7 @@ fn partition_source(s: &str) -> (String, String) {
         }
     }
 
-    return (before, after);
+    (before, after)
 }
 
 pub struct Collector {

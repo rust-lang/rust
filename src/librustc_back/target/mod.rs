@@ -50,12 +50,15 @@ use std::default::Default;
 use std::io::prelude::*;
 use syntax::abi::Abi;
 
+use PanicStrategy;
+
 mod android_base;
 mod apple_base;
 mod apple_ios_base;
 mod bitrig_base;
 mod dragonfly_base;
 mod freebsd_base;
+mod haiku_base;
 mod linux_base;
 mod linux_musl_base;
 mod openbsd_base;
@@ -63,11 +66,12 @@ mod netbsd_base;
 mod solaris_base;
 mod windows_base;
 mod windows_msvc_base;
+mod thumb_base;
 
 pub type TargetResult = Result<Target, String>;
 
 macro_rules! supported_targets {
-    ( $(($triple:expr, $module:ident)),+ ) => (
+    ( $(($triple:expr, $module:ident),)+ ) => (
         $(mod $module;)*
 
         /// List of supported targets
@@ -165,6 +169,9 @@ supported_targets! {
     ("x86_64-unknown-netbsd", x86_64_unknown_netbsd),
     ("x86_64-rumprun-netbsd", x86_64_rumprun_netbsd),
 
+    ("i686-unknown-haiku", i686_unknown_haiku),
+    ("x86_64-unknown-haiku", x86_64_unknown_haiku),
+
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
 
@@ -184,7 +191,13 @@ supported_targets! {
     ("i586-pc-windows-msvc", i586_pc_windows_msvc),
 
     ("le32-unknown-nacl", le32_unknown_nacl),
-    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten)
+    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
+    ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
+
+    ("thumbv6m-none-eabi", thumbv6m_none_eabi),
+    ("thumbv7m-none-eabi", thumbv7m_none_eabi),
+    ("thumbv7em-none-eabi", thumbv7em_none_eabi),
+    ("thumbv7em-none-eabihf", thumbv7em_none_eabihf),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
@@ -340,9 +353,11 @@ pub struct TargetOptions {
     // will 'just work'.
     pub obj_is_bitcode: bool,
 
-    /// Maximum integer size in bits that this target can perform atomic
-    /// operations on.
-    pub max_atomic_width: u64,
+    /// Don't use this field; instead use the `.max_atomic_width()` method.
+    pub max_atomic_width: Option<u64>,
+
+    /// Panic strategy: "unwind" or "abort"
+    pub panic_strategy: PanicStrategy,
 }
 
 impl Default for TargetOptions {
@@ -391,7 +406,8 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
-            max_atomic_width: 0,
+            max_atomic_width: None,
+            panic_strategy: PanicStrategy::Unwind,
         }
     }
 }
@@ -409,6 +425,12 @@ impl Target {
             },
             abi => abi
         }
+    }
+
+    /// Maximum integer size in bits that this target can perform atomic
+    /// operations on.
+    pub fn max_atomic_width(&self) -> u64 {
+        self.options.max_atomic_width.unwrap_or(self.target_pointer_width.parse().unwrap())
     }
 
     /// Load a target descriptor from a JSON object.
@@ -449,9 +471,6 @@ impl Target {
             options: Default::default(),
         };
 
-        // Default max-atomic-width to target-pointer-width
-        base.options.max_atomic_width = base.target_pointer_width.parse().unwrap();
-
         macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
@@ -464,11 +483,24 @@ impl Target {
                     .map(|o| o.as_boolean()
                          .map(|s| base.options.$key_name = s));
             } );
-            ($key_name:ident, u64) => ( {
+            ($key_name:ident, Option<u64>) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..])
                     .map(|o| o.as_u64()
-                         .map(|s| base.options.$key_name = s));
+                         .map(|s| base.options.$key_name = Some(s)));
+            } );
+            ($key_name:ident, PanicStrategy) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match s {
+                        "unwind" => base.options.$key_name = PanicStrategy::Unwind,
+                        "abort" => base.options.$key_name = PanicStrategy::Abort,
+                        _ => return Some(Err(format!("'{}' is not a valid value for \
+                                                      panic-strategy. Use 'unwind' or 'abort'.",
+                                                     s))),
+                }
+                Some(Ok(()))
+            })).unwrap_or(Ok(()))
             } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
@@ -529,7 +561,8 @@ impl Target {
         key!(exe_allocation_crate);
         key!(has_elf_tls, bool);
         key!(obj_is_bitcode, bool);
-        key!(max_atomic_width, u64);
+        key!(max_atomic_width, Option<u64>);
+        try!(key!(panic_strategy, PanicStrategy));
 
         Ok(base)
     }
@@ -672,6 +705,7 @@ impl ToJson for Target {
         target_option_val!(has_elf_tls);
         target_option_val!(obj_is_bitcode);
         target_option_val!(max_atomic_width);
+        target_option_val!(panic_strategy);
 
         Json::Object(d)
     }

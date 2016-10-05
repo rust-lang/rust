@@ -268,7 +268,6 @@ use super::range::RangeArgument;
 /// Vec does not currently guarantee the order in which elements are dropped
 /// (the order has changed in the past, and may change again).
 ///
-#[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
     buf: RawVec<T>,
@@ -1756,7 +1755,7 @@ pub struct IntoIter<T> {
     end: *const T,
 }
 
-#[stable(feature = "vec_intoiter_debug", since = "")]
+#[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IntoIter")
@@ -1770,7 +1769,7 @@ impl<T> IntoIter<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// # #![feature(vec_into_iter_as_slice)]
     /// let vec = vec!['a', 'b', 'c'];
     /// let mut into_iter = vec.into_iter();
@@ -1789,7 +1788,7 @@ impl<T> IntoIter<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// # #![feature(vec_into_iter_as_slice)]
     /// let vec = vec!['a', 'b', 'c'];
     /// let mut into_iter = vec.into_iter();
@@ -1930,7 +1929,7 @@ unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
 #[stable(feature = "drain", since = "1.6.0")]
 unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T> Iterator for Drain<'a, T> {
     type Item = T;
 
@@ -1944,7 +1943,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1952,7 +1951,7 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         // exhaust self first
@@ -1974,7 +1973,7 @@ impl<'a, T> Drop for Drain<'a, T> {
 }
 
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
 
 #[unstable(feature = "fused", issue = "35602")]

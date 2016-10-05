@@ -12,13 +12,13 @@ use astencode;
 use index;
 
 use rustc::hir;
-use rustc::hir::def;
+use rustc::hir::def::{self, CtorKind};
 use rustc::hir::def_id::{DefIndex, DefId};
 use rustc::middle::cstore::{LinkagePreference, NativeLibraryKind};
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc::session::config::PanicStrategy;
+use rustc_back::PanicStrategy;
 
 use rustc_serialize as serialize;
 use syntax::{ast, attr};
@@ -26,11 +26,9 @@ use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
 
-#[cfg(not(test))]
-pub const RUSTC_VERSION: &'static str = concat!("rustc ", env!("CFG_VERSION"));
-
-#[cfg(test)]
-pub const RUSTC_VERSION: &'static str = "rustc 0.0.0-unit-test";
+pub fn rustc_version() -> String {
+    format!("rustc {}", option_env!("CFG_VERSION").unwrap_or("unknown version"))
+}
 
 /// Metadata encoding version.
 /// NB: increment this if you change the format of metadata such that
@@ -263,7 +261,7 @@ pub struct FnData {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct VariantData {
-    pub kind: ty::VariantKind,
+    pub ctor_kind: CtorKind,
     pub disr: u64,
 
     /// If this is a struct's only variant, this

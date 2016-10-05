@@ -17,6 +17,8 @@ fn main() {
     //~^^^ ERROR: unresolved name `bar`
     //~^^^^ ERROR: unresolved name `foo`
     //~^^^^^ ERROR: expected one of `)`, `,`, `.`, `<`, `?`
+    //~| NOTE unresolved name
+    //~| NOTE unresolved name
 } //~ ERROR: incorrect close delimiter: `}`
 //~^ ERROR: incorrect close delimiter: `}`
 //~^^ ERROR: expected expression, found `)`

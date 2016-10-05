@@ -29,6 +29,20 @@ pub struct Thread {
 unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
+// The pthread_attr_setstacksize symbol doesn't exist in the emscripten libc,
+// so we have to not link to it to satisfy emcc's ERROR_ON_UNDEFINED_SYMBOLS.
+#[cfg(not(target_os = "emscripten"))]
+unsafe fn pthread_attr_setstacksize(attr: *mut libc::pthread_attr_t,
+                                    stack_size: libc::size_t) -> libc::c_int {
+    libc::pthread_attr_setstacksize(attr, stack_size)
+}
+
+#[cfg(target_os = "emscripten")]
+unsafe fn pthread_attr_setstacksize(_attr: *mut libc::pthread_attr_t,
+                                    _stack_size: libc::size_t) -> libc::c_int {
+    panic!()
+}
+
 impl Thread {
     pub unsafe fn new<'a>(stack: usize, p: Box<FnBox() + 'a>)
                           -> io::Result<Thread> {
@@ -38,8 +52,8 @@ impl Thread {
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
 
         let stack_size = cmp::max(stack, min_stack_size(&attr));
-        match libc::pthread_attr_setstacksize(&mut attr,
-                                              stack_size as libc::size_t) {
+        match pthread_attr_setstacksize(&mut attr,
+                                        stack_size as libc::size_t) {
             0 => {}
             n => {
                 assert_eq!(n, libc::EINVAL);
@@ -115,9 +129,12 @@ impl Thread {
                                      name.as_ptr() as *mut libc::c_void);
         }
     }
-    #[cfg(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten"))]
+    #[cfg(any(target_env = "newlib",
+              target_os = "solaris",
+              target_os = "haiku",
+              target_os = "emscripten"))]
     pub fn set_name(_name: &CStr) {
-        // Newlib, Illumos and Emscripten have no way to set a thread name.
+        // Newlib, Illumos, Haiku, and Emscripten have no way to set a thread name.
     }
 
     pub fn sleep(dur: Duration) {

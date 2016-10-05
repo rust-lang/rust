@@ -28,6 +28,11 @@ use sys::cvt;
 use sys::net::Socket;
 use sys_common::{AsInner, FromInner, IntoInner};
 
+#[cfg(target_os = "linux")]
+use libc::MSG_NOSIGNAL;
+#[cfg(not(target_os = "linux"))]
+const MSG_NOSIGNAL: libc::c_int = 0x0; // unused dummy value
+
 fn sun_path_offset() -> usize {
     unsafe {
         // Work with an actual instance of the type since using a null pointer is UB
@@ -690,7 +695,7 @@ impl UnixDatagram {
                 let count = cvt(libc::sendto(*d.0.as_inner(),
                                              buf.as_ptr() as *const _,
                                              buf.len(),
-                                             0,
+                                             MSG_NOSIGNAL,
                                              &addr as *const _ as *const _,
                                              len))?;
                 Ok(count as usize)
@@ -786,7 +791,7 @@ impl IntoRawFd for UnixDatagram {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod test {
     use thread;
     use io;

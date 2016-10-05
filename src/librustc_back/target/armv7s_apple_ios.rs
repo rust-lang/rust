@@ -24,7 +24,7 @@ pub fn target() -> TargetResult {
         target_vendor: "apple".to_string(),
         options: TargetOptions {
             features: "+v7,+vfp4,+neon".to_string(),
-            max_atomic_width: 64,
+            max_atomic_width: Some(64),
             .. base
         }
     })

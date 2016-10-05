@@ -450,9 +450,16 @@ pub mod builtin {
     #[macro_export]
     macro_rules! cfg { ($($cfg:tt)*) => ({ /* compiler built-in */ }) }
 
-    /// Parse the current given file as an expression.
+    /// Parse the file provided in the argument as an expression or an
+    /// item according to the context. This file is located relative
+    /// to the current file (similarly to how modules are found).
     ///
-    /// This is generally a bad idea, because it's going to behave unhygienically.
+    /// Using this macro is often a bad idea, because if the file is
+    /// parsed as an expression, it is going to be placed in the
+    /// surrounding code unhygenically. This could result in variables
+    /// or functions being different from what the file expected if
+    /// there are variables or functions that have the same name in
+    /// the current file.
     ///
     /// # Examples
     ///

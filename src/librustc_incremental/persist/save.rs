@@ -16,10 +16,11 @@ use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
-use std::hash::{Hash, Hasher, SipHasher};
+use std::hash::{Hash, Hasher};
 use std::io::{self, Cursor, Write};
 use std::fs::{self, File};
 use std::path::PathBuf;
+use std::collections::hash_map::DefaultHasher;
 
 use IncrementalHashesMap;
 use super::data::*;
@@ -28,6 +29,7 @@ use super::hash::*;
 use super::preds::*;
 use super::fs::*;
 use super::dirty_clean;
+use super::file_format;
 
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 incremental_hashes_map: &IncrementalHashesMap,
@@ -102,6 +104,7 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
 
     // generate the data in a memory buffer
     let mut wr = Cursor::new(Vec::new());
+    file_format::write_file_header(&mut wr).unwrap();
     match encode(&mut Encoder::new(&mut wr)) {
         Ok(()) => {}
         Err(err) => {
@@ -239,7 +242,7 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
             .collect();
 
         hashes.sort();
-        let mut state = SipHasher::new();
+        let mut state = DefaultHasher::new();
         hashes.hash(&mut state);
         let hash = state.finish();
 

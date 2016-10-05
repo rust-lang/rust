@@ -106,9 +106,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 self.check_def_id(def.def_id());
             }
             _ if self.ignore_non_const_paths => (),
-            Def::PrimTy(_) => (),
-            Def::SelfTy(..) => (),
-            Def::Variant(variant_id) => {
+            Def::PrimTy(..) | Def::SelfTy(..) => (),
+            Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
                 if let Some(enum_id) = self.tcx.parent_def_id(variant_id) {
                     self.check_def_id(enum_id);
                 }

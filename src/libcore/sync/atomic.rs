@@ -95,7 +95,7 @@ pub struct AtomicBool {
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for AtomicBool {
-    /// Creates an `AtomicBool` initialised as false.
+    /// Creates an `AtomicBool` initialized to `false`.
     fn default() -> Self {
         Self::new(false)
     }

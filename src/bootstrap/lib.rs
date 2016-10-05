@@ -243,7 +243,14 @@ impl Build {
         // Almost all of these are simple one-liners that shell out to the
         // corresponding functionality in the extra modules, where more
         // documentation can be found.
-        for target in step::all(self) {
+        let steps = step::all(self);
+
+        self.verbose("bootstrap build plan:");
+        for step in &steps {
+            self.verbose(&format!("{:?}", step));
+        }
+
+        for target in steps {
             let doc_out = self.out.join(&target.target).join("doc");
             match target.src {
                 Llvm { _dummy } => {
@@ -550,12 +557,23 @@ impl Build {
                 continue
             }
 
+            // `submodule.path` is the relative path to a submodule (from the repository root)
+            // `submodule_path` is the path to a submodule from the cwd
+
+            // use `submodule.path` when e.g. executing a submodule specific command from the
+            // repository root
+            // use `submodule_path` when e.g. executing a normal git command for the submodule
+            // (set via `current_dir`)
+            let submodule_path = self.src.join(submodule.path);
+
             match submodule.state {
                 State::MaybeDirty => {
                     // drop staged changes
-                    self.run(git().arg("-C").arg(submodule.path).args(&["reset", "--hard"]));
+                    self.run(git().current_dir(&submodule_path)
+                                  .args(&["reset", "--hard"]));
                     // drops unstaged changes
-                    self.run(git().arg("-C").arg(submodule.path).args(&["clean", "-fdx"]));
+                    self.run(git().current_dir(&submodule_path)
+                                  .args(&["clean", "-fdx"]));
                 },
                 State::NotInitialized => {
                     self.run(git_submodule().arg("init").arg(submodule.path));
@@ -564,8 +582,10 @@ impl Build {
                 State::OutOfSync => {
                     // drops submodule commits that weren't reported to the (outer) git repository
                     self.run(git_submodule().arg("update").arg(submodule.path));
-                    self.run(git().arg("-C").arg(submodule.path).args(&["reset", "--hard"]));
-                    self.run(git().arg("-C").arg(submodule.path).args(&["clean", "-fdx"]));
+                    self.run(git().current_dir(&submodule_path)
+                                  .args(&["reset", "--hard"]));
+                    self.run(git().current_dir(&submodule_path)
+                                  .args(&["clean", "-fdx"]));
                 },
             }
         }
@@ -650,12 +670,6 @@ impl Build {
             cargo.env(format!("CC_{}", target), self.cc(target))
                  .env(format!("AR_{}", target), self.ar(target).unwrap()) // only msvc is None
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
-        }
-
-        // If we're building for OSX, inform the compiler and the linker that
-        // we want to build a compiler runnable on 10.7
-        if target.contains("apple-darwin") {
-            cargo.env("MACOSX_DEPLOYMENT_TARGET", "10.7");
         }
 
         // Environment variables *required* needed throughout the build
@@ -926,7 +940,6 @@ impl Build {
         // LLVM/jemalloc/etc are all properly compiled.
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
-            base.push("-mmacosx-version-min=10.7".into());
         }
         // This is a hack, because newer binutils broke things on some vms/distros
         // (i.e., linking against unknown relocs disabled by the following flag)
@@ -967,7 +980,8 @@ impl Build {
         // than an entry here.
 
         let mut base = Vec::new();
-        if target != self.config.build && !target.contains("msvc") {
+        if target != self.config.build && !target.contains("msvc") &&
+            !target.contains("emscripten") {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }
         return base

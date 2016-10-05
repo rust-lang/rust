@@ -24,6 +24,9 @@ enum Enum {
     StructVariant { x: isize, y : usize }
 }
 
+#[derive(Debug)]
+struct Pointers(*const Send, *mut Sync);
+
 macro_rules! t {
     ($x:expr, $expected:expr) => {
         assert_eq!(format!("{:?}", $x), $expected.to_string())

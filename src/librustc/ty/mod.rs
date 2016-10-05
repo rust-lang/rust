@@ -20,7 +20,7 @@ pub use self::fold::TypeFoldable;
 use dep_graph::{self, DepNode};
 use hir::map as ast_map;
 use middle;
-use hir::def::{Def, PathResolution, ExportMap};
+use hir::def::{Def, CtorKind, PathResolution, ExportMap};
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
@@ -461,6 +461,10 @@ bitflags! {
         // Present if the type belongs in a local type context.
         // Only set for TyInfer other than Fresh.
         const KEEP_IN_LOCAL_TCX  = 1 << 11,
+
+        // Is there a projection that does not involve a bound region?
+        // Currently we can't normalize projections w/ bound regions.
+        const HAS_NORMALIZABLE_PROJECTION = 1 << 12,
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
@@ -1416,7 +1420,7 @@ pub struct VariantDefData<'tcx, 'container: 'tcx> {
     pub name: Name, // struct's name if this is a struct
     pub disr_val: Disr,
     pub fields: Vec<FieldDefData<'tcx, 'container>>,
-    pub kind: VariantKind,
+    pub ctor_kind: CtorKind,
 }
 
 pub struct FieldDefData<'tcx, 'container: 'tcx> {
@@ -1480,19 +1484,6 @@ impl<'tcx> serialize::UseSpecializedDecodable for AdtDef<'tcx> {}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum AdtKind { Struct, Union, Enum }
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub enum VariantKind { Struct, Tuple, Unit }
-
-impl VariantKind {
-    pub fn from_variant_data(vdata: &hir::VariantData) -> Self {
-        match *vdata {
-            hir::VariantData::Struct(..) => VariantKind::Struct,
-            hir::VariantData::Tuple(..) => VariantKind::Tuple,
-            hir::VariantData::Unit(..) => VariantKind::Unit,
-        }
-    }
-}
 
 impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -1669,8 +1660,8 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
 
     pub fn variant_of_def(&self, def: Def) -> &VariantDefData<'gcx, 'container> {
         match def {
-            Def::Variant(vid) => self.variant_with_id(vid),
-            Def::Struct(..) | Def::Union(..) |
+            Def::Variant(vid) | Def::VariantCtor(vid, ..) => self.variant_with_id(vid),
+            Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) => self.struct_variant(),
             _ => bug!("unexpected def {:?} in variant_of_def", def)
         }
@@ -2228,7 +2219,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             hir::ExprClosure(..) |
             hir::ExprBlock(..) |
             hir::ExprRepeat(..) |
-            hir::ExprVec(..) |
+            hir::ExprArray(..) |
             hir::ExprBreak(..) |
             hir::ExprAgain(..) |
             hir::ExprRet(..) |
@@ -2328,11 +2319,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // or variant or their constructors, panics otherwise.
     pub fn expect_variant_def(self, def: Def) -> VariantDef<'tcx> {
         match def {
-            Def::Variant(did) => {
+            Def::Variant(did) | Def::VariantCtor(did, ..) => {
                 let enum_did = self.parent_def_id(did).unwrap();
                 self.lookup_adt_def(enum_did).variant_with_id(did)
             }
-            Def::Struct(did) | Def::Union(did) => {
+            Def::Struct(did) | Def::StructCtor(did, ..) | Def::Union(did) => {
                 self.lookup_adt_def(did).struct_variant()
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)

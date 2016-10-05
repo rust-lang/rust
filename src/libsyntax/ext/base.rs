@@ -18,8 +18,7 @@ use errors::DiagnosticBuilder;
 use ext::expand::{self, Invocation, Expansion};
 use ext::hygiene::Mark;
 use fold::{self, Folder};
-use parse;
-use parse::parser::{self, Parser};
+use parse::{self, parser};
 use parse::token;
 use parse::token::{InternedString, str_to_ident};
 use ptr::P;
@@ -185,146 +184,6 @@ impl<F> AttrProcMacro for F
                    -> TokenStream {
         // FIXME setup implicit context in TLS before calling self.
         (*self)(annotation, annotated)
-    }
-}
-
-pub struct TokResult<'a> {
-    pub parser: Parser<'a>,
-    pub span: Span,
-}
-
-impl<'a> TokResult<'a> {
-    // There is quite a lot of overlap here with ParserAnyMacro in ext/tt/macro_rules.rs
-    // We could probably share more code.
-    // FIXME(#36641) Unify TokResult and ParserAnyMacro.
-    fn ensure_complete_parse(&mut self, allow_semi: bool) {
-        let macro_span = &self.span;
-        self.parser.ensure_complete_parse(allow_semi, |parser| {
-            let token_str = parser.this_token_to_string();
-            let msg = format!("macro expansion ignores token `{}` and any following", token_str);
-            let span = parser.span;
-            parser.diagnostic()
-                  .struct_span_err(span, &msg)
-                  .span_note(*macro_span, "caused by the macro expansion here")
-                  .emit();
-        });
-    }
-}
-
-impl<'a> MacResult for TokResult<'a> {
-    fn make_items(mut self: Box<Self>) -> Option<SmallVector<P<ast::Item>>> {
-        if self.parser.sess.span_diagnostic.has_errors() {
-            return Some(SmallVector::zero());
-        }
-
-        let mut items = SmallVector::zero();
-        loop {
-            match self.parser.parse_item() {
-                Ok(Some(item)) => items.push(item),
-                Ok(None) => {
-                    self.ensure_complete_parse(false);
-                    return Some(items);
-                }
-                Err(mut e) => {
-                    e.emit();
-                    return Some(SmallVector::zero());
-                }
-            }
-        }
-    }
-
-    fn make_impl_items(mut self: Box<Self>) -> Option<SmallVector<ast::ImplItem>> {
-        let mut items = SmallVector::zero();
-        loop {
-            if self.parser.token == token::Eof {
-                break;
-            }
-            match self.parser.parse_impl_item() {
-                Ok(item) => items.push(item),
-                Err(mut e) => {
-                    e.emit();
-                    return Some(SmallVector::zero());
-                }
-            }
-        }
-        self.ensure_complete_parse(false);
-        Some(items)
-    }
-
-    fn make_trait_items(mut self: Box<Self>) -> Option<SmallVector<ast::TraitItem>> {
-        let mut items = SmallVector::zero();
-        loop {
-            if self.parser.token == token::Eof {
-                break;
-            }
-            match self.parser.parse_trait_item() {
-                Ok(item) => items.push(item),
-                Err(mut e) => {
-                    e.emit();
-                    return Some(SmallVector::zero());
-                }
-            }
-        }
-        self.ensure_complete_parse(false);
-        Some(items)
-    }
-
-    fn make_expr(mut self: Box<Self>) -> Option<P<ast::Expr>> {
-        match self.parser.parse_expr() {
-            Ok(e) => {
-                self.ensure_complete_parse(true);
-                Some(e)
-            }
-            Err(mut e) => {
-                e.emit();
-                Some(DummyResult::raw_expr(self.span))
-            }
-        }
-    }
-
-    fn make_pat(mut self: Box<Self>) -> Option<P<ast::Pat>> {
-        match self.parser.parse_pat() {
-            Ok(e) => {
-                self.ensure_complete_parse(false);
-                Some(e)
-            }
-            Err(mut e) => {
-                e.emit();
-                Some(P(DummyResult::raw_pat(self.span)))
-            }
-        }
-    }
-
-    fn make_stmts(mut self: Box<Self>) -> Option<SmallVector<ast::Stmt>> {
-        let mut stmts = SmallVector::zero();
-        loop {
-            if self.parser.token == token::Eof {
-                break;
-            }
-            match self.parser.parse_full_stmt(false) {
-                Ok(Some(stmt)) => stmts.push(stmt),
-                Ok(None) => { /* continue */ }
-                Err(mut e) => {
-                    e.emit();
-                    return Some(SmallVector::zero());
-                }
-            }
-        }
-        self.ensure_complete_parse(false);
-        Some(stmts)
-    }
-
-    fn make_ty(mut self: Box<Self>) -> Option<P<ast::Ty>> {
-        match self.parser.parse_ty() {
-            Ok(e) => {
-                self.ensure_complete_parse(false);
-                Some(e)
-            }
-            Err(mut e) => {
-                e.emit();
-                Some(DummyResult::raw_ty(self.span))
-            }
-        }
     }
 }
 
@@ -656,10 +515,11 @@ pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
 pub trait Resolver {
     fn next_node_id(&mut self) -> ast::NodeId;
+    fn get_module_scope(&mut self, id: ast::NodeId) -> Mark;
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion);
     fn add_macro(&mut self, scope: Mark, def: ast::MacroDef);
-    fn add_ext(&mut self, scope: Mark, ident: ast::Ident, ext: Rc<SyntaxExtension>);
+    fn add_ext(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>);
     fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>);
 
     fn find_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
@@ -671,10 +531,11 @@ pub struct DummyResolver;
 
 impl Resolver for DummyResolver {
     fn next_node_id(&mut self) -> ast::NodeId { ast::DUMMY_NODE_ID }
+    fn get_module_scope(&mut self, _id: ast::NodeId) -> Mark { Mark::root() }
 
     fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion) {}
     fn add_macro(&mut self, _scope: Mark, _def: ast::MacroDef) {}
-    fn add_ext(&mut self, _scope: Mark, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}
+    fn add_ext(&mut self, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}
     fn add_expansions_at_stmt(&mut self, _id: ast::NodeId, _macros: Vec<Mark>) {}
 
     fn find_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
@@ -696,7 +557,9 @@ pub struct ExpansionData {
     pub depth: usize,
     pub backtrace: ExpnId,
     pub module: Rc<ModuleData>,
-    pub in_block: bool,
+
+    // True if non-inline modules without a `#[path]` are forbidden at the root of this expansion.
+    pub no_noninline_mod: bool,
 }
 
 /// One of these is made during expansion and incrementally updated as we go;
@@ -708,6 +571,7 @@ pub struct ExtCtxt<'a> {
     pub ecfg: expand::ExpansionConfig<'a>,
     pub crate_root: Option<&'static str>,
     pub resolver: &'a mut Resolver,
+    pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
 }
 
@@ -722,12 +586,13 @@ impl<'a> ExtCtxt<'a> {
             ecfg: ecfg,
             crate_root: None,
             resolver: resolver,
+            resolve_err_count: 0,
             current_expansion: ExpansionData {
                 mark: Mark::root(),
                 depth: 0,
                 backtrace: NO_EXPANSION,
                 module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
-                in_block: false,
+                no_noninline_mod: false,
             },
         }
     }
@@ -884,7 +749,7 @@ impl<'a> ExtCtxt<'a> {
 
         for (name, extension) in user_exts {
             let ident = ast::Ident::with_empty_ctxt(name);
-            self.resolver.add_ext(Mark::root(), ident, Rc::new(extension));
+            self.resolver.add_ext(ident, Rc::new(extension));
         }
 
         let mut module = ModuleData {

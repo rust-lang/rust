@@ -10,7 +10,6 @@
 
 #![no_std]
 
-extern crate core;
 extern crate rand;
 extern crate serialize as rustc_serialize;
 

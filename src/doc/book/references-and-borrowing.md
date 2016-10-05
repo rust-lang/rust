@@ -86,7 +86,7 @@ fn main() {
         return v.iter().fold(0, |a, &b| a + b);
     }
     // Borrow two vectors and sum them.
-    // This kind of borrowing does not allow mutation to the borrowed.
+    // This kind of borrowing does not allow mutation through the borrowed reference.
     fn foo(v1: &Vec<i32>, v2: &Vec<i32>) -> i32 {
         // do stuff with v1 and v2
         let s1 = sum_vec(v1);

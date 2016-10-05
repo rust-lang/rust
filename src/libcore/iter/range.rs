@@ -328,7 +328,8 @@ impl<A: Step> ops::RangeInclusive<A> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "step_by", reason = "recent addition",
+           issue = "27741")]
 impl<A> Iterator for StepBy<A, ops::RangeFrom<A>> where
     A: Clone,
     for<'a> &'a A: Add<&'a A, Output = A>
@@ -352,7 +353,8 @@ impl<A> Iterator for StepBy<A, ops::RangeFrom<A>> where
 impl<A> FusedIterator for StepBy<A, ops::RangeFrom<A>>
     where A: Clone, for<'a> &'a A: Add<&'a A, Output = A> {}
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "step_by", reason = "recent addition",
+           issue = "27741")]
 impl<A: Step + Clone> Iterator for StepBy<A, ops::Range<A>> {
     type Item = A;
 
@@ -466,7 +468,11 @@ macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl ExactSizeIterator for ops::Range<$t> { }
+    )*)
+}
 
+macro_rules! range_incl_exact_iter_impl {
+    ($($t:ty)*) => ($(
         #[unstable(feature = "inclusive_range",
                    reason = "recently added, follows RFC",
                    issue = "28237")]
@@ -500,9 +506,12 @@ impl<A: Step> Iterator for ops::Range<A> where
     }
 }
 
-// Ranges of u64 and i64 are excluded because they cannot guarantee having
-// a length <= usize::MAX, which is required by ExactSizeIterator.
+// These macros generate `ExactSizeIterator` impls for various range types.
+// Range<{u,i}64> and RangeInclusive<{u,i}{32,64,size}> are excluded
+// because they cannot guarantee having a length <= usize::MAX, which is
+// required by ExactSizeIterator.
 range_exact_iter_impl!(usize u8 u16 u32 isize i8 i16 i32);
+range_incl_exact_iter_impl!(u8 u16 i8 i16);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step + Clone> DoubleEndedIterator for ops::Range<A> where

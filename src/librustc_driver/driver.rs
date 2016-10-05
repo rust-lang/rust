@@ -639,6 +639,12 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     }
     sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess))?;
 
+    // Currently, we ignore the name resolution data structures for the purposes of dependency
+    // tracking. Instead we will run name resolution and include its output in the hash of each
+    // item, much like we do for macro expansion. In other words, the hash reflects not just
+    // its contents but the results of name resolution on those contents. Hopefully we'll push
+    // this back at some point.
+    let _ignore = sess.dep_graph.in_ignore();
     let mut crate_loader = CrateLoader::new(sess, &cstore, &krate, crate_name);
     let resolver_arenas = Resolver::arenas();
     let mut resolver =
@@ -697,18 +703,23 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                          sess.diagnostic())
     });
 
-    krate = time(time_passes, "maybe creating a macro crate", || {
-        let crate_types = sess.crate_types.borrow();
-        let is_rustc_macro_crate = crate_types.contains(&config::CrateTypeRustcMacro);
-        let num_crate_types = crate_types.len();
-        syntax_ext::rustc_macro_registrar::modify(&sess.parse_sess,
-                                                  &mut resolver,
-                                                  krate,
-                                                  is_rustc_macro_crate,
-                                                  num_crate_types,
-                                                  sess.diagnostic(),
-                                                  &sess.features.borrow())
-    });
+    // If we're in rustdoc we're always compiling as an rlib, but that'll trip a
+    // bunch of checks in the `modify` function below. For now just skip this
+    // step entirely if we're rustdoc as it's not too useful anyway.
+    if !sess.opts.actually_rustdoc {
+        krate = time(time_passes, "maybe creating a macro crate", || {
+            let crate_types = sess.crate_types.borrow();
+            let num_crate_types = crate_types.len();
+            let is_rustc_macro_crate = crate_types.contains(&config::CrateTypeRustcMacro);
+            syntax_ext::rustc_macro_registrar::modify(&sess.parse_sess,
+                                                      &mut resolver,
+                                                      krate,
+                                                      is_rustc_macro_crate,
+                                                      num_crate_types,
+                                                      sess.diagnostic(),
+                                                      &sess.features.borrow())
+        });
+    }
 
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
@@ -733,9 +744,6 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         })
     })?;
 
-    // Collect defintions for def ids.
-    time(sess.time_passes(), "collecting defs", || resolver.definitions.collect(&krate));
-
     time(sess.time_passes(),
          "early lint checks",
          || lint::check_ast_crate(sess, &krate));
@@ -745,13 +753,6 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
          || ast_validation::check_crate(sess, &krate));
 
     time(sess.time_passes(), "name resolution", || -> CompileResult {
-        // Currently, we ignore the name resolution data structures for the purposes of dependency
-        // tracking. Instead we will run name resolution and include its output in the hash of each
-        // item, much like we do for macro expansion. In other words, the hash reflects not just
-        // its contents but the results of name resolution on those contents. Hopefully we'll push
-        // this back at some point.
-        let _ignore = sess.dep_graph.in_ignore();
-        resolver.build_reduced_graph(&krate);
         resolver.resolve_imports();
 
         // Since import resolution will eventually happen in expansion,

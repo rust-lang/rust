@@ -61,7 +61,6 @@
 * `-` (`- expr`): arithmetic negation.  Overloadable (`Neg`).
 * `-=` (`var -= expr`): arithmetic subtraction & assignment. Overloadable (`SubAssign`).
 * `->` (`fn(…) -> type`, `|…| -> type`): function and closure return type.  See [Functions], [Closures].
-* `-> !` (`fn(…) -> !`, `|…| -> !`): diverging function or closure. See [Diverging Functions].
 * `.` (`expr.ident`): member access.  See [Structs], [Method Syntax].
 * `..` (`..`, `expr..`, `..expr`, `expr..expr`): right-exclusive range literal.
 * `..` (`..expr`): struct literal update syntax.  See [Structs (Update syntax)].
@@ -158,6 +157,10 @@
 * `/*…*/`: block comment.  See [Comments].
 * `/*!…*/`: inner block doc comment.  See [Comments].
 * `/**…*/`: outer block doc comment.  See [Comments].
+
+<!-- Special types -->
+
+* `!`: always empty Never type.  See [Diverging Functions].
 
 <!-- Various things involving parens and tuples -->
 

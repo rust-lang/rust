@@ -451,27 +451,26 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
         fn handle_external_def(ccx: &CrateCtxt,
                                traits: &mut AllTraitsVec,
                                external_mods: &mut FnvHashSet<DefId>,
-                               def_id: DefId) {
-            match ccx.tcx.sess.cstore.describe_def(def_id) {
-                Some(Def::Trait(_)) => {
+                               def: Def) {
+            let def_id = def.def_id();
+            match def {
+                Def::Trait(..) => {
                     traits.push(TraitInfo::new(def_id));
                 }
-                Some(Def::Mod(_)) => {
+                Def::Mod(..) => {
                     if !external_mods.insert(def_id) {
                         return;
                     }
                     for child in ccx.tcx.sess.cstore.item_children(def_id) {
-                        handle_external_def(ccx, traits, external_mods, child.def_id)
+                        handle_external_def(ccx, traits, external_mods, child.def)
                     }
                 }
                 _ => {}
             }
         }
         for cnum in ccx.tcx.sess.cstore.crates() {
-            handle_external_def(ccx, &mut traits, &mut external_mods, DefId {
-                krate: cnum,
-                index: CRATE_DEF_INDEX
-            });
+            let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+            handle_external_def(ccx, &mut traits, &mut external_mods, Def::Mod(def_id));
         }
 
         *ccx.all_traits.borrow_mut() = Some(traits);

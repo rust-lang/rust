@@ -314,9 +314,11 @@ impl CString {
 }
 
 // Turns this `CString` into an empty string to prevent
-// memory unsafe code from working by accident.
+// memory unsafe code from working by accident. Inline
+// to prevent LLVM from optimizing it away in debug builds.
 #[stable(feature = "cstring_drop", since = "1.13.0")]
 impl Drop for CString {
+    #[inline]
     fn drop(&mut self) {
         unsafe { *self.inner.get_unchecked_mut(0) = 0; }
     }
@@ -724,7 +726,8 @@ mod tests {
     use super::*;
     use os::raw::c_char;
     use borrow::Cow::{Borrowed, Owned};
-    use hash::{SipHasher, Hash, Hasher};
+    use hash::{Hash, Hasher};
+    use collections::hash_map::DefaultHasher;
 
     #[test]
     fn c_to_rust() {
@@ -806,10 +809,10 @@ mod tests {
         let ptr = data.as_ptr() as *const c_char;
         let cstr: &'static CStr = unsafe { CStr::from_ptr(ptr) };
 
-        let mut s = SipHasher::new_with_keys(0, 0);
+        let mut s = DefaultHasher::new();
         cstr.hash(&mut s);
         let cstr_hash = s.finish();
-        let mut s = SipHasher::new_with_keys(0, 0);
+        let mut s = DefaultHasher::new();
         CString::new(&data[..data.len() - 1]).unwrap().hash(&mut s);
         let cstring_hash = s.finish();
 

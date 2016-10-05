@@ -127,7 +127,7 @@ pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
         Layout::FatPointer { .. } => true,
         Layout::Univariant { ref variant, .. } => {
             // There must be only 2 fields.
-            if variant.offset_after_field.len() != 2 {
+            if variant.offsets.len() != 2 {
                 return false;
             }
 
