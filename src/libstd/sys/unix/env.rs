@@ -140,7 +140,7 @@ pub mod os {
 }
 
 #[cfg(target_os = "haiku")]
-mod os {
+pub mod os {
     pub const FAMILY: &'static str = "unix";
     pub const OS: &'static str = "haiku";
     pub const DLL_PREFIX: &'static str = "lib";
@@ -151,7 +151,7 @@ mod os {
 }
 
 #[cfg(all(target_os = "emscripten", target_arch = "asmjs"))]
-mod os {
+pub mod os {
     pub const FAMILY: &'static str = "unix";
     pub const OS: &'static str = "emscripten";
     pub const DLL_PREFIX: &'static str = "lib";
@@ -162,7 +162,7 @@ mod os {
 }
 
 #[cfg(all(target_os = "emscripten", target_arch = "wasm32"))]
-mod os {
+pub mod os {
     pub const FAMILY: &'static str = "unix";
     pub const OS: &'static str = "emscripten";
     pub const DLL_PREFIX: &'static str = "lib";
