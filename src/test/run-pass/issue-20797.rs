@@ -10,8 +10,6 @@
 
 // Regression test for #20797.
 
-#![feature(question_mark)]
-
 use std::default::Default;
 use std::io;
 use std::fs;

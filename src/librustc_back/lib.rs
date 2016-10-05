@@ -37,7 +37,7 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(step_by)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 #![cfg_attr(test, feature(test, rand))]
 
 extern crate syntax;

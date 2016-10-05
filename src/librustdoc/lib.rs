@@ -28,7 +28,7 @@
 #![feature(staged_api)]
 #![feature(test)]
 #![feature(unicode)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 
 extern crate arena;
 extern crate getopts;

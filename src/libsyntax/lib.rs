@@ -31,7 +31,7 @@
 #![feature(staged_api)]
 #![feature(str_escape)]
 #![feature(unicode)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 #![feature(rustc_diagnostic_macros)]
 #![feature(specialization)]
 
