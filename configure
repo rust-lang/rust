@@ -653,7 +653,12 @@ valopt arm-linux-androideabi-ndk "" "arm-linux-androideabi NDK standalone path"
 valopt armv7-linux-androideabi-ndk "" "armv7-linux-androideabi NDK standalone path"
 valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
 valopt nacl-cross-path  "" "NaCl SDK path (Pepper Canary is recommended). Must be absolute!"
-valopt musl-root "/usr/local" "MUSL root installation directory"
+valopt musl-root "/usr/local" "MUSL root installation directory (deprecated)"
+valopt musl-root-x86_64 "/usr/local" "x86_64-unknown-linux-musl install directory"
+valopt musl-root-i686 "/usr/local" "i686-unknown-linux-musl install directory"
+valopt musl-root-arm "/usr/local" "arm-unknown-linux-musleabi install directory"
+valopt musl-root-armhf "/usr/local" "arm-unknown-linux-musleabihf install directory"
+valopt musl-root-armv7 "/usr/local" "armv7-unknown-linux-musleabihf install directory"
 valopt extra-filename "" "Additional data that is hashed and passed to the -C extra-filename flag"
 
 if [ -e ${CFG_SRC_DIR}.git ]
@@ -1209,14 +1214,6 @@ do
             if [ $CFG_OSTYPE != apple-darwin ]
             then
                 err "The iOS target is only supported on Mac OS X"
-            fi
-            ;;
-
-
-        x86_64-*-musl | arm-*-musleabi)
-            if [ ! -f $CFG_MUSL_ROOT/lib/libc.a ]
-            then
-                err "musl libc $CFG_MUSL_ROOT/lib/libc.a not found"
             fi
             ;;
 
