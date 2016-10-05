@@ -195,8 +195,14 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::ImplDerivedObligation(ref cause) => {
                 tcx.lift(cause).map(super::ImplDerivedObligation)
             }
-            super::CompareImplMethodObligation => {
-                Some(super::CompareImplMethodObligation)
+            super::CompareImplMethodObligation { item_name,
+                                                 impl_item_def_id,
+                                                 trait_item_def_id } => {
+                Some(super::CompareImplMethodObligation {
+                    item_name: item_name,
+                    impl_item_def_id: impl_item_def_id,
+                    trait_item_def_id: trait_item_def_id,
+                })
             }
         }
     }
@@ -459,7 +465,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::FieldSized |
             super::ConstSized |
             super::SharedStatic |
-            super::CompareImplMethodObligation => self.clone(),
+            super::CompareImplMethodObligation { .. } => self.clone(),
 
             super::ProjectionWf(proj) => super::ProjectionWf(proj.fold_with(folder)),
             super::ReferenceOutlivesReferent(ty) => {
@@ -492,7 +498,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::FieldSized |
             super::ConstSized |
             super::SharedStatic |
-            super::CompareImplMethodObligation => false,
+            super::CompareImplMethodObligation { .. } => false,
 
             super::ProjectionWf(proj) => proj.visit_with(visitor),
             super::ReferenceOutlivesReferent(ty) => ty.visit_with(visitor),
