@@ -165,8 +165,8 @@ use panic;
 use panicking;
 use str;
 use sync::{Mutex, Condvar, Arc};
-use sync::atomic::{AtomicBool, Ordering};
 use sys::thread as imp;
+use sys_common::mutex;
 use sys_common::thread_info;
 use sys_common::util;
 use sys_common::{AsInner, IntoInner};
@@ -539,34 +539,14 @@ pub fn park_timeout(dur: Duration) {
 pub struct ThreadId(u64);
 
 impl ThreadId {
-    // Generate a new unique thread ID. Since this function is called every
-    // time a thread is created, this is optimized to generate unique values
-    // as quickly as possible.
+    // Generate a new unique thread ID.
     fn new() -> ThreadId {
-        // 64-bit operations are not atomic on all systems, so use an atomic
-        // flag as a guard around a 64-bit global counter. The window for
-        // contention on the counter is rather narrow since the general case
-        // should be compiled down to three instructions between locking and
-        // unlocking the guard. Since contention on the guard is low, use a
-        // spinlock that optimizes for the fast path of the guard being
-        // unlocked.
-        static GUARD: AtomicBool = AtomicBool::new(false);
+        static GUARD: mutex::Mutex = mutex::Mutex::new();
         static mut COUNTER: u64 = 0;
 
-        // Get exclusive access to the counter.
-        while GUARD.compare_exchange_weak(
-            false,
-            true,
-            Ordering::Acquire,
-            Ordering::Relaxed
-        ).is_err() {
-            // Give up the rest of our thread quantum if another thread is
-            // using the counter. This is the slow_er_ path.
-            yield_now();
-        }
+        unsafe {
+            GUARD.lock();
 
-        // We have exclusive access to the counter, so use it fast and get out.
-        let id = unsafe {
             // If we somehow use up all our bits, panic so that we're not
             // covering up subtle bugs of IDs being reused.
             if COUNTER == ::u64::MAX {
@@ -575,13 +555,11 @@ impl ThreadId {
 
             let id = COUNTER;
             COUNTER += 1;
-            id
-        };
 
-        // Unlock the guard.
-        GUARD.store(false, Ordering::Release);
+            GUARD.unlock();
 
-        ThreadId(id)
+            ThreadId(id)
+        }
     }
 }
 
