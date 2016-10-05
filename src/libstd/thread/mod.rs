@@ -165,7 +165,7 @@ use panic;
 use panicking;
 use str;
 use sync::{Mutex, Condvar, Arc};
-use sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use sync::atomic::{AtomicBool, Ordering};
 use sys::thread as imp;
 use sys_common::thread_info;
 use sys_common::util;
@@ -536,21 +536,52 @@ pub fn park_timeout(dur: Duration) {
 /// designated identifier.
 #[unstable(feature = "thread_id", issue = "21507")]
 #[derive(Eq, PartialEq, Copy, Clone)]
-pub struct ThreadId(usize);
+pub struct ThreadId(u64);
 
 impl ThreadId {
-    /// Returns an identifier unique to the current calling thread.
-    #[unstable(feature = "thread_id", issue = "21507")]
-    pub fn current() -> ThreadId {
-        static THREAD_ID_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
-        #[thread_local] static mut THREAD_ID: ThreadId = ThreadId(0);
+    // Generate a new unique thread ID. Since this function is called every
+    // time a thread is created, this is optimized to generate unique values
+    // as quickly as possible.
+    fn new() -> ThreadId {
+        // 64-bit operations are not atomic on all systems, so use an atomic
+        // flag as a guard around a 64-bit global counter. The window for
+        // contention on the counter is rather narrow since the general case
+        // should be compiled down to three instructions between locking and
+        // unlocking the guard. Since contention on the guard is low, use a
+        // spinlock that optimizes for the fast path of the guard being
+        // unlocked.
+        static GUARD: AtomicBool = AtomicBool::new(false);
+        static mut COUNTER: u64 = 0;
 
-        unsafe {
-            if THREAD_ID.0 == 0 {
-                THREAD_ID.0 = 1 + THREAD_ID_COUNT.fetch_add(1, Ordering::SeqCst);
-            }
-            THREAD_ID
+        // Get exclusive access to the counter.
+        while GUARD.compare_exchange_weak(
+            false,
+            true,
+            Ordering::Acquire,
+            Ordering::Relaxed
+        ).is_err() {
+            // Give up the rest of our thread quantum if another thread is
+            // using the counter. This is the slow_er_ path.
+            yield_now();
         }
+
+        // We have exclusive access to the counter, so use it fast and get out.
+        let id = unsafe {
+            // If we somehow use up all our bits, panic so that we're not
+            // covering up subtle bugs of IDs being reused.
+            if COUNTER == ::u64::MAX {
+                panic!("failed to generate unique thread ID: bitspace exhausted");
+            }
+
+            let id = COUNTER;
+            COUNTER += 1;
+            id
+        };
+
+        // Unlock the guard.
+        GUARD.store(false, Ordering::Release);
+
+        ThreadId(id)
     }
 }
 
@@ -561,6 +592,7 @@ impl ThreadId {
 /// The internal representation of a `Thread` handle
 struct Inner {
     name: Option<CString>,      // Guaranteed to be UTF-8
+    id: ThreadId,
     lock: Mutex<bool>,          // true when there is a buffered unpark
     cvar: Condvar,
 }
@@ -581,6 +613,7 @@ impl Thread {
         Thread {
             inner: Arc::new(Inner {
                 name: cname,
+                id: ThreadId::new(),
                 lock: Mutex::new(false),
                 cvar: Condvar::new(),
             })
@@ -597,6 +630,12 @@ impl Thread {
             *guard = true;
             self.inner.cvar.notify_one();
         }
+    }
+
+    /// Gets the thread's unique identifier.
+    #[unstable(feature = "thread_id", issue = "21507")]
+    pub fn id(&self) -> ThreadId {
+        self.inner.id
     }
 
     /// Gets the thread's name.
@@ -1009,12 +1048,13 @@ mod tests {
 
     #[test]
     fn test_thread_id_equal() {
-        assert!(thread::ThreadId::current() == thread::ThreadId::current());
+        assert!(thread::current().id() == thread::current().id());
     }
 
     #[test]
     fn test_thread_id_not_equal() {
-        assert!(thread::ThreadId::current() != thread::spawn(|| thread::ThreadId::current()).join().unwrap());
+        let spawned_id = thread::spawn(|| thread::current().id()).join().unwrap();
+        assert!(thread::current().id() != spawned_id);
     }
 
     // NOTE: the corresponding test for stderr is in run-pass/thread-stderr, due
