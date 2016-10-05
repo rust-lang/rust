@@ -107,7 +107,7 @@ You can run `rustfmt --help` for more information.
 ## Running Rustfmt from your editor
 
 * [Vim](https://github.com/rust-lang/rust.vim#enabling-autoformat)
-* [Emacs](https://github.com/fbergroth/emacs-rustfmt)
+* [Emacs](https://github.com/rust-lang/rust-mode)
 * [Sublime Text 3](https://packagecontrol.io/packages/BeautifyRust)
 * [Atom](atom.md)
 * Visual Studio Code using [RustyCode](https://github.com/saviorisdead/RustyCode) or [vsc-rustfmt](https://github.com/Connorcpu/vsc-rustfmt)
