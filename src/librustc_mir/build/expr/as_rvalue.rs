@@ -115,6 +115,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let source = unpack!(block = this.as_operand(block, source));
                 block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
             }
+            ExprKind::Use { source } => {
+                let source = unpack!(block = this.as_operand(block, source));
+                block.and(Rvalue::Use(source))
+            }
             ExprKind::ReifyFnPointer { source } => {
                 let source = unpack!(block = this.as_operand(block, source));
                 block.and(Rvalue::Cast(CastKind::ReifyFnPointer, source, expr.ty))
