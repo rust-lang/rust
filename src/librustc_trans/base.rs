@@ -308,7 +308,16 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 _ => bug!("compare_scalar_types: must be a comparison operator"),
             }
         }
-        ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyBool | ty::TyUint(_) | ty::TyChar => {
+        ty::TyBool => {
+            // FIXME(#36856) -- using `from_immediate` forces these booleans into `i8`,
+            // which works around some LLVM bugs
+            ICmp(bcx,
+                 bin_op_to_icmp_predicate(op, false),
+                 from_immediate(bcx, lhs),
+                 from_immediate(bcx, rhs),
+                 debug_loc)
+        }
+        ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyUint(_) | ty::TyChar => {
             ICmp(bcx,
                  bin_op_to_icmp_predicate(op, false),
                  lhs,
