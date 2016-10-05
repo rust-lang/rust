@@ -84,14 +84,15 @@ Four forms of `break` will be supported:
 3.  `break EXPR;`
 4.  `break 'label EXPR;`
 
-where `'label` is the name of a loop and `EXPR` is an expression.
+where `'label` is the name of a loop and `EXPR` is an expression. `break` and `break 'label` become
+equivalent to `break ()` and `break 'label ()` respectively.
 
 ### Result type of loop
 
 Currently the result type of a 'loop' without 'break' is `!` (never returns),
-which may be coerced to any type), and the result type of a 'loop' with 'break'
-is `()`. This is important since a loop may appear as
-the last expression of a function:
+which may be coerced to any type. The result type of a 'loop' with a 'break'
+is `()`. This is important since a loop may appear as the last expression of
+a function:
 
 ```rust
 fn f() {
@@ -109,20 +110,30 @@ fn g() -> () {
 fn h() -> ! {
     loop {
         do_something();
-        // this loop is not allowed to break due to inferred `!` type
+        // this loop must diverge for the function to typecheck
     }
 }
 ```
 
-This proposal changes the result type of 'loop' to `T`, where:
+This proposal allows 'loop' expression to be of any type `T`, following the same typing and
+inference rules that are applicable to other expressions in the language. Type of `EXPR` in every
+`break EXPR` and `break 'label EXPR` must be coercible to the type of the loop the `EXPR` appears
+in.
 
-*   if a loop is "broken" via `break;` or `break 'label;`, the loop's result type must be `()`
-*   if a loop is "broken" via `break EXPR;` or `break 'label EXPR;`, `EXPR` must evaluate to type `T`
-*   as a special case, if a loop is "broken" via `break EXPR;` or `break 'label EXPR;` where `EXPR` evaluates to type `!` (does not return), this does not place a constraint on the type of the loop
-*   if external constaint on the loop's result type exist (e.g. `let x: S = loop { ... };`), then `T` must be coercible to this type
+<!-- [ASIDE] The above paragraph captures pretty much every important typesystem interaction:
+     * `!` coerces to any type, so `break (expr: !)` works regardless of the loop type;
+         * It also does not preclude having `loop { break (expr: !) }: !`
+     * It, works well for `T = !`, because nothing in this paragraph demands to have breaks, only
+       sets requirements type coercibility;
+     * Similarly it works well for `T = ()` with all break forms because of `break` ≡ `break ()`.
+     * Finally the `loop { ... }: S` also works fine, because it requires every EXPR to coerce to
+       S, which is consistent with the behaviour of `if` bodies, `match` bodies etc.
+     * It also retains the `break`-less loop may be of type `!` property, because there’s no EXPRs
+       that have to coerce to `!`, whereas if it contains some `break`, then () cannot coerce to !.
+-->
 
-It is an error if these types do not agree or if the compiler's type deduction
-rules do not yield a concrete type.
+It is an error if these types do not agree or if the compiler's type deduction rules do not yield a
+concrete type.
 
 Examples of errors:
 
@@ -148,24 +159,6 @@ fn z() -> ! {
 }
 ```
 
-Examples involving `!`:
-
-```rust
-fn f() -> () {
-    // ! coerces to ()
-    loop {}
-}
-fn g() -> u32 {
-    // ! coerces to u32
-    loop {}
-}
-fn z() -> ! {
-    loop {
-        break panic!();
-    }
-}
-```
-
 Example showing the equivalence of `break;` and `break ();`:
 
 ```rust
@@ -179,6 +172,34 @@ fn y() -> () {
     }
 }
 ```
+
+Coercion examples:
+
+```rust
+// ! coerces to any type
+loop {}: ();
+loop {}: u32;
+loop {
+    break (loop {}: !);
+}: u32;
+loop {
+    // ...
+    break 42;
+    // ...
+    break panic!();
+}: u32;
+
+// break EXPRs are not of the same type, but both coerce to `&[u8]`.
+let x = [0; 32];
+let y = [0; 48];
+loop {
+    // ...
+    break &x;
+    // ...
+    break &y;
+}: &[u8];
+```
+
 
 ### Result value
 
