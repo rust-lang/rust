@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(question_mark)]
-
 // Make sure that the span of try shorthand does not include the trailing
 // semicolon;
 fn a() -> Result<i32, ()> {
-    Err(5)?; //~ ERROR 16:5: 16:12
+    Err(5)?; //~ ERROR 14:5: 14:12
     Ok(1)
 }
 

@@ -36,7 +36,7 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(unicode)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 
 use rustc::dep_graph::WorkProduct;
 
