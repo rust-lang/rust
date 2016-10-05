@@ -295,7 +295,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(str_escape)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 
 use self::LabelText::*;
 

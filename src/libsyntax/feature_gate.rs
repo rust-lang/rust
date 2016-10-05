@@ -253,9 +253,6 @@ declare_features! (
     // a...b and ...b
     (active, inclusive_range_syntax, "1.7.0", Some(28237)),
 
-    // `expr?`
-    (active, question_mark, "1.9.0", Some(31436)),
-
     // impl specialization (RFC 1210)
     (active, specialization, "1.7.0", Some(31844)),
 
@@ -348,6 +345,8 @@ declare_features! (
     (accepted, while_let, "1.0.0", None),
     // Allows `#[deprecated]` attribute
     (accepted, deprecated, "1.9.0", Some(29935)),
+    // `expr?`
+    (accepted, question_mark, "1.14.0", Some(31436)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -1071,9 +1070,6 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, inclusive_range_syntax,
                                   e.span,
                                   "inclusive range syntax is experimental");
-            }
-            ast::ExprKind::Try(..) => {
-                gate_feature_post!(&self, question_mark, e.span, "the `?` operator is not stable");
             }
             ast::ExprKind::InPlace(..) => {
                 gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
