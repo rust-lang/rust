@@ -600,8 +600,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // Check to see if this cast is a "coercion cast", where the cast is actually done
             // using a coercion (or is a no-op).
             if let Some(&TyCastKind::CoercionCast) = cx.tcx.cast_kinds.borrow().get(&source.id) {
-                // Skip the actual cast itexpr, as it's now a no-op.
-                return source.make_mirror(cx);
+                // Convert the lexpr to a vexpr.
+                ExprKind::Use { source: source.to_ref() }
             } else {
                 ExprKind::Cast { source: source.to_ref() }
             }

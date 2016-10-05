@@ -41,7 +41,8 @@ pub enum MethodError<'tcx> {
     Ambiguity(Vec<CandidateSource>),
 
     // Using a `Fn`/`FnMut`/etc method on a raw closure type before we have inferred its kind.
-    ClosureAmbiguity(/* DefId of fn trait */ DefId),
+    ClosureAmbiguity(// DefId of fn trait
+                     DefId),
 
     // Found an applicable method, but it is not visible.
     PrivateMatch(Def),
@@ -53,19 +54,20 @@ pub struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
     pub unsatisfied_predicates: Vec<TraitRef<'tcx>>,
     pub out_of_scope_traits: Vec<DefId>,
-    pub mode: probe::Mode
+    pub mode: probe::Mode,
 }
 
 impl<'tcx> NoMatchData<'tcx> {
     pub fn new(static_candidates: Vec<CandidateSource>,
                unsatisfied_predicates: Vec<TraitRef<'tcx>>,
                out_of_scope_traits: Vec<DefId>,
-               mode: probe::Mode) -> Self {
+               mode: probe::Mode)
+               -> Self {
         NoMatchData {
             static_candidates: static_candidates,
             unsatisfied_predicates: unsatisfied_predicates,
             out_of_scope_traits: out_of_scope_traits,
-            mode: mode
+            mode: mode,
         }
     }
 }
@@ -75,7 +77,8 @@ impl<'tcx> NoMatchData<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CandidateSource {
     ImplSource(DefId),
-    TraitSource(/* trait id */ DefId),
+    TraitSource(// trait id
+                DefId),
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
@@ -86,8 +89,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          self_ty: ty::Ty<'tcx>,
                          call_expr_id: ast::NodeId,
                          allow_private: bool)
-                         -> bool
-    {
+                         -> bool {
         let mode = probe::Mode::MethodCall;
         match self.probe_method(span, mode, method_name, self_ty, call_expr_id) {
             Ok(..) => true,
@@ -119,8 +121,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          supplied_method_types: Vec<ty::Ty<'tcx>>,
                          call_expr: &'gcx hir::Expr,
                          self_expr: &'gcx hir::Expr)
-                         -> Result<ty::MethodCallee<'tcx>, MethodError<'tcx>>
-    {
+                         -> Result<ty::MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
                method_name,
                self_ty,
@@ -135,7 +136,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tcx.used_trait_imports.borrow_mut().insert(import_id);
         }
 
-        Ok(self.confirm_method(span, self_expr, call_expr, self_ty, pick, supplied_method_types))
+        Ok(self.confirm_method(span,
+                               self_expr,
+                               call_expr,
+                               self_ty,
+                               pick,
+                               supplied_method_types))
     }
 
     pub fn lookup_method_in_trait(&self,
@@ -145,10 +151,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   trait_def_id: DefId,
                                   self_ty: ty::Ty<'tcx>,
                                   opt_input_types: Option<Vec<ty::Ty<'tcx>>>)
-                                  -> Option<ty::MethodCallee<'tcx>>
-    {
-        self.lookup_method_in_trait_adjusted(span, self_expr, m_name, trait_def_id,
-                                             0, false, self_ty, opt_input_types)
+                                  -> Option<ty::MethodCallee<'tcx>> {
+        self.lookup_method_in_trait_adjusted(span,
+                                             self_expr,
+                                             m_name,
+                                             trait_def_id,
+                                             0,
+                                             false,
+                                             self_ty,
+                                             opt_input_types)
     }
 
     /// `lookup_in_trait_adjusted` is used for overloaded operators.
@@ -171,8 +182,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                            unsize: bool,
                                            self_ty: ty::Ty<'tcx>,
                                            opt_input_types: Option<Vec<ty::Ty<'tcx>>>)
-                                           -> Option<ty::MethodCallee<'tcx>>
-    {
+                                           -> Option<ty::MethodCallee<'tcx>> {
         debug!("lookup_in_trait_adjusted(self_ty={:?}, self_expr={:?}, \
                 m_name={}, trait_def_id={:?})",
                self_ty,
@@ -188,9 +198,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(trait_def.generics.regions.is_empty());
 
         // Construct a trait-reference `self_ty : Trait<input_tys>`
-        let substs = Substs::for_item(self.tcx, trait_def_id, |def, _| {
-            self.region_var_for_def(span, def)
-        }, |def, substs| {
+        let substs = Substs::for_item(self.tcx,
+                                      trait_def_id,
+                                      |def, _| self.region_var_for_def(span, def),
+                                      |def, substs| {
             if def.index == 0 {
                 self_ty
             } else if let Some(ref input_types) = opt_input_types {
@@ -204,9 +215,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Construct an obligation
         let poly_trait_ref = trait_ref.to_poly_trait_ref();
-        let obligation = traits::Obligation::misc(span,
-                                                  self.body_id,
-                                                  poly_trait_ref.to_predicate());
+        let obligation =
+            traits::Obligation::misc(span, self.body_id, poly_trait_ref.to_predicate());
 
         // Now we want to know if this can be matched
         let mut selcx = traits::SelectionContext::new(self);
@@ -224,7 +234,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert_eq!(method_ty.generics.regions.len(), 0);
 
         debug!("lookup_in_trait_adjusted: method_item={:?} method_ty={:?}",
-               method_item, method_ty);
+               method_item,
+               method_ty);
 
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.
@@ -232,18 +243,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // NB: Instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let fn_sig = self.replace_late_bound_regions_with_fresh_var(span,
-                                                                    infer::FnCall,
-                                                                    &method_ty.fty.sig).0;
+        let fn_sig =
+            self.replace_late_bound_regions_with_fresh_var(span, infer::FnCall, &method_ty.fty.sig)
+                .0;
         let fn_sig = self.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
         let transformed_self_ty = fn_sig.inputs[0];
         let def_id = method_item.def_id();
-        let fty = tcx.mk_fn_def(def_id, trait_ref.substs,
+        let fty = tcx.mk_fn_def(def_id,
+                                trait_ref.substs,
                                 tcx.mk_bare_fn(ty::BareFnTy {
-            sig: ty::Binder(fn_sig),
-            unsafety: method_ty.fty.unsafety,
-            abi: method_ty.fty.abi.clone(),
-        }));
+                                    sig: ty::Binder(fn_sig),
+                                    unsafety: method_ty.fty.unsafety,
+                                    abi: method_ty.fty.abi.clone(),
+                                }));
 
         debug!("lookup_in_trait_adjusted: matched method fty={:?} obligation={:?}",
                fty,
@@ -259,9 +271,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // any late-bound regions appearing in its bounds.
         let method_bounds = self.instantiate_bounds(span, trait_ref.substs, &method_ty.predicates);
         assert!(!method_bounds.has_escaping_regions());
-        self.add_obligations_for_parameters(
-            traits::ObligationCause::misc(span, self.body_id),
-            &method_bounds);
+        self.add_obligations_for_parameters(traits::ObligationCause::misc(span, self.body_id),
+                                            &method_bounds);
 
         // Also register an obligation for the method type being well-formed.
         self.register_wf_obligation(fty, span, traits::MiscObligation);
@@ -273,12 +284,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Insert any adjustments needed (always an autoref of some mutability).
         match self_expr {
-            None => { }
+            None => {}
 
             Some(self_expr) => {
                 debug!("lookup_in_trait_adjusted: inserting adjustment if needed \
                        (self-id={}, autoderefs={}, unsize={}, explicit_self={:?})",
-                       self_expr.id, autoderefs, unsize,
+                       self_expr.id,
+                       autoderefs,
+                       unsize,
                        method_ty.explicit_self);
 
                 match method_ty.explicit_self {
@@ -294,31 +307,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         match transformed_self_ty.sty {
                             ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ }) => {
                                 self.write_adjustment(self_expr.id,
-                                    AdjustDerefRef(AutoDerefRef {
-                                        autoderefs: autoderefs,
-                                        autoref: Some(AutoPtr(region, mutbl)),
-                                        unsize: if unsize {
-                                            Some(transformed_self_ty)
-                                        } else {
-                                            None
-                                        }
-                                    }));
+                                                      AdjustDerefRef(AutoDerefRef {
+                                                          autoderefs: autoderefs,
+                                                          autoref: Some(AutoPtr(region, mutbl)),
+                                                          unsize: if unsize {
+                                                              Some(transformed_self_ty)
+                                                          } else {
+                                                              None
+                                                          },
+                                                      }));
                             }
 
                             _ => {
-                                span_bug!(
-                                    span,
-                                    "trait method is &self but first arg is: {}",
-                                    transformed_self_ty);
+                                span_bug!(span,
+                                          "trait method is &self but first arg is: {}",
+                                          transformed_self_ty);
                             }
                         }
                     }
 
                     _ => {
-                        span_bug!(
-                            span,
-                            "unexpected explicit self type in operator method: {:?}",
-                            method_ty.explicit_self);
+                        span_bug!(span,
+                                  "unexpected explicit self type in operator method: {:?}",
+                                  method_ty.explicit_self);
                     }
                 }
             }
@@ -327,7 +338,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let callee = ty::MethodCallee {
             def_id: def_id,
             ty: fty,
-            substs: trait_ref.substs
+            substs: trait_ref.substs,
         };
 
         debug!("callee = {:?}", callee);
@@ -340,8 +351,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         method_name: ast::Name,
                         self_ty: ty::Ty<'tcx>,
                         expr_id: ast::NodeId)
-                        -> Result<Def, MethodError<'tcx>>
-    {
+                        -> Result<Def, MethodError<'tcx>> {
         let mode = probe::Mode::Path;
         let pick = self.probe_method(span, mode, method_name, self_ty, expr_id)?;
 
@@ -364,9 +374,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn impl_or_trait_item(&self,
                               def_id: DefId,
                               item_name: ast::Name)
-                              -> Option<ty::ImplOrTraitItem<'tcx>>
-    {
-        self.tcx.impl_or_trait_items(def_id)
+                              -> Option<ty::ImplOrTraitItem<'tcx>> {
+        self.tcx
+            .impl_or_trait_items(def_id)
             .iter()
             .map(|&did| self.tcx.impl_or_trait_item(did))
             .find(|m| m.name() == item_name)
