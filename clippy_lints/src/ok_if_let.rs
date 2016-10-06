@@ -23,15 +23,15 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct OkIfLetPass;
+pub struct Pass;
 
-impl LintPass for OkIfLetPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(IF_LET_SOME_RESULT)
     }
 }
 
-impl LateLintPass for OkIfLetPass {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_let_chain! {[ //begin checking variables
             let ExprMatch(ref op, ref body, ref source) = expr.node, //test if expr is a match
