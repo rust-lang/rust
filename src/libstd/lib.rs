@@ -258,7 +258,6 @@
 #![cfg_attr(stage0, feature(question_mark))]
 #![feature(rand)]
 #![feature(raw)]
-#![feature(reflect_marker)]
 #![feature(repr_simd)]
 #![feature(rustc_attrs)]
 #![feature(shared)]
