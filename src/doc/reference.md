@@ -3961,12 +3961,12 @@ implementation in the returned type `U`.
 
 ## The `Send` trait
 
-The `Send` trait indicates that a value of this type is safe to send from one 
+The `Send` trait indicates that a value of this type is safe to send from one
 thread to another.
 
-## The 'Sync' trait
+## The `Sync` trait
 
-The 'Sync' trait indicates that a value of this type is safe to share between
+The `Sync` trait indicates that a value of this type is safe to share between
 multiple threads.
 
 # Memory model
