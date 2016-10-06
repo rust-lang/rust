@@ -8,8 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let x = Some(1);
+// compile-flags: -O
 
-    match x { } //~ ERROR E0002
+#![crate_type = "lib"]
+
+pub enum Foo {
+    A, B
+}
+
+// CHECK-LABEL: @lookup
+#[no_mangle]
+pub fn lookup(buf: &[u8; 2], f: Foo) -> u8 {
+    // CHECK-NOT: panic_bounds_check
+    buf[f as usize]
 }

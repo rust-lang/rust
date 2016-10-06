@@ -8,19 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type="rlib"]
+fn main() {
+    let x = Some(1);
 
-extern crate stable_symbol_names1;
-
-pub fn user() {
-  stable_symbol_names1::some_test_function(1u32);
-  stable_symbol_names1::some_test_function("def");
-  let x = 2u64;
-  stable_symbol_names1::some_test_function(&x);
-}
-
-pub fn trait_impl_test_function() {
-  use stable_symbol_names1::*;
-  Bar::foo::<Bar>();
-  bar();
+    match x { } //~ ERROR E0004
 }

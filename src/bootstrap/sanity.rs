@@ -146,8 +146,8 @@ pub fn check(build: &mut Build) {
                     }
                 }
                 None => {
-                    panic!("when targeting MUSL either the build.musl-root \
-                            option or the target.$TARGET.musl-root one must \
+                    panic!("when targeting MUSL either the rust.musl-root \
+                            option or the target.$TARGET.musl-root option must \
                             be specified in config.toml")
                 }
             }

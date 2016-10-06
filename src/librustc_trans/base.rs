@@ -183,6 +183,14 @@ pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
     StructGEP(bcx, fat_ptr, abi::FAT_PTR_ADDR)
 }
 
+pub fn get_meta_builder(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
+    b.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
+}
+
+pub fn get_dataptr_builder(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
+    b.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
+}
+
 fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, info_ty: Ty<'tcx>, it: LangItem) -> DefId {
     match bcx.tcx().lang_items.require(it) {
         Ok(id) => id,
@@ -244,124 +252,6 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOp_) -> llvm::RealPredicate {
                   found {:?}",
                  op);
         }
-    }
-}
-
-pub fn compare_fat_ptrs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    lhs_addr: ValueRef,
-                                    lhs_extra: ValueRef,
-                                    rhs_addr: ValueRef,
-                                    rhs_extra: ValueRef,
-                                    _t: Ty<'tcx>,
-                                    op: hir::BinOp_,
-                                    debug_loc: DebugLoc)
-                                    -> ValueRef {
-    match op {
-        hir::BiEq => {
-            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
-            let extra_eq = ICmp(bcx, llvm::IntEQ, lhs_extra, rhs_extra, debug_loc);
-            And(bcx, addr_eq, extra_eq, debug_loc)
-        }
-        hir::BiNe => {
-            let addr_eq = ICmp(bcx, llvm::IntNE, lhs_addr, rhs_addr, debug_loc);
-            let extra_eq = ICmp(bcx, llvm::IntNE, lhs_extra, rhs_extra, debug_loc);
-            Or(bcx, addr_eq, extra_eq, debug_loc)
-        }
-        hir::BiLe | hir::BiLt | hir::BiGe | hir::BiGt => {
-            // a OP b ~ a.0 STRICT(OP) b.0 | (a.0 == b.0 && a.1 OP a.1)
-            let (op, strict_op) = match op {
-                hir::BiLt => (llvm::IntULT, llvm::IntULT),
-                hir::BiLe => (llvm::IntULE, llvm::IntULT),
-                hir::BiGt => (llvm::IntUGT, llvm::IntUGT),
-                hir::BiGe => (llvm::IntUGE, llvm::IntUGT),
-                _ => bug!(),
-            };
-
-            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
-            let extra_op = ICmp(bcx, op, lhs_extra, rhs_extra, debug_loc);
-            let addr_eq_extra_op = And(bcx, addr_eq, extra_op, debug_loc);
-
-            let addr_strict = ICmp(bcx, strict_op, lhs_addr, rhs_addr, debug_loc);
-            Or(bcx, addr_strict, addr_eq_extra_op, debug_loc)
-        }
-        _ => {
-            bug!("unexpected fat ptr binop");
-        }
-    }
-}
-
-pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                        lhs: ValueRef,
-                                        rhs: ValueRef,
-                                        t: Ty<'tcx>,
-                                        op: hir::BinOp_,
-                                        debug_loc: DebugLoc)
-                                        -> ValueRef {
-    match t.sty {
-        ty::TyTuple(ref tys) if tys.is_empty() => {
-            // We don't need to do actual comparisons for nil.
-            // () == () holds but () < () does not.
-            match op {
-                hir::BiEq | hir::BiLe | hir::BiGe => return C_bool(bcx.ccx(), true),
-                hir::BiNe | hir::BiLt | hir::BiGt => return C_bool(bcx.ccx(), false),
-                // refinements would be nice
-                _ => bug!("compare_scalar_types: must be a comparison operator"),
-            }
-        }
-        ty::TyBool => {
-            // FIXME(#36856) -- using `from_immediate` forces these booleans into `i8`,
-            // which works around some LLVM bugs
-            ICmp(bcx,
-                 bin_op_to_icmp_predicate(op, false),
-                 from_immediate(bcx, lhs),
-                 from_immediate(bcx, rhs),
-                 debug_loc)
-        }
-        ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyUint(_) | ty::TyChar => {
-            ICmp(bcx,
-                 bin_op_to_icmp_predicate(op, false),
-                 lhs,
-                 rhs,
-                 debug_loc)
-        }
-        ty::TyRawPtr(mt) if common::type_is_sized(bcx.tcx(), mt.ty) => {
-            ICmp(bcx,
-                 bin_op_to_icmp_predicate(op, false),
-                 lhs,
-                 rhs,
-                 debug_loc)
-        }
-        ty::TyRawPtr(_) => {
-            let lhs_addr = Load(bcx, GEPi(bcx, lhs, &[0, abi::FAT_PTR_ADDR]));
-            let lhs_extra = Load(bcx, GEPi(bcx, lhs, &[0, abi::FAT_PTR_EXTRA]));
-
-            let rhs_addr = Load(bcx, GEPi(bcx, rhs, &[0, abi::FAT_PTR_ADDR]));
-            let rhs_extra = Load(bcx, GEPi(bcx, rhs, &[0, abi::FAT_PTR_EXTRA]));
-            compare_fat_ptrs(bcx,
-                             lhs_addr,
-                             lhs_extra,
-                             rhs_addr,
-                             rhs_extra,
-                             t,
-                             op,
-                             debug_loc)
-        }
-        ty::TyInt(_) => {
-            ICmp(bcx,
-                 bin_op_to_icmp_predicate(op, true),
-                 lhs,
-                 rhs,
-                 debug_loc)
-        }
-        ty::TyFloat(_) => {
-            FCmp(bcx,
-                 bin_op_to_fcmp_predicate(op),
-                 lhs,
-                 rhs,
-                 debug_loc)
-        }
-        // Should never get here, because t is scalar.
-        _ => bug!("non-scalar type passed to compare_scalar_types"),
     }
 }
 
@@ -632,6 +522,11 @@ pub fn need_invoke(bcx: Block) -> bool {
     }
 }
 
+pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
+    let assume_intrinsic = b.ccx.get_intrinsic("llvm.assume");
+    b.call(assume_intrinsic, &[val], None);
+}
+
 /// Helper for loading values from memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values. Also handles various special cases where the type
 /// gives us better information about what we are loading.
@@ -685,12 +580,9 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
     debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
     if common::type_is_fat_ptr(cx.tcx(), t) {
-        Store(cx,
-              ExtractValue(cx, v, abi::FAT_PTR_ADDR),
-              get_dataptr(cx, dst));
-        Store(cx,
-              ExtractValue(cx, v, abi::FAT_PTR_EXTRA),
-              get_meta(cx, dst));
+        let lladdr = ExtractValue(cx, v, abi::FAT_PTR_ADDR);
+        let llextra = ExtractValue(cx, v, abi::FAT_PTR_EXTRA);
+        store_fat_ptr(cx, lladdr, llextra, dst, t);
     } else {
         Store(cx, from_immediate(cx, v), dst);
     }
@@ -708,11 +600,36 @@ pub fn store_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
 pub fn load_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                 src: ValueRef,
-                                _ty: Ty<'tcx>)
-                                -> (ValueRef, ValueRef) {
-    // FIXME: emit metadata
-    (Load(cx, get_dataptr(cx, src)),
-     Load(cx, get_meta(cx, src)))
+                                ty: Ty<'tcx>)
+                                -> (ValueRef, ValueRef)
+{
+    if cx.unreachable.get() {
+        // FIXME: remove me
+        return (Load(cx, get_dataptr(cx, src)),
+                Load(cx, get_meta(cx, src)));
+    }
+
+    load_fat_ptr_builder(&B(cx), src, ty)
+}
+
+pub fn load_fat_ptr_builder<'a, 'tcx>(
+    b: &Builder<'a, 'tcx>,
+    src: ValueRef,
+    t: Ty<'tcx>)
+    -> (ValueRef, ValueRef)
+{
+
+    let ptr = get_dataptr_builder(b, src);
+    let ptr = if t.is_region_ptr() || t.is_unique() {
+        b.load_nonnull(ptr)
+    } else {
+        b.load(ptr)
+    };
+
+    // FIXME: emit metadata on `meta`.
+    let meta = b.load(get_meta_builder(b, src));
+
+    (ptr, meta)
 }
 
 pub fn from_immediate(bcx: Block, val: ValueRef) -> ValueRef {
