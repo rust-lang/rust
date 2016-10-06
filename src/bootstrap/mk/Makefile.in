@@ -51,6 +51,8 @@ check-cargotest:
 	$(Q)$(BOOTSTRAP) --step check-cargotest
 dist:
 	$(Q)$(BOOTSTRAP) --step dist
+install:
+	$(Q)$(BOOTSTRAP) --step install
 tidy:
 	$(Q)$(BOOTSTRAP) --step check-tidy --stage 0
 

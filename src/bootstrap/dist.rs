@@ -27,7 +27,7 @@ use {Build, Compiler};
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy};
 use regex::{RegexSet, quote};
 
-fn package_vers(build: &Build) -> &str {
+pub fn package_vers(build: &Build) -> &str {
     match &build.config.channel[..] {
         "stable" => &build.release,
         "beta" => "beta",
@@ -40,7 +40,7 @@ fn distdir(build: &Build) -> PathBuf {
     build.out.join("dist")
 }
 
-fn tmpdir(build: &Build) -> PathBuf {
+pub fn tmpdir(build: &Build) -> PathBuf {
     build.out.join("tmp/dist")
 }
 
@@ -418,7 +418,7 @@ fn chmod(_path: &Path, _perms: u32) {}
 
 // We have to run a few shell scripts, which choke quite a bit on both `\`
 // characters and on `C:\` paths, so normalize both of them away.
-fn sanitize_sh(path: &Path) -> String {
+pub fn sanitize_sh(path: &Path) -> String {
     let path = path.to_str().unwrap().replace("\\", "/");
     return change_drive(&path).unwrap_or(path);
 
