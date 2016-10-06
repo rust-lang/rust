@@ -521,7 +521,7 @@ pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 impl<'tcx> serialize::UseSpecializedEncodable for Ty<'tcx> {}
 impl<'tcx> serialize::UseSpecializedDecodable for Ty<'tcx> {}
 
-/// A wrapper for slices with the additioanl invariant
+/// A wrapper for slices with the additional invariant
 /// that the slice is interned and no other slice with
 /// the same contents can exist in the same context.
 /// This means we can use pointer + length for both
