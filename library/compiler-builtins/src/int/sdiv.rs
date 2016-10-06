@@ -1,3 +1,5 @@
+use core::intrinsics;
+
 use int::Int;
 
 macro_rules! div {
@@ -10,6 +12,12 @@ macro_rules! div {
             let a = (a ^ s_a) - s_a;
             let b = (b ^ s_b) - s_b;
             let s = s_a ^ s_b;
+
+            if b == 0 {
+                unsafe {
+                    intrinsics::abort()
+                }
+            }
             let r = (a as $uty) / (b as $uty);
             (r as $ty ^ s) - s
         }
@@ -25,6 +33,12 @@ macro_rules! mod_ {
             let b = (b ^ s) - s;
             let s = a >> (<$ty>::bits() - 1);
             let a = (a ^ s) - s;
+
+            if b == 0 {
+                unsafe {
+                    intrinsics::abort()
+                }
+            }
             let r = (a as $uty) % (b as $uty);
             (r as $ty ^ s) - s
         }

@@ -109,6 +109,14 @@ pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
             // 0 X
             // ---
             // 0 X
+            // NOTE This should be unreachable in safe Rust because the program will panic before
+            // this intrinsic is called
+            if d.low() == 0 {
+                unsafe {
+                    intrinsics::abort()
+                }
+            }
+
             if let Some(rem) = rem {
                 *rem = u64::from(n.low() % d.low());
             }
