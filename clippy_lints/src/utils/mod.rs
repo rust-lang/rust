@@ -234,10 +234,10 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
             for item in &mem::replace(&mut items, vec![]) {
                 if item.name.as_str() == *segment {
                     if path_it.peek().is_none() {
-                        return cx.tcx.sess.cstore.describe_def(item.def_id);
+                        return Some(item.def);
                     }
 
-                    items = cstore.item_children(item.def_id);
+                    items = cstore.item_children(item.def.def_id());
                     break;
                 }
             }
@@ -723,7 +723,7 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, env: Node
 /// Return whether a pattern is refutable.
 pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
     fn is_enum_variant(cx: &LateContext, did: NodeId) -> bool {
-        matches!(cx.tcx.def_map.borrow().get(&did).map(|d| d.full_def()), Some(def::Def::Variant(..)))
+        matches!(cx.tcx.def_map.borrow().get(&did).map(|d| d.full_def()), Some(def::Def::Variant(..)) | Some(def::Def::VariantCtor(..)))
     }
 
     fn are_refutable<'a, I: Iterator<Item=&'a Pat>>(cx: &LateContext, mut i: I) -> bool {

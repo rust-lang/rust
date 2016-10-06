@@ -60,7 +60,7 @@ impl EnumGlobUse {
                     } else {
                         let child = cx.sess().cstore.item_children(def.full_def().def_id());
                         if let Some(child) = child.first() {
-                            if let Some(Def::Variant(..)) = cx.tcx.sess.cstore.describe_def(child.def_id) {
+                            if let Def::Variant(..) = child.def {
                                 span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
                             }
                         }

@@ -71,7 +71,9 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
             let def = cx.tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def());
             match def {
                 Some(Def::Struct(..)) |
-                Some(Def::Variant(..)) => args.iter().all(|arg| has_no_effect(cx, arg)),
+                Some(Def::Variant(..)) |
+                Some(Def::StructCtor(..)) |
+                Some(Def::VariantCtor(..)) => args.iter().all(|arg| has_no_effect(cx, arg)),
                 _ => false,
             }
         }
@@ -146,7 +148,9 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         Expr_::ExprCall(ref callee, ref args) => {
             match cx.tcx.def_map.borrow().get(&callee.id).map(PathResolution::full_def) {
                 Some(Def::Struct(..)) |
-                Some(Def::Variant(..)) => Some(args.iter().map(Deref::deref).collect()),
+                Some(Def::Variant(..)) |
+                Some(Def::StructCtor(..)) |
+                Some(Def::VariantCtor(..)) => Some(args.iter().map(Deref::deref).collect()),
                 _ => None,
             }
         }
