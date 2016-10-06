@@ -279,6 +279,7 @@
 #![feature(unique)]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
+#![feature(untagged_unions)]
 #![feature(zero_one)]
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(not(stage0), feature(never_type))]

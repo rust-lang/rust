@@ -285,9 +285,14 @@ pub use realstd::rt::update_panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
+    #[allow(unions_with_drop_fields)]
+    union MaybeUninitialized<R> {
+        data: R,
+        _uninitialized: (),
+    }
     struct Data<F, R> {
         f: F,
-        r: R,
+        r: MaybeUninitialized<R>,
     }
 
     // We do some sketchy operations with ownership here for the sake of
@@ -338,7 +343,7 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
         let Data { f, r } = data;
         mem::forget(f);
         debug_assert!(update_panic_count(0) == 0);
-        Ok(r)
+        Ok(r.data)
     } else {
         mem::forget(data);
         update_panic_count(-1);
@@ -353,7 +358,7 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
         unsafe {
             let data = data as *mut Data<F, R>;
             let f = ptr::read(&mut (*data).f);
-            ptr::write(&mut (*data).r, f());
+            ptr::write(&mut (*data).r.data, f());
         }
     }
 }
