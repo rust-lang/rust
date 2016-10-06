@@ -8,16 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME: move this to `rustc_data_structures`
-
 use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut, Range};
 use bitslice::{BitSlice, Word};
 use bitslice::{bitwise, Union, Subtract};
-
-use rustc_data_structures::indexed_vec::Idx;
+use indexed_vec::Idx;
 
 /// Represents a set (or packed family of sets), of some element type
 /// E, where each E is identified by some unique index type `T`.

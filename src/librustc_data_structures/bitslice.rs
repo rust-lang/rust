@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME: move this to `rustc_data_structures` and potentially merge
-// with `bitvec` there.
+// FIXME: merge with `bitvec`
 
 use std::mem;
 
