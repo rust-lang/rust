@@ -13,10 +13,36 @@
 //! This module is responsible for installing the standard library,
 //! compiler, and documentation.
 
+use std::fs;
+use std::path::Path;
+use std::process::Command;
+
 use Build;
+use dist::{package_vers, sanitize_sh, tmpdir};
 
 /// Installs everything.
-pub fn install(_: &Build, stage: u32, host: &str) {
-    println!("Install everything stage{} ({})", stage, host);
-    println!("Note: install currently does nothing.");
+pub fn install(build: &Build, stage: u32, host: &str) {
+    let prefix = build.config.prefix.as_ref().clone().map(|x| Path::new(x))
+        .unwrap_or(Path::new("/usr/local"));
+    let empty_dir = build.out.join("tmp/empty_dir");
+    t!(fs::create_dir_all(&empty_dir));
+    if build.config.docs {
+        install_sh(&build, "docs", "rust-docs", stage, host, prefix, &empty_dir);
+    }
+    install_sh(&build, "std", "rust-std", stage, host, prefix, &empty_dir);
+    install_sh(&build, "rustc", "rustc", stage, host, prefix, &empty_dir);
+    t!(fs::remove_dir_all(&empty_dir));
+}
+
+fn install_sh(build: &Build, package: &str, name: &str, stage: u32, host: &str,
+              prefix: &Path, empty_dir: &Path) {
+    println!("Install {} stage{} ({})", package, stage, host);
+    let package_name = format!("{}-{}-{}", name, package_vers(build), host);
+
+    let mut cmd = Command::new("sh");
+    cmd.current_dir(empty_dir)
+       .arg(sanitize_sh(&tmpdir(build).join(&package_name).join("install.sh")))
+       .arg(format!("--prefix={}", sanitize_sh(&prefix)))
+       .arg("--disable-ldconfig");
+    build.run(&mut cmd);
 }
