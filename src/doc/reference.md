@@ -2472,8 +2472,7 @@ The currently implemented features of the reference compiler are:
 * - `default_type_parameter_fallback` - Allows type parameter defaults to
                                         influence type inference.
 
-* - `stmt_expr_attributes` - Allows attributes on expressions and
-                             non-item statements.
+* - `stmt_expr_attributes` - Allows attributes on expressions.
 
 * - `type_ascription` - Allows type ascription expressions `expr: Type`.
 
