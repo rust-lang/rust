@@ -1,9 +1,9 @@
 cache: cargo
 dist: trusty
 language: rust
+rust: nightly
 services: docker
 sudo: required
-rust: nightly
 
 matrix:
   include:
@@ -15,12 +15,8 @@ matrix:
     - env: TARGET=armv7-unknown-linux-gnueabihf
     - env: TARGET=i586-unknown-linux-gnu
     - env: TARGET=i686-apple-darwin
-      # FIXME(rust-lang/rust#36793)
-      rust: nightly-2016-09-10
       os: osx
     - env: TARGET=i686-unknown-linux-gnu
-      # FIXME(rust-lang/rust#36793)
-      rust: nightly-2016-09-10
     - env: TARGET=mips-unknown-linux-gnu
     - env: TARGET=mipsel-unknown-linux-gnu
     - env: TARGET=powerpc-unknown-linux-gnu
