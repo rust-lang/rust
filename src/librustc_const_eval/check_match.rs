@@ -25,8 +25,10 @@ use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization::{cmt};
 use rustc::hir::pat_util::*;
+use rustc::session::Session;
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_errors::DiagnosticBuilder;
 use std::cmp::Ordering;
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
@@ -163,6 +165,10 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.sess.abort_if_errors();
 }
 
+fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> DiagnosticBuilder<'a> {
+    struct_span_err!(sess, sp, E0004, "{}", &error_message)
+}
+
 fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
     intravisit::walk_expr(cx, ex);
     match ex.node {
@@ -215,9 +221,10 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
             if inlined_arms.is_empty() {
                 if !pat_ty.is_uninhabited(cx.tcx) {
                     // We know the type is inhabited, so this must be wrong
-                    let mut err = struct_span_err!(cx.tcx.sess, ex.span, E0002,
-                                                   "non-exhaustive patterns: type {} is non-empty",
-                                                   pat_ty);
+                    let mut err = create_e0004(cx.tcx.sess, ex.span,
+                                               format!("non-exhaustive patterns: type {} \
+                                                        is non-empty",
+                                                       pat_ty));
                     span_help!(&mut err, ex.span,
                         "Please ensure that all possible cases are being handled; \
                          possibly adding wildcards or more match arms.");
@@ -438,10 +445,11 @@ fn check_exhaustive<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
                         1 => format!("pattern {} not covered", joined_patterns),
                         _ => format!("patterns {} not covered", joined_patterns)
                     };
-                    struct_span_err!(cx.tcx.sess, sp, E0004,
-                        "non-exhaustive patterns: {} not covered",
-                        joined_patterns
-                    ).span_label(sp, &label_text).emit();
+                    create_e0004(cx.tcx.sess, sp,
+                                 format!("non-exhaustive patterns: {} not covered",
+                                         joined_patterns))
+                        .span_label(sp, &label_text)
+                        .emit();
                 },
             }
         }
