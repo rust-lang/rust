@@ -217,6 +217,10 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     llreffn: ValueRef)
     -> ValueRef
 {
+    if let Some(&llfn) = ccx.instances().borrow().get(&method_instance) {
+        return llfn;
+    }
+
     debug!("trans_fn_once_adapter_shim(closure_def_id={:?}, substs={:?}, llreffn={:?})",
            closure_def_id, substs, Value(llreffn));
 
@@ -257,7 +261,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Create the by-value helper.
     let function_name = method_instance.symbol_name(ccx.shared());
-    let lloncefn = declare::declare_fn(ccx, &function_name, llonce_fn_ty);
+    let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
@@ -311,6 +315,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 
     fcx.finish(bcx, DebugLoc::None);
+
+    ccx.instances().borrow_mut().insert(method_instance, lloncefn);
 
     lloncefn
 }
