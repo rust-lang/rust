@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(reflect_marker)]
-
 use std::any::TypeId;
-use std::marker::Reflect;
 use std::rc::Rc;
 
 type Fp<T> = Rc<T>;
 
 struct Engine;
 
-trait Component: 'static + Reflect {}
+trait Component: 'static {}
 impl Component for Engine {}
 
 trait Env {
