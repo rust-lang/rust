@@ -29,7 +29,7 @@ use sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
 #[cfg(not(any(target_os = "dragonfly", target_os = "freebsd",
               target_os = "ios", target_os = "macos",
               target_os = "openbsd", target_os = "netbsd",
-              target_os = "solaris", taget_os = "haiku")))]
+              target_os = "solaris", target_os = "haiku")))]
 use sys::net::netc::IPV6_ADD_MEMBERSHIP;
 #[cfg(any(target_os = "dragonfly", target_os = "freebsd",
           target_os = "ios", target_os = "macos",

@@ -267,14 +267,14 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     let mut initial_partitioning = place_root_translation_items(scx,
                                                                 trans_items);
 
-    debug_dump(tcx, "INITIAL PARTITONING:", initial_partitioning.codegen_units.iter());
+    debug_dump(scx, "INITIAL PARTITONING:", initial_partitioning.codegen_units.iter());
 
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
     if let PartitioningStrategy::FixedUnitCount(count) = strategy {
         merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name[..]);
 
-        debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
+        debug_dump(scx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
 
     // In the next step, we use the inlining map to determine which addtional
@@ -284,7 +284,7 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     let post_inlining = place_inlined_translation_items(initial_partitioning,
                                                         inlining_map);
 
-    debug_dump(tcx, "POST INLINING:", post_inlining.0.iter());
+    debug_dump(scx, "POST INLINING:", post_inlining.0.iter());
 
     // Finally, sort by codegen unit name, so that we get deterministic results
     let mut result = post_inlining.0;
@@ -552,7 +552,7 @@ fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString 
         index)[..])
 }
 
-fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn debug_dump<'a, 'b, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                                label: &str,
                                cgus: I)
     where I: Iterator<Item=&'b CodegenUnit<'tcx>>,
@@ -561,10 +561,21 @@ fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if cfg!(debug_assertions) {
         debug!("{}", label);
         for cgu in cgus {
+            let symbol_map = SymbolMap::build(scx, cgu.items
+                                                      .iter()
+                                                      .map(|(&trans_item, _)| trans_item));
             debug!("CodegenUnit {}:", cgu.name);
 
             for (trans_item, linkage) in &cgu.items {
-                debug!(" - {} [{:?}]", trans_item.to_string(tcx), linkage);
+                let symbol_name = symbol_map.get_or_compute(scx, *trans_item);
+                let symbol_hash_start = symbol_name.rfind('h');
+                let symbol_hash = symbol_hash_start.map(|i| &symbol_name[i ..])
+                                                   .unwrap_or("<no hash>");
+
+                debug!(" - {} [{:?}] [{}]",
+                       trans_item.to_string(scx.tcx()),
+                       linkage,
+                       symbol_hash);
             }
 
             debug!("");
