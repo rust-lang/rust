@@ -158,6 +158,7 @@ struct TomlTarget {
     cc: Option<String>,
     cxx: Option<String>,
     android_ndk: Option<String>,
+    musl_root: Option<String>,
 }
 
 impl Config {
@@ -268,6 +269,7 @@ impl Config {
                 }
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
                 target.cc = cfg.cc.clone().map(PathBuf::from);
+                target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
 
                 config.target_config.insert(triple.clone(), target);
             }
