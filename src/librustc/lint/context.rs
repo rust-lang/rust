@@ -38,6 +38,7 @@ use util::nodemap::FnvHashMap;
 use std::cmp;
 use std::default::Default as StdDefault;
 use std::mem;
+use std::fmt;
 use syntax::attr;
 use syntax::parse::token::InternedString;
 use syntax::ast;
@@ -79,6 +80,41 @@ pub struct LintStore {
     /// Maximum level a lint can be
     lint_cap: Option<Level>,
 }
+
+/// When you call `add_lint` on the session, you wind up storing one
+/// of these, which records a "potential lint" at a particular point.
+pub struct EarlyLint {
+    /// what lint is this? (e.g., `dead_code`)
+    pub id: LintId,
+
+    /// the span where the lint will be reported at
+    pub span: Span,
+
+    /// the main message
+    pub msg: String,
+}
+
+impl fmt::Debug for EarlyLint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("EarlyLint")
+            .field("id", &self.id)
+            .field("span", &self.span)
+            .field("msg", &self.msg)
+            .finish()
+    }
+}
+
+impl EarlyLint {
+    pub fn new(id: LintId, span: Span, msg: String) -> Self {
+        EarlyLint { id: id, span: span, msg: msg }
+    }
+
+    pub fn matches(&self, other: &EarlyLint) -> bool {
+        self.id == other.id && self.span == other.span && self.msg == other.msg
+    }
+}
+
+
 
 /// Extra information for a future incompatibility lint. See the call
 /// to `register_future_incompatible` in `librustc_lint/lib.rs` for
@@ -512,6 +548,11 @@ pub trait LintContext: Sized {
     /// Emit a lint at the appropriate level, for a particular span.
     fn span_lint(&self, lint: &'static Lint, span: Span, msg: &str) {
         self.lookup_and_emit(lint, Some(span), msg);
+    }
+
+    fn early_lint(&self, early_lint: EarlyLint) {
+        let mut err = self.struct_span_lint(early_lint.id.lint, early_lint.span, &early_lint.msg);
+        err.emit();
     }
 
     fn struct_span_lint(&self,
@@ -1065,8 +1106,8 @@ impl<'a, 'b, 'tcx, 'v> hir_visit::Visitor<'v> for IdVisitor<'a, 'b, 'tcx> {
     fn visit_id(&mut self, id: ast::NodeId) {
         if let Some(lints) = self.cx.sess().lints.borrow_mut().remove(&id) {
             debug!("LateContext::visit_id: id={:?} lints={:?}", id, lints);
-            for (lint_id, span, msg) in lints {
-                self.cx.span_lint(lint_id.lint, span, &msg[..])
+            for early_lint in lints {
+                self.cx.early_lint(early_lint);
             }
         }
     }
@@ -1211,10 +1252,10 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
     for (id, v) in tcx.sess.lints.borrow().iter() {
-        for &(lint, span, ref msg) in v {
-            span_bug!(span,
-                      "unprocessed lint {} at {}: {}",
-                      lint.to_string(), tcx.map.node_to_string(*id), *msg)
+        for early_lint in v {
+            span_bug!(early_lint.span,
+                      "unprocessed lint {:?} at {}",
+                      early_lint, tcx.map.node_to_string(*id));
         }
     }
 
@@ -1229,8 +1270,8 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     cx.with_lint_attrs(&krate.attrs, |cx| {
         // Lints may be assigned to the whole crate.
         if let Some(lints) = cx.sess.lints.borrow_mut().remove(&ast::CRATE_NODE_ID) {
-            for (lint_id, span, msg) in lints {
-                cx.span_lint(lint_id.lint, span, &msg[..])
+            for early_lint in lints {
+                cx.early_lint(early_lint);
             }
         }
 
@@ -1249,8 +1290,8 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
     for (_, v) in sess.lints.borrow().iter() {
-        for &(lint, span, ref msg) in v {
-            span_bug!(span, "unprocessed lint {}: {}", lint.to_string(), *msg)
+        for early_lint in v {
+            span_bug!(early_lint.span, "unprocessed lint {:?}", early_lint);
         }
     }
 }

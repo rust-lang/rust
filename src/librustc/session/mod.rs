@@ -74,7 +74,7 @@ pub struct Session {
     pub local_crate_source_file: Option<PathBuf>,
     pub working_dir: PathBuf,
     pub lint_store: RefCell<lint::LintStore>,
-    pub lints: RefCell<NodeMap<Vec<(lint::LintId, Span, String)>>>,
+    pub lints: RefCell<NodeMap<Vec<lint::EarlyLint>>>,
     /// Set of (LintId, span, message) tuples tracking lint (sub)diagnostics
     /// that have been set once, but should not be set again, in order to avoid
     /// redundantly verbose output (Issue #24690).
@@ -265,14 +265,14 @@ impl Session {
                     msg: String) {
         let lint_id = lint::LintId::of(lint);
         let mut lints = self.lints.borrow_mut();
+        let early_lint = lint::EarlyLint::new(lint_id, sp, msg);
         if let Some(arr) = lints.get_mut(&id) {
-            let tuple = (lint_id, sp, msg);
-            if !arr.contains(&tuple) {
-                arr.push(tuple);
+            if !arr.iter().any(|l| l.matches(&early_lint)) {
+                arr.push(early_lint);
             }
             return;
         }
-        lints.insert(id, vec![(lint_id, sp, msg)]);
+        lints.insert(id, vec![early_lint]);
     }
     pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
         let id = self.next_node_id.get();
