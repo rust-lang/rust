@@ -11,7 +11,6 @@
 // General test of maybe_inits state computed by MIR dataflow.
 
 #![feature(rustc_attrs)]
-#![feature(stmt_expr_attributes)]
 
 use std::intrinsics::rustc_peek;
 use std::mem::{drop, replace};
