@@ -10,7 +10,6 @@
 
 use error::{Error};
 use fmt;
-use marker::Reflect;
 use sync::atomic::{AtomicBool, Ordering};
 use thread;
 
@@ -117,7 +116,7 @@ impl<T> fmt::Display for PoisonError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Reflect> Error for PoisonError<T> {
+impl<T> Error for PoisonError<T> {
     fn description(&self) -> &str {
         "poisoned lock: another task failed inside"
     }
@@ -174,7 +173,7 @@ impl<T> fmt::Display for TryLockError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Reflect> Error for TryLockError<T> {
+impl<T> Error for TryLockError<T> {
     fn description(&self) -> &str {
         match *self {
             TryLockError::Poisoned(ref p) => p.description(),
