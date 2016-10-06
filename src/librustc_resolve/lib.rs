@@ -57,6 +57,7 @@ use syntax::ext::base::MultiItemModifier;
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, IntTy, UintTy};
+use syntax::ext::base::SyntaxExtension;
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -77,7 +78,7 @@ use std::mem::replace;
 use std::rc::Rc;
 
 use resolve_imports::{ImportDirective, NameResolution};
-use macros::InvocationData;
+use macros::{InvocationData, LegacyBinding};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -792,9 +793,6 @@ pub struct ModuleS<'a> {
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
     populated: Cell<bool>,
-
-    macros: RefCell<FnvHashMap<Name, macros::NameBinding>>,
-    macros_escape: bool,
 }
 
 pub type Module<'a> = &'a ModuleS<'a>;
@@ -812,8 +810,6 @@ impl<'a> ModuleS<'a> {
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
             populated: Cell::new(true),
-            macros: RefCell::new(FnvHashMap()),
-            macros_escape: false,
         }
     }
 
@@ -1087,6 +1083,7 @@ pub struct Resolver<'a> {
     pub derive_modes: FnvHashMap<Name, Rc<MultiItemModifier>>,
     crate_loader: &'a mut CrateLoader,
     macro_names: FnvHashSet<Name>,
+    builtin_macros: FnvHashMap<Name, Rc<SyntaxExtension>>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
     invocations: FnvHashMap<Mark, &'a InvocationData<'a>>,
@@ -1099,6 +1096,7 @@ pub struct ResolverArenas<'a> {
     import_directives: arena::TypedArena<ImportDirective<'a>>,
     name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
     invocation_data: arena::TypedArena<InvocationData<'a>>,
+    legacy_bindings: arena::TypedArena<LegacyBinding<'a>>,
 }
 
 impl<'a> ResolverArenas<'a> {
@@ -1125,6 +1123,9 @@ impl<'a> ResolverArenas<'a> {
     fn alloc_invocation_data(&'a self, expansion_data: InvocationData<'a>)
                              -> &'a InvocationData<'a> {
         self.invocation_data.alloc(expansion_data)
+    }
+    fn alloc_legacy_binding(&'a self, binding: LegacyBinding<'a>) -> &'a LegacyBinding<'a> {
+        self.legacy_bindings.alloc(binding)
     }
 }
 
@@ -1273,6 +1274,7 @@ impl<'a> Resolver<'a> {
             derive_modes: FnvHashMap(),
             crate_loader: crate_loader,
             macro_names: FnvHashSet(),
+            builtin_macros: FnvHashMap(),
             invocations: invocations,
         }
     }
@@ -1285,6 +1287,7 @@ impl<'a> Resolver<'a> {
             import_directives: arena::TypedArena::new(),
             name_resolutions: arena::TypedArena::new(),
             invocation_data: arena::TypedArena::new(),
+            legacy_bindings: arena::TypedArena::new(),
         }
     }
 
