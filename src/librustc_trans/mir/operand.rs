@@ -143,20 +143,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     {
         debug!("trans_load: {:?} @ {:?}", Value(llval), ty);
 
-        let val = if common::type_is_imm_pair(bcx.ccx(), ty) {
+        let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
+            let (lldata, llextra) = base::load_fat_ptr_builder(bcx, llval, ty);
+            OperandValue::Pair(lldata, llextra)
+        } else if common::type_is_imm_pair(bcx.ccx(), ty) {
+            let [a_ty, b_ty] = common::type_pair_fields(bcx.ccx(), ty).unwrap();
             let a_ptr = bcx.struct_gep(llval, 0);
             let b_ptr = bcx.struct_gep(llval, 1);
 
-            // This is None only for fat pointers, which don't
-            // need any special load-time behavior anyway.
-            let pair_fields = common::type_pair_fields(bcx.ccx(), ty);
-            let (a, b) = if let Some([a_ty, b_ty]) = pair_fields {
-                (base::load_ty_builder(bcx, a_ptr, a_ty),
-                 base::load_ty_builder(bcx, b_ptr, b_ty))
-            } else {
-                (bcx.load(a_ptr), bcx.load(b_ptr))
-            };
-            OperandValue::Pair(a, b)
+            OperandValue::Pair(
+                base::load_ty_builder(bcx, a_ptr, a_ty),
+                base::load_ty_builder(bcx, b_ptr, b_ty)
+            )
         } else if common::type_is_immediate(bcx.ccx(), ty) {
             OperandValue::Immediate(base::load_ty_builder(bcx, llval, ty))
         } else {
