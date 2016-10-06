@@ -84,17 +84,27 @@ impl LateLintPass for Pass {
                         // Check print! with format string ending in "\n".
                         if_let_chain!{[
                             name == "print",
+
                             // ensure we're calling Arguments::new_v1
                             args.len() == 1,
                             let ExprCall(ref args_fun, ref args_args) = args[0].node,
                             let ExprPath(_, ref args_path) = args_fun.node,
                             match_path(args_path, &paths::FMT_ARGUMENTS_NEWV1),
                             args_args.len() == 2,
+                            let ExprAddrOf(_, ref match_expr) = args_args[1].node,
+                            let ExprMatch(ref args, _, _) = match_expr.node,
+                            let ExprTup(ref args) = args.node,
+
                             // collect the format string parts and check the last one
                             let Some(fmtstrs) = get_argument_fmtstr_parts(cx, &args_args[0]),
                             let Some(last_str) = fmtstrs.last(),
-                            let Some(last_chr) = last_str.chars().last(),
-                            last_chr == '\n'
+                            let Some('\n') = last_str.chars().last(),
+
+                            // "foo{}bar" is made into two strings + one argument,
+                            // if the format string starts with `{}` (eg. "{}foo"),
+                            // the string array is prepended an empty string "".
+                            // We only want to check the last string after any `{}`:
+                            args.len() < fmtstrs.len(),
                         ], {
                             span_lint(cx, PRINT_WITH_NEWLINE, span,
                                       "using `print!()` with a format string that ends in a \
