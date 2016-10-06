@@ -366,10 +366,7 @@ fn saw_ty(node: &Ty_) -> SawTyComponent {
       TyArray(..) => SawTyArray,
       TyPtr(ref mty) => SawTyPtr(mty.mutbl),
       TyRptr(_, ref mty) => SawTyRptr(mty.mutbl),
-      TyBareFn(ref barefnty) => {
-          let ref fnty = *barefnty;
-          SawTyBareFn(fnty.unsafety, fnty.abi)
-      },
+      TyBareFn(ref barefnty) => SawTyBareFn(barefnty.unsafety, barefnty.abi),
       TyNever => SawTyNever,
       TyTup(..) => SawTyTup,
       TyPath(..) => SawTyPath,
