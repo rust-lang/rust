@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.95 — 2016-10-06
+* Rustup to *rustc 1.14.0-nightly (3210fd5c2 2016-10-05)*
+
 ## 0.0.94 — 2016-10-04
 * Fixes bustage on Windows due to forbidden directory name
 
