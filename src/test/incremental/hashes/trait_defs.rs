@@ -423,9 +423,9 @@ trait TraitAddBuiltinBoundToMethodTypeParameter {
 
 
 
-// Add lifetime bound to method type parameter ------------------------------------
+// Add lifetime bound to method lifetime parameter ------------------------------------
 #[cfg(cfail1)]
-trait TraitAddLifetimeBoundToMethodTypeParameter {
+trait TraitAddLifetimeBoundToMethodLifetimeParameter {
     fn method<'a, 'b>(a: &'a u32, b: &'b u32);
 }
 
@@ -434,7 +434,7 @@ trait TraitAddLifetimeBoundToMethodTypeParameter {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddLifetimeBoundToMethodTypeParameter {
+trait TraitAddLifetimeBoundToMethodLifetimeParameter {
     fn method<'a, 'b: 'a>(a: &'a u32, b: &'b u32);
 }
 
@@ -474,9 +474,9 @@ trait TraitAddSecondBuiltinBoundToMethodTypeParameter {
 
 
 
-// Add second lifetime bound to method type parameter -----------------------------
+// Add second lifetime bound to method lifetime parameter -----------------------------
 #[cfg(cfail1)]
-trait TraitAddSecondLifetimeBoundToMethodTypeParameter {
+trait TraitAddSecondLifetimeBoundToMethodLifetimeParameter {
     fn method<'a, 'b, 'c: 'a>(a: &'a u32, b: &'b u32, c: &'c u32);
 }
 
@@ -485,7 +485,7 @@ trait TraitAddSecondLifetimeBoundToMethodTypeParameter {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddSecondLifetimeBoundToMethodTypeParameter {
+trait TraitAddSecondLifetimeBoundToMethodLifetimeParameter {
     fn method<'a, 'b, 'c: 'a + 'b>(a: &'a u32, b: &'b u32, c: &'c u32);
 }
 
