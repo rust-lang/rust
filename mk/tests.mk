@@ -22,8 +22,9 @@ $(eval $(call RUST_CRATE,coretest))
 DEPS_collectionstest :=
 $(eval $(call RUST_CRATE,collectionstest))
 
+# compiler_builtins is tested out of tree
 TEST_TARGET_CRATES = $(filter-out core rustc_unicode alloc_system libc \
-		     		  alloc_jemalloc panic_unwind \
+		     		  alloc_jemalloc panic_unwind compiler_builtins \
 				  panic_abort,$(TARGET_CRATES)) \
 			collectionstest coretest
 TEST_DOC_CRATES = $(DOC_CRATES) arena flate fmt_macros getopts graphviz \

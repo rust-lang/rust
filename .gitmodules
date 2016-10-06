@@ -14,3 +14,6 @@
 [submodule "src/liblibc"]
 	path = src/liblibc
 	url = https://github.com/rust-lang/libc.git
+[submodule "src/libcompiler_builtins"]
+	path = src/libcompiler_builtins
+	url = git://github.com/rust-lang-nursery/compiler-builtins.git

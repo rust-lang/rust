@@ -229,3 +229,4 @@ $(foreach crate,$(TOOLS),$(eval $(call RUST_TOOL,$(crate))))
 
 CRATEFILE_libc := $(SREL)src/liblibc/src/lib.rs
 RUSTFLAGS_libc := --cfg stdbuild
+CRATEFILE_compiler_builtins := $(SREL)src/libcompiler_builtins/src/lib.rs
