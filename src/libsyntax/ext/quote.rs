@@ -584,7 +584,6 @@ fn mk_delim(cx: &ExtCtxt, sp: Span, delim: token::DelimToken) -> P<ast::Expr> {
         token::Paren   => "Paren",
         token::Bracket => "Bracket",
         token::Brace   => "Brace",
-        token::NoDelim => "NoDelim",
     };
     mk_token_path(cx, sp, name)
 }

@@ -342,7 +342,6 @@ mod int_build {
             token::DelimToken::Paren => lex("DelimToken::Paren"),
             token::DelimToken::Bracket => lex("DelimToken::Bracket"),
             token::DelimToken::Brace => lex("DelimToken::Brace"),
-            token::DelimToken::NoDelim => lex("DelimToken::NoDelim"),
         }
     }
 
@@ -380,7 +379,6 @@ mod int_build {
                     token::DelimToken::Paren => lex("Token::OpenDelim(DelimToken::Paren)"),
                     token::DelimToken::Bracket => lex("Token::OpenDelim(DelimToken::Bracket)"),
                     token::DelimToken::Brace => lex("Token::OpenDelim(DelimToken::Brace)"),
-                    token::DelimToken::NoDelim => lex("DelimToken::NoDelim"),
                 }
             }
             Token::CloseDelim(dt) => {
@@ -388,7 +386,6 @@ mod int_build {
                     token::DelimToken::Paren => lex("Token::CloseDelim(DelimToken::Paren)"),
                     token::DelimToken::Bracket => lex("Token::CloseDelim(DelimToken::Bracket)"),
                     token::DelimToken::Brace => lex("Token::CloseDelim(DelimToken::Brace)"),
-                    token::DelimToken::NoDelim => lex("DelimToken::NoDelim"),
                 }
             }
             Token::Underscore => lex("_"),

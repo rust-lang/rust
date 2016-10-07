@@ -48,8 +48,6 @@ pub enum DelimToken {
     Bracket,
     /// A curly brace: `{` or `}`
     Brace,
-    /// An empty delimiter
-    NoDelim,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
