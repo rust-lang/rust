@@ -507,10 +507,10 @@ impl<'b> Resolver<'b> {
     }
 
     fn insert_custom_derive(&mut self, name: &str, ext: Rc<MultiItemModifier>, sp: Span) {
-        if !self.session.features.borrow().rustc_macro {
+        if !self.session.features.borrow().proc_macro {
             let sess = &self.session.parse_sess;
             let msg = "loading custom derive macro crates is experimentally supported";
-            emit_feature_err(sess, "rustc_macro", sp, feature_gate::GateIssue::Language, msg);
+            emit_feature_err(sess, "proc_macro", sp, feature_gate::GateIssue::Language, msg);
         }
         if self.derive_modes.insert(token::intern(name), ext).is_some() {
             self.session.span_err(sp, &format!("cannot shadow existing derive mode `{}`", name));

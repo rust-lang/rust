@@ -292,7 +292,7 @@ declare_features! (
     (active, item_like_imports, "1.13.0", Some(35120)),
 
     // Macros 1.1
-    (active, rustc_macro, "1.13.0", Some(35900)),
+    (active, proc_macro, "1.13.0", Some(35900)),
 
     // Allows untagged unions `union U { ... }`
     (active, untagged_unions, "1.13.0", Some(32836)),
@@ -576,10 +576,10 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                    is an experimental feature",
                                   cfg_fn!(linked_from))),
 
-    ("rustc_macro_derive", Normal, Gated("rustc_macro",
-                                         "the `#[rustc_macro_derive]` attribute \
-                                          is an experimental feature",
-                                         cfg_fn!(rustc_macro))),
+    ("proc_macro_derive", Normal, Gated("proc_macro",
+                                        "the `#[proc_macro_derive]` attribute \
+                                         is an experimental feature",
+                                        cfg_fn!(proc_macro))),
 
     ("rustc_copy_clone_marker", Whitelisted, Gated("rustc_attrs",
                                                    "internal implementation detail",
@@ -658,7 +658,7 @@ const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)]
     ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
     ("target_thread_local", "cfg_target_thread_local", cfg_fn!(cfg_target_thread_local)),
     ("target_has_atomic", "cfg_target_has_atomic", cfg_fn!(cfg_target_has_atomic)),
-    ("rustc_macro", "rustc_macro", cfg_fn!(rustc_macro)),
+    ("proc_macro", "proc_macro", cfg_fn!(proc_macro)),
 ];
 
 #[derive(Debug, Eq, PartialEq)]

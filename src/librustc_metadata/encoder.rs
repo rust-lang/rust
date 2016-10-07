@@ -23,7 +23,7 @@ use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt};
 
 use rustc::mir::mir_map::MirMap;
-use rustc::session::config::{self, CrateTypeRustcMacro};
+use rustc::session::config::{self, CrateTypeProcMacro};
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
 
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
@@ -1283,7 +1283,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let tcx = self.tcx;
         let link_meta = self.link_meta;
-        let is_rustc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeRustcMacro);
+        let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
         let root = self.lazy(&CrateRoot {
             rustc_version: rustc_version(),
             name: link_meta.crate_name.clone(),
@@ -1294,7 +1294,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             plugin_registrar_fn: tcx.sess.plugin_registrar_fn.get().map(|id| {
                 tcx.map.local_def_id(id).index
             }),
-            macro_derive_registrar: if is_rustc_macro {
+            macro_derive_registrar: if is_proc_macro {
                 let id = tcx.sess.derive_registrar_fn.get().unwrap();
                 Some(tcx.map.local_def_id(id).index)
             } else {

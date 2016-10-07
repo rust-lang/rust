@@ -10,15 +10,15 @@
 
 // no-prefer-dynamic
 
-#![feature(rustc_macro)]
-#![feature(rustc_macro_lib)]
-#![crate_type = "rustc-macro"]
+#![feature(proc_macro)]
+#![feature(proc_macro_lib)]
+#![crate_type = "proc-macro"]
 
-extern crate rustc_macro;
+extern crate proc_macro;
 
-use rustc_macro::TokenStream;
+use proc_macro::TokenStream;
 
-#[rustc_macro_derive(Foo)]
+#[proc_macro_derive(Foo)]
 pub fn foo(input: TokenStream) -> TokenStream {
     input
 }

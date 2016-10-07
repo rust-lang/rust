@@ -17,15 +17,15 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(not(stage0), deny(warnings))]
 
+#![feature(box_patterns)]
 #![feature(conservative_impl_trait)]
 #![feature(core_intrinsics)]
-#![feature(box_patterns)]
 #![feature(dotdot_in_tuple_patterns)]
+#![feature(proc_macro_internals)]
+#![feature(proc_macro_lib)]
 #![feature(question_mark)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(rustc_macro_lib)]
-#![feature(rustc_macro_internals)]
 #![feature(rustc_private)]
 #![feature(specialization)]
 #![feature(staged_api)]
@@ -37,14 +37,14 @@ extern crate flate;
 extern crate serialize as rustc_serialize; // used by deriving
 extern crate rustc_errors as errors;
 extern crate syntax_ext;
+extern crate proc_macro;
 
 #[macro_use]
 extern crate rustc;
-extern crate rustc_data_structures;
 extern crate rustc_back;
-extern crate rustc_llvm;
-extern crate rustc_macro;
 extern crate rustc_const_math;
+extern crate rustc_data_structures;
+extern crate rustc_llvm;
 
 mod diagnostics;
 
