@@ -13,18 +13,43 @@
 //! This file implements the various regression test suites that we execute on
 //! our CI.
 
+use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::{self, File};
-use std::io::prelude::*;
+use std::fs;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 
 use build_helper::output;
+use rustc_serialize::json;
 
 use {Build, Compiler, Mode};
 use util::{self, dylib_path, dylib_path_var};
 
 const ADB_TEST_DIR: &'static str = "/data/tmp";
+
+#[derive(RustcDecodable)]
+struct Output {
+    packages: Vec<Package>,
+    resolve: Resolve,
+}
+
+#[derive(RustcDecodable)]
+struct Package {
+    id: String,
+    name: String,
+    source: Option<String>,
+}
+
+#[derive(RustcDecodable)]
+struct Resolve {
+    nodes: Vec<ResolveNode>,
+}
+
+#[derive(RustcDecodable)]
+struct ResolveNode {
+    id: String,
+    dependencies: Vec<String>,
+}
 
 /// Runs the `linkchecker` tool as compiled in `stage` by the `host` compiler.
 ///
@@ -263,90 +288,74 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
 /// It essentially is the driver for running `cargo test`.
 ///
 /// Currently this runs all tests for a DAG by passing a bunch of `-p foo`
-/// arguments, and those arguments are discovered from `Cargo.lock`.
+/// arguments, and those arguments are discovered from `cargo metadata`.
 pub fn krate(build: &Build,
              compiler: &Compiler,
              target: &str,
              mode: Mode) {
-    let (name, path, features, excluded) = match mode {
+    let (name, path, features, root) = match mode {
         Mode::Libstd => {
-            let excluded = vec![
-               "alloc_jemalloc", "arena", "bootstrap", "cargotest", "compiletest",
-               "error_index_generator", "flate", "fmt_macros", "getopts", "graphviz",
-               "linkchecker", "log", "proc_macro", "rbml", "rustbook", "rustc", "rustc-main",
-               "rustc_back", "rustc_bitflags", "rustc_borrowck", "rustc_const_eval",
-               "rustc_const_math", "rustc_data_structures", "rustc_driver", "rustc_errors",
-               "rustc_incremental", "rustc_lint", "rustc_llvm", "rustc_metadata", "rustc_mir",
-               "rustc_passes", "rustc_platform_intrinsics", "rustc_plugin", "rustc_privacy",
-               "rustc_resolve", "rustc_save_analysis", "rustc_trans", "rustc_typeck", "rustdoc",
-               "serialize", "syntax", "syntax_ext", "syntax_pos", "term", "test", "test_shim",
-               "tidy", "unwind",
-            ];
-            ("libstd", "src/rustc/std_shim", build.std_features(), excluded)
+            ("libstd", "src/rustc/std_shim", build.std_features(), "std_shim")
         }
         Mode::Libtest => {
-            let excluded = vec![
-                "alloc", "alloc_jemalloc", "alloc_system", "arena", "bootstrap", "build_helper",
-                "cargotest", "collections", "compiletest", "core", "error_index_generator",
-                "flate", "fmt_macros", "graphviz", "libc", "linkchecker", "log", "panic_abort",
-                "panic_unwind", "proc_macro", "rand", "rbml", "rustbook", "rustc", "rustc-main",
-                "rustc_back", "rustc_bitflags", "rustc_borrowck", "rustc_const_eval",
-                "rustc_const_math", "rustc_data_structures", "rustc_driver", "rustc_errors",
-                "rustc_incremental", "rustc_lint", "rustc_llvm", "rustc_metadata", "rustc_mir",
-                "rustc_passes", "rustc_platform_intrinsics", "rustc_plugin", "rustc_privacy",
-                "rustc_resolve", "rustc_save_analysis", "rustc_trans", "rustc_typeck",
-                "rustc_unicode", "rustdoc", "serialize", "std", "std_shim", "syntax", "syntax_ext",
-                "syntax_pos", "tidy", "unwind",
-            ];
-            ("libtest", "src/rustc/test_shim", String::new(), excluded)
+            ("libtest", "src/rustc/test_shim", String::new(), "test_shim")
         }
         Mode::Librustc => {
-            let excluded = vec![
-                "alloc", "alloc_jemalloc", "alloc_system", "bootstrap", "cargotest", "collections",
-                "compiletest", "core", "error_index_generator", "getopts", "libc", "linkchecker",
-                "panic_abort", "panic_unwind", "rand", "rustbook", "rustc_unicode", "std",
-                "std_shim", "term", "test", "test_shim", "tidy", "unwind",
-            ];
-            ("librustc", "src/rustc", build.rustc_features(), excluded)
+            ("librustc", "src/rustc", build.rustc_features(), "rustc-main")
         }
         _ => panic!("can only test libraries"),
     };
     println!("Testing {} stage{} ({} -> {})", name, compiler.stage,
              compiler.host, target);
 
+    // Run `cargo metadata` to figure out what crates we're testing.
+    //
+    // Down below we're going to call `cargo test`, but to test the right set
+    // of packages we're going to have to know what `-p` arguments to pass it
+    // to know what crates to test. Here we run `cargo metadata` to learn about
+    // the dependency graph and what `-p` arguments there are.
+    let mut cargo = Command::new(&build.cargo);
+    cargo.arg("metadata")
+         .arg("--manifest-path").arg(build.src.join(path).join("Cargo.toml"));
+    let output = output(&mut cargo);
+    let output: Output = json::decode(&output).unwrap();
+    let id2pkg = output.packages.iter()
+                        .map(|pkg| (&pkg.id, pkg))
+                        .collect::<HashMap<_, _>>();
+    let id2deps = output.resolve.nodes.iter()
+                        .map(|node| (&node.id, &node.dependencies))
+                        .collect::<HashMap<_, _>>();
+
     // Build up the base `cargo test` command.
+    //
+    // Pass in some standard flags then iterate over the graph we've discovered
+    // in `cargo metadata` with the maps above and figure out what `-p`
+    // arguments need to get passed.
     let mut cargo = build.cargo(compiler, mode, target, "test");
     cargo.arg("--manifest-path")
          .arg(build.src.join(path).join("Cargo.toml"))
          .arg("--features").arg(features);
 
-    // Generate a list of `-p` arguments to pass to the `cargo test` invocation
-    // by crawling the corresponding Cargo.lock file.
-    let lockfile = build.src.join("src").join("Cargo.lock");
-    let mut contents = String::new();
-    t!(t!(File::open(&lockfile)).read_to_string(&mut contents));
-    let mut lines = contents.lines();
-    while let Some(line) = lines.next() {
-        let prefix = "name = \"";
-        if !line.starts_with(prefix) {
+    let mut visited = HashSet::new();
+    let root_pkg = output.packages.iter().find(|p| p.name == root).unwrap();
+    let mut next = vec![&root_pkg.id];
+    while let Some(id) = next.pop() {
+        // Skip any packages with sources listed, as these come from crates.io
+        // and we shouldn't be testing them.
+        if id2pkg[id].source.is_some() {
             continue
         }
-        lines.next(); // skip `version = ...`
-
-        // skip crates.io or otherwise non-path crates
-        if let Some(line) = lines.next() {
-            if line.starts_with("source") {
-                continue
+        // Right now jemalloc is our only target-specific crate in the sense
+        // that it's not present on all platforms. Custom skip it here for now,
+        // but if we add more this probably wants to get more generalized.
+        if !id.contains("jemalloc") {
+            cargo.arg("-p").arg(&id2pkg[id].name);
+        }
+        for dep in id2deps[id] {
+            if visited.insert(dep) {
+                next.push(dep);
             }
         }
-
-        let crate_name = &line[prefix.len()..line.len() - 1];
-
-        if excluded.contains(&crate_name) {
-            continue
-        }
-
-        cargo.arg("-p").arg(crate_name);
     }
 
     // The tests are going to run with the *target* libraries, so we need to

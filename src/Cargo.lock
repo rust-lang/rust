@@ -88,6 +88,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "compiler_builtins"
+version = "0.0.0"
+dependencies = [
+ "core 0.0.0",
+ "gcc 0.3.35 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "compiletest"
 version = "0.0.0"
 dependencies = [
@@ -251,6 +259,13 @@ dependencies = [
 name = "proc_macro"
 version = "0.0.0"
 dependencies = [
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "proc_macro_plugin"
+version = "0.0.0"
+dependencies = [
  "log 0.0.0",
  "rustc_plugin 0.0.0",
  "syntax 0.0.0",
@@ -262,14 +277,6 @@ name = "rand"
 version = "0.0.0"
 dependencies = [
  "core 0.0.0",
-]
-
-[[package]]
-name = "rbml"
-version = "0.0.0"
-dependencies = [
- "log 0.0.0",
- "serialize 0.0.0",
 ]
 
 [[package]]
@@ -302,7 +309,6 @@ dependencies = [
  "fmt_macros 0.0.0",
  "graphviz 0.0.0",
  "log 0.0.0",
- "rbml 0.0.0",
  "rustc_back 0.0.0",
  "rustc_bitflags 0.0.0",
  "rustc_const_math 0.0.0",
@@ -395,7 +401,7 @@ dependencies = [
  "flate 0.0.0",
  "graphviz 0.0.0",
  "log 0.0.0",
- "proc_macro 0.0.0",
+ "proc_macro_plugin 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_borrowck 0.0.0",
@@ -434,7 +440,6 @@ version = "0.0.0"
 dependencies = [
  "graphviz 0.0.0",
  "log 0.0.0",
- "rbml 0.0.0",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "serialize 0.0.0",
@@ -469,16 +474,16 @@ version = "0.0.0"
 dependencies = [
  "flate 0.0.0",
  "log 0.0.0",
- "rbml 0.0.0",
+ "proc_macro 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
- "rustc_bitflags 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_llvm 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
+ "syntax_ext 0.0.0",
  "syntax_pos 0.0.0",
 ]
 
@@ -647,6 +652,7 @@ dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "collections 0.0.0",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
  "gcc 0.3.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.0.0",
@@ -661,6 +667,7 @@ dependencies = [
 name = "std_shim"
 version = "0.1.0"
 dependencies = [
+ "core 0.0.0",
  "std 0.0.0",
 ]
 
@@ -681,6 +688,7 @@ version = "0.0.0"
 dependencies = [
  "fmt_macros 0.0.0",
  "log 0.0.0",
+ "proc_macro 0.0.0",
  "rustc_errors 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
