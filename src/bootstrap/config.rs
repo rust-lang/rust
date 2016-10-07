@@ -120,6 +120,7 @@ struct Build {
     rustc: Option<String>,
     compiler_docs: Option<bool>,
     docs: Option<bool>,
+    submodules: Option<bool>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -225,6 +226,7 @@ impl Config {
         config.cargo = build.cargo.map(PathBuf::from);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
+        set(&mut config.submodules, build.submodules);
 
         if let Some(ref llvm) = toml.llvm {
             set(&mut config.ccache, llvm.ccache);
