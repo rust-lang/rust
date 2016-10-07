@@ -52,7 +52,11 @@ check-cargotest:
 dist:
 	$(Q)$(BOOTSTRAP) --step dist
 install:
+ifeq (root user, $(USER) $(patsubst %,user,$(SUDO_USER)))
+	$(Q)echo "'sudo make install' is not supported currently."
+else
 	$(Q)$(BOOTSTRAP) --step install
+endif
 tidy:
 	$(Q)$(BOOTSTRAP) --step check-tidy --stage 0
 
