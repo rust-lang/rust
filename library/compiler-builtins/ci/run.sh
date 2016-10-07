@@ -31,10 +31,12 @@ esac
 # Verify that there are no undefined symbols to `panic` within our implementations
 case $1 in
     thumb*)
-        xargo build --features c --target $1 --bin intrinsics --release
+        xargo rustc --features c --target $1 --bin intrinsics -- -C lto
+        xargo rustc --features c --target $1 --bin intrinsics --release -- -C lto
         ;;
     *)
-        cargo build --features c --target $1 --bin intrinsics --release
+        cargo rustc --features c --target $1 --bin intrinsics -- -C lto
+        cargo rustc --features c --target $1 --bin intrinsics --release -- -C lto
         ;;
 esac
 

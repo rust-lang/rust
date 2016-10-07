@@ -13,12 +13,7 @@ macro_rules! div {
             let b = (b ^ s_b) - s_b;
             let s = s_a ^ s_b;
 
-            if b == 0 {
-                unsafe {
-                    intrinsics::abort()
-                }
-            }
-            let r = (a as $uty) / (b as $uty);
+            let r = udiv!((a as $uty), (b as $uty));
             (r as $ty ^ s) - s
         }
     }
@@ -34,12 +29,7 @@ macro_rules! mod_ {
             let s = a >> (<$ty>::bits() - 1);
             let a = (a ^ s) - s;
 
-            if b == 0 {
-                unsafe {
-                    intrinsics::abort()
-                }
-            }
-            let r = (a as $uty) % (b as $uty);
+            let r = urem!((a as $uty), (b as $uty));
             (r as $ty ^ s) - s
         }
     }

@@ -1,6 +1,7 @@
+use core::intrinsics;
 
 macro_rules! pow {
-    ($intrinsic:ident: $fty:ty, $ity:ty) => {
+    ($intrinsic:ident: $fty:ty, $ity:ident) => {
         /// Returns `a` raised to the power `b`
         #[cfg_attr(not(test), no_mangle)]
         pub extern "C" fn $intrinsic(a: $fty, b: $ity) -> $fty {
@@ -11,7 +12,7 @@ macro_rules! pow {
                 if (b & 1) != 0 {
                     r *= a;
                 }
-                b /= 2;
+                b = sdiv!($ity, b, 2);
                 if b == 0 {
                     break;
                 }
