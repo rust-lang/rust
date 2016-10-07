@@ -561,15 +561,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     /// Returns the appropriate lifetime to use for any output lifetimes
     /// (if one exists) and a vector of the (pattern, number of lifetimes)
     /// corresponding to each input type/pattern.
-    fn find_implied_output_region(&self,
-                                  input_tys: &[Ty<'tcx>],
-                                  input_pats: Vec<String>) -> ElidedLifetime
+    fn find_implied_output_region<F>(&self,
+                                     input_tys: &[Ty<'tcx>],
+                                     input_pats: F) -> ElidedLifetime
+        where F: FnOnce() -> Vec<String>
     {
         let tcx = self.tcx();
         let mut lifetimes_for_params = Vec::new();
         let mut possible_implied_output_region = None;
 
-        for (input_type, input_pat) in input_tys.iter().zip(input_pats) {
+        for input_type in input_tys.iter() {
             let mut regions = FnvHashSet();
             let have_bound_regions = tcx.collect_regions(input_type, &mut regions);
 
@@ -583,8 +584,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 possible_implied_output_region = regions.iter().cloned().next();
             }
 
+            // Use a placeholder for `name` because computing it can be
+            // expensive and we don't want to do it until we know it's
+            // necessary.
             lifetimes_for_params.push(ElisionFailureInfo {
-                name: input_pat,
+                name: String::new(),
                 lifetime_count: regions.len(),
                 have_bound_regions: have_bound_regions
             });
@@ -593,6 +597,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         if lifetimes_for_params.iter().map(|e| e.lifetime_count).sum::<usize>() == 1 {
             Ok(*possible_implied_output_region.unwrap())
         } else {
+            // Fill in the expensive `name` fields now that we know they're
+            // needed.
+            for (info, input_pat) in lifetimes_for_params.iter_mut().zip(input_pats()) {
+                info.name = input_pat;
+            }
             Err(Some(lifetimes_for_params))
         }
     }
@@ -629,7 +638,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let inputs: Vec<_> = data.inputs.iter().map(|a_t| {
             self.ast_ty_arg_to_ty(&binding_rscope, None, region_substs, a_t)
         }).collect();
-        let input_params = vec![String::new(); inputs.len()];
+        let inputs_len = inputs.len();
+        let input_params = || vec![String::new(); inputs_len];
         let implied_output_region = self.find_implied_output_region(&inputs, input_params);
 
         let (output, output_span) = match data.output {
@@ -1861,15 +1871,22 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
         let arg_tys: Vec<Ty> =
             arg_params.iter().map(|a| self.ty_of_arg(&rb, a, None)).collect();
-        let arg_pats: Vec<String> =
-            arg_params.iter().map(|a| pprust::pat_to_string(&a.pat)).collect();
 
         // Second, if there was exactly one lifetime (either a substitution or a
         // reference) in the arguments, then any anonymous regions in the output
         // have that lifetime.
         let implied_output_region = match explicit_self_category {
             ty::ExplicitSelfCategory::ByReference(region, _) => Ok(*region),
-            _ => self.find_implied_output_region(&arg_tys, arg_pats)
+            _ => {
+                // `pat_to_string` is expensive and
+                // `find_implied_output_region` only needs its result when
+                // there's an error. So we wrap it in a closure to avoid
+                // calling it until necessary.
+                let arg_pats = || {
+                    arg_params.iter().map(|a| pprust::pat_to_string(&a.pat)).collect()
+                };
+                self.find_implied_output_region(&arg_tys, arg_pats)
+            }
         };
 
         let output_ty = match decl.output {
