@@ -3,8 +3,6 @@ set -e
 # Test our implementation
 case $1 in
     thumb*)
-        export RUST_TARGET_PATH=/checkout/targets
-
         xargo build --target $1
         xargo build --target $1 --release
         ;;
