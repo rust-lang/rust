@@ -3110,10 +3110,12 @@ the lambda expression captures its environment by reference, effectively
 borrowing pointers to all outer variables mentioned inside the function.
 Alternately, the compiler may infer that a lambda expression should copy or
 move values (depending on their type) from the environment into the lambda
-expression's captured environment.
+expression's captured environment. A lambda can be forced to capture its
+environment by moving values by prefixing it with the `move` keyword.
 
 In this example, we define a function `ten_times` that takes a higher-order
-function argument, and we then call it with a lambda expression as an argument:
+function argument, and we then call it with a lambda expression as an argument,
+followed by a lambda expression that moves values from its environment.
 
 ```
 fn ten_times<F>(f: F) where F: Fn(i32) {
@@ -3123,6 +3125,9 @@ fn ten_times<F>(f: F) where F: Fn(i32) {
 }
 
 ten_times(|j| println!("hello, {}", j));
+
+let word = "konnichiwa".to_owned();
+ten_times(move |j| println!("{}, {}", word, j));
 ```
 
 ### Infinite loops
@@ -3961,12 +3966,12 @@ implementation in the returned type `U`.
 
 ## The `Send` trait
 
-The `Send` trait indicates that a value of this type is safe to send from one 
+The `Send` trait indicates that a value of this type is safe to send from one
 thread to another.
 
-## The 'Sync' trait
+## The `Sync` trait
 
-The 'Sync' trait indicates that a value of this type is safe to share between
+The `Sync` trait indicates that a value of this type is safe to share between
 multiple threads.
 
 # Memory model

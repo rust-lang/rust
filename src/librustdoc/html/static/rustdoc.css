@@ -585,6 +585,7 @@ a.test-arrow {
 }
 a.test-arrow:hover{
     background-color: #4e8bca;
+    text-decoration: none;
 }
 
 .section-header:hover a:after {
