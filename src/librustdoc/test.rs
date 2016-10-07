@@ -443,7 +443,7 @@ impl Collector {
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
             },
-            testfn: testing::DynTestFn(box move|| {
+            testfn: testing::DynTestFn(box move |()| {
                 runtest(&test,
                         &cratename,
                         cfgs,
