@@ -12,12 +12,12 @@
 
 //! Single-threaded reference-counting pointers.
 //!
-//! The type [`Rc<T>`][rc] provides shared ownership of a value, allocated
-//! in the heap. Invoking [`clone`][clone] on `Rc` produces a new pointer
-//! to the same value in the heap. When the last `Rc` pointer to a given
-//! value is destroyed, the pointed-to value is also destroyed.
+//! The type [`Rc<T>`][rc] provides shared ownership of a value of type `T`,
+//! allocated in the heap. Invoking [`clone`][clone] on `Rc` produces a new
+//! pointer to the same value in the heap. When the last `Rc` pointer to a
+//! given value is destroyed, the pointed-to value is also destroyed.
 //!
-//! Shared pointers in Rust disallow mutation by default, and `Rc` is no
+//! Shared references in Rust disallow mutation by default, and `Rc` is no
 //! exception. If you need to mutate through an `Rc`, use [`Cell`][cell] or
 //! [`RefCell`][refcell].
 //!
@@ -44,8 +44,9 @@
 //! functions][assoc], called using function-like syntax:
 //!
 //! ```
-//! # use std::rc::Rc;
-//! # let my_rc = Rc::new(());
+//! use std::rc::Rc;
+//! let my_rc = Rc::new(());
+//!
 //! Rc::downgrade(&my_rc);
 //! ```
 //!
@@ -294,9 +295,12 @@ impl<T> Rc<T> {
 
     /// Returns the contained value, if the `Rc` has exactly one strong reference.
     ///
-    /// Otherwise, an `Err` is returned with the same `Rc` that was passed in.
+    /// Otherwise, an [`Err`][result] is returned with the same `Rc` that was
+    /// passed in.
     ///
     /// This will succeed even if there are outstanding weak references.
+    ///
+    /// [result]: ../../std/result/enum.Result.html
     ///
     /// # Examples
     ///
@@ -331,7 +335,11 @@ impl<T> Rc<T> {
         }
     }
 
-    /// Checks whether `Rc::try_unwrap` would return `Ok`.
+    /// Checks whether [`Rc::try_unwrap`][try_unwrap] would return
+    /// [`Ok`][result].
+    ///
+    /// [try_unwrap]: struct.Rc.html#method.try_unwrap
+    /// [result]: ../../std/result/enum.Result.html
     ///
     /// # Examples
     ///
@@ -582,8 +590,10 @@ impl<T: ?Sized> Drop for Rc<T> {
     /// Drops the `Rc`.
     ///
     /// This will decrement the strong reference count. If the strong reference
-    /// count reaches zero then the only other references (if any) are `Weak`,
-    /// so we `drop` the inner value.
+    /// count reaches zero then the only other references (if any) are
+    /// [`Weak`][weak], so we `drop` the inner value.
+    ///
+    /// [weak]: struct.Weak.html
     ///
     /// # Examples
     ///
