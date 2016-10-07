@@ -55,7 +55,13 @@ case $TRAVIS_OS_NAME in
 esac
 
 # NOTE On i586, It's normal that the get_pc_thunk symbol appears several times so ignore it
-stdout=$($PREFIX$NM -g --defined-only /target/${1}/debug/librustc_builtins.rlib)
+if [ $TRAVIS_OS_NAME = osx ]; then
+    path=target/${1}/debug/librustc_builtins.rlib
+else
+    path=/target/${1}/debug/librustc_builtins.rlib
+fi
+
+stdout=$($PREFIX$NM -g --defined-only $path)
 
 set +e
 echo "$stdout" | sort | uniq -d | grep -v __x86.get_pc_thunk | grep 'T __'
