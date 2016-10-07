@@ -197,7 +197,8 @@ impl<'a> Resolver<'a> {
         // If the resolution doesn't depend on glob definability, check privacy and return.
         if let Some(result) = self.try_result(&resolution, ns) {
             return result.and_then(|binding| {
-                if self.is_accessible(binding.vis) && !is_disallowed_private_import(binding) {
+                if self.is_accessible(binding.vis) && !is_disallowed_private_import(binding) ||
+                   binding.is_extern_crate() { // c.f. issue #37020
                     Success(binding)
                 } else {
                     Failed(None)
