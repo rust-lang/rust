@@ -18,9 +18,10 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
+use std::fs::{self, File};
+use std::io::{Read, Write};
 use std::path::Path;
 use std::process::Command;
-use std::fs::{self, File};
 
 use build_helper::output;
 use cmake;
@@ -43,11 +44,17 @@ pub fn llvm(build: &Build, target: &str) {
     // artifacts are missing) then we keep going, otherwise we bail out.
     let dst = build.llvm_out(target);
     let stamp = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
+    let mut stamp_contents = String::new();
+    t!(t!(File::open(&stamp)).read_to_string(&mut stamp_contents));
     let done_stamp = dst.join("llvm-finished-building");
-    build.clear_if_dirty(&dst, &stamp);
-    if fs::metadata(&done_stamp).is_ok() {
-        return
+    if done_stamp.exists() {
+        let mut done_contents = String::new();
+        t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
+        if done_contents == stamp_contents {
+            return
+        }
     }
+    drop(fs::remove_dir_all(&dst));
 
     println!("Building LLVM for {}", target);
 
@@ -73,7 +80,9 @@ pub fn llvm(build: &Build, target: &str) {
        .define("WITH_POLLY", "OFF")
        .define("LLVM_ENABLE_TERMINFO", "OFF")
        .define("LLVM_ENABLE_LIBEDIT", "OFF")
-       .define("LLVM_PARALLEL_COMPILE_JOBS", build.jobs().to_string());
+       .define("LLVM_PARALLEL_COMPILE_JOBS", build.jobs().to_string())
+       .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
+       .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
     if target.starts_with("i686") {
         cfg.define("LLVM_BUILD_32_BITS", "ON");
@@ -86,9 +95,7 @@ pub fn llvm(build: &Build, target: &str) {
         //        actually exists most of the time in normal installs of LLVM.
         let host = build.llvm_out(&build.config.build).join("bin/llvm-tblgen");
         cfg.define("CMAKE_CROSSCOMPILING", "True")
-           .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
-           .define("LLVM_TABLEGEN", &host)
-           .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
+           .define("LLVM_TABLEGEN", &host);
     }
 
     // MSVC handles compiler business itself
@@ -114,7 +121,7 @@ pub fn llvm(build: &Build, target: &str) {
     //        tools and libs on all platforms.
     cfg.build();
 
-    t!(File::create(&done_stamp));
+    t!(t!(File::create(&done_stamp)).write_all(stamp_contents.as_bytes()));
 }
 
 fn check_llvm_version(build: &Build, llvm_config: &Path) {

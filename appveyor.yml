@@ -1,0 +1,89 @@
+environment:
+  matrix:
+  # 32/64 bit MSVC
+  - MSYS_BITS: 64
+    TARGET: x86_64-pc-windows-msvc
+    CHECK: check
+  - MSYS_BITS: 32
+    TARGET: i686-pc-windows-msvc
+    CHECK: check
+
+  # 64-bit MinGW
+  - MSYS_BITS: 64
+    TARGET: x86_64-pc-windows-gnu
+    CHECK: check
+
+  # MSVC rustbuild
+  - MSYS_BITS: 64
+    CONFIGURE_ARGS: --enable-rustbuild
+    TARGET: x86_64-pc-windows-msvc
+    CHECK: check
+
+  # MSVC cargotest
+  - MSYS_BITS: 64
+    CONFIGURE_ARGS: --enable-rustbuild
+    TARGET: x86_64-pc-windows-msvc
+    CHECK: check-cargotest
+
+  # 32-bit MinGW builds.
+  #
+  # Note that the installed gcc toolchain on AppVeyor uses the pthread threading
+  # model. This is unfortunately not what we want, so we download and install
+  # our own compiler. The `MINGW_URL` below is where to download from and
+  # `MINGW_ARCHIVE` is the file we're downloading.
+  - MSYS_BITS: 32
+    TARGET: i686-pc-windows-gnu
+    CHECK: check
+    MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/4.9.2/threads-win32/dwarf/i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z/download
+    MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+    MINGW_DIR: mingw32
+
+  - MSYS_BITS: 32
+    CONFIGURE_ARGS: --enable-rustbuild
+    TARGET: i686-pc-windows-gnu
+    CHECK: check
+    MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/4.9.2/threads-win32/dwarf/i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z/download
+    MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+    MINGW_DIR: mingw32
+
+clone_depth: 1
+build: false
+
+install:
+  # If we need to download a custom MinGW, do so here and set the path
+  # appropriately.
+  #
+  # Note that this *also* means that we're not using what is typically
+  # /mingw32/bin/python2.7.exe, which is a "correct" python interpreter where
+  # /usr/bin/python2.7.exe is not. To ensure we use the right interpreter we
+  # move `C:\Python27` ahead in PATH and then also make sure the `python2.7.exe`
+  # file exists in there (which it doesn't by default).
+  - if defined MINGW_URL appveyor DownloadFile "%MINGW_URL%" -FileName "%MINGW_ARCHIVE%"
+  - if defined MINGW_URL 7z x -y "%MINGW_ARCHIVE%" > nul
+  - if defined MINGW_URL set PATH=C:\Python27;%CD%\%MINGW_DIR%\bin;C:\msys64\usr\bin;%PATH%
+  - if defined MINGW_URL copy C:\Python27\python.exe C:\Python27\python2.7.exe
+
+  # Otherwise pull in the MinGW installed on appveyor
+  - if NOT defined MINGW_URL set PATH=C:\msys64\mingw%MSYS_BITS%\bin;C:\msys64\usr\bin;%PATH%
+
+test_script:
+  - sh ./configure
+          %CONFIGURE_ARGS%
+          --build=%TARGET%
+          --enable-llvm-assertions
+          --enable-debug-assertions
+  - bash -c "make -j$(nproc)"
+  - bash -c "make %CHECK% -j$(nproc)"
+
+cache:
+  - build/%TARGET%/llvm -> src/rustllvm/llvm-auto-clean-trigger
+  - "%TARGET%/llvm -> src/rustllvm/llvm-auto-clean-trigger"
+
+branches:
+  only:
+    - auto
+
+# init:
+#   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+# on_finish:
+#   - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
