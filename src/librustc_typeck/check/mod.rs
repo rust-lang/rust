@@ -2432,6 +2432,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut expected_arg_tys = expected_arg_tys;
         let expected_arg_count = fn_inputs.len();
 
+        let sp_args = if args.len() > 0 {
+            let (first, args) = args.split_at(1);
+            let mut sp_tmp = first[0].span;
+            for arg in args {
+                let sp_opt = self.sess().codemap().merge_spans(sp_tmp, arg.span);
+                if ! sp_opt.is_some() {
+                    break;
+                }
+                sp_tmp = sp_opt.unwrap();
+            };
+            sp_tmp
+        } else {
+            sp
+        };
+
         fn parameter_count_error<'tcx>(sess: &Session, sp: Span, fn_inputs: &[Ty<'tcx>],
                                        expected_count: usize, arg_count: usize, error_code: &str,
                                        variadic: bool) {
@@ -2464,7 +2479,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
             match tuple_type.sty {
                 ty::TyTuple(arg_types) if arg_types.len() != args.len() => {
-                    parameter_count_error(tcx.sess, sp, fn_inputs, arg_types.len(), args.len(),
+                    parameter_count_error(tcx.sess, sp_args, fn_inputs, arg_types.len(), args.len(),
                                           "E0057", false);
                     expected_arg_tys = &[];
                     self.err_args(args.len())
@@ -2493,14 +2508,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if supplied_arg_count >= expected_arg_count {
                 fn_inputs.to_vec()
             } else {
-                parameter_count_error(tcx.sess, sp, fn_inputs, expected_arg_count,
+                parameter_count_error(tcx.sess, sp_args, fn_inputs, expected_arg_count,
                                       supplied_arg_count, "E0060", true);
                 expected_arg_tys = &[];
                 self.err_args(supplied_arg_count)
             }
         } else {
-            parameter_count_error(tcx.sess, sp, fn_inputs, expected_arg_count, supplied_arg_count,
-                                  "E0061", false);
+            parameter_count_error(tcx.sess, sp_args, fn_inputs, expected_arg_count,
+                                  supplied_arg_count, "E0061", false);
             expected_arg_tys = &[];
             self.err_args(supplied_arg_count)
         };
