@@ -1,4 +1,5 @@
 use core::mem;
+#[cfg(test)]
 use core::fmt;
 
 pub mod add;

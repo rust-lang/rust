@@ -308,9 +308,7 @@ fn run() {
     // We use volatile load/stores to prevent LLVM from optimizing away the intrinsics during LTO
     macro_rules! arg {
         () => {
-            unsafe {
-                ptr::read_volatile(0x0 as *const _)
-            }
+            ptr::read_volatile(0x0 as *const _)
         }
     }
 

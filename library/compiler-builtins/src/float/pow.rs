@@ -1,5 +1,3 @@
-use core::intrinsics;
-
 macro_rules! pow {
     ($intrinsic:ident: $fty:ty, $ity:ident) => {
         /// Returns `a` raised to the power `b`

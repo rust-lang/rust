@@ -1,5 +1,3 @@
-use core::intrinsics;
-
 use int::Int;
 
 macro_rules! div {
@@ -13,7 +11,7 @@ macro_rules! div {
             let b = (b ^ s_b) - s_b;
             let s = s_a ^ s_b;
 
-            let r = udiv!((a as $uty), (b as $uty));
+            let r = udiv!(a as $uty, b as $uty);
             (r as $ty ^ s) - s
         }
     }
@@ -29,7 +27,7 @@ macro_rules! mod_ {
             let s = a >> (<$ty>::bits() - 1);
             let a = (a ^ s) - s;
 
-            let r = urem!((a as $uty), (b as $uty));
+            let r = urem!(a as $uty, b as $uty);
             (r as $ty ^ s) - s
         }
     }

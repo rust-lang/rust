@@ -29,13 +29,14 @@ case $1 in
 esac
 
 # Verify that there are no undefined symbols to `panic` within our implementations
+# TODO(#79) fix the undefined references problem for debug-assertions+lto
 case $1 in
     thumb*)
-        xargo rustc --features c --target $1 --bin intrinsics -- -C lto
+        RUSTFLAGS="-C debug-assertions=no" xargo rustc --features c --target $1 --bin intrinsics -- -C lto
         xargo rustc --features c --target $1 --bin intrinsics --release -- -C lto
         ;;
     *)
-        cargo rustc --features c --target $1 --bin intrinsics -- -C lto
+        RUSTFLAGS="-C debug-assertions=no" cargo rustc --features c --target $1 --bin intrinsics -- -C lto
         cargo rustc --features c --target $1 --bin intrinsics --release -- -C lto
         ;;
 esac

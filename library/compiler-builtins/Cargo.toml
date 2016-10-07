@@ -25,7 +25,4 @@ compiler-rt = { path = "compiler-rt" }
 c = []
 weak = ["rlibc/weak"]
 
-[profile.dev]
-debug-assertions = false
-
 [workspace]
