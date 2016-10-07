@@ -448,10 +448,10 @@ impl<'t, K, V> FullBucket<K, V, &'t mut RawTable<K, V>> {
         unsafe {
             *self.raw.hash = EMPTY_BUCKET;
             (EmptyBucket {
-                raw: self.raw,
-                idx: self.idx,
-                table: self.table,
-            },
+                 raw: self.raw,
+                 idx: self.idx,
+                 table: self.table,
+             },
              ptr::read(self.raw.key),
              ptr::read(self.raw.val))
         }
@@ -643,13 +643,13 @@ impl<K, V> RawTable<K, V> {
 
         // One check for overflow that covers calculation and rounding of size.
         let size_of_bucket = size_of::<u64>()
-                                 .checked_add(size_of::<K>())
-                                 .unwrap()
-                                 .checked_add(size_of::<V>())
-                                 .unwrap();
+            .checked_add(size_of::<K>())
+            .unwrap()
+            .checked_add(size_of::<V>())
+            .unwrap();
         assert!(size >=
                 capacity.checked_mul(size_of_bucket)
-                        .expect("capacity overflow"),
+                    .expect("capacity overflow"),
                 "capacity overflow");
 
         let buffer = allocate(size, malloc_alignment);
@@ -672,10 +672,8 @@ impl<K, V> RawTable<K, V> {
         let keys_size = self.capacity * size_of::<K>();
 
         let buffer = *self.hashes as *const u8;
-        let (keys_offset, vals_offset, oflo) = calculate_offsets(hashes_size,
-                                                                 keys_size,
-                                                                 align_of::<K>(),
-                                                                 align_of::<V>());
+        let (keys_offset, vals_offset, oflo) =
+            calculate_offsets(hashes_size, keys_size, align_of::<K>(), align_of::<V>());
         debug_assert!(!oflo, "capacity overflow");
         unsafe {
             RawBucket {
@@ -990,9 +988,7 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
 }
 impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
     fn len(&self) -> usize {
-        unsafe {
-            (**self.table).size()
-        }
+        unsafe { (**self.table).size() }
     }
 }
 
