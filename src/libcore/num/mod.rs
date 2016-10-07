@@ -516,11 +516,10 @@ macro_rules! int_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn checked_div(self, other: Self) -> Option<Self> {
-            if other == 0 {
+            if other == 0 || (self == Self::min_value() && other == -1) {
                 None
             } else {
-                let (a, b) = self.overflowing_div(other);
-                if b {None} else {Some(a)}
+                Some(unsafe { intrinsics::unchecked_div(self, other) })
             }
         }
 
@@ -541,11 +540,10 @@ macro_rules! int_impl {
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
         pub fn checked_rem(self, other: Self) -> Option<Self> {
-            if other == 0 {
+            if other == 0 || (self == Self::min_value() && other == -1) {
                 None
             } else {
-                let (a, b) = self.overflowing_rem(other);
-                if b {None} else {Some(a)}
+                Some(unsafe { intrinsics::unchecked_rem(self, other) })
             }
         }
 
@@ -1688,7 +1686,7 @@ macro_rules! uint_impl {
         pub fn checked_div(self, other: Self) -> Option<Self> {
             match other {
                 0 => None,
-                other => Some(self / other),
+                other => Some(unsafe { intrinsics::unchecked_div(self, other) }),
             }
         }
 
@@ -1709,7 +1707,7 @@ macro_rules! uint_impl {
             if other == 0 {
                 None
             } else {
-                Some(self % other)
+                Some(unsafe { intrinsics::unchecked_rem(self, other) })
             }
         }
 
