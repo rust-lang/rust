@@ -1,4 +1,4 @@
-use core::mem;
+use core::{intrinsics, mem};
 use int::{Int, LargeInt};
 
 /// Returns `n / d`
@@ -7,7 +7,11 @@ use int::{Int, LargeInt};
 pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
     // Special cases
     if d == 0 {
-        panic!("Division by zero");
+        // NOTE This should be unreachable in safe Rust because the program will panic before
+        // this intrinsic is called
+        unsafe {
+            intrinsics::abort()
+        }
     }
 
     if n == 0 {
@@ -105,10 +109,11 @@ pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
             // 0 X
             // ---
             // 0 X
+
             if let Some(rem) = rem {
-                *rem = u64::from(n.low() % d.low());
+                *rem = u64::from(urem!(n.low(), d.low()));
             }
-            return u64::from(n.low() / d.low());
+            return u64::from(udiv!(n.low(), d.low()));
         } else {
             // 0 X
             // ---
@@ -129,7 +134,11 @@ pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
             // K X
             // ---
             // 0 0
-            panic!("Division by zero");
+            // NOTE This should be unreachable in safe Rust because the program will panic before
+            // this intrinsic is called
+            unsafe {
+                intrinsics::abort()
+            }
         }
 
         if n.low() == 0 {
@@ -137,9 +146,9 @@ pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
             // ---
             // K 0
             if let Some(rem) = rem {
-                *rem = u64::from_parts(0, n.high() % d.high());
+                *rem = u64::from_parts(0, urem!(n.high(), d.high()));
             }
-            return u64::from(n.high() / d.high());
+            return u64::from(udiv!(n.high(), d.high()));
         }
 
         // K K

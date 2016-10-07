@@ -28,6 +28,19 @@ case $1 in
         ;;
 esac
 
+# Verify that there are no undefined symbols to `panic` within our implementations
+# TODO(#79) fix the undefined references problem for debug-assertions+lto
+case $1 in
+    thumb*)
+        RUSTFLAGS="-C debug-assertions=no -C link-arg=-nostartfiles" xargo rustc --features c --target $1 --bin intrinsics -- -C lto
+        xargo rustc --features c --target $1 --bin intrinsics --release -- -C lto
+        ;;
+    *)
+        RUSTFLAGS="-C debug-assertions=no" cargo rustc --features c --target $1 --bin intrinsics -- -C lto
+        cargo rustc --features c --target $1 --bin intrinsics --release -- -C lto
+        ;;
+esac
+
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
 PREFIX=$(echo $1 | sed -e 's/unknown-//')-
 case $1 in

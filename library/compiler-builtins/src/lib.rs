@@ -13,6 +13,67 @@
 // NOTE cfg(all(feature = "c", ..)) indicate that compiler-rt provides an arch optimized
 // implementation of that intrinsic and we'll prefer to use that
 
+// TODO(rust-lang/rust#37029) use e.g. checked_div(_).unwrap_or_else(|| abort())
+macro_rules! udiv {
+    ($a:expr, $b:expr) => {
+        unsafe {
+            let a = $a;
+            let b = $b;
+
+            if b == 0 {
+                ::core::intrinsics::abort()
+            } else {
+                ::core::intrinsics::unchecked_div(a, b)
+            }
+        }
+    }
+}
+
+macro_rules! sdiv {
+    ($sty:ident, $a:expr, $b:expr) => {
+        unsafe {
+            let a = $a;
+            let b = $b;
+
+            if b == 0 || (b == -1 && a == $sty::min_value()) {
+                ::core::intrinsics::abort()
+            } else {
+                ::core::intrinsics::unchecked_div(a, b)
+            }
+        }
+    }
+}
+
+macro_rules! urem {
+    ($a:expr, $b:expr) => {
+        unsafe {
+            let a = $a;
+            let b = $b;
+
+            if b == 0 {
+                ::core::intrinsics::abort()
+            } else {
+                ::core::intrinsics::unchecked_rem(a, b)
+            }
+        }
+    }
+}
+
+macro_rules! srem {
+    ($sty:ty, $a:expr, $b:expr) => {
+        unsafe {
+            let a = $a;
+            let b = $b;
+
+            if b == 0 || (b == -1 && a == $sty::min_value()) {
+                ::core::intrinsics::abort()
+            } else {
+                ::core::intrinsics::unchecked_rem(a, b)
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;

@@ -10,7 +10,8 @@ macro_rules! div {
             let a = (a ^ s_a) - s_a;
             let b = (b ^ s_b) - s_b;
             let s = s_a ^ s_b;
-            let r = (a as $uty) / (b as $uty);
+
+            let r = udiv!(a as $uty, b as $uty);
             (r as $ty ^ s) - s
         }
     }
@@ -25,7 +26,8 @@ macro_rules! mod_ {
             let b = (b ^ s) - s;
             let s = a >> (<$ty>::bits() - 1);
             let a = (a ^ s) - s;
-            let r = (a as $uty) % (b as $uty);
+
+            let r = urem!(a as $uty, b as $uty);
             (r as $ty ^ s) - s
         }
     }
