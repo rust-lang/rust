@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_macro)]
+#![feature(proc_macro)]
 
 #[macro_use]
 extern crate foo;

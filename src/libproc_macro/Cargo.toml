@@ -4,12 +4,8 @@ name = "proc_macro"
 version = "0.0.0"
 
 [lib]
-name = "proc_macro"
 path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-log = { path = "../liblog" }
-rustc_plugin = { path = "../librustc_plugin" }
 syntax = { path = "../libsyntax" }
-syntax_pos = { path = "../libsyntax_pos" }

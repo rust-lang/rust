@@ -12,13 +12,13 @@
 #![feature(plugin)]
 #![feature(plugin_registrar)]
 #![feature(rustc_private)]
-#![plugin(proc_macro)]
+#![plugin(proc_macro_plugin)]
 
 extern crate rustc_plugin;
-extern crate proc_macro;
+extern crate proc_macro_plugin;
 extern crate syntax;
 
-use proc_macro::prelude::*;
+use proc_macro_plugin::prelude::*;
 
 use rustc_plugin::Registry;
 
