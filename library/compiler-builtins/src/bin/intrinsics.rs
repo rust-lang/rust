@@ -4,13 +4,14 @@
 // to link due to the missing intrinsic (symbol).
 
 #![allow(unused_features)]
+#![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
+#![feature(asm)]
 #![feature(core_float)]
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(start)]
 #![no_std]
-#![cfg_attr(thumb, no_main)]
 
 #[cfg(not(thumb))]
 extern crate libc;
@@ -302,68 +303,58 @@ mod intrinsics {
 
 #[cfg(feature = "c")]
 fn run() {
-    use core::ptr;
     use intrinsics::*;
 
-    // We use volatile load/stores to prevent LLVM from optimizing away the intrinsics during LTO
-    macro_rules! arg {
-        () => {
-            ptr::read_volatile(0x0 as *const _)
-        }
+    // A copy of "test::black_box". Used to prevent LLVM from optimizing away the intrinsics during LTO
+    fn bb<T>(dummy: T) -> T {
+        unsafe { asm!("" : : "r"(&dummy)) }
+        dummy
     }
 
-    macro_rules! ret {
-        ($e:expr) => {
-            unsafe {
-                ptr::write_volatile(0x0 as *mut _, $e)
-            }
-        }
-    }
-
-    ret!(aeabi_d2f(arg!()));
-    ret!(aeabi_d2i(arg!()));
-    ret!(aeabi_d2l(arg!()));
-    ret!(aeabi_d2uiz(arg!()));
-    ret!(aeabi_d2ulz(arg!()));
-    ret!(aeabi_dadd(arg!(), arg!()));
-    ret!(aeabi_dcmpeq(arg!(), arg!()));
-    ret!(aeabi_dcmpgt(arg!(), arg!()));
-    ret!(aeabi_dcmplt(arg!(), arg!()));
-    ret!(aeabi_ddiv(arg!(), arg!()));
-    ret!(aeabi_dmul(arg!(), arg!()));
-    ret!(aeabi_dsub(arg!(), arg!()));
-    ret!(aeabi_f2d(arg!()));
-    ret!(aeabi_f2iz(arg!()));
-    ret!(aeabi_f2lz(arg!()));
-    ret!(aeabi_f2uiz(arg!()));
-    ret!(aeabi_f2ulz(arg!()));
-    ret!(aeabi_fadd(arg!(), arg!()));
-    ret!(aeabi_fcmpeq(arg!(), arg!()));
-    ret!(aeabi_fcmpgt(arg!(), arg!()));
-    ret!(aeabi_fcmplt(arg!(), arg!()));
-    ret!(aeabi_fdiv(arg!(), arg!()));
-    ret!(aeabi_fmul(arg!(), arg!()));
-    ret!(aeabi_fsub(arg!(), arg!()));
-    ret!(aeabi_i2d(arg!()));
-    ret!(aeabi_i2f(arg!()));
-    ret!(aeabi_idiv(arg!(), arg!()));
-    ret!(aeabi_idivmod(arg!(), arg!()));
-    ret!(aeabi_l2d(arg!()));
-    ret!(aeabi_l2f(arg!()));
-    ret!(aeabi_ldivmod(arg!(), arg!()));
-    ret!(aeabi_lmul(arg!(), arg!()));
-    ret!(aeabi_ui2d(arg!()));
-    ret!(aeabi_ui2f(arg!()));
-    ret!(aeabi_uidiv(arg!(), arg!()));
-    ret!(aeabi_uidivmod(arg!(), arg!()));
-    ret!(aeabi_ul2d(arg!()));
-    ret!(aeabi_ul2f(arg!()));
-    ret!(aeabi_uldivmod(arg!(), arg!()));
-    ret!(moddi3(arg!(), arg!()));
-    ret!(mulodi4(arg!(), arg!()));
-    ret!(powidf2(arg!(), arg!()));
-    ret!(powisf2(arg!(), arg!()));
-    ret!(umoddi3(arg!(), arg!()));
+    bb(aeabi_d2f(bb(2.)));
+    bb(aeabi_d2i(bb(2.)));
+    bb(aeabi_d2l(bb(2.)));
+    bb(aeabi_d2uiz(bb(2.)));
+    bb(aeabi_d2ulz(bb(2.)));
+    bb(aeabi_dadd(bb(2.), bb(3.)));
+    bb(aeabi_dcmpeq(bb(2.), bb(3.)));
+    bb(aeabi_dcmpgt(bb(2.), bb(3.)));
+    bb(aeabi_dcmplt(bb(2.), bb(3.)));
+    bb(aeabi_ddiv(bb(2.), bb(3.)));
+    bb(aeabi_dmul(bb(2.), bb(3.)));
+    bb(aeabi_dsub(bb(2.), bb(3.)));
+    bb(aeabi_f2d(bb(2.)));
+    bb(aeabi_f2iz(bb(2.)));
+    bb(aeabi_f2lz(bb(2.)));
+    bb(aeabi_f2uiz(bb(2.)));
+    bb(aeabi_f2ulz(bb(2.)));
+    bb(aeabi_fadd(bb(2.), bb(3.)));
+    bb(aeabi_fcmpeq(bb(2.), bb(3.)));
+    bb(aeabi_fcmpgt(bb(2.), bb(3.)));
+    bb(aeabi_fcmplt(bb(2.), bb(3.)));
+    bb(aeabi_fdiv(bb(2.), bb(3.)));
+    bb(aeabi_fmul(bb(2.), bb(3.)));
+    bb(aeabi_fsub(bb(2.), bb(3.)));
+    bb(aeabi_i2d(bb(2)));
+    bb(aeabi_i2f(bb(2)));
+    bb(aeabi_idiv(bb(2), bb(3)));
+    bb(aeabi_idivmod(bb(2), bb(3)));
+    bb(aeabi_l2d(bb(2)));
+    bb(aeabi_l2f(bb(2)));
+    bb(aeabi_ldivmod(bb(2), bb(3)));
+    bb(aeabi_lmul(bb(2), bb(3)));
+    bb(aeabi_ui2d(bb(2)));
+    bb(aeabi_ui2f(bb(2)));
+    bb(aeabi_uidiv(bb(2), bb(3)));
+    bb(aeabi_uidivmod(bb(2), bb(3)));
+    bb(aeabi_ul2d(bb(2)));
+    bb(aeabi_ul2f(bb(2)));
+    bb(aeabi_uldivmod(bb(2), bb(3)));
+    bb(moddi3(bb(2), bb(3)));
+    bb(mulodi4(bb(2), bb(3)));
+    bb(powidf2(bb(2.), bb(3)));
+    bb(powisf2(bb(2.), bb(3)));
+    bb(umoddi3(bb(2), bb(3)));
 }
 
 #[cfg(all(feature = "c", not(thumb)))]
