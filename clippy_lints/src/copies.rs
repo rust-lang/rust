@@ -201,7 +201,14 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
                 if i.pats.len() == 1 && j.pats.len() == 1 {
                     let lhs = snippet(cx, i.pats[0].span, "<pat1>");
                     let rhs = snippet(cx, j.pats[0].span, "<pat2>");
-                    db.span_note(i.body.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
+
+                    if let PatKind::Wild = j.pats[0].node {
+                        // if the last arm is _, then i could be integrated into _
+                        // note that i.pats[0] cannot be _, because that would mean that we're hiding all the subsequent arms, and rust won't compile
+                        db.span_note(i.body.span, &format!("`{}` has the same arm body as the `_` wildcard, consider removing it`", lhs));
+                    } else {
+                        db.span_note(i.body.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
+                    }
                 }
             });
         }
