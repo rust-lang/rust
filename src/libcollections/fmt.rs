@@ -261,8 +261,8 @@
 //! This and `writeln` are two macros which are used to emit the format string
 //! to a specified stream. This is used to prevent intermediate allocations of
 //! format strings and instead directly write the output. Under the hood, this
-//! function is actually invoking the `write` function defined in this module.
-//! Example usage is:
+//! function is actually invoking the `write_fmt` function defined on the
+//! `std::io::Write` trait. Example usage is:
 //!
 //! ```
 //! # #![allow(unused_must_use)]
