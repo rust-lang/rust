@@ -122,13 +122,6 @@
             "args": ["u8", "u8"]
         },
         {
-            "intrinsic": "_sfence",
-            "width": [128],
-            "llvm": "sfence",
-            "ret": "V",
-            "args": []
-        },
-        {
             "intrinsic": "_sqrt_pd",
             "width": [128],
             "llvm": "!llvm.sqrt.v2f64",
@@ -155,6 +148,286 @@
             "llvm": "psub{0.kind_short}s.{0.data_type_short}",
             "ret": "i(8-16)",
             "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "_add_sd",
+            "width": [128],
+            "llvm": "add.sd",
+            "ret": "f64",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_comieq_sd",
+            "width": [128],
+            "llvm": "comieq.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_comigt_sd",
+            "width": [128],
+            "llvm": "comigt.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_comige_sd",
+            "width": [128],
+            "llvm": "comige.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_comile_sd",
+            "width": [128],
+            "llvm": "comile.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_comilt_sd",
+            "width": [128],
+            "llvm": "comilt.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_comineq_sd",
+            "width": [128],
+            "llvm": "comineq.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_cvtepi32_pd",
+            "width": [128],
+            "llvm": "cvtdq2pd",
+            "ret": "f64",
+            "args": ["i32"]
+        },
+        {
+            "intrinsic": "_cvtepi32_ps",
+            "width": [128],
+            "llvm": "cvtdq2ps",
+            "ret": "f32",
+            "args": ["i32"]
+        },
+        {
+            "intrinsic": "_cvtpd_epi32",
+            "width": [128],
+            "llvm": "cvtpd2dq",
+            "ret": "i32",
+            "args": ["f64"]
+        },
+        {
+            "intrinsic": "_cvtpd_ps",
+            "width": [128],
+            "llvm": "cvtpd2ps",
+            "ret": "f32",
+            "args": ["f64"]
+        },
+        {
+            "intrinsic": "_cvtps_epi32",
+            "width": [128],
+            "llvm": "cvtps2dq",
+            "ret": "s32",
+            "args": ["f32"]
+        },
+        {
+            "intrinsic": "_cvtps_pd",
+            "width": [128],
+            "llvm": "cvtps2pd",
+            "ret": "f64",
+            "args": ["f32"]
+        },
+        {
+            "intrinsic": "_ucomieq_sd",
+            "width": [128],
+            "llvm": "ucomieq.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_ucomigt_sd",
+            "width": [128],
+            "llvm": "ucomigt.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_ucomige_sd",
+            "width": [128],
+            "llvm": "ucomige.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_ucomile_sd",
+            "width": [128],
+            "llvm": "ucomile.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_ucomilt_sd",
+            "width": [128],
+            "llvm": "ucomilt.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_ucomineq_sd",
+            "width": [128],
+            "llvm": "comineq.sd",
+            "ret": "S32",
+            "args": ["f64", "f64"]
+        },
+        {
+            "intrinsic": "_cvtsd_si32",
+            "width": [128],
+            "llvm": "cvtsd2si",
+            "ret": "S32",
+            "args": ["f64"]
+        },
+        {
+            "intrinsic": "_cvtsd_si64",
+            "width": [128],
+            "llvm": "cvtsd2si64",
+            "ret": "S64",
+            "args": ["f64"]
+        },
+        {
+            "intrinsic": "_cvtsd_si64x",
+            "width": [128],
+            "llvm": "cvtsd2si64",
+            "ret": "S64",
+            "args": ["f64"]
+        },
+        {
+            "intrinsic": "_cvtsd_ss",
+            "width": [128],
+            "llvm": "cvtsd2ss",
+            "ret": "f32",
+            "args": ["f32","f32"]
+        },
+        {
+            "intrinsic": "_cvtsi32_sd",
+            "width": [128],
+            "llvm": "cvtsi2sd",
+            "ret": "f64",
+            "args": ["f64","S32"]
+        },
+        {
+            "intrinsic": "_cvtsi64_sd",
+            "width": [128],
+            "llvm": "cvtsi642sd",
+            "ret": "f64",
+            "args": ["f64","S64"]
+        },
+        {
+            "intrinsic": "_cvttpd_epi32",
+            "width": [128],
+            "llvm": "cvttpd2dq",
+            "ret": "S32",
+            "args": ["f64"]
+        },
+        {
+            "intrinsic": "_cvttps_epi32",
+            "width": [128],
+            "llvm": "cvttps2dq",
+            "ret": "S32",
+            "args": ["f32"]
+        },
+        {
+            "intrinsic": "_cvttsd_si64",
+            "width": [128],
+            "llvm": "cvttsd2si64",
+            "ret": "S64",
+            "args": ["f64"]
+        },
+        {
+            "intrinsic": "_div_sd",
+            "width": [128],
+            "llvm": "div.sd",
+            "ret": "f64",
+            "args": ["f64","f64"]
+        },
+        {
+            "intrinsic": "_max_sd",
+            "width": [128],
+            "llvm": "max.sd",
+            "ret": "f64",
+            "args": ["f64","f64"]
+        },
+        {
+            "intrinsic": "_min_sd",
+            "width": [128],
+            "llvm": "min.sd",
+            "ret": "f64",
+            "args": ["f64","f64"]
+        },
+        {
+            "intrinsic": "_mul_sd",
+            "width": [128],
+            "llvm": "mul.sd",
+            "ret": "f64",
+            "args": ["f64","f64"]
+        },
+        {
+            "intrinsic": "_padds_{0.data_type}",
+            "width": [128],
+            "llvm": "paddus.{0.data_type_short}",
+            "ret": "u(8-16)",
+            "args": ["0","0"]
+        },
+        {
+            "intrinsic": "_pause",
+            "width": [128],
+            "llvm": "pause",
+            "ret": "V",
+            "args": []
+        },
+        {
+            "intrinsic": "_subs_{0.data_type}",
+            "width": [128],
+            "llvm": "psubus.{0.data_type_short}",
+            "ret": "u(8-16)",
+            "args": ["0","0"]
+        },
+        {
+            "intrinsic": "_shuffle_epi32",
+            "width": [128],
+            "llvm": "pshuf.d",
+            "ret": "s32",
+            "args": ["s32","S32"]
+        },
+        {
+            "intrinsic": "_shufflehi_epi16",
+            "width": [128],
+            "llvm": "pshufh.w",
+            "ret": "s16",
+            "args": ["s16","S32"]
+        },
+        {
+            "intrinsic": "_shufflelo_epi16",
+            "width": [128],
+            "llvm": "pshufl.w",
+            "ret": "s16",
+            "args": ["s16","S32"]
+        },
+        {
+            "intrinsic": "_sub_sd",
+            "width": [128],
+            "llvm": "sub.sd",
+            "ret": "f64",
+            "args": ["f64","f64"]
+        },
+        {
+            "intrinsic": "_sqrt_sd",
+            "width": [128],
+            "llvm": "sqrt.sd",
+            "ret": "f64",
+            "args": ["f64","f64"]
         }
     ]
 }
