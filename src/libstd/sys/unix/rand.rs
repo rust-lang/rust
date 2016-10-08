@@ -97,8 +97,8 @@ mod imp {
                     // full entropy pool
                     let reader = File::open("/dev/urandom").expect("Unable to open /dev/urandom");
                     let mut reader_rng = ReaderRng::new(reader);
-                    reader_rng.fill_bytes(& mut v[read..]);
-                    read += v.len() as usize;
+                    reader_rng.fill_bytes(&mut v[read..]);
+                    read += v.len();
                 } else {
                     panic!("unexpected getrandom error: {}", err);
                 }
@@ -281,7 +281,7 @@ mod imp {
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
             let ret = unsafe {
-                SecRandomCopyBytes(kSecRandomDefault, v.len() as size_t,
+                SecRandomCopyBytes(kSecRandomDefault, v.len(),
                                    v.as_mut_ptr())
             };
             if ret == -1 {

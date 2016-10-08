@@ -11,7 +11,7 @@
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
 use io::{self, Read};
-use libc::{self, c_int, size_t, c_void};
+use libc::{self, c_int, c_void};
 use mem;
 use sync::atomic::{AtomicBool, Ordering};
 use sys::cvt;
@@ -40,7 +40,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::read(self.fd,
                        buf.as_mut_ptr() as *mut c_void,
-                       buf.len() as size_t)
+                       buf.len())
         })?;
         Ok(ret as usize)
     }
@@ -54,7 +54,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::write(self.fd,
                         buf.as_ptr() as *const c_void,
-                        buf.len() as size_t)
+                        buf.len())
         })?;
         Ok(ret as usize)
     }
