@@ -53,7 +53,7 @@ impl Thread {
 
         let stack_size = cmp::max(stack, min_stack_size(&attr));
         match pthread_attr_setstacksize(&mut attr,
-                                        stack_size as libc::size_t) {
+                                        stack_size) {
             0 => {}
             n => {
                 assert_eq!(n, libc::EINVAL);
@@ -64,7 +64,6 @@ impl Thread {
                 let page_size = os::page_size();
                 let stack_size = (stack_size + page_size - 1) &
                                  (-(page_size as isize - 1) as usize - 1);
-                let stack_size = stack_size as libc::size_t;
                 assert_eq!(libc::pthread_attr_setstacksize(&mut attr,
                                                            stack_size), 0);
             }
@@ -264,12 +263,8 @@ pub mod guard {
         // Rellocate the last page of the stack.
         // This ensures SIGBUS will be raised on
         // stack overflow.
-        let result = mmap(stackaddr,
-                          psize as libc::size_t,
-                          PROT_NONE,
-                          MAP_PRIVATE | MAP_ANON | MAP_FIXED,
-                          -1,
-                          0);
+        let result = mmap(stackaddr, psize, PROT_NONE,
+                          MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
 
         if result != stackaddr || result == MAP_FAILED {
             panic!("failed to allocate a guard page");
@@ -293,8 +288,8 @@ pub mod guard {
 
     #[cfg(target_os = "macos")]
     pub unsafe fn current() -> Option<usize> {
-        Some((libc::pthread_get_stackaddr_np(libc::pthread_self()) as libc::size_t -
-              libc::pthread_get_stacksize_np(libc::pthread_self())) as usize)
+        Some((libc::pthread_get_stackaddr_np(libc::pthread_self()) as usize -
+              libc::pthread_get_stacksize_np(libc::pthread_self())))
     }
 
     #[cfg(any(target_os = "openbsd", target_os = "bitrig"))]
@@ -306,10 +301,10 @@ pub mod guard {
         let extra = if cfg!(target_os = "bitrig") {3} else {1} * os::page_size();
         Some(if libc::pthread_main_np() == 1 {
             // main thread
-            current_stack.ss_sp as usize - current_stack.ss_size as usize + extra
+            current_stack.ss_sp as usize - current_stack.ss_size + extra
         } else {
             // new thread
-            current_stack.ss_sp as usize - current_stack.ss_size as usize
+            current_stack.ss_sp as usize - current_stack.ss_size
         })
     }
 
@@ -335,11 +330,11 @@ pub mod guard {
                                                    &mut size), 0);
 
             ret = if cfg!(target_os = "freebsd") {
-                Some(stackaddr as usize - guardsize as usize)
+                Some(stackaddr as usize - guardsize)
             } else if cfg!(target_os = "netbsd") {
                 Some(stackaddr as usize)
             } else {
-                Some(stackaddr as usize + guardsize as usize)
+                Some(stackaddr as usize + guardsize)
             };
         }
         assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
@@ -358,8 +353,8 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     weak!(fn __pthread_get_minstack(*const libc::pthread_attr_t) -> libc::size_t);
 
     match __pthread_get_minstack.get() {
-        None => libc::PTHREAD_STACK_MIN as usize,
-        Some(f) => unsafe { f(attr) as usize },
+        None => libc::PTHREAD_STACK_MIN,
+        Some(f) => unsafe { f(attr) },
     }
 }
 
@@ -368,7 +363,7 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
 #[cfg(all(not(target_os = "linux"),
           not(target_os = "netbsd")))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
-    libc::PTHREAD_STACK_MIN as usize
+    libc::PTHREAD_STACK_MIN
 }
 
 #[cfg(target_os = "netbsd")]
