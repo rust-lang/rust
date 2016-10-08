@@ -11,7 +11,7 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::io;
-use std::path::{PathBuf, Path};
+use std::path::Path;
 use std::str;
 
 #[derive(Clone)]
@@ -47,8 +47,8 @@ pub fn load_string(input: &Path) -> io::Result<Option<String>> {
 macro_rules! load_or_return {
     ($input: expr, $cant_read: expr, $not_utf8: expr) => {
         {
-            let input = PathBuf::from(&$input[..]);
-            match ::externalfiles::load_string(&input) {
+            let input = Path::new(&$input[..]);
+            match ::externalfiles::load_string(input) {
                 Err(e) => {
                     let _ = writeln!(&mut io::stderr(),
                                      "error reading `{}`: {}", input.display(), e);
