@@ -16,8 +16,14 @@ use std::str;
 
 #[derive(Clone)]
 pub struct ExternalHtml{
+    /// Content that will be included inline in the <head> section of a
+    /// rendered Markdown file or generated documentation
     pub in_header: String,
+    /// Content that will be included inline between <body> and the content of
+    /// a rendered Markdown file or generated documentation
     pub before_content: String,
+    /// Content that will be included inline between the content and </body> of
+    /// a rendered Markdown file or generated documentation
     pub after_content: String
 }
 
