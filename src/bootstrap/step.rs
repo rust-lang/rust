@@ -524,7 +524,7 @@ impl<'a> Step<'a> {
                      self.target(compiler.host).tool_compiletest(compiler.stage)]
             }
             Source::CheckDocs { compiler } => {
-                vec![self.libstd(compiler)]
+                vec![self.libtest(compiler)]
             }
             Source::CheckErrorIndex { compiler } => {
                 vec![self.libstd(compiler),

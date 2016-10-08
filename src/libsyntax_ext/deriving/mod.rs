@@ -154,11 +154,13 @@ pub fn expand_derive(cx: &mut ExtCtxt,
     });
     if new_attributes.len() > 0 {
         item = item.map(|mut i| {
-            let list = cx.meta_list(mitem.span,
-                                    intern_and_get_ident("derive"),
-                                    traits);
             i.attrs.extend(new_attributes);
-            i.attrs.push(cx.attribute(mitem.span, list));
+            if traits.len() > 0 {
+                let list = cx.meta_list(mitem.span,
+                                        intern_and_get_ident("derive"),
+                                        traits);
+                i.attrs.push(cx.attribute(mitem.span, list));
+            }
             i
         });
         return vec![Annotatable::Item(item)]
