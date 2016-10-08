@@ -669,7 +669,7 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
 
     loop {
         let buf_read = cvt(unsafe {
-            libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity() as libc::size_t)
+            libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity())
         })? as usize;
 
         unsafe { buf.set_len(buf_read); }
