@@ -31,6 +31,7 @@
 use libc::{c_int, c_void, sighandler_t, size_t, ssize_t};
 use libc::{ftruncate, pread, pwrite};
 
+use convert::TryInto;
 use io;
 use super::{cvt, cvt_r};
 
@@ -121,11 +122,11 @@ pub unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: size_t, offset: i6
     weak!(fn pread64(c_int, *mut c_void, size_t, i64) -> ssize_t);
     unsafe {
         pread64.get().map(|f| cvt(f(fd, buf, count, offset))).unwrap_or_else(|| {
-            if offset as u64 > i32::max_value() as u64 {
+            if let Ok(o) = offset.try_into() {
+                cvt(pread(fd, buf, count, o))
+            } else {
                 Err(io::Error::new(io::Error::InvalidInput,
                                    "cannot pread >2GB"))
-            } else {
-                cvt(pread(fd, buf, count, offset as i32))
             }
         })
     }
@@ -137,11 +138,11 @@ pub unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: size_t, offset:
     weak!(fn pwrite64(c_int, *const c_void, size_t, i64) -> ssize_t);
     unsafe {
         pwrite64.get().map(|f| cvt(f(fd, buf, count, offset))).unwrap_or_else(|| {
-            if offset as u64 > i32::max_value() as u64 {
+            if let Ok(o) = offset.try_into() {
+                cvt(pwrite(fd, buf, count, o))
+            } else {
                 Err(io::Error::new(io::Error::InvalidInput,
                                    "cannot pwrite >2GB"))
-            } else {
-                cvt(pwrite(fd, buf, count, offset as i32))
             }
         })
     }
