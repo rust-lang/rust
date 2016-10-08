@@ -26,7 +26,6 @@ extern crate md5;
 extern crate num_cpus;
 extern crate rustc_serialize;
 extern crate toml;
-extern crate regex;
 
 use std::collections::HashMap;
 use std::env;
