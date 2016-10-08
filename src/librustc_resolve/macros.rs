@@ -60,6 +60,19 @@ pub enum LegacyScope<'a> {
     Binding(&'a LegacyBinding<'a>),
 }
 
+impl<'a> LegacyScope<'a> {
+    fn simplify_expansion(mut invoc: &'a InvocationData<'a>) -> Self {
+        while let LegacyScope::Invocation(_) = invoc.expansion.get() {
+            match invoc.legacy_scope.get() {
+                LegacyScope::Expansion(new_invoc) => invoc = new_invoc,
+                LegacyScope::Binding(_) => break,
+                scope @ _ => return scope,
+            }
+        }
+        LegacyScope::Expansion(invoc)
+    }
+}
+
 pub struct LegacyBinding<'a> {
     parent: LegacyScope<'a>,
     kind: LegacyBindingKind,
@@ -175,8 +188,11 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Attr { ref attr, .. } => (intern(&*attr.name()), attr.span),
         };
 
-        let scope = self.invocations[&scope].legacy_scope.get();
-        self.resolve_macro_name(scope, name, true).or_else(|| {
+        let invocation = self.invocations[&scope];
+        if let LegacyScope::Expansion(parent) = invocation.legacy_scope.get() {
+            invocation.legacy_scope.set(LegacyScope::simplify_expansion(parent));
+        }
+        self.resolve_macro_name(invocation.legacy_scope.get(), name, true).or_else(|| {
             let mut err =
                 self.session.struct_span_err(span, &format!("macro undefined: '{}!'", name));
             self.suggest_macro_name(&name.as_str(), &mut err);
