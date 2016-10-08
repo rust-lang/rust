@@ -83,7 +83,7 @@ pub fn init() {
         unsafe {
             libc::write(libc::STDERR_FILENO,
                         msg.as_ptr() as *const libc::c_void,
-                        msg.len() as libc::size_t);
+                        msg.len());
             intrinsics::abort();
         }
     }

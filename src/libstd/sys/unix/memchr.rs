@@ -18,7 +18,7 @@ pub fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
         libc::memchr(
             haystack.as_ptr() as *const libc::c_void,
             needle as libc::c_int,
-            haystack.len() as libc::size_t)
+            haystack.len())
     };
     if p.is_null() {
         None
@@ -39,7 +39,7 @@ pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
             libc::memrchr(
                 haystack.as_ptr() as *const libc::c_void,
                 needle as libc::c_int,
-                haystack.len() as libc::size_t)
+                haystack.len())
         };
         if p.is_null() {
             None
