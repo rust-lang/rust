@@ -287,7 +287,7 @@ unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
 // to actively register their unwind info sections via unwinder API.
 //
 // This module defines two symbols which are referenced and called from
-// rsbegin.rs to reigster our information with the GCC runtime. The
+// rsbegin.rs to register our information with the GCC runtime. The
 // implementation of stack unwinding is (for now) deferred to libgcc_eh, however
 // Rust crates use these Rust-specific entry points to avoid potential clashes
 // with any GCC runtime.
