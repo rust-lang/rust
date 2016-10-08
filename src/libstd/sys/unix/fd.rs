@@ -18,27 +18,6 @@ use sys::cvt;
 use sys_common::AsInner;
 use sys_common::io::read_to_end_uninitialized;
 
-#[cfg(target_os = "android")]
-use super::android::{cvt_pread64, cvt_pwrite64};
-#[cfg(any(target_os = "linux", target_os = "emscripten"))]
-use libc::{pread64, pwrite64, off64_t, ssize_t};
-#[cfg(not(any(target_os = "linux", target_os = "emscripten", target_os = "android")))]
-use libc::{pread as pread64, pwrite as pwrite64, off_t as off64_t, ssize_t};
-
-#[cfg(not(target_os = "android"))]
-unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: size_t, offset: off64_t)
-    -> io::Result<ssize_t>
-{
-    cvt(pread64(fd, buf, count, offset))
-}
-
-#[cfg(not(target_os = "android"))]
-unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: size_t, offset: off64_t)
-    -> io::Result<ssize_t>
-{
-    cvt(pwrite64(fd, buf, count, offset))
-}
-
 pub struct FileDesc {
     fd: c_int,
 }
@@ -72,11 +51,25 @@ impl FileDesc {
     }
 
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        #[cfg(target_os = "android")]
+        use super::android::cvt_pread64;
+
+        #[cfg(not(target_os = "android"))]
+        unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: usize, offset: i64)
+            -> io::Result<isize>
+        {
+            #[cfg(any(target_os = "linux", target_os = "emscripten"))]
+            use libc::pread64;
+            #[cfg(not(any(target_os = "linux", target_os = "emscripten")))]
+            use libc::pread as pread64;
+            cvt(pread64(fd, buf, count, offset))
+        }
+
         unsafe {
             cvt_pread64(self.fd,
                         buf.as_mut_ptr() as *mut c_void,
                         buf.len(),
-                        offset as off64_t)
+                        offset as i64)
                 .map(|n| n as usize)
         }
     }
@@ -91,11 +84,25 @@ impl FileDesc {
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        #[cfg(target_os = "android")]
+        use super::android::cvt_pwrite64;
+
+        #[cfg(not(target_os = "android"))]
+        unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: usize, offset: i64)
+            -> io::Result<isize>
+        {
+            #[cfg(any(target_os = "linux", target_os = "emscripten"))]
+            use libc::pwrite64;
+            #[cfg(not(any(target_os = "linux", target_os = "emscripten")))]
+            use libc::pwrite as pwrite64;
+            cvt(pwrite64(fd, buf, count, offset))
+        }
+
         unsafe {
             cvt_pwrite64(self.fd,
                          buf.as_ptr() as *const c_void,
                          buf.len(),
-                         offset as off64_t)
+                         offset as i64)
                 .map(|n| n as usize)
         }
     }
