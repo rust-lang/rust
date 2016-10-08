@@ -28,10 +28,11 @@
 
 #![cfg(target_os = "android")]
 
-use libc::{c_int, sighandler_t};
+use libc::{c_int, c_void, sighandler_t, size_t, ssize_t};
+use libc::{ftruncate, pread, pwrite};
 
 use io;
-use sys::cvt_r;
+use super::{cvt, cvt_r};
 
 // The `log2` and `log2f` functions apparently appeared in android-18, or at
 // least you can see they're not present in the android-17 header [1] and they
@@ -99,10 +100,6 @@ pub unsafe fn signal(signum: c_int, handler: sighandler_t) -> sighandler_t {
 pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
     weak!(fn ftruncate64(c_int, i64) -> c_int);
 
-    extern {
-        fn ftruncate(fd: c_int, off: i32) -> c_int;
-    }
-
     unsafe {
         match ftruncate64.get() {
             Some(f) => cvt_r(|| f(fd, size as i64)).map(|_| ()),
@@ -115,5 +112,37 @@ pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
                 }
             }
         }
+    }
+}
+
+pub unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: size_t, offset: i64)
+    -> io::Result<ssize_t>
+{
+    weak!(fn pread64(c_int, *mut c_void, size_t, i64) -> ssize_t);
+    unsafe {
+        pread64.get().map(|f| cvt(f(fd, buf, count, offset))).unwrap_or_else(|| {
+            if offset as u64 > i32::max_value() as u64 {
+                Err(io::Error::new(io::Error::InvalidInput,
+                                   "cannot pread >2GB"))
+            } else {
+                cvt(pread(fd, buf, count, offset as i32))
+            }
+        })
+    }
+}
+
+pub unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: size_t, offset: i64)
+    -> io::Result<ssize_t>
+{
+    weak!(fn pwrite64(c_int, *const c_void, size_t, i64) -> ssize_t);
+    unsafe {
+        pwrite64.get().map(|f| cvt(f(fd, buf, count, offset))).unwrap_or_else(|| {
+            if offset as u64 > i32::max_value() as u64 {
+                Err(io::Error::new(io::Error::InvalidInput,
+                                   "cannot pwrite >2GB"))
+            } else {
+                cvt(pwrite(fd, buf, count, offset as i32))
+            }
+        })
     }
 }
