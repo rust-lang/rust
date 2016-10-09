@@ -1238,8 +1238,10 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
         match pat.node {
             PatKind::Binding(.., ref subpat) => {
                 if !self.bindings_allowed {
-                    span_err!(self.cx.tcx.sess, pat.span, E0303,
-                              "pattern bindings are not allowed after an `@`");
+                    struct_span_err!(self.cx.tcx.sess, pat.span, E0303,
+                                     "pattern bindings are not allowed after an `@`")
+                        .span_label(pat.span,  &format!("not allowed after `@`"))
+                        .emit();
                 }
 
                 if subpat.is_some() {
