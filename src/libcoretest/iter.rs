@@ -916,20 +916,6 @@ fn test_range_step() {
 }
 
 #[test]
-#[should_panic]
-fn test_range_overflow_unsigned() {
-    let mut it = u8::MAX..;
-    it.next();
-}
-
-#[test]
-#[should_panic]
-fn test_range_overflow_signed() {
-    let mut it = i8::MAX..;
-    it.next();
-}
-
-#[test]
 fn test_repeat() {
     let mut it = repeat(42);
     assert_eq!(it.next(), Some(42));
