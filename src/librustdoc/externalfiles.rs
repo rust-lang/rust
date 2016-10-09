@@ -30,16 +30,22 @@ pub struct ExternalHtml{
 impl ExternalHtml {
     pub fn load(in_header: &[String], before_content: &[String], after_content: &[String])
             -> Option<ExternalHtml> {
-        match (load_external_files(in_header),
-               load_external_files(before_content),
-               load_external_files(after_content)) {
-            (Some(ih), Some(bc), Some(ac)) => Some(ExternalHtml {
-                in_header: ih,
-                before_content: bc,
-                after_content: ac
-            }),
-            _ => None
-        }
+        load_external_files(in_header)
+            .and_then(|ih|
+                load_external_files(before_content)
+                    .map(|bc| (ih, bc))
+            )
+            .and_then(|(ih, bc)|
+                load_external_files(after_content)
+                    .map(|ac| (ih, bc, ac))
+            )
+            .map(|(ih, bc, ac)|
+                ExternalHtml {
+                    in_header: ih,
+                    before_content: bc,
+                    after_content: ac,
+                }
+            )
     }
 }
 
