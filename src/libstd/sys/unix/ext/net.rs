@@ -28,10 +28,16 @@ use sys::cvt;
 use sys::net::Socket;
 use sys_common::{AsInner, FromInner, IntoInner};
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android",
+          target_os = "dragonfly", target_os = "freebsd",
+          target_os = "openbsd", target_os = "netbsd",
+          target_os = "haiku", target_os = "bitrig"))]
 use libc::MSG_NOSIGNAL;
-#[cfg(not(target_os = "linux"))]
-const MSG_NOSIGNAL: libc::c_int = 0x0; // unused dummy value
+#[cfg(not(any(target_os = "linux", target_os = "android",
+              target_os = "dragonfly", target_os = "freebsd",
+              target_os = "openbsd", target_os = "netbsd",
+              target_os = "haiku", target_os = "bitrig")))]
+const MSG_NOSIGNAL: libc::c_int = 0x0;
 
 fn sun_path_offset() -> usize {
     unsafe {
