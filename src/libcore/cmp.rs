@@ -246,8 +246,8 @@ impl Ordering {
         }
     }
 
-    /// Chain two orderings. 
-    /// 
+    /// Chain two orderings.
+    ///
     /// Returns `self` when it's not `Equal`. Otherwise returns `other`.
     /// # Examples
     ///
@@ -281,10 +281,10 @@ impl Ordering {
     }
 
     /// Chain the ordering with given function.
-    /// 
+    ///
     /// Returns `self` when it's not `Equal`. Otherwise calls `f` and returns
     /// the result.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```
