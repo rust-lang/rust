@@ -126,9 +126,7 @@ enum Constructor {
     /// Ranges of literal values (2..5).
     ConstantRange(ConstVal, ConstVal),
     /// Array patterns of length n.
-    Slice(usize),
-    /// Array patterns with a subslice.
-    SliceWithSubslice(usize, usize)
+    Slice(usize)
 }
 
 #[derive(Clone, PartialEq)]
@@ -1026,16 +1024,6 @@ fn specialize<'a, 'b, 'tcx>(
                         before.iter().map(|p| wpat(p)).chain(
                         after.iter().map(|p| wpat(p))
                     ).collect())
-                }
-                SliceWithSubslice(prefix, suffix)
-                    if before.len() == prefix
-                        && after.len() == suffix
-                        && slice.is_some() => {
-                    // this is used by trans::_match only
-                    let mut pats: Vec<_> = before.iter()
-                        .map(|p| (&**p, None)).collect();
-                    pats.extend(after.iter().map(|p| (&**p, None)));
-                    Some(pats)
                 }
                 _ => None
             }
