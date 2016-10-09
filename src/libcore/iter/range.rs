@@ -95,15 +95,13 @@ macro_rules! step_impl_unsigned {
             }
 
             #[inline]
-            #[rustc_inherit_overflow_checks]
             fn add_one(&self) -> Self {
-                *self + 1
+                Add::add(*self, 1);
             }
 
             #[inline]
-            #[rustc_inherit_overflow_checks]
             fn sub_one(&self) -> Self {
-                *self - 1
+                Sub::sub(*self, 1);
             }
 
             #[inline]
@@ -168,15 +166,13 @@ macro_rules! step_impl_signed {
             }
 
             #[inline]
-            #[rustc_inherit_overflow_checks]
             fn add_one(&self) -> Self {
-                *self + 1
+                Add::add(*self, 1);
             }
 
             #[inline]
-            #[rustc_inherit_overflow_checks]
             fn sub_one(&self) -> Self {
-                *self - 1
+                Sub::sub(*self, 1);
             }
 
             #[inline]
@@ -219,15 +215,13 @@ macro_rules! step_impl_no_between {
             }
 
             #[inline]
-            #[rustc_inherit_overflow_checks]
             fn add_one(&self) -> Self {
-                *self + 1
+                Add::add(*self, 1);
             }
 
             #[inline]
-            #[rustc_inherit_overflow_checks]
             fn sub_one(&self) -> Self {
-                *self - 1
+                Sub::sub(*self, 1);
             }
 
             #[inline]
