@@ -43,30 +43,29 @@ impl ExternalHtml {
     }
 }
 
-pub fn load_string(input: &Path) -> io::Result<Option<String>> {
-    let mut f = File::open(input)?;
-    let mut d = Vec::new();
-    f.read_to_end(&mut d)?;
-    Ok(str::from_utf8(&d).map(|s| s.to_string()).ok())
+pub enum LoadStringError {
+    ReadFail,
+    BadUtf8,
 }
 
-macro_rules! load_or_return {
-    ($input: expr, $cant_read: expr, $not_utf8: expr) => {
-        {
-            let input = Path::new(&$input[..]);
-            match ::externalfiles::load_string(input) {
-                Err(e) => {
-                    let _ = writeln!(&mut io::stderr(),
-                                     "error reading `{}`: {}", input.display(), e);
-                    return $cant_read;
-                }
-                Ok(None) => {
-                    let _ = writeln!(&mut io::stderr(),
-                                     "error reading `{}`: not UTF-8", input.display());
-                    return $not_utf8;
-                }
-                Ok(Some(s)) => s
-            }
+pub fn load_string<P: AsRef<Path>>(file_path: P) -> Result<String, LoadStringError> {
+    let file_path = file_path.as_ref();
+    let mut contents = vec![];
+    let result = File::open(file_path)
+                      .and_then(|mut f| f.read_to_end(&mut contents));
+    if let Err(e) = result {
+        let _ = writeln!(&mut io::stderr(),
+                         "error reading `{}`: {}",
+                         file_path.display(), e);
+        return Err(LoadStringError::ReadFail);
+    }
+    match str::from_utf8(&contents) {
+        Ok(s) => Ok(s.to_string()),
+        Err(_) => {
+            let _ = writeln!(&mut io::stderr(),
+                             "error reading `{}`: not UTF-8",
+                             file_path.display());
+            Err(LoadStringError::BadUtf8)
         }
     }
 }
@@ -74,7 +73,11 @@ macro_rules! load_or_return {
 pub fn load_external_files(names: &[String]) -> Option<String> {
     let mut out = String::new();
     for name in names {
-        out.push_str(&*load_or_return!(&name, None, None));
+        let s = match load_string(name) {
+            Ok(s) => s,
+            Err(_) => return None,
+        };
+        out.push_str(&s);
         out.push('\n');
     }
     Some(out)
