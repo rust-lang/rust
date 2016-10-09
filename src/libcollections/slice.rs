@@ -36,7 +36,7 @@
 //!
 //! ## Structs
 //!
-//! There are several structs that are useful for slices, such as `Iter`, which
+//! There are several structs that are useful for slices, such as [`Iter`], which
 //! represents iteration over a slice.
 //!
 //! ## Trait Implementations
@@ -44,9 +44,9 @@
 //! There are several implementations of common traits for slices. Some examples
 //! include:
 //!
-//! * `Clone`
-//! * `Eq`, `Ord` - for slices whose element type are `Eq` or `Ord`.
-//! * `Hash` - for slices whose element type is `Hash`
+//! * [`Clone`]
+//! * [`Eq`], [`Ord`] - for slices whose element type are [`Eq`] or [`Ord`].
+//! * [`Hash`] - for slices whose element type is [`Hash`].
 //!
 //! ## Iteration
 //!
@@ -73,12 +73,24 @@
 //! the element type of the slice is `i32`, the element type of the iterator is
 //! `&mut i32`.
 //!
-//! * `.iter()` and `.iter_mut()` are the explicit methods to return the default
+//! * [`.iter()`] and [`.iter_mut()`] are the explicit methods to return the default
 //!   iterators.
-//! * Further methods that return iterators are `.split()`, `.splitn()`,
-//!   `.chunks()`, `.windows()` and more.
+//! * Further methods that return iterators are [`.split()`], [`.splitn()`],
+//!   [`.chunks()`], [`.windows()`] and more.
 //!
 //! *[See also the slice primitive type](../../std/primitive.slice.html).*
+//!
+//! [`Clone`]: ../../std/clone/trait.Clone.html
+//! [`Eq`]: ../../std/cmp/trait.Eq.html
+//! [`Ord`]: ../../std/cmp/trait.Ord.html
+//! [`Iter`]: struct.Iter.html
+//! [`Hash`]: ../../std/hash/trait.Hash.html
+//! [`.iter()`]: ../../std/primitive.slice.html#method.iter
+//! [`.iter_mut()`]: ../../std/primitive.slice.html#method.iter_mut
+//! [`.split()`]: ../../std/primitive.slice.html#method.split
+//! [`.splitn()`]: ../../std/primitive.slice.html#method.splitn
+//! [`.chunks()`]: ../../std/primitive.slice.html#method.chunks
+//! [`.windows()`]: ../../std/primitive.slice.html#method.windows
 #![stable(feature = "rust1", since = "1.0.0")]
 
 // Many of the usings in this module are only used in the test configuration.
