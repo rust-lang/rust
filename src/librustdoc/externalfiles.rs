@@ -76,7 +76,7 @@ pub fn load_string<P: AsRef<Path>>(file_path: P) -> Result<String, LoadStringErr
     }
 }
 
-pub fn load_external_files(names: &[String]) -> Option<String> {
+fn load_external_files(names: &[String]) -> Option<String> {
     let mut out = String::new();
     for name in names {
         let s = match load_string(name) {
