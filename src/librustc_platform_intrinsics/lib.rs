@@ -37,6 +37,8 @@ pub enum IntrinsicDef {
     Named(&'static str),
 }
 
+static VOID: Type = Type::Void;
+
 static I8: Type = Type::Integer(true, 8, 8);
 static I16: Type = Type::Integer(true, 16, 16);
 static I32: Type = Type::Integer(true, 32, 32);
@@ -86,7 +88,6 @@ static F64x8: Type = Type::Vector(&F64, None, 8);
 static F32x16: Type = Type::Vector(&F32, None, 16);
 
 static I32x4_F32: Type = Type::Vector(&I32, Some(&F32), 4);
-
 
 mod x86;
 mod arm;
