@@ -12,7 +12,6 @@
 #![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
-#![feature(staged_api)]
 #![cfg_attr(not(stage0), deny(warnings))]
 #![allow(bad_style)]
 
@@ -56,6 +55,8 @@ static I8x16: Type = Type::Vector(&I8, None, 16);
 static U8x16: Type = Type::Vector(&U8, None, 16);
 static I8x32: Type = Type::Vector(&I8, None, 32);
 static U8x32: Type = Type::Vector(&U8, None, 32);
+static I8x64: Type = Type::Vector(&I8, None, 64);
+static U8x64: Type = Type::Vector(&U8, None, 64);
 
 static I16x4: Type = Type::Vector(&I16, None, 4);
 static U16x4: Type = Type::Vector(&U16, None, 4);
@@ -63,6 +64,8 @@ static I16x8: Type = Type::Vector(&I16, None, 8);
 static U16x8: Type = Type::Vector(&U16, None, 8);
 static I16x16: Type = Type::Vector(&I16, None, 16);
 static U16x16: Type = Type::Vector(&U16, None, 16);
+static I16x32: Type = Type::Vector(&I16, None, 32);
+static U16x32: Type = Type::Vector(&U16, None, 32);
 
 static I32x2: Type = Type::Vector(&I32, None, 2);
 static U32x2: Type = Type::Vector(&U32, None, 2);
@@ -70,6 +73,8 @@ static I32x4: Type = Type::Vector(&I32, None, 4);
 static U32x4: Type = Type::Vector(&U32, None, 4);
 static I32x8: Type = Type::Vector(&I32, None, 8);
 static U32x8: Type = Type::Vector(&U32, None, 8);
+static I32x16: Type = Type::Vector(&I32, None, 16);
+static U32x16: Type = Type::Vector(&U32, None, 16);
 
 static I64x1: Type = Type::Vector(&I64, None, 1);
 static U64x1: Type = Type::Vector(&U64, None, 1);
@@ -77,6 +82,8 @@ static I64x2: Type = Type::Vector(&I64, None, 2);
 static U64x2: Type = Type::Vector(&U64, None, 2);
 static I64x4: Type = Type::Vector(&I64, None, 4);
 static U64x4: Type = Type::Vector(&U64, None, 4);
+static I64x8: Type = Type::Vector(&I64, None, 8);
+static U64x8: Type = Type::Vector(&U64, None, 8);
 
 static F32x2: Type = Type::Vector(&F32, None, 2);
 static F32x4: Type = Type::Vector(&F32, None, 4);
@@ -84,11 +91,12 @@ static F32x8: Type = Type::Vector(&F32, None, 8);
 static F64x1: Type = Type::Vector(&F64, None, 1);
 static F64x2: Type = Type::Vector(&F64, None, 2);
 static F64x4: Type = Type::Vector(&F64, None, 4);
+static F64x8: Type = Type::Vector(&F64, None, 8);
+static F32x16: Type = Type::Vector(&F32, None, 16);
 
 static I32x4_F32: Type = Type::Vector(&I32, Some(&F32), 4);
 static I32x8_F32: Type = Type::Vector(&I32, Some(&F32), 8);
 static I64x2_F64: Type = Type::Vector(&I64, Some(&F64), 2);
-static I64x4_F64: Type = Type::Vector(&I64, Some(&F64), 4);
 
 static VOID: Type = Type::Void;
 
