@@ -87,8 +87,6 @@ static F64x4: Type = Type::Vector(&F64, None, 4);
 static F64x8: Type = Type::Vector(&F64, None, 8);
 static F32x16: Type = Type::Vector(&F32, None, 16);
 
-static I32x4_F32: Type = Type::Vector(&I32, Some(&F32), 4);
-
 mod x86;
 mod arm;
 mod aarch64;
