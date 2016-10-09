@@ -178,9 +178,14 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
            original: &str, line_number: u32, filename: &str) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
+    let mut trunc_test = test.split("\n").take(11).collect::<Vec<&str>>();
+    if trunc_test.len() == 11 {
+        trunc_test[10] = "...";
+    }
     let new_test = maketest(test, Some(cratename), as_test_harness, opts);
     let test = format!("Error on {}:{}\n\n```{}\n{}\n```\n",
-                       filename, line_number, original, test);
+                       filename, line_number, original,
+                       trunc_test.join("\n"));
     let input = config::Input::Str {
         name: driver::anon_src(),
         input: new_test.to_owned(),
