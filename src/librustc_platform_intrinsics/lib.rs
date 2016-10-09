@@ -12,6 +12,7 @@
 #![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
+#![feature(staged_api)]
 #![cfg_attr(not(stage0), deny(warnings))]
 #![allow(bad_style)]
 
