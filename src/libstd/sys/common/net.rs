@@ -42,10 +42,16 @@ use sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
               target_os = "solaris", target_os = "haiku")))]
 use sys::net::netc::IPV6_DROP_MEMBERSHIP;
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android",
+          target_os = "dragonfly", target_os = "freebsd",
+          target_os = "openbsd", target_os = "netbsd",
+          target_os = "haiku", target_os = "bitrig"))]
 use libc::MSG_NOSIGNAL;
-#[cfg(not(target_os = "linux"))]
-const MSG_NOSIGNAL: c_int = 0x0; // unused dummy value
+#[cfg(not(any(target_os = "linux", target_os = "android",
+              target_os = "dragonfly", target_os = "freebsd",
+              target_os = "openbsd", target_os = "netbsd",
+              target_os = "haiku", target_os = "bitrig")))]
+const MSG_NOSIGNAL: c_int = 0x0;
 
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
