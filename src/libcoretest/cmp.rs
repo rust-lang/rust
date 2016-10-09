@@ -42,6 +42,32 @@ fn test_ordering_order() {
 }
 
 #[test]
+fn test_ordering_or() {
+    assert_eq!(Equal.or(Less), Less);
+    assert_eq!(Equal.or(Equal), Equal);
+    assert_eq!(Equal.or(Greater), Greater);
+    assert_eq!(Less.or(Less), Less);
+    assert_eq!(Less.or(Equal), Less);
+    assert_eq!(Less.or(Greater), Less);
+    assert_eq!(Greater.or(Less), Greater);
+    assert_eq!(Greater.or(Equal), Greater);
+    assert_eq!(Greater.or(Greater), Greater);
+}
+
+#[test]
+fn test_ordering_or_else() {
+    assert_eq!(Equal.or_else(|| Less), Less);
+    assert_eq!(Equal.or_else(|| Equal), Equal);
+    assert_eq!(Equal.or_else(|| Greater), Greater);
+    assert_eq!(Less.or_else(|| Less), Less);
+    assert_eq!(Less.or_else(|| Equal), Less);
+    assert_eq!(Less.or_else(|| Greater), Less);
+    assert_eq!(Greater.or_else(|| Less), Greater);
+    assert_eq!(Greater.or_else(|| Equal), Greater);
+    assert_eq!(Greater.or_else(|| Greater), Greater);
+}
+
+#[test]
 fn test_user_defined_eq() {
     // Our type.
     struct SketchyNum {

@@ -245,6 +245,76 @@ impl Ordering {
             Greater => Less,
         }
     }
+
+    /// Chain two orderings. 
+    /// 
+    /// Returns `self` when it's not `Equal`. Otherwise returns `other`.
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cmp::Ordering;
+    ///
+    /// let result = Ordering::Equal.or(Ordering::Less);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Less.or(Ordering::Equal);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Less.or(Ordering::Greater);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Equal.or(Ordering::Equal);
+    /// assert_eq!(result, Ordering::Equal);
+    ///
+    /// let x = (1, 2, 7);
+    /// let y = (1, 5, 3);
+    /// let result = x.0.cmp(y.0).or(x.1.cmp(y.1)).or(x.2.cmp(y.2));
+    ///
+    /// assert_eq!(result, Ordering::Less);
+    /// ```
+    #[unstable(feature = "ordering_chaining", issue = "37053")]
+    pub fn or(self, other: Ordering) -> Ordering {
+        match self {
+            Equal => other,
+            _ => self,
+        }
+    }
+
+    /// Chain the ordering with given function.
+    /// 
+    /// Returns `self` when it's not `Equal`. Otherwise calls `f` and returns
+    /// the result.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cmp::Ordering;
+    ///
+    /// let result = Ordering::Equal.or_else(|| Ordering::Less);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Less.or_else(|| Ordering::Equal);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Less.or_else(|| Ordering::Greater);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Equal.or_else(|| Ordering::Equal);
+    /// assert_eq!(result, Ordering::Equal);
+    ///
+    /// let x = (1, 2, 7);
+    /// let y = (1, 5, 3);
+    /// let result = x.0.cmp(&y.0).or_else(|| x.1.cmp(&y.1)).or_else(|| x.2.cmp(&y.2));
+    ///
+    /// assert_eq!(result, Ordering::Less);
+    /// ```
+    #[unstable(feature = "ordering_chaining", issue = "37053")]
+    pub fn or_else<F: FnOnce() -> Ordering>(self, f: F) -> Ordering {
+        match self {
+            Equal => f(),
+            _ => self,
+        }
+    }
 }
 
 /// Trait for types that form a [total order](https://en.wikipedia.org/wiki/Total_order).
