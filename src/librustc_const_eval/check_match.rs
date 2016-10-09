@@ -46,7 +46,7 @@ use syntax::ptr::P;
 use syntax::util::move_map::MoveMap;
 use rustc::util::common::ErrorReported;
 
-pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
+const DUMMY_WILD_PAT: &'static Pat = &Pat {
     id: DUMMY_NODE_ID,
     node: PatKind::Wild,
     span: DUMMY_SP
@@ -109,13 +109,13 @@ impl<'a, 'tcx> FromIterator<Vec<(&'a Pat, Option<Ty<'tcx>>)>> for Matrix<'a, 'tc
 }
 
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
-pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub param_env: ty::ParameterEnvironment<'tcx>,
+struct MatchCheckCtxt<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    param_env: ty::ParameterEnvironment<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Constructor {
+enum Constructor {
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g. struct patterns and fixed-length arrays.
     Single,
@@ -476,7 +476,7 @@ struct StaticInliner<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    pub fn new<'b>(tcx: TyCtxt<'b, 'tcx, 'tcx>) -> StaticInliner<'b, 'tcx> {
+    fn new<'b>(tcx: TyCtxt<'b, 'tcx, 'tcx>) -> StaticInliner<'b, 'tcx> {
         StaticInliner {
             tcx: tcx,
             failed: false
@@ -837,7 +837,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 ///
 /// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
-pub fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
+fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
     debug!("constructor_arity({:?}, {:?})", ctor, ty);
     match ty.sty {
         ty::TyTuple(ref fs) => fs.len(),
@@ -892,7 +892,7 @@ fn wrap_pat<'a, 'b, 'tcx>(cx: &MatchCheckCtxt<'b, 'tcx>,
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-pub fn specialize<'a, 'b, 'tcx>(
+fn specialize<'a, 'b, 'tcx>(
     cx: &MatchCheckCtxt<'b, 'tcx>,
     r: &[(&'a Pat, Option<Ty<'tcx>>)],
     constructor: &Constructor, col: usize, arity: usize)
