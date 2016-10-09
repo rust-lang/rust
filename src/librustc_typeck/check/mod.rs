@@ -87,7 +87,7 @@ use hir::def::{Def, CtorKind, PathResolution};
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, Reveal};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
@@ -1361,7 +1361,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
 
     fn ty_infer_for_def(&self,
                         ty_param_def: &ty::TypeParameterDef<'tcx>,
-                        substs: &Substs<'tcx>,
+                        substs: &[Kind<'tcx>],
                         span: Span) -> Ty<'tcx> {
         self.type_var_for_def(span, ty_param_def, substs)
     }
