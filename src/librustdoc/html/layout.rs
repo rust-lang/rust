@@ -176,10 +176,10 @@ r##"<!DOCTYPE html>
     krate     = layout.krate,
     play_url  = layout.playground_url,
     play_js   = if layout.playground_url.is_empty() {
-        "".to_string()
+        format!(r#"<script src="{}extra.js"></script>"#, page.root_path)
     } else {
         format!(r#"<script src="{}playpen.js"></script>"#, page.root_path)
-    },
+    }
     )
 }
 
