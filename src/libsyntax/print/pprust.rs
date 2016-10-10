@@ -1361,6 +1361,7 @@ impl<'a> State<'a> {
                 if comma {
                     try!(self.word_space(","))
                 }
+                try!(self.print_outer_attributes_inline(&lifetime_def.attrs));
                 try!(self.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds));
                 comma = true;
             }
@@ -2803,6 +2804,7 @@ impl<'a> State<'a> {
         try!(self.commasep(Inconsistent, &ints[..], |s, &idx| {
             if idx < generics.lifetimes.len() {
                 let lifetime_def = &generics.lifetimes[idx];
+                try!(s.print_outer_attributes_inline(&lifetime_def.attrs));
                 s.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds)
             } else {
                 let idx = idx - generics.lifetimes.len();
@@ -2816,6 +2818,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ty_param(&mut self, param: &ast::TyParam) -> io::Result<()> {
+        try!(self.print_outer_attributes_inline(&param.attrs));
         try!(self.print_ident(param.ident));
         try!(self.print_bounds(":", &param.bounds));
         match param.default {
