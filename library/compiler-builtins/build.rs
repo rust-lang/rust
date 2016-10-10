@@ -407,8 +407,15 @@ fn main() {
             sources.remove(&["aeabi_cdcmp", "aeabi_cfcmp"]);
         }
 
+        let root = if env::var_os("CARGO_FEATURE_RUSTBUILD").is_some() {
+            Path::new("../../libcompiler_builtins")
+        } else {
+            Path::new(".")
+        };
+
+        let src_dir = root.join("compiler-rt/compiler-rt-cdylib/compiler-rt/lib/builtins");
         for src in sources.map.values() {
-            let src = Path::new("compiler-rt/compiler-rt-cdylib/compiler-rt/lib/builtins").join(src);
+            let src = src_dir.join(src);
             cfg.file(&src);
             println!("cargo:rerun-if-changed={}", src.display());
         }
