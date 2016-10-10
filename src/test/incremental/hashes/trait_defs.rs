@@ -46,16 +46,15 @@ pub trait TraitVisibility { }
 
 
 // Change trait unsafety ----------------------------------------------------------
-// FIXME: this should work but doesn't yet.
-// #[cfg(cfail1)]
-// trait TraitUnsafety { }
+#[cfg(cfail1)]
+trait TraitUnsafety { }
 
-// #[cfg(not(cfail1))]
-// #[rustc_dirty(label="Hir", cfg="cfail2")]
-// #[rustc_clean(label="Hir", cfg="cfail3")]
-// #[rustc_metadata_dirty(cfg="cfail2")]
-// #[rustc_metadata_clean(cfg="cfail3")]
-// unsafe trait TraitUnsafety { }
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+unsafe trait TraitUnsafety { }
 
 
 
@@ -178,20 +177,19 @@ trait TraitChangeMethodParameterType {
 
 
 // Change type of method parameter (&i32 => &mut i32) -----------------------------
-// FIXME: this should work but doesn't yet.
-// #[cfg(cfail1)]
-// trait TraitChangeMethodParameterTypeRef {
-//     fn method(a: &i32);
-// }
+#[cfg(cfail1)]
+trait TraitChangeMethodParameterTypeRef {
+    fn method(a: &i32);
+}
 
-// #[cfg(not(cfail1))]
-// #[rustc_dirty(label="Hir", cfg="cfail2")]
-// #[rustc_clean(label="Hir", cfg="cfail3")]
-// #[rustc_metadata_dirty(cfg="cfail2")]
-// #[rustc_metadata_clean(cfg="cfail3")]
-// trait TraitChangeMethodParameterTypeRef {
-//     fn method(a: &mut i32);
-// }
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+trait TraitChangeMethodParameterTypeRef {
+    fn method(a: &mut i32);
+}
 
 
 
@@ -249,35 +247,35 @@ trait TraitChangeOrderOfMethods {
 
 
 // Change mode of self parameter --------------------------------------------------
-// FIXME: this should work but doesn't yet.
-// #[cfg(cfail1)]
-// trait TraitChangeModeSelfRefToMut {
-//     fn method(&self);
-// }
+#[cfg(cfail1)]
+trait TraitChangeModeSelfRefToMut {
+    fn method(&self);
+}
 
-// #[cfg(not(cfail1))]
-// #[rustc_dirty(label="Hir", cfg="cfail2")]
-// #[rustc_clean(label="Hir", cfg="cfail3")]
-// #[rustc_metadata_dirty(cfg="cfail2")]
-// #[rustc_metadata_clean(cfg="cfail3")]
-// trait TraitChangeModeSelfRefToMut {
-//     fn method(&mut self);
-// }
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+trait TraitChangeModeSelfRefToMut {
+    fn method(&mut self);
+}
 
-// FIXME: this should work but doesn't yet.
-// #[cfg(cfail1)]
-// trait TraitChangeModeSelfOwnToMut {
-//     fn method(self);
-// }
 
-// #[cfg(not(cfail1))]
-// #[rustc_dirty(label="Hir", cfg="cfail2")]
-// #[rustc_clean(label="Hir", cfg="cfail3")]
-// #[rustc_metadata_dirty(cfg="cfail2")]
-// #[rustc_metadata_clean(cfg="cfail3")]
-// trait TraitChangeModeSelfOwnToMut {
-//     fn method(mut self);
-// }
+
+#[cfg(cfail1)]
+trait TraitChangeModeSelfOwnToMut {
+    fn method(self);
+}
+
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+trait TraitChangeModeSelfOwnToMut {
+    fn method(mut self);
+}
 
 
 
@@ -298,56 +296,53 @@ trait TraitChangeModeSelfOwnToRef {
 
 
 // Add unsafe modifier to method --------------------------------------------------
-// FIXME: this should work but doesn't yet.
-// #[cfg(cfail1)]
-// trait TraitAddUnsafeModifier {
-//     fn method();
-// }
+#[cfg(cfail1)]
+trait TraitAddUnsafeModifier {
+    fn method();
+}
 
-// #[cfg(not(cfail1))]
-// #[rustc_dirty(label="Hir", cfg="cfail2")]
-// #[rustc_clean(label="Hir", cfg="cfail3")]
-// #[rustc_metadata_dirty(cfg="cfail2")]
-// #[rustc_metadata_clean(cfg="cfail3")]
-// trait TraitAddUnsafeModifier {
-//     unsafe fn method();
-// }
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+trait TraitAddUnsafeModifier {
+    unsafe fn method();
+}
 
 
 
 // Add extern modifier to method --------------------------------------------------
-// FIXME: this should work but doesn't yet.
-// #[cfg(cfail1)]
-// trait TraitAddExternModifier {
-//     fn method();
-// }
+#[cfg(cfail1)]
+trait TraitAddExternModifier {
+    fn method();
+}
 
-// #[cfg(not(cfail1))]
-// #[rustc_dirty(label="Hir", cfg="cfail2")]
-// #[rustc_clean(label="Hir", cfg="cfail3")]
-// #[rustc_metadata_dirty(cfg="cfail2")]
-// #[rustc_metadata_clean(cfg="cfail3")]
-// trait TraitAddExternModifier {
-//     extern fn method();
-// }
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+trait TraitAddExternModifier {
+    extern fn method();
+}
 
 
 
 // Change extern "C" to extern "rust-intrinsic" -----------------------------------
-// FIXME: this should work but doesn't yet.
-// #[cfg(cfail1)]
-// trait TraitChangeExternCToRustIntrinsic {
-//     extern "C" fn method();
-// }
+#[cfg(cfail1)]
+trait TraitChangeExternCToRustIntrinsic {
+    extern "C" fn method();
+}
 
-// #[cfg(not(cfail1))]
-// #[rustc_dirty(label="Hir", cfg="cfail2")]
-// #[rustc_clean(label="Hir", cfg="cfail3")]
-// #[rustc_metadata_dirty(cfg="cfail2")]
-// #[rustc_metadata_clean(cfg="cfail3")]
-// trait TraitChangeExternCToRustIntrinsic {
-//     extern "rust-intrinsic" fn method();
-// }
+#[cfg(not(cfail1))]
+#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail3")]
+trait TraitChangeExternCToRustIntrinsic {
+    extern "rust-intrinsic" fn method();
+}
 
 
 
@@ -1118,4 +1113,3 @@ mod change_method_type_parameter_bound_indirectly_where {
         fn method(a: T);
     }
 }
-
