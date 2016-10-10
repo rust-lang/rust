@@ -1,3 +1,5 @@
+#![crate_name = "compiler_builtins"]
+#![crate_type = "rlib"]
 #![feature(asm)]
 #![feature(core_intrinsics)]
 #![feature(linkage)]
