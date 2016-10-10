@@ -124,7 +124,7 @@ impl<'a> FileSearch<'a> {
     pub fn get_tools_search_paths(&self) -> Vec<PathBuf> {
         let mut p = PathBuf::from(self.sysroot);
         p.push(&find_libdir(self.sysroot));
-        p.push(&rustlibdir());
+        p.push(RUST_LIB_DIR);
         p.push(&self.triple);
         p.push("bin");
         vec![p]
@@ -134,7 +134,7 @@ impl<'a> FileSearch<'a> {
 pub fn relative_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
     let mut p = PathBuf::from(&find_libdir(sysroot));
     assert!(p.is_relative());
-    p.push(&rustlibdir());
+    p.push(RUST_LIB_DIR);
     p.push(target_triple);
     p.push("lib");
     p
@@ -176,31 +176,23 @@ fn find_libdir(sysroot: &Path) -> String {
     // "lib" (i.e. non-default), this value is used (see issue #16552).
 
     match option_env!("CFG_LIBDIR_RELATIVE") {
-        Some(libdir) if libdir != "lib" => return libdir.to_string(),
-        _ => if sysroot.join(&primary_libdir_name()).join(&rustlibdir()).exists() {
-            return primary_libdir_name();
+        Some(libdir) if libdir != "lib" => return libdir.into(),
+        _ => if sysroot.join(PRIMARY_LIB_DIR).join(RUST_LIB_DIR).exists() {
+            return PRIMARY_LIB_DIR.into();
         } else {
-            return secondary_libdir_name();
+            return SECONDARY_LIB_DIR.into();
         }
     }
 
     #[cfg(target_pointer_width = "64")]
-    fn primary_libdir_name() -> String {
-        "lib64".to_string()
-    }
+    const PRIMARY_LIB_DIR: &'static str = "lib64";
 
     #[cfg(target_pointer_width = "32")]
-    fn primary_libdir_name() -> String {
-        "lib32".to_string()
-    }
+    const PRIMARY_LIB_DIR: &'static str = "lib32";
 
-    fn secondary_libdir_name() -> String {
-        "lib".to_string()
-    }
+    const SECONDARY_LIB_DIR: &'static str = "lib";
 }
 
 // The name of rustc's own place to organize libraries.
 // Used to be "rustc", now the default is "rustlib"
-pub fn rustlibdir() -> String {
-    "rustlib".to_string()
-}
+const RUST_LIB_DIR: &'static str = "rustlib";
