@@ -75,7 +75,7 @@ impl<'a> FileSearch<'a> {
             let files = files.filter_map(|p| p.ok().map(|s| s.path()))
                              .collect::<Vec<_>>();
             fn is_rlib(p: &Path) -> bool {
-                p.extension().and_then(|s| s.to_str()) == Some("rlib")
+                p.extension() == Some("rlib".as_ref())
             }
             // Reading metadata out of rlibs is faster, and if we find both
             // an rlib and a dylib we only read one of the files of
