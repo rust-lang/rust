@@ -68,33 +68,32 @@ impl<'a> FileSearch<'a> {
     {
         self.for_each_lib_search_path(|lib_search_path, kind| {
             debug!("searching {}", lib_search_path.display());
-            match fs::read_dir(lib_search_path) {
-                Ok(files) => {
-                    let files = files.filter_map(|p| p.ok().map(|s| s.path()))
-                                     .collect::<Vec<_>>();
-                    fn is_rlib(p: &Path) -> bool {
-                        p.extension().and_then(|s| s.to_str()) == Some("rlib")
+            let files = match fs::read_dir(lib_search_path) {
+                Ok(files) => files,
+                Err(..) => return,
+            };
+            let files = files.filter_map(|p| p.ok().map(|s| s.path()))
+                             .collect::<Vec<_>>();
+            fn is_rlib(p: &Path) -> bool {
+                p.extension().and_then(|s| s.to_str()) == Some("rlib")
+            }
+            // Reading metadata out of rlibs is faster, and if we find both
+            // an rlib and a dylib we only read one of the files of
+            // metadata, so in the name of speed, bring all rlib files to
+            // the front of the search list.
+            let files1 = files.iter().filter(|p| is_rlib(p));
+            let files2 = files.iter().filter(|p| !is_rlib(p));
+            for path in files1.chain(files2) {
+                debug!("testing {}", path.display());
+                let maybe_picked = pick(path, kind);
+                match maybe_picked {
+                    FileMatches => {
+                        debug!("picked {}", path.display());
                     }
-                    // Reading metadata out of rlibs is faster, and if we find both
-                    // an rlib and a dylib we only read one of the files of
-                    // metadata, so in the name of speed, bring all rlib files to
-                    // the front of the search list.
-                    let files1 = files.iter().filter(|p| is_rlib(p));
-                    let files2 = files.iter().filter(|p| !is_rlib(p));
-                    for path in files1.chain(files2) {
-                        debug!("testing {}", path.display());
-                        let maybe_picked = pick(path, kind);
-                        match maybe_picked {
-                            FileMatches => {
-                                debug!("picked {}", path.display());
-                            }
-                            FileDoesntMatch => {
-                                debug!("rejected {}", path.display());
-                            }
-                        }
+                    FileDoesntMatch => {
+                        debug!("rejected {}", path.display());
                     }
                 }
-                Err(..) => (),
             }
         });
     }
