@@ -12,6 +12,7 @@
 
 pub use self::FileMatch::*;
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
@@ -123,7 +124,7 @@ impl<'a> FileSearch<'a> {
     // Returns a list of directories where target-specific tool binaries are located.
     pub fn get_tools_search_paths(&self) -> Vec<PathBuf> {
         let mut p = PathBuf::from(self.sysroot);
-        p.push(&find_libdir(self.sysroot));
+        p.push(find_libdir(self.sysroot).as_ref());
         p.push(RUST_LIB_DIR);
         p.push(&self.triple);
         p.push("bin");
@@ -132,7 +133,7 @@ impl<'a> FileSearch<'a> {
 }
 
 pub fn relative_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
-    let mut p = PathBuf::from(&find_libdir(sysroot));
+    let mut p = PathBuf::from(find_libdir(sysroot).as_ref());
     assert!(p.is_relative());
     p.push(RUST_LIB_DIR);
     p.push(target_triple);
@@ -166,7 +167,7 @@ pub fn get_or_default_sysroot() -> PathBuf {
 }
 
 // The name of the directory rustc expects libraries to be located.
-fn find_libdir(sysroot: &Path) -> String {
+fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
     // FIXME: This is a quick hack to make the rustc binary able to locate
     // Rust libraries in Linux environments where libraries might be installed
     // to lib64/lib32. This would be more foolproof by basing the sysroot off
