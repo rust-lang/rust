@@ -1110,7 +1110,7 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                              errors::Level::Note);
             }
 
-            println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
+            writeln!(io::stderr(), "{}", str::from_utf8(&data.lock().unwrap()).unwrap()).unwrap();
         }
 
         exit_on_err();
