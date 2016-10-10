@@ -1,13 +1,13 @@
+#![cfg_attr(not(test), no_std)]
+#![compiler_builtins]
 #![crate_name = "compiler_builtins"]
 #![crate_type = "rlib"]
 #![feature(asm)]
+#![feature(compiler_builtins)]
 #![feature(core_intrinsics)]
 #![feature(linkage)]
 #![feature(naked_functions)]
-#![cfg_attr(not(test), no_std)]
 #![no_builtins]
-// TODO(rust-lang/rust#35021) uncomment when that PR lands
-// #![feature(rustc_builtins)]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.
