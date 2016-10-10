@@ -14,12 +14,11 @@
 //! [`ToString`]s, and several error types that may result from working with
 //! [`String`]s.
 //!
-//! [`String`]: struct.String.html
 //! [`ToString`]: trait.ToString.html
 //!
 //! # Examples
 //!
-//! There are multiple ways to create a new `String` from a string literal:
+//! There are multiple ways to create a new [`String`] from a string literal:
 //!
 //! ```
 //! let s = "Hello".to_string();
@@ -28,8 +27,10 @@
 //! let s: String = "also this".into();
 //! ```
 //!
-//! You can create a new `String` from an existing one by concatenating with
+//! You can create a new [`String`] from an existing one by concatenating with
 //! `+`:
+//!
+//! [`String`]: struct.String.html
 //!
 //! ```
 //! let s = "Hello".to_string();
