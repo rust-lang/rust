@@ -1,7 +1,7 @@
 [package]
 authors = ["Jorge Aparicio <japaricious@gmail.com>"]
 build = "build.rs"
-name = "rustc_builtins"
+name = "compiler_builtins"
 version = "0.1.0"
 
 [build-dependencies]

@@ -1,13 +1,23 @@
+#![cfg_attr(not(stage0), deny(warnings))]
 #![cfg_attr(not(test), no_std)]
 #![compiler_builtins]
 #![crate_name = "compiler_builtins"]
 #![crate_type = "rlib"]
+#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+       html_root_url = "https://doc.rust-lang.org/nightly/",
+       html_playground_url = "https://play.rust-lang.org/",
+       test(attr(deny(warnings))))]
 #![feature(asm)]
 #![feature(compiler_builtins)]
 #![feature(core_intrinsics)]
 #![feature(linkage)]
 #![feature(naked_functions)]
+#![feature(staged_api)]
 #![no_builtins]
+#![unstable(feature = "compiler_builtins",
+            reason = "Compiler builtins. Will never become stable.",
+            issue = "0")]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.
