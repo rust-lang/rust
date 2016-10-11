@@ -125,7 +125,7 @@ pub unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: size_t, offset: i6
             if let Ok(o) = offset.try_into() {
                 cvt(pread(fd, buf, count, o))
             } else {
-                Err(io::Error::new(io::Error::InvalidInput,
+                Err(io::Error::new(io::ErrorKind::InvalidInput,
                                    "cannot pread >2GB"))
             }
         })
@@ -141,7 +141,7 @@ pub unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: size_t, offset:
             if let Ok(o) = offset.try_into() {
                 cvt(pwrite(fd, buf, count, o))
             } else {
-                Err(io::Error::new(io::Error::InvalidInput,
+                Err(io::Error::new(io::ErrorKind::InvalidInput,
                                    "cannot pwrite >2GB"))
             }
         })
