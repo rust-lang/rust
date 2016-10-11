@@ -15,6 +15,7 @@ fn main() {
         //~^ ERROR E0007
         //~| NOTE binds an already bound by-move value by moving it
         //~| ERROR E0303
+        //~| NOTE not allowed after `@`
         None => {},
     }
 }
