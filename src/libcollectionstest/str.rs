@@ -1286,6 +1286,13 @@ fn test_cow_from() {
     }
 }
 
+#[test]
+fn test_repeat() {
+    assert_eq!("".repeat(3), "");
+    assert_eq!("abc".repeat(0), "");
+    assert_eq!("α".repeat(3), "ααα");
+}
+
 mod pattern {
     use std::str::pattern::Pattern;
     use std::str::pattern::{Searcher, ReverseSearcher};

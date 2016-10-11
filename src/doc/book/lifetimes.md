@@ -56,8 +56,12 @@ To fix this, we have to make sure that step four never happens after step
 three. The ownership system in Rust does this through a concept called
 lifetimes, which describe the scope that a reference is valid for.
 
-When we have a function that takes an argument by reference, we can be
-implicit or explicit about the lifetime of the reference:
+**Note** It's important to understand that lifetime annotations are
+_descriptive_, not _prescriptive_. This means that how long a reference is valid
+is determined by the code, not by the annotations. The annotations, however,
+give information about lifetimes to the compiler that uses them to check the
+validity of references. The compiler can do so without annotations in simple
+cases, but needs the programmers support in complex scenarios.
 
 ```rust
 // implicit
