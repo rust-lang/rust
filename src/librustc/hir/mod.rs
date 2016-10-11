@@ -95,6 +95,7 @@ impl fmt::Debug for Lifetime {
 pub struct LifetimeDef {
     pub lifetime: Lifetime,
     pub bounds: HirVec<Lifetime>,
+    pub pure_wrt_drop: bool,
 }
 
 /// A "Path" is essentially Rust's notion of a name; for instance:
@@ -290,6 +291,7 @@ pub struct TyParam {
     pub bounds: TyParamBounds,
     pub default: Option<P<Ty>>,
     pub span: Span,
+    pub pure_wrt_drop: bool,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
