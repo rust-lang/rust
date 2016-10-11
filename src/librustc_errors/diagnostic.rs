@@ -166,6 +166,14 @@ impl Diagnostic {
         self.level
     }
 
+    /// Used by a lint. Copies over all details *but* the "main
+    /// message".
+    pub fn copy_details_not_message(&mut self, from: &Diagnostic) {
+        self.span = from.span.clone();
+        self.code = from.code.clone();
+        self.children.extend(from.children.iter().cloned())
+    }
+
     /// Convenience function for internal use, clients should use one of the
     /// public methods above.
     fn sub(&mut self,

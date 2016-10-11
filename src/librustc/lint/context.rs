@@ -43,7 +43,7 @@ use syntax::attr;
 use syntax::parse::token::InternedString;
 use syntax::ast;
 use syntax_pos::Span;
-use errors::DiagnosticBuilder;
+use errors::{self, Diagnostic, DiagnosticBuilder};
 use hir;
 use hir::intravisit as hir_visit;
 use syntax::visit as ast_visit;
@@ -87,30 +87,36 @@ pub struct EarlyLint {
     /// what lint is this? (e.g., `dead_code`)
     pub id: LintId,
 
-    /// the span where the lint will be reported at
+    /// what span was it attached to (this is used for Eq comparisons;
+    /// it duplicates to some extent the information in
+    /// `diagnostic.span`)
     pub span: Span,
 
     /// the main message
-    pub msg: String,
+    pub diagnostic: Diagnostic,
 }
 
 impl fmt::Debug for EarlyLint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("EarlyLint")
             .field("id", &self.id)
-            .field("span", &self.span)
-            .field("msg", &self.msg)
+            .field("span", &self.diagnostic.span)
+            .field("diagnostic", &self.diagnostic)
             .finish()
     }
 }
 
 impl EarlyLint {
     pub fn new(id: LintId, span: Span, msg: String) -> Self {
-        EarlyLint { id: id, span: span, msg: msg }
+        let mut diagnostic = Diagnostic::new(errors::Level::Warning, &msg);
+        diagnostic.set_span(span);
+        EarlyLint { id: id, span: span, diagnostic: diagnostic }
     }
 
     pub fn matches(&self, other: &EarlyLint) -> bool {
-        self.id == other.id && self.span == other.span && self.msg == other.msg
+        self.id == other.id &&
+            self.span == other.span &&
+            self.diagnostic.message == other.diagnostic.message
     }
 }
 
@@ -551,7 +557,10 @@ pub trait LintContext: Sized {
     }
 
     fn early_lint(&self, early_lint: EarlyLint) {
-        let mut err = self.struct_span_lint(early_lint.id.lint, early_lint.span, &early_lint.msg);
+        let mut err = self.struct_span_lint(early_lint.id.lint,
+                                            early_lint.span,
+                                            &early_lint.diagnostic.message);
+        err.copy_details_not_message(&early_lint.diagnostic);
         err.emit();
     }
 
