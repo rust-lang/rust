@@ -50,20 +50,23 @@ pub mod deriving;
 
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ext::base::{MacroExpanderFn, NormalTT, IdentTT, MultiModifier};
+use syntax::ext::base::{MacroExpanderFn, NormalTT, IdentTT, MultiModifier, NamedSyntaxExtension};
 use syntax::ext::tt::macro_rules::MacroRulesExpander;
 use syntax::parse::token::intern;
 
-pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver, enable_quotes: bool) {
+pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
+                         user_exts: Vec<NamedSyntaxExtension>,
+                         enable_quotes: bool) {
     let mut register = |name, ext| {
-        resolver.add_ext(ast::Ident::with_empty_ctxt(intern(name)), Rc::new(ext));
+        resolver.add_ext(ast::Ident::with_empty_ctxt(name), Rc::new(ext));
     };
 
-    register("macro_rules", IdentTT(Box::new(MacroRulesExpander), None, false));
+    register(intern("macro_rules"), IdentTT(Box::new(MacroRulesExpander), None, false));
 
     macro_rules! register {
         ($( $name:ident: $f:expr, )*) => { $(
-            register(stringify!($name), NormalTT(Box::new($f as MacroExpanderFn), None, false));
+            register(intern(stringify!($name)),
+                     NormalTT(Box::new($f as MacroExpanderFn), None, false));
         )* }
     }
 
@@ -108,7 +111,11 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver, enable_quot
     }
 
     // format_args uses `unstable` things internally.
-    register("format_args", NormalTT(Box::new(format::expand_format_args), None, true));
+    register(intern("format_args"), NormalTT(Box::new(format::expand_format_args), None, true));
 
-    register("derive", MultiModifier(Box::new(deriving::expand_derive)));
+    register(intern("derive"), MultiModifier(Box::new(deriving::expand_derive)));
+
+    for (name, ext) in user_exts {
+        register(name, ext);
+    }
 }
