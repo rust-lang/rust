@@ -781,6 +781,130 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Removes consecutive elements in the vector that resolve to the same key.
+    ///
+    /// If the vector is sorted, this removes all duplicates.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(dedup_by)]
+    ///
+    /// let mut vec = vec![10, 20, 21, 30, 20];
+    ///
+    /// vec.dedup_by_key(|i| *i / 10);
+    ///
+    /// assert_eq!(vec, [10, 20, 30, 20]);
+    /// ```
+    #[unstable(feature = "dedup_by", reason = "recently added", issue = "37087")]
+    #[inline]
+    pub fn dedup_by_key<F, K>(&mut self, mut key: F) where F: FnMut(&mut T) -> K, K: PartialEq {
+        self.dedup_by(|a, b| key(a) == key(b))
+    }
+
+    /// Removes consecutive elements in the vector that resolve to the same key.
+    ///
+    /// If the vector is sorted, this removes all duplicates.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(dedup_by)]
+    /// use std::ascii::AsciiExt;
+    ///
+    /// let mut vec = vec!["foo", "bar", "Bar", "baz", "bar"];
+    ///
+    /// vec.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+    ///
+    /// assert_eq!(vec, ["foo", "bar", "baz", "bar"]);
+    /// ```
+    #[unstable(feature = "dedup_by", reason = "recently added", issue = "37087")]
+    pub fn dedup_by<F>(&mut self, mut same_bucket: F) where F: FnMut(&mut T, &mut T) -> bool {
+        unsafe {
+            // Although we have a mutable reference to `self`, we cannot make
+            // *arbitrary* changes. The `PartialEq` comparisons could panic, so we
+            // must ensure that the vector is in a valid state at all time.
+            //
+            // The way that we handle this is by using swaps; we iterate
+            // over all the elements, swapping as we go so that at the end
+            // the elements we wish to keep are in the front, and those we
+            // wish to reject are at the back. We can then truncate the
+            // vector. This operation is still O(n).
+            //
+            // Example: We start in this state, where `r` represents "next
+            // read" and `w` represents "next_write`.
+            //
+            //           r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //           w
+            //
+            // Comparing self[r] against self[w-1], this is not a duplicate, so
+            // we swap self[r] and self[w] (no effect as r==w) and then increment both
+            // r and w, leaving us with:
+            //
+            //               r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //               w
+            //
+            // Comparing self[r] against self[w-1], this value is a duplicate,
+            // so we increment `r` but leave everything else unchanged:
+            //
+            //                   r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //               w
+            //
+            // Comparing self[r] against self[w-1], this is not a duplicate,
+            // so swap self[r] and self[w] and advance r and w:
+            //
+            //                       r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 2 | 1 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //                   w
+            //
+            // Not a duplicate, repeat:
+            //
+            //                           r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 2 | 3 | 1 | 3 |
+            //     +---+---+---+---+---+---+
+            //                       w
+            //
+            // Duplicate, advance r. End of vec. Truncate to w.
+
+            let ln = self.len();
+            if ln <= 1 {
+                return;
+            }
+
+            // Avoid bounds checks by using raw pointers.
+            let p = self.as_mut_ptr();
+            let mut r: usize = 1;
+            let mut w: usize = 1;
+
+            while r < ln {
+                let p_r = p.offset(r as isize);
+                let p_wm1 = p.offset((w - 1) as isize);
+                if !same_bucket(&mut *p_r, &mut *p_wm1) {
+                    if r != w {
+                        let p_w = p_wm1.offset(1);
+                        mem::swap(&mut *p_r, &mut *p_w);
+                    }
+                    w += 1;
+                }
+                r += 1;
+            }
+
+            self.truncate(w);
+        }
+    }
+
     /// Appends an element to the back of a collection.
     ///
     /// # Panics
@@ -1155,90 +1279,9 @@ impl<T: PartialEq> Vec<T> {
     /// assert_eq!(vec, [1, 2, 3, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn dedup(&mut self) {
-        unsafe {
-            // Although we have a mutable reference to `self`, we cannot make
-            // *arbitrary* changes. The `PartialEq` comparisons could panic, so we
-            // must ensure that the vector is in a valid state at all time.
-            //
-            // The way that we handle this is by using swaps; we iterate
-            // over all the elements, swapping as we go so that at the end
-            // the elements we wish to keep are in the front, and those we
-            // wish to reject are at the back. We can then truncate the
-            // vector. This operation is still O(n).
-            //
-            // Example: We start in this state, where `r` represents "next
-            // read" and `w` represents "next_write`.
-            //
-            //           r
-            //     +---+---+---+---+---+---+
-            //     | 0 | 1 | 1 | 2 | 3 | 3 |
-            //     +---+---+---+---+---+---+
-            //           w
-            //
-            // Comparing self[r] against self[w-1], this is not a duplicate, so
-            // we swap self[r] and self[w] (no effect as r==w) and then increment both
-            // r and w, leaving us with:
-            //
-            //               r
-            //     +---+---+---+---+---+---+
-            //     | 0 | 1 | 1 | 2 | 3 | 3 |
-            //     +---+---+---+---+---+---+
-            //               w
-            //
-            // Comparing self[r] against self[w-1], this value is a duplicate,
-            // so we increment `r` but leave everything else unchanged:
-            //
-            //                   r
-            //     +---+---+---+---+---+---+
-            //     | 0 | 1 | 1 | 2 | 3 | 3 |
-            //     +---+---+---+---+---+---+
-            //               w
-            //
-            // Comparing self[r] against self[w-1], this is not a duplicate,
-            // so swap self[r] and self[w] and advance r and w:
-            //
-            //                       r
-            //     +---+---+---+---+---+---+
-            //     | 0 | 1 | 2 | 1 | 3 | 3 |
-            //     +---+---+---+---+---+---+
-            //                   w
-            //
-            // Not a duplicate, repeat:
-            //
-            //                           r
-            //     +---+---+---+---+---+---+
-            //     | 0 | 1 | 2 | 3 | 1 | 3 |
-            //     +---+---+---+---+---+---+
-            //                       w
-            //
-            // Duplicate, advance r. End of vec. Truncate to w.
-
-            let ln = self.len();
-            if ln <= 1 {
-                return;
-            }
-
-            // Avoid bounds checks by using raw pointers.
-            let p = self.as_mut_ptr();
-            let mut r: usize = 1;
-            let mut w: usize = 1;
-
-            while r < ln {
-                let p_r = p.offset(r as isize);
-                let p_wm1 = p.offset((w - 1) as isize);
-                if *p_r != *p_wm1 {
-                    if r != w {
-                        let p_w = p_wm1.offset(1);
-                        mem::swap(&mut *p_r, &mut *p_w);
-                    }
-                    w += 1;
-                }
-                r += 1;
-            }
-
-            self.truncate(w);
-        }
+        self.dedup_by(|a, b| a == b)
     }
 }
 
