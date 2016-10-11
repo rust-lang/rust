@@ -225,13 +225,36 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         invocations.reverse();
 
         let mut expansions = Vec::new();
-        while let Some(invoc) = invocations.pop() {
+        let mut undetermined_invocations = Vec::new();
+        let (mut progress, mut force) = (false, !self.monotonic);
+        loop {
+            let invoc = if let Some(invoc) = invocations.pop() {
+                invoc
+            } else if undetermined_invocations.is_empty() {
+                break
+            } else {
+                invocations = mem::replace(&mut undetermined_invocations, Vec::new());
+                force = !mem::replace(&mut progress, false);
+                continue
+            };
+
+            let scope =
+                if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
+            let ext = match self.cx.resolver.resolve_invoc(scope, &invoc, force) {
+                Ok(ext) => Some(ext),
+                Err(Determinacy::Determined) => None,
+                Err(Determinacy::Undetermined) => {
+                    undetermined_invocations.push(invoc);
+                    continue
+                }
+            };
+
+            progress = true;
             let ExpansionData { depth, mark, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
 
-            let scope = if self.monotonic { mark } else { orig_expansion_data.mark };
             self.cx.current_expansion.mark = scope;
-            let expansion = match self.cx.resolver.resolve_invoc(scope, &invoc) {
+            let expansion = match ext {
                 Some(ext) => self.expand_invoc(invoc, ext),
                 None => invoc.expansion_kind.dummy(invoc.span()),
             };

@@ -17,7 +17,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::errors::DiagnosticBuilder;
-use syntax::ext::base::{self, MultiModifier, MultiDecorator, MultiItemModifier};
+use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator, MultiItemModifier};
 use syntax::ext::base::{NormalTT, SyntaxExtension};
 use syntax::ext::expand::{Expansion, Invocation, InvocationKind};
 use syntax::ext::hygiene::Mark;
@@ -173,7 +173,8 @@ impl<'a> base::Resolver for Resolver<'a> {
         None
     }
 
-    fn resolve_invoc(&mut self, scope: Mark, invoc: &Invocation) -> Option<Rc<SyntaxExtension>> {
+    fn resolve_invoc(&mut self, scope: Mark, invoc: &Invocation, _force: bool)
+                     -> Result<Rc<SyntaxExtension>, Determinacy> {
         let (name, span) = match invoc.kind {
             InvocationKind::Bang { ref mac, .. } => {
                 let path = &mac.node.path;
@@ -181,7 +182,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                    !path.segments[0].parameters.is_empty() {
                     self.session.span_err(path.span,
                                           "expected macro name without module separators");
-                    return None;
+                    return Err(Determinacy::Determined);
                 }
                 (path.segments[0].identifier.name, path.span)
             }
@@ -192,12 +193,12 @@ impl<'a> base::Resolver for Resolver<'a> {
         if let LegacyScope::Expansion(parent) = invocation.legacy_scope.get() {
             invocation.legacy_scope.set(LegacyScope::simplify_expansion(parent));
         }
-        self.resolve_macro_name(invocation.legacy_scope.get(), name, true).or_else(|| {
+        self.resolve_macro_name(invocation.legacy_scope.get(), name, true).ok_or_else(|| {
             let mut err =
                 self.session.struct_span_err(span, &format!("macro undefined: '{}!'", name));
             self.suggest_macro_name(&name.as_str(), &mut err);
             err.emit();
-            None
+            Determinacy::Determined
         })
     }
 
