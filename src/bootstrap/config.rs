@@ -350,6 +350,36 @@ impl Config {
                 "CFG_MUSL_ROOT" if value.len() > 0 => {
                     self.musl_root = Some(PathBuf::from(value));
                 }
+                "CFG_MUSL_ROOT_X86_64" if value.len() > 0 => {
+                    let target = "x86_64-unknown-linux-musl".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.musl_root = Some(PathBuf::from(value));
+                }
+                "CFG_MUSL_ROOT_I686" if value.len() > 0 => {
+                    let target = "i686-unknown-linux-musl".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.musl_root = Some(PathBuf::from(value));
+                }
+                "CFG_MUSL_ROOT_ARM" if value.len() > 0 => {
+                    let target = "arm-unknown-linux-musleabi".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.musl_root = Some(PathBuf::from(value));
+                }
+                "CFG_MUSL_ROOT_ARMHF" if value.len() > 0 => {
+                    let target = "arm-unknown-linux-musleabihf".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.musl_root = Some(PathBuf::from(value));
+                }
+                "CFG_MUSL_ROOT_ARMV7" if value.len() > 0 => {
+                    let target = "armv7-unknown-linux-musleabihf".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.musl_root = Some(PathBuf::from(value));
+                }
                 "CFG_DEFAULT_AR" if value.len() > 0 => {
                     self.rustc_default_ar = Some(value.to_string());
                 }
