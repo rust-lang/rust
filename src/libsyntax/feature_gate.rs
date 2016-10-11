@@ -897,7 +897,12 @@ pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
     "allow_internal_unstable side-steps feature gating and stability checks";
 
 pub const EXPLAIN_CUSTOM_DERIVE: &'static str =
-    "`#[derive]` for custom traits is not stable enough for use and is subject to change";
+    "`#[derive]` for custom traits is not stable enough for use. It is deprecated and will \
+     be removed in v1.15";
+
+pub const EXPLAIN_DEPR_CUSTOM_DERIVE: &'static str =
+    "`#[derive]` for custom traits is deprecated and will be removed in v1.15. Prefer using \
+     procedural macro custom derive";
 
 pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
     "attributes of the form `#[derive_*]` are reserved for the compiler";
