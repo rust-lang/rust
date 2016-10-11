@@ -13,7 +13,7 @@
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
 
-use macros::{InvocationData, LegacyImports, LegacyScope};
+use macros::{InvocationData, LegacyScope};
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport};
 use {Module, ModuleS, ModuleKind};
 use Namespace::{self, TypeNS, ValueNS};
@@ -84,7 +84,7 @@ impl<'b> Resolver<'b> {
     }
 
     /// Constructs the reduced graph for one item.
-    fn build_reduced_graph_for_item(&mut self, item: &Item, legacy_imports: &mut LegacyImports) {
+    fn build_reduced_graph_for_item(&mut self, item: &Item, expansion: Mark) {
         let parent = self.current_module;
         let name = item.ident.name;
         let sp = item.span;
@@ -202,7 +202,14 @@ impl<'b> Resolver<'b> {
                             if def.use_locally {
                                 let ext =
                                     Rc::new(macro_rules::compile(&self.session.parse_sess, &def));
-                                legacy_imports.insert(name, (ext, loaded_macro.import_site));
+                                if self.builtin_macros.insert(name, ext).is_some() &&
+                                   expansion != Mark::root() {
+                                    let msg = format!("`{}` is already in scope", name);
+                                    self.session.struct_span_err(loaded_macro.import_site, &msg)
+                                        .note("macro-expanded `#[macro_use]`s may not shadow \
+                                               existing macros (see RFC 1560)")
+                                        .emit();
+                                }
                                 self.macro_names.insert(name);
                             }
                             if def.export {
@@ -513,7 +520,7 @@ impl<'b> Resolver<'b> {
 pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
     pub resolver: &'a mut Resolver<'b>,
     pub legacy_scope: LegacyScope<'b>,
-    pub legacy_imports: LegacyImports,
+    pub expansion: Mark,
 }
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
@@ -554,7 +561,7 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
         };
 
         let (parent, legacy_scope) = (self.resolver.current_module, self.legacy_scope);
-        self.resolver.build_reduced_graph_for_item(item, &mut self.legacy_imports);
+        self.resolver.build_reduced_graph_for_item(item, self.expansion);
         visit::walk_item(self, item);
         self.resolver.current_module = parent;
         if !macro_use {
