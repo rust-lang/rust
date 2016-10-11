@@ -167,6 +167,9 @@ declare_features! (
     // RFC 1238
     (active, dropck_parametricity, "1.3.0", Some(28498)),
 
+    // Allows using the may_dangle attribute; RFC 1327
+    (active, dropck_eyepatch, "1.10.0", Some(34761)),
+
     // Allows the use of custom attributes; RFC 572
     (active, custom_attribute, "1.0.0", Some(29642)),
 
@@ -617,6 +620,11 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
            "unsafe_destructor_blind_to_params has unstable semantics \
             and may be removed in the future",
            cfg_fn!(dropck_parametricity))),
+    ("may_dangle",
+     Normal,
+     Gated("dropck_eyepatch",
+           "may_dangle has unstable semantics and may be removed in the future",
+           cfg_fn!(dropck_eyepatch))),
     ("unwind", Whitelisted, Gated("unwind_attributes", "#[unwind] is experimental",
                                   cfg_fn!(unwind_attributes))),
 
