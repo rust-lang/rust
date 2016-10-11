@@ -11,9 +11,9 @@
 // compile-flags: -C debug_assertions=no
 
 fn main() {
-    let mut it = u8::MAX..;
-    assert_eq!(it.next(), u8::MIN);
+    let mut it = u8::max_value()..;
+    assert_eq!(it.next(), u8::min_value());
 
-    let mut it = i8::MAX..;
-    assert_eq!(it.next(), i8::MIN);
+    let mut it = i8::max_value()..;
+    assert_eq!(it.next(), i8::min_value());
 }
