@@ -12,18 +12,15 @@
 //!
 //! The `std::io` module contains a number of common things you'll need
 //! when doing input and output. The most core part of this module is
-//! the [`Read`][read] and [`Write`][write] traits, which provide the
+//! the [`Read`] and [`Write`] traits, which provide the
 //! most general interface for reading and writing input and output.
-//!
-//! [read]: trait.Read.html
-//! [write]: trait.Write.html
 //!
 //! # Read and Write
 //!
-//! Because they are traits, `Read` and `Write` are implemented by a number
+//! Because they are traits, [`Read`] and [`Write`] are implemented by a number
 //! of other types, and you can implement them for your types too. As such,
 //! you'll see a few different types of I/O throughout the documentation in
-//! this module: `File`s, `TcpStream`s, and sometimes even `Vec<T>`s. For
+//! this module: [`File`]s, [`TcpStream`]s, and sometimes even [`Vec<T>`]s. For
 //! example, `Read` adds a `read()` method, which we can use on `File`s:
 //!
 //! ```
@@ -43,15 +40,15 @@
 //! # }
 //! ```
 //!
-//! `Read` and `Write` are so important, implementors of the two traits have a
+//! [`Read`] and [`Write`] are so important, implementors of the two traits have a
 //! nickname: readers and writers. So you'll sometimes see 'a reader' instead
-//! of 'a type that implements the `Read` trait'. Much easier!
+//! of 'a type that implements the [`Read`] trait'. Much easier!
 //!
 //! ## Seek and BufRead
 //!
-//! Beyond that, there are two important traits that are provided: [`Seek`][seek]
-//! and [`BufRead`][bufread]. Both of these build on top of a reader to control
-//! how the reading happens. `Seek` lets you control where the next byte is
+//! Beyond that, there are two important traits that are provided: [`Seek`]
+//! and [`BufRead`]. Both of these build on top of a reader to control
+//! how the reading happens. [`Seek`] lets you control where the next byte is
 //! coming from:
 //!
 //! ```
@@ -75,21 +72,18 @@
 //! # }
 //! ```
 //!
-//! [seek]: trait.Seek.html
-//! [bufread]: trait.BufRead.html
-//!
-//! `BufRead` uses an internal buffer to provide a number of other ways to read, but
+//! [`BufRead`] uses an internal buffer to provide a number of other ways to read, but
 //! to show it off, we'll need to talk about buffers in general. Keep reading!
 //!
 //! ## BufReader and BufWriter
 //!
 //! Byte-based interfaces are unwieldy and can be inefficient, as we'd need to be
 //! making near-constant calls to the operating system. To help with this,
-//! `std::io` comes with two structs, `BufReader` and `BufWriter`, which wrap
+//! `std::io` comes with two structs, [`BufReader`] and [`BufWriter`], which wrap
 //! readers and writers. The wrapper uses a buffer, reducing the number of
 //! calls and providing nicer methods for accessing exactly what you want.
 //!
-//! For example, `BufReader` works with the `BufRead` trait to add extra
+//! For example, [`BufReader`] works with the [`BufRead`] trait to add extra
 //! methods to any reader:
 //!
 //! ```
@@ -111,8 +105,8 @@
 //! # }
 //! ```
 //!
-//! `BufWriter` doesn't add any new ways of writing; it just buffers every call
-//! to [`write()`][write()]:
+//! [`BufWriter`] doesn't add any new ways of writing; it just buffers every call
+//! to [`write()`]:
 //!
 //! ```
 //! use std::io;
@@ -133,8 +127,6 @@
 //! # Ok(())
 //! # }
 //! ```
-//!
-//! [write()]: trait.Write.html#tymethod.write
 //!
 //! ## Standard input and output
 //!
@@ -165,13 +157,13 @@
 //! # }
 //! ```
 //!
-//! Of course, using `io::stdout()` directly is less common than something like
-//! `println!`.
+//! Of course, using [`io::stdout()`] directly is less common than something like
+//! [`println!`].
 //!
 //! ## Iterator types
 //!
 //! A large number of the structures provided by `std::io` are for various
-//! ways of iterating over I/O. For example, `Lines` is used to split over
+//! ways of iterating over I/O. For example, [`Lines`] is used to split over
 //! lines:
 //!
 //! ```
@@ -211,10 +203,10 @@
 //!
 //! ## io::Result
 //!
-//! Last, but certainly not least, is [`io::Result`][result]. This type is used
+//! Last, but certainly not least, is [`io::Result`]. This type is used
 //! as the return type of many `std::io` functions that can cause an error, and
 //! can be returned from your own functions as well. Many of the examples in this
-//! module use the [`try!`][try] macro:
+//! module use the [`try!`] macro:
 //!
 //! ```
 //! use std::io;
@@ -230,13 +222,10 @@
 //! }
 //! ```
 //!
-//! The return type of `read_input()`, `io::Result<()>`, is a very common type
-//! for functions which don't have a 'real' return value, but do want to return
-//! errors if they happen. In this case, the only purpose of this function is
+//! The return type of `read_input()`, [`io::Result<()>`][`io::Result`], is a very
+//! common type for functions which don't have a 'real' return value, but do want to
+//! return errors if they happen. In this case, the only purpose of this function is
 //! to read the line and print it, so we use `()`.
-//!
-//! [result]: type.Result.html
-//! [try]: ../macro.try.html
 //!
 //! ## Platform-specific behavior
 //!
@@ -246,6 +235,22 @@
 //! any possibly unclear semantics. Note, however, that this is informative, not a binding
 //! contract. The implementation of many of these functions are subject to change over
 //! time and may call fewer or more syscalls/library functions.
+//!
+//! [`Read`]: trait.Read.html
+//! [`Write`]: trait.Write.html
+//! [`Seek`]: trait.Seek.html
+//! [`BufRead`]: trait.BufRead.html
+//! [`File`]: ../fs/struct.File.html
+//! [`TcpStream`]: ../net/struct.TcpStream.html
+//! [`Vec<T>`]: ../vec/struct.Vec.html
+//! [`BufReader`]: struct.BufReader.html
+//! [`BufWriter`]: struct.BufWriter.html
+//! [`write()`]: trait.Write.html#tymethod.write
+//! [`io::stdout()`]: fn.stdout.html
+//! [`println!`]: ../macro.println.html
+//! [`Lines`]: struct.Lines.html
+//! [`io::Result`]: type.Result.html
+//! [`try!`]: ../macro.try.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
