@@ -2323,7 +2323,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let enum_did = self.parent_def_id(did).unwrap();
                 self.lookup_adt_def(enum_did).variant_with_id(did)
             }
-            Def::Struct(did) | Def::StructCtor(did, ..) | Def::Union(did) => {
+            Def::Struct(did) | Def::Union(did) => {
+                self.lookup_adt_def(did).struct_variant()
+            }
+            Def::StructCtor(ctor_did, ..) => {
+                let did = self.parent_def_id(ctor_did).expect("struct ctor has no parent");
                 self.lookup_adt_def(did).struct_variant()
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)
