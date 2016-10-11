@@ -303,7 +303,11 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 debug!(" -> {:?}", k);
                 fcx.tcx.cast_kinds.borrow_mut().insert(self.expr.id, k);
             }
-            Err(e) => self.report_cast_error(fcx, e)
+            Err(e) => {
+                if !fcx.inh.infcx.is_tainted_by_errors() {
+                    self.report_cast_error(fcx, e)
+                }
+            }
         };}
     }
 
