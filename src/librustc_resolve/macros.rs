@@ -75,12 +75,9 @@ impl<'a> LegacyScope<'a> {
 
 pub struct LegacyBinding<'a> {
     parent: LegacyScope<'a>,
-    kind: LegacyBindingKind,
-}
-
-pub enum LegacyBindingKind {
-    MacroRules(ast::Name, Rc<SyntaxExtension>, Span),
-    MacroUse(LegacyImports),
+    name: ast::Name,
+    ext: Rc<SyntaxExtension>,
+    span: Span,
 }
 
 pub type LegacyImports = FnvHashMap<ast::Name, (Rc<SyntaxExtension>, Span)>;
@@ -123,10 +120,11 @@ impl<'a> base::Resolver for Resolver<'a> {
         }
         if def.use_locally {
             let invocation = self.invocations[&scope];
-            let ext = Rc::new(macro_rules::compile(&self.session.parse_sess, &def));
             let binding = self.arenas.alloc_legacy_binding(LegacyBinding {
                 parent: invocation.legacy_scope.get(),
-                kind: LegacyBindingKind::MacroRules(def.ident.name, ext, def.span),
+                name: def.ident.name,
+                ext: Rc::new(macro_rules::compile(&self.session.parse_sess, &def)),
+                span: def.span,
             });
             invocation.legacy_scope.set(LegacyScope::Binding(binding));
             self.macro_names.insert(def.ident.name);
@@ -208,12 +206,6 @@ impl<'a> Resolver<'a> {
                               name: ast::Name,
                               record_used: bool)
                               -> Option<Rc<SyntaxExtension>> {
-        let check_shadowing = |this: &mut Self, relative_depth, scope, span| {
-            if record_used && relative_depth > 0 {
-                this.disallowed_shadowing.push((name, span, scope));
-            }
-        };
-
         let mut relative_depth: u32 = 0;
         loop {
             scope = match scope {
@@ -227,29 +219,18 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 LegacyScope::Invocation(invocation) => {
-                    let new_relative_depth = relative_depth.saturating_sub(1);
-                    let mut scope = invocation.legacy_scope.get();
-                    if let LegacyScope::Binding(binding) = scope {
-                        match binding.kind {
-                            LegacyBindingKind::MacroUse(ref imports) => {
-                                if let Some(&(ref ext, span)) = imports.get(&name) {
-                                    check_shadowing(self, relative_depth, binding.parent, span);
-                                    return Some(ext.clone());
-                                }
-                            },
-                            LegacyBindingKind::MacroRules(name_, ref ext, span) => {
-                                if name_ == name {
-                                    check_shadowing(self, new_relative_depth, binding.parent, span);
-                                    return Some(ext.clone());
-                                }
-                            }
-                        }
-                        scope = binding.parent
-                    }
-                    relative_depth = new_relative_depth;
-                    scope
+                    relative_depth = relative_depth.saturating_sub(1);
+                    invocation.legacy_scope.get()
                 }
-                _ => unreachable!(),
+                LegacyScope::Binding(binding) => {
+                    if binding.name == name {
+                        if record_used && relative_depth > 0 {
+                            self.disallowed_shadowing.push((name, binding.span, binding.parent));
+                        }
+                        return Some(binding.ext.clone());
+                    }
+                    binding.parent
+                }
             };
         }
 
