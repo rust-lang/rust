@@ -111,19 +111,10 @@ impl<'a> base::Resolver for Resolver<'a> {
         let mut visitor = BuildReducedGraphVisitor {
             resolver: self,
             legacy_scope: LegacyScope::Invocation(invocation),
-            legacy_imports: FnvHashMap(),
+            expansion: mark,
         };
         expansion.visit_with(&mut visitor);
         invocation.expansion.set(visitor.legacy_scope);
-
-        if !visitor.legacy_imports.is_empty() {
-            invocation.legacy_scope.set({
-                LegacyScope::Binding(self.arenas.alloc_legacy_binding(LegacyBinding {
-                    parent: invocation.legacy_scope.get(),
-                    kind: LegacyBindingKind::MacroUse(visitor.legacy_imports),
-                }))
-            });
-        }
     }
 
     fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef) {
@@ -173,7 +164,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         None
     }
 
-    fn resolve_invoc(&mut self, scope: Mark, invoc: &Invocation, _force: bool)
+    fn resolve_invoc(&mut self, scope: Mark, invoc: &Invocation, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
         let (name, span) = match invoc.kind {
             InvocationKind::Bang { ref mac, .. } => {
@@ -194,11 +185,15 @@ impl<'a> base::Resolver for Resolver<'a> {
             invocation.legacy_scope.set(LegacyScope::simplify_expansion(parent));
         }
         self.resolve_macro_name(invocation.legacy_scope.get(), name, true).ok_or_else(|| {
-            let mut err =
-                self.session.struct_span_err(span, &format!("macro undefined: '{}!'", name));
-            self.suggest_macro_name(&name.as_str(), &mut err);
-            err.emit();
-            Determinacy::Determined
+            if force {
+                let mut err =
+                    self.session.struct_span_err(span, &format!("macro undefined: '{}!'", name));
+                self.suggest_macro_name(&name.as_str(), &mut err);
+                err.emit();
+                Determinacy::Determined
+            } else {
+                Determinacy::Undetermined
+            }
         })
     }
 

@@ -3389,8 +3389,8 @@ impl<'a> Resolver<'a> {
                reported_errors.insert((name, span)) {
                 let msg = format!("`{}` is already in scope", name);
                 self.session.struct_span_err(span, &msg)
-                    .note("macro-expanded `macro_rules!`s and `#[macro_use]`s \
-                           may not shadow existing macros (see RFC 1560)")
+                    .note("macro-expanded `macro_rules!`s may not shadow \
+                           existing macros (see RFC 1560)")
                     .emit();
             }
         }
