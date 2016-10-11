@@ -643,7 +643,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("link_section", Whitelisted, Ungated),
     ("no_builtins", Whitelisted, Ungated),
     ("no_mangle", Whitelisted, Ungated),
-    ("no_debug", Whitelisted, Gated(Stability::Unstable,
+    ("no_debug", Whitelisted, Gated(Stability::Deprecated,
                                     "no_debug",
                                     "the `#[no_debug]` attribute \
                                      is an experimental feature",
