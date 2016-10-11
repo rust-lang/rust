@@ -31,7 +31,7 @@ use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::default::Default;
 use std::ffi::CString;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::slice;
 use std::str;
 use syntax::feature_gate::UnstableFeatures;
@@ -214,7 +214,9 @@ fn collapse_whitespace(s: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-thread_local!(pub static PLAYGROUND_KRATE: RefCell<Option<Option<String>>> = {
+// Information about the playground if a URL has been specified, containing an
+// optional crate name and the URL.
+thread_local!(pub static PLAYGROUND: RefCell<Option<(Option<String>, String)>> = {
     RefCell::new(None)
 });
 
@@ -248,24 +250,53 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             });
             let text = lines.collect::<Vec<&str>>().join("\n");
             if rendered { return }
-            PLAYGROUND_KRATE.with(|krate| {
+            PLAYGROUND.with(|play| {
                 // insert newline to clearly separate it from the
                 // previous block so we can shorten the html output
                 let mut s = String::from("\n");
-                krate.borrow().as_ref().map(|krate| {
+                let playground_button = play.borrow().as_ref().and_then(|&(ref krate, ref url)| {
+                    if url.is_empty() {
+                        return None;
+                    }
                     let test = origtext.lines().map(|l| {
                         stripped_filtered_line(l).unwrap_or(l)
                     }).collect::<Vec<&str>>().join("\n");
                     let krate = krate.as_ref().map(|s| &**s);
                     let test = test::maketest(&test, krate, false,
                                               &Default::default());
-                    s.push_str(&format!("<span class='rusttest'>{}</span>", Escape(&test)));
+                    let channel = if test.contains("#![feature(") {
+                        "&amp;version=nightly"
+                    } else {
+                        ""
+                    };
+                    // These characters don't need to be escaped in a URI.
+                    // FIXME: use a library function for percent encoding.
+                    fn dont_escape(c: u8) -> bool {
+                        (b'a' <= c && c <= b'z') ||
+                        (b'A' <= c && c <= b'Z') ||
+                        (b'0' <= c && c <= b'9') ||
+                        c == b'-' || c == b'_' || c == b'.' ||
+                        c == b'~' || c == b'!' || c == b'\'' ||
+                        c == b'(' || c == b')' || c == b'*'
+                    }
+                    let mut test_escaped = String::new();
+                    for b in test.bytes() {
+                        if dont_escape(b) {
+                            test_escaped.push(char::from(b));
+                        } else {
+                            write!(test_escaped, "%{:02X}", b).unwrap();
+                        }
+                    }
+                    Some(format!(
+                        r#"<a class="test-arrow" target="_blank" href="{}?code={}{}">Run</a>"#,
+                        url, test_escaped, channel
+                    ))
                 });
                 s.push_str(&highlight::render_with_highlighting(
                                &text,
                                Some("rust-example-rendered"),
                                None,
-                               Some("<a class='test-arrow' target='_blank' href=''>Run</a>")));
+                               playground_button.as_ref().map(String::as_str)));
                 let output = CString::new(s).unwrap();
                 hoedown_buffer_puts(ob, output.as_ptr());
             })
