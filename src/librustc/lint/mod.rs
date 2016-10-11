@@ -314,5 +314,4 @@ pub enum LintSource {
 pub type LevelSource = (Level, LintSource);
 
 pub mod builtin;
-
 mod context;
