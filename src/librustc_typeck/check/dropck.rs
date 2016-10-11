@@ -402,16 +402,27 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
     // unbounded type parameter `T`, we must resume the recursive
     // analysis on `T` (since it would be ignored by
     // type_must_outlive).
-    if has_dtor_of_interest(tcx, ty) {
-        debug!("iterate_over_potentially_unsafe_regions_in_type \
-                {}ty: {} - is a dtorck type!",
-               (0..depth).map(|_| ' ').collect::<String>(),
-               ty);
-
-        cx.rcx.type_must_outlive(infer::SubregionOrigin::SafeDestructor(cx.span),
-                                 ty, tcx.mk_region(ty::ReScope(cx.parent_scope)));
-
-        return Ok(());
+    let dropck_kind = has_dtor_of_interest(tcx, ty);
+    debug!("iterate_over_potentially_unsafe_regions_in_type \
+            ty: {:?} dropck_kind: {:?}", ty, dropck_kind);
+    match dropck_kind {
+        DropckKind::NoBorrowedDataAccessedInMyDtor => {
+            // The maximally blind attribute.
+        }
+        DropckKind::BorrowedDataMustStrictlyOutliveSelf => {
+            cx.rcx.type_must_outlive(infer::SubregionOrigin::SafeDestructor(cx.span),
+                                     ty, tcx.mk_region(ty::ReScope(cx.parent_scope)));
+            return Ok(());
+        }
+        DropckKind::RevisedSelf(revised_ty) => {
+            cx.rcx.type_must_outlive(infer::SubregionOrigin::SafeDestructor(cx.span),
+                                     revised_ty, tcx.mk_region(ty::ReScope(cx.parent_scope)));
+            // Do not return early from this case; we want
+            // to recursively process the internal structure of Self
+            // (because even though the Drop for Self has been asserted
+            //  safe, the types instantiated for the generics of Self
+            //  may themselves carry dropck constraints.)
+        }
     }
 
     debug!("iterate_over_potentially_unsafe_regions_in_type \
@@ -492,16 +503,81 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum DropckKind<'tcx> {
+    /// The "safe" kind; i.e. conservatively assume any borrow
+    /// accessed by dtor, and therefore such data must strictly
+    /// outlive self.
+    ///
+    /// Equivalent to RevisedTy with no change to the self type.
+    ///
+    /// FIXME: this name may not be general enough; it should be
+    /// talking about Phantom lifetimes rather than just borrows.
+    ///
+    /// (actually, pnkfelix is not 100% sure that's the right
+    /// viewpoint.  If I'm holding a phantom lifetime just to
+    /// constrain a reference type that occurs solely in *negative*
+    /// type positions, then my destructor cannot itself ever actually
+    /// access such references, right? And don't we end up essentially
+    /// requring people to put a fake borrow inside a PhantomData in
+    /// order to make phantom lifetimes work anyway?)
+    BorrowedDataMustStrictlyOutliveSelf,
+
+    /// The nearly completely-unsafe kind.
+    ///
+    /// Equivalent to RevisedSelf with *all* parameters remapped to ()
+    /// (maybe...?)
+    NoBorrowedDataAccessedInMyDtor,
+
+    /// Assume all borrowed data access by dtor occurs as if Self has the
+    /// type carried by this variant. In practice this means that some
+    /// of the type parameters are remapped to `()`, because the developer
+    /// has asserted that the destructor will not access their contents.
+    RevisedSelf(Ty<'tcx>),
+}
+
+/// Returns the classification of what kind of check should be applied
+/// to `ty`, which may include a revised type where some of the type
+/// parameters are re-mapped to `()` to reflect the destructor's
+/// "purity" with respect to their actual contents.
 fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                        ty: Ty<'tcx>) -> bool {
+                                        ty: Ty<'tcx>) -> DropckKind<'tcx> {
     match ty.sty {
-        ty::TyAdt(def, _) => {
-            def.is_dtorck(tcx)
+        ty::TyAdt(adt_def, substs) => {
+            if !adt_def.is_dtorck(tcx) {
+                return DropckKind::NoBorrowedDataAccessedInMyDtor;
+            }
+
+            // Find the `impl<..> Drop for _` to inspect any
+            // attributes attached to the impl's generics.
+            let opt_dtor_method = adt_def.destructor();
+            let dtor_method = if let Some(dtor_method) = opt_dtor_method {
+                dtor_method
+            } else {
+                return DropckKind::BorrowedDataMustStrictlyOutliveSelf;
+            };
+            let method = tcx.impl_or_trait_item(dtor_method);
+            let substs = Substs::for_item(tcx,
+                                          method.container().id(),
+                                          |def, _| if def.pure_wrt_drop {
+                                              tcx.mk_region(ty::ReStatic)
+                                          } else {
+                                              substs.region_for_def(def)
+                                          },
+                                          |def, _| if def.pure_wrt_drop {
+                                              tcx.mk_nil()
+                                          } else {
+                                              substs.type_for_def(def)
+                                          });
+            let revised_ty = tcx.mk_adt(adt_def, &substs);
+            return DropckKind::RevisedSelf(revised_ty);
         }
         ty::TyTrait(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
             debug!("ty: {:?} isn't known, and therefore is a dropck type", ty);
-            true
+            return DropckKind::BorrowedDataMustStrictlyOutliveSelf;
         },
-        _ => false
+        _ => {
+            return DropckKind::NoBorrowedDataAccessedInMyDtor;
+        }
     }
 }
