@@ -38,6 +38,7 @@ pub fn write_unsigned_leb128(out: &mut Vec<u8>, start_position: usize, mut value
     return position - start_position;
 }
 
+#[inline]
 pub fn read_unsigned_leb128(data: &[u8], start_position: usize) -> (u64, usize) {
     let mut result = 0;
     let mut shift = 0;
@@ -78,6 +79,7 @@ pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, mut value: 
     return position - start_position;
 }
 
+#[inline]
 pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i64, usize) {
     let mut result = 0;
     let mut shift = 0;
