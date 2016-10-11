@@ -207,20 +207,14 @@ impl<'a> base::Resolver for Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    fn resolve_macro_name(&mut self,
-                          mut scope: LegacyScope<'a>,
-                          name: ast::Name,
-                          record_used: bool)
-                          -> Option<Rc<SyntaxExtension>> {
+    pub fn resolve_macro_name(&mut self,
+                              mut scope: LegacyScope<'a>,
+                              name: ast::Name,
+                              record_used: bool)
+                              -> Option<Rc<SyntaxExtension>> {
         let check_shadowing = |this: &mut Self, relative_depth, scope, span| {
-            if record_used && relative_depth > 0 &&
-               this.resolve_macro_name(scope, name, false).is_some() &&
-               this.macro_shadowing_errors.insert(span) {
-                let msg = format!("`{}` is already in scope", name);
-                this.session.struct_span_err(span, &msg)
-                    .note("macro-expanded `macro_rules!`s and `#[macro_use]`s \
-                           may not shadow existing macros (see RFC 1560)")
-                    .emit();
+            if record_used && relative_depth > 0 {
+                this.disallowed_shadowing.push((name, span, scope));
             }
         };
 

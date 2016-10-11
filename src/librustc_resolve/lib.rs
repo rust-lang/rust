@@ -78,7 +78,7 @@ use std::mem::replace;
 use std::rc::Rc;
 
 use resolve_imports::{ImportDirective, NameResolution};
-use macros::{InvocationData, LegacyBinding};
+use macros::{InvocationData, LegacyBinding, LegacyScope};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -1073,7 +1073,7 @@ pub struct Resolver<'a> {
 
     privacy_errors: Vec<PrivacyError<'a>>,
     ambiguity_errors: Vec<AmbiguityError<'a>>,
-    macro_shadowing_errors: FnvHashSet<Span>,
+    disallowed_shadowing: Vec<(Name, Span, LegacyScope<'a>)>,
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
@@ -1260,7 +1260,7 @@ impl<'a> Resolver<'a> {
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
-            macro_shadowing_errors: FnvHashSet(),
+            disallowed_shadowing: Vec::new(),
 
             arenas: arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
@@ -3353,7 +3353,8 @@ impl<'a> Resolver<'a> {
         vis.is_accessible_from(module.normal_ancestor_id.unwrap(), self)
     }
 
-    fn report_errors(&self) {
+    fn report_errors(&mut self) {
+        self.report_shadowing_errors();
         let mut reported_spans = FnvHashSet();
 
         for &AmbiguityError { span, name, b1, b2 } in &self.ambiguity_errors {
@@ -3377,6 +3378,20 @@ impl<'a> Resolver<'a> {
             } else {
                 let def = binding.def();
                 self.session.span_err(span, &format!("{} `{}` is private", def.kind_name(), name));
+            }
+        }
+    }
+
+    fn report_shadowing_errors(&mut self) {
+        let mut reported_errors = FnvHashSet();
+        for (name, span, scope) in replace(&mut self.disallowed_shadowing, Vec::new()) {
+            if self.resolve_macro_name(scope, name, false).is_some() &&
+               reported_errors.insert((name, span)) {
+                let msg = format!("`{}` is already in scope", name);
+                self.session.struct_span_err(span, &msg)
+                    .note("macro-expanded `macro_rules!`s and `#[macro_use]`s \
+                           may not shadow existing macros (see RFC 1560)")
+                    .emit();
             }
         }
     }
