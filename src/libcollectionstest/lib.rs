@@ -19,6 +19,7 @@
 #![feature(enumset)]
 #![feature(pattern)]
 #![feature(rand)]
+#![feature(repeat_str)]
 #![feature(step_by)]
 #![feature(str_escape)]
 #![feature(str_replacen)]
