@@ -1,4 +1,6 @@
-use int::{Int, LargeInt};
+#[cfg(not(all(feature = "c", target_arch = "x86")))]
+use int::LargeInt;
+use int::Int;
 
 macro_rules! mul {
     ($intrinsic:ident: $ty:ty) => {

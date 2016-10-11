@@ -1,3 +1,4 @@
+#[cfg(not(all(feature = "c", target_arch = "x86")))]
 use int::{Int, LargeInt};
 
 macro_rules! ashl {

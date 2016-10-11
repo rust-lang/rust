@@ -1,4 +1,4 @@
-use core::{intrinsics, mem};
+use core::intrinsics;
 use int::{Int, LargeInt};
 
 /// Returns `n / d`
@@ -107,6 +107,8 @@ pub extern "C" fn __udivdi3(n: u64, d: u64) -> u64 {
 #[cfg(not(all(feature = "c", target_arch = "x86")))]
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __umoddi3(a: u64, b: u64) -> u64 {
+    use core::mem;
+
     let mut rem = unsafe { mem::uninitialized() };
     __udivmoddi4(a, b, Some(&mut rem));
     rem
