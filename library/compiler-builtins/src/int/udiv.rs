@@ -65,7 +65,14 @@ pub extern "C" fn __umodsi3(n: u32, d: u32) -> u32 {
         fn __udivsi3(n: u32, d: u32) -> u32;
     }
 
-    n - unsafe { __udivsi3(n, d) * d }
+    let q = match () {
+        #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios")))]
+        () => unsafe { __udivsi3(n, d) },
+        #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
+        () => __udivsi3(n, d),
+    };
+
+    n - q * d
 }
 
 /// Returns `n / d` and sets `*rem = n % d`
@@ -77,7 +84,12 @@ pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {
         fn __udivsi3(n: u32, d: u32) -> u32;
     }
 
-    let q = unsafe { __udivsi3(n, d) };
+    let q = match () {
+        #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios")))]
+        () => unsafe { __udivsi3(n, d) },
+        #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
+        () => __udivsi3(n, d),
+    };
     if let Some(rem) = rem {
         *rem = n - (q * d);
     }

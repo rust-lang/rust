@@ -43,7 +43,12 @@ macro_rules! divmod {
                 fn $div(a: $ty, b: $ty) -> $ty;
             }
 
-            let r = unsafe { $div(a, b) };
+            let r = match () {
+                #[cfg(not(all(feature = "c", any(target_arch = "x86"))))]
+                () => $div(a, b),
+                #[cfg(all(feature = "c", any(target_arch = "x86")))]
+                () => unsafe { $div(a, b) },
+            };
             *rem = a - (r * b);
             r
         }

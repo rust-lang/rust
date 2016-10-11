@@ -1,4 +1,6 @@
-set -e
+set -ex
+
+export RUST_BACKTRACE=1
 
 # Test our implementation
 case $1 in

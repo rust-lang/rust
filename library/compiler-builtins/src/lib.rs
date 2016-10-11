@@ -1,6 +1,6 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 #![cfg_attr(not(test), no_std)]
-#![compiler_builtins]
+#![cfg_attr(rustbuild, compiler_builtins)]
 #![crate_name = "compiler_builtins"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
@@ -15,7 +15,7 @@
 #![feature(naked_functions)]
 #![feature(staged_api)]
 #![no_builtins]
-#![unstable(feature = "compiler_builtins",
+#![unstable(feature = "compiler_builtins_lib",
             reason = "Compiler builtins. Will never become stable.",
             issue = "0")]
 

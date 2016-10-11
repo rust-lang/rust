@@ -7,6 +7,7 @@
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
 #![feature(asm)]
+#![feature(compiler_builtins_lib)]
 #![feature(core_float)]
 #![feature(lang_items)]
 #![feature(libc)]
@@ -15,7 +16,7 @@
 
 #[cfg(not(thumb))]
 extern crate libc;
-extern crate rustc_builtins;
+extern crate compiler_builtins;
 
 // NOTE cfg(not(thumbv6m)) means that the operation is not supported on ARMv6-M at all. Not even
 // compiler-rt provides a C/assembly implementation.
