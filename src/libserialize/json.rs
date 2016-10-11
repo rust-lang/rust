@@ -199,6 +199,7 @@ use self::DecoderError::*;
 use self::ParserState::*;
 use self::InternalStackElement::*;
 
+use std::borrow::Cow;
 use std::collections::{HashMap, BTreeMap};
 use std::io::prelude::*;
 use std::io;
@@ -2081,9 +2082,7 @@ impl Decoder {
     pub fn new(json: Json) -> Decoder {
         Decoder { stack: vec![json] }
     }
-}
 
-impl Decoder {
     fn pop(&mut self) -> Json {
         self.stack.pop().unwrap()
     }
@@ -2182,8 +2181,11 @@ impl ::Decoder for Decoder {
         Err(ExpectedError("single character string".to_owned(), format!("{}", s)))
     }
 
-    fn read_str(&mut self) -> DecodeResult<string::String> {
-        expect!(self.pop(), String)
+    fn read_str(&mut self) -> DecodeResult<Cow<str>> {
+        match self.pop() {
+            Json::String(v) => Ok(Cow::Owned(v)),
+            ref other => Err(ExpectedError(stringify!(String).to_string(), format!("{}", other))),
+        }
     }
 
     fn read_enum<T, F>(&mut self, _name: &str, f: F) -> DecodeResult<T> where
