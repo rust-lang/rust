@@ -1789,4 +1789,24 @@ impl str {
             String::from_utf8_unchecked(slice.into_vec())
         }
     }
+
+    /// Create a [`String`] by repeating a string `n` times.
+    ///
+    /// [`String`]: string/struct.String.html
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(repeat_str)]
+    ///
+    /// assert_eq!("abc".repeat(4), String::from("abcabcabcabc"));
+    /// ```
+    #[unstable(feature = "repeat_str", issue = "37079")]
+    pub fn repeat(&self, n: usize) -> String {
+        let mut s = String::with_capacity(self.len() * n);
+        s.extend((0..n).map(|_| self));
+        s
+    }
 }
