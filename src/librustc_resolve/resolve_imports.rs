@@ -75,7 +75,6 @@ pub struct NameResolution<'a> {
     single_imports: SingleImports<'a>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
-    duplicate_globs: Vec<&'a NameBinding<'a>>,
 }
 
 #[derive(Clone, Debug)]
@@ -141,7 +140,6 @@ impl<'a> Resolver<'a> {
                                   module: Module<'a>,
                                   name: Name,
                                   ns: Namespace,
-                                  allow_private_imports: bool,
                                   ignore_unresolved_invocations: bool,
                                   record_used: Option<Span>)
                                   -> ResolveResult<&'a NameBinding<'a>> {
@@ -153,18 +151,8 @@ impl<'a> Resolver<'a> {
             _ => return Failed(None), // This happens when there is a cycle of imports
         };
 
-        let new_import_semantics = self.new_import_semantics;
-        let is_disallowed_private_import = |binding: &NameBinding| {
-            !new_import_semantics && !allow_private_imports && // disallowed
-            binding.vis != ty::Visibility::Public && binding.is_import() && // non-`pub` import
-            !binding.is_extern_crate() // not an `extern crate`
-        };
-
         if let Some(span) = record_used {
             if let Some(binding) = resolution.binding {
-                if is_disallowed_private_import(binding) {
-                    return Failed(None);
-                }
                 if self.record_use(name, ns, binding, span) {
                     return Success(self.dummy_binding);
                 }
@@ -177,9 +165,8 @@ impl<'a> Resolver<'a> {
         }
 
         let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
-            let usable =
-                this.is_accessible(binding.vis) && !is_disallowed_private_import(binding) ||
-                binding.is_extern_crate(); // c.f. issue #37020
+            // `extern crate` are always usable for backwards compatability, see issue #37020.
+            let usable = this.is_accessible(binding.vis) || binding.is_extern_crate();
             if usable { Success(binding) } else { Failed(None) }
         };
 
@@ -202,7 +189,7 @@ impl<'a> Resolver<'a> {
                     SingleImport { source, .. } => source,
                     _ => unreachable!(),
                 };
-                match self.resolve_name_in_module(module, name, ns, true, false, None) {
+                match self.resolve_name_in_module(module, name, ns, false, None) {
                     Failed(_) => {}
                     _ => return Indeterminate,
                 }
@@ -224,7 +211,7 @@ impl<'a> Resolver<'a> {
         for directive in module.globs.borrow().iter() {
             if self.is_accessible(directive.vis.get()) {
                 if let Some(module) = directive.imported_module.get() {
-                    let result = self.resolve_name_in_module(module, name, ns, true, false, None);
+                    let result = self.resolve_name_in_module(module, name, ns, false, None);
                     if let Indeterminate = result {
                         return Indeterminate;
                     }
@@ -311,10 +298,8 @@ impl<'a> Resolver<'a> {
         self.update_resolution(module, name, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {
-                    if !this.new_import_semantics {
-                        resolution.duplicate_globs.push(binding);
-                    } else if !old_binding.is_glob_import() &&
-                              !(ns == MacroNS && old_binding.expansion != Mark::root()) {
+                    if !old_binding.is_glob_import() &&
+                       !(ns == MacroNS && old_binding.expansion != Mark::root()) {
                     } else if binding.def() != old_binding.def() {
                         resolution.binding = Some(this.ambiguity(old_binding, binding));
                     } else if !old_binding.vis.is_at_least(binding.vis, this) {
@@ -322,11 +307,8 @@ impl<'a> Resolver<'a> {
                         resolution.binding = Some(binding);
                     }
                 } else if old_binding.is_glob_import() {
-                    if !this.new_import_semantics {
-                        resolution.duplicate_globs.push(old_binding);
-                        resolution.binding = Some(binding);
-                    } else if ns == MacroNS && binding.expansion != Mark::root() &&
-                              binding.def() != old_binding.def() {
+                    if ns == MacroNS && binding.expansion != Mark::root() &&
+                       binding.def() != old_binding.def() {
                         resolution.binding = Some(this.ambiguity(binding, old_binding));
                     } else {
                         resolution.binding = Some(binding);
@@ -366,7 +348,7 @@ impl<'a> Resolver<'a> {
             let t = f(self, resolution);
 
             match resolution.binding() {
-                _ if !self.new_import_semantics && old_binding.is_some() => return t,
+                _ if old_binding.is_some() => return t,
                 None => return t,
                 Some(binding) => match old_binding {
                     Some(old_binding) if old_binding as *const _ == binding as *const _ => return t,
@@ -377,10 +359,7 @@ impl<'a> Resolver<'a> {
 
         // Define `binding` in `module`s glob importers.
         for directive in module.glob_importers.borrow_mut().iter() {
-            if match self.new_import_semantics {
-                true => self.is_accessible_from(binding.vis, directive.parent),
-                false => binding.vis == ty::Visibility::Public,
-            } {
+            if self.is_accessible_from(binding.vis, directive.parent) {
                 let imported_binding = self.import(binding, directive);
                 let _ = self.try_define(directive.parent, name, ns, imported_binding);
             }
@@ -528,7 +507,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.per_ns(|this, ns| {
             if let Err(Undetermined) = result[ns].get() {
                 result[ns].set({
-                    match this.resolve_name_in_module(module, source, ns, false, false, None) {
+                    match this.resolve_name_in_module(module, source, ns, false, None) {
                         Success(binding) => Ok(binding),
                         Indeterminate => Err(Undetermined),
                         Failed(_) => Err(Determined),
@@ -624,7 +603,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if all_ns_err {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| {
-                match this.resolve_name_in_module(module, name, ns, false, false, Some(span)) {
+                match this.resolve_name_in_module(module, name, ns, false, Some(span)) {
                     Success(_) => all_ns_failed = false,
                     _ => {}
                 }
@@ -729,8 +708,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             resolution.borrow().binding().map(|binding| (*name, binding))
         }).collect::<Vec<_>>();
         for ((name, ns), binding) in bindings {
-            if binding.pseudo_vis() == ty::Visibility::Public ||
-               self.new_import_semantics && self.is_accessible(binding.vis) {
+            if binding.pseudo_vis() == ty::Visibility::Public || self.is_accessible(binding.vis) {
                 let imported_binding = self.import(binding, directive);
                 let _ = self.try_define(directive.parent, name, ns, imported_binding);
             }
@@ -760,20 +738,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 Some(binding) => binding,
                 None => continue,
             };
-
-            // Report conflicts
-            if !self.new_import_semantics {
-                for duplicate_glob in resolution.duplicate_globs.iter() {
-                    // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
-                    if !binding.is_import() {
-                        if let NameBindingKind::Import { binding, .. } = duplicate_glob.kind {
-                            if binding.is_import() { continue }
-                        }
-                    }
-
-                    self.report_conflict(module, name, ns, duplicate_glob, binding);
-                }
-            }
 
             if binding.vis == ty::Visibility::Public &&
                (binding.is_import() || binding.is_extern_crate()) {
