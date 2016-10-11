@@ -68,6 +68,7 @@ impl Category {
             ExprKind::Binary { .. } |
             ExprKind::Box { .. } |
             ExprKind::Cast { .. } |
+            ExprKind::Use { .. } |
             ExprKind::ReifyFnPointer { .. } |
             ExprKind::UnsafeFnPointer { .. } |
             ExprKind::Unsize { .. } |

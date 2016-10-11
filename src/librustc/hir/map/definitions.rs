@@ -12,7 +12,8 @@ use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use hir::map::def_collector::DefCollector;
 use rustc_data_structures::fnv::FnvHashMap;
 use std::fmt::Write;
-use std::hash::{Hash, Hasher, SipHasher};
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 use syntax::{ast, visit};
 use syntax::parse::token::{self, InternedString};
 use ty::TyCtxt;
@@ -131,7 +132,7 @@ impl DefPath {
     }
 
     pub fn deterministic_hash(&self, tcx: TyCtxt) -> u64 {
-        let mut state = SipHasher::new();
+        let mut state = DefaultHasher::new();
         self.deterministic_hash_to(tcx, &mut state);
         state.finish()
     }

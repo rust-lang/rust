@@ -25,7 +25,8 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit as visit;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv;
-use std::hash::{Hash, SipHasher};
+use std::hash::Hash;
+use std::collections::hash_map::DefaultHasher;
 
 use super::def_path_hash::DefPathHashes;
 use super::caching_codemap_view::CachingCodemapView;
@@ -42,7 +43,7 @@ const IGNORED_ATTRIBUTES: &'static [&'static str] = &[
 
 pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
     pub tcx: TyCtxt<'hash, 'tcx, 'tcx>,
-    pub st: &'a mut SipHasher,
+    pub st: &'a mut DefaultHasher,
     // collect a deterministic hash of def-ids that we have seen
     def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
     hash_spans: bool,
@@ -50,7 +51,7 @@ pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
 }
 
 impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
-    pub fn new(st: &'a mut SipHasher,
+    pub fn new(st: &'a mut DefaultHasher,
                tcx: TyCtxt<'hash, 'tcx, 'tcx>,
                def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
                codemap: &'a mut CachingCodemapView<'tcx>,
