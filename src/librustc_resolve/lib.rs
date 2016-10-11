@@ -2412,15 +2412,11 @@ impl<'a> Resolver<'a> {
                     self.record_def(pat.id, resolution);
                 }
 
-                PatKind::TupleStruct(ref path, ref pats, ddpos) => {
+                PatKind::TupleStruct(ref path, ..) => {
                     self.resolve_pattern_path(pat.id, None, path, ValueNS, |def| {
                         match def {
                             Def::StructCtor(_, CtorKind::Fn) |
                             Def::VariantCtor(_, CtorKind::Fn) => true,
-                            // `UnitVariant(..)` is accepted for backward compatibility.
-                            Def::StructCtor(_, CtorKind::Const) |
-                            Def::VariantCtor(_, CtorKind::Const)
-                                if pats.is_empty() && ddpos.is_some() => true,
                             _ => false,
                         }
                     }, "tuple struct/variant");
