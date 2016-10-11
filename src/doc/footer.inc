@@ -5,4 +5,3 @@ or the <a href="https://opensource.org/licenses/MIT">MIT license</a>, at your op
 </p><p>
 This file may not be copied, modified, or distributed except according to those terms.
 </p></footer>
-<script type="text/javascript" src="playpen.js"></script>

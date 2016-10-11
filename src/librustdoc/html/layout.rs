@@ -19,7 +19,6 @@ pub struct Layout {
     pub favicon: String,
     pub external_html: ExternalHtml,
     pub krate: String,
-    pub playground_url: String,
 }
 
 pub struct Page<'a> {
@@ -136,11 +135,9 @@ r##"<!DOCTYPE html>
     <script>
         window.rootPath = "{root_path}";
         window.currentCrate = "{krate}";
-        window.playgroundUrl = "{play_url}";
     </script>
     <script src="{root_path}jquery.js"></script>
     <script src="{root_path}main.js"></script>
-    {play_js}
     <script defer src="{root_path}search-index.js"></script>
 </body>
 </html>"##,
@@ -174,12 +171,6 @@ r##"<!DOCTYPE html>
     after_content = layout.external_html.after_content,
     sidebar   = *sidebar,
     krate     = layout.krate,
-    play_url  = layout.playground_url,
-    play_js   = if layout.playground_url.is_empty() {
-        format!(r#"<script src="{}extra.js"></script>"#, page.root_path)
-    } else {
-        format!(r#"<script src="{}playpen.js"></script>"#, page.root_path)
-    }
     )
 }
 

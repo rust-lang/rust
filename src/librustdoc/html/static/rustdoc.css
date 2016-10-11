@@ -575,7 +575,6 @@ pre.rust .question-mark {
     font-weight: bold;
 }
 
-.rusttest { display: none; }
 pre.rust { position: relative; }
 a.test-arrow {
     background-color: rgba(78, 139, 202, 0.2);
