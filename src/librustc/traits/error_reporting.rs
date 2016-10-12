@@ -27,6 +27,7 @@ use super::{
 use fmt_macros::{Parser, Piece, Position};
 use hir::def_id::DefId;
 use infer::{self, InferCtxt, TypeOrigin};
+use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::ExpectedFound;
 use ty::fast_reject;
@@ -423,9 +424,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                         item_name: ast::Name,
                                         _impl_item_def_id: DefId,
                                         trait_item_def_id: DefId,
-                                        requirement: &fmt::Display)
+                                        requirement: &fmt::Display,
+                                        lint_id: Option<ast::NodeId>) // (*)
                                         -> DiagnosticBuilder<'tcx>
     {
+        // (*) This parameter is temporary and used only for phasing
+        // in the bug fix to #18937. If it is `Some`, it has a kind of
+        // weird effect -- the diagnostic is reported as a lint, and
+        // the builder which is returned is marked as canceled.
+
         let mut err =
             struct_span_err!(self.tcx.sess,
                              error_span,
@@ -441,6 +448,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             error_span,
             &format!("impl has extra requirement {}", requirement));
 
+        if let Some(node_id) = lint_id {
+            let diagnostic = (*err).clone();
+            self.tcx.sess.add_lint(EXTRA_REQUIREMENT_IN_IMPL, node_id, error_span, diagnostic);
+            err.cancel();
+        }
+
         err
     }
 
@@ -452,14 +465,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut err = match *error {
             SelectionError::Unimplemented => {
                 if let ObligationCauseCode::CompareImplMethodObligation {
-                    item_name, impl_item_def_id, trait_item_def_id
+                    item_name, impl_item_def_id, trait_item_def_id, lint_id
                 } = obligation.cause.code {
                     self.report_extra_impl_obligation(
                         span,
                         item_name,
                         impl_item_def_id,
                         trait_item_def_id,
-                        &format!("`{}`", obligation.predicate))
+                        &format!("`{}`", obligation.predicate),
+                        lint_id)
                         .emit();
                     return;
                 } else {

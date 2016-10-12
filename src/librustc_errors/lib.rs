@@ -57,7 +57,7 @@ mod lock;
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileName, MultiSpan, Span, NO_EXPANSION};
 use syntax_pos::MacroBacktrace;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum RenderSpan {
     /// A FullSpan renders with both with an initial line for the
     /// message, prefixed by file:linenum, followed by a summary of
@@ -71,7 +71,7 @@ pub enum RenderSpan {
     Suggestion(CodeSuggestion),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CodeSuggestion {
     pub msp: MultiSpan,
     pub substitutes: Vec<String>,
@@ -293,7 +293,6 @@ impl Handler {
                                                    sp: S,
                                                    msg: &str)
                                                    -> DiagnosticBuilder<'a> {
-        self.bump_err_count();
         let mut result = DiagnosticBuilder::new(self, Level::Error, msg);
         result.set_span(sp);
         result
@@ -303,21 +302,18 @@ impl Handler {
                                                              msg: &str,
                                                              code: &str)
                                                              -> DiagnosticBuilder<'a> {
-        self.bump_err_count();
         let mut result = DiagnosticBuilder::new(self, Level::Error, msg);
         result.set_span(sp);
         result.code(code.to_owned());
         result
     }
     pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
-        self.bump_err_count();
         DiagnosticBuilder::new(self, Level::Error, msg)
     }
     pub fn struct_span_fatal<'a, S: Into<MultiSpan>>(&'a self,
                                                      sp: S,
                                                      msg: &str)
                                                      -> DiagnosticBuilder<'a> {
-        self.bump_err_count();
         let mut result = DiagnosticBuilder::new(self, Level::Fatal, msg);
         result.set_span(sp);
         result
@@ -327,24 +323,16 @@ impl Handler {
                                                                msg: &str,
                                                                code: &str)
                                                                -> DiagnosticBuilder<'a> {
-        self.bump_err_count();
         let mut result = DiagnosticBuilder::new(self, Level::Fatal, msg);
         result.set_span(sp);
         result.code(code.to_owned());
         result
     }
     pub fn struct_fatal<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
-        self.bump_err_count();
         DiagnosticBuilder::new(self, Level::Fatal, msg)
     }
 
     pub fn cancel(&self, err: &mut DiagnosticBuilder) {
-        if err.level == Level::Error || err.level == Level::Fatal {
-            self.err_count.set(self.err_count
-                .get()
-                .checked_sub(1)
-                .expect("cancelled an error but err_count is 0"));
-        }
         err.cancel();
     }
 
@@ -356,7 +344,6 @@ impl Handler {
 
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> FatalError {
         self.emit(&sp.into(), msg, Fatal);
-        self.bump_err_count();
         self.panic_if_treat_err_as_bug();
         return FatalError;
     }
@@ -366,13 +353,11 @@ impl Handler {
                                                     code: &str)
                                                     -> FatalError {
         self.emit_with_code(&sp.into(), msg, code, Fatal);
-        self.bump_err_count();
         self.panic_if_treat_err_as_bug();
         return FatalError;
     }
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Error);
-        self.bump_err_count();
         self.panic_if_treat_err_as_bug();
     }
     pub fn mut_span_err<'a, S: Into<MultiSpan>>(&'a self,
@@ -381,12 +366,10 @@ impl Handler {
                                                 -> DiagnosticBuilder<'a> {
         let mut result = DiagnosticBuilder::new(self, Level::Error, msg);
         result.set_span(sp);
-        self.bump_err_count();
         result
     }
     pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) {
         self.emit_with_code(&sp.into(), msg, code, Error);
-        self.bump_err_count();
         self.panic_if_treat_err_as_bug();
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
@@ -405,7 +388,6 @@ impl Handler {
     }
     pub fn span_bug_no_panic<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Bug);
-        self.bump_err_count();
     }
     pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Note);
@@ -419,7 +401,6 @@ impl Handler {
         }
         let mut db = DiagnosticBuilder::new(self, Fatal, msg);
         db.emit();
-        self.bump_err_count();
         FatalError
     }
     pub fn err(&self, msg: &str) {
@@ -428,7 +409,6 @@ impl Handler {
         }
         let mut db = DiagnosticBuilder::new(self, Error, msg);
         db.emit();
-        self.bump_err_count();
     }
     pub fn warn(&self, msg: &str) {
         let mut db = DiagnosticBuilder::new(self, Warning, msg);
