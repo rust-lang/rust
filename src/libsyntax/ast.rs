@@ -71,7 +71,7 @@ impl Encodable for Name {
 
 impl Decodable for Name {
     fn decode<D: Decoder>(d: &mut D) -> Result<Name, D::Error> {
-        Ok(token::intern(&d.read_str()?[..]))
+        Ok(token::intern(&d.read_str()?))
     }
 }
 

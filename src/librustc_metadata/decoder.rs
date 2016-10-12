@@ -32,6 +32,7 @@ use rustc_const_math::ConstInt;
 
 use rustc::mir::repr::Mir;
 
+use std::borrow::Cow;
 use std::cell::Ref;
 use std::io;
 use std::mem;
@@ -202,7 +203,7 @@ impl<'doc, 'tcx> Decoder for DecodeContext<'doc, 'tcx> {
         read_f64 -> f64;
         read_f32 -> f32;
         read_char -> char;
-        read_str -> String;
+        read_str -> Cow<str>;
     }
 
     fn error(&mut self, err: &str) -> Self::Error {

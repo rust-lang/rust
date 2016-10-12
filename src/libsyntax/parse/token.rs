@@ -566,7 +566,7 @@ impl PartialEq<InternedString> for str {
 
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(intern(d.read_str()?.as_ref()).as_str())
+        Ok(intern(&d.read_str()?).as_str())
     }
 }
 
