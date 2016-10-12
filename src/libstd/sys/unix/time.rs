@@ -242,7 +242,7 @@ mod inner {
 mod inner {
     use fmt;
     use libc;
-    use sys::cvt;
+    #[cfg(not(target_os="none"))] use sys::cvt;
     use time::Duration;
 
     use super::Timespec;
@@ -334,6 +334,7 @@ mod inner {
     #[cfg(target_os = "dragonfly")]
     pub type clock_t = libc::c_ulong;
 
+    #[cfg(not(target_os = "none"))]
     fn now(clock: clock_t) -> Timespec {
         let mut t = Timespec {
             t: libc::timespec {
@@ -345,5 +346,11 @@ mod inner {
             libc::clock_gettime(clock, &mut t.t)
         }).unwrap();
         t
+    }
+
+
+    #[cfg(target_os = "none")]
+    fn now(_clock: clock_t) -> Timespec {
+        panic!("time not supported on this platform")
     }
 }

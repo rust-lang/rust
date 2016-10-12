@@ -26,6 +26,7 @@ use libc;
 #[cfg(target_os = "openbsd")]   pub use os::openbsd as platform;
 #[cfg(target_os = "solaris")]   pub use os::solaris as platform;
 #[cfg(target_os = "emscripten")] pub use os::emscripten as platform;
+#[cfg(target_os = "none")]      pub use os::none as platform;
 
 #[macro_use]
 pub mod weak;

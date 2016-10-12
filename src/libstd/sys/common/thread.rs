@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(not(target_os = "none"))]
 use alloc::boxed::FnBox;
+#[cfg(not(target_os = "none"))]
 use libc;
+#[cfg(not(target_os = "none"))]
 use sys::stack_overflow;
 
+#[cfg(not(target_os = "none"))]
 pub unsafe fn start_thread(main: *mut libc::c_void) {
     // Next, set up our stack overflow handler which may get triggered if we run
     // out of stack.

@@ -21,6 +21,7 @@ pub struct Handler {
 }
 
 impl Handler {
+    #[cfg_attr(target_os="none",allow(dead_code))]
     pub unsafe fn new() -> Handler {
         make_handler()
     }

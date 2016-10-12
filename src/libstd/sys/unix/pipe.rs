@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(not(target_os = "none"))]
 use cmp;
 use io;
+#[cfg(not(target_os = "none"))]
 use libc::{self, c_int};
+#[cfg(not(target_os = "none"))]
 use mem;
+#[cfg(not(target_os = "none"))]
 use ptr;
-use sys::cvt_r;
+#[cfg(not(target_os="none"))] use sys::cvt_r;
 use sys::fd::FileDesc;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -22,6 +26,7 @@ use sys::fd::FileDesc;
 
 pub struct AnonPipe(FileDesc);
 
+#[cfg(not(target_os="none"))]
 pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     let mut fds = [0; 2];
 
@@ -52,6 +57,7 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
 }
 
 impl AnonPipe {
+    #[cfg(not(target_os = "none"))]
     pub fn from_fd(fd: FileDesc) -> io::Result<AnonPipe> {
         fd.set_cloexec()?;
         Ok(AnonPipe(fd))
@@ -73,6 +79,7 @@ impl AnonPipe {
     pub fn into_fd(self) -> FileDesc { self.0 }
 }
 
+#[cfg(not(target_os="none"))]
 pub fn read2(p1: AnonPipe,
              v1: &mut Vec<u8>,
              p2: AnonPipe,
@@ -122,4 +129,12 @@ pub fn read2(p1: AnonPipe,
             return p1.read_to_end(v1).map(|_| ());
         }
     }
+}
+
+#[cfg(target_os="none")]
+pub fn read2(_p1: AnonPipe,
+             _v1: &mut Vec<u8>,
+             _p2: AnonPipe,
+             _v2: &mut Vec<u8>) -> io::Result<()> {
+    Err(::sys::process::generic_error())
 }

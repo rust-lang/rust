@@ -8,17 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(not(target_os = "none"))]
 use cmp;
+#[cfg(not(target_os = "none"))]
 use ffi::CString;
 use fmt;
-use io::{self, Error, ErrorKind};
-use libc::{c_int, c_void};
+use io;
+#[cfg(not(target_os = "none"))]
+use io::{Error, ErrorKind};
+use libc::c_int;
+#[cfg(not(target_os = "none"))]
+use libc::c_void;
 use mem;
 use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
+#[cfg(not(target_os = "none"))]
 use ptr;
-use sys::net::{cvt, cvt_r, cvt_gai, Socket, init, wrlen_t};
+use sys::net::Socket;
+#[cfg(not(target_os = "none"))]
+use sys::net::init;
+#[cfg(not(target_os="none"))]
+use sys::net::{cvt, cvt_r, cvt_gai, wrlen_t};
 use sys::net::netc as c;
-use sys_common::{AsInner, FromInner, IntoInner};
+use sys_common::{AsInner, FromInner};
+#[cfg(not(target_os = "none"))]
+use sys_common::IntoInner;
 use time::Duration;
 
 #[cfg(any(target_os = "dragonfly", target_os = "freebsd",
@@ -44,13 +57,14 @@ use sys::net::netc::IPV6_DROP_MEMBERSHIP;
 
 #[cfg(target_os = "linux")]
 use libc::MSG_NOSIGNAL;
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(not(target_os = "linux"), not(target_os = "none")))]
 const MSG_NOSIGNAL: c_int = 0x0; // unused dummy value
 
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
 ////////////////////////////////////////////////////////////////////////////////
 
+#[cfg(not(target_os="none"))]
 pub fn setsockopt<T>(sock: &Socket, opt: c_int, val: c_int,
                      payload: T) -> io::Result<()> {
     unsafe {
@@ -61,6 +75,7 @@ pub fn setsockopt<T>(sock: &Socket, opt: c_int, val: c_int,
     }
 }
 
+#[cfg(not(target_os="none"))]
 pub fn getsockopt<T: Copy>(sock: &Socket, opt: c_int,
                        val: c_int) -> io::Result<T> {
     unsafe {
@@ -74,6 +89,7 @@ pub fn getsockopt<T: Copy>(sock: &Socket, opt: c_int,
     }
 }
 
+#[cfg(not(target_os="none"))]
 fn sockname<F>(f: F) -> io::Result<SocketAddr>
     where F: FnOnce(*mut c::sockaddr, *mut c::socklen_t) -> c_int
 {
@@ -85,6 +101,7 @@ fn sockname<F>(f: F) -> io::Result<SocketAddr>
     }
 }
 
+#[cfg(not(target_os="none"))]
 fn sockaddr_to_addr(storage: &c::sockaddr_storage,
                     len: usize) -> io::Result<SocketAddr> {
     match storage.ss_family as c_int {
@@ -106,6 +123,24 @@ fn sockaddr_to_addr(storage: &c::sockaddr_storage,
     }
 }
 
+#[cfg(target_os="none")]
+pub fn setsockopt<T>(_sock: &Socket, _opt: c_int, _val: c_int,
+                     _payload: T) -> io::Result<()> {
+    Err(::sys::net::generic_error())
+}
+
+#[cfg(target_os="none")]
+pub fn getsockopt<T: Copy>(_sock: &Socket, _opt: c_int,
+                       _val: c_int) -> io::Result<T> {
+    Err(::sys::net::generic_error())
+}
+
+#[cfg(target_os="none")]
+fn sockaddr_to_addr(_storage: &c::sockaddr_storage,
+                    _len: usize) -> io::Result<SocketAddr> {
+    Err(::sys::net::generic_error())
+}
+
 #[cfg(target_os = "android")]
 fn to_ipv6mr_interface(value: u32) -> c_int {
     value as c_int
@@ -120,13 +155,18 @@ fn to_ipv6mr_interface(value: u32) -> ::libc::c_uint {
 // get_host_addresses
 ////////////////////////////////////////////////////////////////////////////////
 
+#[cfg(not(target_os="none"))]
 pub struct LookupHost {
     original: *mut c::addrinfo,
     cur: *mut c::addrinfo,
 }
+#[cfg(target_os="none")]
+pub struct LookupHost;
 
 impl Iterator for LookupHost {
     type Item = SocketAddr;
+
+    #[cfg(not(target_os="none"))]
     fn next(&mut self) -> Option<SocketAddr> {
         loop {
             unsafe {
@@ -144,17 +184,27 @@ impl Iterator for LookupHost {
             }
         }
     }
+
+    #[cfg(target_os="none")]
+    fn next(&mut self) -> Option<SocketAddr> {
+        None
+    }
 }
 
 unsafe impl Sync for LookupHost {}
 unsafe impl Send for LookupHost {}
 
 impl Drop for LookupHost {
+    #[cfg(not(target_os="none"))]
     fn drop(&mut self) {
         unsafe { c::freeaddrinfo(self.original) }
     }
+
+    #[cfg(target_os="none")]
+    fn drop(&mut self) {}
 }
 
+#[cfg(not(target_os="none"))]
 pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     init();
 
@@ -177,6 +227,12 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     }
 }
 
+#[cfg(target_os="none")]
+pub fn lookup_host(_host: &str) -> io::Result<LookupHost> {
+    Err(::sys::net::generic_error())
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // TCP streams
 ////////////////////////////////////////////////////////////////////////////////
@@ -186,6 +242,7 @@ pub struct TcpStream {
 }
 
 impl TcpStream {
+    #[cfg(not(target_os="none"))]
     pub fn connect(addr: &SocketAddr) -> io::Result<TcpStream> {
         init();
 
@@ -194,6 +251,11 @@ impl TcpStream {
         let (addrp, len) = addr.into_inner();
         cvt_r(|| unsafe { c::connect(*sock.as_inner(), addrp, len) })?;
         Ok(TcpStream { inner: sock })
+    }
+
+    #[cfg(target_os="none")]
+    pub fn connect(_addr: &SocketAddr) -> io::Result<TcpStream> {
+        Err(::sys::net::generic_error())
     }
 
     pub fn socket(&self) -> &Socket { &self.inner }
@@ -224,6 +286,7 @@ impl TcpStream {
         self.inner.read_to_end(buf)
     }
 
+    #[cfg(not(target_os="none"))]
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
         let ret = cvt(unsafe {
@@ -235,16 +298,33 @@ impl TcpStream {
         Ok(ret as usize)
     }
 
+    #[cfg(target_os="none")]
+    pub fn write(&self, _buf: &[u8]) -> io::Result<usize> {
+        Err(::sys::net::generic_error())
+    }
+
+    #[cfg(not(target_os="none"))]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {
             c::getpeername(*self.inner.as_inner(), buf, len)
         })
     }
 
+    #[cfg(target_os="none")]
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        Err(::sys::net::generic_error())
+    }
+
+    #[cfg(not(target_os="none"))]
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {
             c::getsockname(*self.inner.as_inner(), buf, len)
         })
+    }
+
+    #[cfg(target_os="none")]
+    pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+        Err(::sys::net::generic_error())
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
@@ -314,6 +394,7 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
+    #[cfg(not(target_os="none"))]
     pub fn bind(addr: &SocketAddr) -> io::Result<TcpListener> {
         init();
 
@@ -336,14 +417,25 @@ impl TcpListener {
         Ok(TcpListener { inner: sock })
     }
 
+    #[cfg(target_os="none")]
+    pub fn bind(_addr: &SocketAddr) -> io::Result<TcpListener> {
+        Err(::sys::net::generic_error())
+    }
+
     pub fn socket(&self) -> &Socket { &self.inner }
 
     pub fn into_socket(self) -> Socket { self.inner }
 
+    #[cfg(not(target_os="none"))]
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {
             c::getsockname(*self.inner.as_inner(), buf, len)
         })
+    }
+
+    #[cfg(target_os="none")]
+    pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+        Err(::sys::net::generic_error())
     }
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
@@ -415,6 +507,7 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
+    #[cfg(not(target_os="none"))]
     pub fn bind(addr: &SocketAddr) -> io::Result<UdpSocket> {
         init();
 
@@ -424,16 +517,28 @@ impl UdpSocket {
         Ok(UdpSocket { inner: sock })
     }
 
+    #[cfg(target_os="none")]
+    pub fn bind(_addr: &SocketAddr) -> io::Result<UdpSocket> {
+        Err(::sys::net::generic_error())
+    }
+
     pub fn socket(&self) -> &Socket { &self.inner }
 
     pub fn into_socket(self) -> Socket { self.inner }
 
+    #[cfg(not(target_os="none"))]
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {
             c::getsockname(*self.inner.as_inner(), buf, len)
         })
     }
 
+    #[cfg(target_os="none")]
+    pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+        Err(::sys::net::generic_error())
+    }
+
+    #[cfg(not(target_os="none"))]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
         let mut addrlen = mem::size_of_val(&storage) as c::socklen_t;
@@ -448,6 +553,12 @@ impl UdpSocket {
         Ok((n as usize, sockaddr_to_addr(&storage, addrlen as usize)?))
     }
 
+    #[cfg(target_os="none")]
+    pub fn recv_from(&self, _buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+        Err(::sys::net::generic_error())
+    }
+
+    #[cfg(not(target_os="none"))]
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
         let (dstp, dstlen) = dst.into_inner();
@@ -457,6 +568,11 @@ impl UdpSocket {
                       MSG_NOSIGNAL, dstp, dstlen)
         })?;
         Ok(ret as usize)
+    }
+
+    #[cfg(target_os="none")]
+    pub fn send_to(&self, _buf: &[u8], _dst: &SocketAddr) -> io::Result<usize> {
+        Err(::sys::net::generic_error())
     }
 
     pub fn duplicate(&self) -> io::Result<UdpSocket> {
@@ -572,6 +688,7 @@ impl UdpSocket {
         self.inner.read(buf)
     }
 
+    #[cfg(not(target_os="none"))]
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
         let ret = cvt(unsafe {
@@ -583,9 +700,20 @@ impl UdpSocket {
         Ok(ret as usize)
     }
 
+    #[cfg(target_os="none")]
+    pub fn send(&self, _buf: &[u8]) -> io::Result<usize> {
+        Err(::sys::net::generic_error())
+    }
+
+    #[cfg(not(target_os="none"))]
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addrp, len) = addr.into_inner();
         cvt_r(|| unsafe { c::connect(*self.inner.as_inner(), addrp, len) }).map(|_| ())
+    }
+
+    #[cfg(target_os="none")]
+    pub fn connect(&self, _addr: &SocketAddr) -> io::Result<()> {
+        Err(::sys::net::generic_error())
     }
 }
 

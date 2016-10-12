@@ -9,15 +9,19 @@
 // except according to those terms.
 
 use alloc::boxed::FnBox;
+#[cfg(not(target_os="none"))]
 use cmp;
 use ffi::CStr;
 use io;
 use libc;
 use mem;
+#[cfg(not(target_os="none"))]
 use ptr;
+#[cfg(not(target_os="none"))]
 use sys::os;
 use time::Duration;
 
+#[cfg(not(target_os="none"))]
 use sys_common::thread::*;
 
 pub struct Thread {
@@ -31,19 +35,25 @@ unsafe impl Sync for Thread {}
 
 // The pthread_attr_setstacksize symbol doesn't exist in the emscripten libc,
 // so we have to not link to it to satisfy emcc's ERROR_ON_UNDEFINED_SYMBOLS.
-#[cfg(not(target_os = "emscripten"))]
+#[cfg(not(any(target_os = "emscripten", target_os = "none")))]
 unsafe fn pthread_attr_setstacksize(attr: *mut libc::pthread_attr_t,
                                     stack_size: libc::size_t) -> libc::c_int {
     libc::pthread_attr_setstacksize(attr, stack_size)
 }
 
-#[cfg(target_os = "emscripten")]
+#[cfg(any(target_os = "emscripten"))]
 unsafe fn pthread_attr_setstacksize(_attr: *mut libc::pthread_attr_t,
                                     _stack_size: libc::size_t) -> libc::c_int {
     panic!()
 }
 
+#[cfg(target_os = "none")]
+pub fn generic_error() -> io::Error {
+    io::Error::new(io::ErrorKind::Other, "threading not supported on this platform")
+}
+
 impl Thread {
+    #[cfg(not(target_os = "none"))]
     pub unsafe fn new<'a>(stack: usize, p: Box<FnBox() + 'a>)
                           -> io::Result<Thread> {
         let p = box p;
@@ -87,10 +97,20 @@ impl Thread {
         }
     }
 
+    #[cfg(target_os = "none")]
+    pub unsafe fn new<'a>(_stack: usize, _p: Box<FnBox() + 'a>)
+                          -> io::Result<Thread> {
+        Err(generic_error())
+    }
+
+    #[cfg(not(target_os = "none"))]
     pub fn yield_now() {
         let ret = unsafe { libc::sched_yield() };
         debug_assert_eq!(ret, 0);
     }
+
+    #[cfg(target_os = "none")]
+    pub fn yield_now() {}
 
     #[cfg(any(target_os = "linux",
               target_os = "android"))]
@@ -132,11 +152,13 @@ impl Thread {
     #[cfg(any(target_env = "newlib",
               target_os = "solaris",
               target_os = "haiku",
+              target_os = "none",
               target_os = "emscripten"))]
     pub fn set_name(_name: &CStr) {
         // Newlib, Illumos, Haiku, and Emscripten have no way to set a thread name.
     }
 
+    #[cfg(not(target_os = "none"))]
     pub fn sleep(dur: Duration) {
         let mut secs = dur.as_secs();
         let mut nsecs = dur.subsec_nanos() as libc::c_long;
@@ -161,6 +183,10 @@ impl Thread {
         }
     }
 
+    #[cfg(target_os = "none")]
+    pub fn sleep(_dur: Duration) {}
+
+    #[cfg(not(target_os = "none"))]
     pub fn join(self) {
         unsafe {
             let ret = libc::pthread_join(self.id, ptr::null_mut());
@@ -168,6 +194,9 @@ impl Thread {
             debug_assert_eq!(ret, 0);
         }
     }
+
+    #[cfg(target_os = "none")]
+    pub fn join(self) {}
 
     pub fn id(&self) -> libc::pthread_t { self.id }
 
@@ -179,10 +208,14 @@ impl Thread {
 }
 
 impl Drop for Thread {
+    #[cfg(not(target_os = "none"))]
     fn drop(&mut self) {
         let ret = unsafe { libc::pthread_detach(self.id) };
         debug_assert_eq!(ret, 0);
     }
+
+    #[cfg(target_os = "none")]
+    fn drop(&mut self) {}
 }
 
 #[cfg(all(not(all(target_os = "linux", not(target_env = "musl"))),
@@ -366,12 +399,13 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
 // No point in looking up __pthread_get_minstack() on non-glibc
 // platforms.
 #[cfg(all(not(target_os = "linux"),
-          not(target_os = "netbsd")))]
+          not(target_os = "netbsd"),
+          not(target_os = "none")))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     libc::PTHREAD_STACK_MIN as usize
 }
 
-#[cfg(target_os = "netbsd")]
+#[cfg(any(target_os = "netbsd"))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     2048 // just a guess
 }

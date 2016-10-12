@@ -12,16 +12,32 @@ use os::unix::prelude::*;
 
 use collections::hash_map::{HashMap, Entry};
 use env;
-use ffi::{OsString, OsStr, CString, CStr};
+use ffi::{OsString, OsStr, CString};
+#[cfg(not(target_os = "none"))]
+use ffi::CStr;
 use fmt;
-use io::{self, Error, ErrorKind};
-use libc::{self, pid_t, c_int, gid_t, uid_t, c_char};
+use io::{self, ErrorKind};
+#[cfg(not(target_os = "none"))]
+use io::Error;
+#[cfg(not(target_os = "none"))]
+use libc;
+use libc::{pid_t, c_int, gid_t, uid_t, c_char};
+#[cfg(not(target_os = "none"))]
 use mem;
 use ptr;
 use sys::fd::FileDesc;
+#[cfg(not(target_os = "none"))]
 use sys::fs::{File, OpenOptions};
-use sys::pipe::{self, AnonPipe};
+use sys::pipe::AnonPipe;
+#[cfg(not(target_os = "none"))]
+use sys::pipe;
+#[cfg(not(target_os="none"))]
 use sys::{self, cvt, cvt_r};
+
+#[cfg(target_os="none")]
+pub fn generic_error() -> io::Error {
+    io::Error::new(io::ErrorKind::Other, "processes not supported on this platform")
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -71,6 +87,7 @@ pub struct StdioPipes {
 
 // passed to do_exec() with configuration of what the child stdio should look
 // like
+#[cfg_attr(target_os="none",allow(dead_code))]
 struct ChildPipes {
     stdin: ChildStdio,
     stdout: ChildStdio,
@@ -78,9 +95,9 @@ struct ChildPipes {
 }
 
 enum ChildStdio {
-    Inherit,
-    Explicit(c_int),
-    Owned(FileDesc),
+    #[cfg(not(target_os="none"))] Inherit,
+    #[cfg(not(target_os="none"))] Explicit(c_int),
+    #[cfg(not(target_os="none"))] Owned(FileDesc),
 }
 
 pub enum Stdio {
@@ -210,6 +227,7 @@ impl Command {
         self.stderr = Some(stderr);
     }
 
+    #[cfg(not(target_os="none"))]
     pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
                  -> io::Result<(Process, StdioPipes)> {
         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
@@ -286,6 +304,12 @@ impl Command {
         }
     }
 
+    #[cfg(target_os="none")]
+    pub fn spawn(&mut self, _default: Stdio, _needs_stdin: bool)
+                 -> io::Result<(Process, StdioPipes)> {
+        Err(generic_error())
+    }
+
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         if self.saw_nul {
             return io::Error::new(ErrorKind::InvalidInput,
@@ -328,6 +352,7 @@ impl Command {
     // allocation). Instead we just close it manually. This will never
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke libc::exit)
+    #[cfg(not(target_os="none"))]
     unsafe fn do_exec(&mut self, stdio: ChildPipes) -> io::Error {
         macro_rules! t {
             ($e:expr) => (match $e {
@@ -395,6 +420,10 @@ impl Command {
         io::Error::last_os_error()
     }
 
+    #[cfg(target_os="none")]
+    unsafe fn do_exec(&mut self, _stdio: ChildPipes) -> io::Error {
+        generic_error()
+    }
 
     fn setup_io(&self, default: Stdio, needs_stdin: bool)
                 -> io::Result<(StdioPipes, ChildPipes)> {
@@ -428,6 +457,7 @@ fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
 }
 
 impl Stdio {
+    #[cfg(not(target_os="none"))]
     fn to_child_stdio(&self, readable: bool)
                       -> io::Result<(ChildStdio, Option<AnonPipe>)> {
         match *self {
@@ -470,8 +500,15 @@ impl Stdio {
             }
         }
     }
+
+    #[cfg(target_os="none")]
+    fn to_child_stdio(&self, _readable: bool)
+                      -> io::Result<(ChildStdio, Option<AnonPipe>)> {
+        Err(generic_error())
+    }
 }
 
+#[cfg(not(target_os="none"))]
 impl ChildStdio {
     fn fd(&self) -> Option<c_int> {
         match *self {
@@ -513,6 +550,7 @@ impl fmt::Debug for Command {
 pub struct ExitStatus(c_int);
 
 impl ExitStatus {
+    #[cfg(not(target_os="none"))]
     fn exited(&self) -> bool {
         unsafe { libc::WIFEXITED(self.0) }
     }
@@ -521,6 +559,7 @@ impl ExitStatus {
         self.code() == Some(0)
     }
 
+    #[cfg(not(target_os="none"))]
     pub fn code(&self) -> Option<i32> {
         if self.exited() {
             Some(unsafe { libc::WEXITSTATUS(self.0) })
@@ -529,12 +568,23 @@ impl ExitStatus {
         }
     }
 
+    #[cfg(target_os="none")]
+    pub fn code(&self) -> Option<i32> {
+        None
+    }
+
+    #[cfg(not(target_os="none"))]
     pub fn signal(&self) -> Option<i32> {
         if !self.exited() {
             Some(unsafe { libc::WTERMSIG(self.0) })
         } else {
             None
         }
+    }
+
+    #[cfg(target_os="none")]
+    pub fn signal(&self) -> Option<i32> {
+        None
     }
 }
 
@@ -558,7 +608,7 @@ impl fmt::Display for ExitStatus {
 /// The unique id of the process (this should never be negative).
 pub struct Process {
     pid: pid_t,
-    status: Option<ExitStatus>,
+    #[cfg(not(target_os="none"))] status: Option<ExitStatus>,
 }
 
 impl Process {
@@ -566,6 +616,7 @@ impl Process {
         self.pid as u32
     }
 
+    #[cfg(not(target_os="none"))]
     pub fn kill(&mut self) -> io::Result<()> {
         // If we've already waited on this process then the pid can be recycled
         // and used for another process, and we probably shouldn't be killing
@@ -578,6 +629,12 @@ impl Process {
         }
     }
 
+    #[cfg(target_os="none")]
+    pub fn kill(&mut self) -> io::Result<()> {
+        Err(generic_error())
+    }
+
+    #[cfg(not(target_os="none"))]
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         if let Some(status) = self.status {
             return Ok(status)
@@ -586,6 +643,11 @@ impl Process {
         cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) })?;
         self.status = Some(ExitStatus(status));
         Ok(ExitStatus(status))
+    }
+
+    #[cfg(target_os="none")]
+    pub fn wait(&mut self) -> io::Result<ExitStatus> {
+        Err(generic_error())
     }
 }
 

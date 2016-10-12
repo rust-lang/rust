@@ -28,16 +28,15 @@ use ptr;
 use slice;
 use str;
 use sys_common::mutex::Mutex;
-use sys::cvt;
+#[cfg(not(target_os="none"))] use sys::cvt;
 use sys::fd;
 use vec;
 
-const TMPBUF_SZ: usize = 128;
 static ENV_LOCK: Mutex = Mutex::new();
 
 
 extern {
-    #[cfg(not(target_os = "dragonfly"))]
+    #[cfg(not(any(target_os = "dragonfly", target_os = "none")))]
     #[cfg_attr(any(target_os = "linux", target_os = "emscripten"),
                link_name = "__errno_location")]
     #[cfg_attr(any(target_os = "bitrig",
@@ -56,7 +55,7 @@ extern {
 }
 
 /// Returns the platform-specific value of errno
-#[cfg(not(target_os = "dragonfly"))]
+#[cfg(not(any(target_os = "dragonfly", target_os = "none")))]
 pub fn errno() -> i32 {
     unsafe {
         (*errno_location()) as i32
@@ -81,7 +80,13 @@ pub fn errno() -> i32 {
     errno as i32
 }
 
+#[cfg(target_os = "none")]
+pub fn errno() -> i32 {
+    0
+}
+
 /// Gets a detailed string description for the given error number.
+#[cfg(not(target_os="none"))]
 pub fn error_string(errno: i32) -> String {
     extern {
         #[cfg_attr(any(target_os = "linux", target_env = "newlib"),
@@ -90,7 +95,7 @@ pub fn error_string(errno: i32) -> String {
                       buflen: libc::size_t) -> c_int;
     }
 
-    let mut buf = [0 as c_char; TMPBUF_SZ];
+    let mut buf = [0 as c_char; 128];
 
     let p = buf.as_mut_ptr();
     unsafe {
@@ -103,6 +108,12 @@ pub fn error_string(errno: i32) -> String {
     }
 }
 
+#[cfg(target_os="none")]
+pub fn error_string(_errno: i32) -> String {
+	"system error".to_owned()
+}
+
+#[cfg(not(target_os="none"))]
 pub fn getcwd() -> io::Result<PathBuf> {
     let mut buf = Vec::with_capacity(512);
     loop {
@@ -129,6 +140,12 @@ pub fn getcwd() -> io::Result<PathBuf> {
     }
 }
 
+#[cfg(target_os="none")] 
+pub fn getcwd() -> io::Result<PathBuf> {
+    Err(::sys::fs::generic_error())
+}
+
+#[cfg(not(target_os="none"))]
 pub fn chdir(p: &path::Path) -> io::Result<()> {
     let p: &OsStr = p.as_ref();
     let p = CString::new(p.as_bytes())?;
@@ -138,6 +155,11 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
             false => Err(io::Error::last_os_error()),
         }
     }
+}
+
+#[cfg(target_os="none")] 
+pub fn chdir(_p: &path::Path) -> io::Result<()> {
+    Err(::sys::fs::generic_error())
 }
 
 pub struct SplitPaths<'a> {
@@ -347,6 +369,11 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
+#[cfg(target_os = "none")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    Err(::sys::fs::generic_error())
+}
+
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
     _dont_send_or_sync_me: PhantomData<*mut ()>,
@@ -412,6 +439,7 @@ pub fn env() -> Env {
     }
 }
 
+#[cfg(not(target_os="none"))]
 pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     // environment variables with a nul byte can't be set, so their value is
     // always None as well
@@ -429,6 +457,12 @@ pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     }
 }
 
+#[cfg(target_os="none")]
+pub fn getenv(_k: &OsStr) -> io::Result<Option<OsString>> {
+    Err(::sys::env::generic_error())
+}
+
+#[cfg(not(target_os="none"))]
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let k = CString::new(k.as_bytes())?;
     let v = CString::new(v.as_bytes())?;
@@ -441,6 +475,12 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     }
 }
 
+#[cfg(target_os="none")]
+pub fn setenv(_k: &OsStr, _v: &OsStr) -> io::Result<()> {
+    Err(::sys::env::generic_error())
+}
+
+#[cfg(not(target_os="none"))]
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
 
@@ -452,6 +492,12 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     }
 }
 
+#[cfg(target_os="none")]
+pub fn unsetenv(_n: &OsStr) -> io::Result<()> {
+    Err(::sys::env::generic_error())
+}
+
+#[cfg(not(target_os="none"))]
 pub fn page_size() -> usize {
     unsafe {
         libc::sysconf(libc::_SC_PAGESIZE) as usize
@@ -468,6 +514,7 @@ pub fn temp_dir() -> PathBuf {
     })
 }
 
+#[cfg(not(target_os="none"))]
 pub fn home_dir() -> Option<PathBuf> {
     return ::env::var_os("HOME").or_else(|| unsafe {
         fallback()
@@ -522,6 +569,17 @@ pub fn home_dir() -> Option<PathBuf> {
     }
 }
 
+#[cfg(target_os="none")]
+pub fn home_dir() -> Option<PathBuf> {
+    None
+}
+
+#[cfg(not(target_os="none"))]
 pub fn exit(code: i32) -> ! {
     unsafe { libc::exit(code as c_int) }
+}
+
+#[cfg(target_os="none")]
+pub fn exit(_code: i32) -> ! {
+    unsafe { ::intrinsics::abort() }
 }

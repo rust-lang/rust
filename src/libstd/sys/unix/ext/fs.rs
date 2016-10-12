@@ -18,7 +18,8 @@ use libc;
 use path::Path;
 use sys;
 use sys_common::{FromInner, AsInner, AsInnerMut};
-use sys::platform::fs::MetadataExt as UnixMetadataExt;
+#[cfg(not(target_os="none"))] use sys::platform::fs::MetadataExt as UnixMetadataExt;
+#[cfg(target_os="none")] use sys::fs::MetadataExt as UnixMetadataExt;
 
 /// Unix-specific extensions to `Permissions`
 #[stable(feature = "fs_ext", since = "1.1.0")]

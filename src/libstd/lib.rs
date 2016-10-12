@@ -314,10 +314,14 @@ extern crate collections as core_collections;
 #[allow(deprecated)] extern crate rand as core_rand;
 extern crate alloc;
 extern crate rustc_unicode;
-extern crate libc;
+#[cfg(not(target_os="none"))] extern crate libc;
+#[cfg(target_os="none")] 
+mod libc {
+	pub use os::none::libc::*;
+}
 
 // We always need an unwinder currently for backtraces
-extern crate unwind;
+#[cfg(not(target_os="none"))] extern crate unwind;
 
 #[cfg(stage0)]
 extern crate alloc_system;
@@ -457,8 +461,10 @@ mod memchr;
 #[macro_use]
 #[path = "sys/common/mod.rs"] mod sys_common;
 
-#[cfg(unix)]
+#[cfg(all(unix,not(target_os="none")))]
 #[path = "sys/unix/mod.rs"] mod sys;
+#[cfg(target_os="none")]
+#[path = "sys/none/mod.rs"] mod sys;
 #[cfg(windows)]
 #[path = "sys/windows/mod.rs"] mod sys;
 

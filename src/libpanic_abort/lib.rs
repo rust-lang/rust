@@ -27,8 +27,8 @@
 
 #![panic_runtime]
 #![feature(panic_runtime)]
-#![cfg_attr(unix, feature(libc))]
-#![cfg_attr(windows, feature(core_intrinsics))]
+#![cfg_attr(all(unix,not(target_os="none")), feature(libc))]
+#![cfg_attr(any(windows,target_os="none"), feature(core_intrinsics))]
 
 // Rust's "try" function, but if we're aborting on panics we just call the
 // function as there's nothing else we need to do here.
@@ -55,13 +55,13 @@ pub unsafe extern fn __rust_maybe_catch_panic(f: fn(*mut u8),
 pub unsafe extern fn __rust_start_panic(_data: usize, _vtable: usize) -> u32 {
     return abort();
 
-    #[cfg(unix)]
+    #[cfg(all(unix,not(target_os="none")))]
     unsafe fn abort() -> ! {
         extern crate libc;
         libc::abort();
     }
 
-    #[cfg(windows)]
+    #[cfg(any(windows,target_os="none"))]
     unsafe fn abort() -> ! {
         core::intrinsics::abort();
     }

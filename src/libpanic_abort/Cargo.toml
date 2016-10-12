@@ -9,4 +9,6 @@ test = false
 
 [dependencies]
 core = { path = "../libcore" }
+
+[target.'cfg(all(unix,not(target_os="none")))'.dependencies]
 libc = { path = "../rustc/libc_shim" }

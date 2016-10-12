@@ -40,9 +40,14 @@ pub fn dumb_print(args: fmt::Arguments) {
 // understandable error message like "Abort trap" rather than "Illegal
 // instruction" that intrinsics::abort would cause, as intrinsics::abort is
 // implemented as an illegal instruction.
-#[cfg(unix)]
+#[cfg(all(unix,not(target_os = "none")))]
 unsafe fn abort_internal() -> ! {
     ::libc::abort()
+}
+
+#[cfg(target_os = "none")]
+unsafe fn abort_internal() -> ! {
+    ::intrinsics::abort()
 }
 
 // On Windows, use the processor-specific __fastfail mechanism.  In Windows 8

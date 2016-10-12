@@ -209,3 +209,17 @@ mod imp {
         Args { iter: res.into_iter(), _dont_send_or_sync_me: PhantomData }
     }
 }
+
+#[cfg(target_os = "none")]
+mod imp {
+    use super::Args;
+    use marker::PhantomData;
+
+    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
+
+    pub unsafe fn cleanup() {}
+
+    pub fn args() -> Args {
+        Args { iter: Vec::with_capacity(0).into_iter(), _dont_send_or_sync_me: PhantomData }
+    }
+}

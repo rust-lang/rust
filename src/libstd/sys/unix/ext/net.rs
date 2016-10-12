@@ -14,25 +14,29 @@
 
 use libc;
 
+#[cfg(not(target_os = "none"))]
 use ascii;
+#[cfg(not(target_os = "none"))]
 use ffi::OsStr;
 use fmt;
 use io;
 use mem;
 use net::Shutdown;
+#[cfg(not(target_os = "none"))]
 use os::unix::ffi::OsStrExt;
 use os::unix::io::{RawFd, AsRawFd, FromRawFd, IntoRawFd};
 use path::Path;
 use time::Duration;
-use sys::cvt;
+#[cfg(not(target_os="none"))] use sys::cvt;
 use sys::net::Socket;
 use sys_common::{AsInner, FromInner, IntoInner};
 
 #[cfg(target_os = "linux")]
 use libc::MSG_NOSIGNAL;
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(not(target_os = "linux"),not(target_os = "none")))]
 const MSG_NOSIGNAL: libc::c_int = 0x0; // unused dummy value
 
+#[cfg(not(target_os="none"))]
 fn sun_path_offset() -> usize {
     unsafe {
         // Work with an actual instance of the type since using a null pointer is UB
@@ -43,6 +47,7 @@ fn sun_path_offset() -> usize {
     }
 }
 
+#[cfg(not(target_os="none"))]
 unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
     let mut addr: libc::sockaddr_un = mem::zeroed();
     addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
@@ -72,6 +77,7 @@ unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::sockl
     Ok((addr, len as libc::socklen_t))
 }
 
+#[cfg(not(target_os = "none"))]
 enum AddressKind<'a> {
     Unnamed,
     Pathname(&'a Path),
@@ -86,6 +92,7 @@ pub struct SocketAddr {
     len: libc::socklen_t,
 }
 
+#[cfg(not(target_os="none"))]
 impl SocketAddr {
     fn new<F>(f: F) -> io::Result<SocketAddr>
         where F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int
@@ -149,8 +156,28 @@ impl SocketAddr {
     }
 }
 
+#[cfg(target_os="none")]
+impl SocketAddr {
+    fn from_parts(_addr: libc::sockaddr_un, _len: libc::socklen_t) -> io::Result<SocketAddr> {
+        Err(::sys::net::generic_error())
+    }
+
+    /// Returns true if and only if the address is unnamed.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn is_unnamed(&self) -> bool {
+        true
+    }
+
+    /// Returns the contents of this address if it is a `pathname` address.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn as_pathname(&self) -> Option<&Path> {
+        None
+    }
+}
+
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for SocketAddr {
+    #[cfg(not(target_os="none"))]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self.address() {
             AddressKind::Unnamed => write!(fmt, "(unnamed)"),
@@ -158,10 +185,17 @@ impl fmt::Debug for SocketAddr {
             AddressKind::Pathname(path) => write!(fmt, "{:?} (pathname)", path),
         }
     }
+
+    #[cfg(target_os="none")]
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "(unimplemented)")
+    }
 }
 
+#[cfg(not(target_os = "none"))]
 struct AsciiEscaped<'a>(&'a [u8]);
 
+#[cfg(not(target_os = "none"))]
 impl<'a> fmt::Display for AsciiEscaped<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "\"")?;
@@ -208,6 +242,7 @@ impl UnixStream {
     /// Connects to the socket named by `path`.
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
+        #[cfg(not(target_os="none"))]
         fn inner(path: &Path) -> io::Result<UnixStream> {
             unsafe {
                 let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
@@ -217,6 +252,12 @@ impl UnixStream {
                 Ok(UnixStream(inner))
             }
         }
+
+        #[cfg(target_os="none")]
+        fn inner(_path: &Path) -> io::Result<UnixStream> {
+            Err(::sys::net::generic_error())
+        }
+
         inner(path.as_ref())
     }
 
@@ -241,15 +282,31 @@ impl UnixStream {
     }
 
     /// Returns the socket address of the local half of this connection.
+    #[cfg(not(target_os="none"))]
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
     }
 
+    /// Returns the socket address of the local half of this connection.
+    #[cfg(target_os="none")]
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        Err(::sys::net::generic_error())
+    }
+
     /// Returns the socket address of the remote half of this connection.
+    #[cfg(not(target_os="none"))]
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(*self.0.as_inner(), addr, len) })
+    }
+
+    /// Returns the socket address of the remote half of this connection.
+    #[cfg(target_os="none")]
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        Err(::sys::net::generic_error())
     }
 
     /// Sets the read timeout for the socket.
@@ -422,6 +479,7 @@ impl UnixListener {
     /// Creates a new `UnixListener` bound to the specified socket.
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
+        #[cfg(not(target_os="none"))]
         fn inner(path: &Path) -> io::Result<UnixListener> {
             unsafe {
                 let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
@@ -433,6 +491,12 @@ impl UnixListener {
                 Ok(UnixListener(inner))
             }
         }
+
+        #[cfg(target_os="none")]
+        fn inner(_path: &Path) -> io::Result<UnixListener> {
+            Err(::sys::net::generic_error())
+        }
+
         inner(path.as_ref())
     }
 
@@ -461,9 +525,17 @@ impl UnixListener {
     }
 
     /// Returns the local socket address of this listener.
+    #[cfg(not(target_os="none"))]
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
+    }
+
+    /// Returns the local socket address of this listener.
+    #[cfg(target_os="none")]
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        Err(::sys::net::generic_error())
     }
 
     /// Moves the socket into or out of nonblocking mode.
@@ -576,6 +648,7 @@ impl UnixDatagram {
     /// Creates a Unix datagram socket bound to the given path.
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixDatagram> {
+        #[cfg(not(target_os="none"))]
         fn inner(path: &Path) -> io::Result<UnixDatagram> {
             unsafe {
                 let socket = UnixDatagram::unbound()?;
@@ -586,6 +659,12 @@ impl UnixDatagram {
                 Ok(socket)
             }
         }
+
+        #[cfg(target_os="none")]
+        fn inner(_path: &Path) -> io::Result<UnixDatagram> {
+            Err(::sys::net::generic_error())
+        }
+
         inner(path.as_ref())
     }
 
@@ -611,6 +690,7 @@ impl UnixDatagram {
     /// `recv` and `recv_from` will only receive data from that address.
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        #[cfg(not(target_os="none"))]
         fn inner(d: &UnixDatagram, path: &Path) -> io::Result<()> {
             unsafe {
                 let (addr, len) = sockaddr_un(path)?;
@@ -620,6 +700,12 @@ impl UnixDatagram {
                 Ok(())
             }
         }
+
+        #[cfg(target_os="none")]
+        fn inner(_d: &UnixDatagram, _path: &Path) -> io::Result<()> {
+            Err(::sys::net::generic_error())
+        }
+
         inner(self, path.as_ref())
     }
 
@@ -634,23 +720,42 @@ impl UnixDatagram {
     }
 
     /// Returns the address of this socket.
+    #[cfg(not(target_os="none"))]
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
     }
 
+    /// Returns the address of this socket.
+    #[cfg(target_os="none")]
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        Err(::sys::net::generic_error())
+    }
+
     /// Returns the address of this socket's peer.
     ///
     /// The `connect` method will connect the socket to a peer.
+    #[cfg(not(target_os="none"))]
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(*self.0.as_inner(), addr, len) })
+    }
+
+    /// Returns the address of this socket's peer.
+    ///
+    /// The `connect` method will connect the socket to a peer.
+    #[cfg(target_os="none")]
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        Err(::sys::net::generic_error())
     }
 
     /// Receives data from the socket.
     ///
     /// On success, returns the number of bytes read and the address from
     /// whence the data came.
+    #[cfg(not(target_os="none"))]
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let mut count = 0;
@@ -675,6 +780,17 @@ impl UnixDatagram {
         Ok((count as usize, addr))
     }
 
+
+    /// Receives data from the socket.
+    ///
+    /// On success, returns the number of bytes read and the address from
+    /// whence the data came.
+    #[cfg(target_os="none")]
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn recv_from(&self, _buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+        Err(::sys::net::generic_error())
+    }
+
     /// Receives data from the socket.
     ///
     /// On success, returns the number of bytes read.
@@ -688,6 +804,7 @@ impl UnixDatagram {
     /// On success, returns the number of bytes written.
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn send_to<P: AsRef<Path>>(&self, buf: &[u8], path: P) -> io::Result<usize> {
+        #[cfg(not(target_os="none"))]
         fn inner(d: &UnixDatagram, buf: &[u8], path: &Path) -> io::Result<usize> {
             unsafe {
                 let (addr, len) = sockaddr_un(path)?;
@@ -701,6 +818,12 @@ impl UnixDatagram {
                 Ok(count as usize)
             }
         }
+
+        #[cfg(target_os="none")]
+        fn inner(_d: &UnixDatagram, _buf: &[u8], _path: &Path) -> io::Result<usize> {
+            Err(::sys::net::generic_error())
+        }
+
         inner(self, buf, path.as_ref())
     }
 
