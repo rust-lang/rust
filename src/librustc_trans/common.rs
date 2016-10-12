@@ -815,7 +815,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
 pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false), Type::i8p(cx));
-    C_named_struct(cx.tn().find_type("str_slice").unwrap(), &[cs, C_uint(cx, len)])
+    C_named_struct(cx.str_slice_type(), &[cs, C_uint(cx, len)])
 }
 
 pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {
