@@ -570,6 +570,9 @@ pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
 pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }
+pre.rust .question-mark {
+    color: #c67e2d;
+}
 
 .rusttest { display: none; }
 pre.rust { position: relative; }
