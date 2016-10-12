@@ -80,8 +80,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
         _ => bug!()
     };
 
-    let sig = tcx.erase_late_bound_regions(sig);
-    let sig = tcx.normalize_associated_type(&sig);
+    let sig = tcx.erase_late_bound_regions_and_normalize(sig);
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
     let llfn = declare::define_internal_fn(ccx, &function_name, callee.ty);
