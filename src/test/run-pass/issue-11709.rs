@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
+// ignore-pretty issue #37199
 
 // Don't panic on blocks without results
 // There are several tests in this run-pass that raised

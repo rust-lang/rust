@@ -10,8 +10,6 @@
 
 // aux-build:custom_derive_partial_eq.rs
 // ignore-stage1
-// ignore-pretty : (#23623) problems when  ending with // comments
-
 #![feature(plugin, custom_derive)]
 #![plugin(custom_derive_partial_eq)]
 #![allow(unused)]

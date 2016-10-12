@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
-
 #![allow(unknown_features)]
 
 struct Parser<'a, I, O> {
