@@ -120,30 +120,26 @@ pub unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: size_t, offset: i6
     -> io::Result<ssize_t>
 {
     weak!(fn pread64(c_int, *mut c_void, size_t, i64) -> ssize_t);
-    unsafe {
-        pread64.get().map(|f| cvt(f(fd, buf, count, offset))).unwrap_or_else(|| {
-            if let Ok(o) = offset.try_into() {
-                cvt(pread(fd, buf, count, o))
-            } else {
-                Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                   "cannot pread >2GB"))
-            }
-        })
-    }
+    pread64.get().map(|f| cvt(f(fd, buf, count, offset))).unwrap_or_else(|| {
+        if let Ok(o) = offset.try_into() {
+            cvt(pread(fd, buf, count, o))
+        } else {
+            Err(io::Error::new(io::ErrorKind::InvalidInput,
+                               "cannot pread >2GB"))
+        }
+    })
 }
 
 pub unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: size_t, offset: i64)
     -> io::Result<ssize_t>
 {
     weak!(fn pwrite64(c_int, *const c_void, size_t, i64) -> ssize_t);
-    unsafe {
-        pwrite64.get().map(|f| cvt(f(fd, buf, count, offset))).unwrap_or_else(|| {
-            if let Ok(o) = offset.try_into() {
-                cvt(pwrite(fd, buf, count, o))
-            } else {
-                Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                   "cannot pwrite >2GB"))
-            }
-        })
-    }
+    pwrite64.get().map(|f| cvt(f(fd, buf, count, offset))).unwrap_or_else(|| {
+        if let Ok(o) = offset.try_into() {
+            cvt(pwrite(fd, buf, count, o))
+        } else {
+            Err(io::Error::new(io::ErrorKind::InvalidInput,
+                               "cannot pwrite >2GB"))
+        }
+    })
 }
