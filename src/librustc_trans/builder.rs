@@ -543,6 +543,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store");
+        let ptr = self.check_store(val, ptr);
         unsafe {
             llvm::LLVMBuildStore(self.llbuilder, val, ptr)
         }
@@ -552,6 +553,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store.volatile");
+        let ptr = self.check_store(val, ptr);
         unsafe {
             let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
             llvm::LLVMSetVolatile(insn, llvm::True);
@@ -562,6 +564,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn atomic_store(&self, val: ValueRef, ptr: ValueRef, order: AtomicOrdering) {
         debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         self.count_insn("store.atomic");
+        let ptr = self.check_store(val, ptr);
         unsafe {
             let ty = Type::from_ref(llvm::LLVMTypeOf(ptr));
             let align = llalign_of_pref(self.ccx, ty.element_type());
@@ -1100,6 +1103,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    /// Returns the ptr value that should be used for storing `val`.
+    fn check_store<'b>(&self,
+                       val: ValueRef,
+                       ptr: ValueRef) -> ValueRef {
+        let dest_ptr_ty = val_ty(ptr);
+        let stored_ty = val_ty(val);
+        let stored_ptr_ty = stored_ty.ptr_to();
+
+        assert_eq!(dest_ptr_ty.kind(), llvm::TypeKind::Pointer);
+
+        if dest_ptr_ty == stored_ptr_ty {
+            ptr
+        } else {
+            debug!("Type mismatch in store. \
+                    Expected {:?}, got {:?}; inserting bitcast",
+                   dest_ptr_ty, stored_ptr_ty);
+            self.bitcast(ptr, stored_ptr_ty)
+        }
+    }
+
+    /// Returns the args that should be used for a call to `llfn`.
     fn check_call<'b>(&self,
                       typ: &str,
                       llfn: ValueRef,
