@@ -25,7 +25,7 @@ use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
 use trans_item::TransItem;
-use type_::{Type, TypeNames};
+use type_::Type;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
@@ -87,7 +87,6 @@ pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
     previous_work_product: Option<WorkProduct>,
-    tn: TypeNames, // FIXME: This seems to be largely unused.
     codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FxHashMap<Ty<'tcx>, ValueRef>>,
@@ -137,6 +136,7 @@ pub struct LocalCrateContext<'tcx> {
     type_hashcodes: RefCell<FxHashMap<Ty<'tcx>, String>>,
     int_type: Type,
     opaque_vec_type: Type,
+    str_slice_type: Type,
     builder: BuilderRef_res,
 
     /// Holds the LLVM values for closure IDs.
@@ -611,7 +611,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 llcx: llcx,
                 previous_work_product: previous_work_product,
                 codegen_unit: codegen_unit,
-                tn: TypeNames::new(),
                 needs_unwind_cleanup_cache: RefCell::new(FxHashMap()),
                 fn_pointer_shims: RefCell::new(FxHashMap()),
                 drop_glues: RefCell::new(FxHashMap()),
@@ -631,6 +630,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 type_hashcodes: RefCell::new(FxHashMap()),
                 int_type: Type::from_ref(ptr::null_mut()),
                 opaque_vec_type: Type::from_ref(ptr::null_mut()),
+                str_slice_type: Type::from_ref(ptr::null_mut()),
                 builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                 closure_vals: RefCell::new(FxHashMap()),
                 dbg_cx: dbg_cx,
@@ -662,7 +662,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
 
             local_ccx.int_type = int_type;
             local_ccx.opaque_vec_type = opaque_vec_type;
-            local_ccx.tn.associate_type("str_slice", &str_slice_ty);
+            local_ccx.str_slice_type = str_slice_ty;
 
             if shared.tcx.sess.count_llvm_insns() {
                 base::init_insn_ctxt()
@@ -778,10 +778,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         unsafe { llvm::LLVMRustGetModuleDataLayout(self.llmod()) }
     }
 
-    pub fn tn<'a>(&'a self) -> &'a TypeNames {
-        &self.local().tn
-    }
-
     pub fn export_map<'a>(&'a self) -> &'a ExportMap {
         &self.shared.export_map
     }
@@ -883,6 +879,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn opaque_vec_type(&self) -> Type {
         self.local().opaque_vec_type
+    }
+
+    pub fn str_slice_type(&self) -> Type {
+        self.local().str_slice_type
     }
 
     pub fn closure_vals<'a>(&'a self) -> &'a RefCell<FxHashMap<Instance<'tcx>, ValueRef>> {
