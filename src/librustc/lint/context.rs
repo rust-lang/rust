@@ -90,7 +90,7 @@ pub struct EarlyLint {
     /// what span was it attached to (this is used for Eq comparisons;
     /// it duplicates to some extent the information in
     /// `diagnostic.span`)
-    pub span: Span,
+    pub span: MultiSpan,
 
     /// the main message
     pub diagnostic: Diagnostic,
@@ -109,11 +109,11 @@ impl fmt::Debug for EarlyLint {
 impl EarlyLint {
     pub fn new<M: EarlyLintMessage>(id: LintId, span: Span, msg: M) -> Self {
         let diagnostic = msg.into_diagnostic(span);
-        EarlyLint { id: id, span: span, diagnostic: diagnostic }
+        EarlyLint { id: id, span: MultiSpan::from(span), diagnostic: diagnostic }
     }
 
     pub fn with_diagnostic(id: LintId, span: Span, diagnostic: Diagnostic) -> Self {
-        EarlyLint { id: id, span: span, diagnostic: diagnostic }
+        EarlyLint { id: id, span: MultiSpan::from(span), diagnostic: diagnostic }
     }
 
     pub fn matches(&self, other: &EarlyLint) -> bool {
@@ -449,12 +449,12 @@ pub fn gather_attr(attr: &ast::Attribute)
 /// in trans that run after the main lint pass is finished. Most
 /// lints elsewhere in the compiler should call
 /// `Session::add_lint()` instead.
-pub fn raw_emit_lint(sess: &Session,
-                     lints: &LintStore,
-                     lint: &'static Lint,
-                     lvlsrc: LevelSource,
-                     span: Option<Span>,
-                     msg: &str) {
+pub fn raw_emit_lint<S: Into<MultiSpan>>(sess: &Session,
+                                         lints: &LintStore,
+                                         lint: &'static Lint,
+                                         lvlsrc: LevelSource,
+                                         span: Option<S>,
+                                         msg: &str) {
     raw_struct_lint(sess, lints, lint, lvlsrc, span, msg).emit();
 }
 
@@ -559,11 +559,11 @@ pub trait LintContext: Sized {
         raw_emit_lint(&self.sess(), self.lints(), lint, (level, src), span, msg);
     }
 
-    fn lookup(&self,
-              lint: &'static Lint,
-              span: Option<Span>,
-              msg: &str)
-              -> DiagnosticBuilder {
+    fn lookup<S: Into<MultiSpan>>(&self,
+                                  lint: &'static Lint,
+                                  span: Option<S>,
+                                  msg: &str)
+                                  -> DiagnosticBuilder {
         let (level, src) = match self.level_src(lint) {
             None => return self.sess().diagnostic().struct_dummy(),
             Some(pair) => pair,
@@ -585,11 +585,11 @@ pub trait LintContext: Sized {
         err.emit();
     }
 
-    fn struct_span_lint(&self,
-                        lint: &'static Lint,
-                        span: Span,
-                        msg: &str)
-                        -> DiagnosticBuilder {
+    fn struct_span_lint<S: Into<MultiSpan>>(&self,
+                                            lint: &'static Lint,
+                                            span: S,
+                                            msg: &str)
+                                            -> DiagnosticBuilder {
         self.lookup(lint, Some(span), msg)
     }
 
@@ -1283,7 +1283,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // in the iteration code.
     for (id, v) in tcx.sess.lints.borrow().iter() {
         for early_lint in v {
-            span_bug!(early_lint.span,
+            span_bug!(early_lint.span.clone(),
                       "unprocessed lint {:?} at {}",
                       early_lint, tcx.map.node_to_string(*id));
         }
@@ -1321,7 +1321,7 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // in the iteration code.
     for (_, v) in sess.lints.borrow().iter() {
         for early_lint in v {
-            span_bug!(early_lint.span, "unprocessed lint {:?}", early_lint);
+            span_bug!(early_lint.span.clone(), "unprocessed lint {:?}", early_lint);
         }
     }
 }
