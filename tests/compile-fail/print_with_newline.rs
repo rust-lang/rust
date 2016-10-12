@@ -16,4 +16,5 @@ fn main() {
     println!("Hello {}\n", "world");
     print!("Issue\n{}", 1265);
     print!("{}", 1265);
+    print!("\n{}", 1275);
 }
