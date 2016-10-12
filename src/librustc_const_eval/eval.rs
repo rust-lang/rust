@@ -732,6 +732,10 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               hir::BiBitOr => a | b,
               hir::BiEq => a == b,
               hir::BiNe => a != b,
+              hir::BiLt => a < b,
+              hir::BiLe => a <= b,
+              hir::BiGe => a >= b,
+              hir::BiGt => a > b,
               _ => signal!(e, InvalidOpForBools(op.node)),
              })
           }
