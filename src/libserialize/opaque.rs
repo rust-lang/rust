@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use leb128::{read_signed_leb128, read_unsigned_leb128, write_signed_leb128, write_unsigned_leb128};
+use std::borrow::Cow;
 use std::io::{self, Write};
 use serialize;
 
@@ -246,11 +247,11 @@ impl<'a> serialize::Decoder for Decoder<'a> {
         Ok(::std::char::from_u32(bits).unwrap())
     }
 
-    fn read_str(&mut self) -> Result<String, Self::Error> {
+    fn read_str(&mut self) -> Result<Cow<str>, Self::Error> {
         let len = self.read_usize()?;
         let s = ::std::str::from_utf8(&self.data[self.position..self.position + len]).unwrap();
         self.position += len;
-        Ok(s.to_string())
+        Ok(Cow::Borrowed(s))
     }
 
     fn error(&mut self, err: &str) -> Self::Error {
