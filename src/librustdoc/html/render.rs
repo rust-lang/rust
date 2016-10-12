@@ -2492,16 +2492,48 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     Ok(())
 }
 
+fn attribute_without_value(s: &str) -> bool {
+    vec!("must_use", "no_mangle", "unsafe_destructor_blind_to_params").iter().any(|x| x == &s)
+}
+
+fn attribute_with_value(s: &str) -> bool {
+    vec!("export_name", "lang", "link_section", "must_use").iter().any(|x| x == &s)
+}
+
+fn attribute_with_values(s: &str) -> bool {
+    vec!("repr").iter().any(|x| x == &s)
+}
+
+fn render_attribute(attr: &clean::Attribute, recurse: bool) -> String {
+    match *attr {
+        clean::Word(ref s) if attribute_without_value(&*s) || recurse => {
+            format!("{}", s)
+        }
+        clean::NameValue(ref k, ref v) if attribute_with_value(&*k) => {
+            format!("{} = \"{}\"", k, v)
+        }
+        clean::List(ref k, ref values) if attribute_with_values(&*k) => {
+            let mut display = Vec::new();
+
+            for value in values {
+                let s = render_attribute(value, true);
+                if s.len() > 0 {
+                    display.push(format!("{}", s));
+                }
+            }
+            format!("{}({})", k, display.join(", "))
+        }
+        _ => {
+            String::new()
+        }
+    }
+}
+
 fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
     for attr in &it.attrs {
-        match *attr {
-            clean::Word(ref s) if *s == "must_use" => {
-                write!(w, "#[{}]\n", s)?;
-            }
-            clean::NameValue(ref k, ref v) if *k == "must_use" => {
-                write!(w, "#[{} = \"{}\"]\n", k, v)?;
-            }
-            _ => ()
+        let s = render_attribute(attr, false);
+        if s.len() > 0 {
+            write!(w, "#[{}]\n", s)?;
         }
     }
     Ok(())
