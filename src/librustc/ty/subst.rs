@@ -250,7 +250,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
 
     #[inline]
     pub fn params(&self) -> &[Kind<'tcx>] {
-        &self
+        // FIXME (dikaiosune) this should be removed, and corresponding compilation errors fixed
+        self
     }
 
     #[inline]
