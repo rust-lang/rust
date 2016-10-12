@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use indexed_set::IdxSetBuf;
 use super::gather_moves::{MoveData, MovePathIndex, LookupResult};
 use super::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use super::dataflow::{DataflowResults};
@@ -23,6 +22,7 @@ use rustc::mir::transform::{Pass, MirPass, MirSource};
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items;
 use rustc::util::nodemap::FnvHashMap;
+use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 
