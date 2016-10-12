@@ -18,6 +18,7 @@ extern crate derive_atob;
 #[macro_use]
 extern crate derive_ctod;
 
+#[derive(Copy, Clone)]
 #[derive(AToB)]
 struct A;
 
