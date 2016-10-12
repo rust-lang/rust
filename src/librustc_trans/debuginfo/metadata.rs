@@ -128,7 +128,7 @@ impl<'tcx> TypeMap<'tcx> {
 
     // Get the string representation of a UniqueTypeId. This method will fail if
     // the id is unknown.
-    fn get_unique_type_id_as_string(&self, unique_type_id: UniqueTypeId) -> Rc<String> {
+    fn get_unique_type_id_as_string(&self, unique_type_id: UniqueTypeId) -> Rc<str> {
         let UniqueTypeId(interner_key) = unique_type_id;
         self.unique_id_interner.get(interner_key)
     }
@@ -299,7 +299,7 @@ impl<'tcx> TypeMap<'tcx> {
         // Trim to size before storing permanently
         unique_type_id.shrink_to_fit();
 
-        let key = self.unique_id_interner.intern(unique_type_id);
+        let key = self.unique_id_interner.intern(&unique_type_id);
         self.type_to_unique_id.insert(type_, UniqueTypeId(key));
 
         return UniqueTypeId(key);
@@ -367,7 +367,7 @@ impl<'tcx> TypeMap<'tcx> {
         let enum_variant_type_id = format!("{}::{}",
                                            &self.get_unique_type_id_as_string(enum_type_id),
                                            variant_name);
-        let interner_key = self.unique_id_interner.intern(enum_variant_type_id);
+        let interner_key = self.unique_id_interner.intern(&enum_variant_type_id);
         UniqueTypeId(interner_key)
     }
 }
