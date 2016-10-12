@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! id {
-    ($e:expr) => { $e }
+trait ToRef<'a> {
+    type Ref: 'a;
+}
+
+impl<'a, U: 'a> ToRef<'a> for U {
+    type Ref = &'a U;
+}
+
+fn example<'a, T>(value: &'a T) -> (<T as ToRef<'a>>::Ref, u32) {
+    (value, 0)
 }
 
 fn main() {
-    id!(x?);  //~ error: the `?` operator is not stable (see issue #31436)
-    y?;  //~ error: the `?` operator is not stable (see issue #31436)
+    example(&0);
 }

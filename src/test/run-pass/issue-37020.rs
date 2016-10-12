@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Make sure that the span of try shorthand does not include the trailing
-// semicolon;
-fn a() -> Result<i32, ()> {
-    Err(5)?; //~ ERROR 14:5: 14:12
-    Ok(1)
+#![allow(private_in_public)]
+
+mod foo {
+    pub mod bar {
+        extern crate core;
+    }
 }
 
-fn main() {}
+mod baz {
+    pub use foo::bar::core;
+}
+
+fn main() {
+    baz::core::cell::Cell::new(0u32);
+}

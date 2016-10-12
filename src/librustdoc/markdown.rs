@@ -19,7 +19,7 @@ use testing;
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::Externs;
 
-use externalfiles::ExternalHtml;
+use externalfiles::{ExternalHtml, LoadStringError, load_string};
 
 use html::render::reset_ids;
 use html::escape::Escape;
@@ -58,7 +58,11 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
         css.push_str(&s)
     }
 
-    let input_str = load_or_return!(input, 1, 2);
+    let input_str = match load_string(input) {
+        Ok(s) => s,
+        Err(LoadStringError::ReadFail) => return 1,
+        Err(LoadStringError::BadUtf8) => return 2,
+    };
     let playground = matches.opt_str("markdown-playground-url");
     if playground.is_some() {
         markdown::PLAYGROUND_KRATE.with(|s| { *s.borrow_mut() = Some(None); });
@@ -144,7 +148,11 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 /// Run any tests/code examples in the markdown file `input`.
 pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
             mut test_args: Vec<String>) -> isize {
-    let input_str = load_or_return!(input, 1, 2);
+    let input_str = match load_string(input) {
+        Ok(s) => s,
+        Err(LoadStringError::ReadFail) => return 1,
+        Err(LoadStringError::BadUtf8) => return 2,
+    };
 
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;

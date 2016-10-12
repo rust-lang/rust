@@ -41,9 +41,11 @@ extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
 
+pub mod bitslice;
 pub mod bitvec;
 pub mod graph;
 pub mod ivar;
+pub mod indexed_set;
 pub mod indexed_vec;
 pub mod obligation_forest;
 pub mod snapshot_map;
