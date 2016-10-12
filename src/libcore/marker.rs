@@ -587,6 +587,7 @@ mod impls {
 #[unstable(feature = "reflect_marker",
            reason = "requires RFC and more experience",
            issue = "27749")]
+#[rustc_deprecated(since = "1.14.0", reason = "Specialization makes parametricity impossible")]
 #[rustc_on_unimplemented = "`{Self}` does not implement `Any`; \
                             ensure all type parameters are bounded by `Any`"]
 pub trait Reflect {}
@@ -594,4 +595,6 @@ pub trait Reflect {}
 #[unstable(feature = "reflect_marker",
            reason = "requires RFC and more experience",
            issue = "27749")]
+#[rustc_deprecated(since = "1.14.0", reason = "Specialization makes parametricity impossible")]
+#[allow(deprecated)]
 impl Reflect for .. { }
