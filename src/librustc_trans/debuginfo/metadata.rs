@@ -236,7 +236,8 @@ impl<'tcx> TypeMap<'tcx> {
             ty::TyTrait(ref trait_data) => {
                 unique_type_id.push_str("trait ");
 
-                let principal = cx.tcx().erase_late_bound_regions(&trait_data.principal);
+                let principal = cx.tcx().erase_late_bound_regions_and_normalize(
+                    &trait_data.principal);
 
                 from_def_id_and_substs(self,
                                        cx,
@@ -254,8 +255,7 @@ impl<'tcx> TypeMap<'tcx> {
 
                 unique_type_id.push_str(" fn(");
 
-                let sig = cx.tcx().erase_late_bound_regions(sig);
-                let sig = cx.tcx().normalize_associated_type(&sig);
+                let sig = cx.tcx().erase_late_bound_regions_and_normalize(sig);
 
                 for &parameter_type in &sig.inputs {
                     let parameter_type_id =

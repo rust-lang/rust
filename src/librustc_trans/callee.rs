@@ -184,8 +184,7 @@ impl<'tcx> Callee<'tcx> {
     pub fn direct_fn_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
                               extra_args: &[Ty<'tcx>]) -> FnType {
         let abi = self.ty.fn_abi();
-        let sig = ccx.tcx().erase_late_bound_regions(self.ty.fn_sig());
-        let sig = ccx.tcx().normalize_associated_type(&sig);
+        let sig = ccx.tcx().erase_late_bound_regions_and_normalize(self.ty.fn_sig());
         let mut fn_ty = FnType::unadjusted(ccx, abi, &sig, extra_args);
         if let Virtual(_) = self.data {
             // Don't pass the vtable, it's not an argument of the virtual fn.
@@ -327,8 +326,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
                  bare_fn_ty);
         }
     };
-    let sig = tcx.erase_late_bound_regions(sig);
-    let sig = ccx.tcx().normalize_associated_type(&sig);
+    let sig = tcx.erase_late_bound_regions_and_normalize(sig);
     let tuple_input_ty = tcx.mk_tup(sig.inputs.to_vec());
     let sig = ty::FnSig {
         inputs: vec![bare_fn_ty_maybe_ref,
