@@ -10,6 +10,9 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::{self, Mir, Location};
+use rustc_data_structures::bitslice::BitSlice; // adds set_bit/get_bit to &[usize] bitvector rep.
+use rustc_data_structures::bitslice::{BitwiseOperator};
+use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::super::gather_moves::{MoveOutIndex, MovePathIndex};
@@ -20,10 +23,6 @@ use super::super::drop_flag_effects_for_location;
 use super::super::on_lookup_result_bits;
 
 use super::{BitDenotation, BlockSets, DataflowOperator};
-
-use bitslice::BitSlice; // adds set_bit/get_bit to &[usize] bitvector rep.
-use bitslice::{BitwiseOperator};
-use indexed_set::{IdxSet};
 
 // Dataflow analyses are built upon some interpretation of the
 // bitvectors attached to each basic block, represented via a
