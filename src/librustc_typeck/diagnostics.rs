@@ -2824,6 +2824,9 @@ If an impl has a generic parameter with the `#[may_dangle]` attribute, then
 that impl must be declared as an `unsafe impl. For example:
 
 ```compile_fail,E0569
+#![feature(generic_param_attrs)]
+#![feature(dropck_eyepatch)]
+
 struct Foo<X>(X);
 impl<#[may_dangle] X> Drop for Foo {
     fn drop(&mut self) { }
