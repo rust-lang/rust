@@ -49,8 +49,12 @@ impl UnusedMut {
                 if let hir::BindByValue(hir::MutMutable) = mode {
                     if !name.as_str().starts_with("_") {
                         match mutables.entry(name.0 as usize) {
-                            Vacant(entry) => { entry.insert(vec![id]); },
-                            Occupied(mut entry) => { entry.get_mut().push(id); },
+                            Vacant(entry) => {
+                                entry.insert(vec![id]);
+                            }
+                            Occupied(mut entry) => {
+                                entry.get_mut().push(id);
+                            }
                         }
                     }
                 }
@@ -60,7 +64,8 @@ impl UnusedMut {
         let used_mutables = cx.tcx.used_mut_nodes.borrow();
         for (_, v) in &mutables {
             if !v.iter().any(|e| used_mutables.contains(e)) {
-                cx.span_lint(UNUSED_MUT, cx.tcx.map.span(v[0]),
+                cx.span_lint(UNUSED_MUT,
+                             cx.tcx.map.span(v[0]),
                              "variable does not need to be mutable");
             }
         }
@@ -90,9 +95,13 @@ impl LateLintPass for UnusedMut {
         }
     }
 
-    fn check_fn(&mut self, cx: &LateContext,
-                _: FnKind, decl: &hir::FnDecl,
-                _: &hir::Block, _: Span, _: ast::NodeId) {
+    fn check_fn(&mut self,
+                cx: &LateContext,
+                _: FnKind,
+                decl: &hir::FnDecl,
+                _: &hir::Block,
+                _: Span,
+                _: ast::NodeId) {
         for a in &decl.inputs {
             self.check_unused_mut_pat(cx, slice::ref_slice(&a.pat));
         }
@@ -124,7 +133,7 @@ impl LateLintPass for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         let expr = match s.node {
             hir::StmtSemi(ref expr, _) => &**expr,
-            _ => return
+            _ => return,
         };
 
         if let hir::ExprRet(..) = expr.node {
@@ -184,8 +193,8 @@ impl LateLintPass for UnusedUnsafe {
         if let hir::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
             if blk.rules == hir::UnsafeBlock(hir::UserProvided) &&
-                !cx.tcx.used_unsafe.borrow().contains(&blk.id) {
-                    cx.span_lint(UNUSED_UNSAFE, blk.span, "unnecessary `unsafe` block");
+               !cx.tcx.used_unsafe.borrow().contains(&blk.id) {
+                cx.span_lint(UNUSED_UNSAFE, blk.span, "unnecessary `unsafe` block");
             }
         }
     }
@@ -210,8 +219,7 @@ impl LateLintPass for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         if let hir::StmtSemi(ref expr, _) = s.node {
             if let hir::ExprPath(..) = expr.node {
-                cx.span_lint(PATH_STATEMENTS, s.span,
-                             "path statement with no effect");
+                cx.span_lint(PATH_STATEMENTS, s.span, "path statement with no effect");
             }
         }
     }
@@ -242,8 +250,8 @@ impl LateLintPass for UnusedAttributes {
                 AttributeType::Whitelisted if attr.check_name(name) => {
                     debug!("{:?} is Whitelisted", name);
                     break;
-                },
-                _ => ()
+                }
+                _ => (),
             }
         }
 
@@ -259,24 +267,22 @@ impl LateLintPass for UnusedAttributes {
             debug!("Emitting warning for: {:?}", attr);
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
-            let known_crate = KNOWN_ATTRIBUTES.iter().find(|&&(name, ty, _)| {
-                attr.name() == name &&
-                ty == AttributeType::CrateLevel
-            }).is_some();
+            let known_crate = KNOWN_ATTRIBUTES.iter()
+                .find(|&&(name, ty, _)| attr.name() == name && ty == AttributeType::CrateLevel)
+                .is_some();
 
             // Has a plugin registered this attribute as one which must be used at
             // the crate level?
             let plugin_crate = plugin_attributes.iter()
-                                                .find(|&&(ref x, t)| {
-                                                        &*attr.name() == x &&
-                                                        AttributeType::CrateLevel == t
-                                                    }).is_some();
-            if  known_crate || plugin_crate {
+                .find(|&&(ref x, t)| &*attr.name() == x && AttributeType::CrateLevel == t)
+                .is_some();
+            if known_crate || plugin_crate {
                 let msg = match attr.node.style {
-                    ast::AttrStyle::Outer => "crate-level attribute should be an inner \
-                                              attribute: add an exclamation mark: #![foo]",
-                    ast::AttrStyle::Inner => "crate-level attribute should be in the \
-                                              root module",
+                    ast::AttrStyle::Outer => {
+                        "crate-level attribute should be an inner attribute: add an exclamation \
+                         mark: #![foo]"
+                    }
+                    ast::AttrStyle::Inner => "crate-level attribute should be in the root module",
                 };
                 cx.span_lint(UNUSED_ATTRIBUTES, attr.span, msg);
             }
@@ -296,12 +302,16 @@ declare_lint! {
 pub struct UnusedParens;
 
 impl UnusedParens {
-    fn check_unused_parens_core(&self, cx: &EarlyContext, value: &ast::Expr, msg: &str,
+    fn check_unused_parens_core(&self,
+                                cx: &EarlyContext,
+                                value: &ast::Expr,
+                                msg: &str,
                                 struct_lit_needs_parens: bool) {
         if let ast::ExprKind::Paren(ref inner) = value.node {
             let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&inner);
             if !necessary {
-                cx.span_lint(UNUSED_PARENS, value.span,
+                cx.span_lint(UNUSED_PARENS,
+                             value.span,
                              &format!("unnecessary parentheses around {}", msg))
             }
         }
@@ -319,8 +329,7 @@ impl UnusedParens {
                 ast::ExprKind::AssignOp(_, ref lhs, ref rhs) |
                 ast::ExprKind::Binary(_, ref lhs, ref rhs) => {
                     // X { y: 1 } + X { y: 2 }
-                    contains_exterior_struct_lit(&lhs) ||
-                        contains_exterior_struct_lit(&rhs)
+                    contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
                 }
                 ast::ExprKind::Unary(_, ref x) |
                 ast::ExprKind::Cast(ref x, _) |
@@ -337,7 +346,7 @@ impl UnusedParens {
                     contains_exterior_struct_lit(&exprs[0])
                 }
 
-                _ => false
+                _ => false,
             }
         }
     }
@@ -363,18 +372,20 @@ impl EarlyLintPass for UnusedParens {
             Assign(_, ref value) => (value, "assigned value", false),
             AssignOp(.., ref value) => (value, "assigned value", false),
             InPlace(_, ref value) => (value, "emplacement value", false),
-            _ => return
+            _ => return,
         };
         self.check_unused_parens_core(cx, &value, msg, struct_lit_needs_parens);
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext, s: &ast::Stmt) {
         let (value, msg) = match s.node {
-            ast::StmtKind::Local(ref local) => match local.init {
-                Some(ref value) => (value, "assigned value"),
-                None => return
-            },
-            _ => return
+            ast::StmtKind::Local(ref local) => {
+                match local.init {
+                    Some(ref value) => (value, "assigned value"),
+                    None => return,
+                }
+            }
+            _ => return,
         };
         self.check_unused_parens_core(cx, &value, msg, false);
     }
@@ -427,23 +438,24 @@ impl LateLintPass for UnusedAllocation {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
             hir::ExprBox(_) => {}
-            _ => return
+            _ => return,
         }
 
         if let Some(adjustment) = cx.tcx.tables.borrow().adjustments.get(&e.id) {
-            if let adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
-                ref autoref, ..
-            }) = *adjustment {
+            if let adjustment::AdjustDerefRef(adjustment::AutoDerefRef { ref autoref, .. }) =
+                *adjustment {
                 match autoref {
                     &Some(adjustment::AutoPtr(_, hir::MutImmutable)) => {
-                        cx.span_lint(UNUSED_ALLOCATION, e.span,
+                        cx.span_lint(UNUSED_ALLOCATION,
+                                     e.span,
                                      "unnecessary allocation, use & instead");
                     }
                     &Some(adjustment::AutoPtr(_, hir::MutMutable)) => {
-                        cx.span_lint(UNUSED_ALLOCATION, e.span,
+                        cx.span_lint(UNUSED_ALLOCATION,
+                                     e.span,
                                      "unnecessary allocation, use &mut instead");
                     }
-                    _ => ()
+                    _ => (),
                 }
             }
         }
