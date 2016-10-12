@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, Ident, Mac_, PatKind};
+use ast::{Block, Ident, Mac_, PatKind};
 use ast::{Name, MacStmtStyle, StmtKind, ItemKind};
 use ast;
 use ext::hygiene::Mark;
@@ -26,6 +26,7 @@ use parse::parser::Parser;
 use parse::token::{self, intern, keywords};
 use print::pprust;
 use ptr::P;
+use std_inject;
 use tokenstream::{TokenTree, TokenStream};
 use util::small_vector::SmallVector;
 use visit::Visitor;
@@ -186,8 +187,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         MacroExpander { cx: cx, monotonic: monotonic }
     }
 
-    fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
-        let err_count = self.cx.parse_sess.span_diagnostic.err_count();
+    pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
+        self.cx.crate_root = std_inject::injected_crate_name(&krate);
+        let mut module = ModuleData {
+            mod_path: vec![token::str_to_ident(&self.cx.ecfg.crate_name)],
+            directory: PathBuf::from(self.cx.codemap().span_to_filename(krate.span)),
+        };
+        module.directory.pop();
+        self.cx.current_expansion.module = Rc::new(module);
 
         let krate_item = Expansion::Items(SmallVector::one(P(ast::Item {
             attrs: krate.attrs,
@@ -206,10 +213,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             _ => unreachable!(),
         };
 
-        if self.cx.parse_sess.span_diagnostic.err_count() - self.cx.resolve_err_count > err_count {
-            self.cx.parse_sess.span_diagnostic.abort_if_errors();
-        }
-
         krate
     }
 
@@ -221,25 +224,47 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let (expansion, mut invocations) = self.collect_invocations(expansion);
         invocations.reverse();
 
-        let mut expansions = vec![vec![(0, expansion)]];
-        while let Some(invoc) = invocations.pop() {
+        let mut expansions = Vec::new();
+        let mut undetermined_invocations = Vec::new();
+        let (mut progress, mut force) = (false, !self.monotonic);
+        loop {
+            let invoc = if let Some(invoc) = invocations.pop() {
+                invoc
+            } else if undetermined_invocations.is_empty() {
+                break
+            } else {
+                invocations = mem::replace(&mut undetermined_invocations, Vec::new());
+                force = !mem::replace(&mut progress, false);
+                continue
+            };
+
+            let scope =
+                if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
+            let ext = match self.cx.resolver.resolve_invoc(scope, &invoc, force) {
+                Ok(ext) => Some(ext),
+                Err(Determinacy::Determined) => None,
+                Err(Determinacy::Undetermined) => {
+                    undetermined_invocations.push(invoc);
+                    continue
+                }
+            };
+
+            progress = true;
             let ExpansionData { depth, mark, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
 
-            let scope = if self.monotonic { mark } else { orig_expansion_data.mark };
             self.cx.current_expansion.mark = scope;
-            let expansion = match self.cx.resolver.resolve_invoc(scope, &invoc) {
+            let expansion = match ext {
                 Some(ext) => self.expand_invoc(invoc, ext),
                 None => invoc.expansion_kind.dummy(invoc.span()),
             };
 
-            self.cx.current_expansion.depth = depth + 1;
             let (expansion, new_invocations) = self.collect_invocations(expansion);
 
-            if expansions.len() == depth {
+            if expansions.len() < depth {
                 expansions.push(Vec::new());
             }
-            expansions[depth].push((mark.as_u32(), expansion));
+            expansions[depth - 1].push((mark.as_u32(), expansion));
             if !self.cx.ecfg.single_step {
                 invocations.extend(new_invocations.into_iter().rev());
             }
@@ -250,12 +275,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
         while let Some(expansions) = expansions.pop() {
             for (mark, expansion) in expansions.into_iter().rev() {
-                let expansion = expansion.fold_with(&mut placeholder_expander);
                 placeholder_expander.add(ast::NodeId::from_u32(mark), expansion);
             }
         }
 
-        placeholder_expander.remove(ast::NodeId::from_u32(0))
+        expansion.fold_with(&mut placeholder_expander)
     }
 
     fn collect_invocations(&mut self, expansion: Expansion) -> (Expansion, Vec<Invocation>) {
@@ -538,7 +562,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         self.invocations.push(Invocation {
             kind: kind,
             expansion_kind: expansion_kind,
-            expansion_data: ExpansionData { mark: mark, ..self.cx.current_expansion.clone() },
+            expansion_data: ExpansionData {
+                mark: mark,
+                depth: self.cx.current_expansion.depth + 1,
+                ..self.cx.current_expansion.clone()
+            },
         });
         placeholder(expansion_kind, ast::NodeId::from_u32(mark.as_u32()))
     }
@@ -864,22 +892,6 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_pushpop_unsafe = pushpop_unsafe,
         fn enable_proc_macro = proc_macro,
     }
-}
-
-pub fn expand_crate(cx: &mut ExtCtxt,
-                    user_exts: Vec<NamedSyntaxExtension>,
-                    c: Crate) -> Crate {
-    cx.initialize(user_exts, &c);
-    cx.monotonic_expander().expand_crate(c)
-}
-
-// Expands crate using supplied MacroExpander - allows for
-// non-standard expansion behaviour (e.g. step-wise).
-pub fn expand_crate_with_expander(expander: &mut MacroExpander,
-                                  user_exts: Vec<NamedSyntaxExtension>,
-                                  c: Crate) -> Crate {
-    expander.cx.initialize(user_exts, &c);
-    expander.expand_crate(c)
 }
 
 // A Marker adds the given mark to the syntax context and

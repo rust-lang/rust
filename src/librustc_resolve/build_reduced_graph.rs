@@ -13,7 +13,7 @@
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
 
-use macros;
+use macros::{InvocationData, LegacyScope};
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport};
 use {Module, ModuleS, ModuleKind};
 use Namespace::{self, TypeNS, ValueNS};
@@ -200,16 +200,16 @@ impl<'b> Resolver<'b> {
                         LoadedMacroKind::Def(mut def) => {
                             let name = def.ident.name;
                             if def.use_locally {
-                                let ext = macro_rules::compile(&self.session.parse_sess, &def);
-                                let shadowing =
-                                    self.resolve_macro_name(Mark::root(), name, false).is_some();
-                                self.expansion_data[&Mark::root()].module.macros.borrow_mut()
-                                    .insert(name, macros::NameBinding {
-                                        ext: Rc::new(ext),
-                                        expansion: expansion,
-                                        shadowing: shadowing,
-                                        span: loaded_macro.import_site,
-                                    });
+                                let ext =
+                                    Rc::new(macro_rules::compile(&self.session.parse_sess, &def));
+                                if self.builtin_macros.insert(name, ext).is_some() &&
+                                   expansion != Mark::root() {
+                                    let msg = format!("`{}` is already in scope", name);
+                                    self.session.struct_span_err(loaded_macro.import_site, &msg)
+                                        .note("macro-expanded `#[macro_use]`s may not shadow \
+                                               existing macros (see RFC 1560)")
+                                        .emit();
+                                }
                                 self.macro_names.insert(name);
                             }
                             if def.export {
@@ -250,7 +250,6 @@ impl<'b> Resolver<'b> {
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
                     },
                     normal_ancestor_id: Some(item.id),
-                    macros_escape: self.contains_macro_use(&item.attrs),
                     ..ModuleS::new(Some(parent), ModuleKind::Def(def, name))
                 });
                 self.define(parent, name, TypeNS, (module, sp, vis));
@@ -520,22 +519,26 @@ impl<'b> Resolver<'b> {
 
 pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
     pub resolver: &'a mut Resolver<'b>,
+    pub legacy_scope: LegacyScope<'b>,
     pub expansion: Mark,
 }
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
-    fn visit_invoc(&mut self, id: ast::NodeId) {
-        self.resolver.expansion_data.get_mut(&Mark::from_placeholder_id(id)).unwrap().module =
-            self.resolver.current_module;
+    fn visit_invoc(&mut self, id: ast::NodeId) -> &'b InvocationData<'b> {
+        let invocation = self.resolver.invocations[&Mark::from_placeholder_id(id)];
+        invocation.module.set(self.resolver.current_module);
+        invocation.legacy_scope.set(self.legacy_scope);
+        invocation
     }
 }
 
 macro_rules! method {
     ($visit:ident: $ty:ty, $invoc:path, $walk:ident) => {
         fn $visit(&mut self, node: &$ty) {
-            match node.node {
-                $invoc(..) => self.visit_invoc(node.id),
-                _ => visit::$walk(self, node),
+            if let $invoc(..) = node.node {
+                self.visit_invoc(node.id);
+            } else {
+                visit::$walk(self, node);
             }
         }
     }
@@ -543,22 +546,35 @@ macro_rules! method {
 
 impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
     method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item);
-    method!(visit_stmt:      ast::Stmt,     ast::StmtKind::Mac,       walk_stmt);
     method!(visit_expr:      ast::Expr,     ast::ExprKind::Mac,       walk_expr);
     method!(visit_pat:       ast::Pat,      ast::PatKind::Mac,        walk_pat);
     method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty);
 
     fn visit_item(&mut self, item: &Item) {
-        match item.node {
+        let macro_use = match item.node {
             ItemKind::Mac(..) if item.id == ast::DUMMY_NODE_ID => return, // Scope placeholder
-            ItemKind::Mac(..) => return self.visit_invoc(item.id),
-            _ => {}
-        }
+            ItemKind::Mac(..) => {
+                return self.legacy_scope = LegacyScope::Expansion(self.visit_invoc(item.id));
+            }
+            ItemKind::Mod(..) => self.resolver.contains_macro_use(&item.attrs),
+            _ => false,
+        };
 
-        let parent = self.resolver.current_module;
+        let (parent, legacy_scope) = (self.resolver.current_module, self.legacy_scope);
         self.resolver.build_reduced_graph_for_item(item, self.expansion);
         visit::walk_item(self, item);
         self.resolver.current_module = parent;
+        if !macro_use {
+            self.legacy_scope = legacy_scope;
+        }
+    }
+
+    fn visit_stmt(&mut self, stmt: &ast::Stmt) {
+        if let ast::StmtKind::Mac(..) = stmt.node {
+            self.legacy_scope = LegacyScope::Expansion(self.visit_invoc(stmt.id));
+        } else {
+            visit::walk_stmt(self, stmt);
+        }
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
@@ -567,10 +583,11 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_block(&mut self, block: &Block) {
-        let parent = self.resolver.current_module;
+        let (parent, legacy_scope) = (self.resolver.current_module, self.legacy_scope);
         self.resolver.build_reduced_graph_for_block(block);
         visit::walk_block(self, block);
         self.resolver.current_module = parent;
+        self.legacy_scope = legacy_scope;
     }
 
     fn visit_trait_item(&mut self, item: &TraitItem) {
@@ -578,7 +595,8 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
         let def_id = parent.def_id().unwrap();
 
         if let TraitItemKind::Macro(_) = item.node {
-            return self.visit_invoc(item.id);
+            self.visit_invoc(item.id);
+            return
         }
 
         // Add the item to the trait info.

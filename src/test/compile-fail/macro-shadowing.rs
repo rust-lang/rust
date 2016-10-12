@@ -12,31 +12,28 @@
 
 macro_rules! foo { () => {} }
 macro_rules! macro_one { () => {} }
+#[macro_use(macro_two)] extern crate two_macros;
 
 macro_rules! m1 { () => {
     macro_rules! foo { () => {} } //~ ERROR `foo` is already in scope
-    //~^ NOTE macro-expanded `macro_rules!`s and `#[macro_use]`s may not shadow existing macros
+    //~^ NOTE macro-expanded `macro_rules!`s may not shadow existing macros
 
-    #[macro_use] //~ ERROR `macro_one` is already in scope
-    //~^ NOTE macro-expanded `macro_rules!`s and `#[macro_use]`s may not shadow existing macros
-    extern crate two_macros;
+    #[macro_use] //~ ERROR `macro_two` is already in scope
+    //~^ NOTE macro-expanded `#[macro_use]`s may not shadow existing macros
+    extern crate two_macros as __;
 }}
 m1!(); //~ NOTE in this expansion
        //~| NOTE in this expansion
        //~| NOTE in this expansion
        //~| NOTE in this expansion
 
-fn f() { macro_one!(); }
 foo!();
 
 macro_rules! m2 { () => {
     macro_rules! foo { () => {} }
-    #[macro_use] extern crate two_macros as __;
-
-    fn g() { macro_one!(); }
     foo!();
 }}
 m2!();
-//^ Since `foo` and `macro_one` are not used outside this expansion, they are not shadowing errors.
+//^ Since `foo` is not used outside this expansion, it is not a shadowing error.
 
 fn main() {}
