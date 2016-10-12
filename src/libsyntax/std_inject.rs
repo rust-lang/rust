@@ -34,23 +34,25 @@ fn ignored_span(sess: &ParseSess, sp: Span) -> Span {
     return sp;
 }
 
-pub fn no_core(krate: &ast::Crate) -> bool {
-    attr::contains_name(&krate.attrs, "no_core")
-}
-
-pub fn no_std(krate: &ast::Crate) -> bool {
-    attr::contains_name(&krate.attrs, "no_std") || no_core(krate)
+pub fn injected_crate_name(krate: &ast::Crate) -> Option<&'static str> {
+    if attr::contains_name(&krate.attrs, "no_core") {
+        None
+    } else if attr::contains_name(&krate.attrs, "no_std") {
+        Some("core")
+    } else {
+        Some("std")
+    }
 }
 
 pub fn maybe_inject_crates_ref(sess: &ParseSess,
                                mut krate: ast::Crate,
                                alt_std_name: Option<String>)
                                -> ast::Crate {
-    if no_core(&krate) {
-        return krate;
-    }
+    let name = match injected_crate_name(&krate) {
+        Some(name) => name,
+        None => return krate,
+    };
 
-    let name = if no_std(&krate) { "core" } else { "std" };
     let crate_name = token::intern(&alt_std_name.unwrap_or(name.to_string()));
 
     krate.module.items.insert(0, P(ast::Item {
