@@ -261,6 +261,16 @@ pub trait Copy : Clone {
     // Empty.
 }
 
+macro_rules! copy_impl {
+    ($($t:ty)*) => ($(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Copy for $t { }
+    )*)
+}
+
+copy_impl! { i8 u8 i16 u16 i32 u32 i64 u64 isize usize f32 f64 bool char }
+copy_impl! { () }
+
 /// Types for which it is safe to share references between threads.
 ///
 /// This trait is automatically implemented when the compiler determines
