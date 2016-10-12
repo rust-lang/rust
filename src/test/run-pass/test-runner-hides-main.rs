@@ -9,8 +9,6 @@
 // except according to those terms.
 
 // compile-flags:--test
-// ignore-pretty: does not work well with `--test`
-
 // Building as a test runner means that a synthetic main will be run,
 // not ours
 pub fn main() { panic!(); }

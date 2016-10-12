@@ -10,8 +10,6 @@
 
 // aux-build:lint_plugin_test.rs
 // ignore-stage1
-// ignore-pretty
-
 #![feature(plugin)]
 #![plugin(lint_plugin_test)]
 #![allow(dead_code)]

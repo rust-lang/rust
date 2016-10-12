@@ -11,7 +11,6 @@
 #![feature(test)]
 
 // compile-flags: --test
-// no-pretty-expanded
 extern crate test;
 
 #[bench]
