@@ -6,7 +6,7 @@ use std::fmt;
 use syntax_pos::{MultiSpan, Span};
 
 #[must_use]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Diagnostic {
     pub level: Level,
     pub message: String,
@@ -16,7 +16,7 @@ pub struct Diagnostic {
 }
 
 /// For example a note attached to an error.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SubDiagnostic {
     pub level: Level,
     pub message: String,
@@ -188,11 +188,5 @@ impl Diagnostic {
             render_span: render_span,
         };
         self.children.push(sub);
-    }
-}
-
-impl fmt::Debug for Diagnostic {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.message.fmt(f)
     }
 }

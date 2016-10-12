@@ -198,6 +198,12 @@ declare_lint! {
     "patterns in functions without body were erroneously allowed"
 }
 
+declare_lint! {
+    pub EXTRA_REQUIREMENT_IN_IMPL,
+    Warn,
+    "detects extra requirements in impls that were erroneously allowed"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -235,7 +241,8 @@ impl LintPass for HardwiredLints {
             HR_LIFETIME_IN_ASSOC_TYPE,
             LIFETIME_UNDERSCORE,
             SAFE_EXTERN_STATICS,
-            PATTERNS_IN_FNS_WITHOUT_BODY
+            PATTERNS_IN_FNS_WITHOUT_BODY,
+            EXTRA_REQUIREMENT_IN_IMPL
         )
     }
 }

@@ -138,10 +138,12 @@ pub enum ObligationCauseCode<'tcx> {
 
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
 
+    // error derived when matching traits/impls; see ObligationCause for more details
     CompareImplMethodObligation {
         item_name: ast::Name,
         impl_item_def_id: DefId,
-        trait_item_def_id: DefId
+        trait_item_def_id: DefId,
+        lint_id: Option<ast::NodeId>,
     },
 }
 

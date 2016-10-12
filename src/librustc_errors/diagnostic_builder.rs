@@ -70,6 +70,21 @@ impl<'a> DiagnosticBuilder<'a> {
             return;
         }
 
+        match self.level {
+            Level::Bug |
+            Level::Fatal |
+            Level::PhaseFatal |
+            Level::Error => {
+                self.handler.bump_err_count();
+            }
+
+            Level::Warning |
+            Level::Note |
+            Level::Help |
+            Level::Cancelled => {
+            }
+        }
+
         self.handler.emitter.borrow_mut().emit(&self);
         self.cancel();
         self.handler.panic_if_treat_err_as_bug();
@@ -139,6 +154,13 @@ impl<'a> DiagnosticBuilder<'a> {
             handler: handler,
             diagnostic: Diagnostic::new_with_code(level, code, message)
         }
+    }
+
+    pub fn into_diagnostic(mut self) -> Diagnostic {
+        // annoyingly, the Drop impl means we can't actually move
+        let result = self.diagnostic.clone();
+        self.cancel();
+        result
     }
 }
 

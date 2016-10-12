@@ -367,6 +367,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     item_name: impl_m.name,
                     impl_item_def_id: impl_m.def_id,
                     trait_item_def_id: trait_m.def_id,
+                    lint_id: Some(impl_m_body_id),
                 },
             };
 

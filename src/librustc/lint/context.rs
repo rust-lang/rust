@@ -42,7 +42,7 @@ use std::fmt;
 use syntax::attr;
 use syntax::parse::token::InternedString;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{MultiSpan, Span};
 use errors::{self, Diagnostic, DiagnosticBuilder};
 use hir;
 use hir::intravisit as hir_visit;
@@ -107,9 +107,12 @@ impl fmt::Debug for EarlyLint {
 }
 
 impl EarlyLint {
-    pub fn new(id: LintId, span: Span, msg: String) -> Self {
-        let mut diagnostic = Diagnostic::new(errors::Level::Warning, &msg);
-        diagnostic.set_span(span);
+    pub fn new<M: EarlyLintMessage>(id: LintId, span: Span, msg: M) -> Self {
+        let diagnostic = msg.into_diagnostic(span);
+        EarlyLint { id: id, span: span, diagnostic: diagnostic }
+    }
+
+    pub fn with_diagnostic(id: LintId, span: Span, diagnostic: Diagnostic) -> Self {
         EarlyLint { id: id, span: span, diagnostic: diagnostic }
     }
 
@@ -120,7 +123,23 @@ impl EarlyLint {
     }
 }
 
+pub trait EarlyLintMessage {
+    fn into_diagnostic(self, span: Span) -> Diagnostic;
+}
 
+impl EarlyLintMessage for String {
+    fn into_diagnostic(self, span: Span) -> Diagnostic {
+        let mut diagnostic = Diagnostic::new(errors::Level::Warning, &self);
+        diagnostic.set_span(span);
+        diagnostic
+    }
+}
+
+impl EarlyLintMessage for Diagnostic {
+    fn into_diagnostic(self, _span: Span) -> Diagnostic {
+        self
+    }
+}
 
 /// Extra information for a future incompatibility lint. See the call
 /// to `register_future_incompatible` in `librustc_lint/lib.rs` for
@@ -439,13 +458,15 @@ pub fn raw_emit_lint(sess: &Session,
     raw_struct_lint(sess, lints, lint, lvlsrc, span, msg).emit();
 }
 
-pub fn raw_struct_lint<'a>(sess: &'a Session,
-                           lints: &LintStore,
-                           lint: &'static Lint,
-                           lvlsrc: LevelSource,
-                           span: Option<Span>,
-                           msg: &str)
-                           -> DiagnosticBuilder<'a> {
+pub fn raw_struct_lint<'a, S>(sess: &'a Session,
+                              lints: &LintStore,
+                              lint: &'static Lint,
+                              lvlsrc: LevelSource,
+                              span: Option<S>,
+                              msg: &str)
+                              -> DiagnosticBuilder<'a>
+    where S: Into<MultiSpan>
+{
     let (mut level, source) = lvlsrc;
     if level == Allow {
         return sess.diagnostic().struct_dummy();

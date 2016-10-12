@@ -258,11 +258,11 @@ impl Session {
     pub fn unimpl(&self, msg: &str) -> ! {
         self.diagnostic().unimpl(msg)
     }
-    pub fn add_lint(&self,
-                    lint: &'static lint::Lint,
-                    id: ast::NodeId,
-                    sp: Span,
-                    msg: String) {
+    pub fn add_lint<M: lint::EarlyLintMessage>(&self,
+                                               lint: &'static lint::Lint,
+                                               id: ast::NodeId,
+                                               sp: Span,
+                                               msg: M) {
         let lint_id = lint::LintId::of(lint);
         let mut lints = self.lints.borrow_mut();
         let early_lint = lint::EarlyLint::new(lint_id, sp, msg);
