@@ -82,7 +82,7 @@ This API is completely unstable and subject to change.
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

@@ -40,7 +40,7 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 #![cfg_attr(test, feature(test))]
 
 extern crate arena;

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(question_mark)]
-
 use std::fs::File;
 use std::io::{Read, self};
 use std::num::ParseIntError;
