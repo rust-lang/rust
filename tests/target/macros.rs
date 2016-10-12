@@ -53,6 +53,11 @@ fn main() {
     some_macro!{
         // comment
     };
+
+    some_macro!(
+        // comment
+        not function like
+    );
 }
 
 impl X {
