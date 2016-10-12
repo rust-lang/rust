@@ -255,6 +255,9 @@ macro_rules! debug_assert_ne {
 /// Helper macro for reducing boilerplate code for matching `Result` together
 /// with converting downstream errors.
 ///
+/// Prefer using `?` syntax to `try!`. `?` is built in to the language and is
+/// more succinct than `try!`. It is the standard method for error propagation.
+///
 /// `try!` matches the given `Result`. In case of the `Ok` variant, the
 /// expression has the value of the wrapped value.
 ///

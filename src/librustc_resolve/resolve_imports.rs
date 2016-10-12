@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use self::Determinacy::*;
 use self::ImportDirectiveSubclass::*;
 
 use Module;
@@ -26,6 +25,7 @@ use rustc::lint::builtin::PRIVATE_IN_PUBLIC;
 use rustc::hir::def::*;
 
 use syntax::ast::{NodeId, Name};
+use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 
@@ -35,12 +35,6 @@ impl<'a> Resolver<'a> {
     pub fn resolve_imports(&mut self) {
         ImportResolver { resolver: self }.resolve_imports();
     }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum Determinacy {
-    Determined,
-    Undetermined,
 }
 
 /// Contains data for specific types of import directives.
@@ -197,7 +191,8 @@ impl<'a> Resolver<'a> {
         // If the resolution doesn't depend on glob definability, check privacy and return.
         if let Some(result) = self.try_result(&resolution, ns) {
             return result.and_then(|binding| {
-                if self.is_accessible(binding.vis) && !is_disallowed_private_import(binding) {
+                if self.is_accessible(binding.vis) && !is_disallowed_private_import(binding) ||
+                   binding.is_extern_crate() { // c.f. issue #37020
                     Success(binding)
                 } else {
                     Failed(None)

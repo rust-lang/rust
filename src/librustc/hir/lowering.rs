@@ -94,13 +94,7 @@ pub fn lower_crate(sess: &Session,
     let _ignore = sess.dep_graph.in_ignore();
 
     LoweringContext {
-        crate_root: if std_inject::no_core(krate) {
-            None
-        } else if std_inject::no_std(krate) {
-            Some("core")
-        } else {
-            Some("std")
-        },
+        crate_root: std_inject::injected_crate_name(krate),
         sess: sess,
         parent_def: None,
         resolver: resolver,

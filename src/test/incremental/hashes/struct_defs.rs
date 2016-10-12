@@ -236,3 +236,74 @@ struct Visibility;
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub struct Visibility;
+
+
+
+
+struct ReferencedType1;
+struct ReferencedType2;
+
+// Tuple Struct Change Field Type Indirectly -----------------------------------
+mod tuple_struct_change_field_type_indirectly {
+    #[cfg(cfail1)]
+    use super::ReferencedType1 as FieldType;
+    #[cfg(not(cfail1))]
+    use super::ReferencedType2 as FieldType;
+
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    struct TupleStruct(FieldType);
+}
+
+
+// Record Struct Change Field Type Indirectly -----------------------------------
+mod record_struct_change_field_type_indirectly {
+    #[cfg(cfail1)]
+    use super::ReferencedType1 as FieldType;
+    #[cfg(not(cfail1))]
+    use super::ReferencedType2 as FieldType;
+
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    struct RecordStruct {
+        _x: FieldType
+    }
+}
+
+
+
+
+trait ReferencedTrait1 {}
+trait ReferencedTrait2 {}
+
+// Change Trait Bound Indirectly -----------------------------------------------
+mod change_trait_bound_indirectly {
+    #[cfg(cfail1)]
+    use super::ReferencedTrait1 as Trait;
+    #[cfg(not(cfail1))]
+    use super::ReferencedTrait2 as Trait;
+
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    struct Struct<T: Trait>(T);
+}
+
+// Change Trait Bound Indirectly In Where Clause -------------------------------
+mod change_trait_bound_indirectly_in_where_clause {
+    #[cfg(cfail1)]
+    use super::ReferencedTrait1 as Trait;
+    #[cfg(not(cfail1))]
+    use super::ReferencedTrait2 as Trait;
+
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    struct Struct<T>(T) where T : Trait;
+}

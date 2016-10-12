@@ -11,6 +11,7 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
 use syntax::ast::{self, MetaItem};
+use syntax::attr::HasAttrs;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
@@ -104,13 +105,37 @@ pub fn expand_derive(cx: &mut ExtCtxt,
         }
     };
 
-    if mitem.value_str().is_some() {
-        cx.span_err(mitem.span, "unexpected value in `derive`");
+    let mut derive_attrs = Vec::new();
+    item = item.map_attrs(|attrs| {
+        let partition = attrs.into_iter().partition(|attr| &attr.name() == "derive");
+        derive_attrs = partition.0;
+        partition.1
+    });
+
+    // Expand `#[derive]`s after other attribute macro invocations.
+    if cx.resolver.find_attr_invoc(&mut item.attrs.clone()).is_some() {
+        return vec![Annotatable::Item(item.map_attrs(|mut attrs| {
+            attrs.push(cx.attribute(span, P(mitem.clone())));
+            attrs.extend(derive_attrs);
+            attrs
+        }))];
     }
 
-    let mut traits = mitem.meta_item_list().unwrap_or(&[]).to_owned();
-    if traits.is_empty() {
-        cx.span_warn(mitem.span, "empty trait list in `derive`");
+    let get_traits = |mitem: &MetaItem, cx: &ExtCtxt| {
+        if mitem.value_str().is_some() {
+            cx.span_err(mitem.span, "unexpected value in `derive`");
+        }
+
+        let traits = mitem.meta_item_list().unwrap_or(&[]).to_owned();
+        if traits.is_empty() {
+            cx.span_warn(mitem.span, "empty trait list in `derive`");
+        }
+        traits
+    };
+
+    let mut traits = get_traits(mitem, cx);
+    for derive_attr in derive_attrs {
+        traits.extend(get_traits(&derive_attr.node.value, cx));
     }
 
     // First, weed out malformed #[derive]

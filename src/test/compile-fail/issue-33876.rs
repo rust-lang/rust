@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(reflect_marker)]
-
-use std::marker::Reflect;
 use std::any::Any;
 
 struct Foo;

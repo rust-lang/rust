@@ -57,6 +57,7 @@ use syntax::ext::base::MultiItemModifier;
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, IntTy, UintTy};
+use syntax::ext::base::SyntaxExtension;
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -77,6 +78,7 @@ use std::mem::replace;
 use std::rc::Rc;
 
 use resolve_imports::{ImportDirective, NameResolution};
+use macros::{InvocationData, LegacyBinding, LegacyScope};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -791,9 +793,6 @@ pub struct ModuleS<'a> {
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
     populated: Cell<bool>,
-
-    macros: RefCell<FnvHashMap<Name, macros::NameBinding>>,
-    macros_escape: bool,
 }
 
 pub type Module<'a> = &'a ModuleS<'a>;
@@ -811,8 +810,6 @@ impl<'a> ModuleS<'a> {
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
             populated: Cell::new(true),
-            macros: RefCell::new(FnvHashMap()),
-            macros_escape: false,
         }
     }
 
@@ -1076,7 +1073,7 @@ pub struct Resolver<'a> {
 
     privacy_errors: Vec<PrivacyError<'a>>,
     ambiguity_errors: Vec<AmbiguityError<'a>>,
-    macro_shadowing_errors: FnvHashSet<Span>,
+    disallowed_shadowing: Vec<(Name, Span, LegacyScope<'a>)>,
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
@@ -1086,9 +1083,10 @@ pub struct Resolver<'a> {
     pub derive_modes: FnvHashMap<Name, Rc<MultiItemModifier>>,
     crate_loader: &'a mut CrateLoader,
     macro_names: FnvHashSet<Name>,
+    builtin_macros: FnvHashMap<Name, Rc<SyntaxExtension>>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
-    expansion_data: FnvHashMap<Mark, macros::ExpansionData<'a>>,
+    invocations: FnvHashMap<Mark, &'a InvocationData<'a>>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1097,6 +1095,8 @@ pub struct ResolverArenas<'a> {
     name_bindings: arena::TypedArena<NameBinding<'a>>,
     import_directives: arena::TypedArena<ImportDirective<'a>>,
     name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
+    invocation_data: arena::TypedArena<InvocationData<'a>>,
+    legacy_bindings: arena::TypedArena<LegacyBinding<'a>>,
 }
 
 impl<'a> ResolverArenas<'a> {
@@ -1119,6 +1119,13 @@ impl<'a> ResolverArenas<'a> {
     }
     fn alloc_name_resolution(&'a self) -> &'a RefCell<NameResolution<'a>> {
         self.name_resolutions.alloc(Default::default())
+    }
+    fn alloc_invocation_data(&'a self, expansion_data: InvocationData<'a>)
+                             -> &'a InvocationData<'a> {
+        self.invocation_data.alloc(expansion_data)
+    }
+    fn alloc_legacy_binding(&'a self, binding: LegacyBinding<'a>) -> &'a LegacyBinding<'a> {
+        self.legacy_bindings.alloc(binding)
     }
 }
 
@@ -1205,8 +1212,9 @@ impl<'a> Resolver<'a> {
         let mut definitions = Definitions::new();
         DefCollector::new(&mut definitions).collect_root();
 
-        let mut expansion_data = FnvHashMap();
-        expansion_data.insert(Mark::root(), macros::ExpansionData::root(graph_root));
+        let mut invocations = FnvHashMap();
+        invocations.insert(Mark::root(),
+                           arenas.alloc_invocation_data(InvocationData::root(graph_root)));
 
         Resolver {
             session: session,
@@ -1252,7 +1260,7 @@ impl<'a> Resolver<'a> {
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
-            macro_shadowing_errors: FnvHashSet(),
+            disallowed_shadowing: Vec::new(),
 
             arenas: arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
@@ -1266,7 +1274,8 @@ impl<'a> Resolver<'a> {
             derive_modes: FnvHashMap(),
             crate_loader: crate_loader,
             macro_names: FnvHashSet(),
-            expansion_data: expansion_data,
+            builtin_macros: FnvHashMap(),
+            invocations: invocations,
         }
     }
 
@@ -1277,6 +1286,8 @@ impl<'a> Resolver<'a> {
             name_bindings: arena::TypedArena::new(),
             import_directives: arena::TypedArena::new(),
             name_resolutions: arena::TypedArena::new(),
+            invocation_data: arena::TypedArena::new(),
+            legacy_bindings: arena::TypedArena::new(),
         }
     }
 
@@ -3338,7 +3349,8 @@ impl<'a> Resolver<'a> {
         vis.is_accessible_from(module.normal_ancestor_id.unwrap(), self)
     }
 
-    fn report_errors(&self) {
+    fn report_errors(&mut self) {
+        self.report_shadowing_errors();
         let mut reported_spans = FnvHashSet();
 
         for &AmbiguityError { span, name, b1, b2 } in &self.ambiguity_errors {
@@ -3362,6 +3374,20 @@ impl<'a> Resolver<'a> {
             } else {
                 let def = binding.def();
                 self.session.span_err(span, &format!("{} `{}` is private", def.kind_name(), name));
+            }
+        }
+    }
+
+    fn report_shadowing_errors(&mut self) {
+        let mut reported_errors = FnvHashSet();
+        for (name, span, scope) in replace(&mut self.disallowed_shadowing, Vec::new()) {
+            if self.resolve_macro_name(scope, name, false).is_some() &&
+               reported_errors.insert((name, span)) {
+                let msg = format!("`{}` is already in scope", name);
+                self.session.struct_span_err(span, &msg)
+                    .note("macro-expanded `macro_rules!`s may not shadow \
+                           existing macros (see RFC 1560)")
+                    .emit();
             }
         }
     }
