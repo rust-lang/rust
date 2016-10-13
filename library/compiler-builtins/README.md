@@ -371,13 +371,12 @@ Floating-point implementations of builtins that are only called from soft-float 
 
 ## License
 
-Licensed under either of
+The compiler-builtins crate is dual licensed under both the University of
+Illinois "BSD-Like" license and the MIT license.  As a user of this code you may
+choose to use it under either license.  As a contributor, you agree to allow
+your code to be used under both.
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
-  http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
+Full text of the relevant licenses is in LICENSE.TXT.
 
 ### Contribution
 
