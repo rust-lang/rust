@@ -274,6 +274,7 @@ impl DefaultResizePolicy {
 /// // type inference lets us omit an explicit type signature (which
 /// // would be `HashMap<&str, u8>` in this example).
 /// let mut player_stats = HashMap::new();
+/// # {let __help_inference_out: &HashMap<&_, _> = &player_stats;}
 ///
 /// fn random_stat_buff() -> u8 {
 ///     // could actually return some random value here - let's just return

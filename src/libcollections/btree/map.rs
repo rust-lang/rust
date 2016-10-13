@@ -112,6 +112,7 @@ use self::Entry::*;
 /// // type inference lets us omit an explicit type signature (which
 /// // would be `BTreeMap<&str, u8>` in this example).
 /// let mut player_stats = BTreeMap::new();
+/// # {let __help_inference_out: &BTreeMap<&_, _> = &player_stats;}
 ///
 /// fn random_stat_buff() -> u8 {
 ///     // could actually return some random value here - let's just return
