@@ -258,16 +258,25 @@ impl Session {
     pub fn unimpl(&self, msg: &str) -> ! {
         self.diagnostic().unimpl(msg)
     }
-    pub fn add_lint<M: lint::EarlyLintMessage>(&self,
-                                               lint: &'static lint::Lint,
-                                               id: ast::NodeId,
-                                               sp: Span,
-                                               msg: M) {
+    pub fn add_lint(&self,
+                    lint: &'static lint::Lint,
+                    id: ast::NodeId,
+                    sp: Span,
+                    msg: String)
+    {
+        self.add_lint_diagnostic(lint, id, (sp, &msg[..]))
+    }
+    pub fn add_lint_diagnostic<M>(&self,
+                                  lint: &'static lint::Lint,
+                                  id: ast::NodeId,
+                                  msg: M)
+        where M: lint::IntoEarlyLint,
+    {
         let lint_id = lint::LintId::of(lint);
         let mut lints = self.lints.borrow_mut();
-        let early_lint = lint::EarlyLint::new(lint_id, sp, msg);
+        let early_lint = msg.into_early_lint(lint_id);
         if let Some(arr) = lints.get_mut(&id) {
-            if !arr.iter().any(|l| l.matches(&early_lint)) {
+            if !arr.contains(&early_lint) {
                 arr.push(early_lint);
             }
             return;
