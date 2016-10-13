@@ -117,7 +117,10 @@ fn test_replace_with_2() {
 fn test_replace_with_3() {
     let is_called = Cell::new(false);
     let mut x = 2;
-    replace_with(&mut x, |_| is_called.set(true));
+    replace_with(&mut x, |_| {
+        is_called.set(true);
+        3
+    });
     assert!(is_called.get());
 }
 

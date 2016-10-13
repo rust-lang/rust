@@ -422,9 +422,10 @@ struct ExitGuard;
 
 impl Drop for ExitGuard {
     fn drop(&mut self) {
-        // To avoid unwinding, we abort the program, which ensures that the destructor of the
-        // invalidated value isn't runned.
-        unsafe { intrinsics::abort(); }
+        // To avoid unwinding, we abort (we panic, which is equivalent to abort inside a
+        // destructor, which we are currently in) the program, which ensures that the destructor of
+        // the invalidated value isn't runned.
+        panic!();
     }
 }
 
@@ -436,7 +437,8 @@ impl Drop for ExitGuard {
 ///
 /// # An important note
 ///
-/// The behavior on panic (or to be more precise, unwinding) is unspecified (but not undefined).
+/// The behavior on panic (or to be more precise, unwinding) is specified to match the behavior of
+/// panicking inside a destructor, which itself is simply specified to not unwind.
 ///
 /// # Example
 ///
