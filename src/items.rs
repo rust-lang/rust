@@ -1800,7 +1800,11 @@ fn rewrite_generics(context: &RewriteContext,
                              span.hi);
     let list_str = try_opt!(format_item_list(items, h_budget, offset, context.config));
 
-    Some(format!("<{}>", list_str))
+    Some(if context.config.spaces_within_angle_brackets {
+        format!("< {} >", list_str)
+    } else {
+        format!("<{}>", list_str)
+    })
 }
 
 fn rewrite_trait_bounds(context: &RewriteContext,
