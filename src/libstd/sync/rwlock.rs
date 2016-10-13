@@ -63,6 +63,9 @@ use sys_common::rwlock as sys;
 ///     assert_eq!(*w, 6);
 /// } // write lock is dropped here
 /// ```
+/// # Panics
+///
+/// This function might panic when called if the lock is already held by the current thread.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLock<T: ?Sized> {
     inner: Box<sys::RWLock>,
