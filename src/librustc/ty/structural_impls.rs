@@ -901,23 +901,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ClosureUpvar<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::ParameterEnvironment<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::ParameterEnvironment {
-            free_substs: self.free_substs.fold_with(folder),
-            implicit_region_bound: self.implicit_region_bound.fold_with(folder),
-            caller_bounds: self.caller_bounds.fold_with(folder),
-            free_id_outlive: self.free_id_outlive,
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.free_substs.visit_with(visitor) ||
-            self.implicit_region_bound.visit_with(visitor) ||
-            self.caller_bounds.visit_with(visitor)
-    }
-}
-
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::error::ExpectedFound<T> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::error::ExpectedFound {
