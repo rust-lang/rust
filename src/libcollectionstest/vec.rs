@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ascii::AsciiExt;
 use std::borrow::Cow;
 use std::iter::{FromIterator, repeat};
 use std::mem::size_of;
@@ -211,6 +212,60 @@ fn test_retain() {
     let mut vec = vec![1, 2, 3, 4];
     vec.retain(|&x| x % 2 == 0);
     assert_eq!(vec, [2, 4]);
+}
+
+#[test]
+fn test_dedup() {
+    fn case(a: Vec<i32>, b: Vec<i32>) {
+        let mut v = a;
+        v.dedup();
+        assert_eq!(v, b);
+    }
+    case(vec![], vec![]);
+    case(vec![1], vec![1]);
+    case(vec![1, 1], vec![1]);
+    case(vec![1, 2, 3], vec![1, 2, 3]);
+    case(vec![1, 1, 2, 3], vec![1, 2, 3]);
+    case(vec![1, 2, 2, 3], vec![1, 2, 3]);
+    case(vec![1, 2, 3, 3], vec![1, 2, 3]);
+    case(vec![1, 1, 2, 2, 2, 3, 3], vec![1, 2, 3]);
+}
+
+#[test]
+fn test_dedup_by_key() {
+    fn case(a: Vec<i32>, b: Vec<i32>) {
+        let mut v = a;
+        v.dedup_by_key(|i| *i / 10);
+        assert_eq!(v, b);
+    }
+    case(vec![], vec![]);
+    case(vec![10], vec![10]);
+    case(vec![10, 11], vec![10]);
+    case(vec![10, 20, 30], vec![10, 20, 30]);
+    case(vec![10, 11, 20, 30], vec![10, 20, 30]);
+    case(vec![10, 20, 21, 30], vec![10, 20, 30]);
+    case(vec![10, 20, 30, 31], vec![10, 20, 30]);
+    case(vec![10, 11, 20, 21, 22, 30, 31], vec![10, 20, 30]);
+}
+
+#[test]
+fn test_dedup_by() {
+    let mut vec = vec!["foo", "bar", "Bar", "baz", "bar"];
+    vec.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+
+    assert_eq!(vec, ["foo", "bar", "baz", "bar"]);
+}
+
+#[test]
+fn test_dedup_unique() {
+    let mut v0: Vec<Box<_>> = vec![box 1, box 1, box 2, box 3];
+    v0.dedup();
+    let mut v1: Vec<Box<_>> = vec![box 1, box 2, box 2, box 3];
+    v1.dedup();
+    let mut v2: Vec<Box<_>> = vec![box 1, box 2, box 3, box 3];
+    v2.dedup();
+    // If the boxed pointers were leaked or otherwise misused, valgrind
+    // and/or rt should raise errors.
 }
 
 #[test]
