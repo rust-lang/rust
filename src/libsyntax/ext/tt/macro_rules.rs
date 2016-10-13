@@ -120,7 +120,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                                            Some(named_matches),
                                            imported_from,
                                            rhs);
-                let mut p = Parser::new(cx.parse_sess(), cx.cfg(), Box::new(trncbr));
+                let mut p = Parser::new(cx.parse_sess(), cx.cfg().clone(), Box::new(trncbr));
                 p.directory = cx.current_expansion.module.directory.clone();
                 p.restrictions = match cx.current_expansion.no_noninline_mod {
                     true => Restrictions::NO_NONINLINE_MOD,
@@ -225,7 +225,7 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
     // Parse the macro_rules! invocation (`none` is for no interpolations):
     let arg_reader = new_tt_reader(&sess.span_diagnostic, None, None, def.body.clone());
 
-    let argument_map = match parse(sess, Vec::new(), arg_reader, &argument_gram) {
+    let argument_map = match parse(sess, &Vec::new(), arg_reader, &argument_gram) {
         Success(m) => m,
         Failure(sp, str) | Error(sp, str) => {
             panic!(sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &str));
