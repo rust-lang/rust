@@ -8,14 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rustc_attrs)]
+
 pub use bar::*;
 mod bar {
     pub use super::*;
 }
 
-pub use baz::*; //~ ERROR already been imported
+pub use baz::*;
 mod baz {
     pub use main as f;
 }
 
-pub fn main() {}
+#[rustc_error]
+pub fn main() {} //~ ERROR compilation successful

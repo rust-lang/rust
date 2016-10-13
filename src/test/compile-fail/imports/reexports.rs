@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(item_like_imports)]
-
 mod a {
     fn foo() {}
     mod foo {}

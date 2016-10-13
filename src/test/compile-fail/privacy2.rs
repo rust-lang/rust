@@ -31,8 +31,7 @@ fn test1() {
 
 fn test2() {
     use bar::glob::foo;
-    //~^ ERROR unresolved import `bar::glob::foo` [E0432]
-    //~| no `foo` in `bar::glob`
+    //~^ ERROR `foo` is private
 }
 
 #[start] fn main(_: isize, _: *const *const u8) -> isize { 3 }

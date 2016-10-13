@@ -10,7 +10,7 @@
 
 // force-host
 
-#![feature(plugin_registrar, rustc_private, item_like_imports)]
+#![feature(plugin_registrar, rustc_private)]
 
 extern crate syntax;
 extern crate syntax_ext;
