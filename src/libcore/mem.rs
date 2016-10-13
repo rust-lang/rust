@@ -418,14 +418,17 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// A guarding type which will abort upon drop.
 ///
 /// This is used for catching unwinding and transforming it into abort.
+///
+/// The destructor should never be called naturally (use `mem::forget()`), and only when unwinding.
 struct ExitGuard;
 
 impl Drop for ExitGuard {
     fn drop(&mut self) {
-        // To avoid unwinding, we abort (we panic, which is equivalent to abort inside a
-        // destructor, which we are currently in) the program, which ensures that the destructor of
-        // the invalidated value isn't runned.
-        panic!();
+        // To avoid unwinding, we abort (we panic, which is equivalent to abort inside an unwinding
+        // destructor) the program, which ensures that the destructor of the invalidated value
+        // isn't runned, since this destructor ought to be called only if unwinding happens.
+        panic!("`replace_with` closure unwinded. For safety reasons, this will \
+                abort your program. Check the documentation");
     }
 }
 
@@ -473,7 +476,7 @@ pub fn replace_with<T, F>(val: &mut T, replace: F)
         ptr::write(val, new);
     }
 
-    // Drop the guard.
+    // Forget the guard, to avoid panicking.
     mem::forget(guard);
 }
 
