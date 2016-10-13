@@ -20,6 +20,6 @@ mod zed {
 }
 
 fn main() {
-    zed::foo(); //~ ERROR unresolved name
+    zed::foo(); //~ ERROR `foo` is private
     bar();
 }
