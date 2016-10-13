@@ -961,7 +961,17 @@ fn format_tuple_struct(context: &RewriteContext,
                              context.codemap.span_after(span, "("),
                              span.hi);
     let body = try_opt!(format_item_list(items, item_budget, item_indent, context.config));
+
+    if context.config.spaces_within_parens && body.len() > 0 {
+        result.push(' ');
+    }
+
     result.push_str(&body);
+
+    if context.config.spaces_within_parens && body.len() > 0 {
+        result.push(' ');
+    }
+
     result.push(')');
 
     if !where_clause_str.is_empty() && !where_clause_str.contains('\n') &&
@@ -1386,12 +1396,18 @@ fn rewrite_fn_base(context: &RewriteContext,
             result.push_str(&arg_indent.to_string(context.config));
             arg_indent = arg_indent + 1; // extra space for `(`
             result.push('(');
+            if context.config.spaces_within_parens && fd.inputs.len() > 0 {
+                result.push(' ')
+            }
         } else {
             result.push_str("(\n");
             result.push_str(&arg_indent.to_string(context.config));
         }
     } else {
         result.push('(');
+        if context.config.spaces_within_parens && fd.inputs.len() > 0 {
+            result.push(' ')
+        }
     }
 
     if multi_line_ret_str {
@@ -1432,6 +1448,9 @@ fn rewrite_fn_base(context: &RewriteContext,
         result.push(')');
     } else {
         result.push_str(&arg_str);
+        if context.config.spaces_within_parens && fd.inputs.len() > 0 {
+            result.push(' ')
+        }
         result.push(')');
     }
 

@@ -311,7 +311,11 @@ fn format_function_type<'a, I>(inputs: I,
         String::new()
     };
 
-    Some(format!("({}){}{}", list_str, infix, output))
+    Some(if context.config.spaces_within_parens {
+        format!("( {} ){}{}", list_str, infix, output)
+    } else {
+        format!("({}){}{}", list_str, infix, output)
+    })
 }
 
 impl Rewrite for ast::WherePredicate {
@@ -575,7 +579,12 @@ impl Rewrite for ast::Ty {
             // comments.
             ast::TyKind::Paren(ref ty) => {
                 let budget = try_opt!(width.checked_sub(2));
-                ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("({})", ty_str))
+                ty.rewrite(context, budget, offset + 1)
+                    .map(|ty_str| if context.config.spaces_within_parens {
+                        format!("( {} )", ty_str)
+                    } else {
+                        format!("({})", ty_str)
+                    })
             }
             ast::TyKind::Vec(ref ty) => {
                 let budget = try_opt!(width.checked_sub(2));

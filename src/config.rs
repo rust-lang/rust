@@ -416,6 +416,7 @@ create_config! {
     space_after_bound_colon: bool, true,
         "Leave a space after the colon in a trait or lifetime bound";
     spaces_around_ranges: bool, false, "Put spaces around the  .. and ... range operators";
+    spaces_within_parens: bool, false, "Put spaces within non-empty parentheses";
     use_try_shorthand: bool, false, "Replace uses of the try! macro by the ? shorthand";
     write_mode: WriteMode, WriteMode::Replace,
         "What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage";

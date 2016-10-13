@@ -1536,7 +1536,11 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         None => return Err(Ordering::Less),
     };
 
-    Ok(format!("{}({})", callee_str, list_str))
+    Ok(if context.config.spaces_within_parens && list_str.len() > 0 {
+        format!("{}( {} )", callee_str, list_str)
+    } else {
+        format!("{}({})", callee_str, list_str)
+    })
 }
 
 fn rewrite_paren(context: &RewriteContext,
@@ -1549,7 +1553,12 @@ fn rewrite_paren(context: &RewriteContext,
     // paren on the same line as the subexpr.
     let subexpr_str = subexpr.rewrite(context, try_opt!(width.checked_sub(2)), offset + 1);
     debug!("rewrite_paren, subexpr_str: `{:?}`", subexpr_str);
-    subexpr_str.map(|s| format!("({})", s))
+
+    subexpr_str.map(|s| if context.config.spaces_within_parens && s.len() > 0 {
+        format!("( {} )", s)
+    } else {
+        format!("({})", s)
+    })
 }
 
 fn rewrite_struct_lit<'a>(context: &RewriteContext,
@@ -1749,7 +1758,11 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
         return items.next()
             .unwrap()
             .rewrite(&aligned, budget, indent)
-            .map(|s| format!("({},)", s));
+            .map(|s| if context.config.spaces_within_parens {
+                format!("( {}, )", s)
+            } else {
+                format!("({},)", s)
+            });
     }
 
     let list_lo = context.codemap.span_after(span, "(");
@@ -1764,7 +1777,11 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
                              span.hi - BytePos(1));
     let list_str = try_opt!(format_item_list(items, budget, indent, context.config));
 
-    Some(format!("({})", list_str))
+    if context.config.spaces_within_parens && list_str.len() > 0 {
+        Some(format!("( {} )", list_str))
+    } else {
+        Some(format!("({})", list_str))
+    }
 }
 
 fn rewrite_binary_op(context: &RewriteContext,
