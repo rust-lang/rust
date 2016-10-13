@@ -205,7 +205,7 @@ impl<'a> fmt::Display for WhereClause<'a> {
             }
         }
         if !f.alternate() {
-            f.write_str("</span>")?;
+            clause.push_str("</span>");
             let plain = format!("{:#}", self);
             if plain.len() > 80 {
                 let padding = repeat("&nbsp;").take(8).collect::<String>();
