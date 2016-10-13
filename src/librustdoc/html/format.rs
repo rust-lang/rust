@@ -161,48 +161,60 @@ impl<'a> fmt::Display for WhereClause<'a> {
         if gens.where_predicates.is_empty() {
             return Ok(());
         }
+        let mut clause = String::new();
         if f.alternate() {
-            f.write_str(" ")?;
+            clause.push_str(" where ");
         } else {
-            f.write_str(" <span class='where'>where ")?;
+            clause.push_str(" <span class='where'>where ");
         }
         for (i, pred) in gens.where_predicates.iter().enumerate() {
             if i > 0 {
-                f.write_str(", ")?;
+                if f.alternate() {
+                    clause.push_str(", ");
+                } else {
+                    clause.push_str(",<br>");
+                }
             }
             match pred {
                 &clean::WherePredicate::BoundPredicate { ref ty, ref bounds } => {
                     let bounds = bounds;
                     if f.alternate() {
-                        write!(f, "{:#}: {:#}", ty, TyParamBounds(bounds))?;
+                        clause.push_str(&format!("{:#}: {:#}", ty, TyParamBounds(bounds)));
                     } else {
-                        write!(f, "{}: {}", ty, TyParamBounds(bounds))?;
+                        clause.push_str(&format!("{}: {}", ty, TyParamBounds(bounds)));
                     }
                 }
                 &clean::WherePredicate::RegionPredicate { ref lifetime,
                                                           ref bounds } => {
-                    write!(f, "{}: ", lifetime)?;
+                    clause.push_str(&format!("{}: ", lifetime));
                     for (i, lifetime) in bounds.iter().enumerate() {
                         if i > 0 {
-                            f.write_str(" + ")?;
+                            clause.push_str(" + ");
                         }
 
-                        write!(f, "{}", lifetime)?;
+                        clause.push_str(&format!("{}", lifetime));
                     }
                 }
                 &clean::WherePredicate::EqPredicate { ref lhs, ref rhs } => {
                     if f.alternate() {
-                        write!(f, "{:#} == {:#}", lhs, rhs)?;
+                        clause.push_str(&format!("{:#} == {:#}", lhs, rhs));
                     } else {
-                        write!(f, "{} == {}", lhs, rhs)?;
+                        clause.push_str(&format!("{} == {}", lhs, rhs));
                     }
                 }
             }
         }
         if !f.alternate() {
             f.write_str("</span>")?;
+            let plain = format!("{:#}", self);
+            if plain.len() > 80 {
+                let padding = repeat("&nbsp;").take(8).collect::<String>();
+                clause = clause.replace("<br>", &format!("<br>{}", padding));
+            } else {
+                clause = clause.replace("<br>", " ");
+            }
         }
-        Ok(())
+        write!(f, "{}", clause)
     }
 }
 
