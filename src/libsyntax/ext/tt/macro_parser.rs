@@ -272,7 +272,7 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
 }
 
 pub fn parse(sess: &ParseSess,
-             cfg: ast::CrateConfig,
+             cfg: &ast::CrateConfig,
              mut rdr: TtReader,
              ms: &[TokenTree])
              -> NamedParseResult {
