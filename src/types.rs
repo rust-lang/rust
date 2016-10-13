@@ -45,6 +45,10 @@ pub fn rewrite_path(context: &RewriteContext,
 
     if let Some(qself) = qself {
         result.push('<');
+        if context.config.spaces_within_angle_brackets {
+            result.push_str(" ")
+        }
+
         let fmt_ty = try_opt!(qself.ty.rewrite(context, width, offset));
         result.push_str(&fmt_ty);
 
@@ -66,6 +70,10 @@ pub fn rewrite_path(context: &RewriteContext,
                                                     context,
                                                     budget,
                                                     offset + extra_offset));
+        }
+
+        if context.config.spaces_within_angle_brackets {
+            result.push_str(" ")
         }
 
         result.push_str(">::");
@@ -212,7 +220,11 @@ fn rewrite_segment(expr_context: bool,
             // Update position of last bracket.
             *span_lo = next_span_lo;
 
-            format!("{}<{}>", separator, list_str)
+            if context.config.spaces_within_angle_brackets && list_str.len() > 0 {
+                format!("{}< {} >", separator, list_str)
+            } else {
+                format!("{}<{}>", separator, list_str)
+            }
         }
         ast::PathParameters::Parenthesized(ref data) => {
             let output = match data.output {
@@ -350,7 +362,11 @@ impl Rewrite for ast::WherePredicate {
                                                     .intersperse(Some(" + ".to_string()))
                                                     .collect());
 
-                    format!("for<{}> {}: {}", lifetime_str, type_str, bounds_str)
+                    if context.config.spaces_within_angle_brackets && lifetime_str.len() > 0 {
+                        format!("for< {} > {}: {}", lifetime_str, type_str, bounds_str)
+                    } else {
+                        format!("for<{}> {}: {}", lifetime_str, type_str, bounds_str)
+                    }
                 } else {
                     // 2 = ": ".len()
                     let used_width = type_str.len() + 2;
@@ -513,7 +529,11 @@ impl Rewrite for ast::PolyTraitRef {
             let path_str = try_opt!(self.trait_ref
                 .rewrite(context, max_path_width, offset + extra_offset));
 
-            Some(format!("for<{}> {}", lifetime_str, path_str))
+            Some(if context.config.spaces_within_angle_brackets && lifetime_str.len() > 0 {
+                format!("for< {} > {}", lifetime_str, path_str)
+            } else {
+                format!("for<{}> {}", lifetime_str, path_str)
+            })
         } else {
             self.trait_ref.rewrite(context, width, offset)
         }
