@@ -2828,7 +2828,7 @@ that impl must be declared as an `unsafe impl. For example:
 #![feature(dropck_eyepatch)]
 
 struct Foo<X>(X);
-impl<#[may_dangle] X> Drop for Foo {
+impl<#[may_dangle] X> Drop for Foo<X> {
     fn drop(&mut self) { }
 }
 ```
