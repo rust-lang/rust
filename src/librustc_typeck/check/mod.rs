@@ -1028,13 +1028,26 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
                     let trait_span = tcx.map.span_if_local(ty_trait_item.def_id());
                     if let &ty::MethodTraitItem(ref trait_method) = ty_trait_item {
+                        let err_count = tcx.sess.err_count();
                         compare_impl_method(ccx,
                                             &impl_method,
                                             impl_item.span,
                                             body.id,
                                             &trait_method,
                                             &impl_trait_ref,
-                                            trait_span);
+                                            trait_span,
+                                            true); // start with old-broken-mode
+                        if err_count == tcx.sess.err_count() {
+                            // old broken mode did not report an error. Try with the new mode.
+                            compare_impl_method(ccx,
+                                                &impl_method,
+                                                impl_item.span,
+                                                body.id,
+                                                &trait_method,
+                                                &impl_trait_ref,
+                                                trait_span,
+                                                false); // use the new mode
+                        }
                     } else {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0324,
                                   "item `{}` is an associated method, \

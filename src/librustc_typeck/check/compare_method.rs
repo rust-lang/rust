@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use rustc::infer::{self, InferOk, TypeOrigin};
+use rustc::middle::free_region::FreeRegionMap;
 use rustc::ty;
 use rustc::traits::{self, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
@@ -39,8 +40,10 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                      impl_m_body_id: ast::NodeId,
                                      trait_m: &ty::Method<'tcx>,
                                      impl_trait_ref: &ty::TraitRef<'tcx>,
-                                     trait_item_span: Option<Span>) {
-    debug!("compare_impl_method(impl_trait_ref={:?})", impl_trait_ref);
+                                     trait_item_span: Option<Span>,
+                                     old_broken_mode: bool) {
+    debug!("compare_impl_method(impl_trait_ref={:?})",
+           impl_trait_ref);
 
     debug!("compare_impl_method: impl_trait_ref (liberated) = {:?}",
            impl_trait_ref);
@@ -367,7 +370,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     item_name: impl_m.name,
                     impl_item_def_id: impl_m.def_id,
                     trait_item_def_id: trait_m.def_id,
-                    lint_id: Some(impl_m_body_id),
+                    lint_id: if !old_broken_mode { Some(impl_m_body_id) } else { None },
                 },
             };
 
@@ -473,8 +476,20 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        let fcx = FnCtxt::new(&inh, tcx.types.err, impl_m_body_id);
-        fcx.regionck_item(impl_m_body_id, impl_m_span, &[]);
+        if old_broken_mode {
+            // FIXME(#18937) -- this is how the code used to
+            // work. This is buggy because the fulfillment cx creates
+            // region obligations that get overlooked.  The right
+            // thing to do is the code below. But we keep this old
+            // pass around temporarily.
+            let mut free_regions = FreeRegionMap::new();
+            free_regions.relate_free_regions_from_predicates(
+                &infcx.parameter_environment.caller_bounds);
+            infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
+        } else {
+            let fcx = FnCtxt::new(&inh, tcx.types.err, impl_m_body_id);
+            fcx.regionck_item(impl_m_body_id, impl_m_span, &[]);
+        }
     });
 
     fn check_region_bounds_on_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
