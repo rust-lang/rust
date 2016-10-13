@@ -63,9 +63,6 @@ use sys_common::rwlock as sys;
 ///     assert_eq!(*w, 6);
 /// } // write lock is dropped here
 /// ```
-/// # Panics
-///
-/// This function might panic when called if the lock is already held by the current thread.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLock<T: ?Sized> {
     inner: Box<sys::RWLock>,
@@ -139,6 +136,10 @@ impl<T: ?Sized> RwLock<T> {
     /// This function will return an error if the RwLock is poisoned. An RwLock
     /// is poisoned whenever a writer panics while holding an exclusive lock.
     /// The failure will occur immediately after the lock has been acquired.
+    ///
+    /// # Panics
+    ///
+    /// This function might panic when called if the lock is already held by the current thread.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read(&self) -> LockResult<RwLockReadGuard<T>> {
@@ -191,6 +192,10 @@ impl<T: ?Sized> RwLock<T> {
     /// This function will return an error if the RwLock is poisoned. An RwLock
     /// is poisoned whenever a writer panics while holding an exclusive lock.
     /// An error will be returned when the lock is acquired.
+    ///
+    /// # Panics
+    ///
+    /// This function might panic when called if the lock is already held by the current thread.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write(&self) -> LockResult<RwLockWriteGuard<T>> {
