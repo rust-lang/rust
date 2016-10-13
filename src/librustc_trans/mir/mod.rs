@@ -22,7 +22,6 @@ use machine;
 use type_of;
 
 use syntax_pos::DUMMY_SP;
-use syntax::parse::token::keywords;
 
 use std::ops::Deref;
 use std::rc::Rc;
@@ -301,7 +300,6 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let lltuplety = type_of::type_of(bcx.ccx(), arg_ty);
             let lltemp = bcx.with_block(|bcx| {
                 base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
             });
@@ -319,27 +317,20 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 } else {
                     arg.store_fn_arg(bcx, &mut llarg_idx, dst);
                 }
-
-                bcx.with_block(|bcx| arg_scope.map(|scope| {
-                    let byte_offset_of_var_in_tuple =
-                        machine::llelement_offset(bcx.ccx(), lltuplety, i);
-
-                    let ops = unsafe {
-                        [llvm::LLVMRustDIBuilderCreateOpDeref(),
-                         llvm::LLVMRustDIBuilderCreateOpPlus(),
-                         byte_offset_of_var_in_tuple as i64]
-                    };
-
-                    let variable_access = VariableAccess::IndirectVariable {
-                        alloca: lltemp,
-                        address_operations: &ops
-                    };
-                    declare_local(bcx, keywords::Invalid.name(),
-                                  tupled_arg_ty, scope, variable_access,
-                                  VariableKind::ArgumentVariable(arg_index + i + 1),
-                                  bcx.fcx().span.unwrap_or(DUMMY_SP));
-                }));
             }
+
+            // Now that we have one alloca that contains the aggregate value,
+            // we can create one debuginfo entry for the argument.
+            bcx.with_block(|bcx| arg_scope.map(|scope| {
+                let variable_access = VariableAccess::DirectVariable {
+                    alloca: lltemp
+                };
+                declare_local(bcx, arg_decl.debug_name,
+                              arg_ty, scope, variable_access,
+                              VariableKind::ArgumentVariable(arg_index + 1),
+                              bcx.fcx().span.unwrap_or(DUMMY_SP));
+            }));
+
             return LocalRef::Lvalue(LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty)));
         }
 
