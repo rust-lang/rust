@@ -426,7 +426,7 @@ impl Drop for ExitGuard {
     fn drop(&mut self) {
         // To avoid unwinding, we abort (we panic, which is equivalent to abort inside an unwinding
         // destructor) the program, which ensures that the destructor of the invalidated value
-        // isn't runned, since this destructor ought to be called only if unwinding happens.
+        // isn't run, since this destructor ought to be called only if unwinding happens.
         panic!("`replace_with` closure unwinded. For safety reasons, this will \
                 abort your program. Check the documentation");
     }
@@ -452,7 +452,7 @@ impl Drop for ExitGuard {
 /// let mut bx: Box<i32> = Box::new(200);
 ///
 /// // Temporarily steal ownership.
-/// mem::replace(&mut bx, |mut owned| {
+/// mem::replace_with(&mut bx, |mut owned| {
 ///     owner = 5;
 ///
 ///     // The returned value is placed back in `&mut bx`.
@@ -461,7 +461,7 @@ impl Drop for ExitGuard {
 /// ```
 #[inline]
 #[unstable(feature = "replace_with", issue = "...")]
-pub fn replace_with<T, F>(val: &mut T, replace: F)
+pub fn replace_with<T, F>(val: &mut T, closure: F)
     where F: FnOnce(T) -> T {
     // Guard against unwinding. Note that this is critical to safety, to avoid the value behind the
     // reference `val` is not dropped twice during unwinding.
