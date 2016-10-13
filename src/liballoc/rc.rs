@@ -375,8 +375,8 @@ impl Rc<str> {
     pub fn __from_str(value: &str) -> Rc<str> {
         unsafe {
             // Allocate enough space for `RcBox<str>`.
-            let aligned_len = (value.len() + size_of::<usize>() - 1) / size_of::<usize>();
-            let vec = RawVec::<usize>::with_capacity(2 + aligned_len);
+            let aligned_len = 2 + (value.len() + size_of::<usize>() - 1) / size_of::<usize>();
+            let vec = RawVec::<usize>::with_capacity(aligned_len);
             let ptr = vec.ptr();
             forget(vec);
             // Initialize fields of `RcBox<str>`.
@@ -384,7 +384,8 @@ impl Rc<str> {
             *ptr.offset(1) = 1; // weak: Cell::new(1)
             ptr::copy_nonoverlapping(value.as_ptr(), ptr.offset(2) as *mut u8, value.len());
             // Combine the allocation address and the string length into a fat pointer to `RcBox`.
-            let rcbox_ptr = mem::transmute([ptr as usize, value.len()]);
+            let rcbox_ptr: *mut RcBox<str> = mem::transmute([ptr as usize, value.len()]);
+            assert!(aligned_len * size_of::<usize>() == size_of_val(&*rcbox_ptr));
             Rc { ptr: Shared::new(rcbox_ptr) }
         }
     }
