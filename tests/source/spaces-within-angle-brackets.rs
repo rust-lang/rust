@@ -54,3 +54,5 @@ impl Foo {
 
 trait MyTrait<A, D> {}
 impl<A: Send, D: Send> MyTrait<A, D> for Foo {}
+
+fn foo() where for<'a> u32: 'a {}
