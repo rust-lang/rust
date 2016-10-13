@@ -14,3 +14,7 @@ struct F {
 }
 
 fn issue_1006(def_id_to_string: for<'a, 'b> unsafe fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String) {}
+
+fn impl_trait_fn_1() -> impl Fn(i32) -> Option<u8> {}
+
+fn impl_trait_fn_2<E>() -> impl Future<Item=&'a i64,Error=E> {}
