@@ -618,9 +618,8 @@ impl Rewrite for ast::Ty {
             ast::TyKind::Mac(..) |
             ast::TyKind::Typeof(..) => unreachable!(),
             ast::TyKind::ImplicitSelf => Some(String::from("")),
-            ast::TyKind::ImplTrait(..) => {
-                // FIXME(#1154) Implement impl Trait
-                Some(String::from("impl TODO"))
+            ast::TyKind::ImplTrait(ref it) => {
+                it.rewrite(context, width, offset).map(|it_str| format!("impl {}", it_str))
             }
         }
     }
