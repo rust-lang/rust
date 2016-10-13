@@ -449,8 +449,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             &format!("impl has extra requirement {}", requirement));
 
         if let Some(node_id) = lint_id {
-            let diagnostic = (*err).clone();
-            self.tcx.sess.add_lint(EXTRA_REQUIREMENT_IN_IMPL, node_id, error_span, diagnostic);
+            self.tcx.sess.add_lint_diagnostic(EXTRA_REQUIREMENT_IN_IMPL,
+                                              node_id,
+                                              (*err).clone());
             err.cancel();
         }
 
