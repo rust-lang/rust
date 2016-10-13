@@ -6,7 +6,7 @@ use std::fmt;
 use syntax_pos::{MultiSpan, Span};
 
 #[must_use]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Diagnostic {
     pub level: Level,
     pub message: String,
@@ -16,7 +16,7 @@ pub struct Diagnostic {
 }
 
 /// For example a note attached to an error.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SubDiagnostic {
     pub level: Level,
     pub message: String,

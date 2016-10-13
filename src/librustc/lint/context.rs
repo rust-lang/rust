@@ -83,14 +83,10 @@ pub struct LintStore {
 
 /// When you call `add_lint` on the session, you wind up storing one
 /// of these, which records a "potential lint" at a particular point.
+#[derive(PartialEq)]
 pub struct EarlyLint {
     /// what lint is this? (e.g., `dead_code`)
     pub id: LintId,
-
-    /// what span was it attached to (this is used for Eq comparisons;
-    /// it duplicates to some extent the information in
-    /// `diagnostic.span`)
-    pub span: MultiSpan,
 
     /// the main message
     pub diagnostic: Diagnostic,
@@ -106,38 +102,22 @@ impl fmt::Debug for EarlyLint {
     }
 }
 
-impl EarlyLint {
-    pub fn new<M: EarlyLintMessage>(id: LintId, span: Span, msg: M) -> Self {
-        let diagnostic = msg.into_diagnostic(span);
-        EarlyLint { id: id, span: MultiSpan::from(span), diagnostic: diagnostic }
-    }
-
-    pub fn with_diagnostic(id: LintId, span: Span, diagnostic: Diagnostic) -> Self {
-        EarlyLint { id: id, span: MultiSpan::from(span), diagnostic: diagnostic }
-    }
-
-    pub fn matches(&self, other: &EarlyLint) -> bool {
-        self.id == other.id &&
-            self.span == other.span &&
-            self.diagnostic.message == other.diagnostic.message
-    }
+pub trait IntoEarlyLint {
+    fn into_early_lint(self, id: LintId) -> EarlyLint;
 }
 
-pub trait EarlyLintMessage {
-    fn into_diagnostic(self, span: Span) -> Diagnostic;
-}
-
-impl EarlyLintMessage for String {
-    fn into_diagnostic(self, span: Span) -> Diagnostic {
-        let mut diagnostic = Diagnostic::new(errors::Level::Warning, &self);
+impl<'a> IntoEarlyLint for (Span, &'a str) {
+    fn into_early_lint(self, id: LintId) -> EarlyLint {
+        let (span, msg) = self;
+        let mut diagnostic = Diagnostic::new(errors::Level::Warning, msg);
         diagnostic.set_span(span);
-        diagnostic
+        EarlyLint { id: id, diagnostic: diagnostic }
     }
 }
 
-impl EarlyLintMessage for Diagnostic {
-    fn into_diagnostic(self, _span: Span) -> Diagnostic {
-        self
+impl IntoEarlyLint for Diagnostic {
+    fn into_early_lint(self, id: LintId) -> EarlyLint {
+        EarlyLint { id: id, diagnostic: self }
     }
 }
 
@@ -578,8 +558,9 @@ pub trait LintContext: Sized {
     }
 
     fn early_lint(&self, early_lint: EarlyLint) {
+        let span = early_lint.diagnostic.span.primary_span().expect("early lint w/o primary span");
         let mut err = self.struct_span_lint(early_lint.id.lint,
-                                            early_lint.span,
+                                            span,
                                             &early_lint.diagnostic.message);
         err.copy_details_not_message(&early_lint.diagnostic);
         err.emit();
@@ -1283,7 +1264,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // in the iteration code.
     for (id, v) in tcx.sess.lints.borrow().iter() {
         for early_lint in v {
-            span_bug!(early_lint.span.clone(),
+            span_bug!(early_lint.diagnostic.span.clone(),
                       "unprocessed lint {:?} at {}",
                       early_lint, tcx.map.node_to_string(*id));
         }
@@ -1321,7 +1302,7 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // in the iteration code.
     for (_, v) in sess.lints.borrow().iter() {
         for early_lint in v {
-            span_bug!(early_lint.span.clone(), "unprocessed lint {:?}", early_lint);
+            span_bug!(early_lint.diagnostic.span.clone(), "unprocessed lint {:?}", early_lint);
         }
     }
 }

@@ -57,7 +57,7 @@ mod lock;
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileName, MultiSpan, Span, NO_EXPANSION};
 use syntax_pos::MacroBacktrace;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum RenderSpan {
     /// A FullSpan renders with both with an initial line for the
     /// message, prefixed by file:linenum, followed by a summary of
@@ -71,7 +71,7 @@ pub enum RenderSpan {
     Suggestion(CodeSuggestion),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CodeSuggestion {
     pub msp: MultiSpan,
     pub substitutes: Vec<String>,
