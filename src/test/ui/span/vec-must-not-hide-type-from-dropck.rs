@@ -124,9 +124,11 @@ fn f() {
 
     c1.v.push(CheckId(Cell::new(None)));
     c2.v.push(CheckId(Cell::new(None)));
-    c1.v[0].v.set(Some(&c2)); //~ ERROR `c2` does not live long enough
-    c2.v[0].v.set(Some(&c1)); //~ ERROR `c1` does not live long enough
+    c1.v[0].v.set(Some(&c2));
+    c2.v[0].v.set(Some(&c1));
 }
+//~^ ERROR `c2` does not live long enough
+//~| ERROR `c1` does not live long enough
 
 fn main() {
     f();
