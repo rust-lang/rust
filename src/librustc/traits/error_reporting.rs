@@ -868,6 +868,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.note(&format!("required so that reference `{}` does not outlive its referent",
                                   ref_ty));
             }
+            ObligationCauseCode::ObjectTypeBound(object_ty, region) => {
+                err.note(&format!("required so that the lifetime bound of `{}` for `{}` \
+                                   is satisfied",
+                                  region, object_ty));
+            }
             ObligationCauseCode::ItemObligation(item_def_id) => {
                 let item_name = tcx.item_path_str(item_def_id);
                 err.note(&format!("required by `{}`", item_name));

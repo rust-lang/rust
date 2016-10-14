@@ -498,7 +498,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
             let explicit_bound = data.region_bound;
 
             for implicit_bound in implicit_bounds {
-                let cause = self.cause(traits::ReferenceOutlivesReferent(ty));
+                let cause = self.cause(traits::ObjectTypeBound(ty, explicit_bound));
                 let outlives = ty::Binder(ty::OutlivesPredicate(explicit_bound, implicit_bound));
                 self.out.push(traits::Obligation::new(cause, outlives.to_predicate()));
             }
