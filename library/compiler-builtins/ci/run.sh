@@ -6,12 +6,6 @@ case $1 in
         xargo build --target $1
         xargo build --target $1 --release
         ;;
-    # QEMU crashes even when executing the simplest cross compiled C program:
-    # `int main() { return 0; }`
-    powerpc64le-unknown-linux-gnu)
-        cargo test --target $1 --no-run
-        cargo test --target $1 --no-run --release
-        ;;
     *)
         cargo test --target $1
         cargo test --target $1 --release
@@ -69,9 +63,9 @@ esac
 
 # NOTE On i586, It's normal that the get_pc_thunk symbol appears several times so ignore it
 if [ $TRAVIS_OS_NAME = osx ]; then
-    path=target/${1}/debug/librustc_builtins.rlib
+    path=target/${1}/debug/libcompiler_builtins.rlib
 else
-    path=/target/${1}/debug/librustc_builtins.rlib
+    path=/target/${1}/debug/libcompiler_builtins.rlib
 fi
 
 stdout=$($PREFIX$NM -g --defined-only $path)
