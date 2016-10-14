@@ -61,13 +61,13 @@ pub const MAX_10_EXP: i32 = 308;
 
 /// Not a Number (NaN).
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const NAN: f64 = 0.0_f64/0.0_f64;
+pub const NAN: f64 = 0.0_f64 / 0.0_f64;
 /// Infinity (∞).
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const INFINITY: f64 = 1.0_f64/0.0_f64;
+pub const INFINITY: f64 = 1.0_f64 / 0.0_f64;
 /// Negative infinity (-∞).
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
+pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
 
 /// Basic mathematical constants.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -144,26 +144,40 @@ pub mod consts {
            issue = "32110")]
 impl Float for f64 {
     #[inline]
-    fn nan() -> f64 { NAN }
+    fn nan() -> f64 {
+        NAN
+    }
 
     #[inline]
-    fn infinity() -> f64 { INFINITY }
+    fn infinity() -> f64 {
+        INFINITY
+    }
 
     #[inline]
-    fn neg_infinity() -> f64 { NEG_INFINITY }
+    fn neg_infinity() -> f64 {
+        NEG_INFINITY
+    }
 
     #[inline]
-    fn zero() -> f64 { 0.0 }
+    fn zero() -> f64 {
+        0.0
+    }
 
     #[inline]
-    fn neg_zero() -> f64 { -0.0 }
+    fn neg_zero() -> f64 {
+        -0.0
+    }
 
     #[inline]
-    fn one() -> f64 { 1.0 }
+    fn one() -> f64 {
+        1.0
+    }
 
     /// Returns `true` if the number is NaN.
     #[inline]
-    fn is_nan(self) -> bool { self != self }
+    fn is_nan(self) -> bool {
+        self != self
+    }
 
     /// Returns `true` if the number is infinite.
     #[inline]
@@ -192,11 +206,11 @@ impl Float for f64 {
 
         let bits: u64 = unsafe { mem::transmute(self) };
         match (bits & MAN_MASK, bits & EXP_MASK) {
-            (0, 0)        => Fp::Zero,
-            (_, 0)        => Fp::Subnormal,
+            (0, 0) => Fp::Zero,
+            (_, 0) => Fp::Subnormal,
             (0, EXP_MASK) => Fp::Infinite,
             (_, EXP_MASK) => Fp::Nan,
-            _             => Fp::Normal,
+            _ => Fp::Normal,
         }
     }
 
@@ -252,7 +266,9 @@ impl Float for f64 {
 
     /// Returns the reciprocal (multiplicative inverse) of the number.
     #[inline]
-    fn recip(self) -> f64 { 1.0 / self }
+    fn recip(self) -> f64 {
+        1.0 / self
+    }
 
     #[inline]
     fn powi(self, n: i32) -> f64 {
@@ -261,7 +277,9 @@ impl Float for f64 {
 
     /// Converts to degrees, assuming the number is in radians.
     #[inline]
-    fn to_degrees(self) -> f64 { self * (180.0f64 / consts::PI) }
+    fn to_degrees(self) -> f64 {
+        self * (180.0f64 / consts::PI)
+    }
 
     /// Converts to radians, assuming the number is in degrees.
     #[inline]
