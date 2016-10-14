@@ -59,4 +59,4 @@ branches:
 notifications:
   email:
     on_success: never
-  webhooks: https://homu.herokuapp.com/travis
+  webhooks: https://buildbot.rust-lang.org/homu/travis
