@@ -1,44 +1,44 @@
 error: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:39:20
+  --> $DIR/dropck-eyepatch-extern-crate.rs:55:1
    |
 39 |     dt = Dt("dt", &c); //~ ERROR `c` does not live long enough
-   |                    ^ does not live long enough
+   |                    - borrow occurs here
 ...
 55 | }
-   | - borrowed value dropped before borrower
+   | ^ `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:40:20
+  --> $DIR/dropck-eyepatch-extern-crate.rs:55:1
    |
 40 |     dr = Dr("dr", &c); //~ ERROR `c` does not live long enough
-   |                    ^ does not live long enough
+   |                    - borrow occurs here
 ...
 55 | }
-   | - borrowed value dropped before borrower
+   | ^ `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:47:29
+  --> $DIR/dropck-eyepatch-extern-crate.rs:55:1
    |
 47 |     pt = Pt("pt", &c_long, &c); //~ ERROR `c` does not live long enough
-   |                             ^ does not live long enough
+   |                             - borrow occurs here
 ...
 55 | }
-   | - borrowed value dropped before borrower
+   | ^ `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:48:29
+  --> $DIR/dropck-eyepatch-extern-crate.rs:55:1
    |
 48 |     pr = Pr("pr", &c_long, &c); //~ ERROR `c` does not live long enough
-   |                             ^ does not live long enough
+   |                             - borrow occurs here
 ...
 55 | }
-   | - borrowed value dropped before borrower
+   | ^ `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 

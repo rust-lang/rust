@@ -23,12 +23,12 @@ fn main() {
     {
         let (y, x);
         x = "alive".to_string();
-        y = Arc::new(Foo(&x)); //~ ERROR `x` does not live long enough
-    }
+        y = Arc::new(Foo(&x));
+    } //~ ERROR `x` does not live long enough
 
     {
         let (y, x);
         x = "alive".to_string();
-        y = Rc::new(Foo(&x)); //~ ERROR `x` does not live long enough
-    }
+        y = Rc::new(Foo(&x));
+    } //~ ERROR `x` does not live long enough
 }

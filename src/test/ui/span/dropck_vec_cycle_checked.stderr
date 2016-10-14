@@ -1,0 +1,67 @@
+error: `c2` does not live long enough
+   --> $DIR/dropck_vec_cycle_checked.rs:116:1
+    |
+110 |     c1.v[0].v.set(Some(&c2));
+    |                         -- borrow occurs here
+...
+116 | }
+    | ^ `c2` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
+
+error: `c3` does not live long enough
+   --> $DIR/dropck_vec_cycle_checked.rs:116:1
+    |
+111 |     c1.v[1].v.set(Some(&c3));
+    |                         -- borrow occurs here
+...
+116 | }
+    | ^ `c3` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
+
+error: `c2` does not live long enough
+   --> $DIR/dropck_vec_cycle_checked.rs:116:1
+    |
+112 |     c2.v[0].v.set(Some(&c2));
+    |                         -- borrow occurs here
+...
+116 | }
+    | ^ `c2` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
+
+error: `c3` does not live long enough
+   --> $DIR/dropck_vec_cycle_checked.rs:116:1
+    |
+113 |     c2.v[1].v.set(Some(&c3));
+    |                         -- borrow occurs here
+...
+116 | }
+    | ^ `c3` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
+
+error: `c1` does not live long enough
+   --> $DIR/dropck_vec_cycle_checked.rs:116:1
+    |
+114 |     c3.v[0].v.set(Some(&c1));
+    |                         -- borrow occurs here
+115 |     c3.v[1].v.set(Some(&c2));
+116 | }
+    | ^ `c1` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
+
+error: `c2` does not live long enough
+   --> $DIR/dropck_vec_cycle_checked.rs:116:1
+    |
+115 |     c3.v[1].v.set(Some(&c2));
+    |                         -- borrow occurs here
+116 | }
+    | ^ `c2` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to 6 previous errors
+

@@ -1,0 +1,24 @@
+error: `last_dropped` does not live long enough
+  --> $DIR/issue28498-reject-passed-to-fn.rs:48:1
+   |
+44 |     foo0 = Foo(0, &last_dropped, Box::new(callback));
+   |                    ------------ borrow occurs here
+...
+48 | }
+   | ^ `last_dropped` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: `first_dropped` does not live long enough
+  --> $DIR/issue28498-reject-passed-to-fn.rs:48:1
+   |
+45 |     foo1 = Foo(1, &first_dropped, Box::new(callback));
+   |                    ------------- borrow occurs here
+...
+48 | }
+   | ^ `first_dropped` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to 2 previous errors
+

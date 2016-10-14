@@ -1,0 +1,13 @@
+error: `*m` does not live long enough
+  --> $DIR/dropck-object-cycle.rs:57:1
+   |
+37 |     assert_eq!(object_invoke1(&*m), (4,5));
+   |                                -- borrow occurs here
+...
+57 | }
+   | ^ `*m` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to previous error
+
