@@ -17,6 +17,7 @@ use fmt::{self, Debug};
 #[allow(deprecated)]
 use hash::{Hash, Hasher, BuildHasher, SipHasher13};
 use iter::{FromIterator, FusedIterator};
+use marker::PhantomData;
 use mem::{self, replace};
 use ops::{Deref, Index};
 use rand::{self, Rng};
@@ -968,7 +969,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn entry<Q, B>(&mut self, key: Q) -> Entry<K, V, Q>
+    pub fn entry<Q, B: ?Sized>(&mut self, key: Q) -> Entry<K, V, Q, B>
         where Q: AsBorrowOf<K, B>,
               K: Borrow<B>,
               B: Hash + Eq
@@ -1350,7 +1351,11 @@ impl<K, V, M> InternalEntry<K, V, M> {
 
 impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
     #[inline]
-    fn into_entry<Q>(self, key: Q) -> Option<Entry<'a, K, V, Q>> {
+    fn into_entry<Q, B: ?Sized>(self, key: Q) -> Option<Entry<'a, K, V, Q, B>>
+        where Q: AsBorrowOf<K, B>,
+              K: Borrow<B>,
+              B: Hash + Eq
+    {
         match self {
             InternalEntry::Occupied { elem } => {
                 Some(Occupied(OccupiedEntry {
@@ -1363,6 +1368,7 @@ impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
                     hash: hash,
                     key: key,
                     elem: elem,
+                    _phantom: PhantomData,
                 }))
             }
             InternalEntry::TableIsEmpty => None,
@@ -1376,7 +1382,7 @@ impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
 #[stable(feature = "rust1", since = "1.0.0")]
-pub enum Entry<'a, K: 'a, V: 'a, Q: 'a = K> {
+pub enum Entry<'a, K: 'a, V: 'a, Q: 'a = K, B: ?Sized + 'a = K> {
     /// An occupied Entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Occupied(#[stable(feature = "rust1", since = "1.0.0")]
@@ -1385,11 +1391,13 @@ pub enum Entry<'a, K: 'a, V: 'a, Q: 'a = K> {
     /// A vacant Entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(#[stable(feature = "rust1", since = "1.0.0")]
-           VacantEntry<'a, K, V, Q>),
+           VacantEntry<'a, K, V, Q, B>),
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a + Debug, Q: 'a + Debug> Debug for Entry<'a, K, V, Q> {
+impl<'a, K, V, Q, B: ?Sized> Debug for Entry<'a, K, V, Q, B>
+    where K: 'a + Debug, V: 'a + Debug, Q: 'a + Debug, B: 'a
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Vacant(ref v) => {
@@ -1431,14 +1439,20 @@ impl<'a, K: 'a + Debug, V: 'a + Debug, Q: 'a> Debug for OccupiedEntry<'a, K, V, 
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct VacantEntry<'a, K: 'a, V: 'a, Q: 'a = K> {
+pub struct VacantEntry<'a, K: 'a, V: 'a, Q: 'a = K, B: ?Sized + 'a = K> {
     hash: SafeHash,
     key: Q,
     elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
+    _phantom: PhantomData<&'a B>,
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a, Q: 'a + Debug> Debug for VacantEntry<'a, K, V, Q> {
+impl<'a, K, V, Q, B: ?Sized> Debug for VacantEntry<'a, K, V, Q, B>
+    where K: 'a + Debug,
+          V: 'a,
+          Q: 'a + Debug,
+          B: 'a
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VacantEntry")
             .field(&self.key)
@@ -1673,7 +1687,9 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for Drain<'a, K, V> {}
 
-impl<'a, K, V, Q> Entry<'a, K, V, Q> {
+impl<'a, K, V, Q, B: ?Sized> Entry<'a, K, V, Q, B>
+    where K: Borrow<B>, Q: AsBorrowOf<K, B>
+{
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
@@ -1691,11 +1707,7 @@ impl<'a, K, V, Q> Entry<'a, K, V, Q> {
     /// *map.entry("poneyland").or_insert(12) += 10;
     /// assert_eq!(map["poneyland"], 22);
     /// ```
-    pub fn or_insert<B>(self, default: V) -> &'a mut V
-        where Q: AsBorrowOf<K, B>,
-              K: Borrow<B>,
-              B: Hash + Eq
-    {
+    pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default),
@@ -1718,11 +1730,7 @@ impl<'a, K, V, Q> Entry<'a, K, V, Q> {
     ///
     /// assert_eq!(map["poneyland"], "hoho".to_owned());
     /// ```
-    pub fn or_insert_with<F: FnOnce() -> V, B>(self, default: F) -> &'a mut V
-        where Q: AsBorrowOf<K, B>,
-              K: Borrow<B>,
-              B: Hash + Eq
-    {
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default()),
@@ -1730,7 +1738,7 @@ impl<'a, K, V, Q> Entry<'a, K, V, Q> {
     }
 }
 
-impl<'a, K, V> Entry<'a, K, V, K> {
+impl<'a, K, V, B: ?Sized> Entry<'a, K, V, K, B> {
     /// Returns a reference to this entry's key.
     ///
     /// # Examples
@@ -1918,7 +1926,7 @@ impl<'a, K, V, Q> OccupiedEntry<'a, K, V, Q> {
     }
 }
 
-impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V, K> {
+impl<'a, K: 'a, V: 'a, B: ?Sized + 'a> VacantEntry<'a, K, V, K, B> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntry`.
     ///
@@ -1955,7 +1963,11 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V, K> {
     }
 }
 
-impl<'a, K: 'a, V: 'a, Q: 'a> VacantEntry<'a, K, V, Q> {
+impl<'a, K: 'a, V: 'a, Q: 'a, B: ?Sized + 'a> VacantEntry<'a, K, V, Q, B>
+    where K: 'a + Borrow<B>,
+          V: 'a,
+          Q: 'a + AsBorrowOf<K, B>
+{
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
     ///
@@ -1973,14 +1985,11 @@ impl<'a, K: 'a, V: 'a, Q: 'a> VacantEntry<'a, K, V, Q> {
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert<B>(self, value: V) -> &'a mut V
-        where Q: AsBorrowOf<K, B>,
-              K: Borrow<B>,
-              B: Hash + Eq
-    {
+    pub fn insert(self, value: V) -> &'a mut V {
+        let key = AsBorrowOf::<K, B>::into_owned(self.key);
         match self.elem {
-            NeqElem(bucket, ib) => robin_hood(bucket, ib, self.hash, self.key.into_owned(), value),
-            NoElem(bucket) => bucket.put(self.hash, self.key.into_owned(), value).into_mut_refs().1,
+            NeqElem(bucket, ib) => robin_hood(bucket, ib, self.hash, key, value),
+            NoElem(bucket) => bucket.put(self.hash, key, value).into_mut_refs().1,
         }
     }
 }

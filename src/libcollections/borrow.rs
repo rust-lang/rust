@@ -80,8 +80,14 @@ pub trait AsBorrowOf<T, B: ?Sized>: Sized where T: Borrow<B> {
 
 #[unstable(feature = "entry_into_owned", issue = "1")]
 impl<T> AsBorrowOf<T, T> for T {
-    fn into_owned(self) -> T { self }
-    fn as_borrow_of(&self) -> &Self { self }
+    default fn into_owned(self) -> T { self }
+    default fn as_borrow_of(&self) -> &Self { self }
+}
+
+#[unstable(feature = "entry_into_owned", issue = "1")]
+impl<'a, T: Deref> AsBorrowOf<&'a T::Target, T::Target> for &'a T {
+    default fn into_owned(self) -> &'a T::Target { self.deref() }
+    default fn as_borrow_of(&self) -> &T::Target { self.deref() }
 }
 
 #[unstable(feature = "entry_into_owned", issue = "1")]
