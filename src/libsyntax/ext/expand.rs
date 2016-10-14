@@ -240,7 +240,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             let scope =
                 if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
-            let ext = match self.cx.resolver.resolve_invoc(scope, &invoc, force) {
+            let resolution = match invoc.kind {
+                InvocationKind::Bang { ref mac, .. } => {
+                    self.cx.resolver.resolve_macro(scope, &mac.node.path, force)
+                }
+                InvocationKind::Attr { ref attr, .. } => {
+                    let ident = ast::Ident::with_empty_ctxt(intern(&*attr.name()));
+                    let path = ast::Path::from_ident(attr.span, ident);
+                    self.cx.resolver.resolve_macro(scope, &path, force)
+                }
+            };
+            let ext = match resolution {
                 Ok(ext) => Some(ext),
                 Err(Determinacy::Determined) => None,
                 Err(Determinacy::Undetermined) => {
