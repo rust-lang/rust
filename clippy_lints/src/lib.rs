@@ -372,6 +372,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::EXTEND_FROM_SLICE,
         methods::FILTER_NEXT,
         methods::ITER_NTH,
+        methods::ITER_SKIP_NEXT,
         methods::NEW_RET_NO_SELF,
         methods::OK_EXPECT,
         methods::OR_FUN_CALL,

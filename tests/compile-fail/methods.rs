@@ -173,6 +173,10 @@ impl IteratorFalsePositives {
     fn nth(self, n: usize) -> Option<u32> {
         Some(self.foo)
     }
+
+    fn skip(self, _: usize) -> IteratorFalsePositives {
+        self
+    }
 }
 
 /// Checks implementation of `FILTER_NEXT` lint
@@ -362,6 +366,28 @@ fn iter_nth() {
     let ok = false_positive.iter().nth(3);
     let ok_mut = false_positive.iter_mut().nth(3);
 }
+
+/// Checks implementation of `ITER_SKIP_NEXT` lint
+fn iter_skip_next() {
+    let mut some_vec = vec![0, 1, 2, 3];
+
+    let _ = some_vec.iter().skip(42).next();
+    //~^ERROR called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
+
+    let _ = some_vec.iter().cycle().skip(42).next();
+    //~^ERROR called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
+
+    let _ = (1..10).skip(10).next();
+    //~^ERROR called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
+
+    let _ = &some_vec[..].iter().skip(3).next();
+    //~^ERROR called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
+
+    let foo = IteratorFalsePositives { foo : 0 };
+    let _ = foo.skip(42).next();
+    let _ = foo.filter().skip(42).next();
+}
+
 
 #[allow(similar_names)]
 fn main() {

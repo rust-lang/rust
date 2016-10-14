@@ -440,6 +440,31 @@ declare_lint! {
     "using `.iter().nth()` on a standard library type with O(1) element access"
 }
 
+/// **What it does:** Checks for use of `.skip(x).next()` on iterators.
+///
+/// **Why is this bad?** `.nth(x)` is cleaner
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let some_vec = vec![0, 1, 2, 3];
+/// let bad_vec = some_vec.iter().skip(3).next();
+/// let bad_slice = &some_vec[..].iter().skip(3).next();
+/// ```
+/// The correct use would be:
+/// ```rust
+/// let some_vec = vec![0, 1, 2, 3];
+/// let bad_vec = some_vec.iter().nth(3);
+/// let bad_slice = &some_vec[..].iter().nth(3);
+/// ```
+declare_lint! {
+    pub ITER_SKIP_NEXT,
+    Warn,
+    "using `.skip(x).next()` on an iterator"
+}
+
+
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(EXTEND_FROM_SLICE,
@@ -461,7 +486,8 @@ impl LintPass for Pass {
                     TEMPORARY_CSTRING_AS_PTR,
                     FILTER_NEXT,
                     FILTER_MAP,
-                    ITER_NTH)
+                    ITER_NTH,
+                    ITER_SKIP_NEXT)
     }
 }
 
@@ -506,6 +532,8 @@ impl LateLintPass for Pass {
                     lint_iter_nth(cx, expr, arglists[0], false);
                 } else if let Some(arglists) = method_chain_args(expr, &["iter_mut", "nth"]) {
                     lint_iter_nth(cx, expr, arglists[0], true);
+                } else if let Some(_) = method_chain_args(expr, &["skip", "next"]) {
+                    lint_iter_skip_next(cx, expr);
                 }
 
                 lint_or_fun_call(cx, expr, &name.node.as_str(), args);
@@ -788,6 +816,18 @@ fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs, is_
         &format!("called `.iter{0}().nth()` on a {1}. Calling `.get{0}()` is both faster and more readable",
                  mut_str, caller_type)
     );
+}
+
+fn lint_iter_skip_next(cx: &LateContext, expr: &hir::Expr){
+    // lint if caller of skip is an Iterator
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+         span_lint(
+            cx,
+            ITER_SKIP_NEXT,
+            expr.span,
+            "called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`"
+        );
+    }
 }
 
 fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: ty::Ty) -> Option<sugg::Sugg<'static>> {
