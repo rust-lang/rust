@@ -19,7 +19,7 @@ use syntax::ast;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator, MultiItemModifier};
 use syntax::ext::base::{NormalTT, SyntaxExtension};
-use syntax::ext::expand::{Expansion, Invocation, InvocationKind};
+use syntax::ext::expand::Expansion;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::parse::token::intern;
@@ -162,21 +162,13 @@ impl<'a> base::Resolver for Resolver<'a> {
         None
     }
 
-    fn resolve_invoc(&mut self, scope: Mark, invoc: &Invocation, force: bool)
+    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
-        let (name, span) = match invoc.kind {
-            InvocationKind::Bang { ref mac, .. } => {
-                let path = &mac.node.path;
-                if path.segments.len() > 1 || path.global ||
-                   !path.segments[0].parameters.is_empty() {
-                    self.session.span_err(path.span,
-                                          "expected macro name without module separators");
-                    return Err(Determinacy::Determined);
-                }
-                (path.segments[0].identifier.name, path.span)
-            }
-            InvocationKind::Attr { ref attr, .. } => (intern(&*attr.name()), attr.span),
-        };
+        if path.segments.len() > 1 || path.global || !path.segments[0].parameters.is_empty() {
+            self.session.span_err(path.span, "expected macro name without module separators");
+            return Err(Determinacy::Determined);
+        }
+        let name = path.segments[0].identifier.name;
 
         let invocation = self.invocations[&scope];
         if let LegacyScope::Expansion(parent) = invocation.legacy_scope.get() {
@@ -184,8 +176,8 @@ impl<'a> base::Resolver for Resolver<'a> {
         }
         self.resolve_macro_name(invocation.legacy_scope.get(), name, true).ok_or_else(|| {
             if force {
-                let mut err =
-                    self.session.struct_span_err(span, &format!("macro undefined: '{}!'", name));
+                let msg = format!("macro undefined: '{}!'", name);
+                let mut err = self.session.struct_span_err(path.span, &msg);
                 self.suggest_macro_name(&name.as_str(), &mut err);
                 err.emit();
                 Determinacy::Determined
