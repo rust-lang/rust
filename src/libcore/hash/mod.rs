@@ -38,7 +38,9 @@
 //! ```
 //!
 //! If you need more control over how a value is hashed, you need to implement
-//! the `Hash` trait:
+//! the [`Hash`] trait:
+//!
+//! [`Hash`]: trait.Hash.html
 //!
 //! ```rust
 //! use std::hash::{Hash, Hasher, SipHasher};
@@ -90,7 +92,7 @@ mod sip;
 /// The `H` type parameter is an abstract hash state that is used by the `Hash`
 /// to compute the hash.
 ///
-/// If you are also implementing `Eq`, there is an additional property that
+/// If you are also implementing [`Eq`], there is an additional property that
 /// is important:
 ///
 /// ```text
@@ -98,13 +100,13 @@ mod sip;
 /// ```
 ///
 /// In other words, if two keys are equal, their hashes should also be equal.
-/// `HashMap` and `HashSet` both rely on this behavior.
+/// [`HashMap`] and [`HashSet`] both rely on this behavior.
 ///
 /// ## Derivable
 ///
 /// This trait can be used with `#[derive]` if all fields implement `Hash`.
 /// When `derive`d, the resulting hash will be the combination of the values
-/// from calling `.hash()` on each field.
+/// from calling [`.hash()`] on each field.
 ///
 /// ## How can I implement `Hash`?
 ///
@@ -127,6 +129,11 @@ mod sip;
 ///     }
 /// }
 /// ```
+///
+/// [`Eq`]: ../../std/cmp/trait.Eq.html
+/// [`HashMap`]: ../../std/collections/struct.HashMap.html
+/// [`HashSet`]: ../../std/collections/struct.HashSet.html
+/// [`.hash()`]: #tymethod.hash
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hash {
     /// Feeds this value into the state given, updating the hasher as necessary.
@@ -151,35 +158,35 @@ pub trait Hasher {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn finish(&self) -> u64;
 
-    /// Writes some data into this `Hasher`
+    /// Writes some data into this `Hasher`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write(&mut self, bytes: &[u8]);
 
-    /// Write a single `u8` into this hasher
+    /// Write a single `u8` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_u8(&mut self, i: u8) {
         self.write(&[i])
     }
-    /// Write a single `u16` into this hasher.
+    /// Writes a single `u16` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_u16(&mut self, i: u16) {
         self.write(&unsafe { mem::transmute::<_, [u8; 2]>(i) })
     }
-    /// Write a single `u32` into this hasher.
+    /// Writes a single `u32` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_u32(&mut self, i: u32) {
         self.write(&unsafe { mem::transmute::<_, [u8; 4]>(i) })
     }
-    /// Write a single `u64` into this hasher.
+    /// Writes a single `u64` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_u64(&mut self, i: u64) {
         self.write(&unsafe { mem::transmute::<_, [u8; 8]>(i) })
     }
-    /// Write a single `usize` into this hasher.
+    /// Writes a single `usize` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_usize(&mut self, i: usize) {
@@ -189,31 +196,31 @@ pub trait Hasher {
         self.write(bytes);
     }
 
-    /// Write a single `i8` into this hasher.
+    /// Writes a single `i8` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i8(&mut self, i: i8) {
         self.write_u8(i as u8)
     }
-    /// Write a single `i16` into this hasher.
+    /// Writes a single `i16` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i16(&mut self, i: i16) {
         self.write_u16(i as u16)
     }
-    /// Write a single `i32` into this hasher.
+    /// Writes a single `i32` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i32(&mut self, i: i32) {
         self.write_u32(i as u32)
     }
-    /// Write a single `i64` into this hasher.
+    /// Writes a single `i64` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i64(&mut self, i: i64) {
         self.write_u64(i as u64)
     }
-    /// Write a single `isize` into this hasher.
+    /// Writes a single `isize` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_isize(&mut self, i: isize) {

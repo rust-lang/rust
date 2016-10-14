@@ -104,6 +104,7 @@ pub enum Class {
     Lifetime,
     PreludeTy,
     PreludeVal,
+    QuestionMark,
 }
 
 /// Trait that controls writing the output of syntax highlighting. Users should
@@ -237,8 +238,10 @@ impl<'a> Classifier<'a> {
             token::Dot | token::DotDot | token::DotDotDot | token::Comma | token::Semi |
                 token::Colon | token::ModSep | token::LArrow | token::OpenDelim(_) |
                 token::CloseDelim(token::Brace) | token::CloseDelim(token::Paren) |
-                token::CloseDelim(token::NoDelim) |
-                token::Question => Class::None,
+                token::CloseDelim(token::NoDelim) => Class::None,
+
+            token::Question => Class::QuestionMark,
+
             token::Dollar => {
                 if self.lexer.peek().tok.is_ident() {
                     self.in_macro_nonterminal = true;
@@ -348,6 +351,7 @@ impl Class {
             Class::Lifetime => "lifetime",
             Class::PreludeTy => "prelude-ty",
             Class::PreludeVal => "prelude-val",
+            Class::QuestionMark => "question-mark"
         }
     }
 }
