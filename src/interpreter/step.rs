@@ -6,6 +6,7 @@ use super::{
     CachedMir,
     ConstantId,
     EvalContext,
+    Lvalue,
     ConstantKind,
     StackPopCleanup,
 };
@@ -104,7 +105,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
 // WARNING: make sure that any methods implemented on this type don't ever access ecx.stack
 // this includes any method that might access the stack
-// basically don't call anything other than `load_mir`, `alloc_ret_ptr`, `push_stack_frame`
+// basically don't call anything other than `load_mir`, `alloc_ptr`, `push_stack_frame`
 // The reason for this is, that `push_stack_frame` modifies the stack out of obvious reasons
 struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
     span: Span,
@@ -127,14 +128,15 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         }
         self.try(|this| {
             let mir = this.ecx.load_mir(def_id)?;
-            let ptr = this.ecx.alloc_ret_ptr(mir.return_ty, substs)?;
+            // FIXME(solson): Don't allocate a pointer unconditionally.
+            let ptr = this.ecx.alloc_ptr(mir.return_ty, substs)?;
             this.ecx.statics.insert(cid.clone(), ptr);
             let cleanup = if immutable && !mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe() {
                 StackPopCleanup::Freeze(ptr.alloc_id)
             } else {
                 StackPopCleanup::None
             };
-            this.ecx.push_stack_frame(def_id, span, mir, substs, ptr, cleanup)
+            this.ecx.push_stack_frame(def_id, span, mir, substs, Lvalue::from_ptr(ptr), cleanup)
         });
     }
     fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx, ()>>(&mut self, f: F) {
@@ -176,14 +178,15 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 let mir = self.mir.promoted[index].clone();
                 let return_ty = mir.return_ty;
                 self.try(|this| {
-                    let return_ptr = this.ecx.alloc_ret_ptr(return_ty, cid.substs)?;
+                    // FIXME(solson): Don't allocate a pointer unconditionally.
+                    let return_ptr = this.ecx.alloc_ptr(return_ty, cid.substs)?;
                     let mir = CachedMir::Owned(Rc::new(mir));
                     this.ecx.statics.insert(cid.clone(), return_ptr);
                     this.ecx.push_stack_frame(this.def_id,
                                               constant.span,
                                               mir,
                                               this.substs,
-                                              return_ptr,
+                                              Lvalue::from_ptr(return_ptr),
                                               StackPopCleanup::Freeze(return_ptr.alloc_id))
                 });
             }

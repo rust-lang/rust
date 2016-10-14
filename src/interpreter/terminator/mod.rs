@@ -12,7 +12,7 @@ use syntax::{ast, attr};
 use error::{EvalError, EvalResult};
 use memory::Pointer;
 use primval::PrimVal;
-use super::{EvalContext, IntegerExt, StackPopCleanup};
+use super::{EvalContext, Lvalue, IntegerExt, StackPopCleanup};
 use super::value::Value;
 
 mod intrinsics;
@@ -76,7 +76,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Call { ref func, ref args, ref destination, .. } => {
                 let destination = match *destination {
-                    Some((ref lv, target)) => Some((self.eval_lvalue(lv)?.to_ptr(), target)),
+                    Some((ref lv, target)) => Some((self.eval_lvalue(lv)?, target)),
                     None => None,
                 };
 
@@ -143,7 +143,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
         fn_ty: &'tcx BareFnTy,
-        destination: Option<(Pointer, mir::BasicBlock)>,
+        destination: Option<(Lvalue, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
     ) -> EvalResult<'tcx, ()> {
@@ -184,15 +184,34 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     };
 
                 let mir = self.load_mir(resolved_def_id)?;
-                let (return_ptr, return_to_block) = match destination {
-                    Some((ptr, block)) => (ptr, StackPopCleanup::Goto(block)),
-                    None => (Pointer::never_ptr(), StackPopCleanup::None),
+                let (return_lvalue, return_to_block) = match destination {
+                    Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
+                    None => {
+                        // FIXME(solson)
+                        let lvalue = Lvalue::from_ptr(Pointer::never_ptr());
+                        (lvalue, StackPopCleanup::None)
+                    }
                 };
-                self.push_stack_frame(resolved_def_id, span, mir, resolved_substs, return_ptr, return_to_block)?;
+
+                self.push_stack_frame(
+                    resolved_def_id,
+                    span,
+                    mir,
+                    resolved_substs,
+                    return_lvalue,
+                    return_to_block
+                )?;
 
                 for (i, (arg_val, arg_ty)) in args.into_iter().enumerate() {
                     // argument start at index 1, since index 0 is reserved for the return allocation
                     let dest = self.frame().locals[i + 1];
+
+                    // FIXME(solson)
+                    let dest = match dest {
+                        Value::ByRef(p) => Lvalue::from_ptr(p),
+                        _ => bug!("all locals should be ByRef until I finish refactoring"),
+                    };
+
                     self.write_value(arg_val, dest, arg_ty)?;
                 }
 
@@ -245,7 +264,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         def_id: DefId,
         args: &[mir::Operand<'tcx>],
-        dest: Pointer,
+        dest: Lvalue,
         dest_size: usize,
     ) -> EvalResult<'tcx, ()> {
         let name = self.tcx.item_name(def_id);
@@ -269,10 +288,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         match &link_name[..] {
             "__rust_allocate" => {
-                let size = self.value_to_primval(args[0], usize)?.expect_uint("__rust_allocate first arg not usize");
-                let align = self.value_to_primval(args[1], usize)?.expect_uint("__rust_allocate second arg not usize");
+                let size = self.value_to_primval(args[0], usize)?
+                    .expect_uint("__rust_allocate first arg not usize");
+                let align = self.value_to_primval(args[1], usize)?
+                    .expect_uint("__rust_allocate second arg not usize");
                 let ptr = self.memory.allocate(size as usize, align as usize)?;
-                self.memory.write_ptr(dest, ptr)?;
+                self.write_primval(dest, PrimVal::Ptr(ptr))?;
             }
 
             "__rust_reallocate" => {
@@ -280,7 +301,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let size = self.value_to_primval(args[2], usize)?.expect_uint("__rust_reallocate third arg not usize");
                 let align = self.value_to_primval(args[3], usize)?.expect_uint("__rust_reallocate fourth arg not usize");
                 let new_ptr = self.memory.reallocate(ptr, size as usize, align as usize)?;
-                self.memory.write_ptr(dest, new_ptr)?;
+                self.write_primval(dest, PrimVal::Ptr(new_ptr))?;
             }
 
             "memcmp" => {
@@ -300,7 +321,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 };
 
-                self.memory.write_int(dest, result, dest_size)?;
+                self.write_primval(dest, PrimVal::int_with_size(result, dest_size))?;
             }
 
             _ => {

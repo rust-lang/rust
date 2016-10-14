@@ -60,6 +60,28 @@ impl PrimVal {
             _ => bug!("{}", error_msg),
         }
     }
+
+    pub fn uint_with_size(n: u64, size: usize) -> Self {
+        use self::PrimVal::*;
+        match size {
+            1 => U8(n as u8),
+            2 => U16(n as u16),
+            4 => U32(n as u32),
+            8 => U64(n),
+            _ => bug!("can't make uint ({}) with size {}", n, size),
+        }
+    }
+
+    pub fn int_with_size(n: i64, size: usize) -> Self {
+        use self::PrimVal::*;
+        match size {
+            1 => I8(n as i8),
+            2 => I16(n as i16),
+            4 => I32(n as i32),
+            8 => I64(n),
+            _ => bug!("can't make int ({}) with size {}", n, size),
+        }
+    }
 }
 
 /// returns the result of the operation and whether the operation overflowed

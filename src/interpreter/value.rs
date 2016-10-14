@@ -1,5 +1,5 @@
-use memory::{Memory, Pointer};
 use error::EvalResult;
+use memory::{Memory, Pointer};
 use primval::PrimVal;
 
 /// A `Value` represents a single self-contained Rust value.
@@ -11,15 +11,14 @@ use primval::PrimVal;
 /// primitive values (`ByValPair`). It allows Miri to avoid making allocations for checked binary
 /// operations and fat pointers. This idea was taken from rustc's trans.
 #[derive(Clone, Copy, Debug)]
-pub(super) enum Value {
+pub enum Value {
     ByRef(Pointer),
     ByVal(PrimVal),
     ByValPair(PrimVal, PrimVal),
 }
 
-impl Value {
-
-    pub(super) fn read_ptr<'a, 'tcx: 'a>(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
+impl<'a, 'tcx: 'a> Value {
+    pub(super) fn read_ptr(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr),
@@ -30,7 +29,7 @@ impl Value {
         }
     }
 
-    pub(super) fn expect_vtable<'a, 'tcx: 'a>(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
+    pub(super) fn expect_vtable(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr.offset(mem.pointer_size() as isize)),
@@ -39,7 +38,7 @@ impl Value {
         }
     }
 
-    pub(super) fn expect_slice_len<'a, 'tcx: 'a>(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, u64> {
+    pub(super) fn expect_slice_len(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, u64> {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_usize(ptr.offset(mem.pointer_size() as isize)),

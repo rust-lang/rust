@@ -78,7 +78,7 @@ pub struct Frame<'a, 'tcx: 'a> {
 
     /// The list of locals for the current function, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
-    pub locals: Vec<Pointer>,
+    pub locals: Vec<Value>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -93,7 +93,7 @@ pub struct Frame<'a, 'tcx: 'a> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-struct Lvalue {
+pub struct Lvalue {
     ptr: Pointer,
     extra: LvalueExtra,
 }
@@ -157,7 +157,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub fn alloc_ret_ptr(&mut self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, Pointer> {
+    pub fn alloc_ptr(
+        &mut self,
+        ty: Ty<'tcx>,
+        substs: &'tcx Substs<'tcx>
+    ) -> EvalResult<'tcx, Pointer> {
         let size = self.type_size_with_substs(ty, substs);
         let align = self.type_align_with_substs(ty, substs);
         self.memory.allocate(size, align)
@@ -175,7 +179,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &self.stack
     }
 
-    fn target_isize_primval(&self, n: i64) -> PrimVal {
+    fn isize_primval(&self, n: i64) -> PrimVal {
         match self.memory.pointer_size() {
             1 => PrimVal::I8(n as i8),
             2 => PrimVal::I16(n as i16),
@@ -185,7 +189,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn target_usize_primval(&self, n: u64) -> PrimVal {
+    fn usize_primval(&self, n: u64) -> PrimVal {
         match self.memory.pointer_size() {
             1 => PrimVal::U8(n as u8),
             2 => PrimVal::U16(n as u16),
@@ -200,7 +204,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let ptr = self.memory.allocate(s.len(), 1)?;
         self.memory.write_bytes(ptr, s.as_bytes())?;
         self.memory.freeze(ptr.alloc_id)?;
-        Ok(Value::ByValPair(PrimVal::Ptr(ptr), self.target_usize_primval(s.len() as u64)))
+        Ok(Value::ByValPair(PrimVal::Ptr(ptr), self.usize_primval(s.len() as u64)))
     }
 
     fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
@@ -326,19 +330,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         span: codemap::Span,
         mir: CachedMir<'a, 'tcx>,
         substs: &'tcx Substs<'tcx>,
-        return_ptr: Pointer,
+        return_lvalue: Lvalue,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx, ()> {
         let local_tys = mir.local_decls.iter().map(|a| a.ty);
 
         ::log_settings::settings().indentation += 1;
 
+        // FIXME(solson)
+        let return_ptr = return_lvalue.to_ptr();
+
         // directly change the first allocation (the return value) to *be* the allocation where the
         // caller stores the result
-        let locals: EvalResult<'tcx, Vec<Pointer>> = iter::once(Ok(return_ptr)).chain(local_tys.skip(1).map(|ty| {
+        let locals: EvalResult<'tcx, Vec<Value>> = iter::once(Ok(Value::ByRef(return_ptr))).chain(local_tys.skip(1).map(|ty| {
             let size = self.type_size_with_substs(ty, substs);
             let align = self.type_align_with_substs(ty, substs);
-            self.memory.allocate(size, align)
+
+            // FIXME(solson)
+            self.memory.allocate(size, align).map(Value::ByRef)
         })).collect();
 
         self.stack.push(Frame {
@@ -377,7 +386,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         op: mir::BinOp,
         left: &mir::Operand<'tcx>,
         right: &mir::Operand<'tcx>,
-        dest: Pointer,
+        dest: Lvalue,
         dest_layout: &'tcx Layout,
     ) -> EvalResult<'tcx, ()> {
         use rustc::ty::layout::Layout::*;
@@ -387,6 +396,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         };
 
         let overflowed = self.intrinsic_overflowing(op, left, right, dest)?;
+
+        // FIXME(solson)
+        let dest = dest.to_ptr();
+
         let offset = tup_layout.offsets[1].bytes() as isize;
         self.memory.write_bool(dest.offset(offset), overflowed)
     }
@@ -398,26 +411,29 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         op: mir::BinOp,
         left: &mir::Operand<'tcx>,
         right: &mir::Operand<'tcx>,
-        dest: Pointer,
+        dest: Lvalue,
     ) -> EvalResult<'tcx, bool> {
         let left_primval = self.eval_operand_to_primval(left)?;
         let right_primval = self.eval_operand_to_primval(right)?;
         let (val, overflow) = primval::binary_op(op, left_primval, right_primval)?;
-        self.memory.write_primval(dest, val)?;
+        self.write_primval(dest, val)?;
         Ok(overflow)
     }
 
     fn assign_fields<I: IntoIterator<Item = u64>>(
         &mut self,
-        dest: Pointer,
+        dest: Lvalue,
         offsets: I,
         operands: &[mir::Operand<'tcx>],
     ) -> EvalResult<'tcx, ()> {
+        // FIXME(solson)
+        let dest = dest.to_ptr();
+
         for (offset, operand) in offsets.into_iter().zip(operands) {
             let value = self.eval_operand(operand)?;
             let value_ty = self.operand_ty(operand);
             let field_dest = dest.offset(offset as isize);
-            self.write_value(value, field_dest, value_ty)?;
+            self.write_value_to_ptr(value, field_dest, value_ty)?;
         }
         Ok(())
     }
@@ -431,7 +447,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         rvalue: &mir::Rvalue<'tcx>,
         lvalue: &mir::Lvalue<'tcx>,
     ) -> EvalResult<'tcx, ()> {
-        let dest = self.eval_lvalue(lvalue)?.to_ptr();
+        let dest = self.eval_lvalue(lvalue)?;
         let dest_ty = self.lvalue_ty(lvalue);
         let dest_layout = self.type_layout(dest_ty);
 
@@ -453,7 +469,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             UnaryOp(un_op, ref operand) => {
                 let val = self.eval_operand_to_primval(operand)?;
-                self.memory.write_primval(dest, primval::unary_op(un_op, val)?)?;
+                self.write_primval(dest, primval::unary_op(un_op, val)?)?;
             }
 
             Aggregate(ref kind, ref operands) => {
@@ -478,7 +494,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let discr_val = adt_def.variants[variant].disr_val.to_u64_unchecked();
                             let discr_size = discr.size().bytes() as usize;
                             let discr_offset = variants[variant].offsets[0].bytes() as isize;
-                            let discr_dest = dest.offset(discr_offset);
+
+                            // FIXME(solson)
+                            let discr_dest = (dest.to_ptr()).offset(discr_offset);
+
                             self.memory.write_uint(discr_dest, discr_val, discr_size)?;
 
                             // Don't include the first offset; it's for the discriminant.
@@ -500,7 +519,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 self.write_value(value, dest, value_ty)?;
                             } else {
                                 assert_eq!(operands.len(), 0);
-                                self.memory.write_isize(dest, 0)?;
+                                let zero = self.isize_primval(0);
+                                self.write_primval(dest, zero)?;
                             }
                         } else {
                             bug!("tried to assign {:?} to Layout::RawNullablePointer", kind);
@@ -518,6 +538,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                     assert_eq!(self.type_size(operand_ty), 0);
                                 }
                                 let offset = self.nonnull_offset(dest_ty, nndiscr, discrfield)?;
+
+                                // FIXME(solson)
+                                let dest = dest.to_ptr();
+
                                 let dest = dest.offset(offset.bytes() as isize);
                                 try!(self.memory.write_isize(dest, 0));
                             }
@@ -531,6 +555,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
                             let val = adt_def.variants[variant].disr_val.to_u64_unchecked();
                             let size = discr.size().bytes() as usize;
+
+                            // FIXME(solson)
+                            let dest = dest.to_ptr();
 
                             if signed {
                                 self.memory.write_int(dest, val as i64, size)?;
@@ -553,9 +580,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 let elem_size = self.type_size(elem_ty);
                 let value = self.eval_operand(operand)?;
+
+                // FIXME(solson)
+                let dest = dest.to_ptr();
+
                 for i in 0..length {
                     let elem_dest = dest.offset((i * elem_size) as isize);
-                    self.write_value(value, elem_dest, elem_ty)?;
+                    self.write_value_to_ptr(value, elem_dest, elem_ty)?;
                 }
             }
 
@@ -563,10 +594,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
                 let (_, len) = src.elem_ty_and_len(ty);
-                self.memory.write_usize(dest, len)?;
+                let len_val = self.usize_primval(len);
+                self.write_primval(dest, len_val)?;
             }
 
             Ref(_, _, ref lvalue) => {
+                // FIXME(solson)
+                let dest = dest.to_ptr();
+
                 let lvalue = self.eval_lvalue(lvalue)?;
                 self.memory.write_ptr(dest, lvalue.ptr)?;
                 let extra_ptr = dest.offset(self.memory.pointer_size() as isize);
@@ -580,6 +615,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Box(ty) => {
+                // FIXME(solson)
+                let dest = dest.to_ptr();
+
                 let size = self.type_size(ty);
                 let align = self.type_align(ty);
                 let ptr = self.memory.allocate(size, align)?;
@@ -587,6 +625,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Cast(kind, ref operand, cast_ty) => {
+                // FIXME(solson)
+                let dest = dest.to_ptr();
+
                 debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
                 use rustc::mir::repr::CastKind::*;
                 match kind {
@@ -778,7 +819,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue> {
         use rustc::mir::repr::Lvalue::*;
         let ptr = match *lvalue {
-            Local(i) => self.frame().locals[i.index()],
+            Local(i) => {
+                match self.frame().locals[i.index()] {
+                    Value::ByRef(p) => p,
+                    _ => bug!(),
+                }
+            }
 
             Static(def_id) => {
                 let substs = subst::Substs::empty(self.tcx);
@@ -910,7 +956,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.monomorphize(operand.ty(&self.mir(), self.tcx), self.substs())
     }
 
-    fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
+    fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
         let size = self.type_size(ty);
         let align = self.type_align(ty);
         self.memory.copy(src, dest, size, align)?;
@@ -957,14 +1003,36 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
+    fn write_primval(
+        &mut self,
+        dest: Lvalue,
+        val: PrimVal,
+    ) -> EvalResult<'tcx, ()> {
+        // FIXME(solson)
+        let dest = dest.to_ptr();
+
+        self.memory.write_primval(dest, val)
+    }
+
     fn write_value(
         &mut self,
         value: Value,
+        dest: Lvalue,
+        dest_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, ()> {
+        // FIXME(solson)
+        let dest = dest.to_ptr();
+        self.write_value_to_ptr(value, dest, dest_ty)
+    }
+
+    fn write_value_to_ptr(
+        &mut self,
+        value: Value,
         dest: Pointer,
-        dest_ty: Ty<'tcx>
+        dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
         match value {
-            Value::ByRef(ptr) => self.move_(ptr, dest, dest_ty),
+            Value::ByRef(ptr) => self.copy(ptr, dest, dest_ty),
             Value::ByVal(primval) => self.memory.write_primval(dest, primval),
             Value::ByValPair(a, b) => {
                 self.memory.write_primval(dest, a)?;
@@ -984,7 +1052,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
-        use syntax::ast::{IntTy, UintTy, FloatTy};
+        use syntax::ast::FloatTy;
+
         let val = match &ty.sty {
             &ty::TyBool => PrimVal::Bool(self.memory.read_bool(ptr)?),
             &ty::TyChar => {
@@ -995,17 +1064,31 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            &ty::TyInt(IntTy::I8)    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
-            &ty::TyInt(IntTy::I16)   => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
-            &ty::TyInt(IntTy::I32)   => PrimVal::I32(self.memory.read_int(ptr, 4)? as i32),
-            &ty::TyInt(IntTy::I64)   => PrimVal::I64(self.memory.read_int(ptr, 8)? as i64),
-            &ty::TyUint(UintTy::U8)  => PrimVal::U8(self.memory.read_uint(ptr, 1)? as u8),
-            &ty::TyUint(UintTy::U16) => PrimVal::U16(self.memory.read_uint(ptr, 2)? as u16),
-            &ty::TyUint(UintTy::U32) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
-            &ty::TyUint(UintTy::U64) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
+            &ty::TyInt(int_ty) => {
+                use syntax::ast::IntTy::*;
+                let size = match int_ty {
+                    I8 => 1,
+                    I16 => 2,
+                    I32 => 4,
+                    I64 => 8,
+                    Is => self.memory.pointer_size(),
+                };
+                let n = self.memory.read_int(ptr, size)?;
+                PrimVal::int_with_size(n, size)
+            }
 
-            &ty::TyInt(IntTy::Is)    => self.target_isize_primval(self.memory.read_isize(ptr)?),
-            &ty::TyUint(UintTy::Us)  => self.target_usize_primval(self.memory.read_usize(ptr)?),
+            &ty::TyUint(uint_ty) => {
+                use syntax::ast::UintTy::*;
+                let size = match uint_ty {
+                    U8 => 1,
+                    U16 => 2,
+                    U32 => 4,
+                    U64 => 8,
+                    Us => self.memory.pointer_size(),
+                };
+                let n = self.memory.read_uint(ptr, size)?;
+                PrimVal::uint_with_size(n, size)
+            }
 
             &ty::TyFloat(FloatTy::F32) => PrimVal::F32(self.memory.read_f32(ptr)?),
             &ty::TyFloat(FloatTy::F64) => PrimVal::F64(self.memory.read_f64(ptr)?),
@@ -1026,7 +1109,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let extra = match self.tcx.struct_tail(ty).sty {
                         ty::TyTrait(..) => PrimVal::Ptr(self.memory.read_ptr(extra)?),
                         ty::TySlice(..) |
-                        ty::TyStr => self.target_usize_primval(self.memory.read_usize(extra)?),
+                        ty::TyStr => self.usize_primval(self.memory.read_usize(extra)?),
                         _ => bug!("unsized primval ptr read from {:?}", ty),
                     };
                     return Ok(Value::ByValPair(PrimVal::Ptr(p), extra));
@@ -1036,16 +1119,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             &ty::TyAdt(..) => {
                 use rustc::ty::layout::Layout::*;
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty) {
-                    match (discr.size().bytes(), signed) {
-                        (1, true)  => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
-                        (2, true)  => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
-                        (4, true)  => PrimVal::I32(self.memory.read_int(ptr, 4)? as i32),
-                        (8, true)  => PrimVal::I64(self.memory.read_int(ptr, 8)? as i64),
-                        (1, false) => PrimVal::U8(self.memory.read_uint(ptr, 1)? as u8),
-                        (2, false) => PrimVal::U16(self.memory.read_uint(ptr, 2)? as u16),
-                        (4, false) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
-                        (8, false) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
-                        (size, _) => bug!("CEnum discr size {}", size),
+                    let size = discr.size().bytes() as usize;
+                    if signed {
+                        let n = self.memory.read_int(ptr, size)?;
+                        PrimVal::int_with_size(n, size)
+                    } else {
+                        let n = self.memory.read_uint(ptr, size)?;
+                        PrimVal::uint_with_size(n, size)
                     }
                 } else {
                     bug!("primitive read of non-clike enum: {:?}", ty);
@@ -1100,7 +1180,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         // For now, upcasts are limited to changes in marker
                         // traits, and hence never actually require an actual
                         // change to the vtable.
-                        self.write_value(src, dest, dest_ty)?;
+                        self.write_value_to_ptr(src, dest, dest_ty)?;
                     },
                     (_, &ty::TyTrait(ref data)) => {
                         let trait_ref = data.principal.with_self_ty(self.tcx, src_pointee_ty);
@@ -1146,7 +1226,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let src_f_ptr = src_ptr.offset(src_field_offset);
                     let dst_f_ptr = dest.offset(dst_field_offset);
                     if src_fty == dst_fty {
-                        self.move_(src_f_ptr, dst_f_ptr, src_fty)?;
+                        self.copy(src_f_ptr, dst_f_ptr, src_fty)?;
                     } else {
                         self.unsize_into(Value::ByRef(src_f_ptr), src_fty, dst_f_ptr, dst_fty)?;
                     }
@@ -1161,10 +1241,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 }
 
 impl Lvalue {
+    fn from_ptr(ptr: Pointer) -> Self {
+        Lvalue { ptr: ptr, extra: LvalueExtra::None }
+    }
+
     fn to_ptr(self) -> Pointer {
         assert_eq!(self.extra, LvalueExtra::None);
         self.ptr
     }
+
     fn elem_ty_and_len<'tcx>(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
         match ty.sty {
             ty::TyArray(elem, n) => (elem, n as u64),
@@ -1199,27 +1284,22 @@ pub fn eval_main<'a, 'tcx: 'a>(
     let mir = mir_map.map.get(&def_id).expect("no mir for main function");
     let mut ecx = EvalContext::new(tcx, mir_map, memory_size, stack_limit);
     let substs = subst::Substs::empty(tcx);
-    let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs)
+    let return_ptr = ecx.alloc_ptr(mir.return_ty, substs)
         .expect("should at least be able to allocate space for the main function's return value");
 
-    ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, return_ptr, StackPopCleanup::None)
-        .expect("could not allocate first stack frame");
-
-    // FIXME: this is a horrible and wrong way to detect the start function, but overwriting the first two locals shouldn't do much
-    if mir.local_decls.len() > 2 {
-        // start function
-        let nargs = ecx.frame_mut().locals[1];
-        let args = ecx.frame_mut().locals[2];
-        // ignore errors, if the locals are too small this is not the start function
-        let _ = ecx.memory_mut().write_usize(nargs, 0);
-        let _ = ecx.memory_mut().write_usize(args, 0);
-    }
+    ecx.push_stack_frame(
+        def_id,
+        mir.span,
+        CachedMir::Ref(mir),
+        substs,
+        Lvalue::from_ptr(return_ptr), // FIXME(solson)
+        StackPopCleanup::None
+    ).expect("could not allocate first stack frame");
 
     for _ in 0..step_limit {
         match ecx.step() {
             Ok(true) => {}
             Ok(false) => return,
-            // FIXME: diverging functions can end up here in some future miri
             Err(e) => {
                 report(tcx, &ecx, e);
                 return;
