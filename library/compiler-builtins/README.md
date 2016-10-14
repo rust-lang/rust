@@ -1,10 +1,7 @@
-[![AppVeyor][appveyor]](https://ci.appveyor.com/project/japaric/rustc-builtins)
-[![Travis][travis]](https://travis-ci.org/japaric/rustc-builtins)
-
-[appveyor]: https://ci.appveyor.com/api/projects/status/mofi55r3px9pv3o7?svg=true
-[travis]: https://travis-ci.org/japaric/rustc-builtins.svg?branch=master
-
 # `rustc-builtins`
+
+[![Build status](https://ci.appveyor.com/api/projects/status/eusnjps5ui3d305p?svg=true)](https://ci.appveyor.com/project/rust-lang-libs/compiler-builtins)
+[![Build Status](https://travis-ci.org/rust-lang-nursery/compiler-builtins.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/compiler-builtins)
 
 > [WIP] Porting `compiler-rt` intrinsics to Rust
 
@@ -23,15 +20,26 @@ this crate ends up, as long as it's there):
 
 ``` toml
 [dependencies]
-rustc-builtins = { git = "https://github.com/japaric/rustc-builtins" }
+compiler-builtins = { git = "https://github.com/rustc-lang-nursery/compiler-builtins" }
 ```
 
-If you still get an "undefined reference to $INTRINSIC" error after that change, that means that we
-haven't ported `$INTRINSIC` to Rust yet! Please open [an issue] with the name of the intrinsic and
-the LLVM triple (e.g. thumbv7m-none-eabi) of the target you are using. That way we can prioritize
+If you still get an "undefined reference to $INTRINSIC" error after that change,
+that means that we haven't ported `$INTRINSIC` to Rust yet! Please open [an
+issue] with the name of the intrinsic and the LLVM triple (e.g.
+thumbv7m-none-eabi) of the target you are using. That way we can prioritize
 porting that particular intrinsic.
 
-[an issue]: https://github.com/japaric/rustc-builtins/issues
+If you've got a C compiler available for your target then while we implement
+this intrinsic you can temporarily enable a fallback to the actual compiler-rt
+implementation as well for unimplemented intrinsics:
+
+```toml
+[dependencies.compiler-builtins]
+git = "https://github.com/rustc-lang-nursery/compiler-builtins"
+features = ["c"]
+```
+
+[an issue]: https://github.com/rust-lang-nursery/compiler-builtins/issues
 
 ## Contributing
 
@@ -45,7 +53,7 @@ porting that particular intrinsic.
 
 [1]: https://github.com/rust-lang/compiler-rt/tree/8598065bd965d9713bfafb6c1e766d63a7b17b89/test/builtins/Unit
 [2]: https://github.com/rust-lang/compiler-rt/tree/8598065bd965d9713bfafb6c1e766d63a7b17b89/lib/builtins
-[3]: https://travis-ci.org/japaric/rustc-builtins
+[3]: https://travis-ci.org/rust-lang-nursery/compiler-builtins
 
 ### Porting Reminders
 
