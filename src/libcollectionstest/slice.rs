@@ -316,47 +316,6 @@ fn test_clear() {
 }
 
 #[test]
-fn test_dedup() {
-    fn case(a: Vec<i32>, b: Vec<i32>) {
-        let mut v = a;
-        v.dedup();
-        assert_eq!(v, b);
-    }
-    case(vec![], vec![]);
-    case(vec![1], vec![1]);
-    case(vec![1, 1], vec![1]);
-    case(vec![1, 2, 3], vec![1, 2, 3]);
-    case(vec![1, 1, 2, 3], vec![1, 2, 3]);
-    case(vec![1, 2, 2, 3], vec![1, 2, 3]);
-    case(vec![1, 2, 3, 3], vec![1, 2, 3]);
-    case(vec![1, 1, 2, 2, 2, 3, 3], vec![1, 2, 3]);
-}
-
-#[test]
-fn test_dedup_unique() {
-    let mut v0: Vec<Box<_>> = vec![box 1, box 1, box 2, box 3];
-    v0.dedup();
-    let mut v1: Vec<Box<_>> = vec![box 1, box 2, box 2, box 3];
-    v1.dedup();
-    let mut v2: Vec<Box<_>> = vec![box 1, box 2, box 3, box 3];
-    v2.dedup();
-    // If the boxed pointers were leaked or otherwise misused, valgrind
-    // and/or rt should raise errors.
-}
-
-#[test]
-fn test_dedup_shared() {
-    let mut v0: Vec<Box<_>> = vec![box 1, box 1, box 2, box 3];
-    v0.dedup();
-    let mut v1: Vec<Box<_>> = vec![box 1, box 2, box 2, box 3];
-    v1.dedup();
-    let mut v2: Vec<Box<_>> = vec![box 1, box 2, box 3, box 3];
-    v2.dedup();
-    // If the pointers were leaked or otherwise misused, valgrind and/or
-    // rt should raise errors.
-}
-
-#[test]
 fn test_retain() {
     let mut v = vec![1, 2, 3, 4, 5];
     v.retain(is_odd);
