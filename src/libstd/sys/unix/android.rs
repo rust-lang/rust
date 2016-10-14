@@ -98,6 +98,7 @@ pub unsafe fn signal(signum: c_int, handler: sighandler_t) -> sighandler_t {
 //
 // If it doesn't we just fall back to `ftruncate`, generating an error for
 // too-large values.
+#[cfg(target_pointer_width = "32")]
 pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
     weak!(fn ftruncate64(c_int, i64) -> c_int);
 
@@ -116,6 +117,14 @@ pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
     }
 }
 
+#[cfg(target_pointer_width = "64")]
+pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
+    unsafe {
+        cvt_r(|| ftruncate(fd, size as i64)).map(|_| ())
+    }
+}
+
+#[cfg(target_pointer_width = "32")]
 pub unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: size_t, offset: i64)
     -> io::Result<ssize_t>
 {
@@ -130,6 +139,7 @@ pub unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: size_t, offset: i6
     })
 }
 
+#[cfg(target_pointer_width = "32")]
 pub unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: size_t, offset: i64)
     -> io::Result<ssize_t>
 {
@@ -142,4 +152,18 @@ pub unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: size_t, offset:
                                "cannot pwrite >2GB"))
         }
     })
+}
+
+#[cfg(target_pointer_width = "64")]
+pub unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: size_t, offset: i64)
+    -> io::Result<ssize_t>
+{
+    cvt(pread(fd, buf, count, offset))
+}
+
+#[cfg(target_pointer_width = "64")]
+pub unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: size_t, offset: i64)
+    -> io::Result<ssize_t>
+{
+    cvt(pwrite(fd, buf, count, offset))
 }
