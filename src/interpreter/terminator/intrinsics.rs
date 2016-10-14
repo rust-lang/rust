@@ -63,16 +63,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "arith_offset" => {
                 let ptr = args_ptrs[0].read_ptr(&self.memory)?;
-                let offset = self.value_to_primval(args_ptrs[1], isize)?.expect_int("arith_offset second arg not isize");
+                let offset = self.value_to_primval(args_ptrs[1], isize)?
+                    .expect_int("arith_offset second arg not isize");
                 let new_ptr = ptr.offset(offset as isize);
                 self.write_primval(dest, PrimVal::Ptr(new_ptr))?;
             }
 
             "assume" => {
                 let bool = self.tcx.types.bool;
-                if !self.value_to_primval(args_ptrs[0], bool)?.expect_bool("assume arg not bool") {
-                    return Err(EvalError::AssumptionNotHeld);
-                }
+                let cond = self.value_to_primval(args_ptrs[0], bool)?
+                    .expect_bool("assume arg not bool");
+                if !cond { return Err(EvalError::AssumptionNotHeld); }
             }
 
             "atomic_load" |
@@ -99,7 +100,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let elem_align = self.type_align(elem_ty);
                 let src = args_ptrs[0].read_ptr(&self.memory)?;
                 let dest = args_ptrs[1].read_ptr(&self.memory)?;
-                let count = self.value_to_primval(args_ptrs[2], usize)?.expect_uint("arith_offset second arg not isize");
+                let count = self.value_to_primval(args_ptrs[2], usize)?
+                    .expect_uint("arith_offset second arg not isize");
                 self.memory.copy(src, dest, count as usize * elem_size, elem_align)?;
             }
 
@@ -121,12 +123,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "fabsf32" => {
-                let f = self.value_to_primval(args_ptrs[2], f32)?.expect_f32("fabsf32 read non f32");
+                let f = self.value_to_primval(args_ptrs[2], f32)?
+                    .expect_f32("fabsf32 read non f32");
                 self.write_primval(dest, PrimVal::F32(f.abs()))?;
             }
 
             "fabsf64" => {
-                let f = self.value_to_primval(args_ptrs[2], f64)?.expect_f64("fabsf64 read non f64");
+                let f = self.value_to_primval(args_ptrs[2], f64)?
+                    .expect_f64("fabsf64 read non f64");
                 self.write_primval(dest, PrimVal::F64(f.abs()))?;
             }
 
@@ -181,7 +185,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "offset" => {
                 let pointee_ty = substs.type_at(0);
                 let pointee_size = self.type_size(pointee_ty) as isize;
-                let offset = self.value_to_primval(args_ptrs[1], isize)?.expect_int("offset second arg not isize");
+                let offset = self.value_to_primval(args_ptrs[1], isize)?
+                    .expect_int("offset second arg not isize");
 
                 let ptr = args_ptrs[0].read_ptr(&self.memory)?;
                 let result_ptr = ptr.offset(offset as isize * pointee_size);
@@ -201,24 +206,30 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "powif32" => {
-                let f = self.value_to_primval(args_ptrs[0], f32)?.expect_f32("powif32 first arg not f32");
-                let i = self.value_to_primval(args_ptrs[1], i32)?.expect_int("powif32 second arg not i32");
+                let f = self.value_to_primval(args_ptrs[0], f32)?
+                    .expect_f32("powif32 first arg not f32");
+                let i = self.value_to_primval(args_ptrs[1], i32)?
+                    .expect_int("powif32 second arg not i32");
                 self.write_primval(dest, PrimVal::F32(f.powi(i as i32)))?;
             }
 
             "powif64" => {
-                let f = self.value_to_primval(args_ptrs[0], f64)?.expect_f64("powif64 first arg not f64");
-                let i = self.value_to_primval(args_ptrs[1], i32)?.expect_int("powif64 second arg not i32");
+                let f = self.value_to_primval(args_ptrs[0], f64)?
+                    .expect_f64("powif64 first arg not f64");
+                let i = self.value_to_primval(args_ptrs[1], i32)?
+                    .expect_int("powif64 second arg not i32");
                 self.write_primval(dest, PrimVal::F64(f.powi(i as i32)))?;
             }
 
             "sqrtf32" => {
-                let f = self.value_to_primval(args_ptrs[0], f32)?.expect_f32("sqrtf32 first arg not f32");
+                let f = self.value_to_primval(args_ptrs[0], f32)?
+                    .expect_f32("sqrtf32 first arg not f32");
                 self.write_primval(dest, PrimVal::F32(f.sqrt()))?;
             }
 
             "sqrtf64" => {
-                let f = self.value_to_primval(args_ptrs[0], f64)?.expect_f64("sqrtf64 first arg not f64");
+                let f = self.value_to_primval(args_ptrs[0], f64)?
+                    .expect_f64("sqrtf64 first arg not f64");
                 self.write_primval(dest, PrimVal::F64(f.sqrt()))?;
             }
 
