@@ -534,8 +534,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 report_unexpected_def();
                 return tcx.types.err;
             }
-            Def::Variant(..) | Def::Struct(..) => {
+            Def::Variant(..) => {
                 let variant = tcx.expect_variant_def(def);
+                if variant.kind != VariantKind::Unit {
+                    report_unexpected_def();
+                    return tcx.types.err;
+                }
+            }
+            Def::Struct(ctor_did) => {
+                let did = tcx.parent_def_id(ctor_did).expect("struct ctor has no parent");
+                let variant = tcx.lookup_adt_def(did).struct_variant();
                 if variant.kind != VariantKind::Unit {
                     report_unexpected_def();
                     return tcx.types.err;
@@ -589,8 +597,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 report_unexpected_def(false);
                 return tcx.types.err;
             }
-            Def::Variant(..) | Def::Struct(..) => {
+            Def::Variant(..) => {
                 tcx.expect_variant_def(def)
+            }
+            Def::Struct(ctor_did) => {
+                let did = tcx.parent_def_id(ctor_did).expect("struct ctor has no parent");
+                tcx.lookup_adt_def(did).struct_variant()
             }
             _ => bug!("unexpected pattern definition {:?}", def)
         };
