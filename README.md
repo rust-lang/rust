@@ -89,6 +89,7 @@ build.
    $ pacman -S git \
                make \
                diffutils \
+               tar \
                mingw-w64-x86_64-python2 \
                mingw-w64-x86_64-cmake \
                mingw-w64-x86_64-gcc
