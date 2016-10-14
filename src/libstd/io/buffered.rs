@@ -20,10 +20,14 @@ use memchr;
 
 /// The `BufReader` struct adds buffering to any reader.
 ///
-/// It can be excessively inefficient to work directly with a `Read` instance.
-/// For example, every call to `read` on `TcpStream` results in a system call.
-/// A `BufReader` performs large, infrequent reads on the underlying `Read`
+/// It can be excessively inefficient to work directly with a [`Read`] instance.
+/// For example, every call to [`read`] on [`TcpStream`] results in a system call.
+/// A `BufReader` performs large, infrequent reads on the underlying [`Read`]
 /// and maintains an in-memory buffer of the results.
+///
+/// [`Read`]: ../../std/io/trait.Read.html
+/// [`read`]: ../../std/net/struct.TcpStream.html#method.read
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 ///
 /// # Examples
 ///
@@ -254,7 +258,7 @@ impl<R: Seek> Seek for BufReader<R> {
 /// Wraps a writer and buffers its output.
 ///
 /// It can be excessively inefficient to work directly with something that
-/// implements `Write`. For example, every call to `write` on `TcpStream`
+/// implements [`Write`]. For example, every call to [`write`] on [`TcpStream`]
 /// results in a system call. A `BufWriter` keeps an in-memory buffer of data
 /// and writes it to an underlying writer in large, infrequent batches.
 ///
@@ -262,7 +266,7 @@ impl<R: Seek> Seek for BufReader<R> {
 ///
 /// # Examples
 ///
-/// Let's write the numbers one through ten to a `TcpStream`:
+/// Let's write the numbers one through ten to a [`TcpStream`]:
 ///
 /// ```no_run
 /// use std::io::prelude::*;
@@ -294,6 +298,10 @@ impl<R: Seek> Seek for BufReader<R> {
 /// By wrapping the stream with a `BufWriter`, these ten writes are all grouped
 /// together by the buffer, and will all be written out in one system call when
 /// the `stream` is dropped.
+///
+/// [`Write`]: ../../std/io/trait.Write.html
+/// [`write`]: ../../std/net/struct.TcpStream.html#method.write
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
     inner: Option<W>,
