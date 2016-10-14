@@ -17,7 +17,7 @@ trait Tr<'a, T> {
 
 impl<'a, T> Tr<'a, T> for &'a mut [T] {
     fn renew<'b: 'a>(self) -> &'b mut [T] where 'a: 'b {
-        //~^ ERROR lifetime bound not satisfied
+        //~^ ERROR E0276
         &mut self[..]
     }
 }

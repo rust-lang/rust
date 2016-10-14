@@ -20,7 +20,7 @@ struct X { data: u32 }
 
 impl Something for X {
     fn yay<T: Str>(_:Option<X>, thing: &[T]) {
-    //~^ ERROR the requirement `T: Str` appears on the impl method
+    //~^ ERROR E0276
     }
 }
 
