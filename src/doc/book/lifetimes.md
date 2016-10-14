@@ -50,11 +50,78 @@ complicated. For example, imagine this set of operations:
 4. You decide to use the resource.
 
 Uh oh! Your reference is pointing to an invalid resource. This is called a
-dangling pointer or ‘use after free’, when the resource is memory.
+dangling pointer or ‘use after free’, when the resource is memory. A small
+example of such a situation would be:
+
+```rust,compile_fail
+let r;              // Introduce reference: r
+{
+    let i = 1;      // Introduce scoped value: i
+    r = &i;         // Store reference of i in r
+}                   // i goes out of scope and is dropped.
+
+println!("{}", r);  // r still refers to i
+```
 
 To fix this, we have to make sure that step four never happens after step
-three. The ownership system in Rust does this through a concept called
-lifetimes, which describe the scope that a reference is valid for.
+three. In the small example above the Rust compiler is able to report the issue
+as it can see the lifetimes of the various values in the function.
+
+When we have a function that takes arguments by reference the situation becomes
+more complex. Consider the following example:
+
+```rust,compile_fail,E0106
+fn skip_prefix(line: &str, prefix: &str) -> &str {
+    // ...
+#   line
+}
+
+let line = "lang:en=Hello World!";
+let lang = "en";
+
+let v;
+{
+    let p = format!("lang:{}=", lang);  // -+ p goes into scope
+    v = skip_prefix(line, p.as_str());  //  |
+}                                       // -+ p goes out of scope
+println!("{}", v);
+```
+
+Here we have a function `skip_prefix` which takes two `&str` references
+as parameters and returns a single `&str` reference. We call it
+by passing in references to `line` and `p`: Two variables with different
+lifetimes. Now the safety of the `println!`-line depends on whether the
+reference returned by `skip_prefix` function references the still living
+`line` or the already dropped `p` string.
+
+Because of the above ambiguity, Rust will refuse to compile the example
+code. To get it to compile we need to tell the compiler more about the
+lifetimes of the references. This can be done by making the lifetimes
+explicit in the function declaration:
+
+```rust
+fn skip_prefix<'a, 'b>(line: &'a str, prefix: &'b str) -> &'a str {
+    // ...
+#   line
+}
+```
+
+Let's examine the changes without going too deep into the syntax for now -
+we'll get to that later. The first change was adding the `<'a, 'b>` after the
+method name. This introduces two lifetime parameters: `'a` and `'b`. Next each
+reference in the function signature was associated with one of the lifetime
+parameters by adding the lifetime name after the `&`. This tells the compiler
+how the lifetimes between different references are related.
+
+As a result the compiler is now able to deduce that the return value of
+`skip_prefix` has the same lifetime as the `line` parameter, which makes the `v`
+reference safe to use even after the `p` goes out of scope in the original
+example.
+
+In addition to the compiler being able to validate the usage of `skip_prefix`
+return value, it can also ensure that the implementation follows the contract
+established by the function declaration. This is useful especially when you are
+implementing traits that are introduced [later in the book][traits].
 
 **Note** It's important to understand that lifetime annotations are
 _descriptive_, not _prescriptive_. This means that how long a reference is valid
@@ -63,20 +130,14 @@ give information about lifetimes to the compiler that uses them to check the
 validity of references. The compiler can do so without annotations in simple
 cases, but needs the programmers support in complex scenarios.
 
-```rust
-// implicit
-fn foo(x: &i32) {
-}
+[traits]: traits.html
 
-// explicit
-fn bar<'a>(x: &'a i32) {
-}
-```
+# Syntax
 
 The `'a` reads ‘the lifetime a’. Technically, every reference has some lifetime
 associated with it, but the compiler lets you elide (i.e. omit, see
-["Lifetime Elision"][lifetime-elision] below) them in common cases.
-Before we get to that, though, let’s break the explicit example down:
+["Lifetime Elision"][lifetime-elision] below) them in common cases. Before we
+get to that, though, let’s look at a short example with explicit lifetimes:
 
 [lifetime-elision]: #lifetime-elision
 
@@ -94,7 +155,8 @@ focus on the lifetimes aspect.
 [generics]: generics.html
 
 We use `<>` to declare our lifetimes. This says that `bar` has one lifetime,
-`'a`. If we had two reference parameters, it would look like this:
+`'a`. If we had two reference parameters with different lifetimes, it would
+look like this:
 
 
 ```rust,ignore

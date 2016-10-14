@@ -276,13 +276,15 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::VariableNotBoundInPattern(variable_name, from, to) => {
-            struct_span_err!(resolver.session,
+            let mut err = struct_span_err!(resolver.session,
                              span,
                              E0408,
                              "variable `{}` from pattern #{} is not bound in pattern #{}",
                              variable_name,
                              from,
-                             to)
+                             to);
+            err.span_label(span, &format!("pattern doesn't bind `{}`", variable_name));
+            err
         }
         ResolutionError::VariableBoundWithDifferentMode(variable_name,
                                                         pattern_number,
