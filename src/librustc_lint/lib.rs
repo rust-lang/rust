@@ -231,7 +231,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         },
         FutureIncompatibleInfo {
             id: LintId::of(EXTRA_REQUIREMENT_IN_IMPL),
-            reference: "issue #18937 <https://github.com/rust-lang/rust/issues/18937>",
+            reference: "issue #37166 <https://github.com/rust-lang/rust/issues/37166>",
         },
         ]);
 
