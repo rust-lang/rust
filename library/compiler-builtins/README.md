@@ -377,9 +377,3 @@ choose to use it under either license.  As a contributor, you agree to allow
 your code to be used under both.
 
 Full text of the relevant licenses is in LICENSE.TXT.
-
-### Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the
-work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any
-additional terms or conditions.
