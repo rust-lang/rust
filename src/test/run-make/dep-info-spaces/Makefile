@@ -5,9 +5,12 @@
 ifneq ($(shell uname),FreeBSD)
 ifndef IS_WINDOWS
 all:
-	$(RUSTC) --emit link,dep-info --crate-type=lib lib.rs
+	cp lib.rs $(TMPDIR)/
+	cp 'foo foo.rs' $(TMPDIR)/
+	cp bar.rs $(TMPDIR)/
+	$(RUSTC) --emit link,dep-info --crate-type=lib $(TMPDIR)/lib.rs
 	sleep 1
-	touch 'foo foo.rs'
+	touch $(TMPDIR)/'foo foo.rs'
 	-rm -f $(TMPDIR)/done
 	$(MAKE) -drf Makefile.foo
 	rm $(TMPDIR)/done
