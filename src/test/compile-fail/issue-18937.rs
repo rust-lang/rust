@@ -28,7 +28,8 @@ trait A<'a> {
 }
 
 impl<'a> A<'a> for B {
-    fn foo<F>(&mut self, f: F) //~ ERROR parameter type `F` may not live long enough
+    fn foo<F>(&mut self, f: F) //~ ERROR E0276
+        //~^ WARNING future release
         where F: fmt::Debug + 'static,
     {
         self.list.push(Box::new(f));

@@ -34,15 +34,15 @@ trait Foo {
 impl Foo for isize {
     // invalid bound for T, was defined as Eq in trait
     fn test_error1_fn<T: Ord>(&self) {}
-    //~^ ERROR the requirement `T: std::cmp::Ord` appears on the impl
+    //~^ ERROR E0276
 
     // invalid bound for T, was defined as Eq + Ord in trait
     fn test_error2_fn<T: Eq + B>(&self) {}
-    //~^ ERROR the requirement `T: B` appears on the impl
+    //~^ ERROR E0276
 
     // invalid bound for T, was defined as Eq + Ord in trait
     fn test_error3_fn<T: B + Eq>(&self) {}
-    //~^ ERROR the requirement `T: B` appears on the impl
+    //~^ ERROR E0276
 
     // multiple bounds, same order as in trait
     fn test3_fn<T: Ord + Eq>(&self) {}
@@ -52,16 +52,16 @@ impl Foo for isize {
 
     // parameters in impls must be equal or more general than in the defining trait
     fn test_error5_fn<T: B>(&self) {}
-    //~^ ERROR the requirement `T: B` appears on the impl
+    //~^ ERROR E0276
 
     // bound `std::cmp::Eq` not enforced by this implementation, but this is OK
     fn test6_fn<T: A>(&self) {}
 
     fn test_error7_fn<T: A + Eq>(&self) {}
-    //~^ ERROR the requirement `T: std::cmp::Eq` appears on the impl
+    //~^ ERROR E0276
 
     fn test_error8_fn<T: C>(&self) {}
-    //~^ ERROR the requirement `T: C` appears on the impl
+    //~^ ERROR E0276
 }
 
 trait Getter<T> {
@@ -74,7 +74,7 @@ trait Trait {
 
 impl Trait for usize {
     fn method<G: Getter<usize>>(&self) {}
-    //~^ ERROR `G: Getter<usize>` appears on the impl method
+    //~^ ERROR E0276
 }
 
 fn main() {}

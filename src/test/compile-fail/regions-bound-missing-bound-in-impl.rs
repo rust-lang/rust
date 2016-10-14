@@ -52,7 +52,7 @@ impl<'a, 't> Foo<'a, 't> for &'a isize {
     }
 
     fn another_bound<'x: 't>(self, x: Inv<'x>, y: Inv<'t>) {
-        //~^ ERROR lifetime bound not satisfied
+        //~^ ERROR E0276
     }
 }
 
