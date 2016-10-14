@@ -75,6 +75,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
+            "atomic_load" |
+            "volatile_load" => {
+                let ty = substs.type_at(0);
+                let ptr = args_ptrs[0].read_ptr(&self.memory)?;
+                self.write_value(Value::ByRef(ptr), dest, ty)?;
+            }
+
+            "atomic_store" |
+            "volatile_store" => {
+                let ty = substs.type_at(0);
+                let dest = args_ptrs[0].read_ptr(&self.memory)?;
+                self.write_value_to_ptr(args_ptrs[1], dest, ty)?;
+            }
+
             "breakpoint" => unimplemented!(), // halt miri
 
             "copy" |
@@ -244,18 +258,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
                 self.memory.mark_definedness(dest, size, false)?;
-            }
-
-            "volatile_load" => {
-                let ty = substs.type_at(0);
-                let ptr = args_ptrs[0].read_ptr(&self.memory)?;
-                self.write_value(Value::ByRef(ptr), dest, ty)?;
-            }
-
-            "volatile_store" => {
-                let ty = substs.type_at(0);
-                let dest = args_ptrs[0].read_ptr(&self.memory)?;
-                self.write_value_to_ptr(args_ptrs[1], dest, ty)?;
             }
 
             name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),
