@@ -35,7 +35,6 @@ use session::Session;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeSet, DefIdMap};
 use std::path::PathBuf;
-use std::rc::Rc;
 use syntax::ast;
 use syntax::attr;
 use syntax::ext::base::MultiItemModifier;
@@ -425,7 +424,7 @@ pub struct LoadedMacro {
 
 pub enum LoadedMacroKind {
     Def(ast::MacroDef),
-    CustomDerive(String, Rc<MultiItemModifier>),
+    CustomDerive(String, Box<MultiItemModifier>),
 }
 
 pub trait CrateLoader {

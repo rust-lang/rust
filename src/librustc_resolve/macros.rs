@@ -17,7 +17,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::errors::DiagnosticBuilder;
-use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator, MultiItemModifier};
+use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{NormalTT, SyntaxExtension};
 use syntax::ext::expand::Expansion;
 use syntax::ext::hygiene::Mark;
@@ -185,10 +185,6 @@ impl<'a> base::Resolver for Resolver<'a> {
                 Determinacy::Undetermined
             }
         })
-    }
-
-    fn resolve_derive_mode(&mut self, ident: ast::Ident) -> Option<Rc<MultiItemModifier>> {
-        self.derive_modes.get(&ident.name).cloned()
     }
 }
 
