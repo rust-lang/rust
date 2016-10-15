@@ -20,7 +20,7 @@ this crate ends up, as long as it's there):
 
 ``` toml
 [dependencies]
-compiler-builtins = { git = "https://github.com/rustc-lang-nursery/compiler-builtins" }
+compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
 ```
 
 If you still get an "undefined reference to $INTRINSIC" error after that change,
@@ -34,8 +34,8 @@ this intrinsic you can temporarily enable a fallback to the actual compiler-rt
 implementation as well for unimplemented intrinsics:
 
 ```toml
-[dependencies.compiler-builtins]
-git = "https://github.com/rustc-lang-nursery/compiler-builtins"
+[dependencies.compiler_builtins]
+git = "https://github.com/rust-lang-nursery/compiler-builtins"
 features = ["c"]
 ```
 
