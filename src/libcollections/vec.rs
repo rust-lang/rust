@@ -1614,7 +1614,24 @@ impl<T> Vec<T> {
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
+        <I as SpecExtendVec<T>>::extend_vec(iter, self);
+    }
+}
+
+// helper trait for specialization of Vec's Extend impl
+trait SpecExtendVec<T> {
+    fn extend_vec(self, vec: &mut Vec<T>);
+}
+
+impl <'a, T: 'a + Copy, I: IntoIterator<Item=&'a T>> SpecExtendVec<T> for I {
+    default fn extend_vec(self, vec: &mut Vec<T>) {
+        vec.extend(self.into_iter().cloned());
+    }
+}
+
+impl<'a, T: Copy> SpecExtendVec<T> for &'a [T] {
+    fn extend_vec(self, vec: &mut Vec<T>) {
+        vec.extend_from_slice(self);
     }
 }
 
