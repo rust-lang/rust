@@ -361,9 +361,17 @@ h4 > code, h3 > code, .invisible > code {
     position: relative;
 }
 /* Shift "where ..." part of method or fn definition down a line */
-.content .method .where, .content .fn .where { display: block; }
+.content .method .where,
+.content .fn .where,
+.content .where.fmt-newline {
+    display: block;
+}
 /* Bit of whitespace to indent it */
-.content .method .where::before, .content .fn .where::before { content: '  '; }
+.content .method .where::before,
+.content .fn .where::before,
+.content .where.fmt-newline::before {
+    content: '  ';
+}
 
 .content .methods > div { margin-left: 40px; }
 

@@ -208,7 +208,12 @@ impl<'a> fmt::Display for WhereClause<'a> {
             clause.push_str("</span>");
             let plain = format!("{:#}", self);
             if plain.len() + pad.len() > 80 {
-                let padding = repeat("&nbsp;").take(pad.len() + 6).collect::<String>();
+                let padding = if pad.len() + 25 > 80 {
+                    clause = clause.replace("class='where'", "class='where fmt-newline'");
+                    repeat("&nbsp;").take(8).collect::<String>()
+                } else {
+                    repeat("&nbsp;").take(pad.len() + 6).collect::<String>()
+                };
                 clause = clause.replace("<br>", &format!("<br>{}", padding));
             } else {
                 clause = clause.replace("<br>", " ");
