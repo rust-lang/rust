@@ -14,12 +14,7 @@ install:
 build: false
 
 test_script:
-  - cargo build
-  - cargo build --release
-  - cargo test
-  - cargo test --release
-
-branches:
-  only:
-    - auto
-    - try
+  - cargo build --target %TARGET%
+  - cargo build --release --target %TARGET%
+  - cargo test --target %TARGET%
+  - cargo test --release --target %TARGET%
