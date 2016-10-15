@@ -580,7 +580,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let span = trace.origin.span();
         let failure_str = trace.origin.as_failure_str();
         let mut diag = match trace.origin {
-            // FIXME: use distinct codes for each case
             TypeOrigin::IfExpressionWithNoElse(_) => {
                 struct_span_err!(self.tcx.sess, span, E0317, "{}", failure_str)
             },
