@@ -25,7 +25,7 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::region::CodeExtent;
 use mir::tcx::LvalueTy;
-use ty::subst::{Subst, Substs};
+use ty::subst::{Kind, Subst, Substs};
 use ty::adjustment;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
@@ -1208,7 +1208,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn type_var_for_def(&self,
                             span: Span,
                             def: &ty::TypeParameterDef<'tcx>,
-                            substs: &Substs<'tcx>)
+                            substs: &[Kind<'tcx>])
                             -> Ty<'tcx> {
         let default = def.default.map(|default| {
             type_variable::Default {

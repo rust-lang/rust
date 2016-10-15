@@ -55,7 +55,7 @@ use hir::def_id::DefId;
 use hir::print as pprust;
 use middle::resolve_lifetime as rl;
 use rustc::lint;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
@@ -124,7 +124,7 @@ pub trait AstConv<'gcx, 'tcx> {
     /// Same as ty_infer, but with a known type parameter definition.
     fn ty_infer_for_def(&self,
                         _def: &ty::TypeParameterDef<'tcx>,
-                        _substs: &Substs<'tcx>,
+                        _substs: &[Kind<'tcx>],
                         span: Span) -> Ty<'tcx> {
         self.ty_infer(span)
     }
@@ -629,7 +629,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     fn convert_parenthesized_parameters(&self,
                                         rscope: &RegionScope,
-                                        region_substs: &Substs<'tcx>,
+                                        region_substs: &[Kind<'tcx>],
                                         data: &hir::ParenthesizedParameterData)
                                         -> (Ty<'tcx>, ConvertedBinding<'tcx>)
     {
@@ -1441,7 +1441,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn ast_ty_arg_to_ty(&self,
                         rscope: &RegionScope,
                         def: Option<&ty::TypeParameterDef<'tcx>>,
-                        region_substs: &Substs<'tcx>,
+                        region_substs: &[Kind<'tcx>],
                         ast_ty: &hir::Ty)
                         -> Ty<'tcx>
     {

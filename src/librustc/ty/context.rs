@@ -22,7 +22,7 @@ use middle::free_region::FreeRegionMap;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime;
 use middle::stability;
-use ty::subst::Substs;
+use ty::subst::{Kind, Substs};
 use traits;
 use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
@@ -55,7 +55,7 @@ pub struct CtxtArenas<'tcx> {
     // internings
     type_: TypedArena<TyS<'tcx>>,
     type_list: TypedArena<Vec<Ty<'tcx>>>,
-    substs: TypedArena<Substs<'tcx>>,
+    substs: TypedArena<Vec<Kind<'tcx>>>,
     bare_fn: TypedArena<BareFnTy<'tcx>>,
     region: TypedArena<Region>,
     stability: TypedArena<attr::Stability>,
@@ -824,7 +824,7 @@ impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
 impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     type Lifted = &'tcx Substs<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Substs<'tcx>> {
-        if let Some(&Interned(substs)) = tcx.interners.substs.borrow().get(*self) {
+        if let Some(&Interned(substs)) = tcx.interners.substs.borrow().get(&self[..]) {
             if *self as *const _ == substs as *const _ {
                 return Some(substs);
             }
@@ -1097,9 +1097,9 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[Ty<'lcx>]> for Interned<'tcx, Slice<Ty<'tcx>>> {
     }
 }
 
-impl<'tcx: 'lcx, 'lcx> Borrow<Substs<'lcx>> for Interned<'tcx, Substs<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a Substs<'lcx> {
-        self.0
+impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, Substs<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a [Kind<'lcx>] {
+        &self.0[..]
     }
 }
 
@@ -1189,9 +1189,6 @@ fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 }
 
 direct_interners!('tcx,
-    substs: mk_substs(|substs: &Substs| {
-        substs.params().iter().any(keep_local)
-    }) -> Substs<'tcx>,
     bare_fn: mk_bare_fn(|fty: &BareFnTy| {
         keep_local(&fty.sig)
     }) -> BareFnTy<'tcx>,
@@ -1207,6 +1204,12 @@ intern_method!('tcx,
     type_list: mk_type_list(Vec<Ty<'tcx>>, Deref::deref, |xs: &[Ty]| -> &Slice<Ty> {
         unsafe { mem::transmute(xs) }
     }, keep_local) -> Slice<Ty<'tcx>>
+);
+
+intern_method!('tcx,
+    substs: mk_substs(Vec<Kind<'tcx>>, Deref::deref, |xs: &[Kind]| -> &Slice<Kind> {
+        unsafe { mem::transmute(xs) }
+    }, keep_local) -> Slice<Kind<'tcx>>
 );
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
