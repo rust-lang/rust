@@ -50,6 +50,30 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
+    pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        #[cfg(target_os = "android")]
+        use super::android::cvt_pread64;
+
+        #[cfg(not(target_os = "android"))]
+        unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: usize, offset: i64)
+            -> io::Result<isize>
+        {
+            #[cfg(any(target_os = "linux", target_os = "emscripten"))]
+            use libc::pread64;
+            #[cfg(not(any(target_os = "linux", target_os = "emscripten")))]
+            use libc::pread as pread64;
+            cvt(pread64(fd, buf, count, offset))
+        }
+
+        unsafe {
+            cvt_pread64(self.fd,
+                        buf.as_mut_ptr() as *mut c_void,
+                        buf.len(),
+                        offset as i64)
+                .map(|n| n as usize)
+        }
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::write(self.fd,
@@ -57,6 +81,30 @@ impl FileDesc {
                         buf.len())
         })?;
         Ok(ret as usize)
+    }
+
+    pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        #[cfg(target_os = "android")]
+        use super::android::cvt_pwrite64;
+
+        #[cfg(not(target_os = "android"))]
+        unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: usize, offset: i64)
+            -> io::Result<isize>
+        {
+            #[cfg(any(target_os = "linux", target_os = "emscripten"))]
+            use libc::pwrite64;
+            #[cfg(not(any(target_os = "linux", target_os = "emscripten")))]
+            use libc::pwrite as pwrite64;
+            cvt(pwrite64(fd, buf, count, offset))
+        }
+
+        unsafe {
+            cvt_pwrite64(self.fd,
+                         buf.as_ptr() as *const c_void,
+                         buf.len(),
+                         offset as i64)
+                .map(|n| n as usize)
+        }
     }
 
     #[cfg(not(any(target_env = "newlib",
