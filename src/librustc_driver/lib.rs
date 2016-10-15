@@ -729,6 +729,10 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
+        unsafe {
+            println!("LLVM version: {}.{}",
+                     llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor());
+        }
     }
 }
 
