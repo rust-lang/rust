@@ -230,13 +230,14 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::{abort, assume};
 use core::marker;
 use core::marker::Unsize;
-use core::mem::{self, align_of_val, forget, size_of_val, uninitialized};
+use core::mem::{self, align_of_val, forget, size_of, size_of_val, uninitialized};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 use core::convert::From;
 
 use heap::deallocate;
+use raw_vec::RawVec;
 
 struct RcBox<T: ?Sized> {
     strong: Cell<usize>,
@@ -362,6 +363,31 @@ impl<T> Rc<T> {
                issue = "28356")]
     pub fn would_unwrap(this: &Self) -> bool {
         Rc::strong_count(&this) == 1
+    }
+}
+
+impl Rc<str> {
+    /// Constructs a new `Rc<str>` from a string slice.
+    #[doc(hidden)]
+    #[unstable(feature = "rustc_private",
+               reason = "for internal use in rustc",
+               issue = "0")]
+    pub fn __from_str(value: &str) -> Rc<str> {
+        unsafe {
+            // Allocate enough space for `RcBox<str>`.
+            let aligned_len = 2 + (value.len() + size_of::<usize>() - 1) / size_of::<usize>();
+            let vec = RawVec::<usize>::with_capacity(aligned_len);
+            let ptr = vec.ptr();
+            forget(vec);
+            // Initialize fields of `RcBox<str>`.
+            *ptr.offset(0) = 1; // strong: Cell::new(1)
+            *ptr.offset(1) = 1; // weak: Cell::new(1)
+            ptr::copy_nonoverlapping(value.as_ptr(), ptr.offset(2) as *mut u8, value.len());
+            // Combine the allocation address and the string length into a fat pointer to `RcBox`.
+            let rcbox_ptr: *mut RcBox<str> = mem::transmute([ptr as usize, value.len()]);
+            assert!(aligned_len * size_of::<usize>() == size_of_val(&*rcbox_ptr));
+            Rc { ptr: Shared::new(rcbox_ptr) }
+        }
     }
 }
 

@@ -478,27 +478,20 @@ pub fn clear_ident_interner() {
 /// somehow.
 #[derive(Clone, PartialEq, Hash, PartialOrd, Eq, Ord)]
 pub struct InternedString {
-    string: Rc<String>,
+    string: Rc<str>,
 }
 
 impl InternedString {
     #[inline]
     pub fn new(string: &'static str) -> InternedString {
         InternedString {
-            string: Rc::new(string.to_owned()),
-        }
-    }
-
-    #[inline]
-    fn new_from_rc_str(string: Rc<String>) -> InternedString {
-        InternedString {
-            string: string,
+            string: Rc::__from_str(string),
         }
     }
 
     #[inline]
     pub fn new_from_name(name: ast::Name) -> InternedString {
-        with_ident_interner(|interner| InternedString::new_from_rc_str(interner.get(name)))
+        with_ident_interner(|interner| InternedString { string: interner.get(name) })
     }
 }
 
