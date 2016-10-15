@@ -1983,7 +1983,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            abi = AbiSpace(f.abi),
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
-           where_clause = WhereClause(&f.generics),
+           where_clause = WhereClause(&f.generics, "  ".to_string()),
            decl = Method(&f.decl, &indent))?;
     document(w, cx, it)
 }
@@ -1991,16 +1991,26 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
     let mut bounds = String::new();
+    let mut bounds_plain = String::new();
     if !t.bounds.is_empty() {
         if !bounds.is_empty() {
             bounds.push(' ');
+            bounds_plain.push(' ');
         }
         bounds.push_str(": ");
+        bounds_plain.push_str(": ");
         for (i, p) in t.bounds.iter().enumerate() {
-            if i > 0 { bounds.push_str(" + "); }
+            if i > 0 {
+                bounds.push_str(" + ");
+                bounds_plain.push_str(" + ");
+            }
             bounds.push_str(&format!("{}", *p));
+            bounds_plain.push_str(&format!("{:#}", *p));
         }
     }
+
+    // Where clauses in traits are indented nine spaces, per rustdoc.css
+    let indent = "         ".to_string();
 
     // Output the trait definition
     write!(w, "<pre class='rust trait'>{}{}trait {}{}{}{} ",
@@ -2009,7 +2019,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            it.name.as_ref().unwrap(),
            t.generics,
            bounds,
-           WhereClause(&t.generics))?;
+           WhereClause(&t.generics, indent))?;
 
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
@@ -2023,7 +2033,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "{{\n")?;
         for t in &types {
             write!(w, "    ")?;
-            render_assoc_item(w, t, AssocItemLink::Anchor(None))?;
+            render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait)?;
             write!(w, ";\n")?;
         }
         if !types.is_empty() && !consts.is_empty() {
@@ -2031,7 +2041,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for t in &consts {
             write!(w, "    ")?;
-            render_assoc_item(w, t, AssocItemLink::Anchor(None))?;
+            render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait)?;
             write!(w, ";\n")?;
         }
         if !consts.is_empty() && !required.is_empty() {
@@ -2039,7 +2049,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &required {
             write!(w, "    ")?;
-            render_assoc_item(w, m, AssocItemLink::Anchor(None))?;
+            render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait)?;
             write!(w, ";\n")?;
         }
         if !required.is_empty() && !provided.is_empty() {
@@ -2047,7 +2057,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &provided {
             write!(w, "    ")?;
-            render_assoc_item(w, m, AssocItemLink::Anchor(None))?;
+            render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait)?;
             write!(w, " {{ ... }}\n")?;
         }
         write!(w, "}}")?;
@@ -2068,7 +2078,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                id = id,
                stab = m.stability_class(),
                ns_id = ns_id)?;
-        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)))?;
+        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl)?;
         write!(w, "</code>")?;
         render_stability_since(w, m, t)?;
         write!(w, "</span></h3>")?;
@@ -2222,7 +2232,8 @@ fn render_stability_since(w: &mut fmt::Formatter,
 
 fn render_assoc_item(w: &mut fmt::Formatter,
                      item: &clean::Item,
-                     link: AssocItemLink) -> fmt::Result {
+                     link: AssocItemLink,
+                     parent: ItemType) -> fmt::Result {
     fn method(w: &mut fmt::Formatter,
               meth: &clean::Item,
               unsafety: hir::Unsafety,
@@ -2230,7 +2241,8 @@ fn render_assoc_item(w: &mut fmt::Formatter,
               abi: abi::Abi,
               g: &clean::Generics,
               d: &clean::FnDecl,
-              link: AssocItemLink)
+              link: AssocItemLink,
+              parent: ItemType)
               -> fmt::Result {
         let name = meth.name.as_ref().unwrap();
         let anchor = format!("#{}.{}", meth.type_(), name);
@@ -2260,7 +2272,17 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                              AbiSpace(abi),
                              name,
                              *g);
-        let indent = repeat("&nbsp;").take(prefix.len()).collect::<String>();
+        let mut indent = repeat("&nbsp;").take(prefix.len()).collect::<String>();
+        let where_indent = if parent == ItemType::Trait {
+            indent += "&nbsp;&nbsp;&nbsp;&nbsp;";
+            "        ".to_string()
+        } else if parent == ItemType::Impl {
+            "  ".to_string()
+        } else {
+            let prefix = prefix + &format!("{:#}", Method(d, &indent));
+            let prefix = prefix.lines().last().unwrap();
+            repeat(" ").take(prefix.len() + 1).collect::<String>()
+        };
         write!(w, "{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                ConstnessSpace(vis_constness),
@@ -2270,18 +2292,17 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                name = name,
                generics = *g,
                decl = Method(d, &indent),
-               where_clause = WhereClause(g))
+               where_clause = WhereClause(g, where_indent))
     }
     match item.inner {
         clean::StrippedItem(..) => Ok(()),
         clean::TyMethodItem(ref m) => {
             method(w, item, m.unsafety, hir::Constness::NotConst,
-                   m.abi, &m.generics, &m.decl, link)
+                   m.abi, &m.generics, &m.decl, link, parent)
         }
         clean::MethodItem(ref m) => {
             method(w, item, m.unsafety, m.constness,
-                   m.abi, &m.generics, &m.decl,
-                   link)
+                   m.abi, &m.generics, &m.decl, link, parent)
         }
         clean::AssociatedConstItem(ref ty, ref default) => {
             assoc_const(w, item, ty, default.as_ref(), link)
@@ -2378,11 +2399,15 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
              e: &clean::Enum) -> fmt::Result {
     write!(w, "<pre class='rust enum'>")?;
     render_attributes(w, it)?;
+    let padding = format!("{}enum {}{:#} ",
+                          VisSpace(&it.visibility),
+                          it.name.as_ref().unwrap(),
+                          e.generics);
     write!(w, "{}enum {}{}{}",
            VisSpace(&it.visibility),
            it.name.as_ref().unwrap(),
            e.generics,
-           WhereClause(&e.generics))?;
+           WhereClause(&e.generics, padding))?;
     if e.variants.is_empty() && !e.variants_stripped {
         write!(w, " {{}}")?;
     } else {
@@ -2517,17 +2542,24 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
                  fields: &[clean::Item],
                  tab: &str,
                  structhead: bool) -> fmt::Result {
+    let mut plain = String::new();
     write!(w, "{}{}{}",
            VisSpace(&it.visibility),
            if structhead {"struct "} else {""},
            it.name.as_ref().unwrap())?;
+    plain.push_str(&format!("{}{}{}",
+                            VisSpace(&it.visibility),
+                            if structhead {"struct "} else {""},
+                            it.name.as_ref().unwrap()));
     if let Some(g) = g {
+        plain.push_str(&format!("{:#}", g));
         write!(w, "{}", g)?
     }
     match ty {
         doctree::Plain => {
             if let Some(g) = g {
-                write!(w, "{}", WhereClause(g))?
+                let pad = repeat(" ").take(plain.len() + 1).collect::<String>();
+                write!(w, "{}", WhereClause(g, pad))?
             }
             let mut has_visible_fields = false;
             write!(w, " {{")?;
@@ -2556,30 +2588,37 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
         }
         doctree::Tuple => {
             write!(w, "(")?;
+            plain.push_str("(");
             for (i, field) in fields.iter().enumerate() {
                 if i > 0 {
                     write!(w, ", ")?;
+                    plain.push_str(", ");
                 }
                 match field.inner {
                     clean::StrippedItem(box clean::StructFieldItem(..)) => {
+                        plain.push_str("_");
                         write!(w, "_")?
                     }
                     clean::StructFieldItem(ref ty) => {
+                        plain.push_str(&format!("{}{:#}", VisSpace(&field.visibility), *ty));
                         write!(w, "{}{}", VisSpace(&field.visibility), *ty)?
                     }
                     _ => unreachable!()
                 }
             }
             write!(w, ")")?;
+            plain.push_str(")");
             if let Some(g) = g {
-                write!(w, "{}", WhereClause(g))?
+                let pad = repeat(" ").take(plain.len() + 1).collect::<String>();
+                write!(w, "{}", WhereClause(g, pad))?
             }
             write!(w, ";")?;
         }
         doctree::Unit => {
             // Needed for PhantomData.
             if let Some(g) = g {
-                write!(w, "{}", WhereClause(g))?
+                let pad = repeat(" ").take(plain.len() + 1).collect::<String>();
+                write!(w, "{}", WhereClause(g, pad))?
             }
             write!(w, ";")?;
         }
@@ -2592,13 +2631,20 @@ fn render_union(w: &mut fmt::Formatter, it: &clean::Item,
                 fields: &[clean::Item],
                 tab: &str,
                 structhead: bool) -> fmt::Result {
+    let mut plain = String::new();
     write!(w, "{}{}{}",
            VisSpace(&it.visibility),
            if structhead {"union "} else {""},
            it.name.as_ref().unwrap())?;
+    plain.push_str(&format!("{}{}{}",
+                            VisSpace(&it.visibility),
+                            if structhead {"union "} else {""},
+                            it.name.as_ref().unwrap()));
     if let Some(g) = g {
         write!(w, "{}", g)?;
-        write!(w, "{}", WhereClause(g))?;
+        plain.push_str(&format!("{:#}", g));
+        let pad = repeat(" ").take(plain.len() + 1).collect::<String>();
+        write!(w, "{}", WhereClause(g, pad))?;
     }
 
     write!(w, " {{\n{}", tab)?;
@@ -2789,7 +2835,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                     write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
                     write!(w, "<span id='{}' class='invisible'>", ns_id)?;
                     write!(w, "<code>")?;
-                    render_assoc_item(w, item, link.anchor(&id))?;
+                    render_assoc_item(w, item, link.anchor(&id), ItemType::Impl)?;
                     write!(w, "</code>")?;
                     render_stability_since_raw(w, item.stable_since(), outer_version)?;
                     write!(w, "</span></h4>\n")?;
@@ -2899,10 +2945,12 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
 fn item_typedef(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
+    let indent = format!("type {}{:#} ", it.name.as_ref().unwrap(), t.generics);
+    let indent = repeat(" ").take(indent.len()).collect::<String>();
     write!(w, "<pre class='rust typedef'>type {}{}{where_clause} = {type_};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
-           where_clause = WhereClause(&t.generics),
+           where_clause = WhereClause(&t.generics, indent),
            type_ = t.type_)?;
 
     document(w, cx, it)
