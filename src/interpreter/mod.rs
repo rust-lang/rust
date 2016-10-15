@@ -42,6 +42,7 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     memory: Memory<'a, 'tcx>,
 
     /// Precomputed statics, constants and promoteds.
+    // FIXME(solson): Change from Pointer to Value.
     statics: HashMap<ConstantId<'tcx>, Pointer>,
 
     /// The virtual call stack.
@@ -93,13 +94,24 @@ pub struct Frame<'a, 'tcx: 'a> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Lvalue {
-    ptr: Pointer,
-    extra: LvalueExtra,
+pub enum Lvalue {
+    /// An lvalue referring to a value allocated in the `Memory` system.
+    Ptr {
+        ptr: Pointer,
+        extra: LvalueExtra,
+    },
+
+    /// An lvalue referring to a value on the stack.
+    Local {
+        frame: usize,
+        local: usize,
+    }
+
+    // TODO(solson): Static/Const? None/Never?
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum LvalueExtra {
+pub enum LvalueExtra {
     None,
     Length(u64),
     Vtable(Pointer),
@@ -603,9 +615,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let dest = dest.to_ptr();
 
                 let lvalue = self.eval_lvalue(lvalue)?;
-                self.memory.write_ptr(dest, lvalue.ptr)?;
+
+                // FIXME(solson)
+                let (ptr, extra) = lvalue.to_ptr_and_extra();
+
+                self.memory.write_ptr(dest, ptr)?;
                 let extra_ptr = dest.offset(self.memory.pointer_size() as isize);
-                match lvalue.extra {
+                match extra {
                     LvalueExtra::None => {},
                     LvalueExtra::Length(len) => self.memory.write_usize(extra_ptr, len)?,
                     LvalueExtra::Vtable(ptr) => self.memory.write_ptr(extra_ptr, ptr)?,
@@ -818,12 +834,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue> {
         use rustc::mir::repr::Lvalue::*;
-        let ptr = match *lvalue {
+        match *lvalue {
             Local(i) => {
-                match self.frame().locals[i.index()] {
+                // FIXME(solson): Switch to the following code to start enabling lvalues referring
+                // to `Value`s placed on the locals stack instead of in `Memory`:
+                //
+                //     let frame_index = self.stack.len();
+                //     Ok(Lvalue::Local { frame: frame_index, local: i.index() })
+                //
+                let ptr = match self.frame().locals[i.index()] {
                     Value::ByRef(p) => p,
                     _ => bug!(),
-                }
+                };
+                Ok(Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None })
             }
 
             Static(def_id) => {
@@ -833,119 +856,132 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     substs: substs,
                     kind: ConstantKind::Global,
                 };
-                *self.statics.get(&cid).expect("static should have been cached (lvalue)")
-            },
+                let ptr = *self.statics.get(&cid)
+                    .expect("static should have been cached (lvalue)");
+                Ok(Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None })
+            }
 
-            Projection(ref proj) => {
-                let base = self.eval_lvalue(&proj.base)?;
-                let base_ty = self.lvalue_ty(&proj.base);
-                let base_layout = self.type_layout(base_ty);
+            Projection(ref proj) => self.eval_lvalue_projection(proj),
+        }
+    }
 
-                use rustc::mir::repr::ProjectionElem::*;
-                match proj.elem {
-                    Field(field, field_ty) => {
-                        let field_ty = self.monomorphize(field_ty, self.substs());
-                        use rustc::ty::layout::Layout::*;
-                        let field = field.index();
-                        let offset = match *base_layout {
-                            Univariant { ref variant, .. } => variant.offsets[field],
-                            General { ref variants, .. } => {
-                                if let LvalueExtra::DowncastVariant(variant_idx) = base.extra {
-                                    // +1 for the discriminant, which is field 0
-                                    variants[variant_idx].offsets[field + 1]
-                                } else {
-                                    bug!("field access on enum had no variant index");
-                                }
-                            }
-                            RawNullablePointer { .. } => {
-                                assert_eq!(field.index(), 0);
-                                return Ok(base);
-                            }
-                            StructWrappedNullablePointer { ref nonnull, .. } => {
-                                nonnull.offsets[field]
-                            }
-                            _ => bug!("field access on non-product type: {:?}", base_layout),
-                        };
+    fn eval_lvalue_projection(
+        &mut self,
+        proj: &mir::LvalueProjection<'tcx>,
+    ) -> EvalResult<'tcx, Lvalue> {
+        let base = self.eval_lvalue(&proj.base)?;
+        let (base_ptr, base_extra) = base.to_ptr_and_extra();
+        let base_ty = self.lvalue_ty(&proj.base);
+        let base_layout = self.type_layout(base_ty);
 
-                        let ptr = base.ptr.offset(offset.bytes() as isize);
-                        if self.type_is_sized(field_ty) {
-                            ptr
+        use rustc::mir::repr::ProjectionElem::*;
+        let (ptr, extra) = match proj.elem {
+            Field(field, field_ty) => {
+                let field_ty = self.monomorphize(field_ty, self.substs());
+                let field = field.index();
+
+                use rustc::ty::layout::Layout::*;
+                let offset = match *base_layout {
+                    Univariant { ref variant, .. } => variant.offsets[field],
+
+                    General { ref variants, .. } => {
+                        if let LvalueExtra::DowncastVariant(variant_idx) = base_extra {
+                            // +1 for the discriminant, which is field 0
+                            variants[variant_idx].offsets[field + 1]
                         } else {
-                            match base.extra {
-                                LvalueExtra::None => bug!("expected fat pointer"),
-                                LvalueExtra::DowncastVariant(..) => bug!("Rust doesn't support unsized fields in enum variants"),
-                                LvalueExtra::Vtable(_) |
-                                LvalueExtra::Length(_) => {},
-                            }
-                            return Ok(Lvalue {
-                                ptr: ptr,
-                                extra: base.extra,
-                            });
+                            bug!("field access on enum had no variant index");
                         }
-                    },
-
-                    Downcast(_, variant) => {
-                        use rustc::ty::layout::Layout::*;
-                        match *base_layout {
-                            General { .. } => {
-                                return Ok(Lvalue {
-                                    ptr: base.ptr,
-                                    extra: LvalueExtra::DowncastVariant(variant),
-                                });
-                            }
-                            RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
-                                return Ok(base);
-                            }
-                            _ => bug!("variant downcast on non-aggregate: {:?}", base_layout),
-                        }
-                    },
-
-                    Deref => {
-                        use primval::PrimVal::*;
-                        use interpreter::value::Value::*;
-                        let (ptr, extra) = match self.read_value(base.ptr, base_ty)? {
-                            ByValPair(Ptr(ptr), Ptr(vptr)) => (ptr, LvalueExtra::Vtable(vptr)),
-                            ByValPair(Ptr(ptr), n) => (ptr, LvalueExtra::Length(n.expect_uint("slice length"))),
-                            ByVal(Ptr(ptr)) => (ptr, LvalueExtra::None),
-                            _ => bug!("can't deref non pointer types"),
-                        };
-                        return Ok(Lvalue { ptr: ptr, extra: extra });
                     }
 
-                    Index(ref operand) => {
-                        let (elem_ty, len) = base.elem_ty_and_len(base_ty);
-                        let elem_size = self.type_size(elem_ty);
-                        let n_ptr = self.eval_operand(operand)?;
-                        let usize = self.tcx.types.usize;
-                        let n = self.value_to_primval(n_ptr, usize)?.expect_uint("Projection::Index expected usize");
-                        assert!(n < len);
-                        base.ptr.offset(n as isize * elem_size as isize)
+                    RawNullablePointer { .. } => {
+                        assert_eq!(field.index(), 0);
+                        return Ok(base);
                     }
 
-                    ConstantIndex { offset, min_length, from_end } => {
-                        let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                        let elem_size = self.type_size(elem_ty);
-                        assert!(n >= min_length as u64);
-                        if from_end {
-                            base.ptr.offset((n as isize - offset as isize) * elem_size as isize)
-                        } else {
-                            base.ptr.offset(offset as isize * elem_size as isize)
-                        }
-                    },
-                    Subslice { from, to } => {
-                        let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                        let elem_size = self.type_size(elem_ty);
-                        assert!((from as u64) <= n - (to as u64));
-                        return Ok(Lvalue {
-                            ptr: base.ptr.offset(from as isize * elem_size as isize),
-                            extra: LvalueExtra::Length(n - to as u64 - from as u64),
-                        })
-                    },
+                    StructWrappedNullablePointer { ref nonnull, .. } => {
+                        nonnull.offsets[field]
+                    }
+
+                    _ => bug!("field access on non-product type: {:?}", base_layout),
+                };
+
+                let ptr = base_ptr.offset(offset.bytes() as isize);
+                let extra = if self.type_is_sized(field_ty) {
+                    LvalueExtra::None
+                } else {
+                    match base_extra {
+                        LvalueExtra::None => bug!("expected fat pointer"),
+                        LvalueExtra::DowncastVariant(..) =>
+                            bug!("Rust doesn't support unsized fields in enum variants"),
+                        LvalueExtra::Vtable(_) |
+                        LvalueExtra::Length(_) => {},
+                    }
+                    base_extra
+                };
+
+                (ptr, extra)
+            }
+
+            Downcast(_, variant) => {
+                use rustc::ty::layout::Layout::*;
+                let extra = match *base_layout {
+                    General { .. } => LvalueExtra::DowncastVariant(variant),
+                    RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => base_extra,
+                    _ => bug!("variant downcast on non-aggregate: {:?}", base_layout),
+                };
+                (base_ptr, extra)
+            }
+
+            Deref => {
+                use primval::PrimVal::*;
+                use interpreter::value::Value::*;
+                match self.read_value(base_ptr, base_ty)? {
+                    ByValPair(Ptr(ptr), Ptr(vptr)) => (ptr, LvalueExtra::Vtable(vptr)),
+                    ByValPair(Ptr(ptr), n) =>
+                        (ptr, LvalueExtra::Length(n.expect_uint("slice length"))),
+                    ByVal(Ptr(ptr)) => (ptr, LvalueExtra::None),
+                    _ => bug!("can't deref non pointer types"),
                 }
+            }
+
+            Index(ref operand) => {
+                let (elem_ty, len) = base.elem_ty_and_len(base_ty);
+                let elem_size = self.type_size(elem_ty);
+                let n_ptr = self.eval_operand(operand)?;
+                let usize = self.tcx.types.usize;
+                let n = self.value_to_primval(n_ptr, usize)?
+                    .expect_uint("Projection::Index expected usize");
+                assert!(n < len);
+                let ptr = base_ptr.offset(n as isize * elem_size as isize);
+                (ptr, LvalueExtra::None)
+            }
+
+            ConstantIndex { offset, min_length, from_end } => {
+                let (elem_ty, n) = base.elem_ty_and_len(base_ty);
+                let elem_size = self.type_size(elem_ty);
+                assert!(n >= min_length as u64);
+
+                let index = if from_end {
+                    n as isize - offset as isize
+                } else {
+                    offset as isize
+                };
+
+                let ptr = base_ptr.offset(index * elem_size as isize);
+                (ptr, LvalueExtra::None)
+            }
+
+            Subslice { from, to } => {
+                let (elem_ty, n) = base.elem_ty_and_len(base_ty);
+                let elem_size = self.type_size(elem_ty);
+                assert!((from as u64) <= n - (to as u64));
+                let ptr = base_ptr.offset(from as isize * elem_size as isize);
+                let extra = LvalueExtra::Length(n - to as u64 - from as u64);
+                (ptr, extra)
             }
         };
 
-        Ok(Lvalue { ptr: ptr, extra: LvalueExtra::None })
+        Ok(Lvalue::Ptr { ptr: ptr, extra: extra })
     }
 
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
@@ -1242,22 +1278,36 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
 impl Lvalue {
     fn from_ptr(ptr: Pointer) -> Self {
-        Lvalue { ptr: ptr, extra: LvalueExtra::None }
+        Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None }
+    }
+
+    fn to_ptr_and_extra(self) -> (Pointer, LvalueExtra) {
+        if let Lvalue::Ptr { ptr, extra } = self {
+            (ptr, extra)
+        } else {
+            // FIXME(solson): This isn't really a bug, but it's unhandled until I finish
+            // refactoring.
+            bug!("from_ptr: Not an Lvalue::Ptr");
+        }
     }
 
     fn to_ptr(self) -> Pointer {
-        assert_eq!(self.extra, LvalueExtra::None);
-        self.ptr
+        let (ptr, extra) = self.to_ptr_and_extra();
+        assert_eq!(extra, LvalueExtra::None);
+        ptr
     }
 
     fn elem_ty_and_len<'tcx>(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
         match ty.sty {
             ty::TyArray(elem, n) => (elem, n as u64),
-            ty::TySlice(elem) => if let LvalueExtra::Length(len) = self.extra {
-                (elem, len)
-            } else {
-                bug!("elem_ty_and_len called on a slice given non-slice lvalue: {:?}", self);
-            },
+
+            ty::TySlice(elem) => {
+                match self {
+                    Lvalue::Ptr { extra: LvalueExtra::Length(len), .. } => (elem, len),
+                    _ => bug!("elem_ty_and_len of a TySlice given non-slice lvalue: {:?}", self),
+                }
+            }
+
             _ => bug!("elem_ty_and_len expected array or slice, got {:?}", ty),
         }
     }
