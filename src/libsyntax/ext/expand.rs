@@ -364,7 +364,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
                 self.parse_expansion(tok_result, kind, name, attr.span)
             }
-            _ => unreachable!(),
+            SyntaxExtension::CustomDerive(_) => {
+                self.cx.span_err(attr.span, &format!("`{}` is a derive mode", name));
+                kind.dummy(attr.span)
+            }
+            _ => {
+                let msg = &format!("macro `{}` may not be used in attributes", name);
+                self.cx.span_err(attr.span, &msg);
+                kind.dummy(attr.span)
+            }
         }
     }
 
@@ -436,6 +444,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             MultiDecorator(..) | MultiModifier(..) | SyntaxExtension::AttrProcMacro(..) => {
                 self.cx.span_err(path.span,
                                  &format!("`{}` can only be used in attributes", extname));
+                return kind.dummy(span);
+            }
+
+            SyntaxExtension::CustomDerive(..) => {
+                self.cx.span_err(path.span, &format!("`{}` is a derive mode", extname));
                 return kind.dummy(span);
             }
 

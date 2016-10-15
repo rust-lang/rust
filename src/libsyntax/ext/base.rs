@@ -508,6 +508,8 @@ pub enum SyntaxExtension {
     /// the block.
     ///
     IdentTT(Box<IdentMacroExpander>, Option<Span>, bool),
+
+    CustomDerive(Box<MultiItemModifier>),
 }
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
@@ -524,7 +526,6 @@ pub trait Resolver {
     fn find_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy>;
-    fn resolve_derive_mode(&mut self, ident: ast::Ident) -> Option<Rc<MultiItemModifier>>;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -545,7 +546,6 @@ impl Resolver for DummyResolver {
     fn add_expansions_at_stmt(&mut self, _id: ast::NodeId, _macros: Vec<Mark>) {}
 
     fn find_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
-    fn resolve_derive_mode(&mut self, _ident: ast::Ident) -> Option<Rc<MultiItemModifier>> { None }
     fn resolve_macro(&mut self, _scope: Mark, _path: &ast::Path, _force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)
