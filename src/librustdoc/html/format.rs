@@ -50,7 +50,7 @@ pub struct MutableSpace(pub clean::Mutability);
 #[derive(Copy, Clone)]
 pub struct RawMutableSpace(pub clean::Mutability);
 /// Wrapper struct for emitting a where clause from Generics.
-pub struct WhereClause<'a>(pub &'a clean::Generics);
+pub struct WhereClause<'a>(pub &'a clean::Generics, pub String);
 /// Wrapper struct for emitting type parameter bounds.
 pub struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
 /// Wrapper struct for emitting a comma-separated list of items
@@ -157,7 +157,7 @@ impl fmt::Display for clean::Generics {
 
 impl<'a> fmt::Display for WhereClause<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let &WhereClause(gens) = self;
+        let &WhereClause(gens, ref pad) = self;
         if gens.where_predicates.is_empty() {
             return Ok(());
         }
@@ -207,8 +207,8 @@ impl<'a> fmt::Display for WhereClause<'a> {
         if !f.alternate() {
             clause.push_str("</span>");
             let plain = format!("{:#}", self);
-            if plain.len() > 80 {
-                let padding = repeat("&nbsp;").take(8).collect::<String>();
+            if plain.len() + pad.len() > 80 {
+                let padding = repeat("&nbsp;").take(pad.len() + 6).collect::<String>();
                 clause = clause.replace("<br>", &format!("<br>{}", padding));
             } else {
                 clause = clause.replace("<br>", " ");
@@ -730,30 +730,44 @@ impl fmt::Display for clean::Type {
 }
 
 fn fmt_impl(i: &clean::Impl, f: &mut fmt::Formatter, link_trait: bool) -> fmt::Result {
+    let mut plain = String::new();
+
     if f.alternate() {
         write!(f, "impl{:#} ", i.generics)?;
     } else {
         write!(f, "impl{} ", i.generics)?;
     }
+    plain.push_str(&format!("impl{:#} ", i.generics));
+
     if let Some(ref ty) = i.trait_ {
-        write!(f, "{}",
-               if i.polarity == Some(clean::ImplPolarity::Negative) { "!" } else { "" })?;
+        if i.polarity == Some(clean::ImplPolarity::Negative) {
+            write!(f, "!")?;
+            plain.push_str("!");
+        }
+
         if link_trait {
             fmt::Display::fmt(ty, f)?;
+            plain.push_str(&format!("{:#}", ty));
         } else {
             match *ty {
                 clean::ResolvedPath{ typarams: None, ref path, is_generic: false, .. } => {
                     let last = path.segments.last().unwrap();
                     fmt::Display::fmt(&last.name, f)?;
                     fmt::Display::fmt(&last.params, f)?;
+                    plain.push_str(&format!("{:#}{:#}", last.name, last.params));
                 }
                 _ => unreachable!(),
             }
         }
         write!(f, " for ")?;
+        plain.push_str(" for ");
     }
+
     fmt::Display::fmt(&i.for_, f)?;
-    fmt::Display::fmt(&WhereClause(&i.generics), f)?;
+    plain.push_str(&format!("{:#}", i.for_));
+
+    let pad = repeat(" ").take(plain.len() + 1).collect::<String>();
+    fmt::Display::fmt(&WhereClause(&i.generics, pad), f)?;
     Ok(())
 }
 
@@ -899,7 +913,11 @@ impl<'a> fmt::Display for Method<'a> {
         } else {
             output = output.replace("<br>", "");
         }
-        write!(f, "{}", output)
+        if f.alternate() {
+            write!(f, "{}", output.replace("<br>", "\n"))
+        } else {
+            write!(f, "{}", output)
+        }
     }
 }
 
