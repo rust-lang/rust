@@ -28,7 +28,6 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::Substs;
 use rustc_const_eval::fatal_const_eval_err;
-use std::hash::{Hash, Hasher};
 use syntax::ast::{self, NodeId};
 use syntax::attr;
 use type_of;
@@ -36,31 +35,11 @@ use glue;
 use abi::{Abi, FnType};
 use back::symbol_names;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum TransItem<'tcx> {
     DropGlue(DropGlueKind<'tcx>),
     Fn(Instance<'tcx>),
     Static(NodeId)
-}
-
-impl<'tcx> Hash for TransItem<'tcx> {
-    fn hash<H: Hasher>(&self, s: &mut H) {
-        match *self {
-            TransItem::DropGlue(t) => {
-                0u8.hash(s);
-                t.hash(s);
-            },
-            TransItem::Fn(instance) => {
-                1u8.hash(s);
-                instance.def.hash(s);
-                (instance.substs as *const _ as usize).hash(s);
-            }
-            TransItem::Static(node_id) => {
-                2u8.hash(s);
-                node_id.hash(s);
-            }
-        };
-    }
 }
 
 impl<'a, 'tcx> TransItem<'tcx> {
@@ -359,7 +338,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::Fn(instance) => {
                 format!("Fn({:?}, {})",
                          instance.def,
-                         instance.substs as *const _ as usize)
+                         instance.substs.as_ptr() as usize)
             }
             TransItem::Static(id) => {
                 format!("Static({:?})", id)
