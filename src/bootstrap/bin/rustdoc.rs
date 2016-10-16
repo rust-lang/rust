@@ -29,10 +29,12 @@ fn main() {
 
     let mut cmd = Command::new(rustdoc);
     cmd.args(&args)
-       .arg("--cfg").arg(format!("stage{}", stage))
-       .arg("--cfg").arg("dox")
-       .env(bootstrap::util::dylib_path_var(),
-            env::join_paths(&dylib_path).unwrap());
+        .arg("--cfg")
+        .arg(format!("stage{}", stage))
+        .arg("--cfg")
+        .arg("dox")
+        .env(bootstrap::util::dylib_path_var(),
+             env::join_paths(&dylib_path).unwrap());
     std::process::exit(match cmd.status() {
         Ok(s) => s.code().unwrap_or(1),
         Err(e) => panic!("\n\nfailed to run {:?}: {}\n\n", cmd, e),
