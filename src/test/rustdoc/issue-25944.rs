@@ -13,8 +13,9 @@
 /// ```
 /// let a = r#"
 /// foo
+///
 /// bar"#;
-/// let b = "\nfoo\nbar";
+/// let b = "\n    foo\n\n    bar";
 /// assert_eq!(a, b);
 /// ```
 pub fn main() {
