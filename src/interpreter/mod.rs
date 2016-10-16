@@ -394,6 +394,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
+    fn binop_with_overflow(
+        &mut self,
+        op: mir::BinOp,
+        left: &mir::Operand<'tcx>,
+        right: &mir::Operand<'tcx>,
+    ) -> EvalResult<'tcx, (PrimVal, bool)> {
+        let left_primval = self.eval_operand_to_primval(left)?;
+        let right_primval = self.eval_operand_to_primval(right)?;
+        primval::binary_op(op, left_primval, right_primval)
+    }
+
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
     /// and a boolean signifying the potential overflow to the destination.
     fn intrinsic_with_overflow(
@@ -402,25 +413,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         left: &mir::Operand<'tcx>,
         right: &mir::Operand<'tcx>,
         dest: Lvalue,
-        dest_layout: &'tcx Layout,
+        dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
-        use rustc::ty::layout::Layout::*;
-        let tup_layout = match *dest_layout {
-            Univariant { ref variant, .. } => variant,
-            _ => bug!("checked bin op returns something other than a tuple"),
-        };
-
-        let overflowed = self.intrinsic_overflowing(op, left, right, dest)?;
-
-        // FIXME(solson)
-        let dest = self.force_allocation(dest)?.to_ptr();
-
-        let offset = tup_layout.offsets[1].bytes() as isize;
-        self.memory.write_bool(dest.offset(offset), overflowed)
+        let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
+        let val = Value::ByValPair(val, PrimVal::Bool(overflowed));
+        self.write_value(val, dest, dest_ty)
     }
 
-    /// Applies the binary operation `op` to the arguments and writes the result to the destination.
-    /// Returns `true` if the operation overflowed.
+    /// Applies the binary operation `op` to the arguments and writes the result to the
+    /// destination. Returns `true` if the operation overflowed.
     fn intrinsic_overflowing(
         &mut self,
         op: mir::BinOp,
@@ -428,11 +429,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         right: &mir::Operand<'tcx>,
         dest: Lvalue,
     ) -> EvalResult<'tcx, bool> {
-        let left_primval = self.eval_operand_to_primval(left)?;
-        let right_primval = self.eval_operand_to_primval(right)?;
-        let (val, overflow) = primval::binary_op(op, left_primval, right_primval)?;
+        let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
         self.write_primval(dest, val)?;
-        Ok(overflow)
+        Ok(overflowed)
     }
 
     fn assign_fields<I: IntoIterator<Item = u64>>(
@@ -479,7 +478,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
-                self.intrinsic_with_overflow(bin_op, left, right, dest, dest_layout)?;
+                self.intrinsic_with_overflow(bin_op, left, right, dest, dest_ty)?;
             }
 
             UnaryOp(un_op, ref operand) => {

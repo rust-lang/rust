@@ -31,35 +31,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         let intrinsic_name = &self.tcx.item_name(def_id).as_str()[..];
         match intrinsic_name {
-            "add_with_overflow" => {
-                self.intrinsic_with_overflow(
-                    mir::BinOp::Add,
-                    &args[0],
-                    &args[1],
-                    dest,
-                    dest_layout,
-                )?
-            }
+            "add_with_overflow" =>
+                self.intrinsic_with_overflow(mir::BinOp::Add, &args[0], &args[1], dest, dest_ty)?,
 
-            "sub_with_overflow" => {
-                self.intrinsic_with_overflow(
-                    mir::BinOp::Sub,
-                    &args[0],
-                    &args[1],
-                    dest,
-                    dest_layout,
-                )?
-            }
+            "sub_with_overflow" =>
+                self.intrinsic_with_overflow(mir::BinOp::Sub, &args[0], &args[1], dest, dest_ty)?,
 
-            "mul_with_overflow" => {
-                self.intrinsic_with_overflow(
-                    mir::BinOp::Mul,
-                    &args[0],
-                    &args[1],
-                    dest,
-                    dest_layout,
-                )?
-            }
+            "mul_with_overflow" =>
+                self.intrinsic_with_overflow(mir::BinOp::Mul, &args[0], &args[1], dest, dest_ty)?,
+
 
             "arith_offset" => {
                 let ptr = args_ptrs[0].read_ptr(&self.memory)?;
