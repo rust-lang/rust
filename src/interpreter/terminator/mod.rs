@@ -41,7 +41,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
-                let discr_ptr = self.eval_lvalue(discr)?.to_ptr();
+                // FIXME(solson)
+                let lvalue = self.eval_lvalue(discr)?;
+                let lvalue = self.force_allocation(lvalue)?;
+
+                let discr_ptr = lvalue.to_ptr();
                 let discr_ty = self.lvalue_ty(discr);
                 let discr_val = self.read_value(discr_ptr, discr_ty)?;
                 let discr_prim = self.value_to_primval(discr_val, discr_ty)?;
@@ -62,7 +66,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Switch { ref discr, ref targets, adt_def } => {
-                let adt_ptr = self.eval_lvalue(discr)?.to_ptr();
+                // FIXME(solson)
+                let lvalue = self.eval_lvalue(discr)?;
+                let lvalue = self.force_allocation(lvalue)?;
+
+                let adt_ptr = lvalue.to_ptr();
                 let adt_ty = self.lvalue_ty(discr);
                 let discr_val = self.read_discriminant_value(adt_ptr, adt_ty)?;
                 let matching = adt_def.variants.iter()
@@ -102,7 +110,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Drop { ref location, target, .. } => {
-                let ptr = self.eval_lvalue(location)?.to_ptr();
+                // FIXME(solson)
+                let lvalue = self.eval_lvalue(location)?;
+                let lvalue = self.force_allocation(lvalue)?;
+
+                let ptr = lvalue.to_ptr();
                 let ty = self.lvalue_ty(location);
                 self.drop(ptr, ty)?;
                 self.goto_block(target);
@@ -202,9 +214,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     return_to_block
                 )?;
 
-                for (i, (arg_val, arg_ty)) in args.into_iter().enumerate() {
-                    // argument start at index 1, since index 0 is reserved for the return allocation
-                    let dest = self.frame().locals[i + 1];
+                let arg_locals = self.frame().mir.args_iter();
+                for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
+                    // FIXME(solson)
+                    let dest = self.frame().get_local(arg_local);
 
                     // FIXME(solson)
                     let dest = match dest {

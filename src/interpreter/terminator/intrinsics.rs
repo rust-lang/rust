@@ -148,7 +148,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "init" => {
                 // FIXME(solson)
-                let dest = dest.to_ptr();
+                let dest = self.force_allocation(dest)?.to_ptr();
 
                 let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
                 self.memory.write_repeat(dest, 0, size)?;
@@ -265,7 +265,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "uninit" => {
                 // FIXME(solson)
-                let dest = dest.to_ptr();
+                let dest = self.force_allocation(dest)?.to_ptr();
 
                 let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
                 self.memory.mark_definedness(dest, size, false)?;

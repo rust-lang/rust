@@ -12,7 +12,6 @@ use rustc_data_structures::indexed_vec::Idx;
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
-use std::iter;
 use syntax::codemap::{self, DUMMY_SP};
 
 use error::{EvalError, EvalResult};
@@ -71,14 +70,18 @@ pub struct Frame<'a, 'tcx: 'a> {
     pub span: codemap::Span,
 
     ////////////////////////////////////////////////////////////////////////////////
-    // Return pointer and local allocations
+    // Return lvalue and locals
     ////////////////////////////////////////////////////////////////////////////////
 
     /// The block to return to when returning from the current stack frame
     pub return_to_block: StackPopCleanup,
 
-    /// The list of locals for the current function, stored in order as
-    /// `[return_ptr, arguments..., variables..., temporaries...]`.
+    /// The location where the result of the current stack frame should be written to.
+    pub return_lvalue: Lvalue,
+
+    /// The list of locals for this stack frame, stored in order as
+    /// `[arguments..., variables..., temporaries...]`. The locals are stored as `Value`s, which
+    /// can either directly contain `PrimVal` or refer to some part of an `Allocation`.
     pub locals: Vec<Value>,
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -101,10 +104,11 @@ pub enum Lvalue {
         extra: LvalueExtra,
     },
 
-    /// An lvalue referring to a value on the stack.
+    /// An lvalue referring to a value on the stack. Represented by a stack frame index paired with
+    /// a Mir local index.
     Local {
         frame: usize,
-        local: usize,
+        local: mir::Local,
     }
 
     // TODO(solson): Static/Const? None/Never?
@@ -345,33 +349,35 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         return_lvalue: Lvalue,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx, ()> {
-        let local_tys = mir.local_decls.iter().map(|a| a.ty);
-
         ::log_settings::settings().indentation += 1;
 
-        // FIXME(solson)
-        let return_ptr = return_lvalue.to_ptr();
+        // Skip 1 because we don't make a slot for the ReturnPointer, which is local number zero.
+        // The ReturnPointer is represented by `return_lvalue`, and points to an allocation or a
+        // local in a higher stack frame.
+        //
+        // FIXME(solson): Write this in a way that doesn't assume ReturnPointer is local 0.
+        let local_tys = mir.local_decls.iter().map(|a| a.ty).skip(1);
 
-        // directly change the first allocation (the return value) to *be* the allocation where the
-        // caller stores the result
-        let locals: EvalResult<'tcx, Vec<Value>> = iter::once(Ok(Value::ByRef(return_ptr))).chain(local_tys.skip(1).map(|ty| {
+        let locals: EvalResult<'tcx, Vec<Value>> = local_tys.map(|ty| {
             let size = self.type_size_with_substs(ty, substs);
             let align = self.type_align_with_substs(ty, substs);
 
             // FIXME(solson)
             self.memory.allocate(size, align).map(Value::ByRef)
-        })).collect();
+        }).collect();
 
         self.stack.push(Frame {
             mir: mir.clone(),
             block: mir::START_BLOCK,
             return_to_block: return_to_block,
+            return_lvalue: return_lvalue,
             locals: locals?,
             span: span,
             def_id: def_id,
             substs: substs,
             stmt: 0,
         });
+
         if self.stack.len() > self.stack_limit {
             Err(EvalError::StackFrameLimitReached)
         } else {
@@ -410,7 +416,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let overflowed = self.intrinsic_overflowing(op, left, right, dest)?;
 
         // FIXME(solson)
-        let dest = dest.to_ptr();
+        let dest = self.force_allocation(dest)?.to_ptr();
 
         let offset = tup_layout.offsets[1].bytes() as isize;
         self.memory.write_bool(dest.offset(offset), overflowed)
@@ -439,7 +445,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         operands: &[mir::Operand<'tcx>],
     ) -> EvalResult<'tcx, ()> {
         // FIXME(solson)
-        let dest = dest.to_ptr();
+        let dest = self.force_allocation(dest)?.to_ptr();
 
         for (offset, operand) in offsets.into_iter().zip(operands) {
             let value = self.eval_operand(operand)?;
@@ -508,6 +514,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let discr_offset = variants[variant].offsets[0].bytes() as isize;
 
                             // FIXME(solson)
+                            let dest = self.force_allocation(dest)?;
                             let discr_dest = (dest.to_ptr()).offset(discr_offset);
 
                             self.memory.write_uint(discr_dest, discr_val, discr_size)?;
@@ -552,7 +559,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 let offset = self.nonnull_offset(dest_ty, nndiscr, discrfield)?;
 
                                 // FIXME(solson)
-                                let dest = dest.to_ptr();
+                                let dest = self.force_allocation(dest)?.to_ptr();
 
                                 let dest = dest.offset(offset.bytes() as isize);
                                 try!(self.memory.write_isize(dest, 0));
@@ -568,8 +575,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let val = adt_def.variants[variant].disr_val.to_u64_unchecked();
                             let size = discr.size().bytes() as usize;
 
-                            // FIXME(solson)
-                            let dest = dest.to_ptr();
+                            // easy FIXME(solson)
+                            let dest = self.force_allocation(dest)?.to_ptr();
 
                             if signed {
                                 self.memory.write_int(dest, val as i64, size)?;
@@ -594,7 +601,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let value = self.eval_operand(operand)?;
 
                 // FIXME(solson)
-                let dest = dest.to_ptr();
+                let dest = self.force_allocation(dest)?.to_ptr();
 
                 for i in 0..length {
                     let elem_dest = dest.offset((i * elem_size) as isize);
@@ -612,12 +619,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Ref(_, _, ref lvalue) => {
                 // FIXME(solson)
-                let dest = dest.to_ptr();
+                let dest = self.force_allocation(dest)?.to_ptr();
 
                 let lvalue = self.eval_lvalue(lvalue)?;
 
                 // FIXME(solson)
-                let (ptr, extra) = lvalue.to_ptr_and_extra();
+                let (ptr, extra) = self.force_allocation(lvalue)?.to_ptr_and_extra();
 
                 self.memory.write_ptr(dest, ptr)?;
                 let extra_ptr = dest.offset(self.memory.pointer_size() as isize);
@@ -632,7 +639,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Box(ty) => {
                 // FIXME(solson)
-                let dest = dest.to_ptr();
+                let dest = self.force_allocation(dest)?.to_ptr();
 
                 let size = self.type_size(ty);
                 let align = self.type_align(ty);
@@ -642,7 +649,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Cast(kind, ref operand, cast_ty) => {
                 // FIXME(solson)
-                let dest = dest.to_ptr();
+                let dest = self.force_allocation(dest)?.to_ptr();
 
                 debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
                 use rustc::mir::repr::CastKind::*;
@@ -792,7 +799,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::mir::repr::Operand::*;
         match *op {
-            Consume(ref lvalue) => Ok(Value::ByRef(self.eval_lvalue(lvalue)?.to_ptr())),
+            Consume(ref lvalue) => {
+                let val = match self.eval_lvalue(lvalue)? {
+                    Lvalue::Ptr { ptr, extra } => {
+                        assert_eq!(extra, LvalueExtra::None);
+                        Value::ByRef(ptr)
+                    }
+                    Lvalue::Local { frame, local } => {
+                        self.stack[frame].get_local(local)
+                    }
+                };
+                Ok(val)
+            }
 
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal;
@@ -835,18 +853,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue> {
         use rustc::mir::repr::Lvalue::*;
         match *lvalue {
-            Local(i) => {
-                // FIXME(solson): Switch to the following code to start enabling lvalues referring
-                // to `Value`s placed on the locals stack instead of in `Memory`:
-                //
-                //     let frame_index = self.stack.len();
-                //     Ok(Lvalue::Local { frame: frame_index, local: i.index() })
-                //
-                let ptr = match self.frame().locals[i.index()] {
-                    Value::ByRef(p) => p,
-                    _ => bug!(),
-                };
-                Ok(Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None })
+            Local(i) if self.frame().mir.local_kind(i) == mir::LocalKind::ReturnPointer => {
+                Ok(self.frame().return_lvalue)
+            }
+
+            Local(local) => {
+                let frame = self.stack.len() - 1;
+                Ok(Lvalue::Local { frame: frame, local: local })
             }
 
             Static(def_id) => {
@@ -870,6 +883,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         proj: &mir::LvalueProjection<'tcx>,
     ) -> EvalResult<'tcx, Lvalue> {
         let base = self.eval_lvalue(&proj.base)?;
+
+        // FIXME(solson): Is this always necessary?
+        let base = self.force_allocation(base)?;
+
         let (base_ptr, base_extra) = base.to_ptr_and_extra();
         let base_ty = self.lvalue_ty(&proj.base);
         let base_layout = self.type_layout(base_ty);
@@ -999,6 +1016,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
+    fn force_allocation(&mut self, lvalue: Lvalue) -> EvalResult<'tcx, Lvalue> {
+        let new_lvalue = match lvalue {
+            Lvalue::Local { frame, local } => {
+                let ptr = match self.stack[frame].get_local(local) {
+                    Value::ByRef(ptr) => ptr,
+                    val => {
+                        let ty = self.stack[frame].mir.local_decls[local].ty;
+                        let substs = self.stack[frame].substs;
+                        let ptr = self.alloc_ptr(ty, substs)?;
+                        self.write_value_to_ptr(val, ptr, ty)?;
+                        self.stack[frame].set_local(local, Value::ByRef(ptr));
+                        ptr
+                    }
+                };
+                Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None }
+            }
+            Lvalue::Ptr { .. } => lvalue,
+        };
+        Ok(new_lvalue)
+    }
+
     // FIXME(solson): This method unnecessarily allocates and should not be necessary. We can
     // remove it as soon as PrimVal can represent fat pointers.
     fn value_to_ptr_dont_use(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Pointer> {
@@ -1033,8 +1071,34 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
             },
 
-            // TODO(solson): Sanity-check the primval type against the input type.
-            Value::ByVal(primval) => Ok(primval),
+            // FIXME(solson): This unnecessarily allocates to work around a new issue my `Value`
+            // locals refactoring introduced. There is code that calls this function and expects to
+            // get a PrimVal reflecting the specific type that it asked for, e.g. `PrimVal::Bool`
+            // when it was asking for `TyBool`. This used to always work because it would go
+            // through `read_value` which does the right thing.
+            //
+            // This is the comment and implementation from before my refactor:
+            //
+            //     TODO(solson): Sanity-check the primval type against the input type.
+            //     Value::ByVal(primval) => Ok(primval),
+            //
+            // Turns out sanity-checking isn't enough now, and we need conversion.
+            //
+            // Now that we can possibly be reading a `ByVal` straight out of the locals vec, if the
+            // user did something tricky like transmuting a `u8` to a `bool`, then we'll have a
+            // `PrimVal::U8` and need to convert to `PrimVal::Bool`.
+            //
+            // I want to avoid handling the full set of conversions between `PrimVal`s, so for now
+            // I will use this hack. I have a plan to change the representation of `PrimVal` to be
+            // more like a small piece of memory tagged with a `PrimValKind`, which should make the
+            // conversion easy and make the problem solveable using code already in `Memory`.
+            Value::ByVal(primval) => {
+                let substs = self.substs();
+                let ptr = self.alloc_ptr(ty, substs)?;
+                self.memory.write_primval(ptr, primval)?;
+                self.value_to_primval(Value::ByRef(ptr), ty)
+            }
+
             Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
         }
     }
@@ -1044,10 +1108,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest: Lvalue,
         val: PrimVal,
     ) -> EvalResult<'tcx, ()> {
-        // FIXME(solson)
-        let dest = dest.to_ptr();
-
-        self.memory.write_primval(dest, val)
+        match dest {
+            Lvalue::Ptr { ptr, extra } => {
+                assert_eq!(extra, LvalueExtra::None);
+                self.memory.write_primval(ptr, val)
+            }
+            Lvalue::Local { frame, local } => {
+                self.stack[frame].set_local(local, Value::ByVal(val));
+                Ok(())
+            }
+        }
     }
 
     fn write_value(
@@ -1056,9 +1126,29 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest: Lvalue,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
-        // FIXME(solson)
-        let dest = dest.to_ptr();
-        self.write_value_to_ptr(value, dest, dest_ty)
+        match dest {
+            Lvalue::Ptr { ptr, extra } => {
+                assert_eq!(extra, LvalueExtra::None);
+                self.write_value_to_ptr(value, ptr, dest_ty)?;
+            }
+            Lvalue::Local { frame, local } => {
+                if let Value::ByRef(src_ptr) = value {
+                    let dest_ptr = if let Value::ByRef(ptr) = self.stack[frame].get_local(local) {
+                        ptr
+                    } else {
+                        let substs = self.substs();
+                        let ptr = self.alloc_ptr(dest_ty, substs)?;
+                        self.stack[frame].set_local(local, Value::ByRef(ptr));
+                        ptr
+                    };
+                    self.copy(src_ptr, dest_ptr, dest_ty)?;
+                } else {
+                    // FIXME(solson): Is it safe to free the existing local here?
+                    self.stack[frame].set_local(local, value);
+                }
+            }
+        }
+        Ok(())
     }
 
     fn write_value_to_ptr(
@@ -1276,18 +1366,28 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
+    fn get_local(&self, local: mir::Local) -> Value {
+        // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
+        self.locals[local.index() - 1]
+    }
+
+    fn set_local(&mut self, local: mir::Local, value: Value) {
+        // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
+        self.locals[local.index() - 1] = value;
+    }
+}
+
 impl Lvalue {
     fn from_ptr(ptr: Pointer) -> Self {
         Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None }
     }
 
     fn to_ptr_and_extra(self) -> (Pointer, LvalueExtra) {
-        if let Lvalue::Ptr { ptr, extra } = self {
-            (ptr, extra)
-        } else {
-            // FIXME(solson): This isn't really a bug, but it's unhandled until I finish
-            // refactoring.
-            bug!("from_ptr: Not an Lvalue::Ptr");
+        match self {
+            Lvalue::Ptr { ptr, extra } => (ptr, extra),
+            _ => bug!("to_ptr_and_extra: expected Lvalue::Ptr, got {:?}", self),
+
         }
     }
 
@@ -1348,7 +1448,18 @@ pub fn eval_main<'a, 'tcx: 'a>(
 
     for _ in 0..step_limit {
         match ecx.step() {
-            Ok(true) => {}
+            Ok(true) => {
+                let limit = 5;
+                for (frame_index, frame) in ecx.stack.iter().enumerate() {
+                    trace!("frame[{}]:", frame_index);
+                    for (i, v) in frame.locals.iter().enumerate().take(limit) {
+                        trace!("  _{}: {:?}", i + 1, v);
+                    }
+                    if frame.locals.len() > limit {
+                        trace!("  ...");
+                    }
+                }
+            }
             Ok(false) => return,
             Err(e) => {
                 report(tcx, &ecx, e);
