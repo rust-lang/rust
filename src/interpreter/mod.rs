@@ -791,17 +791,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::mir::repr::Operand::*;
         match *op {
-            Consume(ref lvalue) => {
-                match self.eval_lvalue(lvalue)? {
-                    Lvalue::Ptr { ptr, extra } => {
-                        assert_eq!(extra, LvalueExtra::None);
-                        Ok(Value::ByRef(ptr))
-                    }
-                    Lvalue::Local { frame, local } => {
-                        self.stack[frame].get_local(local).ok_or(EvalError::ReadUndefBytes)
-                    }
-                }
-            }
+            Consume(ref lvalue) => self.eval_and_read_lvalue(lvalue),
 
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal;
@@ -837,6 +827,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
 
                 Ok(value)
+            }
+        }
+    }
+
+    fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
+        match self.eval_lvalue(lvalue)? {
+            Lvalue::Ptr { ptr, extra } => {
+                assert_eq!(extra, LvalueExtra::None);
+                Ok(Value::ByRef(ptr))
+            }
+            Lvalue::Local { frame, local } => {
+                self.stack[frame].get_local(local).ok_or(EvalError::ReadUndefBytes)
             }
         }
     }

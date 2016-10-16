@@ -41,13 +41,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
-                // FIXME(solson)
-                let lvalue = self.eval_lvalue(discr)?;
-                let lvalue = self.force_allocation(lvalue)?;
-
-                let discr_ptr = lvalue.to_ptr();
+                let discr_val = self.eval_and_read_lvalue(discr)?;
                 let discr_ty = self.lvalue_ty(discr);
-                let discr_val = self.read_value(discr_ptr, discr_ty)?;
                 let discr_prim = self.value_to_primval(discr_val, discr_ty)?;
 
                 // Branch to the `otherwise` case by default, if no match is found.
