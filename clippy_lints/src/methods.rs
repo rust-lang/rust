@@ -794,11 +794,7 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
     }
 }
 
-fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
-    let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.tables().expr_ty(&args[0]));
-    if !match_type(cx, obj_ty, &paths::VEC) {
-        return;
-    }
+fn lint_vec_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
     let arg_ty = cx.tcx.tables().expr_ty(&args[1]);
     if let Some(slice) = derefs_to_slice(cx, &args[1], arg_ty) {
         span_lint_and_then(cx, EXTEND_FROM_SLICE, expr.span, "use of `extend` to extend a Vec by a slice", |db| {
@@ -808,6 +804,13 @@ fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
                                        snippet(cx, args[0].span, "_"),
                                        slice));
         });
+    }
+}
+
+fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
+    let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.tables().expr_ty(&args[0]));
+    if match_type(cx, obj_ty, &paths::VEC) {
+        lint_vec_extend(cx, expr, args);
     }
 }
 
