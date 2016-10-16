@@ -1073,20 +1073,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Value::ByRef(ptr) => Ok(ptr),
 
             Value::ByVal(primval) => {
-                let size = self.type_size(ty);
-                let align = self.type_align(ty);
-                let ptr = self.memory.allocate(size, align)?;
+                let ptr = self.alloc_ptr(ty)?;
                 self.memory.write_primval(ptr, primval)?;
                 Ok(ptr)
             }
 
             Value::ByValPair(a, b) => {
-                let size = self.type_size(ty);
-                let align = self.type_align(ty);
-                let ptr = self.memory.allocate(size, align)?;
-                let ptr_size = self.memory.pointer_size() as isize;
-                self.memory.write_primval(ptr, a)?;
-                self.memory.write_primval(ptr.offset(ptr_size), b)?;
+                let ptr = self.alloc_ptr(ty)?;
+                self.write_pair_to_ptr(a, b, ptr, ty)?;
                 Ok(ptr)
             }
         }
@@ -1190,14 +1184,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match value {
             Value::ByRef(ptr) => self.copy(ptr, dest, dest_ty),
             Value::ByVal(primval) => self.memory.write_primval(dest, primval),
-            Value::ByValPair(a, b) => {
-                assert_eq!(self.get_field_count(dest_ty)?, 2);
-                let field_0 = self.get_field_offset(dest_ty, 0)?.bytes() as isize;
-                let field_1 = self.get_field_offset(dest_ty, 1)?.bytes() as isize;
-                self.memory.write_primval(dest.offset(field_0), a)?;
-                self.memory.write_primval(dest.offset(field_1), b)
-            }
+            Value::ByValPair(a, b) => self.write_pair_to_ptr(a, b, dest, dest_ty),
         }
+    }
+
+    fn write_pair_to_ptr(
+        &mut self,
+        a: PrimVal,
+        b: PrimVal,
+        ptr: Pointer,
+        ty: Ty<'tcx>
+    ) -> EvalResult<'tcx, ()> {
+        assert_eq!(self.get_field_count(ty)?, 2);
+        let field_0 = self.get_field_offset(ty, 0)?.bytes() as isize;
+        let field_1 = self.get_field_offset(ty, 1)?.bytes() as isize;
+        self.memory.write_primval(ptr.offset(field_0), a)?;
+        self.memory.write_primval(ptr.offset(field_1), b)?;
+        Ok(())
     }
 
     fn read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
