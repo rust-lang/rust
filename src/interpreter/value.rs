@@ -29,12 +29,19 @@ impl<'a, 'tcx: 'a> Value {
         }
     }
 
-    pub(super) fn expect_vtable(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
+    pub(super) fn expect_ptr_vtable_pair(
+        &self,
+        mem: &Memory<'a, 'tcx>
+    ) -> EvalResult<'tcx, (Pointer, Pointer)> {
         use self::Value::*;
         match *self {
-            ByRef(ptr) => mem.read_ptr(ptr.offset(mem.pointer_size() as isize)),
-            ByValPair(_, PrimVal::Ptr(vtable)) => Ok(vtable),
-            _ => unimplemented!(),
+            ByRef(ptr) => {
+                let ptr = mem.read_ptr(ptr)?;
+                let vtable = mem.read_ptr(ptr.offset(mem.pointer_size() as isize))?;
+                Ok((ptr, vtable))
+            }
+            ByValPair(PrimVal::Ptr(ptr), PrimVal::Ptr(vtable)) => Ok((ptr, vtable)),
+            _ => bug!("expected ptr and vtable, got {:?}", self),
         }
     }
 

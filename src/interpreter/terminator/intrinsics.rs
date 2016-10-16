@@ -352,7 +352,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 }
                 ty::TyTrait(..) => {
-                    let vtable = value.expect_vtable(&self.memory)?;
+                    let (_, vtable) = value.expect_ptr_vtable_pair(&self.memory)?;
                     // the second entry in the vtable is the dynamic size of the object.
                     let size = self.memory.read_usize(vtable.offset(pointer_size as isize))?;
                     let align = self.memory.read_usize(vtable.offset(pointer_size as isize * 2))?;

@@ -452,7 +452,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             traits::VtableObject(ref data) => {
                 let idx = self.tcx.get_vtable_index_of_object_method(data, def_id);
                 if let Some(&mut(ref mut first_arg, ref mut first_ty)) = args.get_mut(0) {
-                    let vtable = first_arg.expect_vtable(&self.memory)?;
+                    let (self_ptr, vtable) = first_arg.expect_ptr_vtable_pair(&self.memory)?;
+                    *first_arg = Value::ByVal(PrimVal::Ptr(self_ptr));
                     let idx = idx + 3;
                     let offset = idx * self.memory.pointer_size();
                     let fn_ptr = self.memory.read_ptr(vtable.offset(offset as isize))?;
