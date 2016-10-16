@@ -95,14 +95,14 @@ impl<'b> Resolver<'b> {
                 // Extract and intern the module part of the path. For
                 // globs and lists, the path is found directly in the AST;
                 // for simple paths we have to munge the path a little.
-                let module_path: Vec<Name> = match view_path.node {
+                let module_path: Vec<_> = match view_path.node {
                     ViewPathSimple(_, ref full_path) => {
                         full_path.segments
                                  .split_last()
                                  .unwrap()
                                  .1
                                  .iter()
-                                 .map(|seg| seg.identifier.name)
+                                 .map(|seg| seg.identifier)
                                  .collect()
                     }
 
@@ -110,7 +110,7 @@ impl<'b> Resolver<'b> {
                     ViewPathList(ref module_ident_path, _) => {
                         module_ident_path.segments
                                          .iter()
-                                         .map(|seg| seg.identifier.name)
+                                         .map(|seg| seg.identifier)
                                          .collect()
                     }
                 };
@@ -159,7 +159,7 @@ impl<'b> Resolver<'b> {
                                     (module_path.clone(), node.name.name, rename)
                                 } else {
                                     let name = match module_path.last() {
-                                        Some(name) => *name,
+                                        Some(ident) => ident.name,
                                         None => {
                                             resolve_error(
                                                 self,

@@ -1178,18 +1178,18 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 }
 
 trait Named {
-    fn name(&self) -> Name;
+    fn ident(&self) -> Ident;
 }
 
 impl Named for ast::PathSegment {
-    fn name(&self) -> Name {
-        self.identifier.name
+    fn ident(&self) -> Ident {
+        self.identifier
     }
 }
 
 impl Named for hir::PathSegment {
-    fn name(&self) -> Name {
-        self.name
+    fn ident(&self) -> Ident {
+        Ident::with_empty_ctxt(self.name)
     }
 }
 
@@ -1364,7 +1364,7 @@ impl<'a> Resolver<'a> {
     /// Resolves the given module path from the given root `search_module`.
     fn resolve_module_path_from_root(&mut self,
                                      mut search_module: Module<'a>,
-                                     module_path: &[Name],
+                                     module_path: &[Ident],
                                      index: usize,
                                      span: Option<Span>)
                                      -> ResolveResult<Module<'a>> {
@@ -1387,7 +1387,7 @@ impl<'a> Resolver<'a> {
         // upward though scope chains; we simply resolve names directly in
         // modules as we go.
         while index < module_path_len {
-            let name = module_path[index];
+            let name = module_path[index].name;
             match self.resolve_name_in_module(search_module, name, TypeNS, false, span) {
                 Failed(_) => {
                     let segment_name = name.as_str();
@@ -1441,7 +1441,7 @@ impl<'a> Resolver<'a> {
     /// Attempts to resolve the module part of an import directive or path
     /// rooted at the given module.
     fn resolve_module_path(&mut self,
-                           module_path: &[Name],
+                           module_path: &[Ident],
                            use_lexical_scope: UseLexicalScopeFlag,
                            span: Option<Span>)
                            -> ResolveResult<Module<'a>> {
@@ -1479,7 +1479,7 @@ impl<'a> Resolver<'a> {
                         // This is not a crate-relative path. We resolve the
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
-                        let ident = Ident::with_empty_ctxt(module_path[0]);
+                        let ident = module_path[0];
                         let lexical_binding =
                             self.resolve_ident_in_lexical_scope(ident, TypeNS, span);
                         if let Some(binding) = lexical_binding.and_then(LexicalScopeBinding::item) {
@@ -1577,11 +1577,11 @@ impl<'a> Resolver<'a> {
     /// Resolves a "module prefix". A module prefix is one or both of (a) `self::`;
     /// (b) some chain of `super::`.
     /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
-    fn resolve_module_prefix(&mut self, module_path: &[Name], span: Option<Span>)
+    fn resolve_module_prefix(&mut self, module_path: &[Ident], span: Option<Span>)
                              -> ResolveResult<ModulePrefixResult<'a>> {
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
-        let mut i = match &*module_path[0].as_str() {
+        let mut i = match &*module_path[0].name.as_str() {
             "self" => 1,
             "super" => 0,
             _ => return Success(NoPrefixFound),
@@ -1591,7 +1591,7 @@ impl<'a> Resolver<'a> {
             self.module_map[&self.current_module.normal_ancestor_id.unwrap()];
 
         // Now loop through all the `super`s we find.
-        while i < module_path.len() && "super" == module_path[i].as_str() {
+        while i < module_path.len() && "super" == module_path[i].name.as_str() {
             debug!("(resolving module prefix) resolving `super` at {}",
                    module_to_string(&containing_module));
             if let Some(parent) = containing_module.parent {
@@ -2681,12 +2681,8 @@ impl<'a> Resolver<'a> {
                                     namespace: Namespace)
                                     -> Result<&'a NameBinding<'a>,
                                               bool /* true if an error was reported */> {
-        let module_path = segments.split_last()
-                                  .unwrap()
-                                  .1
-                                  .iter()
-                                  .map(|ps| ps.identifier.name)
-                                  .collect::<Vec<_>>();
+        let module_path =
+            segments.split_last().unwrap().1.iter().map(|ps| ps.identifier).collect::<Vec<_>>();
 
         let containing_module;
         match self.resolve_module_path(&module_path, UseLexicalScope, Some(span)) {
@@ -2715,7 +2711,7 @@ impl<'a> Resolver<'a> {
                                                 bool /* true if an error was reported */>
         where T: Named,
     {
-        let module_path = segments.split_last().unwrap().1.iter().map(T::name).collect::<Vec<_>>();
+        let module_path = segments.split_last().unwrap().1.iter().map(T::ident).collect::<Vec<_>>();
         let root_module = self.graph_root;
 
         let containing_module;
@@ -2734,7 +2730,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let name = segments.last().unwrap().name();
+        let name = segments.last().unwrap().ident().name;
         let result =
             self.resolve_name_in_module(containing_module, name, namespace, false, Some(span));
         result.success().ok_or(false)
@@ -2976,9 +2972,8 @@ impl<'a> Resolver<'a> {
                                     msg = format!("did you mean {}?", msg);
                                 } else {
                                     // we display a help message if this is a module
-                                    let name_path = path.segments.iter()
-                                                        .map(|seg| seg.identifier.name)
-                                                        .collect::<Vec<_>>();
+                                    let name_path: Vec<_> =
+                                        path.segments.iter().map(|seg| seg.identifier).collect();
 
                                     match self.resolve_module_path(&name_path[..],
                                                                    UseLexicalScope,
@@ -3317,7 +3312,7 @@ impl<'a> Resolver<'a> {
             }
         };
 
-        let segments: Vec<_> = path.segments.iter().map(|seg| seg.identifier.name).collect();
+        let segments: Vec<_> = path.segments.iter().map(|seg| seg.identifier).collect();
         let mut path_resolution = err_path_resolution();
         let vis = match self.resolve_module_path(&segments, DontUseLexicalScope, Some(path.span)) {
             Success(module) => {
@@ -3469,26 +3464,24 @@ impl<'a> Resolver<'a> {
     }
 }
 
-fn names_to_string(names: &[Name]) -> String {
+fn names_to_string(names: &[Ident]) -> String {
     let mut first = true;
     let mut result = String::new();
-    for name in names {
+    for ident in names {
         if first {
             first = false
         } else {
             result.push_str("::")
         }
-        result.push_str(&name.as_str());
+        result.push_str(&ident.name.as_str());
     }
     result
 }
 
 fn path_names_to_string(path: &Path, depth: usize) -> String {
-    let names: Vec<ast::Name> = path.segments[..path.segments.len() - depth]
-                                    .iter()
-                                    .map(|seg| seg.identifier.name)
-                                    .collect();
-    names_to_string(&names[..])
+    let names: Vec<_> =
+        path.segments[..path.segments.len() - depth].iter().map(|seg| seg.identifier).collect();
+    names_to_string(&names)
 }
 
 /// When an entity with a given name is not available in scope, we search for
@@ -3551,15 +3544,15 @@ fn show_candidates(session: &mut DiagnosticBuilder,
 fn module_to_string(module: Module) -> String {
     let mut names = Vec::new();
 
-    fn collect_mod(names: &mut Vec<ast::Name>, module: Module) {
+    fn collect_mod(names: &mut Vec<Ident>, module: Module) {
         if let ModuleKind::Def(_, name) = module.kind {
             if let Some(parent) = module.parent {
-                names.push(name);
+                names.push(Ident::with_empty_ctxt(name));
                 collect_mod(names, parent);
             }
         } else {
             // danger, shouldn't be ident?
-            names.push(token::intern("<opaque>"));
+            names.push(token::str_to_ident("<opaque>"));
             collect_mod(names, module.parent.unwrap());
         }
     }
@@ -3568,7 +3561,7 @@ fn module_to_string(module: Module) -> String {
     if names.is_empty() {
         return "???".to_string();
     }
-    names_to_string(&names.into_iter().rev().collect::<Vec<ast::Name>>())
+    names_to_string(&names.into_iter().rev().collect::<Vec<_>>())
 }
 
 fn err_path_resolution() -> PathResolution {
