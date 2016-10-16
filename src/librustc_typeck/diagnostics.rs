@@ -1915,6 +1915,45 @@ More details can be found in [RFC 438].
 [RFC 438]: https://github.com/rust-lang/rfcs/pull/438
 "##,
 
+E0182: r##"
+You bound an associated type in an expression path which is not
+allowed.
+
+Erroneous code example:
+
+```compile_fail,E0182
+trait Foo {
+    type A;
+    fn bar() -> isize;
+}
+
+impl Foo for isize {
+    type A = usize;
+    fn bar() -> isize { 42 }
+}
+
+// error: unexpected binding of associated item in expression path
+let x: isize = Foo::<A=usize>::bar();
+```
+
+To give a concrete type when using the Universal Function Call Syntax,
+use "Type as Trait". Example:
+
+```
+trait Foo {
+    type A;
+    fn bar() -> isize;
+}
+
+impl Foo for isize {
+    type A = usize;
+    fn bar() -> isize { 42 }
+}
+
+let x: isize = <isize as Foo>::bar(); // ok!
+```
+"##,
+
 E0184: r##"
 Explicitly implementing both Drop and Copy for a type is currently disallowed.
 This feature can make some sense in theory, but the current implementation is
@@ -4054,7 +4093,6 @@ register_diagnostics! {
 //  E0168,
 //  E0173, // manual implementations of unboxed closure traits are experimental
 //  E0174,
-    E0182,
     E0183,
 //  E0187, // can't infer the kind of the closure
 //  E0188, // can not cast an immutable reference to a mutable pointer
