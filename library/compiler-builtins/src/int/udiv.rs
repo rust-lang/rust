@@ -191,49 +191,47 @@ pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
         // 1 <= sr <= u32::bits() - 1
         q = n << (u64::bits() - sr);
         r = n >> sr;
-    } else {
-        if d.high() == 0 {
-            // K X
-            // ---
-            // 0 K
-            if d.low().is_power_of_two() {
-                if let Some(rem) = rem {
-                    *rem = u64::from(n.low() & (d.low() - 1));
-                }
-
-                if d.low() == 1 {
-                    return n;
-                } else {
-                    let sr = d.low().trailing_zeros();
-                    return n >> sr;
-                };
+    } else if d.high() == 0 {
+        // K X
+        // ---
+        // 0 K
+        if d.low().is_power_of_two() {
+            if let Some(rem) = rem {
+                *rem = u64::from(n.low() & (d.low() - 1));
             }
 
-            sr = 1 + u32::bits() + d.low().leading_zeros() - n.high().leading_zeros();
-
-            // 2 <= sr <= u64::bits() - 1
-            q = n << (u64::bits() - sr);
-            r = n >> sr;
-        } else {
-            // K X
-            // ---
-            // K K
-            sr = d.high().leading_zeros().wrapping_sub(n.high().leading_zeros());
-
-            // D > N
-            if sr > u32::bits() - 1 {
-                if let Some(rem) = rem {
-                    *rem = n;
-                }
-                return 0;
-            }
-
-            sr += 1;
-
-            // 1 <= sr <= u32::bits()
-            q = n << (u64::bits() - sr);
-            r = n >> sr;
+            if d.low() == 1 {
+                return n;
+            } else {
+                let sr = d.low().trailing_zeros();
+                return n >> sr;
+            };
         }
+
+        sr = 1 + u32::bits() + d.low().leading_zeros() - n.high().leading_zeros();
+
+        // 2 <= sr <= u64::bits() - 1
+        q = n << (u64::bits() - sr);
+        r = n >> sr;
+    } else {
+        // K X
+        // ---
+        // K K
+        sr = d.high().leading_zeros().wrapping_sub(n.high().leading_zeros());
+
+        // D > N
+        if sr > u32::bits() - 1 {
+            if let Some(rem) = rem {
+                *rem = n;
+            }
+            return 0;
+        }
+
+        sr += 1;
+
+        // 1 <= sr <= u32::bits()
+        q = n << (u64::bits() - sr);
+        r = n >> sr;
     }
 
     // Not a special case

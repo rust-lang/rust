@@ -175,7 +175,8 @@ macro_rules! add {
             // correct result in that case.
             if round_guard_sticky > 0x4 { result += one; }
             if round_guard_sticky == 0x4 { result += result & one; }
-            return (<$ty>::from_repr(result.0));
+
+            <$ty>::from_repr(result.0)
         }
     }
 }
