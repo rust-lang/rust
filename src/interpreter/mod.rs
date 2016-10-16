@@ -635,13 +635,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Box(ty) => {
-                // FIXME(solson)
-                let dest = self.force_allocation(dest)?.to_ptr();
-
-                let size = self.type_size(ty);
-                let align = self.type_align(ty);
-                let ptr = self.memory.allocate(size, align)?;
-                self.memory.write_ptr(dest, ptr)?;
+                let ptr = self.alloc_ptr(ty)?;
+                self.write_primval(dest, PrimVal::Ptr(ptr))?;
             }
 
             Cast(kind, ref operand, cast_ty) => {
