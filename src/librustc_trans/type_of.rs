@@ -264,8 +264,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
       ty::TyFnDef(..) => Type::nil(cx),
       ty::TyFnPtr(f) => {
-        let sig = cx.tcx().erase_late_bound_regions(&f.sig);
-        let sig = cx.tcx().normalize_associated_type(&sig);
+        let sig = cx.tcx().erase_late_bound_regions_and_normalize(&f.sig);
         FnType::new(cx, f.abi, &sig, &[]).llvm_type(cx).ptr_to()
       }
       ty::TyTuple(ref tys) if tys.is_empty() => Type::nil(cx),
