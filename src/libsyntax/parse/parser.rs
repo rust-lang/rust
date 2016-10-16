@@ -4180,7 +4180,7 @@ impl<'a> Parser<'a> {
         self.diagnostic().struct_span_warn(self.span, {
             &format!("expected `;`, found `{}`", self.this_token_to_string())
         }).note({
-            "This was erroneously allowed and will become a hard error in a future release"
+            "This was erroneously allowed and will become a hard error in a future release, see PR 34660"
         }).emit();
     }
 
