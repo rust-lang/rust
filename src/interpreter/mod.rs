@@ -1389,6 +1389,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
         Ok(())
     }
+
+    fn dump_locals(&self, limit: usize) {
+        for (frame_index, frame) in self.stack.iter().enumerate() {
+            trace!("frame[{}]:", frame_index);
+
+            let locals: Vec<(mir::Local, Value)> = frame.mir.local_decls
+                .indices()
+                .filter_map(|i| {
+                    if i == mir::RETURN_POINTER { return None; }
+                    frame.get_local(i).map(|local| (i, local))
+                })
+                .collect();
+
+            for &(i, v) in locals.iter().take(limit) {
+                trace!("  {:?}: {:?}", i, v);
+            }
+            if locals.len() > limit {
+                trace!("  ...");
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
@@ -1471,16 +1492,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     for _ in 0..step_limit {
         match ecx.step() {
             Ok(true) => {
-                let limit = 5;
-                for (frame_index, frame) in ecx.stack.iter().enumerate() {
-                    trace!("frame[{}]:", frame_index);
-                    for (i, v) in frame.locals.iter().enumerate().take(limit) {
-                        trace!("  _{}: {:?}", i + 1, v);
-                    }
-                    if frame.locals.len() > limit {
-                        trace!("  ...");
-                    }
-                }
+                ecx.dump_locals(5);
             }
             Ok(false) => return,
             Err(e) => {
