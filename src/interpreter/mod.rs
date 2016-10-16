@@ -82,7 +82,9 @@ pub struct Frame<'a, 'tcx: 'a> {
     /// The list of locals for this stack frame, stored in order as
     /// `[arguments..., variables..., temporaries...]`. The locals are stored as `Value`s, which
     /// can either directly contain `PrimVal` or refer to some part of an `Allocation`.
-    pub locals: Vec<Value>,
+    ///
+    /// Before being initialized, a local is simply marked as None.
+    pub locals: Vec<Option<Value>>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -351,27 +353,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, ()> {
         ::log_settings::settings().indentation += 1;
 
-        // Skip 1 because we don't make a slot for the ReturnPointer, which is local number zero.
-        // The ReturnPointer is represented by `return_lvalue`, and points to an allocation or a
-        // local in a higher stack frame.
-        //
-        // FIXME(solson): Write this in a way that doesn't assume ReturnPointer is local 0.
-        let local_tys = mir.local_decls.iter().map(|a| a.ty).skip(1);
-
-        let locals: EvalResult<'tcx, Vec<Value>> = local_tys.map(|ty| {
-            let size = self.type_size_with_substs(ty, substs);
-            let align = self.type_align_with_substs(ty, substs);
-
-            // FIXME(solson)
-            self.memory.allocate(size, align).map(Value::ByRef)
-        }).collect();
+        // Subtract 1 because `local_decls` includes the ReturnPointer, but we don't store a local
+        // `Value` for that.
+        let num_locals = mir.local_decls.len() - 1;
+        let locals = vec![None; num_locals];
 
         self.stack.push(Frame {
             mir: mir.clone(),
             block: mir::START_BLOCK,
             return_to_block: return_to_block,
             return_lvalue: return_lvalue,
-            locals: locals?,
+            locals: locals,
             span: span,
             def_id: def_id,
             substs: substs,
@@ -800,16 +792,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::repr::Operand::*;
         match *op {
             Consume(ref lvalue) => {
-                let val = match self.eval_lvalue(lvalue)? {
+                match self.eval_lvalue(lvalue)? {
                     Lvalue::Ptr { ptr, extra } => {
                         assert_eq!(extra, LvalueExtra::None);
-                        Value::ByRef(ptr)
+                        Ok(Value::ByRef(ptr))
                     }
                     Lvalue::Local { frame, local } => {
-                        self.stack[frame].get_local(local)
+                        self.stack[frame].get_local(local).ok_or(EvalError::ReadUndefBytes)
                     }
-                };
-                Ok(val)
+                }
             }
 
             Constant(mir::Constant { ref literal, ty, .. }) => {
@@ -850,16 +841,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue> {
+    fn eval_lvalue(&mut self, mir_lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue> {
         use rustc::mir::repr::Lvalue::*;
-        match *lvalue {
-            Local(i) if self.frame().mir.local_kind(i) == mir::LocalKind::ReturnPointer => {
-                Ok(self.frame().return_lvalue)
-            }
+        let lvalue = match *mir_lvalue {
+            Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
 
             Local(local) => {
-                let frame = self.stack.len() - 1;
-                Ok(Lvalue::Local { frame: frame, local: local })
+                Lvalue::Local {
+                    frame: self.stack.len() - 1,
+                    local: local,
+                }
             }
 
             Static(def_id) => {
@@ -871,11 +862,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 let ptr = *self.statics.get(&cid)
                     .expect("static should have been cached (lvalue)");
-                Ok(Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None })
+                Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None }
             }
 
-            Projection(ref proj) => self.eval_lvalue_projection(proj),
-        }
+            Projection(ref proj) => return self.eval_lvalue_projection(proj),
+        };
+        Ok(lvalue)
     }
 
     fn eval_lvalue_projection(
@@ -1020,13 +1012,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let new_lvalue = match lvalue {
             Lvalue::Local { frame, local } => {
                 let ptr = match self.stack[frame].get_local(local) {
-                    Value::ByRef(ptr) => ptr,
-                    val => {
+                    Some(Value::ByRef(ptr)) => ptr,
+                    opt_val => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
                         let substs = self.stack[frame].substs;
                         let ptr = self.alloc_ptr(ty, substs)?;
-                        self.write_value_to_ptr(val, ptr, ty)?;
                         self.stack[frame].set_local(local, Value::ByRef(ptr));
+                        if let Some(val) = opt_val {
+                            self.write_value_to_ptr(val, ptr, ty)?;
+                        }
                         ptr
                     }
                 };
@@ -1133,7 +1127,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
             Lvalue::Local { frame, local } => {
                 if let Value::ByRef(src_ptr) = value {
-                    let dest_ptr = if let Value::ByRef(ptr) = self.stack[frame].get_local(local) {
+                    let dest_val = self.stack[frame].get_local(local);
+                    let dest_ptr = if let Some(Value::ByRef(ptr)) = dest_val {
                         ptr
                     } else {
                         let substs = self.substs();
@@ -1367,14 +1362,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
-    fn get_local(&self, local: mir::Local) -> Value {
+    fn get_local(&self, local: mir::Local) -> Option<Value> {
         // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
         self.locals[local.index() - 1]
     }
 
     fn set_local(&mut self, local: mir::Local, value: Value) {
         // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
-        self.locals[local.index() - 1] = value;
+        self.locals[local.index() - 1] = Some(value);
     }
 }
 

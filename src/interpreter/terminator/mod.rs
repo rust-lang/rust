@@ -216,15 +216,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let arg_locals = self.frame().mir.args_iter();
                 for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
-                    // FIXME(solson)
-                    let dest = self.frame().get_local(arg_local);
-
-                    // FIXME(solson)
-                    let dest = match dest {
-                        Value::ByRef(p) => Lvalue::from_ptr(p),
-                        _ => bug!("all locals should be ByRef until I finish refactoring"),
-                    };
-
+                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                     self.write_value(arg_val, dest, arg_ty)?;
                 }
 

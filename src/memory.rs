@@ -52,9 +52,11 @@ impl Pointer {
     pub fn offset(self, i: isize) -> Self {
         Pointer { offset: (self.offset as isize + i) as usize, ..self }
     }
+
     pub fn points_to_zst(&self) -> bool {
         self.alloc_id == ZST_ALLOC_ID
     }
+
     pub fn to_int<'tcx>(&self) -> EvalResult<'tcx, usize> {
         match self.alloc_id {
             NEVER_ALLOC_ID |
@@ -62,18 +64,21 @@ impl Pointer {
             _ => Err(EvalError::ReadPointerAsBytes),
         }
     }
+
     pub fn from_int(i: usize) -> Self {
         Pointer {
             alloc_id: ZST_ALLOC_ID,
             offset: i,
         }
     }
+
     fn zst_ptr() -> Self {
         Pointer {
             alloc_id: ZST_ALLOC_ID,
             offset: 0,
         }
     }
+
     pub fn never_ptr() -> Self {
         Pointer {
             alloc_id: NEVER_ALLOC_ID,
