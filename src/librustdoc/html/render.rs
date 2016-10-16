@@ -449,7 +449,6 @@ pub fn run(mut krate: clean::Crate,
             favicon: "".to_string(),
             external_html: external_html.clone(),
             krate: krate.name.clone(),
-            playground_url: "".to_string(),
         },
         css_file_extension: css_file_extension.clone(),
     };
@@ -469,11 +468,10 @@ pub fn run(mut krate: clean::Crate,
                 }
                 clean::NameValue(ref x, ref s)
                         if "html_playground_url" == *x => {
-                    scx.layout.playground_url = s.to_string();
-                    markdown::PLAYGROUND_KRATE.with(|slot| {
+                    markdown::PLAYGROUND.with(|slot| {
                         if slot.borrow().is_none() {
                             let name = krate.name.clone();
-                            *slot.borrow_mut() = Some(Some(name));
+                            *slot.borrow_mut() = Some((Some(name), s.clone()));
                         }
                     });
                 }
@@ -659,8 +657,6 @@ fn write_shared(cx: &Context,
           include_bytes!("static/jquery-2.1.4.min.js"))?;
     write(cx.dst.join("main.js"),
           include_bytes!("static/main.js"))?;
-    write(cx.dst.join("playpen.js"),
-          include_bytes!("static/playpen.js"))?;
     write(cx.dst.join("rustdoc.css"),
           include_bytes!("static/rustdoc.css"))?;
     write(cx.dst.join("main.css"),
