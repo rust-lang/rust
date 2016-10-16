@@ -276,7 +276,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
 pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          tts: Vec<tokenstream::TokenTree>,
                          cfg: ast::CrateConfig) -> Parser<'a> {
-    let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, None, tts);
+    let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, tts);
     let mut p = Parser::new(sess, cfg, Box::new(trdr));
     p.check_unknown_macro_variable();
     p
