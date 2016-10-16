@@ -614,23 +614,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Ref(_, _, ref lvalue) => {
-                // FIXME(solson)
-                let dest = self.force_allocation(dest)?.to_ptr();
+                let src = self.eval_lvalue(lvalue)?;
+                let (raw_ptr, extra) = self.force_allocation(src)?.to_ptr_and_extra();
+                let ptr = PrimVal::Ptr(raw_ptr);
 
-                let lvalue = self.eval_lvalue(lvalue)?;
-
-                // FIXME(solson)
-                let (ptr, extra) = self.force_allocation(lvalue)?.to_ptr_and_extra();
-
-                self.memory.write_ptr(dest, ptr)?;
-                let extra_ptr = dest.offset(self.memory.pointer_size() as isize);
-                match extra {
-                    LvalueExtra::None => {},
-                    LvalueExtra::Length(len) => self.memory.write_usize(extra_ptr, len)?,
-                    LvalueExtra::Vtable(ptr) => self.memory.write_ptr(extra_ptr, ptr)?,
+                let val = match extra {
+                    LvalueExtra::None => Value::ByVal(ptr),
+                    LvalueExtra::Length(len) => Value::ByValPair(ptr, self.usize_primval(len)),
+                    LvalueExtra::Vtable(vtable) => Value::ByValPair(ptr, PrimVal::Ptr(vtable)),
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
-                }
+                };
+
+                self.write_value(val, dest, dest_ty)?;
             }
 
             Box(ty) => {
@@ -774,10 +770,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(variant.offsets[field_index])
             }
             FatPointer { .. } => {
-                let bytes = layout::FAT_PTR_ADDR * self.memory.pointer_size();
+                let bytes = field_index * self.memory.pointer_size();
                 Ok(Size::from_bytes(bytes as u64))
             }
-            _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, with layout: {:?}", ty, layout))),
+            _ => {
+                let msg = format!("can't handle type: {:?}, with layout: {:?}", ty, layout);
+                Err(EvalError::Unimplemented(msg))
+            }
+        }
+    }
+
+    fn get_field_count(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, usize> {
+        let layout = self.type_layout(ty);
+
+        use rustc::ty::layout::Layout::*;
+        match *layout {
+            Univariant { ref variant, .. } => Ok(variant.offsets.len()),
+            FatPointer { .. } => Ok(2),
+            _ => {
+                let msg = format!("can't handle type: {:?}, with layout: {:?}", ty, layout);
+                Err(EvalError::Unimplemented(msg))
+            }
         }
     }
 
@@ -1155,18 +1168,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Value::ByRef(ptr) => self.copy(ptr, dest, dest_ty),
             Value::ByVal(primval) => self.memory.write_primval(dest, primval),
             Value::ByValPair(a, b) => {
-                self.memory.write_primval(dest, a)?;
-                let layout = self.type_layout(dest_ty);
-                let offset = match *layout {
-                    Layout::Univariant { .. } => {
-                        bug!("I don't think this can ever happen until we have custom fat pointers");
-                        //variant.field_offset(1).bytes() as isize
-                    },
-                    Layout::FatPointer { .. } => self.memory.pointer_size() as isize,
-                    _ => bug!("tried to write value pair of non-fat pointer type: {:?}", layout),
-                };
-                let extra_dest = dest.offset(offset);
-                self.memory.write_primval(extra_dest, b)
+                assert_eq!(self.get_field_count(dest_ty)?, 2);
+                let field_0 = self.get_field_offset(dest_ty, 0)?.bytes() as isize;
+                let field_1 = self.get_field_offset(dest_ty, 1)?.bytes() as isize;
+                self.memory.write_primval(dest.offset(field_0), a)?;
+                self.memory.write_primval(dest.offset(field_1), b)
             }
         }
     }
