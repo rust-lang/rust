@@ -822,7 +822,7 @@ impl<T> Vec<T> {
     pub fn dedup_by<F>(&mut self, mut same_bucket: F) where F: FnMut(&mut T, &mut T) -> bool {
         unsafe {
             // Although we have a mutable reference to `self`, we cannot make
-            // *arbitrary* changes. The `PartialEq` comparisons could panic, so we
+            // *arbitrary* changes. The `same_bucket` calls could panic, so we
             // must ensure that the vector is in a valid state at all time.
             //
             // The way that we handle this is by using swaps; we iterate
