@@ -452,7 +452,7 @@ pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             output.push_str("fn(");
 
-            let sig = tcx.erase_late_bound_regions(sig);
+            let sig = tcx.erase_late_bound_regions_and_normalize(sig);
             if !sig.inputs.is_empty() {
                 for &parameter_type in &sig.inputs {
                     push_unique_type_name(tcx, parameter_type, output);

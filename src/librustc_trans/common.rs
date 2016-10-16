@@ -114,8 +114,7 @@ pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
             if tys.len() != 2 {
                 return None;
             }
-            Some([ccx.tcx().normalize_associated_type(&tys[0]),
-                  ccx.tcx().normalize_associated_type(&tys[1])])
+            Some([tys[0], tys[1]])
         }
         _ => None
     }

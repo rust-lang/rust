@@ -1050,8 +1050,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     let fn_ty = ccx.tcx().erase_regions(&fn_ty);
     let fn_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &fn_ty);
 
-    let sig = ccx.tcx().erase_late_bound_regions(fn_ty.fn_sig());
-    let sig = ccx.tcx().normalize_associated_type(&sig);
+    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(fn_ty.fn_sig());
     let abi = fn_ty.fn_abi();
 
     let lldecl = match ccx.instances().borrow().get(&instance) {
@@ -1073,8 +1072,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let ctor_ty = ccx.tcx().lookup_item_type(def_id).ty;
     let ctor_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &ctor_ty);
 
-    let sig = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_sig());
-    let sig = ccx.tcx().normalize_associated_type(&sig);
+    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);

@@ -418,7 +418,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     _ => bug!("{} is not callable", callee.ty)
                 };
 
-                let sig = bcx.tcx().erase_late_bound_regions(sig);
+                let sig = bcx.tcx().erase_late_bound_regions_and_normalize(sig);
 
                 // Handle intrinsics old trans wants Expr's for, ourselves.
                 let intrinsic = match (&callee.ty.sty, &callee.data) {
