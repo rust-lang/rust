@@ -55,7 +55,7 @@ use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
-use syntax::ast::{CRATE_NODE_ID, Name, NodeId, IntTy, UintTy};
+use syntax::ast::{CRATE_NODE_ID, Name, NodeId, Ident, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -509,7 +509,7 @@ struct BindingInfo {
 }
 
 // Map from the name in a pattern to its binding mode.
-type BindingMap = FnvHashMap<ast::Ident, BindingInfo>;
+type BindingMap = FnvHashMap<Ident, BindingInfo>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum PatternSource {
@@ -714,7 +714,7 @@ enum ModulePrefixResult<'a> {
 /// One local scope.
 #[derive(Debug)]
 struct Rib<'a> {
-    bindings: FnvHashMap<ast::Ident, Def>,
+    bindings: FnvHashMap<Ident, Def>,
     kind: RibKind<'a>,
 }
 
@@ -1479,7 +1479,7 @@ impl<'a> Resolver<'a> {
                         // This is not a crate-relative path. We resolve the
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
-                        let ident = ast::Ident::with_empty_ctxt(module_path[0]);
+                        let ident = Ident::with_empty_ctxt(module_path[0]);
                         let lexical_binding =
                             self.resolve_ident_in_lexical_scope(ident, TypeNS, span);
                         if let Some(binding) = lexical_binding.and_then(LexicalScopeBinding::item) {
@@ -1525,12 +1525,12 @@ impl<'a> Resolver<'a> {
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
     fn resolve_ident_in_lexical_scope(&mut self,
-                                      mut ident: ast::Ident,
+                                      mut ident: Ident,
                                       ns: Namespace,
                                       record_used: Option<Span>)
                                       -> Option<LexicalScopeBinding<'a>> {
         if ns == TypeNS {
-            ident = ast::Ident::with_empty_ctxt(ident.name);
+            ident = Ident::with_empty_ctxt(ident.name);
         }
 
         // Walk backwards up the ribs in scope.
@@ -1649,7 +1649,7 @@ impl<'a> Resolver<'a> {
 
     /// Searches the current set of local scopes for labels.
     /// Stops after meeting a closure.
-    fn search_label(&self, mut ident: ast::Ident) -> Option<Def> {
+    fn search_label(&self, mut ident: Ident) -> Option<Def> {
         for rib in self.label_ribs.iter().rev() {
             match rib.kind {
                 NormalRibKind => {
@@ -1813,7 +1813,7 @@ impl<'a> Resolver<'a> {
                     // plain insert (no renaming)
                     let def_id = self.definitions.local_def_id(type_parameter.id);
                     let def = Def::TyParam(def_id);
-                    function_type_rib.bindings.insert(ast::Ident::with_empty_ctxt(name), def);
+                    function_type_rib.bindings.insert(Ident::with_empty_ctxt(name), def);
                     self.record_def(type_parameter.id, PathResolution::new(def));
                 }
                 self.type_ribs.push(function_type_rib);
@@ -2271,7 +2271,7 @@ impl<'a> Resolver<'a> {
                      pat_id: NodeId,
                      outer_pat_id: NodeId,
                      pat_src: PatternSource,
-                     bindings: &mut FnvHashMap<ast::Ident, NodeId>)
+                     bindings: &mut FnvHashMap<Ident, NodeId>)
                      -> PathResolution {
         // Add the binding to the local ribs, if it
         // doesn't already exist in the bindings map. (We
@@ -2372,7 +2372,7 @@ impl<'a> Resolver<'a> {
                        pat_src: PatternSource,
                        // Maps idents to the node ID for the
                        // outermost pattern that binds them.
-                       bindings: &mut FnvHashMap<ast::Ident, NodeId>) {
+                       bindings: &mut FnvHashMap<Ident, NodeId>) {
         // Visit all direct subpatterns of this pattern.
         let outer_pat_id = pat.id;
         pat.walk(&mut |pat| {
@@ -2573,7 +2573,7 @@ impl<'a> Resolver<'a> {
 
     // Resolve a single identifier
     fn resolve_identifier(&mut self,
-                          identifier: ast::Ident,
+                          identifier: Ident,
                           namespace: Namespace,
                           record_used: Option<Span>)
                           -> Option<LocalDef> {
@@ -2835,7 +2835,7 @@ impl<'a> Resolver<'a> {
         } SuggestionType::NotFound
     }
 
-    fn resolve_labeled_block(&mut self, label: Option<ast::Ident>, id: NodeId, block: &Block) {
+    fn resolve_labeled_block(&mut self, label: Option<Ident>, id: NodeId, block: &Block) {
         if let Some(label) = label {
             let def = Def::Label(id);
             self.with_label_rib(|this| {
@@ -3237,7 +3237,7 @@ impl<'a> Resolver<'a> {
                 if name == lookup_name && ns == namespace {
                     if filter_fn(name_binding.def()) {
                         // create the path
-                        let ident = ast::Ident::with_empty_ctxt(name);
+                        let ident = Ident::with_empty_ctxt(name);
                         let params = PathParameters::none();
                         let segment = PathSegment {
                             identifier: ident,
@@ -3271,7 +3271,7 @@ impl<'a> Resolver<'a> {
                         _ if module.parent.is_none() => path_segments.clone(),
                         ModuleKind::Def(_, name) => {
                             let mut paths = path_segments.clone();
-                            let ident = ast::Ident::with_empty_ctxt(name);
+                            let ident = Ident::with_empty_ctxt(name);
                             let params = PathParameters::none();
                             let segm = PathSegment {
                                 identifier: ident,
