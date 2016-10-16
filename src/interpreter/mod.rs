@@ -889,17 +889,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         proj: &mir::LvalueProjection<'tcx>,
     ) -> EvalResult<'tcx, Lvalue> {
         let base = self.eval_lvalue(&proj.base)?;
-
-        // FIXME(solson): Is this always necessary?
-        let base = self.force_allocation(base)?;
-
-        let (base_ptr, base_extra) = base.to_ptr_and_extra();
         let base_ty = self.lvalue_ty(&proj.base);
         let base_layout = self.type_layout(base_ty);
 
         use rustc::mir::repr::ProjectionElem::*;
         let (ptr, extra) = match proj.elem {
             Field(field, field_ty) => {
+                // FIXME(solson)
+                let base = self.force_allocation(base)?;
+                let (base_ptr, base_extra) = base.to_ptr_and_extra();
+
                 let field_ty = self.monomorphize(field_ty, self.substs());
                 let field = field.index();
 
@@ -946,6 +945,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Downcast(_, variant) => {
+                // FIXME(solson)
+                let base = self.force_allocation(base)?;
+                let (base_ptr, base_extra) = base.to_ptr_and_extra();
+
                 use rustc::ty::layout::Layout::*;
                 let extra = match *base_layout {
                     General { .. } => LvalueExtra::DowncastVariant(variant),
@@ -958,7 +961,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Deref => {
                 use primval::PrimVal::*;
                 use interpreter::value::Value::*;
-                match self.read_value(base_ptr, base_ty)? {
+
+                let val = match self.eval_and_read_lvalue(&proj.base)? {
+                    ByRef(ptr) => self.read_value(ptr, base_ty)?,
+                    v => v,
+                };
+
+                match val {
                     ByValPair(Ptr(ptr), Ptr(vptr)) => (ptr, LvalueExtra::Vtable(vptr)),
                     ByValPair(Ptr(ptr), n) =>
                         (ptr, LvalueExtra::Length(n.expect_uint("slice length"))),
@@ -968,6 +977,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Index(ref operand) => {
+                // FIXME(solson)
+                let base = self.force_allocation(base)?;
+                let (base_ptr, _) = base.to_ptr_and_extra();
+
                 let (elem_ty, len) = base.elem_ty_and_len(base_ty);
                 let elem_size = self.type_size(elem_ty);
                 let n_ptr = self.eval_operand(operand)?;
@@ -980,6 +993,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             ConstantIndex { offset, min_length, from_end } => {
+                // FIXME(solson)
+                let base = self.force_allocation(base)?;
+                let (base_ptr, _) = base.to_ptr_and_extra();
+
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
                 let elem_size = self.type_size(elem_ty);
                 assert!(n >= min_length as u64);
@@ -995,6 +1012,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Subslice { from, to } => {
+                // FIXME(solson)
+                let base = self.force_allocation(base)?;
+                let (base_ptr, _) = base.to_ptr_and_extra();
+
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
                 let elem_size = self.type_size(elem_ty);
                 assert!((from as u64) <= n - (to as u64));
