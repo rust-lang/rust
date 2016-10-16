@@ -1124,7 +1124,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Value::ByVal(primval) => {
                 let ptr = self.alloc_ptr(ty)?;
                 self.memory.write_primval(ptr, primval)?;
-                self.value_to_primval(Value::ByRef(ptr), ty)
+                let primval = self.value_to_primval(Value::ByRef(ptr), ty)?;
+                self.memory.deallocate(ptr)?;
+                Ok(primval)
             }
 
             Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
