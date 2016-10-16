@@ -175,7 +175,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub fn alloc_ptr(
+    pub fn alloc_ptr(&mut self, ty: Ty<'tcx>) -> EvalResult<'tcx, Pointer> {
+        let substs = self.substs();
+        self.alloc_ptr_with_substs(ty, substs)
+    }
+
+    pub fn alloc_ptr_with_substs(
         &mut self,
         ty: Ty<'tcx>,
         substs: &'tcx Substs<'tcx>
@@ -1018,7 +1023,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     opt_val => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
                         let substs = self.stack[frame].substs;
-                        let ptr = self.alloc_ptr(ty, substs)?;
+                        let ptr = self.alloc_ptr_with_substs(ty, substs)?;
                         self.stack[frame].set_local(local, Value::ByRef(ptr));
                         if let Some(val) = opt_val {
                             self.write_value_to_ptr(val, ptr, ty)?;
@@ -1089,8 +1094,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // more like a small piece of memory tagged with a `PrimValKind`, which should make the
             // conversion easy and make the problem solveable using code already in `Memory`.
             Value::ByVal(primval) => {
-                let substs = self.substs();
-                let ptr = self.alloc_ptr(ty, substs)?;
+                let ptr = self.alloc_ptr(ty)?;
                 self.memory.write_primval(ptr, primval)?;
                 self.value_to_primval(Value::ByRef(ptr), ty)
             }
@@ -1133,8 +1137,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let dest_ptr = if let Some(Value::ByRef(ptr)) = dest_val {
                         ptr
                     } else {
-                        let substs = self.substs();
-                        let ptr = self.alloc_ptr(dest_ty, substs)?;
+                        let ptr = self.alloc_ptr(dest_ty)?;
                         self.stack[frame].set_local(local, Value::ByRef(ptr));
                         ptr
                     };
@@ -1430,16 +1433,13 @@ pub fn eval_main<'a, 'tcx: 'a>(
 ) {
     let mir = mir_map.map.get(&def_id).expect("no mir for main function");
     let mut ecx = EvalContext::new(tcx, mir_map, memory_size, stack_limit);
-    let substs = subst::Substs::empty(tcx);
-    let return_ptr = ecx.alloc_ptr(mir.return_ty, substs)
-        .expect("should at least be able to allocate space for the main function's return value");
 
     ecx.push_stack_frame(
         def_id,
         mir.span,
         CachedMir::Ref(mir),
-        substs,
-        Lvalue::from_ptr(return_ptr), // FIXME(solson)
+        subst::Substs::empty(tcx),
+        Lvalue::from_ptr(Pointer::zst_ptr()),
         StackPopCleanup::None
     ).expect("could not allocate first stack frame");
 

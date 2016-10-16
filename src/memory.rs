@@ -72,7 +72,7 @@ impl Pointer {
         }
     }
 
-    fn zst_ptr() -> Self {
+    pub fn zst_ptr() -> Self {
         Pointer {
             alloc_id: ZST_ALLOC_ID,
             offset: 0,

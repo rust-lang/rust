@@ -129,7 +129,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         self.try(|this| {
             let mir = this.ecx.load_mir(def_id)?;
             // FIXME(solson): Don't allocate a pointer unconditionally.
-            let ptr = this.ecx.alloc_ptr(mir.return_ty, substs)?;
+            let ptr = this.ecx.alloc_ptr_with_substs(mir.return_ty, substs)?;
             this.ecx.statics.insert(cid.clone(), ptr);
             let cleanup = if immutable && !mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe() {
                 StackPopCleanup::Freeze(ptr.alloc_id)
@@ -179,7 +179,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 let return_ty = mir.return_ty;
                 self.try(|this| {
                     // FIXME(solson): Don't allocate a pointer unconditionally.
-                    let return_ptr = this.ecx.alloc_ptr(return_ty, cid.substs)?;
+                    let return_ptr = this.ecx.alloc_ptr_with_substs(return_ty, cid.substs)?;
                     let mir = CachedMir::Owned(Rc::new(mir));
                     this.ecx.statics.insert(cid.clone(), return_ptr);
                     this.ecx.push_stack_frame(this.def_id,
