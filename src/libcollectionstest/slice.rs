@@ -420,12 +420,12 @@ fn test_sort_stability() {
             // number this element is, i.e. the second elements
             // will occur in sorted order.
             let mut v: Vec<_> = (0..len)
-                                    .map(|_| {
-                                        let n = thread_rng().gen::<usize>() % 10;
-                                        counts[n] += 1;
-                                        (n, counts[n])
-                                    })
-                                    .collect();
+                .map(|_| {
+                    let n = thread_rng().gen::<usize>() % 10;
+                    counts[n] += 1;
+                    (n, counts[n])
+                })
+                .collect();
 
             // only sort on the first element, so an unstable sort
             // may mix up the counts.
@@ -1116,13 +1116,13 @@ fn test_box_slice_clone_panics() {
     };
 
     spawn(move || {
-        // When xs is dropped, +5.
-        let xs = vec![canary.clone(), canary.clone(), canary.clone(), panic, canary]
-                     .into_boxed_slice();
+            // When xs is dropped, +5.
+            let xs = vec![canary.clone(), canary.clone(), canary.clone(), panic, canary]
+                .into_boxed_slice();
 
-        // When panic is cloned, +3.
-        xs.clone();
-    })
+            // When panic is cloned, +3.
+            xs.clone();
+        })
         .join()
         .unwrap_err();
 
@@ -1374,8 +1374,8 @@ mod bench {
         let mut rng = thread_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>()
-                           .take(5)
-                           .collect::<Vec<BigSortable>>();
+                .take(5)
+                .collect::<Vec<BigSortable>>();
             v.sort();
         });
         b.bytes = 5 * mem::size_of::<BigSortable>() as u64;
@@ -1386,8 +1386,8 @@ mod bench {
         let mut rng = thread_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>()
-                           .take(100)
-                           .collect::<Vec<BigSortable>>();
+                .take(100)
+                .collect::<Vec<BigSortable>>();
             v.sort();
         });
         b.bytes = 100 * mem::size_of::<BigSortable>() as u64;
@@ -1398,8 +1398,8 @@ mod bench {
         let mut rng = thread_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>()
-                           .take(10000)
-                           .collect::<Vec<BigSortable>>();
+                .take(10000)
+                .collect::<Vec<BigSortable>>();
             v.sort();
         });
         b.bytes = 10000 * mem::size_of::<BigSortable>() as u64;
