@@ -569,17 +569,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     CEnum { discr, signed, .. } => {
                         assert_eq!(operands.len(), 0);
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
-                            let val = adt_def.variants[variant].disr_val.to_u64_unchecked();
+                            let n = adt_def.variants[variant].disr_val.to_u64_unchecked();
                             let size = discr.size().bytes() as usize;
 
-                            // easy FIXME(solson)
-                            let dest = self.force_allocation(dest)?.to_ptr();
-
-                            if signed {
-                                self.memory.write_int(dest, val as i64, size)?;
+                            let val = if signed {
+                                PrimVal::int_with_size(n as i64, size)
                             } else {
-                                self.memory.write_uint(dest, val, size)?;
-                            }
+                                PrimVal::uint_with_size(n, size)
+                            };
+
+                            self.write_primval(dest, val)?;
                         } else {
                             bug!("tried to assign {:?} to Layout::CEnum", kind);
                         }
