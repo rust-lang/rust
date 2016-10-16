@@ -144,7 +144,7 @@ impl<'a> Reader for StringReader<'a> {
 
 impl<'a> Reader for TtReader<'a> {
     fn is_eof(&self) -> bool {
-        self.cur_tok == token::Eof
+        self.peek().tok == token::Eof
     }
     fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
         assert!(self.fatal_errs.is_empty());
@@ -165,10 +165,31 @@ impl<'a> Reader for TtReader<'a> {
         self.fatal_errs.clear();
     }
     fn peek(&self) -> TokenAndSpan {
-        TokenAndSpan {
+        self.next_tok.clone().unwrap_or(TokenAndSpan {
             tok: self.cur_tok.clone(),
             sp: self.cur_span,
-        }
+        })
+    }
+}
+
+impl<'a, 'b> Reader for &'b mut TtReader<'a> {
+    fn is_eof(&self) -> bool {
+        (**self).is_eof()
+    }
+    fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
+        (**self).try_next_token()
+    }
+    fn fatal(&self, m: &str) -> FatalError {
+        (**self).fatal(m)
+    }
+    fn err(&self, m: &str) {
+        (**self).err(m)
+    }
+    fn emit_fatal_errors(&mut self) {
+        (**self).emit_fatal_errors()
+    }
+    fn peek(&self) -> TokenAndSpan {
+        (**self).peek()
     }
 }
 
