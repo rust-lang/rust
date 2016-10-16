@@ -827,7 +827,9 @@ pub fn alloca(cx: Block, ty: Type, name: &str) -> ValueRef {
         }
     }
     DebugLoc::None.apply(cx.fcx);
-    Alloca(cx, ty, name)
+    let result = Alloca(cx, ty, name);
+    debug!("alloca({:?}) = {:?}", name, result);
+    result
 }
 
 impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {

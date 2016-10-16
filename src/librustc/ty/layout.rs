@@ -24,6 +24,7 @@ use syntax_pos::DUMMY_SP;
 use std::cmp;
 use std::fmt;
 use std::i64;
+use std::iter;
 
 /// Parsed [Data layout](http://llvm.org/docs/LangRef.html#data-layout)
 /// for a target, which contains everything needed to compute layouts.
@@ -511,41 +512,76 @@ pub struct Struct {
     /// If true, the size is exact, otherwise it's only a lower bound.
     pub sized: bool,
 
-    /// Offsets for the first byte of each field.
+    /// Offsets for the first byte of each field, ordered to match the tys.
+    /// This vector does not go in increasing order.
     /// FIXME(eddyb) use small vector optimization for the common case.
     pub offsets: Vec<Size>,
+
+    /// Maps field indices to GEP indices, depending how fields were permuted.
+    /// FIXME (camlorn) also consider small vector  optimization here.
+    pub gep_index: Vec<u32>,
 
     pub min_size: Size,
 }
 
 impl<'a, 'gcx, 'tcx> Struct {
-    pub fn new(dl: &TargetDataLayout, packed: bool) -> Struct {
-        Struct {
+    pub fn new<I>(dl: &TargetDataLayout, fields: I,
+                  repr: attr::ReprAttr, is_enum_variant: bool,
+                  scapegoat: Ty<'gcx>) -> Result<Struct, LayoutError<'gcx>>
+        where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>>{
+        let packed = repr == attr::ReprPacked;
+        let mut ret = Struct {
             align: if packed { dl.i8_align } else { dl.aggregate_align },
             packed: packed,
             sized: true,
             offsets: vec![],
+            gep_index: vec![],
             min_size: Size::from_bytes(0),
-        }
+        };
+        ret.fill_in_fields(dl, fields, scapegoat, repr, is_enum_variant)?;
+        Ok(ret)
     }
 
-    /// Extend the Struct with more fields.
-    pub fn extend<I>(&mut self, dl: &TargetDataLayout,
+    fn fill_in_fields<I>(&mut self, dl: &TargetDataLayout,
                      fields: I,
-                     scapegoat: Ty<'gcx>)
+                     scapegoat: Ty<'gcx>,
+                     repr: attr::ReprAttr,
+                     is_enum_variant: bool)
                      -> Result<(), LayoutError<'gcx>>
     where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>> {
-        self.offsets.reserve(fields.size_hint().0);
+        let fields = fields.collect::<Result<Vec<_>, LayoutError<'gcx>>>()?;
+        if fields.len() == 0 {return Ok(())};
 
-        let mut offset = self.min_size;
+        self.offsets = vec![Size::from_bytes(0); fields.len()];
+        let mut inverse_gep_index: Vec<u32> = Vec::with_capacity(fields.len());
+        inverse_gep_index.extend(0..fields.len() as u32);
 
-        for field in fields {
+        if repr == attr::ReprAny {
+            let start: usize = if is_enum_variant {1} else {0};
+            // FIXME(camlorn): we can't reorder the last field because it is possible for structs to be coerced to unsized.
+            // Example: struct Foo<T: ?Sized> { x: i32, y: T }
+            // We can coerce &Foo<u8> to &Foo<Trait>.
+            let end = inverse_gep_index.len()-1;
+            if end > start {
+                let optimizing  = &mut inverse_gep_index[start..end];
+                optimizing.sort_by_key(|&x| fields[x as usize].align(dl).abi());
+            }
+        }
+        
+        // At this point, inverse_gep_index holds field indices by increasing offset.
+        // That is, if field 5 has offset 0, the first element of inverse_gep_index is 5.
+        // We now write field offsets to the corresponding offset slot; field 5 with offset 0 puts 0 in offsets[5].
+        // At the bottom of this function, we use inverse_gep_index to produce gep_index.
+
+        let mut offset = Size::from_bytes(0);
+
+        for i in inverse_gep_index.iter() {
+            let field = fields[*i as usize];
             if !self.sized {
                 bug!("Struct::extend: field #{} of `{}` comes after unsized field",
                      self.offsets.len(), scapegoat);
             }
 
-            let field = field?;
             if field.is_unsized() {
                 self.sized = false;
             }
@@ -557,9 +593,10 @@ impl<'a, 'gcx, 'tcx> Struct {
                 offset = offset.abi_align(align);
             }
 
-            self.offsets.push(offset);
 
             debug!("Struct::extend offset: {:?} field: {:?} {:?}", offset, field, field.size(dl));
+            self.offsets[*i as usize] = offset;
+
 
             offset = offset.checked_add(field.size(dl), dl)
                            .map_or(Err(LayoutError::SizeOverflow(scapegoat)), Ok)?;
@@ -569,12 +606,21 @@ impl<'a, 'gcx, 'tcx> Struct {
 
         self.min_size = offset;
 
+        // As stated above, inverse_gep_index holds field indices by increasing offset.
+        // This makes it an already-sorted view of the offsets vec.
+        // To invert it, consider:
+        // If field 5 has offset 0, offsets[0] is 5, and gep_index[5] should be 0.
+        // Field 5 would be the first element, so gep_index is i:
+        self.gep_index = vec![0; inverse_gep_index.len()];
+
+        for i in 0..inverse_gep_index.len() {
+            self.gep_index[inverse_gep_index[i] as usize]  = i as u32;
+        }
+
         Ok(())
     }
 
-    /// Get the size without trailing alignment padding.
-
-    /// Get the size with trailing aligment padding.
+    /// Get the size with trailing alignment padding.
     pub fn stride(&self) -> Size {
         self.min_size.abi_align(self.align)
     }
@@ -592,10 +638,35 @@ impl<'a, 'gcx, 'tcx> Struct {
         Ok(true)
     }
 
+    /// Get indices of the tys that made this struct by increasing offset.
+    #[inline]
+    pub fn field_index_by_increasing_offset<'b>(&'b self) -> impl iter::Iterator<Item=usize>+'b {
+        let mut inverse_small = [0u8; 64];
+        let mut inverse_big = vec![];
+        let use_small = self.gep_index.len() <= inverse_small.len();
+
+        // We have to write this logic twice in order to keep the array small.
+        if use_small {
+            for i in 0..self.gep_index.len() {
+                inverse_small[self.gep_index[i] as usize] = i as u8;
+            }
+        } else {
+            inverse_big = vec![0; self.gep_index.len()];
+            for i in 0..self.gep_index.len() {
+                inverse_big[self.gep_index[i] as usize] = i as u32;
+            }
+        }
+
+        (0..self.gep_index.len()).map(move |i| {
+            if use_small { inverse_small[i] as usize }
+            else { inverse_big[i] as usize }
+        })
+    }
+
     /// Find the path leading to a non-zero leaf field, starting from
     /// the given type and recursing through aggregates.
     // FIXME(eddyb) track value ranges and traverse already optimized enums.
-    pub fn non_zero_field_in_type(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    fn non_zero_field_in_type(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                   ty: Ty<'gcx>)
                                   -> Result<Option<FieldPath>, LayoutError<'gcx>> {
         let tcx = infcx.tcx.global_tcx();
@@ -625,27 +696,30 @@ impl<'a, 'gcx, 'tcx> Struct {
 
             // Perhaps one of the fields of this struct is non-zero
             // let's recurse and find out
-            (_, &ty::TyAdt(def, substs)) if def.is_struct() => {
+            (&Univariant { ref variant, .. }, &ty::TyAdt(def, substs)) if def.is_struct() => {
                 Struct::non_zero_field_path(infcx, def.struct_variant().fields
                                                       .iter().map(|field| {
                     field.ty(tcx, substs)
-                }))
+                }),
+                Some(&variant.gep_index[..]))
             }
 
             // Perhaps one of the upvars of this closure is non-zero
-            // Let's recurse and find out!
-            (_, &ty::TyClosure(def_id, ref substs)) => {
-                Struct::non_zero_field_path(infcx, substs.upvar_tys(def_id, tcx))
+            (&Univariant { ref variant, .. }, &ty::TyClosure(def, substs)) => {
+                let upvar_tys = substs.upvar_tys(def, tcx);
+                Struct::non_zero_field_path(infcx, upvar_tys,
+                    Some(&variant.gep_index[..]))
             }
             // Can we use one of the fields in this tuple?
-            (_, &ty::TyTuple(tys)) => {
-                Struct::non_zero_field_path(infcx, tys.iter().cloned())
+            (&Univariant { ref variant, .. }, &ty::TyTuple(tys)) => {
+                Struct::non_zero_field_path(infcx, tys.iter().cloned(),
+                    Some(&variant.gep_index[..]))
             }
 
             // Is this a fixed-size array of something non-zero
             // with at least one element?
             (_, &ty::TyArray(ety, d)) if d > 0 => {
-                Struct::non_zero_field_path(infcx, Some(ety).into_iter())
+                Struct::non_zero_field_path(infcx, Some(ety).into_iter(), None)
             }
 
             (_, &ty::TyProjection(_)) | (_, &ty::TyAnon(..)) => {
@@ -663,13 +737,19 @@ impl<'a, 'gcx, 'tcx> Struct {
 
     /// Find the path leading to a non-zero leaf field, starting from
     /// the given set of fields and recursing through aggregates.
-    pub fn non_zero_field_path<I>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                  fields: I)
+    fn non_zero_field_path<I>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                  fields: I,
+                                  permutation: Option<&[u32]>)
                                   -> Result<Option<FieldPath>, LayoutError<'gcx>>
     where I: Iterator<Item=Ty<'gcx>> {
         for (i, ty) in fields.enumerate() {
             if let Some(mut path) = Struct::non_zero_field_in_type(infcx, ty)? {
-                path.push(i as u32);
+                let index = if let Some(p) = permutation {
+                    p[i] as usize
+                } else {
+                    i
+                };
+                path.push(index as u32);
                 return Ok(Some(path));
             }
         }
@@ -723,7 +803,7 @@ impl<'a, 'gcx, 'tcx> Union {
         Ok(())
     }
 
-    /// Get the size with trailing aligment padding.
+    /// Get the size with trailing alignment padding.
     pub fn stride(&self) -> Size {
         self.min_size.abi_align(self.align)
     }
@@ -887,6 +967,7 @@ impl<'a, 'gcx, 'tcx> Layout {
         let dl = &tcx.data_layout;
         assert!(!ty.has_infer_types());
 
+
         let layout = match ty.sty {
             // Basic scalars.
             ty::TyBool => Scalar { value: Int(I1), non_zero: false },
@@ -908,7 +989,7 @@ impl<'a, 'gcx, 'tcx> Layout {
             ty::TyFnPtr(_) => Scalar { value: Pointer, non_zero: true },
 
             // The never type.
-            ty::TyNever => Univariant { variant: Struct::new(dl, false), non_zero: false },
+            ty::TyNever => Univariant { variant: Struct::new(dl, iter::empty(), attr::ReprAny, false, ty)?, non_zero: false },
 
             // Potentially-fat pointers.
             ty::TyBox(pointee) |
@@ -959,27 +1040,30 @@ impl<'a, 'gcx, 'tcx> Layout {
             // Odd unit types.
             ty::TyFnDef(..) => {
                 Univariant {
-                    variant: Struct::new(dl, false),
+                    variant: Struct::new(dl, iter::empty(), attr::ReprAny, false, ty)?,
                     non_zero: false
                 }
             }
-            ty::TyDynamic(..) => {
-                let mut unit = Struct::new(dl, false);
+            ty::TyDynamic(_) => {
+                let mut unit = Struct::new(dl, iter::empty(), attr::ReprAny, false, ty)?;
                 unit.sized = false;
                 Univariant { variant: unit, non_zero: false }
             }
 
             // Tuples and closures.
             ty::TyClosure(def_id, ref substs) => {
-                let mut st = Struct::new(dl, false);
                 let tys = substs.upvar_tys(def_id, tcx);
-                st.extend(dl, tys.map(|ty| ty.layout(infcx)), ty)?;
+                let mut st = Struct::new(dl,
+                    tys.map(|ty| ty.layout(infcx)),
+                    attr::ReprAny,
+                    false, ty)?;
                 Univariant { variant: st, non_zero: false }
             }
 
             ty::TyTuple(tys) => {
-                let mut st = Struct::new(dl, false);
-                st.extend(dl, tys.iter().map(|ty| ty.layout(infcx)), ty)?;
+                let st = Struct::new(dl,
+                    tys.iter().map(|ty| ty.layout(infcx)),
+                    attr::ReprAny, false, ty)?;
                 Univariant { variant: st, non_zero: false }
             }
 
@@ -1012,7 +1096,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     assert_eq!(hint, attr::ReprAny);
 
                     return success(Univariant {
-                        variant: Struct::new(dl, false),
+                        variant: Struct::new(dl, iter::empty(), hint, false, ty)?,
                         non_zero: false
                     });
                 }
@@ -1050,8 +1134,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         un.extend(dl, fields, ty)?;
                         UntaggedUnion { variants: un }
                     } else {
-                        let mut st = Struct::new(dl, packed);
-                        st.extend(dl, fields, ty)?;
+                        let st = Struct::new(dl, fields, hint, false, ty)?;
                         let non_zero = Some(def.did) == tcx.lang_items.non_zero();
                         Univariant { variant: st, non_zero: non_zero }
                     };
@@ -1083,7 +1166,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                             continue;
                         }
                         let path = Struct::non_zero_field_path(infcx,
-                            variants[discr].iter().cloned())?;
+                            variants[discr].iter().cloned(),
+                            None)?;
                         let mut path = if let Some(p) = path { p } else { continue };
 
                         // FIXME(eddyb) should take advantage of a newtype.
@@ -1101,10 +1185,17 @@ impl<'a, 'gcx, 'tcx> Layout {
                             });
                         }
 
+                        let st = Struct::new(dl,
+                            variants[discr].iter().map(|ty| ty.layout(infcx)),
+                            hint, false, ty)?;
+
+                        // We have to fix the last element of path here as only we know the right value.
+                        let mut i = *path.last().unwrap();
+                        i = st.gep_index[i as usize];
+                        *path.last_mut().unwrap() = i;
                         path.push(0); // For GEP through a pointer.
                         path.reverse();
-                        let mut st = Struct::new(dl, false);
-                        st.extend(dl, variants[discr].iter().map(|ty| ty.layout(infcx)), ty)?;
+
                         return success(StructWrappedNullablePointer {
                             nndiscr: discr as u64,
                             nonnull: st,
@@ -1126,24 +1217,25 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                 // Create the set of structs that represent each variant
                 // Use the minimum integer type we figured out above
-                let discr = Some(Scalar { value: Int(min_ity), non_zero: false });
+                let discr = Scalar { value: Int(min_ity), non_zero: false };
                 let mut variants = variants.into_iter().map(|fields| {
-                    let mut found_start = false;
-                    let fields = fields.into_iter().map(|field| {
-                        let field = field.layout(infcx)?;
-                        if !found_start {
-                            // Find the first field we can't move later
-                            // to make room for a larger discriminant.
-                            let field_align = field.align(dl);
-                            if field.size(dl).bytes() != 0 || field_align.abi() != 1 {
-                                start_align = start_align.min(field_align);
-                                found_start = true;
-                            }
+                    let mut fields = fields.into_iter().map(|field| {
+                        field.layout(infcx)
+                    }).collect::<Vec<_>>();
+                    fields.insert(0, Ok(&discr));
+                    let st = Struct::new(dl,
+                        fields.iter().cloned(),
+                        hint, false, ty)?;
+                    // Find the first field we can't move later
+                    // to make room for a larger discriminant.
+                    for i in st.field_index_by_increasing_offset() {
+                        let field = fields[i].unwrap();
+                        let field_align = field.align(dl);
+                        if field.size(dl).bytes() != 0 || field_align.abi() != 1 {
+                            start_align = start_align.min(field_align);
+                            break;
                         }
-                        Ok(field)
-                    });
-                    let mut st = Struct::new(dl, false);
-                    st.extend(dl, discr.iter().map(Ok).chain(fields), ty)?;
+                    }
                     size = cmp::max(size, st.min_size);
                     align = align.max(st.align);
                     Ok(st)
@@ -1177,11 +1269,10 @@ impl<'a, 'gcx, 'tcx> Layout {
                     let old_ity_size = Int(min_ity).size(dl);
                     let new_ity_size = Int(ity).size(dl);
                     for variant in &mut variants {
-                        for offset in &mut variant.offsets[1..] {
-                            if *offset > old_ity_size {
-                                break;
+                        for i in variant.offsets.iter_mut() {
+                            if *i <= old_ity_size {
+                                *i = new_ity_size;
                             }
-                            *offset = new_ity_size;
                         }
                         // We might be making the struct larger.
                         if variant.min_size <= old_ity_size {
