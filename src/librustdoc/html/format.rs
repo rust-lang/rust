@@ -208,7 +208,9 @@ impl<'a> fmt::Display for WhereClause<'a> {
             clause.push_str("</span>");
             let plain = format!("{:#}", self);
             if plain.len() + pad.len() > 80 {
-                let padding = if pad.len() + 25 > 80 {
+                //break it onto its own line regardless, but make sure method impls and trait
+                //blocks keep their fixed padding (2 and 9, respectively)
+                let padding = if pad.len() > 10 {
                     clause = clause.replace("class='where'", "class='where fmt-newline'");
                     repeat("&nbsp;").take(8).collect::<String>()
                 } else {
