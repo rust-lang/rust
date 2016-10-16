@@ -266,8 +266,8 @@ impl Ordering {
     /// let result = Ordering::Equal.or(Ordering::Equal);
     /// assert_eq!(result, Ordering::Equal);
     ///
-    /// let x = (1, 2, 7);
-    /// let y = (1, 5, 3);
+    /// let x: (i64, i64, i64) = (1, 2, 7);
+    /// let y: (i64, i64, i64) = (1, 5, 3);
     /// let result = x.0.cmp(y.0).or(x.1.cmp(y.1)).or(x.2.cmp(y.2));
     ///
     /// assert_eq!(result, Ordering::Less);
@@ -302,8 +302,8 @@ impl Ordering {
     /// let result = Ordering::Equal.or_else(|| Ordering::Equal);
     /// assert_eq!(result, Ordering::Equal);
     ///
-    /// let x = (1, 2, 7);
-    /// let y = (1, 5, 3);
+    /// let x: (i64, i64, i64) = (1, 2, 7);
+    /// let y: (i64, i64, i64)  = (1, 5, 3);
     /// let result = x.0.cmp(&y.0).or_else(|| x.1.cmp(&y.1)).or_else(|| x.2.cmp(&y.2));
     ///
     /// assert_eq!(result, Ordering::Less);
