@@ -13,7 +13,6 @@
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![feature(staged_api)]
-#![cfg_attr(not(stage0))]
 #![allow(bad_style)]
 
 pub struct Intrinsic {
