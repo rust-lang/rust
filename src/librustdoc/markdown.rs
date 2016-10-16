@@ -63,11 +63,9 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
         Err(LoadStringError::ReadFail) => return 1,
         Err(LoadStringError::BadUtf8) => return 2,
     };
-    let playground = matches.opt_str("markdown-playground-url");
-    if playground.is_some() {
-        markdown::PLAYGROUND_KRATE.with(|s| { *s.borrow_mut() = Some(None); });
+    if let Some(playground) = matches.opt_str("markdown-playground-url") {
+        markdown::PLAYGROUND.with(|s| { *s.borrow_mut() = Some((None, playground)); });
     }
-    let playground = playground.unwrap_or("".to_string());
 
     let mut out = match File::create(&output) {
         Err(e) => {
@@ -119,9 +117,6 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     {before_content}
     <h1 class="title">{title}</h1>
     {text}
-    <script type="text/javascript">
-        window.playgroundUrl = "{playground}";
-    </script>
     {after_content}
 </body>
 </html>"#,
@@ -131,7 +126,6 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
         before_content = external_html.before_content,
         text = rendered,
         after_content = external_html.after_content,
-        playground = playground,
         );
 
     match err {

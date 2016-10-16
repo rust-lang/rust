@@ -355,7 +355,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
     if dont_insert_main || s.contains("fn main") {
         prog.push_str(&everything_else);
     } else {
-        prog.push_str("fn main() {\n    ");
+        prog.push_str("fn main() {\n");
         prog.push_str(&everything_else);
         prog = prog.trim().into();
         prog.push_str("\n}");
