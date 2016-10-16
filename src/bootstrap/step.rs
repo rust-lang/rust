@@ -205,13 +205,20 @@ fn top_level(build: &Build) -> Vec<Step> {
 
     let host = Step {
         src: Source::Llvm { _dummy: () },
-        target: build.flags.host.iter().next()
-                     .unwrap_or(&build.config.build),
+        target: build.flags
+            .host
+            .iter()
+            .next()
+            .unwrap_or(&build.config.build),
     };
     let target = Step {
         src: Source::Llvm { _dummy: () },
-        target: build.flags.target.iter().next().map(|x| &x[..])
-                     .unwrap_or(host.target)
+        target: build.flags
+            .target
+            .iter()
+            .next()
+            .map(|x| &x[..])
+            .unwrap_or(host.target),
     };
 
     // First, try to find steps on the command line.
@@ -224,11 +231,11 @@ fn top_level(build: &Build) -> Vec<Step> {
             target: &build.config.build,
         };
         if build.config.docs {
-          targets.push(t.doc(stage));
+            targets.push(t.doc(stage));
         }
         for host in build.config.host.iter() {
             if !build.flags.host.contains(host) {
-                continue
+                continue;
             }
             let host = t.target(host);
             if host.target == build.config.build {
@@ -238,15 +245,15 @@ fn top_level(build: &Build) -> Vec<Step> {
             }
             for target in build.config.target.iter() {
                 if !build.flags.target.contains(target) {
-                    continue
+                    continue;
                 }
 
                 if host.target == build.config.build {
                     targets.push(host.target(target)
-                                     .libtest(host.compiler(stage)));
+                        .libtest(host.compiler(stage)));
                 } else {
                     targets.push(host.target(target)
-                                     .libtest_link(t.compiler(stage), host.target));
+                        .libtest_link(t.compiler(stage), host.target));
                 }
             }
         }
@@ -311,7 +318,10 @@ impl<'a> Step<'a> {
     }
 
     fn target(&self, target: &'a str) -> Step<'a> {
-        Step { target: target, src: self.src.clone() }
+        Step {
+            target: target,
+            src: self.src.clone(),
+        }
     }
 
     // Define ergonomic constructors for each step defined above so they can be
@@ -324,32 +334,22 @@ impl<'a> Step<'a> {
     /// then returns a list of all the dependencies of that step.
     pub fn deps(&self, build: &'a Build) -> Vec<Step<'a>> {
         match self.src {
-            Source::Rustc { stage: 0 } => {
-                Vec::new()
-            }
+            Source::Rustc { stage: 0 } => Vec::new(),
             Source::Rustc { stage } => {
                 let compiler = Compiler::new(stage - 1, &build.config.build);
                 vec![self.librustc(compiler)]
             }
-            Source::Librustc { compiler } => {
-                vec![self.libtest(compiler), self.llvm(())]
-            }
-            Source::Libtest { compiler } => {
-                vec![self.libstd(compiler)]
-            }
-            Source::Libstd { compiler } => {
-                vec![self.rustc(compiler.stage).target(compiler.host)]
-            }
+            Source::Librustc { compiler } => vec![self.libtest(compiler), self.llvm(())],
+            Source::Libtest { compiler } => vec![self.libstd(compiler)],
+            Source::Libstd { compiler } => vec![self.rustc(compiler.stage).target(compiler.host)],
             Source::LibrustcLink { compiler, host } => {
-                vec![self.librustc(compiler),
-                     self.libtest_link(compiler, host)]
+                vec![self.librustc(compiler), self.libtest_link(compiler, host)]
             }
             Source::LibtestLink { compiler, host } => {
                 vec![self.libtest(compiler), self.libstd_link(compiler, host)]
             }
             Source::LibstdLink { compiler, host } => {
-                vec![self.libstd(compiler),
-                     self.target(host).rustc(compiler.stage)]
+                vec![self.libstd(compiler), self.target(host).rustc(compiler.stage)]
             }
             Source::Llvm { _dummy } => Vec::new(),
             Source::TestHelpers { _dummy } => Vec::new(),
@@ -373,12 +373,8 @@ impl<'a> Step<'a> {
             Source::DocErrorIndex { stage } => {
                 vec![self.target(&build.config.build).tool_error_index(stage)]
             }
-            Source::DocStandalone { stage } => {
-                vec![self.target(&build.config.build).rustc(stage)]
-            }
-            Source::DocRustc { stage } => {
-                vec![self.doc_test(stage)]
-            }
+            Source::DocStandalone { stage } => vec![self.target(&build.config.build).rustc(stage)],
+            Source::DocRustc { stage } => vec![self.doc_test(stage)],
             Source::Doc { stage } => {
                 let mut deps = vec![
                     self.doc_book(stage), self.doc_nomicon(stage),
@@ -395,9 +391,11 @@ impl<'a> Step<'a> {
             Source::Check { stage, compiler } => {
                 // Check is just a pseudo step which means check all targets,
                 // so just depend on checking all targets.
-                build.config.target.iter().map(|t| {
-                    self.target(t).check_target(stage, compiler)
-                }).collect()
+                build.config
+                    .target
+                    .iter()
+                    .map(|t| self.target(t).check_target(stage, compiler))
+                    .collect()
             }
             Source::CheckTarget { stage, compiler } => {
                 // CheckTarget here means run all possible test suites for this
@@ -471,17 +469,12 @@ impl<'a> Step<'a> {
                 }
                 base
             }
-            Source::CheckLinkcheck { stage } => {
-                vec![self.tool_linkchecker(stage), self.doc(stage)]
-            }
+            Source::CheckLinkcheck { stage } => vec![self.tool_linkchecker(stage), self.doc(stage)],
             Source::CheckCargoTest { stage } => {
-                vec![self.tool_cargotest(stage),
-                     self.librustc(self.compiler(stage))]
+                vec![self.tool_cargotest(stage), self.librustc(self.compiler(stage))]
             }
-            Source::CheckTidy { stage } => {
-                vec![self.tool_tidy(stage)]
-            }
-            Source::CheckMirOpt { compiler} |
+            Source::CheckTidy { stage } => vec![self.tool_tidy(stage)],
+            Source::CheckMirOpt { compiler } |
             Source::CheckPrettyRPass { compiler } |
             Source::CheckPrettyRFail { compiler } |
             Source::CheckRFail { compiler } |
@@ -523,43 +516,25 @@ impl<'a> Step<'a> {
                 vec![self.librustc(compiler),
                      self.target(compiler.host).tool_compiletest(compiler.stage)]
             }
-            Source::CheckDocs { compiler } => {
-                vec![self.libtest(compiler)]
-            }
+            Source::CheckDocs { compiler } => vec![self.libtest(compiler)],
             Source::CheckErrorIndex { compiler } => {
                 vec![self.libstd(compiler),
                      self.target(compiler.host).tool_error_index(compiler.stage)]
             }
-            Source::CheckCrateStd { compiler } => {
-                vec![self.libtest(compiler)]
-            }
-            Source::CheckCrateTest { compiler } => {
-                vec![self.libtest(compiler)]
-            }
-            Source::CheckCrateRustc { compiler } => {
-                vec![self.libtest(compiler)]
-            }
+            Source::CheckCrateStd { compiler } => vec![self.libtest(compiler)],
+            Source::CheckCrateTest { compiler } => vec![self.libtest(compiler)],
+            Source::CheckCrateRustc { compiler } => vec![self.libtest(compiler)],
 
             Source::ToolLinkchecker { stage } |
-            Source::ToolTidy { stage } => {
-                vec![self.libstd(self.compiler(stage))]
-            }
+            Source::ToolTidy { stage } => vec![self.libstd(self.compiler(stage))],
             Source::ToolErrorIndex { stage } |
-            Source::ToolRustbook { stage } => {
-                vec![self.librustc(self.compiler(stage))]
-            }
-            Source::ToolCargoTest { stage } => {
-                vec![self.libstd(self.compiler(stage))]
-            }
-            Source::ToolCompiletest { stage } => {
-                vec![self.libtest(self.compiler(stage))]
-            }
+            Source::ToolRustbook { stage } => vec![self.librustc(self.compiler(stage))],
+            Source::ToolCargoTest { stage } => vec![self.libstd(self.compiler(stage))],
+            Source::ToolCompiletest { stage } => vec![self.libtest(self.compiler(stage))],
 
             Source::DistDocs { stage } => vec![self.doc(stage)],
             Source::DistMingw { _dummy: _ } => Vec::new(),
-            Source::DistRustc { stage } => {
-                vec![self.rustc(stage)]
-            }
+            Source::DistRustc { stage } => vec![self.rustc(stage)],
             Source::DistStd { compiler } => {
                 // We want to package up as many target libraries as possible
                 // for the `rust-std` package, so if this is a host target we
@@ -595,13 +570,9 @@ impl<'a> Step<'a> {
                 base
             }
 
-            Source::Install { stage } => {
-                vec![self.dist(stage)]
-            }
+            Source::Install { stage } => vec![self.dist(stage)],
 
-            Source::AndroidCopyLibs { compiler } => {
-                vec![self.libtest(compiler)]
-            }
+            Source::AndroidCopyLibs { compiler } => vec![self.libtest(compiler)],
         }
     }
 }

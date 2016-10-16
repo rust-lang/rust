@@ -44,8 +44,11 @@ pub fn find(build: &mut Build) {
     // and such as well as for being a linker for Rust code.
     for target in build.config.target.iter() {
         let mut cfg = gcc::Config::new();
-        cfg.cargo_metadata(false).opt_level(0).debug(false)
-           .target(target).host(&build.config.build);
+        cfg.cargo_metadata(false)
+            .opt_level(0)
+            .debug(false)
+            .target(target)
+            .host(&build.config.build);
 
         let config = build.config.target_config.get(target);
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
@@ -66,8 +69,12 @@ pub fn find(build: &mut Build) {
     // For all host triples we need to find a C++ compiler as well
     for host in build.config.host.iter() {
         let mut cfg = gcc::Config::new();
-        cfg.cargo_metadata(false).opt_level(0).debug(false).cpp(true)
-           .target(host).host(&build.config.build);
+        cfg.cargo_metadata(false)
+            .opt_level(0)
+            .debug(false)
+            .cpp(true)
+            .target(host)
+            .host(&build.config.build);
         let config = build.config.target_config.get(host);
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
@@ -80,10 +87,7 @@ pub fn find(build: &mut Build) {
     }
 }
 
-fn set_compiler(cfg: &mut gcc::Config,
-                gnu_compiler: &str,
-                target: &str,
-                config: Option<&Target>) {
+fn set_compiler(cfg: &mut gcc::Config, gnu_compiler: &str, target: &str, config: Option<&Target>) {
     match target {
         // When compiling for android we may have the NDK configured in the
         // config.toml in which case we look there. Otherwise the default
@@ -101,7 +105,7 @@ fn set_compiler(cfg: &mut gcc::Config,
         t if t.contains("openbsd") => {
             let c = cfg.get_compiler();
             if !c.path().ends_with(gnu_compiler) {
-                return
+                return;
             }
 
             let output = output(c.to_command().arg("--version"));
@@ -110,7 +114,7 @@ fn set_compiler(cfg: &mut gcc::Config,
                 None => return,
             };
             match output[i + 3..].chars().next().unwrap() {
-                '0' ... '6' => {}
+                '0'...'6' => {}
                 _ => return,
             }
             let alternative = format!("e{}", gnu_compiler);

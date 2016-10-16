@@ -39,14 +39,14 @@ pub fn rustbook(build: &Build, stage: u32, target: &str, name: &str, out: &Path)
     let index = out.join("index.html");
     let rustbook = build.tool(&compiler, "rustbook");
     if up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
-        return
+        return;
     }
     println!("Rustbook stage{} ({}) - {}", stage, target, name);
     let _ = fs::remove_dir_all(&out);
     build.run(build.tool_cmd(&compiler, "rustbook")
-                   .arg("build")
-                   .arg(&src)
-                   .arg(out));
+        .arg("build")
+        .arg(&src)
+        .arg(out));
 }
 
 /// Generates all standalone documentation as compiled by the rustdoc in `stage`
@@ -78,8 +78,8 @@ pub fn standalone(build: &Build, stage: u32, target: &str, out: &Path) {
         let short = build.short_ver_hash.as_ref().unwrap_or(&blank);
         let hash = build.ver_hash.as_ref().unwrap_or(&blank);
         let info = info.replace("VERSION", &build.release)
-                       .replace("SHORT_HASH", short)
-                       .replace("STAMP", hash);
+            .replace("SHORT_HASH", short)
+            .replace("STAMP", hash);
         t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
     }
 
@@ -88,38 +88,39 @@ pub fn standalone(build: &Build, stage: u32, target: &str, out: &Path) {
         let path = file.path();
         let filename = path.file_name().unwrap().to_str().unwrap();
         if !filename.ends_with(".md") || filename == "README.md" {
-            continue
+            continue;
         }
 
         let html = out.join(filename).with_extension("html");
         let rustdoc = build.rustdoc(&compiler);
-        if up_to_date(&path, &html) &&
-           up_to_date(&footer, &html) &&
-           up_to_date(&favicon, &html) &&
-           up_to_date(&full_toc, &html) &&
-           up_to_date(&version_info, &html) &&
-           up_to_date(&rustdoc, &html) {
-            continue
+        if up_to_date(&path, &html) && up_to_date(&footer, &html) &&
+           up_to_date(&favicon, &html) && up_to_date(&full_toc, &html) &&
+           up_to_date(&version_info, &html) && up_to_date(&rustdoc, &html) {
+            continue;
         }
 
         let mut cmd = Command::new(&rustdoc);
         build.add_rustc_lib_path(&compiler, &mut cmd);
-        cmd.arg("--html-after-content").arg(&footer)
-           .arg("--html-before-content").arg(&version_info)
-           .arg("--html-in-header").arg(&favicon)
-           .arg("--markdown-playground-url")
-           .arg("https://play.rust-lang.org/")
-           .arg("-o").arg(out)
-           .arg(&path);
+        cmd.arg("--html-after-content")
+            .arg(&footer)
+            .arg("--html-before-content")
+            .arg(&version_info)
+            .arg("--html-in-header")
+            .arg(&favicon)
+            .arg("--markdown-playground-url")
+            .arg("https://play.rust-lang.org/")
+            .arg("-o")
+            .arg(out)
+            .arg(&path);
 
         if filename == "reference.md" {
-           cmd.arg("--html-in-header").arg(&full_toc);
+            cmd.arg("--html-in-header").arg(&full_toc);
         }
 
         if filename == "not_found.md" {
             cmd.arg("--markdown-no-toc")
-               .arg("--markdown-css")
-               .arg("https://doc.rust-lang.org/rust.css");
+                .arg("--markdown-css")
+                .arg("https://doc.rust-lang.org/rust.css");
         } else {
             cmd.arg("--markdown-css").arg("rust.css");
         }
@@ -136,15 +137,17 @@ pub fn std(build: &Build, stage: u32, target: &str, out: &Path) {
     t!(fs::create_dir_all(out));
     let compiler = Compiler::new(stage, &build.config.build);
     let out_dir = build.stage_out(&compiler, Mode::Libstd)
-                       .join(target).join("doc");
+        .join(target)
+        .join("doc");
     let rustdoc = build.rustdoc(&compiler);
 
     build.clear_if_dirty(&out_dir, &rustdoc);
 
     let mut cargo = build.cargo(&compiler, Mode::Libstd, target, "doc");
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
-         .arg("--features").arg(build.std_features());
+        .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
+        .arg("--features")
+        .arg(build.std_features());
     build.run(&mut cargo);
     cp_r(&out_dir, out)
 }
@@ -158,14 +161,15 @@ pub fn test(build: &Build, stage: u32, target: &str, out: &Path) {
     t!(fs::create_dir_all(out));
     let compiler = Compiler::new(stage, &build.config.build);
     let out_dir = build.stage_out(&compiler, Mode::Libtest)
-                       .join(target).join("doc");
+        .join(target)
+        .join("doc");
     let rustdoc = build.rustdoc(&compiler);
 
     build.clear_if_dirty(&out_dir, &rustdoc);
 
     let mut cargo = build.cargo(&compiler, Mode::Libtest, target, "doc");
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
+        .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
     build.run(&mut cargo);
     cp_r(&out_dir, out)
 }
@@ -179,15 +183,17 @@ pub fn rustc(build: &Build, stage: u32, target: &str, out: &Path) {
     t!(fs::create_dir_all(out));
     let compiler = Compiler::new(stage, &build.config.build);
     let out_dir = build.stage_out(&compiler, Mode::Librustc)
-                       .join(target).join("doc");
+        .join(target)
+        .join("doc");
     let rustdoc = build.rustdoc(&compiler);
     if !up_to_date(&rustdoc, &out_dir.join("rustc/index.html")) && out_dir.exists() {
         t!(fs::remove_dir_all(&out_dir));
     }
     let mut cargo = build.cargo(&compiler, Mode::Librustc, target, "doc");
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/Cargo.toml"))
-         .arg("--features").arg(build.rustc_features());
+        .arg(build.src.join("src/rustc/Cargo.toml"))
+        .arg("--features")
+        .arg(build.rustc_features());
     build.run(&mut cargo);
     cp_r(&out_dir, out)
 }

@@ -32,9 +32,9 @@ pub fn staticlib(name: &str, target: &str) -> String {
 
 /// Returns the last-modified time for `path`, or zero if it doesn't exist.
 pub fn mtime(path: &Path) -> FileTime {
-    fs::metadata(path).map(|f| {
-        FileTime::from_last_modification_time(&f)
-    }).unwrap_or(FileTime::zero())
+    fs::metadata(path)
+        .map(|f| FileTime::from_last_modification_time(&f))
+        .unwrap_or(FileTime::zero())
 }
 
 /// Copies a file from `src` to `dst`, attempting to use hard links and then
@@ -43,8 +43,10 @@ pub fn copy(src: &Path, dst: &Path) {
     let res = fs::hard_link(src, dst);
     let res = res.or_else(|_| fs::copy(src, dst).map(|_| ()));
     if let Err(e) = res {
-        panic!("failed to copy `{}` to `{}`: {}", src.display(),
-               dst.display(), e)
+        panic!("failed to copy `{}` to `{}`: {}",
+               src.display(),
+               dst.display(),
+               e)
     }
 }
 
@@ -114,7 +116,11 @@ pub fn is_dylib(name: &str) -> bool {
 /// Returns the corresponding relative library directory that the compiler's
 /// dylibs will be found in.
 pub fn libdir(target: &str) -> &'static str {
-    if target.contains("windows") {"bin"} else {"lib"}
+    if target.contains("windows") {
+        "bin"
+    } else {
+        "lib"
+    }
 }
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
@@ -169,6 +175,5 @@ pub fn dylib_path_var() -> &'static str {
 /// Parses the `dylib_path_var()` environment variable, returning a list of
 /// paths that are members of this lookup path.
 pub fn dylib_path() -> Vec<PathBuf> {
-    env::split_paths(&env::var_os(dylib_path_var()).unwrap_or(OsString::new()))
-        .collect()
+    env::split_paths(&env::var_os(dylib_path_var()).unwrap_or(OsString::new())).collect()
 }

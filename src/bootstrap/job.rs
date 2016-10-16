@@ -76,7 +76,7 @@ pub unsafe fn setup() {
     let r = AssignProcessToJobObject(job, GetCurrentProcess());
     if r == 0 {
         CloseHandle(job);
-        return
+        return;
     }
 
     // If we've got a parent process (e.g. the python script that called us)
@@ -95,9 +95,13 @@ pub unsafe fn setup() {
     let parent = OpenProcess(PROCESS_DUP_HANDLE, FALSE, pid.parse().unwrap());
     assert!(parent != 0 as *mut _, "{}", io::Error::last_os_error());
     let mut parent_handle = 0 as *mut _;
-    let r = DuplicateHandle(GetCurrentProcess(), job,
-                            parent, &mut parent_handle,
-                            0, FALSE, DUPLICATE_SAME_ACCESS);
+    let r = DuplicateHandle(GetCurrentProcess(),
+                            job,
+                            parent,
+                            &mut parent_handle,
+                            0,
+                            FALSE,
+                            DUPLICATE_SAME_ACCESS);
 
     // If this failed, well at least we tried! An example of DuplicateHandle
     // failing in the past has been when the wrong python2 package spawed this

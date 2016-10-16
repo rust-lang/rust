@@ -50,8 +50,7 @@ pub fn collect(build: &mut Build) {
             build.unstable_features = false;
         }
         "beta" => {
-            build.release = format!("{}-beta{}", release_num,
-                                   prerelease_version);
+            build.release = format!("{}-beta{}", release_num, prerelease_version);
             build.package_vers = "beta".to_string();
             build.unstable_features = false;
         }
@@ -71,22 +70,25 @@ pub fn collect(build: &mut Build) {
     // If we have a git directory, add in some various SHA information of what
     // commit this compiler was compiled from.
     if fs::metadata(build.src.join(".git")).is_ok() {
-        let ver_date = output(Command::new("git").current_dir(&build.src)
-                                      .arg("log").arg("-1")
-                                      .arg("--date=short")
-                                      .arg("--pretty=format:%cd"));
-        let ver_hash = output(Command::new("git").current_dir(&build.src)
-                                      .arg("rev-parse").arg("HEAD"));
+        let ver_date = output(Command::new("git")
+            .current_dir(&build.src)
+            .arg("log")
+            .arg("-1")
+            .arg("--date=short")
+            .arg("--pretty=format:%cd"));
+        let ver_hash = output(Command::new("git")
+            .current_dir(&build.src)
+            .arg("rev-parse")
+            .arg("HEAD"));
         let short_ver_hash = output(Command::new("git")
-                                            .current_dir(&build.src)
-                                            .arg("rev-parse")
-                                            .arg("--short=9")
-                                            .arg("HEAD"));
+            .current_dir(&build.src)
+            .arg("rev-parse")
+            .arg("--short=9")
+            .arg("HEAD"));
         let ver_date = ver_date.trim().to_string();
         let ver_hash = ver_hash.trim().to_string();
         let short_ver_hash = short_ver_hash.trim().to_string();
-        build.version.push_str(&format!(" ({} {})", short_ver_hash,
-                                       ver_date));
+        build.version.push_str(&format!(" ({} {})", short_ver_hash, ver_date));
         build.ver_date = Some(ver_date.to_string());
         build.ver_hash = Some(ver_hash);
         build.short_ver_hash = Some(short_ver_hash);
@@ -95,8 +97,7 @@ pub fn collect(build: &mut Build) {
     // Calculate this compiler's bootstrap key, which is currently defined as
     // the first 8 characters of the md5 of the release string.
     let key = md5::compute(build.release.as_bytes());
-    build.bootstrap_key = format!("{:02x}{:02x}{:02x}{:02x}",
-                                  key[0], key[1], key[2], key[3]);
+    build.bootstrap_key = format!("{:02x}{:02x}{:02x}{:02x}", key[0], key[1], key[2], key[3]);
 
     // Slurp up the stage0 bootstrap key as we're bootstrapping from an
     // otherwise stable compiler.

@@ -51,7 +51,7 @@ pub fn llvm(build: &Build, target: &str) {
         let mut done_contents = String::new();
         t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
         if done_contents == stamp_contents {
-            return
+            return;
         }
     }
     drop(fs::remove_dir_all(&dst));
@@ -60,7 +60,11 @@ pub fn llvm(build: &Build, target: &str) {
 
     let _ = fs::remove_dir_all(&dst.join("build"));
     t!(fs::create_dir_all(&dst.join("build")));
-    let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
+    let assertions = if build.config.llvm_assertions {
+        "ON"
+    } else {
+        "OFF"
+    };
 
     // http://llvm.org/docs/CMake.html
     let mut cfg = cmake::Config::new(build.src.join("src/llvm"));
@@ -68,21 +72,26 @@ pub fn llvm(build: &Build, target: &str) {
         cfg.generator("Ninja");
     }
     cfg.target(target)
-       .host(&build.config.build)
-       .out_dir(&dst)
-       .profile(if build.config.llvm_optimize {"Release"} else {"Debug"})
-       .define("LLVM_ENABLE_ASSERTIONS", assertions)
-       .define("LLVM_TARGETS_TO_BUILD", "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend")
-       .define("LLVM_INCLUDE_EXAMPLES", "OFF")
-       .define("LLVM_INCLUDE_TESTS", "OFF")
-       .define("LLVM_INCLUDE_DOCS", "OFF")
-       .define("LLVM_ENABLE_ZLIB", "OFF")
-       .define("WITH_POLLY", "OFF")
-       .define("LLVM_ENABLE_TERMINFO", "OFF")
-       .define("LLVM_ENABLE_LIBEDIT", "OFF")
-       .define("LLVM_PARALLEL_COMPILE_JOBS", build.jobs().to_string())
-       .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
-       .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
+        .host(&build.config.build)
+        .out_dir(&dst)
+        .profile(if build.config.llvm_optimize {
+            "Release"
+        } else {
+            "Debug"
+        })
+        .define("LLVM_ENABLE_ASSERTIONS", assertions)
+        .define("LLVM_TARGETS_TO_BUILD",
+                "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend")
+        .define("LLVM_INCLUDE_EXAMPLES", "OFF")
+        .define("LLVM_INCLUDE_TESTS", "OFF")
+        .define("LLVM_INCLUDE_DOCS", "OFF")
+        .define("LLVM_ENABLE_ZLIB", "OFF")
+        .define("WITH_POLLY", "OFF")
+        .define("LLVM_ENABLE_TERMINFO", "OFF")
+        .define("LLVM_ENABLE_LIBEDIT", "OFF")
+        .define("LLVM_PARALLEL_COMPILE_JOBS", build.jobs().to_string())
+        .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
+        .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
     if target.starts_with("i686") {
         cfg.define("LLVM_BUILD_32_BITS", "ON");
@@ -95,19 +104,19 @@ pub fn llvm(build: &Build, target: &str) {
         //        actually exists most of the time in normal installs of LLVM.
         let host = build.llvm_out(&build.config.build).join("bin/llvm-tblgen");
         cfg.define("CMAKE_CROSSCOMPILING", "True")
-           .define("LLVM_TABLEGEN", &host);
+            .define("LLVM_TABLEGEN", &host);
     }
 
     // MSVC handles compiler business itself
     if !target.contains("msvc") {
         if build.config.ccache {
-           cfg.define("CMAKE_C_COMPILER", "ccache")
-              .define("CMAKE_C_COMPILER_ARG1", build.cc(target))
-              .define("CMAKE_CXX_COMPILER", "ccache")
-              .define("CMAKE_CXX_COMPILER_ARG1", build.cxx(target));
+            cfg.define("CMAKE_C_COMPILER", "ccache")
+                .define("CMAKE_C_COMPILER_ARG1", build.cc(target))
+                .define("CMAKE_CXX_COMPILER", "ccache")
+                .define("CMAKE_CXX_COMPILER_ARG1", build.cxx(target));
         } else {
-           cfg.define("CMAKE_C_COMPILER", build.cc(target))
-              .define("CMAKE_CXX_COMPILER", build.cxx(target));
+            cfg.define("CMAKE_C_COMPILER", build.cc(target))
+                .define("CMAKE_CXX_COMPILER", build.cxx(target));
         }
         cfg.build_arg("-j").build_arg(build.jobs().to_string());
 
@@ -126,14 +135,13 @@ pub fn llvm(build: &Build, target: &str) {
 
 fn check_llvm_version(build: &Build, llvm_config: &Path) {
     if !build.config.llvm_version_check {
-        return
+        return;
     }
 
     let mut cmd = Command::new(llvm_config);
     let version = output(cmd.arg("--version"));
-    if version.starts_with("3.5") || version.starts_with("3.6") ||
-       version.starts_with("3.7") {
-        return
+    if version.starts_with("3.5") || version.starts_with("3.6") || version.starts_with("3.7") {
+        return;
     }
     panic!("\n\nbad LLVM version: {}, need >=3.5\n\n", version)
 }
@@ -144,18 +152,18 @@ pub fn test_helpers(build: &Build, target: &str) {
     let dst = build.test_helpers_out(target);
     let src = build.src.join("src/rt/rust_test_helpers.c");
     if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
-        return
+        return;
     }
 
     println!("Building test helpers");
     t!(fs::create_dir_all(&dst));
     let mut cfg = gcc::Config::new();
     cfg.cargo_metadata(false)
-       .out_dir(&dst)
-       .target(target)
-       .host(&build.config.build)
-       .opt_level(0)
-       .debug(false)
-       .file(build.src.join("src/rt/rust_test_helpers.c"))
-       .compile("librust_test_helpers.a");
+        .out_dir(&dst)
+        .target(target)
+        .host(&build.config.build)
+        .opt_level(0)
+        .debug(false)
+        .file(build.src.join("src/rt/rust_test_helpers.c"))
+        .compile("librust_test_helpers.a");
 }

@@ -59,7 +59,7 @@ pub fn linkcheck(build: &Build, stage: u32, host: &str) {
     println!("Linkcheck stage{} ({})", stage, host);
     let compiler = Compiler::new(stage, host);
     build.run(build.tool_cmd(&compiler, "linkchecker")
-                   .arg(build.out.join(host).join("doc")));
+        .arg(build.out.join(host).join("doc")));
 }
 
 /// Runs the `cargotest` tool as compiled in `stage` by the `host` compiler.
@@ -74,7 +74,7 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
     // fail if rustc is not spelled `rustc`.
     let path = build.sysroot(compiler).join("bin");
     let old_path = ::std::env::var("PATH").expect("");
-    let sep = if cfg!(windows) { ";" } else {":" };
+    let sep = if cfg!(windows) { ";" } else { ":" };
     let ref newpath = format!("{}{}{}", path.display(), sep, old_path);
 
     // Note that this is a short, cryptic, and not scoped directory name. This
@@ -84,9 +84,9 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
     t!(fs::create_dir_all(&out_dir));
 
     build.run(build.tool_cmd(compiler, "cargotest")
-                   .env("PATH", newpath)
-                   .arg(&build.cargo)
-                   .arg(&out_dir));
+        .env("PATH", newpath)
+        .arg(&build.cargo)
+        .arg(&out_dir));
 }
 
 /// Runs the `tidy` tool as compiled in `stage` by the `host` compiler.
@@ -98,7 +98,7 @@ pub fn tidy(build: &Build, stage: u32, host: &str) {
     println!("tidy check stage{} ({})", stage, host);
     let compiler = Compiler::new(stage, host);
     build.run(build.tool_cmd(&compiler, "tidy")
-                   .arg(build.src.join("src")));
+        .arg(build.src.join("src")));
 }
 
 fn testdir(build: &Build, host: &str) -> PathBuf {
@@ -110,12 +110,11 @@ fn testdir(build: &Build, host: &str) -> PathBuf {
 /// Compiles all tests with `compiler` for `target` with the specified
 /// compiletest `mode` and `suite` arguments. For example `mode` can be
 /// "run-pass" or `suite` can be something like `debuginfo`.
-pub fn compiletest(build: &Build,
-                   compiler: &Compiler,
-                   target: &str,
-                   mode: &str,
-                   suite: &str) {
-    println!("Check compiletest {} ({} -> {})", suite, compiler.host, target);
+pub fn compiletest(build: &Build, compiler: &Compiler, target: &str, mode: &str, suite: &str) {
+    println!("Check compiletest {} ({} -> {})",
+             suite,
+             compiler.host,
+             target);
     let mut cmd = build.tool_cmd(compiler, "compiletest");
 
     // compiletest currently has... a lot of arguments, so let's just pass all
@@ -151,8 +150,7 @@ pub fn compiletest(build: &Build,
 
     let mut targetflags = build.rustc_flags(&target);
     targetflags.extend(flags);
-    targetflags.push(format!("-Lnative={}",
-                             build.test_helpers_out(target).display()));
+    targetflags.push(format!("-Lnative={}", build.test_helpers_out(target).display()));
     cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
 
     // FIXME: CFG_PYTHON should probably be detected more robustly elsewhere
@@ -192,17 +190,27 @@ pub fn compiletest(build: &Build,
     if suite == "run-make" {
         let llvm_components = output(Command::new(&llvm_config).arg("--components"));
         let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
-        cmd.arg("--cc").arg(build.cc(target))
-           .arg("--cxx").arg(build.cxx(target))
-           .arg("--cflags").arg(build.cflags(target).join(" "))
-           .arg("--llvm-components").arg(llvm_components.trim())
-           .arg("--llvm-cxxflags").arg(llvm_cxxflags.trim());
+        cmd.arg("--cc")
+            .arg(build.cc(target))
+            .arg("--cxx")
+            .arg(build.cxx(target))
+            .arg("--cflags")
+            .arg(build.cflags(target).join(" "))
+            .arg("--llvm-components")
+            .arg(llvm_components.trim())
+            .arg("--llvm-cxxflags")
+            .arg(llvm_cxxflags.trim());
     } else {
-        cmd.arg("--cc").arg("")
-           .arg("--cxx").arg("")
-           .arg("--cflags").arg("")
-           .arg("--llvm-components").arg("")
-           .arg("--llvm-cxxflags").arg("");
+        cmd.arg("--cc")
+            .arg("")
+            .arg("--cxx")
+            .arg("")
+            .arg("--cflags")
+            .arg("")
+            .arg("--llvm-components")
+            .arg("")
+            .arg("--llvm-cxxflags")
+            .arg("");
     }
 
     // Running a C compiler on MSVC requires a few env vars to be set, to be
@@ -221,7 +229,7 @@ pub fn compiletest(build: &Build,
     if target.contains("android") {
         // Assume that cc for this target comes from the android sysroot
         cmd.arg("--android-cross-path")
-           .arg(build.cc(target).parent().unwrap().parent().unwrap());
+            .arg(build.cc(target).parent().unwrap().parent().unwrap());
     } else {
         cmd.arg("--android-cross-path").arg("");
     }
@@ -242,11 +250,11 @@ pub fn docs(build: &Build, compiler: &Compiler) {
     while let Some(p) = stack.pop() {
         if p.is_dir() {
             stack.extend(t!(p.read_dir()).map(|p| t!(p).path()));
-            continue
+            continue;
         }
 
         if p.extension().and_then(|s| s.to_str()) != Some("md") {
-            continue
+            continue;
         }
 
         println!("doc tests for: {}", p.display());
@@ -265,9 +273,9 @@ pub fn error_index(build: &Build, compiler: &Compiler) {
 
     let output = testdir(build, compiler.host).join("error-index.md");
     build.run(build.tool_cmd(compiler, "error_index_generator")
-                   .arg("markdown")
-                   .arg(&output)
-                   .env("CFG_BUILD", &build.config.build));
+        .arg("markdown")
+        .arg(&output)
+        .env("CFG_BUILD", &build.config.build));
 
     markdown_test(build, compiler, &output);
 }
@@ -289,24 +297,18 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
 ///
 /// Currently this runs all tests for a DAG by passing a bunch of `-p foo`
 /// arguments, and those arguments are discovered from `cargo metadata`.
-pub fn krate(build: &Build,
-             compiler: &Compiler,
-             target: &str,
-             mode: Mode) {
+pub fn krate(build: &Build, compiler: &Compiler, target: &str, mode: Mode) {
     let (name, path, features, root) = match mode {
-        Mode::Libstd => {
-            ("libstd", "src/rustc/std_shim", build.std_features(), "std_shim")
-        }
-        Mode::Libtest => {
-            ("libtest", "src/rustc/test_shim", String::new(), "test_shim")
-        }
-        Mode::Librustc => {
-            ("librustc", "src/rustc", build.rustc_features(), "rustc-main")
-        }
+        Mode::Libstd => ("libstd", "src/rustc/std_shim", build.std_features(), "std_shim"),
+        Mode::Libtest => ("libtest", "src/rustc/test_shim", String::new(), "test_shim"),
+        Mode::Librustc => ("librustc", "src/rustc", build.rustc_features(), "rustc-main"),
         _ => panic!("can only test libraries"),
     };
-    println!("Testing {} stage{} ({} -> {})", name, compiler.stage,
-             compiler.host, target);
+    println!("Testing {} stage{} ({} -> {})",
+             name,
+             compiler.stage,
+             compiler.host,
+             target);
 
     // Run `cargo metadata` to figure out what crates we're testing.
     //
@@ -316,15 +318,19 @@ pub fn krate(build: &Build,
     // the dependency graph and what `-p` arguments there are.
     let mut cargo = Command::new(&build.cargo);
     cargo.arg("metadata")
-         .arg("--manifest-path").arg(build.src.join(path).join("Cargo.toml"));
+        .arg("--manifest-path")
+        .arg(build.src.join(path).join("Cargo.toml"));
     let output = output(&mut cargo);
     let output: Output = json::decode(&output).unwrap();
-    let id2pkg = output.packages.iter()
-                        .map(|pkg| (&pkg.id, pkg))
-                        .collect::<HashMap<_, _>>();
-    let id2deps = output.resolve.nodes.iter()
-                        .map(|node| (&node.id, &node.dependencies))
-                        .collect::<HashMap<_, _>>();
+    let id2pkg = output.packages
+        .iter()
+        .map(|pkg| (&pkg.id, pkg))
+        .collect::<HashMap<_, _>>();
+    let id2deps = output.resolve
+        .nodes
+        .iter()
+        .map(|node| (&node.id, &node.dependencies))
+        .collect::<HashMap<_, _>>();
 
     // Build up the base `cargo test` command.
     //
@@ -333,8 +339,9 @@ pub fn krate(build: &Build,
     // arguments need to get passed.
     let mut cargo = build.cargo(compiler, mode, target, "test");
     cargo.arg("--manifest-path")
-         .arg(build.src.join(path).join("Cargo.toml"))
-         .arg("--features").arg(features);
+        .arg(build.src.join(path).join("Cargo.toml"))
+        .arg("--features")
+        .arg(features);
 
     let mut visited = HashSet::new();
     let root_pkg = output.packages.iter().find(|p| p.name == root).unwrap();
@@ -343,7 +350,7 @@ pub fn krate(build: &Build,
         // Skip any packages with sources listed, as these come from crates.io
         // and we shouldn't be testing them.
         if id2pkg[id].source.is_some() {
-            continue
+            continue;
         }
         // Right now jemalloc is our only target-specific crate in the sense
         // that it's not present on all platforms. Custom skip it here for now,
@@ -379,10 +386,7 @@ pub fn krate(build: &Build,
     }
 }
 
-fn krate_android(build: &Build,
-                 compiler: &Compiler,
-                 target: &str,
-                 mode: Mode) {
+fn krate_android(build: &Build, compiler: &Compiler, target: &str, mode: Mode) {
     let mut tests = Vec::new();
     let out_dir = build.cargo_out(compiler, mode, target);
     find_tests(&out_dir, target, &mut tests);
@@ -398,10 +402,8 @@ fn krate_android(build: &Build,
                           target,
                           compiler.host,
                           test_file_name);
-        let program = format!("(cd {dir}; \
-                                LD_LIBRARY_PATH=./{target} ./{test} \
-                                    --logfile {log} \
-                                    {args})",
+        let program = format!("(cd {dir}; LD_LIBRARY_PATH=./{target} ./{test} --logfile {log} \
+                               {args})",
                               dir = ADB_TEST_DIR,
                               target = target,
                               test = test_file_name,
@@ -411,9 +413,9 @@ fn krate_android(build: &Build,
         let output = output(Command::new("adb").arg("shell").arg(&program));
         println!("{}", output);
         build.run(Command::new("adb")
-                          .arg("pull")
-                          .arg(&log)
-                          .arg(build.out.join("tmp")));
+            .arg("pull")
+            .arg(&log)
+            .arg(build.out.join("tmp")));
         build.run(Command::new("adb").arg("shell").arg("rm").arg(&log));
         if !output.contains("result: ok") {
             panic!("some tests failed");
@@ -421,63 +423,56 @@ fn krate_android(build: &Build,
     }
 }
 
-fn krate_emscripten(build: &Build,
-                    compiler: &Compiler,
-                    target: &str,
-                    mode: Mode) {
-     let mut tests = Vec::new();
-     let out_dir = build.cargo_out(compiler, mode, target);
-     find_tests(&out_dir, target, &mut tests);
-     find_tests(&out_dir.join("deps"), target, &mut tests);
+fn krate_emscripten(build: &Build, compiler: &Compiler, target: &str, mode: Mode) {
+    let mut tests = Vec::new();
+    let out_dir = build.cargo_out(compiler, mode, target);
+    find_tests(&out_dir, target, &mut tests);
+    find_tests(&out_dir.join("deps"), target, &mut tests);
 
-     for test in tests {
-         let test_file_name = test.to_string_lossy().into_owned();
-         println!("running {}", test_file_name);
-         let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
-         let status = Command::new(nodejs)
-             .arg(&test_file_name)
-             .stderr(::std::process::Stdio::inherit())
-             .status();
-         match status {
-             Ok(status) => {
-                 if !status.success() {
-                     panic!("some tests failed");
-                 }
-             }
-             Err(e) => panic!(format!("failed to execute command: {}", e)),
-         };
-     }
- }
+    for test in tests {
+        let test_file_name = test.to_string_lossy().into_owned();
+        println!("running {}", test_file_name);
+        let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
+        let status = Command::new(nodejs)
+            .arg(&test_file_name)
+            .stderr(::std::process::Stdio::inherit())
+            .status();
+        match status {
+            Ok(status) => {
+                if !status.success() {
+                    panic!("some tests failed");
+                }
+            }
+            Err(e) => panic!(format!("failed to execute command: {}", e)),
+        };
+    }
+}
 
 
-fn find_tests(dir: &Path,
-              target: &str,
-              dst: &mut Vec<PathBuf>) {
+fn find_tests(dir: &Path, target: &str, dst: &mut Vec<PathBuf>) {
     for e in t!(dir.read_dir()).map(|e| t!(e)) {
         let file_type = t!(e.file_type());
         if !file_type.is_file() {
-            continue
+            continue;
         }
         let filename = e.file_name().into_string().unwrap();
         if (target.contains("windows") && filename.ends_with(".exe")) ||
            (!target.contains("windows") && !filename.contains(".")) ||
-           (target.contains("emscripten") && filename.contains(".js")){
+           (target.contains("emscripten") && filename.contains(".js")) {
             dst.push(e.path());
         }
     }
 }
 
-pub fn android_copy_libs(build: &Build,
-                         compiler: &Compiler,
-                         target: &str) {
+pub fn android_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
     println!("Android copy libs to emulator ({})", target);
     build.run(Command::new("adb").arg("remount"));
     build.run(Command::new("adb").args(&["shell", "rm", "-r", ADB_TEST_DIR]));
     build.run(Command::new("adb").args(&["shell", "mkdir", ADB_TEST_DIR]));
     build.run(Command::new("adb")
-                      .arg("push")
-                      .arg(build.src.join("src/etc/adb_run_wrapper.sh"))
-                      .arg(ADB_TEST_DIR));
+        .arg("push")
+        .arg(build.src.join("src/etc/adb_run_wrapper.sh"))
+        .arg(ADB_TEST_DIR));
 
     let target_dir = format!("{}/{}", ADB_TEST_DIR, target);
     build.run(Command::new("adb").args(&["shell", "mkdir", &target_dir[..]]));
@@ -487,9 +482,9 @@ pub fn android_copy_libs(build: &Build,
         let name = f.file_name().into_string().unwrap();
         if util::is_dylib(&name) {
             build.run(Command::new("adb")
-                              .arg("push")
-                              .arg(f.path())
-                              .arg(&target_dir));
+                .arg("push")
+                .arg(f.path())
+                .arg(&target_dir));
         }
     }
 }
