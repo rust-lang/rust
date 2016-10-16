@@ -83,6 +83,7 @@ pub struct Metadata(fs_imp::FileAttr);
 ///
 /// [`io::Result`]: ../io/type.Result.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct ReadDir(fs_imp::ReadDir);
 
 /// Entries returned by the [`ReadDir`] iterator.
