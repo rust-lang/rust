@@ -37,6 +37,7 @@ use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ext::base::{SyntaxExtension, Resolver as SyntaxResolver};
+use syntax::ext::expand::mark_tts;
 use syntax::ext::hygiene::Mark;
 use syntax::feature_gate::{self, emit_feature_err};
 use syntax::ext::tt::macro_rules;
@@ -207,11 +208,16 @@ impl<'b> Resolver<'b> {
                 };
 
                 let mut custom_derive_crate = false;
+                // The mark of the expansion that generates the loaded macros.
+                let mut opt_mark = None;
                 for loaded_macro in self.crate_loader.load_macros(item, is_crate_root) {
+                    let mark = opt_mark.unwrap_or_else(Mark::fresh);
+                    opt_mark = Some(mark);
                     match loaded_macro.kind {
                         LoadedMacroKind::Def(mut def) => {
                             if def.use_locally {
                                 self.macro_names.insert(def.ident.name);
+                                def.body = mark_tts(&def.body, mark);
                                 let ext = macro_rules::compile(&self.session.parse_sess, &def);
                                 import_macro(self, def.ident.name, ext, loaded_macro.import_site);
                             }
@@ -248,6 +254,17 @@ impl<'b> Resolver<'b> {
                         ..ModuleS::new(Some(parent), ModuleKind::Def(Def::Mod(def_id), name))
                     });
                     self.define(parent, name, TypeNS, (module, sp, vis));
+
+                    if let Some(mark) = opt_mark {
+                        let invocation = self.arenas.alloc_invocation_data(InvocationData {
+                            module: Cell::new(module),
+                            def_index: CRATE_DEF_INDEX,
+                            const_integer: false,
+                            legacy_scope: Cell::new(LegacyScope::Empty),
+                            expansion: Cell::new(LegacyScope::Empty),
+                        });
+                        self.invocations.insert(mark, invocation);
+                    }
 
                     self.populate_module_if_necessary(module);
                 } else if custom_derive_crate {

@@ -48,8 +48,7 @@ use parse::classify;
 use parse::common::SeqSep;
 use parse::lexer::{Reader, TokenAndSpan};
 use parse::obsolete::ObsoleteSyntax;
-use parse::token::{self, intern, MatchNt, SubstNt, SpecialVarNt, InternedString};
-use parse::token::{keywords, SpecialMacroVar};
+use parse::token::{self, intern, keywords, MatchNt, SubstNt, InternedString};
 use parse::{new_sub_parser_from_file, ParseSess};
 use util::parser::{AssocOp, Fixity};
 use print::pprust;
@@ -2653,8 +2652,12 @@ impl<'a> Parser<'a> {
                                           num_captures: name_num
                                       })));
                 } else if self.token.is_keyword(keywords::Crate) {
+                    let ident = match self.token {
+                        token::Ident(id) => ast::Ident { name: token::intern("$crate"), ..id },
+                        _ => unreachable!(),
+                    };
                     self.bump();
-                    return Ok(TokenTree::Token(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar)));
+                    return Ok(TokenTree::Token(sp, token::Ident(ident)));
                 } else {
                     sp = mk_sp(sp.lo, self.span.hi);
                     self.parse_ident().unwrap_or_else(|mut e| {

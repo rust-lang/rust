@@ -58,7 +58,6 @@ impl<'a> ParserAnyMacro<'a> {
 
 struct MacroRulesMacroExpander {
     name: ast::Ident,
-    imported_from: Option<ast::Ident>,
     lhses: Vec<TokenTree>,
     rhses: Vec<TokenTree>,
     valid: bool,
@@ -76,7 +75,6 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         generic_extension(cx,
                           sp,
                           self.name,
-                          self.imported_from,
                           arg,
                           &self.lhses,
                           &self.rhses)
@@ -87,7 +85,6 @@ impl TTMacroExpander for MacroRulesMacroExpander {
 fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                           sp: Span,
                           name: ast::Ident,
-                          imported_from: Option<ast::Ident>,
                           arg: &[TokenTree],
                           lhses: &[TokenTree],
                           rhses: &[TokenTree])
@@ -116,10 +113,8 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     _ => cx.span_bug(sp, "malformed macro rhs"),
                 };
                 // rhs has holes ( `$id` and `$(...)` that need filled)
-                let trncbr = new_tt_reader(&cx.parse_sess.span_diagnostic,
-                                           Some(named_matches),
-                                           imported_from,
-                                           rhs);
+                let trncbr =
+                    new_tt_reader(&cx.parse_sess.span_diagnostic, Some(named_matches), rhs);
                 let mut p = Parser::new(cx.parse_sess(), cx.cfg().clone(), Box::new(trncbr));
                 p.directory = cx.current_expansion.module.directory.clone();
                 p.restrictions = match cx.current_expansion.no_noninline_mod {
@@ -223,7 +218,7 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
     ];
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
-    let arg_reader = new_tt_reader(&sess.span_diagnostic, None, None, def.body.clone());
+    let arg_reader = new_tt_reader(&sess.span_diagnostic, None, def.body.clone());
 
     let argument_map = match parse(sess, &Vec::new(), arg_reader, &argument_gram) {
         Success(m) => m,
@@ -269,7 +264,6 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
 
     let exp: Box<_> = Box::new(MacroRulesMacroExpander {
         name: def.ident,
-        imported_from: def.imported_from,
         lhses: lhses,
         rhses: rhses,
         valid: valid,

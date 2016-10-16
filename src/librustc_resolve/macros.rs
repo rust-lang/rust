@@ -29,10 +29,10 @@ use syntax_pos::Span;
 #[derive(Clone)]
 pub struct InvocationData<'a> {
     pub module: Cell<Module<'a>>,
-    def_index: DefIndex,
+    pub def_index: DefIndex,
     // True if this expansion is in a `const_integer` position, for example `[u32; m!()]`.
     // c.f. `DefCollector::visit_ast_const_integer`.
-    const_integer: bool,
+    pub const_integer: bool,
     // The scope in which the invocation path is resolved.
     pub legacy_scope: Cell<LegacyScope<'a>>,
     // The smallest scope that includes this invocation's expansion,

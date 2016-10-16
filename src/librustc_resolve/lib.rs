@@ -53,7 +53,7 @@ use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, Ident, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
@@ -1579,6 +1579,17 @@ impl<'a> Resolver<'a> {
     /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
     fn resolve_module_prefix(&mut self, module_path: &[Ident], span: Option<Span>)
                              -> ResolveResult<ModulePrefixResult<'a>> {
+        if &*module_path[0].name.as_str() == "$crate" {
+            let mut ctxt = module_path[0].ctxt;
+            while ctxt.source().0 != SyntaxContext::empty() {
+                ctxt = ctxt.source().0;
+            }
+            let module = self.invocations[&ctxt.source().1].module.get();
+            let crate_root =
+                if module.def_id().unwrap().is_local() { self.graph_root } else { module };
+            return Success(PrefixFound(crate_root, 1))
+        }
+
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
         let mut i = match &*module_path[0].name.as_str() {
