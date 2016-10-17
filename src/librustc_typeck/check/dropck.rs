@@ -520,8 +520,9 @@ enum DropckKind<'tcx> {
 
     /// Assume all borrowed data access by dtor occurs as if Self has the
     /// type carried by this variant. In practice this means that some
-    /// of the type parameters are remapped to `()`, because the developer
-    /// has asserted that the destructor will not access their contents.
+    /// of the type parameters are remapped to `()` (and some lifetime
+    /// parameters remapped to `'static`), because the developer has asserted
+    /// that the destructor will not access their contents.
     RevisedSelf(Ty<'tcx>),
 }
 
@@ -539,13 +540,8 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
             // Find the `impl<..> Drop for _` to inspect any
             // attributes attached to the impl's generics.
-            let opt_dtor_method = adt_def.destructor();
-            let dtor_method = if let Some(dtor_method) = opt_dtor_method {
-                dtor_method
-            } else {
-                return DropckKind::BorrowedDataMustStrictlyOutliveSelf;
-            };
-
+            let dtor_method = adt_def.destructor()
+                .expect("dtorck type without destructor impossible");
             let method = tcx.impl_or_trait_item(dtor_method);
             let impl_id: DefId = method.container().id();
             let revised_ty = revise_self_ty(tcx, adt_def, impl_id, substs);
