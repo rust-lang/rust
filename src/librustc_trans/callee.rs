@@ -327,7 +327,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
         }
     };
     let sig = tcx.erase_late_bound_regions_and_normalize(sig);
-    let tuple_input_ty = tcx.mk_tup(sig.inputs.to_vec());
+    let tuple_input_ty = tcx.mk_tup(&sig.inputs);
     let sig = ty::FnSig {
         inputs: vec![bare_fn_ty_maybe_ref,
                      tuple_input_ty],
