@@ -333,6 +333,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     }
                 }
                 Err(err) => {
+                    stalled = false;
                     let backtrace = self.error_at(index);
                     errors.push(Error {
                         error: err,
