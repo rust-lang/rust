@@ -1817,8 +1817,6 @@ extern {
                                            Ty: DIType,
                                            AlwaysPreserve: bool,
                                            Flags: c_uint,
-                                           AddrOps: *const i64,
-                                           AddrOpsCount: c_uint,
                                            ArgNo: c_uint)
                                            -> DIVariable;
 
@@ -1854,15 +1852,6 @@ extern {
                                                DL: ValueRef,
                                                InsertAtEnd: BasicBlockRef)
                                                -> ValueRef;
-
-    pub fn LLVMRustDIBuilderInsertDeclareBefore(Builder: DIBuilderRef,
-                                                Val: ValueRef,
-                                                VarInfo: DIVariable,
-                                                AddrOps: *const i64,
-                                                AddrOpsCount: c_uint,
-                                                DL: ValueRef,
-                                                InsertBefore: ValueRef)
-                                                -> ValueRef;
 
     pub fn LLVMRustDIBuilderCreateEnumerator(Builder: DIBuilderRef,
                                              Name: *const c_char,

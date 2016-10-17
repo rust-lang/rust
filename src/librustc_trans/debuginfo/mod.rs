@@ -482,8 +482,6 @@ pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     type_metadata,
                     cx.sess().opts.optimize != config::OptLevel::No,
                     0,
-                    address_operations.as_ptr(),
-                    address_operations.len() as c_uint,
                     argument_index)
             };
             source_loc::set_debug_location(cx, None,
