@@ -355,10 +355,7 @@ impl LintPass for NonUpperCaseGlobals {
 impl LateLintPass for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemStatic(_, hir::MutImmutable, _) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "static constant", it.name, it.span);
-            }
-            hir::ItemStatic(_, hir::MutMutable, _) => {
+            hir::ItemStatic(..) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", it.name, it.span);
             }
             hir::ItemConst(..) => {
