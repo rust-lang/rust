@@ -326,22 +326,22 @@ fn test_zip_unzip() {
 
 #[test]
 fn test_vec_truncate_drop() {
-    static mut drops: u32 = 0;
+    static mut DROPS: u32 = 0;
     struct Elem(i32);
     impl Drop for Elem {
         fn drop(&mut self) {
             unsafe {
-                drops += 1;
+                DROPS += 1;
             }
         }
     }
 
     let mut v = vec![Elem(1), Elem(2), Elem(3), Elem(4), Elem(5)];
-    assert_eq!(unsafe { drops }, 0);
+    assert_eq!(unsafe { DROPS }, 0);
     v.truncate(3);
-    assert_eq!(unsafe { drops }, 2);
+    assert_eq!(unsafe { DROPS }, 2);
     v.truncate(0);
-    assert_eq!(unsafe { drops }, 5);
+    assert_eq!(unsafe { DROPS }, 5);
 }
 
 #[test]
