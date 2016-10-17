@@ -1967,14 +1967,13 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         UnstableFeatures::Allow => f.constness,
         _ => hir::Constness::NotConst
     };
-    let prefix = format!("{}{}{}{:#}fn {}{:#}",
+    let indent = format!("{}{}{}{:#}fn {}{:#}",
                          VisSpace(&it.visibility),
                          ConstnessSpace(vis_constness),
                          UnsafetySpace(f.unsafety),
                          AbiSpace(f.abi),
                          it.name.as_ref().unwrap(),
-                         f.generics);
-    let indent = repeat("&nbsp;").take(prefix.len()).collect::<String>();
+                         f.generics).len();
     write!(w, "<pre class='rust fn'>{vis}{constness}{unsafety}{abi}fn \
                {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
@@ -1983,8 +1982,8 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            abi = AbiSpace(f.abi),
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
-           where_clause = WhereClause(&f.generics, "  ".to_string()),
-           decl = Method(&f.decl, &indent))?;
+           where_clause = WhereClause(&f.generics, 2),
+           decl = Method(&f.decl, indent))?;
     document(w, cx, it)
 }
 
@@ -2009,9 +2008,6 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
     }
 
-    // Where clauses in traits are indented nine spaces, per rustdoc.css
-    let indent = "         ".to_string();
-
     // Output the trait definition
     write!(w, "<pre class='rust trait'>{}{}trait {}{}{}{} ",
            VisSpace(&it.visibility),
@@ -2019,7 +2015,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            it.name.as_ref().unwrap(),
            t.generics,
            bounds,
-           WhereClause(&t.generics, indent))?;
+           // Where clauses in traits are indented nine spaces, per rustdoc.css
+           WhereClause(&t.generics, 9))?;
 
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
@@ -2272,16 +2269,15 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                              AbiSpace(abi),
                              name,
                              *g);
-        let mut indent = repeat("&nbsp;").take(prefix.len()).collect::<String>();
+        let mut indent = prefix.len();
         let where_indent = if parent == ItemType::Trait {
-            indent += "&nbsp;&nbsp;&nbsp;&nbsp;";
-            "        ".to_string()
+            indent += 4;
+            8
         } else if parent == ItemType::Impl {
-            "  ".to_string()
+            2
         } else {
-            let prefix = prefix + &format!("{:#}", Method(d, &indent));
-            let prefix = prefix.lines().last().unwrap();
-            repeat(" ").take(prefix.len() + 1).collect::<String>()
+            let prefix = prefix + &format!("{:#}", Method(d, indent));
+            prefix.lines().last().unwrap().len() + 1
         };
         write!(w, "{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
@@ -2291,7 +2287,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                href = href,
                name = name,
                generics = *g,
-               decl = Method(d, &indent),
+               decl = Method(d, indent),
                where_clause = WhereClause(g, where_indent))
     }
     match item.inner {
@@ -2402,7 +2398,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     let padding = format!("{}enum {}{:#} ",
                           VisSpace(&it.visibility),
                           it.name.as_ref().unwrap(),
-                          e.generics);
+                          e.generics).len();
     write!(w, "{}enum {}{}{}",
            VisSpace(&it.visibility),
            it.name.as_ref().unwrap(),
@@ -2558,8 +2554,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
     match ty {
         doctree::Plain => {
             if let Some(g) = g {
-                let pad = repeat(" ").take(plain.len() + 1).collect::<String>();
-                write!(w, "{}", WhereClause(g, pad))?
+                write!(w, "{}", WhereClause(g, plain.len() + 1))?
             }
             let mut has_visible_fields = false;
             write!(w, " {{")?;
@@ -2609,16 +2604,14 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
             write!(w, ")")?;
             plain.push_str(")");
             if let Some(g) = g {
-                let pad = repeat(" ").take(plain.len() + 1).collect::<String>();
-                write!(w, "{}", WhereClause(g, pad))?
+                write!(w, "{}", WhereClause(g, plain.len() + 1))?
             }
             write!(w, ";")?;
         }
         doctree::Unit => {
             // Needed for PhantomData.
             if let Some(g) = g {
-                let pad = repeat(" ").take(plain.len() + 1).collect::<String>();
-                write!(w, "{}", WhereClause(g, pad))?
+                write!(w, "{}", WhereClause(g, plain.len() + 1))?
             }
             write!(w, ";")?;
         }
@@ -2643,8 +2636,7 @@ fn render_union(w: &mut fmt::Formatter, it: &clean::Item,
     if let Some(g) = g {
         write!(w, "{}", g)?;
         plain.push_str(&format!("{:#}", g));
-        let pad = repeat(" ").take(plain.len() + 1).collect::<String>();
-        write!(w, "{}", WhereClause(g, pad))?;
+        write!(w, "{}", WhereClause(g, plain.len() + 1))?;
     }
 
     write!(w, " {{\n{}", tab)?;
@@ -2945,8 +2937,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
 fn item_typedef(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
-    let indent = format!("type {}{:#} ", it.name.as_ref().unwrap(), t.generics);
-    let indent = repeat(" ").take(indent.len()).collect::<String>();
+    let indent = format!("type {}{:#} ", it.name.as_ref().unwrap(), t.generics).len();
     write!(w, "<pre class='rust typedef'>type {}{}{where_clause} = {type_};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,

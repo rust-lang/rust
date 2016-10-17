@@ -42,7 +42,7 @@ pub struct UnsafetySpace(pub hir::Unsafety);
 #[derive(Copy, Clone)]
 pub struct ConstnessSpace(pub hir::Constness);
 /// Wrapper struct for properly emitting a method declaration.
-pub struct Method<'a>(pub &'a clean::FnDecl, pub &'a str);
+pub struct Method<'a>(pub &'a clean::FnDecl, pub usize);
 /// Similar to VisSpace, but used for mutability
 #[derive(Copy, Clone)]
 pub struct MutableSpace(pub clean::Mutability);
@@ -50,7 +50,7 @@ pub struct MutableSpace(pub clean::Mutability);
 #[derive(Copy, Clone)]
 pub struct RawMutableSpace(pub clean::Mutability);
 /// Wrapper struct for emitting a where clause from Generics.
-pub struct WhereClause<'a>(pub &'a clean::Generics, pub String);
+pub struct WhereClause<'a>(pub &'a clean::Generics, pub usize);
 /// Wrapper struct for emitting type parameter bounds.
 pub struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
 /// Wrapper struct for emitting a comma-separated list of items
@@ -157,7 +157,7 @@ impl fmt::Display for clean::Generics {
 
 impl<'a> fmt::Display for WhereClause<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let &WhereClause(gens, ref pad) = self;
+        let &WhereClause(gens, pad) = self;
         if gens.where_predicates.is_empty() {
             return Ok(());
         }
@@ -207,14 +207,14 @@ impl<'a> fmt::Display for WhereClause<'a> {
         if !f.alternate() {
             clause.push_str("</span>");
             let plain = format!("{:#}", self);
-            if plain.len() + pad.len() > 80 {
+            if plain.len() > 80 {
                 //break it onto its own line regardless, but make sure method impls and trait
                 //blocks keep their fixed padding (2 and 9, respectively)
-                let padding = if pad.len() > 10 {
+                let padding = if pad > 10 {
                     clause = clause.replace("class='where'", "class='where fmt-newline'");
                     repeat("&nbsp;").take(8).collect::<String>()
                 } else {
-                    repeat("&nbsp;").take(pad.len() + 6).collect::<String>()
+                    repeat("&nbsp;").take(pad + 6).collect::<String>()
                 };
                 clause = clause.replace("<br>", &format!("<br>{}", padding));
             } else {
@@ -773,8 +773,7 @@ fn fmt_impl(i: &clean::Impl, f: &mut fmt::Formatter, link_trait: bool) -> fmt::R
     fmt::Display::fmt(&i.for_, f)?;
     plain.push_str(&format!("{:#}", i.for_));
 
-    let pad = repeat(" ").take(plain.len() + 1).collect::<String>();
-    fmt::Display::fmt(&WhereClause(&i.generics, pad), f)?;
+    fmt::Display::fmt(&WhereClause(&i.generics, plain.len() + 1), f)?;
     Ok(())
 }
 
@@ -903,19 +902,21 @@ impl<'a> fmt::Display for Method<'a> {
 
         let mut output: String;
         let plain: String;
+        let pad = repeat(" ").take(indent).collect::<String>();
         if arrow.is_empty() {
             output = format!("({})", args);
-            plain = format!("{}({})", indent.replace("&nbsp;", " "), args_plain);
+            plain = format!("{}({})", pad, args_plain);
         } else {
             output = format!("({args})<br>{arrow}", args = args, arrow = arrow);
-            plain = format!("{indent}({args}){arrow}",
-                            indent = indent.replace("&nbsp;", " "),
+            plain = format!("{pad}({args}){arrow}",
+                            pad = pad,
                             args = args_plain,
                             arrow = arrow_plain);
         }
 
         if plain.len() > 80 {
-            let pad = format!("<br>{}", indent);
+            let pad = repeat("&nbsp;").take(indent).collect::<String>();
+            let pad = format!("<br>{}", pad);
             output = output.replace("<br>", &pad);
         } else {
             output = output.replace("<br>", "");
