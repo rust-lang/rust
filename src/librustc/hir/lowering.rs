@@ -101,6 +101,14 @@ pub fn lower_crate(sess: &Session,
     }.lower_crate(krate)
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum ParamMode {
+    /// Any path in a type context.
+    Explicit,
+    /// The `module::Type` in `module::Type::method` in an expression.
+    Optional
+}
+
 impl<'a> LoweringContext<'a> {
     fn lower_crate(&mut self, c: &Crate) -> hir::Crate {
         struct ItemLowerer<'lcx, 'interner: 'lcx> {
@@ -179,13 +187,14 @@ impl<'a> LoweringContext<'a> {
         P(Spanned {
             node: match view_path.node {
                 ViewPathSimple(ident, ref path) => {
-                    hir::ViewPathSimple(ident.name, self.lower_path(path))
+                    hir::ViewPathSimple(ident.name,
+                                        self.lower_path(path, None, ParamMode::Explicit))
                 }
                 ViewPathGlob(ref path) => {
-                    hir::ViewPathGlob(self.lower_path(path))
+                    hir::ViewPathGlob(self.lower_path(path, None, ParamMode::Explicit))
                 }
                 ViewPathList(ref path, ref path_list_idents) => {
-                    hir::ViewPathList(self.lower_path(path),
+                    hir::ViewPathList(self.lower_path(path, None, ParamMode::Explicit),
                                       path_list_idents.iter()
                                                       .map(|item| self.lower_path_list_item(item))
                                                       .collect())
@@ -256,7 +265,8 @@ impl<'a> LoweringContext<'a> {
                             position: position,
                         }
                     });
-                    hir::TyPath(qself, self.lower_path(path))
+                    let path = self.lower_path(path, qself.as_ref(), ParamMode::Explicit);
+                    hir::TyPath(qself, path)
                 }
                 TyKind::ObjectSum(ref ty, ref bounds) => {
                     hir::TyObjectSum(self.lower_ty(ty), self.lower_bounds(bounds))
@@ -298,38 +308,56 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_path(&mut self, p: &Path) -> hir::Path {
+    fn lower_path(&mut self,
+                  p: &Path,
+                  qself: Option<&hir::QSelf>,
+                  param_mode: ParamMode)
+                  -> hir::Path {
         hir::Path {
             global: p.global,
-            segments: p.segments
-                       .iter()
-                       .map(|&PathSegment { identifier, ref parameters }| {
-                           hir::PathSegment {
-                               name: identifier.name,
-                               parameters: self.lower_path_parameters(parameters),
-                           }
-                       })
-                       .collect(),
+            segments: p.segments.iter().enumerate().map(|(i, segment)| {
+                let PathSegment { identifier, ref parameters } = *segment;
+                let param_mode = match (qself, param_mode) {
+                    (Some(qself), ParamMode::Optional) if i < qself.position => {
+                        // This segment is part of the trait path in a
+                        // qualified path - one of `a`, `b` or `Trait`
+                        // in `<X as a::b::Trait>::T::U::method`.
+                        ParamMode::Explicit
+                    }
+                    _ => param_mode
+                };
+                hir::PathSegment {
+                    name: identifier.name,
+                    parameters: self.lower_path_parameters(parameters, param_mode),
+                }
+            }).collect(),
             span: p.span,
         }
     }
 
-    fn lower_path_parameters(&mut self, path_parameters: &PathParameters) -> hir::PathParameters {
+    fn lower_path_parameters(&mut self,
+                             path_parameters: &PathParameters,
+                             param_mode: ParamMode)
+                             -> hir::PathParameters {
         match *path_parameters {
-            PathParameters::AngleBracketed(ref data) =>
-                hir::AngleBracketedParameters(self.lower_angle_bracketed_parameter_data(data)),
+            PathParameters::AngleBracketed(ref data) => {
+                let data = self.lower_angle_bracketed_parameter_data(data, param_mode);
+                hir::AngleBracketedParameters(data)
+            }
             PathParameters::Parenthesized(ref data) =>
                 hir::ParenthesizedParameters(self.lower_parenthesized_parameter_data(data)),
         }
     }
 
     fn lower_angle_bracketed_parameter_data(&mut self,
-                                            data: &AngleBracketedParameterData)
+                                            data: &AngleBracketedParameterData,
+                                            param_mode: ParamMode)
                                             -> hir::AngleBracketedParameterData {
         let &AngleBracketedParameterData { ref lifetimes, ref types, ref bindings } = data;
         hir::AngleBracketedParameterData {
             lifetimes: self.lower_lifetimes(lifetimes),
             types: types.iter().map(|ty| self.lower_ty(ty)).collect(),
+            infer_types: types.is_empty() && param_mode == ParamMode::Optional,
             bindings: bindings.iter().map(|b| self.lower_ty_binding(b)).collect(),
         }
     }
@@ -493,7 +521,7 @@ impl<'a> LoweringContext<'a> {
                                                           span}) => {
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
                     id: id,
-                    path: self.lower_path(path),
+                    path: self.lower_path(path, None, ParamMode::Explicit),
                     ty: self.lower_ty(ty),
                     span: span,
                 })
@@ -523,7 +551,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_trait_ref(&mut self, p: &TraitRef) -> hir::TraitRef {
         hir::TraitRef {
-            path: self.lower_path(&p.path),
+            path: self.lower_path(&p.path, None, ParamMode::Explicit),
             ref_id: p.ref_id,
         }
     }
@@ -887,17 +915,19 @@ impl<'a> LoweringContext<'a> {
                 }
                 PatKind::Lit(ref e) => hir::PatKind::Lit(P(self.lower_expr(e))),
                 PatKind::TupleStruct(ref path, ref pats, ddpos) => {
-                    hir::PatKind::TupleStruct(self.lower_path(path),
-                                        pats.iter().map(|x| self.lower_pat(x)).collect(), ddpos)
+                    hir::PatKind::TupleStruct(self.lower_path(path, None, ParamMode::Optional),
+                                              pats.iter().map(|x| self.lower_pat(x)).collect(),
+                                              ddpos)
                 }
-                PatKind::Path(ref opt_qself, ref path) => {
-                    let opt_qself = opt_qself.as_ref().map(|qself| {
+                PatKind::Path(ref qself, ref path) => {
+                    let qself = qself.as_ref().map(|qself| {
                         hir::QSelf { ty: self.lower_ty(&qself.ty), position: qself.position }
                     });
-                    hir::PatKind::Path(opt_qself, self.lower_path(path))
+                    let path = self.lower_path(path, qself.as_ref(), ParamMode::Optional);
+                    hir::PatKind::Path(qself, path)
                 }
                 PatKind::Struct(ref pth, ref fields, etc) => {
-                    let pth = self.lower_path(pth);
+                    let pth = self.lower_path(pth, None, ParamMode::Optional);
                     let fs = fields.iter()
                                    .map(|f| {
                                        Spanned {
@@ -1236,13 +1266,14 @@ impl<'a> LoweringContext<'a> {
                     };
                 }
                 ExprKind::Path(ref qself, ref path) => {
-                    let hir_qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
+                    let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
                         hir::QSelf {
                             ty: self.lower_ty(ty),
                             position: position,
                         }
                     });
-                    hir::ExprPath(hir_qself, self.lower_path(path))
+                    let path = self.lower_path(path, qself.as_ref(), ParamMode::Optional);
+                    hir::ExprPath(qself, path)
                 }
                 ExprKind::Break(opt_ident, ref opt_expr) => {
                     hir::ExprBreak(self.lower_opt_sp_ident(opt_ident),
@@ -1275,7 +1306,7 @@ impl<'a> LoweringContext<'a> {
                     hir::ExprInlineAsm(P(hir_asm), outputs, inputs)
                 }
                 ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
-                    hir::ExprStruct(P(self.lower_path(path)),
+                    hir::ExprStruct(P(self.lower_path(path, None, ParamMode::Optional)),
                                     fields.iter().map(|x| self.lower_field(x)).collect(),
                                     maybe_expr.as_ref().map(|x| P(self.lower_expr(x))))
                 }
@@ -1655,8 +1686,12 @@ impl<'a> LoweringContext<'a> {
         match *v {
             Visibility::Public => hir::Public,
             Visibility::Crate(_) => hir::Visibility::Crate,
-            Visibility::Restricted { ref path, id } =>
-                hir::Visibility::Restricted { path: P(self.lower_path(path)), id: id },
+            Visibility::Restricted { ref path, id } => {
+                hir::Visibility::Restricted {
+                    path: P(self.lower_path(path, None, ParamMode::Explicit)),
+                    id: id
+                }
+            }
             Visibility::Inherited => hir::Inherited,
         }
     }
@@ -1949,6 +1984,7 @@ impl<'a> LoweringContext<'a> {
             parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
                 lifetimes: lifetimes,
                 types: types,
+                infer_types: true,
                 bindings: bindings,
             }),
         });
