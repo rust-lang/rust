@@ -69,7 +69,7 @@ foo(&counted);
 All we’ve done is wrap our `String` in an `Rc<T>`. But we can now pass the
 `Rc<String>` around anywhere we’d have a `String`. The signature of `foo`
 didn’t change, but works just as well with either type. This example has two
-conversions: `Rc<String>` to `String` and then `String` to `&str`. Rust will do
+conversions: `&Rc<String>` to `&String` and then `&String` to `&str`. Rust will do
 this as many times as possible until the types match.
 
 Another very common implementation provided by the standard library is:
