@@ -92,6 +92,7 @@
 #![feature(question_mark)]
 #![feature(never_type)]
 #![feature(prelude_import)]
+#![feature(ordering_chaining)]
 
 #[prelude_import]
 #[allow(unused)]
