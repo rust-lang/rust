@@ -843,6 +843,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
+        if let mir::Lvalue::Projection(ref proj) = *lvalue {
+            if let mir::Lvalue::Local(index) = proj.base {
+                if let Some(Value::ByValPair(a, b)) = self.frame().get_local(index) {
+                    if let mir::ProjectionElem::Field(ref field, _) = proj.elem {
+                        let val = [a, b][field.index()];
+                        return Ok(Value::ByVal(val));
+                    }
+                }
+            }
+        }
+
         match self.eval_lvalue(lvalue)? {
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
