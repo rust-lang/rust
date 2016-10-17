@@ -1609,6 +1609,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
                     lifetimes: new_lts.into(),
                     types: new_types,
+                    infer_types: data.infer_types,
                     bindings: new_bindings,
                })
             }

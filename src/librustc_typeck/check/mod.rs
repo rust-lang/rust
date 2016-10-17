@@ -80,7 +80,7 @@ pub use self::Expectation::*;
 pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::TupleArgumentsFlag::*;
 
-use astconv::{AstConv, ast_region_to_region, PathParamMode};
+use astconv::{AstConv, ast_region_to_region};
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use hir::def::{Def, CtorKind, PathResolution};
@@ -4006,7 +4006,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let path_res = self.tcx.expect_resolution(node_id);
         let base_ty_end = path.segments.len() - path_res.depth;
         let (ty, def) = AstConv::finish_resolving_def_to_ty(self, self, path.span,
-                                                            PathParamMode::Optional,
                                                             path_res.base_def,
                                                             None,
                                                             node_id,
@@ -4038,7 +4037,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let ty_segments = path.segments.split_last().unwrap().1;
             let base_ty_end = path.segments.len() - path_res.depth;
             let (ty, _def) = AstConv::finish_resolving_def_to_ty(self, self, span,
-                                                                 PathParamMode::Optional,
                                                                  path_res.base_def,
                                                                  opt_self_ty,
                                                                  node_id,
@@ -4379,11 +4377,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => bug!("unexpected definition: {:?}", def),
         }
 
-        // In `<T as Trait<A, B>>::method`, `A` and `B` are mandatory, but
-        // `opt_self_ty` can also be Some for `Foo::method`, where Foo's
-        // type parameters are not mandatory.
-        let require_type_space = opt_self_ty.is_some() && ufcs_associated.is_none();
-
         debug!("type_segment={:?} fn_segment={:?}", type_segment, fn_segment);
 
         // Now that we have categorized what space the parameters for each
@@ -4414,8 +4407,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // variables. If the user provided some types, we may still need
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
-        self.check_path_parameter_count(span, !require_type_space, &mut type_segment);
-        self.check_path_parameter_count(span, true, &mut fn_segment);
+        self.check_path_parameter_count(span, &mut type_segment);
+        self.check_path_parameter_count(span, &mut fn_segment);
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
@@ -4450,7 +4443,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }, |def, substs| {
             let mut i = def.index as usize;
 
-            let can_omit = i >= fn_start || !require_type_space;
             let segment = if i < fn_start {
                 // Handle Self first, so we can adjust the index to match the AST.
                 if has_self && i == 0 {
@@ -4464,10 +4456,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= fn_start;
                 fn_segment
             };
-            let types = match segment.map(|(s, _)| &s.parameters) {
-                Some(&hir::AngleBracketedParameters(ref data)) => &data.types[..],
+            let (types, infer_types) = match segment.map(|(s, _)| &s.parameters) {
+                Some(&hir::AngleBracketedParameters(ref data)) => {
+                    (&data.types[..], data.infer_types)
+                }
                 Some(&hir::ParenthesizedParameters(_)) => bug!(),
-                None => &[]
+                None => (&[][..], true)
             };
 
             // Skip over the lifetimes in the same segment.
@@ -4475,11 +4469,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= generics.regions.len();
             }
 
-            let omitted = can_omit && types.is_empty();
             if let Some(ast_ty) = types.get(i) {
                 // A provided type parameter.
                 self.to_ty(ast_ty)
-            } else if let (false, Some(default)) = (omitted, def.default) {
+            } else if let (false, Some(default)) = (infer_types, def.default) {
                 // No type parameter provided, but a default exists.
                 default.subst_spanned(self.tcx, substs, Some(span))
             } else {
@@ -4539,16 +4532,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Report errors if the provided parameters are too few or too many.
     fn check_path_parameter_count(&self,
                                   span: Span,
-                                  can_omit: bool,
                                   segment: &mut Option<(&hir::PathSegment, &ty::Generics)>) {
-        let (lifetimes, types, bindings) = match segment.map(|(s, _)| &s.parameters) {
-            Some(&hir::AngleBracketedParameters(ref data)) => {
-                (&data.lifetimes[..], &data.types[..], &data.bindings[..])
+        let (lifetimes, types, infer_types, bindings) = {
+            match segment.map(|(s, _)| &s.parameters) {
+                Some(&hir::AngleBracketedParameters(ref data)) => {
+                    (&data.lifetimes[..], &data.types[..], data.infer_types, &data.bindings[..])
+                }
+                Some(&hir::ParenthesizedParameters(_)) => {
+                    span_bug!(span, "parenthesized parameters cannot appear in ExprPath");
+                }
+                None => (&[][..], &[][..], true, &[][..])
             }
-            Some(&hir::ParenthesizedParameters(_)) => {
-                span_bug!(span, "parenthesized parameters cannot appear in ExprPath");
-            }
-            None => (&[][..], &[][..], &[][..])
         };
 
         let count = |n| {
@@ -4597,7 +4591,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
             *segment = None;
-        } else if !(can_omit && types.len() == 0) && types.len() < required_len {
+        } else if !infer_types && types.len() < required_len {
             let adjust = |len| if len > 1 { "parameters" } else { "parameter" };
             let required_param_str = adjust(required_len);
             let actual_param_str = adjust(types.len());

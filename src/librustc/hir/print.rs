@@ -1696,6 +1696,16 @@ impl<'a> State<'a> {
                     comma = true;
                 }
 
+                // FIXME(eddyb) This would leak into error messages, e.g.:
+                // "non-exhaustive patterns: `Some::<..>(_)` not covered".
+                if data.infer_types && false {
+                    if comma {
+                        self.word_space(",")?
+                    }
+                    word(&mut self.s, "..")?;
+                    comma = true;
+                }
+
                 for binding in data.bindings.iter() {
                     if comma {
                         self.word_space(",")?
