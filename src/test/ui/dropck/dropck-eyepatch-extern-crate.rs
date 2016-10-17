@@ -10,6 +10,16 @@
 
 // aux-build:dropck_eyepatch_extern_crate.rs
 
+// The point of this test is to illustrate that the `#[may_dangle]`
+// attribute specifically allows, in the context of a type
+// implementing `Drop`, a generic parameter to be instantiated with a
+// lifetime that does not strictly outlive the owning type itself,
+// and that this attribute's effects are preserved when importing
+// the type from another crate.
+//
+// See also dropck-eyepatch.rs for more information about the general
+// structure of the test.
+
 extern crate dropck_eyepatch_extern_crate as other;
 
 use other::{Dt,Dr,Pt,Pr,St,Sr};

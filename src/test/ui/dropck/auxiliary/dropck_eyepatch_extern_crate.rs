@@ -11,14 +11,16 @@
 #![feature(generic_param_attrs)]
 #![feature(dropck_eyepatch)]
 
+// This is a support file for ../dropck-eyepatch-extern-crate.rs
+//
 // The point of this test is to illustrate that the `#[may_dangle]`
 // attribute specifically allows, in the context of a type
 // implementing `Drop`, a generic parameter to be instantiated with a
 // lifetime that does not strictly outlive the owning type itself,
-// and that this attributes effects are preserved when importing
+// and that this attribute's effects are preserved when importing
 // the type from another crate.
 //
-// See also dropck-eyepatch.rs for more information about the general
+// See also ../dropck-eyepatch.rs for more information about the general
 // structure of the test.
 
 use std::fmt;
