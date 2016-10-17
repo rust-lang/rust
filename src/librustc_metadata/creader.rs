@@ -12,12 +12,11 @@
 
 use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
-use macro_import;
 use schema::CrateRoot;
 
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
-use rustc::middle::cstore::LoadedMacro;
+use rustc::middle::cstore::LoadedMacros;
 use rustc::session::{config, Session};
 use rustc_back::PanicStrategy;
 use rustc::session::search_paths::PathKind;
@@ -36,7 +35,8 @@ use syntax::ast;
 use syntax::abi::Abi;
 use syntax::parse;
 use syntax::attr;
-use syntax::parse::token::InternedString;
+use syntax::ext::base::SyntaxExtension;
+use syntax::parse::token::{InternedString, intern};
 use syntax_pos::{self, Span, mk_sp};
 use log;
 
@@ -591,15 +591,14 @@ impl<'a> CrateLoader<'a> {
 
             ret.macro_rules.push(ast::MacroDef {
                 ident: ast::Ident::with_empty_ctxt(def.name),
-                attrs: def.attrs,
                 id: ast::DUMMY_NODE_ID,
                 span: local_span,
                 imported_from: Some(item.ident),
                 // overridden in plugin/load.rs
                 export: false,
                 use_locally: false,
-                allow_internal_unstable: false,
-
+                allow_internal_unstable: attr::contains_name(&def.attrs, "allow_internal_unstable"),
+                attrs: def.attrs,
                 body: body,
             });
             self.sess.imported_macro_spans.borrow_mut()
@@ -637,6 +636,58 @@ impl<'a> CrateLoader<'a> {
         }
 
         return ret
+    }
+
+    /// Load custom derive macros.
+    ///
+    /// Note that this is intentionally similar to how we load plugins today,
+    /// but also intentionally separate. Plugins are likely always going to be
+    /// implemented as dynamic libraries, but we have a possible future where
+    /// custom derive (and other macro-1.1 style features) are implemented via
+    /// executables and custom IPC.
+    fn load_derive_macros(&mut self, span: Span, macros: &Macros, index: DefIndex)
+                          -> Vec<(ast::Name, SyntaxExtension)> {
+        use std::{env, mem};
+        use proc_macro::TokenStream;
+        use proc_macro::__internal::Registry;
+        use rustc_back::dynamic_lib::DynamicLibrary;
+        use syntax_ext::deriving::custom::CustomDerive;
+
+        // Make sure the path contains a / or the linker will search for it.
+        let path = macros.dylib.as_ref().unwrap();
+        let path = env::current_dir().unwrap().join(path);
+        let lib = match DynamicLibrary::open(Some(&path)) {
+            Ok(lib) => lib,
+            Err(err) => self.sess.span_fatal(span, &err),
+        };
+
+        let sym = self.sess.generate_derive_registrar_symbol(&macros.svh, index);
+        let registrar = unsafe {
+            let sym = match lib.symbol(&sym) {
+                Ok(f) => f,
+                Err(err) => self.sess.span_fatal(span, &err),
+            };
+            mem::transmute::<*mut u8, fn(&mut Registry)>(sym)
+        };
+
+        struct MyRegistrar(Vec<(ast::Name, SyntaxExtension)>);
+
+        impl Registry for MyRegistrar {
+            fn register_custom_derive(&mut self,
+                                      trait_name: &str,
+                                      expand: fn(TokenStream) -> TokenStream) {
+                let derive = SyntaxExtension::CustomDerive(Box::new(CustomDerive::new(expand)));
+                self.0.push((intern(trait_name), derive));
+            }
+        }
+
+        let mut my_registrar = MyRegistrar(Vec::new());
+        registrar(&mut my_registrar);
+
+        // Intentionally leak the dynamic library. We can't ever unload it
+        // since the library can make things that will live arbitrarily long.
+        mem::forget(lib);
+        my_registrar.0
     }
 
     /// Look for a plugin registrar. Returns library path, crate
@@ -1030,7 +1081,17 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         }
     }
 
-    fn load_macros(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<LoadedMacro> {
-        macro_import::load_macros(self, extern_crate, allows_macros)
+    fn load_macros(&mut self, extern_crate: &ast::Item) -> LoadedMacros {
+        let macros = self.read_macros(extern_crate);
+
+        if let Some(index) = macros.custom_derive_registrar {
+            // custom derive crates currently should not have any macro_rules!
+            // exported macros, enforced elsewhere
+            assert_eq!(macros.macro_rules.len(), 0);
+            let custom_derives = self.load_derive_macros(extern_crate.span, &macros, index);
+            LoadedMacros::ProcMacros(custom_derives)
+        } else {
+            LoadedMacros::MacroRules(macros.macro_rules)
+        }
     }
 }
