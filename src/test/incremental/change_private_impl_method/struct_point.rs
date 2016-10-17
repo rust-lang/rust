@@ -100,7 +100,7 @@ mod fn_read_field {
     }
 }
 
-/// A fn item that reads fields from `Point` but does not invoke methods
+/// A fn item that writes to a field of `Point` but does not invoke methods
 mod fn_write_field {
     use point::Point;
 
