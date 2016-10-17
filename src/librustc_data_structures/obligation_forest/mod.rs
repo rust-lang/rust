@@ -342,6 +342,16 @@ impl<O: ForestObligation> ObligationForest<O> {
             }
         }
 
+        if stalled {
+            // There's no need to perform marking, cycle processing and compression when nothing
+            // changed.
+            return Outcome {
+                completed: vec![],
+                errors: errors,
+                stalled: stalled,
+            };
+        }
+
         self.mark_as_waiting();
         self.process_cycles(processor);
 
