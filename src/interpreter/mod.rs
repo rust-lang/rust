@@ -1503,7 +1503,11 @@ pub fn eval_main<'a, 'tcx: 'a>(
     for _ in 0..step_limit {
         match ecx.step() {
             Ok(true) => {
-                ecx.dump_locals(5);
+                use std::env::var;
+                let limit_opt = var("MIRI_LOG_LOCALS_LIMIT").ok().and_then(|s| s.parse().ok());
+                if let Some(limit) = limit_opt {
+                    ecx.dump_locals(limit);
+                }
             }
             Ok(false) => return,
             Err(e) => {
