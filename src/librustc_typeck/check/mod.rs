@@ -2380,7 +2380,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
-                TupleArguments => vec![self.tcx.mk_tup(err_inputs)],
+                TupleArguments => vec![self.tcx.mk_tup(&err_inputs)],
             };
 
             self.check_argument_types(sp, &err_inputs[..], &[], args_no_rcvr,
@@ -3733,11 +3733,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
                 err_field = err_field || t.references_error();
                 t
-            }).collect();
+            }).collect::<Vec<_>>();
             if err_field {
                 tcx.types.err
             } else {
-                tcx.mk_tup(elt_ts)
+                tcx.mk_tup(&elt_ts)
             }
           }
           hir::ExprStruct(ref path, ref fields, ref base_expr) => {

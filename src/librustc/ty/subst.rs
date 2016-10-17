@@ -167,7 +167,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     pub fn new<I>(tcx: TyCtxt<'a, 'gcx, 'tcx>, params: I)
                   -> &'tcx Substs<'tcx>
     where I: IntoIterator<Item=Kind<'tcx>> {
-        tcx.mk_substs(params.into_iter().collect())
+        tcx.mk_substs(&params.into_iter().collect::<Vec<_>>())
     }
 
     pub fn maybe_new<I, E>(tcx: TyCtxt<'a, 'gcx, 'tcx>, params: I)
@@ -311,7 +311,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
         if params[..] == self[..] {
             self
         } else {
-            folder.tcx().mk_substs(params)
+            folder.tcx().mk_substs(&params)
         }
     }
 

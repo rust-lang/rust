@@ -89,7 +89,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
             "cxchg" | "cxchgweak" => (1, vec!(tcx.mk_mut_ptr(param(ccx, 0)),
                                               param(ccx, 0),
                                               param(ccx, 0)),
-                                      tcx.mk_tup(vec!(param(ccx, 0), tcx.types.bool))),
+                                      tcx.mk_tup(&[param(ccx, 0), tcx.types.bool])),
             "load" => (1, vec!(tcx.mk_imm_ptr(param(ccx, 0))),
                        param(ccx, 0)),
             "store" => (1, vec!(tcx.mk_mut_ptr(param(ccx, 0)), param(ccx, 0)),
@@ -274,7 +274,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
 
             "add_with_overflow" | "sub_with_overflow"  | "mul_with_overflow" =>
                 (1, vec!(param(ccx, 0), param(ccx, 0)),
-                tcx.mk_tup(vec!(param(ccx, 0), tcx.types.bool))),
+                tcx.mk_tup(&[param(ccx, 0), tcx.types.bool])),
 
             "unchecked_div" | "unchecked_rem" =>
                 (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
