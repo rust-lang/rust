@@ -742,6 +742,14 @@ impl<'tcx> Generics<'tcx> {
     pub fn count(&self) -> usize {
         self.parent_count() + self.own_count()
     }
+
+    pub fn region_param(&self, param: &EarlyBoundRegion) -> &RegionParameterDef<'tcx> {
+        &self.regions[param.index as usize - self.has_self as usize]
+    }
+
+    pub fn type_param(&self, param: &ParamTy) -> &TypeParameterDef<'tcx> {
+        &self.types[param.idx as usize - self.has_self as usize - self.regions.len()]
+    }
 }
 
 /// Bounds on generics.

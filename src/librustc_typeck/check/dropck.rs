@@ -556,20 +556,10 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             } else {
                 return DropckKind::BorrowedDataMustStrictlyOutliveSelf;
             };
+
             let method = tcx.impl_or_trait_item(dtor_method);
-            let substs = Substs::for_item(tcx,
-                                          method.container().id(),
-                                          |def, _| if def.pure_wrt_drop {
-                                              tcx.mk_region(ty::ReStatic)
-                                          } else {
-                                              substs.region_for_def(def)
-                                          },
-                                          |def, _| if def.pure_wrt_drop {
-                                              tcx.mk_nil()
-                                          } else {
-                                              substs.type_for_def(def)
-                                          });
-            let revised_ty = tcx.mk_adt(adt_def, &substs);
+            let impl_id: DefId = method.container().id();
+            let revised_ty = revise_self_ty(tcx, adt_def, impl_id, substs);
             return DropckKind::RevisedSelf(revised_ty);
         }
         ty::TyTrait(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
@@ -580,4 +570,78 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             return DropckKind::NoBorrowedDataAccessedInMyDtor;
         }
     }
+}
+
+// Constructs new Ty just like the type defined by `adt_def` coupled
+// with `substs`, except each type and lifetime parameter marked as
+// `#[may_dangle]` in the Drop impl (identified by `impl_id`) is
+// respectively mapped to `()` or `'static`.
+//
+// For example: If the `adt_def` maps to:
+//
+//   enum Foo<'a, X, Y> { ... }
+//
+// and the `impl_id` maps to:
+//
+//   impl<#[may_dangle] 'a, X, #[may_dangle] Y> Drop for Foo<'a, X, Y> { ... }
+//
+// then revises input: `Foo<'r,i64,&'r i64>` to: `Foo<'static,i64,()>`
+fn revise_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                  adt_def: ty::AdtDef<'tcx>,
+                                  impl_id: DefId,
+                                  substs: &Substs<'tcx>) -> Ty<'tcx> {
+    // Get generics for `impl Drop` to query for `#[may_dangle]` attr.
+    let impl_bindings = tcx.lookup_generics(impl_id);
+
+    // Get Substs attached to Self on `impl Drop`; process in parallel
+    // with `substs`, replacing dangling entries as appropriate.
+    let self_substs = {
+        let impl_self_ty: Ty<'tcx> = tcx.lookup_item_type(impl_id).ty;
+        if let ty::TyAdt(self_adt_def, self_substs) = impl_self_ty.sty {
+            assert_eq!(adt_def, self_adt_def);
+            self_substs
+        } else {
+            bug!("Self in `impl Drop for _` must be an Adt.");
+        }
+    };
+
+    // Walk `substs` + `self_substs`, build new substs appropriate for
+    // `adt_def`; each non-dangling param reuses entry from `substs`.
+    let substs = Substs::for_item(
+        tcx,
+        adt_def.did,
+        |def, _| {
+            let r_orig = substs.region_for_def(def);
+            let impl_self_orig = self_substs.region_for_def(def);
+            let r = if let ty::Region::ReEarlyBound(ref ebr) = *impl_self_orig {
+                if impl_bindings.region_param(ebr).pure_wrt_drop {
+                    tcx.mk_region(ty::ReStatic)
+                } else {
+                    r_orig
+                }
+            } else {
+                bug!("substs for an impl must map regions to ReEarlyBound");
+            };
+            debug!("has_dtor_of_interest mapping def {:?} orig {:?} to {:?}",
+                   def, r_orig, r);
+            r
+        },
+        |def, _| {
+            let t_orig = substs.type_for_def(def);
+            let impl_self_orig = self_substs.type_for_def(def);
+            let t = if let ty::TypeVariants::TyParam(ref pt) = impl_self_orig.sty {
+                if impl_bindings.type_param(pt).pure_wrt_drop {
+                    tcx.mk_nil()
+                } else {
+                    t_orig
+                }
+            } else {
+                bug!("substs for an impl must map types to TyParam");
+            };
+            debug!("has_dtor_of_interest mapping def {:?} orig {:?} {:?} to {:?} {:?}",
+                   def, t_orig, t_orig.sty, t, t.sty);
+            t
+        });
+
+    return tcx.mk_adt(adt_def, &substs);
 }
