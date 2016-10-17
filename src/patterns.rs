@@ -94,7 +94,11 @@ impl Rewrite for Pat {
                 let pats = try_opt!(pats);
 
                 // Unwrap all the sub-strings and join them with commas.
-                let result = format!("[{}]", pats.join(", "));
+                let result = if context.config.spaces_within_square_brackets {
+                    format!("[ {} ]", pats.join(", "))
+                } else {
+                    format!("[{}]", pats.join(", "))
+                };
                 wrap_str(result, context.config.max_width, width, offset)
             }
             PatKind::Struct(ref path, ref fields, elipses) => {

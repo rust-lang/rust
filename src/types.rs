@@ -607,8 +607,17 @@ impl Rewrite for ast::Ty {
                     })
             }
             ast::TyKind::Vec(ref ty) => {
-                let budget = try_opt!(width.checked_sub(2));
-                ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("[{}]", ty_str))
+                let budget = if context.config.spaces_within_square_brackets {
+                    try_opt!(width.checked_sub(4))
+                } else {
+                    try_opt!(width.checked_sub(2))
+                };
+                ty.rewrite(context, budget, offset + 1)
+                    .map(|ty_str| if context.config.spaces_within_square_brackets {
+                        format!("[ {} ]", ty_str)
+                    } else {
+                        format!("[{}]", ty_str)
+                    })
             }
             ast::TyKind::Tup(ref items) => {
                 rewrite_tuple(context,
@@ -622,7 +631,10 @@ impl Rewrite for ast::Ty {
                 rewrite_path(context, false, q_self.as_ref(), path, width, offset)
             }
             ast::TyKind::FixedLengthVec(ref ty, ref repeats) => {
-                rewrite_pair(&**ty, &**repeats, "[", "; ", "]", context, width, offset)
+                let use_spaces = context.config.spaces_within_square_brackets;
+                let lbr = if use_spaces { "[ " } else { "[" };
+                let rbr = if use_spaces { " ]" } else { "]" };
+                rewrite_pair(&**ty, &**repeats, lbr, "; ", rbr, context, width, offset)
             }
             ast::TyKind::Infer => {
                 if width >= 1 {
