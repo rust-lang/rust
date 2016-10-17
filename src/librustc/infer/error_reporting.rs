@@ -1295,9 +1295,10 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                         -> hir::Generics {
         let mut lifetimes = Vec::new();
         for lt in add {
-            lifetimes.push(hir::LifetimeDef { lifetime: *lt,
-                                              bounds: hir::HirVec::new(),
-                                              pure_wrt_drop: false,
+            lifetimes.push(hir::LifetimeDef {
+                lifetime: *lt,
+                bounds: hir::HirVec::new(),
+                pure_wrt_drop: false,
             });
         }
         for lt in &generics.lifetimes {
