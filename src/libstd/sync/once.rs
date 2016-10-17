@@ -387,7 +387,7 @@ mod tests {
     #[test]
     fn stampede_once() {
         static O: Once = Once::new();
-        static mut run: bool = false;
+        static mut RUN: bool = false;
 
         let (tx, rx) = channel();
         for _ in 0..10 {
@@ -396,10 +396,10 @@ mod tests {
                 for _ in 0..4 { thread::yield_now() }
                 unsafe {
                     O.call_once(|| {
-                        assert!(!run);
-                        run = true;
+                        assert!(!RUN);
+                        RUN = true;
                     });
-                    assert!(run);
+                    assert!(RUN);
                 }
                 tx.send(()).unwrap();
             });
@@ -407,10 +407,10 @@ mod tests {
 
         unsafe {
             O.call_once(|| {
-                assert!(!run);
-                run = true;
+                assert!(!RUN);
+                RUN = true;
             });
-            assert!(run);
+            assert!(RUN);
         }
 
         for _ in 0..10 {
