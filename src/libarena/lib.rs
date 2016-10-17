@@ -46,6 +46,7 @@ use std::intrinsics;
 use std::marker::{PhantomData, Send};
 use std::mem;
 use std::ptr;
+use std::slice;
 
 use alloc::heap;
 use alloc::raw_vec::RawVec;
@@ -133,7 +134,7 @@ impl<T> TypedArena<T> {
     #[inline]
     pub fn alloc(&self, object: T) -> &mut T {
         if self.ptr == self.end {
-            self.grow()
+            self.grow(1)
         }
 
         unsafe {
@@ -154,24 +155,56 @@ impl<T> TypedArena<T> {
         }
     }
 
+    /// Allocates a slice of objects that are copy into the `TypedArena`, returning a mutable
+    /// reference to it. Will panic if passed a zero-sized types.
+    #[inline]
+    pub fn alloc_slice(&self, slice: &[T]) -> &mut [T]
+        where T: Copy {
+        assert!(mem::size_of::<T>() != 0);
+        if slice.len() == 0 {
+            return unsafe { slice::from_raw_parts_mut(heap::EMPTY as *mut T, 0) };
+        }
+
+        let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
+        let at_least_bytes = slice.len() * mem::size_of::<T>();
+        if available_capacity_bytes < at_least_bytes {
+            self.grow(slice.len());
+        }
+
+        unsafe {
+            let start_ptr = self.ptr.get();
+            let arena_slice = slice::from_raw_parts_mut(start_ptr, slice.len());
+            self.ptr.set(start_ptr.offset(arena_slice.len() as isize));
+            arena_slice.copy_from_slice(slice);
+            arena_slice
+        }
+    }
+
     /// Grows the arena.
     #[inline(never)]
     #[cold]
-    fn grow(&self) {
+    fn grow(&self, n: usize) {
         unsafe {
             let mut chunks = self.chunks.borrow_mut();
-            let (chunk, new_capacity);
+            let (chunk, mut new_capacity);
             if let Some(last_chunk) = chunks.last_mut() {
-                if last_chunk.storage.double_in_place() {
+                let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
+                let currently_used_cap = used_bytes / mem::size_of::<T>();
+                if last_chunk.storage.reserve_in_place(currently_used_cap, n) {
                     self.end.set(last_chunk.end());
                     return;
                 } else {
                     let prev_capacity = last_chunk.storage.cap();
-                    new_capacity = prev_capacity.checked_mul(2).unwrap();
+                    loop {
+                        new_capacity = prev_capacity.checked_mul(2).unwrap();
+                        if new_capacity >= currently_used_cap + n {
+                            break;
+                        }
+                    }
                 }
             } else {
                 let elem_size = cmp::max(1, mem::size_of::<T>());
-                new_capacity = cmp::max(1, PAGE / elem_size);
+                new_capacity = cmp::max(n, PAGE / elem_size);
             }
             chunk = TypedArenaChunk::<T>::new(new_capacity);
             self.ptr.set(chunk.start());
