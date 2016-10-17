@@ -510,17 +510,6 @@ enum DropckKind<'tcx> {
     /// outlive self.
     ///
     /// Equivalent to RevisedTy with no change to the self type.
-    ///
-    /// FIXME: this name may not be general enough; it should be
-    /// talking about Phantom lifetimes rather than just borrows.
-    ///
-    /// (actually, pnkfelix is not 100% sure that's the right
-    /// viewpoint.  If I'm holding a phantom lifetime just to
-    /// constrain a reference type that occurs solely in *negative*
-    /// type positions, then my destructor cannot itself ever actually
-    /// access such references, right? And don't we end up essentially
-    /// requring people to put a fake borrow inside a PhantomData in
-    /// order to make phantom lifetimes work anyway?)
     BorrowedDataMustStrictlyOutliveSelf,
 
     /// The nearly completely-unsafe kind.
