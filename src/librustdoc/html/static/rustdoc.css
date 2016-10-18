@@ -17,13 +17,13 @@
     font-family: 'Fira Sans';
     font-style: normal;
     font-weight: 400;
-    src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
+    src: "./FiraSans-Regular.woff";
 }
 @font-face {
     font-family: 'Fira Sans';
     font-style: normal;
     font-weight: 500;
-    src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
+    src: "./FiraSans-Medium.woff";
 }
 
 /* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license and
@@ -32,19 +32,19 @@
     font-family: 'Source Serif Pro';
     font-style: normal;
     font-weight: 400;
-    src: local('Source Serif Pro'), url("SourceSerifPro-Regular.woff") format('woff');
+    src: "./SourceSerifPro-Regular.woff";
 }
 @font-face {
     font-family: 'Source Serif Pro';
     font-style: italic;
     font-weight: 400;
-    src: url("Heuristica-Italic.woff") format('woff');
+    src: "./Heuristica-Italic.woff";
 }
 @font-face {
     font-family: 'Source Serif Pro';
     font-style: normal;
     font-weight: 700;
-    src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
+    src: "./SourceSerifPro-Bold.woff";
 }
 
 /* See SourceCodePro-LICENSE.txt for the Source Code Pro license. */
@@ -52,13 +52,13 @@
     font-family: 'Source Code Pro';
     font-style: normal;
     font-weight: 400;
-    src: local('Source Code Pro'), url("SourceCodePro-Regular.woff") format('woff');
+    src: "./SourceCodePro-Regular.woff";
 }
 @font-face {
     font-family: 'Source Code Pro';
     font-style: normal;
     font-weight: 600;
-    src: local('Source Code Pro Semibold'), url("SourceCodePro-Semibold.woff") format('woff');
+    src: "./SourceCodePro-Semibold.woff";
 }
 
 * {
