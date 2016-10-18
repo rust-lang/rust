@@ -38,7 +38,7 @@ static ENV_LOCK: Mutex = Mutex::new();
 
 extern {
     #[cfg(not(target_os = "dragonfly"))]
-    #[cfg_attr(any(target_os = "linux", target_os = "emscripten"),
+    #[cfg_attr(any(target_os = "linux", target_os = "emscripten", target_os = "fuchsia"),
                link_name = "__errno_location")]
     #[cfg_attr(any(target_os = "bitrig",
                    target_os = "netbsd",
@@ -344,6 +344,12 @@ pub fn current_exe() -> io::Result<PathBuf> {
             Ok(PathBuf::from(OsStr::from_bytes(name)))
         }
     }
+}
+
+#[cfg(target_os = "fuchsia")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    use io::ErrorKind;
+    Err(io::Error::new(ErrorKind::Other, "Not yet implemented on fuchsia"))
 }
 
 pub struct Env {

@@ -36,7 +36,7 @@ fn main() {
     // targets, which means we have to build the alloc_jemalloc crate
     // for targets like emscripten, even if we don't use it.
     if target.contains("rumprun") || target.contains("bitrig") || target.contains("openbsd") ||
-       target.contains("msvc") || target.contains("emscripten") {
+       target.contains("msvc") || target.contains("emscripten") || target.contains("fuchsia") {
         println!("cargo:rustc-cfg=dummy_jemalloc");
         return;
     }
