@@ -51,6 +51,11 @@ static I8x16: Type = Type::Vector(&I8, None, 16);
 static I8x32: Type = Type::Vector(&I8, None, 32);
 static I8x64: Type = Type::Vector(&I8, None, 64);
 
+static I16x4: Type = Type::Vector(&I8, None, 8);
+static I16x8: Type = Type::Vector(&I8, None, 16);
+static I16x16: Type = Type::Vector(&I8, None, 32);
+static I16x32: Type = Type::Vector(&I8, None, 64);
+
 static I32x4: Type = Type::Vector(&I32, None, 4);
 static I32x8: Type = Type::Vector(&I32, None, 8);
 static I32x16: Type = Type::Vector(&I32, None, 16);
