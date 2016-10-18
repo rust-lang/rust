@@ -377,17 +377,28 @@ pub enum AttributeGate {
     Ungated,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+impl AttributeGate {
+    fn is_deprecated(&self) -> bool {
+        match *self {
+            Gated(Stability::Deprecated(_), ..) => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Stability {
     Unstable,
-    Deprecated,
+    // Argument is tracking issue link.
+    Deprecated(&'static str),
 }
 
 // fn() is not Debug
 impl ::std::fmt::Debug for AttributeGate {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match *self {
-            Gated(_, ref name, ref expl, _) => write!(fmt, "Gated({}, {})", name, expl),
+            Gated(ref stab, ref name, ref expl, _) =>
+                write!(fmt, "Gated({:?}, {}, {})", stab, name, expl),
             Ungated => write!(fmt, "Ungated")
         }
     }
@@ -400,6 +411,10 @@ macro_rules! cfg_fn {
         }
         f as fn(&Features) -> bool
     }}
+}
+
+pub fn deprecated_attributes() -> Vec<&'static (&'static str, AttributeType, AttributeGate)> {
+    KNOWN_ATTRIBUTES.iter().filter(|a| a.2.is_deprecated()).collect()
 }
 
 // Attributes that have a special meaning to rustc or rustdoc
@@ -643,11 +658,11 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("link_section", Whitelisted, Ungated),
     ("no_builtins", Whitelisted, Ungated),
     ("no_mangle", Whitelisted, Ungated),
-    ("no_debug", Whitelisted, Gated(Stability::Deprecated,
-                                    "no_debug",
-                                    "the `#[no_debug]` attribute \
-                                     is an experimental feature",
-                                    cfg_fn!(no_debug))),
+    ("no_debug", Whitelisted, Gated(
+        Stability::Deprecated("https://github.com/rust-lang/rust/issues/29721"),
+        "no_debug",
+        "the `#[no_debug]` attribute is an experimental feature",
+        cfg_fn!(no_debug))),
     ("omit_gdb_pretty_printer_section", Whitelisted, Gated(Stability::Unstable,
                                                        "omit_gdb_pretty_printer_section",
                                                        "the `#[omit_gdb_pretty_printer_section]` \
