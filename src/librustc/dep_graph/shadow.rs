@@ -64,6 +64,11 @@ impl ShadowGraph {
         }
     }
 
+    #[inline]
+    pub fn enabled(&self) -> bool {
+        ENABLED
+    }
+
     pub fn enqueue(&self, message: &DepMessage) {
         if ENABLED {
             match self.stack.borrow_state() {
