@@ -51,9 +51,6 @@ statically in others which is why build scripts are leveraged to make these
 dynamic decisions. In order to support this kind of dynamism, the following 
 modifications are proposed:
 
-- A new library kind, "abstract".  An "abstract" library by itself does not 
-  cause any libraries to be linked. Its purpose is to establish an identifier, 
-  that may be later referred to from the command line flags.
 - Extend syntax of the `-l` flag to `-l [KIND=]lib[:NEWNAME]`.  The `NEWNAME` 
   part may be used to override name of a library specified in the source.
 - Add new meaning to the `KIND` part: if "lib" is already specified in the source, 
@@ -64,26 +61,26 @@ Example:
 
 ```rust
 // mylib.rs
-#[link(name = "foo", kind="dylib")]
+#[link(name="foo", kind="dylib")]
 extern {
     // dllimport applied 
 }
 
-#[link(name = "bar", kind="static")]
+#[link(name="bar", kind="static")]
 extern {
     // dllimport not applied
 }
 
-#[link(name = "baz", kind="abstract")]
+#[link(name="baz")]
 extern {
-    // dllimport not applied, "baz" not linked
+    // kind defaults to "dylib", dllimport applied 
 }
 ```
 
-```
+```sh
 rustc mylib.rs -l static=foo # change foo's kind to "static", dllimport will not be applied  
-rustc mylib.rs -l foo:newfoo # link newfoo instead of foo   
-rustc mylib.rs -l dylib=baz:quoox # specify baz's kind as "dylib", change link name to quoox.
+rustc mylib.rs -l foo:newfoo # link newfoo instead of foo, keeping foo's kind as "dylib"
+rustc mylib.rs -l dylib=bar # change bar's kind to "dylib", dllimport will be applied
 ```
 
 ### Unbundled static libs (optional)
@@ -91,7 +88,8 @@ rustc mylib.rs -l dylib=baz:quoox # specify baz's kind as "dylib", change link n
 It had been pointed out that sometimes one may wish to link to a static system library 
 (i.e. one that is always available to the linker) without bundling it into .lib's and .rlib's.   
 For this use case we'll introduce another library "kind", "static-nobundle".
-Such libraries would be treated in the same way as "static", minus the bundling.
+Such libraries would be treated in the same way as "static", except they will not be bundled into 
+the target .lib/.rlib.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -147,6 +145,4 @@ meaning that it will be common that these attributes are left off by accident.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- Should un-overridden "abstract" kind cause an error, a warning, or be silently ignored?
-- Do we even need "abstract"?  Since kind can be overridden, there's no harm in providing a default in the source.
 - Should we allow dropping a library specified in the source from linking via `-l lib:` (i.e. "rename to empty")?
