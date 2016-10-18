@@ -71,7 +71,8 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     ccx: &CrateCtxt<'a, 'tcx>,
     drop_impl_did: DefId,
     drop_impl_ty: Ty<'tcx>,
-    self_type_did: DefId) -> Result<(), ()>
+    self_type_did: DefId)
+    -> Result<(), ()>
 {
     let tcx = ccx.tcx;
     let drop_impl_node_id = tcx.map.as_local_node_id(drop_impl_did).unwrap();
@@ -123,7 +124,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
-    self_to_impl_substs: &Substs<'tcx>) -> Result<(), ()> {
+    self_to_impl_substs: &Substs<'tcx>)
+    -> Result<(), ()>
+{
 
     // Here is an example, analogous to that from
     // `compare_impl_method`.
@@ -350,7 +353,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
     cx: &mut DropckContext<'a, 'b, 'gcx, 'tcx>,
     context: TypeContext,
     ty: Ty<'tcx>,
-    depth: usize) -> Result<(), Error<'tcx>>
+    depth: usize)
+    -> Result<(), Error<'tcx>>
 {
     let tcx = cx.rcx.tcx;
     // Issue #22443: Watch out for overflow. While we are careful to
@@ -531,7 +535,8 @@ enum DropckKind<'tcx> {
 /// parameters are re-mapped to `()` to reflect the destructor's
 /// "purity" with respect to their actual contents.
 fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                        ty: Ty<'tcx>) -> DropckKind<'tcx> {
+                                        ty: Ty<'tcx>)
+                                        -> DropckKind<'tcx> {
     match ty.sty {
         ty::TyAdt(adt_def, substs) => {
             if !adt_def.is_dtorck(tcx) {
@@ -574,7 +579,8 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 fn revise_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                   adt_def: ty::AdtDef<'tcx>,
                                   impl_id: DefId,
-                                  substs: &Substs<'tcx>) -> Ty<'tcx> {
+                                  substs: &Substs<'tcx>)
+                                  -> Ty<'tcx> {
     // Get generics for `impl Drop` to query for `#[may_dangle]` attr.
     let impl_bindings = tcx.lookup_generics(impl_id);
 
@@ -592,6 +598,14 @@ fn revise_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
     // Walk `substs` + `self_substs`, build new substs appropriate for
     // `adt_def`; each non-dangling param reuses entry from `substs`.
+    //
+    // Note: The manner we map from a right-hand side (i.e. Region or
+    // Ty) for a given `def` to generic parameter associated with that
+    // right-hand side is tightly coupled to `Drop` impl constraints.
+    //
+    // E.g. we know such a Ty must be `TyParam`, because a destructor
+    // for `struct Foo<X>` is defined via `impl<Y> Drop for Foo<Y>`,
+    // and never by (for example) `impl<Z> Drop for Foo<Vec<Z>>`.
     let substs = Substs::for_item(
         tcx,
         adt_def.did,
