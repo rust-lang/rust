@@ -22,6 +22,7 @@ use value::Value;
 use util::nodemap::FnvHashMap;
 use libc::{c_uint, c_char};
 
+use std::borrow::Cow;
 use std::ffi::CString;
 use std::ptr;
 use syntax_pos::Span;
@@ -175,8 +176,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                    .collect::<Vec<String>>()
                    .join(", "));
 
-        check_call("invoke", llfn, args);
-
+        let args = self.check_call("invoke", llfn, args);
         let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(ptr::null_mut());
 
         unsafe {
@@ -543,6 +543,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store");
+        let ptr = self.check_store(val, ptr);
         unsafe {
             llvm::LLVMBuildStore(self.llbuilder, val, ptr)
         }
@@ -552,6 +553,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store.volatile");
+        let ptr = self.check_store(val, ptr);
         unsafe {
             let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
             llvm::LLVMSetVolatile(insn, llvm::True);
@@ -562,6 +564,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn atomic_store(&self, val: ValueRef, ptr: ValueRef, order: AtomicOrdering) {
         debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         self.count_insn("store.atomic");
+        let ptr = self.check_store(val, ptr);
         unsafe {
             let ty = Type::from_ref(llvm::LLVMTypeOf(ptr));
             let align = llalign_of_pref(self.ccx, ty.element_type());
@@ -857,8 +860,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                    .collect::<Vec<String>>()
                    .join(", "));
 
-        check_call("call", llfn, args);
-
+        let args = self.check_call("call", llfn, args);
         let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(ptr::null_mut());
 
         unsafe {
@@ -1100,10 +1102,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             llvm::LLVMRustBuildAtomicFence(self.llbuilder, order, scope);
         }
     }
-}
 
-fn check_call(typ: &str, llfn: ValueRef, args: &[ValueRef]) {
-    if cfg!(debug_assertions) {
+    /// Returns the ptr value that should be used for storing `val`.
+    fn check_store<'b>(&self,
+                       val: ValueRef,
+                       ptr: ValueRef) -> ValueRef {
+        let dest_ptr_ty = val_ty(ptr);
+        let stored_ty = val_ty(val);
+        let stored_ptr_ty = stored_ty.ptr_to();
+
+        assert_eq!(dest_ptr_ty.kind(), llvm::TypeKind::Pointer);
+
+        if dest_ptr_ty == stored_ptr_ty {
+            ptr
+        } else {
+            debug!("Type mismatch in store. \
+                    Expected {:?}, got {:?}; inserting bitcast",
+                   dest_ptr_ty, stored_ptr_ty);
+            self.bitcast(ptr, stored_ptr_ty)
+        }
+    }
+
+    /// Returns the args that should be used for a call to `llfn`.
+    fn check_call<'b>(&self,
+                      typ: &str,
+                      llfn: ValueRef,
+                      args: &'b [ValueRef]) -> Cow<'b, [ValueRef]> {
         let mut fn_ty = val_ty(llfn);
         // Strip off pointers
         while fn_ty.kind() == llvm::TypeKind::Pointer {
@@ -1115,16 +1139,31 @@ fn check_call(typ: &str, llfn: ValueRef, args: &[ValueRef]) {
 
         let param_tys = fn_ty.func_params();
 
-        let iter = param_tys.into_iter()
-            .zip(args.iter().map(|&v| val_ty(v)));
-        for (i, (expected_ty, actual_ty)) in iter.enumerate() {
-            if expected_ty != actual_ty {
-                bug!("Type mismatch in function call of {:?}. \
-                      Expected {:?} for param {}, got {:?}",
-                     Value(llfn),
-                     expected_ty, i, actual_ty);
+        let all_args_match = param_tys.iter()
+            .zip(args.iter().map(|&v| val_ty(v)))
+            .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
 
-            }
+        if all_args_match {
+            return Cow::Borrowed(args);
         }
+
+        let casted_args: Vec<_> = param_tys.into_iter()
+            .zip(args.iter())
+            .enumerate()
+            .map(|(i, (expected_ty, &actual_val))| {
+                let actual_ty = val_ty(actual_val);
+                if expected_ty != actual_ty {
+                    debug!("Type mismatch in function call of {:?}. \
+                            Expected {:?} for param {}, got {:?}; injecting bitcast",
+                           Value(llfn),
+                           expected_ty, i, actual_ty);
+                    self.bitcast(actual_val, expected_ty)
+                } else {
+                    actual_val
+                }
+            })
+            .collect();
+
+        return Cow::Owned(casted_args);
     }
 }
