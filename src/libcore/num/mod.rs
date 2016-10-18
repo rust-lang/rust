@@ -291,6 +291,24 @@ macro_rules! int_impl {
             (self as $UnsignedT).trailing_zeros()
         }
 
+        /// Reverses the bit pattern of the integer.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// let n = 0b10101000u8;
+        ///
+        /// assert_eq!(n.reverse_bits(), 0b00010101u8);
+        /// ```
+        #[cfg(not(stage0))]
+        #[unstable(feature = "reverse_bits", issue = "0", reason = "recently added")]
+        #[inline]
+        pub fn reverse_bits(self) -> Self {
+            (self as $UnsignedT).reverse_bits() as Self
+        }
+
         /// Shifts the bits to the left by a specified amount, `n`,
         /// wrapping the truncated bits to the end of the resulting integer.
         ///
@@ -1454,6 +1472,24 @@ macro_rules! uint_impl {
                     intrinsics::cttz(self) as u32
                 }
             }
+        }
+
+        /// Reverses the bit pattern of the integer.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// let n = 0b10101000u8;
+        ///
+        /// assert_eq!(n.reverse_bits(), 0b00010101u8);
+        /// ```
+        #[cfg(not(stage0))]
+        #[unstable(feature = "reverse_bits", issue = "0", reason = "recently added")]
+        #[inline]
+        pub fn reverse_bits(self) -> Self {
+            unsafe { intrinsics::bitreverse(self) }
         }
 
         /// Shifts the bits to the left by a specified amount, `n`,

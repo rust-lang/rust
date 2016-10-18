@@ -765,6 +765,10 @@ extern "rust-intrinsic" {
     /// Reverses the bytes in an integer type `T`.
     pub fn bswap<T>(x: T) -> T;
 
+    /// Reverses the bits in an integer type `T`.
+    #[cfg(not(stage0))]
+    pub fn bitreverse<T>(x: T) -> T;
+
     /// Performs checked integer addition.
     pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
 

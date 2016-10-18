@@ -270,7 +270,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
             "volatile_store" =>
                 (1, vec!( tcx.mk_mut_ptr(param(ccx, 0)), param(ccx, 0) ), tcx.mk_nil()),
 
-            "ctpop" | "ctlz" | "cttz" | "bswap" => (1, vec!(param(ccx, 0)), param(ccx, 0)),
+            "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse" =>
+                (1, vec!(param(ccx, 0)), param(ccx, 0)),
 
             "add_with_overflow" | "sub_with_overflow"  | "mul_with_overflow" =>
                 (1, vec!(param(ccx, 0), param(ccx, 0)),

@@ -333,7 +333,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             C_nil(ccx)
         },
 
-        (_, "ctlz") | (_, "cttz") | (_, "ctpop") | (_, "bswap") |
+        (_, "ctlz") | (_, "cttz") | (_, "ctpop") | (_, "bswap") | (_, "bitreverse") |
         (_, "add_with_overflow") | (_, "sub_with_overflow") | (_, "mul_with_overflow") |
         (_, "overflowing_add") | (_, "overflowing_sub") | (_, "overflowing_mul") |
         (_, "unchecked_div") | (_, "unchecked_rem") => {
@@ -355,6 +355,9 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                         &llargs, call_debug_location)
                             }
                         }
+                        "bitreverse" => Call(bcx, ccx.get_intrinsic(&format!("llvm.bitreverse.i{}",
+                                                                    width)),
+                                             &llargs, call_debug_location),
                         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" => {
                             let intrinsic = format!("llvm.{}{}.with.overflow.i{}",
                                                     if signed { 's' } else { 'u' },
