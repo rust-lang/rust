@@ -312,6 +312,7 @@ pub trait DirEntryExt {
 }
 
 #[stable(feature = "dir_entry_ext", since = "1.1.0")]
+#[cfg(not(target_os = "fuchsia"))]
 impl DirEntryExt for fs::DirEntry {
     fn ino(&self) -> u64 { self.as_inner().ino() }
 }

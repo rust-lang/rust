@@ -358,36 +358,8 @@ pub mod elf {
         }
     }
 
-    // Since what appears to be glibc 2.18 this symbol has been shipped which
-    // GCC and clang both use to invoke destructors in thread_local globals, so
-    // let's do the same!
-    //
-    // Note, however, that we run on lots older linuxes, as well as cross
-    // compiling from a newer linux to an older linux, so we also have a
-    // fallback implementation to use as well.
-    //
-    // Due to rust-lang/rust#18804, make sure this is not generic!
-    #[cfg(target_os = "linux")]
-    unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
-        use mem;
-        use libc;
-        use sys_common::thread_local as os;
-
-        extern {
-            #[linkage = "extern_weak"]
-            static __dso_handle: *mut u8;
-            #[linkage = "extern_weak"]
-            static __cxa_thread_atexit_impl: *const libc::c_void;
-        }
-        if !__cxa_thread_atexit_impl.is_null() {
-            type F = unsafe extern fn(dtor: unsafe extern fn(*mut u8),
-                                      arg: *mut u8,
-                                      dso_handle: *mut u8) -> libc::c_int;
-            mem::transmute::<*const libc::c_void, F>(__cxa_thread_atexit_impl)
-            (dtor, t, &__dso_handle as *const _ as *mut _);
-            return
-        }
-
+    #[cfg(any(target_os = "linux", target_os = "fuchsia"))]
+    unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
         // The fallback implementation uses a vanilla OS-based TLS key to track
         // the list of destructors that need to be run for this thread. The key
         // then has its own destructor which runs all the other destructors.
@@ -397,6 +369,8 @@ pub mod elf {
         // *should* be the case that this loop always terminates because we
         // provide the guarantee that a TLS key cannot be set after it is
         // flagged for destruction.
+        use sys_common::thread_local as os;
+
         static DTORS: os::StaticKey = os::StaticKey::new(Some(run_dtors));
         type List = Vec<(*mut u8, unsafe extern fn(*mut u8))>;
         if DTORS.get().is_null() {
@@ -418,6 +392,37 @@ pub mod elf {
         }
     }
 
+    // Since what appears to be glibc 2.18 this symbol has been shipped which
+    // GCC and clang both use to invoke destructors in thread_local globals, so
+    // let's do the same!
+    //
+    // Note, however, that we run on lots older linuxes, as well as cross
+    // compiling from a newer linux to an older linux, so we also have a
+    // fallback implementation to use as well.
+    //
+    // Due to rust-lang/rust#18804, make sure this is not generic!
+    #[cfg(target_os = "linux")]
+    unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
+        use mem;
+        use libc;
+
+        extern {
+            #[linkage = "extern_weak"]
+            static __dso_handle: *mut u8;
+            #[linkage = "extern_weak"]
+            static __cxa_thread_atexit_impl: *const libc::c_void;
+        }
+        if !__cxa_thread_atexit_impl.is_null() {
+            type F = unsafe extern fn(dtor: unsafe extern fn(*mut u8),
+                                      arg: *mut u8,
+                                      dso_handle: *mut u8) -> libc::c_int;
+            mem::transmute::<*const libc::c_void, F>(__cxa_thread_atexit_impl)
+            (dtor, t, &__dso_handle as *const _ as *mut _);
+            return
+        }
+        register_dtor_fallback(t, dtor);
+    }
+
     // OSX's analog of the above linux function is this _tlv_atexit function.
     // The disassembly of thread_local globals in C++ (at least produced by
     // clang) will have this show up in the output.
@@ -428,6 +433,13 @@ pub mod elf {
                            arg: *mut u8);
         }
         _tlv_atexit(dtor, t);
+    }
+
+    // Just use the thread_local fallback implementation, at least until there's
+    // a more direct implementation.
+    #[cfg(target_os = "fuchsia")]
+    unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
+        register_dtor_fallback(t, dtor);
     }
 
     pub unsafe extern fn destroy_value<T>(ptr: *mut u8) {
