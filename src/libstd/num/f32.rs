@@ -800,6 +800,7 @@ impl f32 {
     /// let y = 2.0f32;
     ///
     /// assert_eq!(x.max(y), y);
+    /// assert_eq!(f32::max(x,y), y);
     /// ```
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
@@ -816,6 +817,7 @@ impl f32 {
     /// let y = 2.0f32;
     ///
     /// assert_eq!(x.min(y), x);
+    /// assert_eq!(f32::min(x,y), x);
     /// ```
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
@@ -1018,23 +1020,20 @@ impl f32 {
     /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let pi = f32::consts::PI;
+    /// let pi = std::f32::consts::PI;
     /// // All angles from horizontal right (+x)
     /// // 45 deg counter-clockwise
-    /// let x1 = 3.0f32;
-    /// let y1 = -3.0f32;
+    /// let point = (3.0f32, -3.0f32);
     ///
     /// // 135 deg clockwise
-    /// let x2 = -3.0f32;
-    /// let y2 = 3.0f32;
+    /// let x = -3.0f32;
+    /// let y = 3.0f32;
     ///
-    /// let abs_difference_1 = (y1.atan2(x1) - (-pi/4.0)).abs();
-    /// let abs_difference_2 = (y2.atan2(x2) - 3.0*pi/4.0).abs();
+    /// let abs_difference_1 = (f32::atan2(point.1, point.0) - (-pi/4.0)).abs();
+    /// let abs_difference_2 = (y.atan2(x) - 3.0*pi/4.0).abs();
     ///
-    /// assert!(abs_difference_1 <= f32::EPSILON);
-    /// assert!(abs_difference_2 <= f32::EPSILON);
+    /// assert!(abs_difference_1 <= std::f32::EPSILON);
+    /// assert!(abs_difference_2 <= std::f32::EPSILON);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
