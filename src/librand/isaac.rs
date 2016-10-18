@@ -599,8 +599,8 @@ mod tests {
         let mut ra: IsaacRng = SeedableRng::from_seed(&s[..]);
         let mut rb: IsaacRng = SeedableRng::from_seed(&s[..]);
         assert!(ra.gen_ascii_chars()
-                  .take(100)
-                  .eq(rb.gen_ascii_chars().take(100)));
+            .take(100)
+            .eq(rb.gen_ascii_chars().take(100)));
     }
     #[test]
     fn test_rng_64_rand_seeded() {
@@ -608,8 +608,8 @@ mod tests {
         let mut ra: Isaac64Rng = SeedableRng::from_seed(&s[..]);
         let mut rb: Isaac64Rng = SeedableRng::from_seed(&s[..]);
         assert!(ra.gen_ascii_chars()
-                  .take(100)
-                  .eq(rb.gen_ascii_chars().take(100)));
+            .take(100)
+            .eq(rb.gen_ascii_chars().take(100)));
     }
 
     #[test]
@@ -618,8 +618,8 @@ mod tests {
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
         assert!(ra.gen_ascii_chars()
-                  .take(100)
-                  .eq(rb.gen_ascii_chars().take(100)));
+            .take(100)
+            .eq(rb.gen_ascii_chars().take(100)));
     }
     #[test]
     fn test_rng_64_seeded() {
@@ -627,8 +627,8 @@ mod tests {
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
         assert!(ra.gen_ascii_chars()
-                  .take(100)
-                  .eq(rb.gen_ascii_chars().take(100)));
+            .take(100)
+            .eq(rb.gen_ascii_chars().take(100)));
     }
 
     #[test]

@@ -237,18 +237,10 @@ fn ziggurat<R: Rng, P, Z>(rng: &mut R,
 
         // u is either U(-1, 1) or U(0, 1) depending on if this is a
         // symmetric distribution or not.
-        let u = if symmetric {
-            2.0 * f - 1.0
-        } else {
-            f
-        };
+        let u = if symmetric { 2.0 * f - 1.0 } else { f };
         let x = u * x_tab[i];
 
-        let test_x = if symmetric {
-            x.abs()
-        } else {
-            x
-        };
+        let test_x = if symmetric { x.abs() } else { x };
 
         // algebraically equivalent to |u| < x_tab[i+1]/x_tab[i] (or u < x_tab[i+1]/x_tab[i])
         if test_x < x_tab[i + 1] {

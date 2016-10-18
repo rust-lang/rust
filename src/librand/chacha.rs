@@ -217,8 +217,8 @@ mod tests {
         let mut ra: ChaChaRng = SeedableRng::from_seed(&*s);
         let mut rb: ChaChaRng = SeedableRng::from_seed(&*s);
         assert!(ra.gen_ascii_chars()
-                  .take(100)
-                  .eq(rb.gen_ascii_chars().take(100)));
+            .take(100)
+            .eq(rb.gen_ascii_chars().take(100)));
     }
 
     #[test]
@@ -227,8 +227,8 @@ mod tests {
         let mut ra: ChaChaRng = SeedableRng::from_seed(seed);
         let mut rb: ChaChaRng = SeedableRng::from_seed(seed);
         assert!(ra.gen_ascii_chars()
-                  .take(100)
-                  .eq(rb.gen_ascii_chars().take(100)));
+            .take(100)
+            .eq(rb.gen_ascii_chars().take(100)));
     }
 
     #[test]
