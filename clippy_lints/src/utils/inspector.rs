@@ -4,7 +4,7 @@ use rustc::lint::*;
 use rustc::hir;
 use syntax::ast::{Attribute, MetaItemKind};
 
-/// **What it does:** Dumps every ast/hir node which has the `#[inspect]` attribute
+/// **What it does:** Dumps every ast/hir node which has the `#[clippy_dump]` attribute
 ///
 /// **Why is this bad?** 😈
 ///
@@ -32,7 +32,7 @@ impl LintPass for Pass {
 #[allow(print_stdout, use_debug)]
 impl LateLintPass for Pass {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        if !has_inspect_attr(&item.attrs) {
+        if !has_attr(&item.attrs) {
             return;
         }
         let did = cx.tcx.map.local_def_id(item.id);
@@ -102,39 +102,39 @@ impl LateLintPass for Pass {
 
 /*
     fn check_impl_item(&mut self, cx: &LateContext, item: &hir::ImplItem) {
-        if !has_inspect_attr(&item.attrs) {
+        if !has_attr(&item.attrs) {
             return;
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
-        if !has_inspect_attr(&item.attrs) {
+        if !has_attr(&item.attrs) {
             return;
         }
     }
 
     fn check_variant(&mut self, cx: &LateContext, var: &hir::Variant, _: &hir::Generics) {
-        if !has_inspect_attr(&var.node.attrs) {
+        if !has_attr(&var.node.attrs) {
             return;
         }
     }
 
     fn check_struct_field(&mut self, cx: &LateContext, field: &hir::StructField) {
-        if !has_inspect_attr(&field.attrs) {
+        if !has_attr(&field.attrs) {
             return;
         }
     }
 */
 
     fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
-        if !has_inspect_attr(&expr.attrs) {
+        if !has_attr(&expr.attrs) {
             return;
         }
         println!("expression type: {}", cx.tcx.node_id_to_type(expr.id));
     }
 
     fn check_decl(&mut self, cx: &LateContext, decl: &hir::Decl) {
-        if !has_inspect_attr(decl.node.attrs()) {
+        if !has_attr(decl.node.attrs()) {
             return;
         }
         match decl.node {
@@ -146,34 +146,34 @@ impl LateLintPass for Pass {
     }
 /*
     fn check_arm(&mut self, cx: &LateContext, arm: &hir::Arm) {
-        if !has_inspect_attr(&arm.attrs) {
+        if !has_attr(&arm.attrs) {
             return;
         }
     }
 
     fn check_stmt(&mut self, cx: &LateContext, stmt: &hir::Stmt) {
-        if !has_inspect_attr(stmt.node.attrs()) {
+        if !has_attr(stmt.node.attrs()) {
             return;
         }
     }
 
     fn check_local(&mut self, cx: &LateContext, local: &hir::Local) {
-        if !has_inspect_attr(&local.attrs) {
+        if !has_attr(&local.attrs) {
             return;
         }
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext, item: &hir::ForeignItem) {
-        if !has_inspect_attr(&item.attrs) {
+        if !has_attr(&item.attrs) {
             return;
         }
     }
 */
 }
 
-fn has_inspect_attr(attrs: &[Attribute]) -> bool {
+fn has_attr(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| match attr.node.value.node {
-        MetaItemKind::Word(ref word) => word == "inspect",
+        MetaItemKind::Word(ref word) => word == "clippy_dump",
         _ => false,
     })
 }
