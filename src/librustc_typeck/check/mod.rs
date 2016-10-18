@@ -742,17 +742,14 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       hir::ItemImpl(.., ref impl_items) => {
           debug!("ItemImpl {} with id {}", it.name, it.id);
           let impl_def_id = ccx.tcx.map.local_def_id(it.id);
-          match ccx.tcx.impl_trait_ref(impl_def_id) {
-              Some(impl_trait_ref) => {
-                  check_impl_items_against_trait(ccx,
-                                                 it.span,
-                                                 impl_def_id,
-                                                 &impl_trait_ref,
-                                                 impl_items);
-                  let trait_def_id = impl_trait_ref.def_id;
-                  check_on_unimplemented(ccx, trait_def_id, it);
-              }
-              None => { }
+          if let Some(impl_trait_ref) = ccx.tcx.impl_trait_ref(impl_def_id) {
+              check_impl_items_against_trait(ccx,
+                                             it.span,
+                                             impl_def_id,
+                                             &impl_trait_ref,
+                                             impl_items);
+              let trait_def_id = impl_trait_ref.def_id;
+              check_on_unimplemented(ccx, trait_def_id, it);
           }
       }
       hir::ItemTrait(..) => {
@@ -1812,9 +1809,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  f: F) where
         F: FnOnce(&ty::ItemSubsts<'tcx>),
     {
-        match self.tables.borrow().item_substs.get(&id) {
-            Some(s) => { f(s) }
-            None => { }
+        if let Some(s) = self.tables.borrow().item_substs.get(&id) {
+            f(s);
         }
     }
 

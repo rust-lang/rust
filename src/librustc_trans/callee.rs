@@ -302,9 +302,8 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     };
 
     // Check if we already trans'd this shim.
-    match ccx.fn_pointer_shims().borrow().get(&bare_fn_ty_maybe_ref) {
-        Some(&llval) => { return llval; }
-        None => { }
+    if let Some(&llval) = ccx.fn_pointer_shims().borrow().get(&bare_fn_ty_maybe_ref) {
+        return llval;
     }
 
     debug!("trans_fn_pointer_shim(bare_fn_ty={:?})",

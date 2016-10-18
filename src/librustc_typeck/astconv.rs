@@ -1629,9 +1629,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
 
         let cache = self.ast_ty_to_ty_cache();
-        match cache.borrow().get(&ast_ty.id) {
-            Some(ty) => { return ty; }
-            None => { }
+        if let Some(ty) = cache.borrow().get(&ast_ty.id) {
+            return ty;
         }
 
         let result_ty = match ast_ty.node {

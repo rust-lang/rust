@@ -156,13 +156,10 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
     {
         {
             let mut stack = self.stack.borrow_mut();
-            match stack.iter().enumerate().rev().find(|&(_, r)| *r == request) {
-                None => { }
-                Some((i, _)) => {
-                    let cycle = &stack[i..];
-                    self.report_cycle(span, cycle);
-                    return Err(ErrorReported);
-                }
+            if let Some((i, _)) = stack.iter().enumerate().rev().find(|&(_, r)| *r == request) {
+                let cycle = &stack[i..];
+                self.report_cycle(span, cycle);
+                return Err(ErrorReported);
             }
             stack.push(request);
         }
