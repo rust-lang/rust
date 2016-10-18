@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use] #[no_link]
+#[no_link]
 extern crate doesnt_exist; //~ ERROR can't find crate
 
 fn main() {}

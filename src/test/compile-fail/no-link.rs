@@ -13,6 +13,6 @@ extern crate libc;
 
 fn main() {
     unsafe {
-        libc::abs(0);  //~ ERROR Use of undeclared type or module `libc`
+        libc::abs(0);  //~ ERROR unresolved name
     }
 }
