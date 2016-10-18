@@ -562,8 +562,6 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
     LLVMRustMetadataRef Ty,
     bool AlwaysPreserve,
     unsigned Flags,
-    int64_t* AddrOps,
-    unsigned AddrOpsCount,
     unsigned ArgNo) {
 #if LLVM_VERSION_GE(3, 8)
     if (Tag == 0x100) { // DW_TAG_auto_variable
@@ -643,23 +641,6 @@ extern "C" LLVMValueRef LLVMRustDIBuilderInsertDeclareAtEnd(
           llvm::ArrayRef<int64_t>(AddrOps, AddrOpsCount)),
         DebugLoc(cast<MDNode>(unwrap<MetadataAsValue>(DL)->getMetadata())),
         unwrap(InsertAtEnd)));
-}
-
-extern "C" LLVMValueRef LLVMRustDIBuilderInsertDeclareBefore(
-    LLVMRustDIBuilderRef Builder,
-    LLVMValueRef Val,
-    LLVMRustMetadataRef VarInfo,
-    int64_t* AddrOps,
-    unsigned AddrOpsCount,
-    LLVMValueRef DL,
-    LLVMValueRef InsertBefore) {
-    return wrap(Builder->insertDeclare(
-        unwrap(Val),
-        unwrap<DILocalVariable>(VarInfo),
-        Builder->createExpression(
-          llvm::ArrayRef<int64_t>(AddrOps, AddrOpsCount)),
-        DebugLoc(cast<MDNode>(unwrap<MetadataAsValue>(DL)->getMetadata())),
-        unwrap<Instruction>(InsertBefore)));
 }
 
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateEnumerator(
@@ -1302,7 +1283,7 @@ static LLVMLinkage from_rust(LLVMRustLinkage linkage) {
             return LLVMCommonLinkage;
         default:
             llvm_unreachable("Invalid LLVMRustLinkage value!");
-    } 
+    }
 }
 
 extern "C" LLVMRustLinkage LLVMRustGetLinkage(LLVMValueRef V) {
