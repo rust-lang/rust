@@ -682,6 +682,59 @@ impl f64 {
         unsafe { cmath::nextafter(self, other) }
     }
 
+    /// Returns floating point exponent of the input
+    ///
+    /// ```
+    /// use std::f64;
+    ///
+    /// let x = 0.5f64;
+    /// let abs_diff = (x.logb() - 1).abs();
+    ///
+    /// assert!(abs_diff <= f64::EPSILON)
+    /// ```
+    #[unstable(feature = "float_extras",
+                reason = "unsure about its place in the world")]
+    #[inline]
+    pub fn logb(self) -> f64 {
+        unsafe { cmath::logb(self) }
+    }
+
+    /// Returns integer exponent of the input
+    ///
+    /// ```
+    /// use std::f64;
+    ///
+    /// let x = 0.5f64;
+    /// let abs_diff = (x.ilogb() - 1.0f64).abs();
+    ///
+    /// assert!(abs_diff <= f64::EPSILON)
+    /// ```
+    #[unstable(feature = "float_extras",
+                reason = "unsure about its place in the world")]
+    #[inline]
+    pub fn ilogb(self) -> i32 {
+        unsafe { cmath::ilogb(self) }
+    }
+
+    /// Returns the value of the gamma function
+    /// at the given point
+    ///
+    /// ```
+    /// use std::f64;
+    ///
+    /// let x = 1.2f64;
+    /// let g = 0.9182f64;
+    /// let abs_diff = (x.gamma() - g ).abs();
+    ///
+    /// assert!(abs_diff <= f64::EPSILON)
+    /// ```
+    #[unstable(feature = "float_extras",
+                reason = "unsure about its place in the world")]
+    #[inline]
+    pub fn gamma(self) -> f64 {
+        unsafe { cmath::tgamma(self) }
+    }
+
     /// Returns the maximum of the two numbers.
     ///
     /// ```
@@ -741,6 +794,42 @@ impl f64 {
      pub fn abs_sub(self, other: f64) -> f64 {
          unsafe { cmath::fdim(self, other) }
      }
+
+    /// Error function.
+    ///
+    /// ```
+    /// use std::f64;
+    ///
+    /// let x = 1.0f64;
+    /// let g = 0.8427008f64;
+    /// let f = x.erf();
+    /// let abs_difference = (f - g).abs();
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
+    #[unstable(feature = "float_extras",
+                reason = "unsure about its place in the world")]
+    #[inline]
+    pub fn erf(self) -> f64 {
+        unsafe { cmath::erf(self) }
+    }
+
+    /// Complementary error function.
+    ///
+    /// ```
+    /// use std::f64;
+    ///
+    /// let x = 1.0f64;
+    /// let g = 0.1572992f64;
+    /// let f = x.erfc();
+    /// let abs_difference = (f - g).abs();
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
+    #[unstable(feature = "float_extras",
+                reason = "unsure about its place in the world")]
+    #[inline]
+    pub fn erfc(self) -> f64 {
+        unsafe { cmath::erfc(self) }
+    }
 
     /// Takes the cubic root of a number.
     ///

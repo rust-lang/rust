@@ -793,6 +793,59 @@ impl f32 {
         unsafe { cmath::nextafterf(self, other) }
     }
 
+    /// Returns floating point exponent of the input
+    ///
+    /// ```
+    /// use std::f32;
+    ///
+    /// let x = 0.5f32;
+    /// let abs_diff = ( -1 - x.logb()).abs();
+    ///
+    /// assert!(abs_diff <= f32::EPSILON)
+    /// ```
+    #[unstable(feature = "float_extras",
+                reason = "unsure about its place in the world")]
+    #[inline]
+    pub fn logb(self) -> f32 {
+        unsafe { cmath::logbf(self) }
+    }
+
+    /// Returns integer exponent of the input
+    ///
+    /// ```
+    /// use std::f32;
+    ///
+    /// let x = 0.5f32;
+    /// let abs_diff = (-1.0f32 - x.ilogb()).abs();
+    ///
+    /// assert!(abs_diff <= f32::EPSILON)
+    /// ```
+    #[unstable(feature = "float_extras",
+                reason = "unsure about its place in the world")]
+    #[inline]
+    pub fn ilogb(self) -> i32 {
+        unsafe { cmath::ilogbf(self) }
+    }
+
+    /// Returns the value of the gamma function
+    /// at the given point
+    ///
+    /// ```
+    /// use std::f32;
+    ///
+    /// let x = 1.2f32;
+    /// let g = 0.9181687f32;
+    /// let abs_diff = (x.gamma() - g ).abs();
+    ///
+    /// assert!(abs_diff <= f32::EPSILON)
+    /// ```
+    #[unstable(feature = "float_extras",
+                reason = "unsure about its place in the world")]
+    #[inline]
+    pub fn gamma(self) -> f32 {
+        unsafe { cmath::tgammaf(self) }
+    }
+
     /// Returns the maximum of the two numbers.
     ///
     /// ```
@@ -1141,6 +1194,42 @@ impl f32 {
     #[inline]
     pub fn cosh(self) -> f32 {
         unsafe { cmath::coshf(self) }
+    }
+
+    /// Error function.
+    ///
+    /// ```
+    /// use std::f32;
+    ///
+    /// let x = 1.0f32;
+    /// let g = 0.8427008f32;
+    /// let f = x.erf();
+    /// let abs_difference = (f - g).abs();
+    /// assert!(abs_difference <= f32::EPSILON);
+    /// ```
+    #[unstable(feature = "float_extras",
+                reason = "unsure about its place in the world")]
+    #[inline]
+    pub fn erf(self) -> f32 {
+        unsafe { cmath::erff(self) }
+    }
+
+    /// Complementary error function.
+    ///
+    /// ```
+    /// use std::f32;
+    ///
+    /// let x = 1.0f32;
+    /// let g = 0.1572992f32;
+    /// let f = x.erfc();
+    /// let abs_difference = (f - g).abs();
+    /// assert!(abs_difference <= f32::EPSILON);
+    /// ```
+    #[unstable(feature = "float_extras",
+                reason = "unsure about its place in the world")]
+    #[inline]
+    pub fn erfc(self) -> f32 {
+        unsafe { cmath::erfcf(self) }
     }
 
     /// Hyperbolic tangent function.
