@@ -250,7 +250,7 @@ impl<'b> Resolver<'b> {
                     self.define(parent, name, TypeNS, (module, sp, vis));
 
                     self.populate_module_if_necessary(module);
-                } else if custom_derive_crate {
+                } else {
                     // Define an empty module
                     let def = Def::Mod(self.definitions.local_def_id(item.id));
                     let module = ModuleS::new(Some(parent), ModuleKind::Def(def, name));

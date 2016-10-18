@@ -52,6 +52,7 @@ impl<'a> CrateLoader<'a> {
         // Parse the attributes relating to macros.
         let mut import = ImportSelection::Some(FnvHashMap());
         let mut reexport = FnvHashMap();
+        let mut no_link = false;
 
         for attr in &extern_crate.attrs {
             let mut used = true;
@@ -87,6 +88,7 @@ impl<'a> CrateLoader<'a> {
                         }
                     }
                 }
+                "no_link" => no_link = true,
                 _ => used = false,
             }
             if used {
@@ -94,17 +96,22 @@ impl<'a> CrateLoader<'a> {
             }
         }
 
-        self.load_macros(extern_crate, allows_macros, import, reexport)
+        self.load_macros(extern_crate, allows_macros, import, reexport, no_link)
     }
 
     fn load_macros<'b>(&mut self,
                        vi: &ast::Item,
                        allows_macros: bool,
                        import: ImportSelection,
-                       reexport: MacroSelection)
+                       reexport: MacroSelection,
+                       no_link: bool)
                        -> Vec<LoadedMacro> {
         if let ImportSelection::Some(ref sel) = import {
             if sel.is_empty() && reexport.is_empty() {
+                // Make sure we can read macros from `#[no_link]` crates.
+                if no_link {
+                    self.creader.read_macros(vi);
+                }
                 return Vec::new();
             }
         }
