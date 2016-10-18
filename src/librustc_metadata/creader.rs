@@ -582,7 +582,7 @@ impl<'a> CrateReader<'a> {
                     unreachable!();
                 }
             };
-            let local_span = mk_sp(lo, p.last_span.hi);
+            let local_span = mk_sp(lo, p.prev_span.hi);
 
             // Mark the attrs as used
             for attr in &def.attrs {
