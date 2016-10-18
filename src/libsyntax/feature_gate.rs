@@ -434,9 +434,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                              not yet settled",
                                             cfg_fn!(structural_match))),
 
-    // Not used any more, but we can't feature gate it
-    ("no_stack_check", Normal, Ungated),
-
     ("plugin", CrateLevel, Gated("plugin",
                                  "compiler plugins are experimental \
                                   and possibly buggy",
