@@ -25,6 +25,7 @@ pub mod constants;
 mod hir;
 pub mod paths;
 pub mod sugg;
+pub mod inspector;
 pub mod internal_lints;
 pub use self::hir::{SpanlessEq, SpanlessHash};
 
