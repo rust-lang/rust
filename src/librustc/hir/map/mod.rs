@@ -60,6 +60,27 @@ pub enum Node<'ast> {
     NodeTyParam(&'ast TyParam)
 }
 
+impl<'ast> Node<'ast> {
+    pub fn span(&self) -> Option<Span> {
+        match *self {
+            NodeItem(item) => Some(item.span),
+            NodeForeignItem(item) => Some(item.span),
+            NodeTraitItem(item) => Some(item.span),
+            NodeImplItem(item) => Some(item.span),
+            NodeVariant(_) => None,
+            NodeExpr(item) => Some(item.span),
+            NodeStmt(_) => None,
+            NodeTy(ty) => Some(ty.span),
+            NodeLocal(pat) => Some(pat.span),
+            NodePat(pat) => Some(pat.span),
+            NodeBlock(block) => Some(block.span),
+            NodeStructCtor(_) => None,
+            NodeLifetime(lifetime) => Some(lifetime.span),
+            NodeTyParam(ty) => Some(ty.span),
+        }
+    }
+}
+
 /// Represents an entry and its parent NodeID.
 /// The odd layout is to bring down the total size.
 #[derive(Copy, Debug)]

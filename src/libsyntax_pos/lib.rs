@@ -80,6 +80,12 @@ impl Span {
         Span { lo: BytePos(lo), hi: self.hi, expn_id: self.expn_id}
     }
 
+    /// Returns a new span representing just the start-point of this span
+    pub fn start_point(self) -> Span {
+        let lo = cmp::min(self.lo.0, self.hi.0 - 1);
+        Span { lo: BytePos(lo), hi: BytePos(lo), expn_id: self.expn_id}
+    }
+
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
         if self.source_equal(&DUMMY_SP) { other } else { self }

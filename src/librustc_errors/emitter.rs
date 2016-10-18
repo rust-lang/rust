@@ -109,22 +109,26 @@ impl EmitterWriter {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
                                     file: Rc<FileMap>,
                                     line_index: usize,
-                                    ann: Annotation) {
+                                    annotation: Option<Annotation>) {
 
+            let ann = match annotation {
+                Some(ref ann) => vec![ann.clone()],
+                None => vec![]
+            };
             for slot in file_vec.iter_mut() {
                 // Look through each of our files for the one we're adding to
                 if slot.file.name == file.name {
                     // See if we already have a line for it
                     for line_slot in &mut slot.lines {
-                        if line_slot.line_index == line_index {
-                            line_slot.annotations.push(ann);
+                        if line_slot.line_index == line_index && annotation.is_some() {
+                            line_slot.annotations.push(annotation.unwrap());
                             return;
                         }
                     }
                     // We don't have a line yet, create one
                     slot.lines.push(Line {
                         line_index: line_index,
-                        annotations: vec![ann],
+                        annotations: ann,
                     });
                     slot.lines.sort();
                     return;
@@ -135,7 +139,7 @@ impl EmitterWriter {
                 file: file,
                 lines: vec![Line {
                                 line_index: line_index,
-                                annotations: vec![ann],
+                                annotations: ann,
                             }],
             });
         }
@@ -151,6 +155,8 @@ impl EmitterWriter {
                 let mut hi = cm.lookup_char_pos(span_label.span.hi);
                 let mut is_minimized = false;
 
+                let start = lo.line;
+                let end = hi.line + 1;
                 // If the span is multi-line, simplify down to the span of one character
                 if lo.line != hi.line {
                     hi.line = lo.line;
@@ -168,15 +174,24 @@ impl EmitterWriter {
                 }
 
                 add_annotation_to_file(&mut output,
-                                        lo.file,
+                                        lo.file.clone(),
                                         lo.line,
-                                        Annotation {
+                                        Some(Annotation {
                                             start_col: lo.col.0,
                                             end_col: hi.col.0,
                                             is_primary: span_label.is_primary,
                                             is_minimized: is_minimized,
                                             label: span_label.label.clone(),
-                                        });
+                                        }));
+                if start != end {
+                    // Add the rest of the lines, without any annotation
+                    for line in start+1..end {
+                        add_annotation_to_file(&mut output,
+                                                lo.file.clone(),
+                                                line,
+                                                None);
+                    }
+                }
             }
         }
         output

@@ -88,6 +88,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             if let Some(span) = tcx.map.span_if_local(trait_m.def_id) {
                 err.span_label(span, &format!("`{}` used in trait", trait_m.explicit_self));
             }
+
             err.emit();
             return;
         }
