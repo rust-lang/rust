@@ -2791,6 +2791,30 @@ fn main() {
 ```
 "##,
 
+E0230: r##"
+The trait has more type parameters specified than appear in its definition.
+
+Erroneous example code:
+
+```compile_fail,E0230
+#![feature(on_unimplemented)]
+#[rustc_on_unimplemented = "Trait error on `{Self}` with `<{A},{B},{C}>`"]
+// error: there is no type parameter C on trait TraitWithThreeParams
+trait TraitWithThreeParams<A,B>
+{}
+```
+
+Include the correct number of type parameters and the compilation should
+proceed:
+
+```
+#![feature(on_unimplemented)]
+#[rustc_on_unimplemented = "Trait error on `{Self}` with `<{A},{B},{C}>`"]
+trait TraitWithThreeParams<A,B,C> // ok!
+{}
+```
+"##,
+
 E0232: r##"
 The attribute must have a value. Erroneous code example:
 
@@ -4116,7 +4140,6 @@ register_diagnostics! {
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
     E0228, // explicit lifetime bound required
-    E0230, // there is no type parameter on trait
     E0231, // only named substitution parameters are allowed
 //  E0233,
 //  E0234,
