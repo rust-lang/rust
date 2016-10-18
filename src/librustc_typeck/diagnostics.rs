@@ -3630,6 +3630,44 @@ fn together_we_will_rule_the_galaxy(son: &A<i32>) {} // Ok!
 ```
 "##,
 
+E0399: r##"
+You implemented a trait, overriding one or more of its associated types but did
+not reimplement its default methods.
+
+Example of erroneous code:
+
+```compile_fail,E0399
+#![feature(associated_type_defaults)]
+
+pub trait Foo {
+    type Assoc = u8;
+    fn bar(&self) {}
+}
+
+impl Foo for i32 {
+    // error - the following trait items need to be reimplemented as
+    //         `Assoc` was overridden: `bar`
+    type Assoc = i32;
+}
+```
+
+To fix this, add an implementation for each default method from the trait:
+
+```
+#![feature(associated_type_defaults)]
+
+pub trait Foo {
+    type Assoc = u8;
+    fn bar(&self) {}
+}
+
+impl Foo for i32 {
+    type Assoc = i32;
+    fn bar(&self) {} // ok!
+}
+```
+"##,
+
 E0439: r##"
 The length of the platform-intrinsic function `simd_shuffle`
 wasn't specified. Erroneous code example:
@@ -4161,8 +4199,6 @@ register_diagnostics! {
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0399, // trait items need to be implemented because the associated
-           // type `{}` was overridden
     E0436, // functional record update requires a struct
     E0521, // redundant default implementations of trait
     E0533, // `{}` does not name a unit variant, unit struct or a constant
