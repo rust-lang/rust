@@ -99,13 +99,12 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("trans_intrinsic_call");
 
-    let (def_id, substs, sig) = match callee_ty.sty {
-        ty::TyFnDef(def_id, substs, fty) => {
-            let sig = tcx.erase_late_bound_regions(&fty.sig);
-            (def_id, substs, tcx.normalize_associated_type(&sig))
-        }
+    let (def_id, substs, fty) = match callee_ty.sty {
+        ty::TyFnDef(def_id, substs, ref fty) => (def_id, substs, fty),
         _ => bug!("expected fn item type, found {}", callee_ty)
     };
+
+    let sig = tcx.erase_late_bound_regions_and_normalize(&fty.sig);
     let arg_tys = sig.inputs;
     let ret_ty = sig.output;
     let name = tcx.item_name(def_id).as_str();
@@ -1108,8 +1107,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
 
     let tcx = bcx.tcx();
-    let sig = tcx.erase_late_bound_regions(callee_ty.fn_sig());
-    let sig = tcx.normalize_associated_type(&sig);
+    let sig = tcx.erase_late_bound_regions_and_normalize(callee_ty.fn_sig());
     let arg_tys = sig.inputs;
 
     // every intrinsic takes a SIMD vector as its first argument
