@@ -419,6 +419,8 @@ pub use core_collections::{LinkedList, VecDeque};
 pub use core_collections::{binary_heap, btree_map, btree_set};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::{linked_list, vec_deque};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core_collections::vec::{self, Vec};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::hash_map::HashMap;

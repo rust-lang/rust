@@ -135,8 +135,8 @@
 //! atomically-reference-counted box, [`Arc`], with a [`Mutex`] to get the same
 //! effect.
 //!
-//! The [`collections`] module defines maps, sets, linked lists and other
-//! typical collection types, including the common [`HashMap<K, V>`].
+//! The [`collections`] module defines maps, sets, sequences and other typical
+//! collection types, including the common [`Vec<T>`] and [`HashMap<K, V>`].
 //!
 //! ## Platform abstractions and I/O
 //!
@@ -169,7 +169,7 @@
 //! [`RefCell`]: cell/struct.RefCell.html
 //! [`Result<T, E>`]: result/enum.Result.html
 //! [`String`]: string/struct.String.html
-//! [`Vec<T>`]: vec/index.html
+//! [`Vec<T>`]: collections/vec/index.html
 //! [array]: primitive.array.html
 //! [slice]: primitive.slice.html
 //! [`atomic`]: sync/atomic/index.html
@@ -378,8 +378,14 @@ pub use core_collections::slice;
 pub use core_collections::str;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::string;
+#[rustc_deprecated(since = "1.12.0")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::vec;
+pub mod vec {
+    //! `Vec<T>` used to be in its own module, separate from the rest of the
+    //! collections. This re-export is included for backwards compatibility.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub use core_collections::vec::*;
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use rustc_unicode::char;
