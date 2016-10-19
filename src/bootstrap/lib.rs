@@ -220,14 +220,14 @@ impl Build {
         sanity::check(self);
         self.verbose("collecting channel variables");
         channel::collect(self);
-        // If local-rust is the same as the current version, then force a local-rebuild
+        // If local-rust is the same major.minor as the current version, then force a local-rebuild
         let local_version_verbose = output(
             Command::new(&self.rustc).arg("--version").arg("--verbose"));
         let local_release = local_version_verbose
             .lines().filter(|x| x.starts_with("release:"))
             .next().unwrap().trim_left_matches("release:").trim();
-        if local_release == self.release {
-            self.verbose(&format!("auto-detected local-rebuild {}", self.release));
+        if local_release.split('.').take(2).eq(self.release.split('.').take(2)) {
+            self.verbose(&format!("auto-detected local-rebuild {}", local_release));
             self.local_rebuild = true;
         }
         self.verbose("updating submodules");
