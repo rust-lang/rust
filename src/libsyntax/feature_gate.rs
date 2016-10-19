@@ -1317,15 +1317,13 @@ impl UnstableFeatures {
     pub fn from_environment() -> UnstableFeatures {
         // Whether this is a feature-staged build, i.e. on the beta or stable channel
         let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
-        // The secret key needed to get through the rustc build itself by
-        // subverting the unstable features lints
-        let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
-        // The matching key to the above, only known by the build system
-        let bootstrap_provided_key = env::var("RUSTC_BOOTSTRAP_KEY").ok();
-        match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
-            (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
-            (true, _, _) => UnstableFeatures::Disallow,
-            (false, _, _) => UnstableFeatures::Allow
+        // Check whether we want to circumvent the unstable feature kill-switch for bootstrap
+        let bootstrap_circumvent = env::var_os("RUSTC_BOOTSTRAP_KEY")
+            .map_or(false, |e| !e.is_empty());
+        match (disable_unstable_features, bootstrap_circumvent) {
+            (_, true) => UnstableFeatures::Cheat,
+            (true, _) => UnstableFeatures::Disallow,
+            (false, _) => UnstableFeatures::Allow
         }
     }
 
