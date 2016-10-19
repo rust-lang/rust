@@ -24,7 +24,7 @@ use rustc::ty;
 use rustc::lint::builtin::PRIVATE_IN_PUBLIC;
 use rustc::hir::def::*;
 
-use syntax::ast::{NodeId, Name};
+use syntax::ast::{Ident, NodeId, Name};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
@@ -69,7 +69,7 @@ impl<'a> ImportDirectiveSubclass<'a> {
 pub struct ImportDirective<'a> {
     pub id: NodeId,
     parent: Module<'a>,
-    module_path: Vec<Name>,
+    module_path: Vec<Ident>,
     imported_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
     subclass: ImportDirectiveSubclass<'a>,
     span: Span,
@@ -252,7 +252,7 @@ impl<'a> Resolver<'a> {
 
     // Add an import directive to the current module.
     pub fn add_import_directive(&mut self,
-                                module_path: Vec<Name>,
+                                module_path: Vec<Ident>,
                                 subclass: ImportDirectiveSubclass<'a>,
                                 span: Span,
                                 id: NodeId,
@@ -816,7 +816,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     }
 }
 
-fn import_path_to_string(names: &[Name], subclass: &ImportDirectiveSubclass) -> String {
+fn import_path_to_string(names: &[Ident], subclass: &ImportDirectiveSubclass) -> String {
     if names.is_empty() {
         import_directive_subclass_to_string(subclass)
     } else {

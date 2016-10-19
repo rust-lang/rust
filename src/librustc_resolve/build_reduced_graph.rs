@@ -37,6 +37,7 @@ use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ext::base::{SyntaxExtension, Resolver as SyntaxResolver};
+use syntax::ext::expand::mark_tts;
 use syntax::ext::hygiene::Mark;
 use syntax::feature_gate::{self, emit_feature_err};
 use syntax::ext::tt::macro_rules;
@@ -95,14 +96,14 @@ impl<'b> Resolver<'b> {
                 // Extract and intern the module part of the path. For
                 // globs and lists, the path is found directly in the AST;
                 // for simple paths we have to munge the path a little.
-                let module_path: Vec<Name> = match view_path.node {
+                let module_path: Vec<_> = match view_path.node {
                     ViewPathSimple(_, ref full_path) => {
                         full_path.segments
                                  .split_last()
                                  .unwrap()
                                  .1
                                  .iter()
-                                 .map(|seg| seg.identifier.name)
+                                 .map(|seg| seg.identifier)
                                  .collect()
                     }
 
@@ -110,7 +111,7 @@ impl<'b> Resolver<'b> {
                     ViewPathList(ref module_ident_path, _) => {
                         module_ident_path.segments
                                          .iter()
-                                         .map(|seg| seg.identifier.name)
+                                         .map(|seg| seg.identifier)
                                          .collect()
                     }
                 };
@@ -159,7 +160,7 @@ impl<'b> Resolver<'b> {
                                     (module_path.clone(), node.name.name, rename)
                                 } else {
                                     let name = match module_path.last() {
-                                        Some(name) => *name,
+                                        Some(ident) => ident.name,
                                         None => {
                                             resolve_error(
                                                 self,
@@ -207,11 +208,16 @@ impl<'b> Resolver<'b> {
                 };
 
                 let mut custom_derive_crate = false;
+                // The mark of the expansion that generates the loaded macros.
+                let mut opt_mark = None;
                 for loaded_macro in self.crate_loader.load_macros(item, is_crate_root) {
+                    let mark = opt_mark.unwrap_or_else(Mark::fresh);
+                    opt_mark = Some(mark);
                     match loaded_macro.kind {
                         LoadedMacroKind::Def(mut def) => {
                             if def.use_locally {
                                 self.macro_names.insert(def.ident.name);
+                                def.body = mark_tts(&def.body, mark);
                                 let ext = macro_rules::compile(&self.session.parse_sess, &def);
                                 import_macro(self, def.ident.name, ext, loaded_macro.import_site);
                             }
@@ -248,6 +254,17 @@ impl<'b> Resolver<'b> {
                         ..ModuleS::new(Some(parent), ModuleKind::Def(Def::Mod(def_id), name))
                     });
                     self.define(parent, name, TypeNS, (module, sp, vis));
+
+                    if let Some(mark) = opt_mark {
+                        let invocation = self.arenas.alloc_invocation_data(InvocationData {
+                            module: Cell::new(module),
+                            def_index: CRATE_DEF_INDEX,
+                            const_integer: false,
+                            legacy_scope: Cell::new(LegacyScope::Empty),
+                            expansion: Cell::new(LegacyScope::Empty),
+                        });
+                        self.invocations.insert(mark, invocation);
+                    }
 
                     self.populate_module_if_necessary(module);
                 } else if custom_derive_crate {

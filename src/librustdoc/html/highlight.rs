@@ -295,7 +295,9 @@ impl<'a> Classifier<'a> {
                     "Option" | "Result" => Class::PreludeTy,
                     "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
 
+                    "$crate" => Class::KeyWord,
                     _ if tas.tok.is_any_keyword() => Class::KeyWord,
+
                     _ => {
                         if self.in_macro_nonterminal {
                             self.in_macro_nonterminal = false;
@@ -309,9 +311,6 @@ impl<'a> Classifier<'a> {
                     }
                 }
             }
-
-            // Special macro vars are like keywords.
-            token::SpecialVarNt(_) => Class::KeyWord,
 
             token::Lifetime(..) => Class::Lifetime,
 
