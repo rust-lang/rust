@@ -675,13 +675,11 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_macro_def(&mut self, macro_def: &'tcx MacroDef) {
         debug!("visit_macro_def: st={:?}", self.st);
-        if macro_def.export {
-            SawMacroDef.hash(self.st);
-            hash_attrs!(self, &macro_def.attrs);
-            visit::walk_macro_def(self, macro_def)
-            // FIXME(mw): We should hash the body of the macro too but we don't
-            //            have a stable way of doing so yet.
-        }
+        SawMacroDef.hash(self.st);
+        hash_attrs!(self, &macro_def.attrs);
+        visit::walk_macro_def(self, macro_def)
+        // FIXME(mw): We should hash the body of the macro too but we don't
+        //            have a stable way of doing so yet.
     }
 }
 
