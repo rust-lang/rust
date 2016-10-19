@@ -420,6 +420,18 @@ impl<'a, I, T: 'a> FusedIterator for Cloned<I>
     where I: FusedIterator<Item=&'a T>, T: Clone
 {}
 
+#[doc(hidden)]
+unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
+    where I: TrustedRandomAccess<Item=&'a T>, T: Clone
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        self.it.get_unchecked(i).clone()
+    }
+
+    #[inline]
+    fn may_have_side_effect() -> bool { true }
+}
+
 /// An iterator that repeats endlessly.
 ///
 /// This `struct` is created by the [`cycle()`] method on [`Iterator`]. See its
@@ -773,6 +785,13 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
             unsafe {
                 Some((self.a.get_unchecked(i), self.b.get_unchecked(i)))
             }
+        } else if A::may_have_side_effect() && self.index < self.a.len() {
+            // match the base implementation's potential side effects
+            unsafe {
+                self.a.get_unchecked(self.index);
+            }
+            self.index += 1;
+            None
         } else {
             None
         }
@@ -789,6 +808,23 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         where A: DoubleEndedIterator + ExactSizeIterator,
               B: DoubleEndedIterator + ExactSizeIterator
     {
+        // Adjust a, b to equal length
+        if A::may_have_side_effect() {
+            let sz = self.a.len();
+            if sz > self.len {
+                for _ in 0..sz - cmp::max(self.len, self.index) {
+                    self.a.next_back();
+                }
+            }
+        }
+        if B::may_have_side_effect() {
+            let sz = self.b.len();
+            if sz > self.len {
+                for _ in 0..sz - self.len {
+                    self.b.next_back();
+                }
+            }
+        }
         if self.index < self.len {
             self.len -= 1;
             let i = self.len;
@@ -814,6 +850,9 @@ unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
         (self.a.get_unchecked(i), self.b.get_unchecked(i))
     }
 
+    fn may_have_side_effect() -> bool {
+        A::may_have_side_effect() || B::may_have_side_effect()
+    }
 }
 
 #[unstable(feature = "fused", issue = "35602")]
@@ -919,6 +958,18 @@ impl<B, I: ExactSizeIterator, F> ExactSizeIterator for Map<I, F>
 #[unstable(feature = "fused", issue = "35602")]
 impl<B, I: FusedIterator, F> FusedIterator for Map<I, F>
     where F: FnMut(I::Item) -> B {}
+
+#[doc(hidden)]
+unsafe impl<B, I, F> TrustedRandomAccess for Map<I, F>
+    where I: TrustedRandomAccess,
+          F: FnMut(I::Item) -> B,
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        (self.f)(self.iter.get_unchecked(i))
+    }
+    #[inline]
+    fn may_have_side_effect() -> bool { true }
+}
 
 /// An iterator that filters the elements of `iter` with `predicate`.
 ///
@@ -1134,6 +1185,10 @@ unsafe impl<I> TrustedRandomAccess for Enumerate<I>
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> (usize, I::Item) {
         (self.count + i, self.iter.get_unchecked(i))
+    }
+
+    fn may_have_side_effect() -> bool {
+        I::may_have_side_effect()
     }
 }
 
@@ -1763,6 +1818,10 @@ unsafe impl<I> TrustedRandomAccess for Fuse<I>
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> I::Item {
         self.iter.get_unchecked(i)
+    }
+
+    fn may_have_side_effect() -> bool {
+        I::may_have_side_effect()
     }
 }
 
