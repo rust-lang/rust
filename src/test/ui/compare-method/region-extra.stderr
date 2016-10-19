@@ -1,7 +1,7 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/region.rs:22:5
+  --> $DIR/region-extra.rs:22:5
    |
-17 |     fn foo();
+18 |     fn foo();
    |     --------- definition of `foo` from trait
 ...
 22 |     fn foo() where 'a: 'b { }

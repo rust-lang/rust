@@ -8,7 +8,7 @@ error[E0276]: impl has stricter requirements than trait
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `U: 'a`
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #18937 <https://github.com/rust-lang/rust/issues/18937>
+   = note: for more information, see issue #37166 <https://github.com/rust-lang/rust/issues/37166>
 note: lint level defined here
   --> $DIR/proj-outlives-region.rs:12:9
    |

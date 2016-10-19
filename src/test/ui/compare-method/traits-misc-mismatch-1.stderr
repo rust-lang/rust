@@ -1,0 +1,65 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/traits-misc-mismatch-1.rs:36:5
+   |
+23 |     fn test_error1_fn<T: Eq>(&self);
+   |     -------------------------------- definition of `test_error1_fn` from trait
+...
+36 |     fn test_error1_fn<T: Ord>(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: std::cmp::Ord`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/traits-misc-mismatch-1.rs:40:5
+   |
+24 |     fn test_error2_fn<T: Eq + Ord>(&self);
+   |     -------------------------------------- definition of `test_error2_fn` from trait
+...
+40 |     fn test_error2_fn<T: Eq + B>(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: B`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/traits-misc-mismatch-1.rs:44:5
+   |
+25 |     fn test_error3_fn<T: Eq + Ord>(&self);
+   |     -------------------------------------- definition of `test_error3_fn` from trait
+...
+44 |     fn test_error3_fn<T: B + Eq>(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: B`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/traits-misc-mismatch-1.rs:54:5
+   |
+28 |     fn test_error5_fn<T: A>(&self);
+   |     ------------------------------- definition of `test_error5_fn` from trait
+...
+54 |     fn test_error5_fn<T: B>(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: B`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/traits-misc-mismatch-1.rs:60:5
+   |
+30 |     fn test_error7_fn<T: A>(&self);
+   |     ------------------------------- definition of `test_error7_fn` from trait
+...
+60 |     fn test_error7_fn<T: A + Eq>(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: std::cmp::Eq`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/traits-misc-mismatch-1.rs:63:5
+   |
+31 |     fn test_error8_fn<T: B>(&self);
+   |     ------------------------------- definition of `test_error8_fn` from trait
+...
+63 |     fn test_error8_fn<T: C>(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: C`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/traits-misc-mismatch-1.rs:76:5
+   |
+72 |     fn method<G:Getter<isize>>(&self);
+   |     ---------------------------------- definition of `method` from trait
+...
+76 |     fn method<G: Getter<usize>>(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `G: Getter<usize>`
+
+error: aborting due to 7 previous errors
+

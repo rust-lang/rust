@@ -11,16 +11,15 @@
 #![allow(dead_code)]
 #![deny(extra_requirement_in_impl)]
 
-// Test that we elaborate `Type: 'region` constraints and infer various important things.
+// Test that you cannot add an extra where clause in the impl relating
+// two regions.
 
 trait Master<'a, 'b> {
     fn foo();
 }
 
-// `U: 'a` does not imply `V: 'a`
 impl<'a, 'b> Master<'a, 'b> for () {
     fn foo() where 'a: 'b { }
-    //~^ ERROR parameter type `V` may not live long enough
 }
 
 fn main() {
