@@ -71,7 +71,8 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     ccx: &CrateCtxt<'a, 'tcx>,
     drop_impl_did: DefId,
     drop_impl_ty: Ty<'tcx>,
-    self_type_did: DefId) -> Result<(), ()>
+    self_type_did: DefId)
+    -> Result<(), ()>
 {
     let tcx = ccx.tcx;
     let drop_impl_node_id = tcx.map.as_local_node_id(drop_impl_did).unwrap();
@@ -123,7 +124,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
-    self_to_impl_substs: &Substs<'tcx>) -> Result<(), ()> {
+    self_to_impl_substs: &Substs<'tcx>)
+    -> Result<(), ()>
+{
 
     // Here is an example, analogous to that from
     // `compare_impl_method`.
@@ -350,7 +353,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
     cx: &mut DropckContext<'a, 'b, 'gcx, 'tcx>,
     context: TypeContext,
     ty: Ty<'tcx>,
-    depth: usize) -> Result<(), Error<'tcx>>
+    depth: usize)
+    -> Result<(), Error<'tcx>>
 {
     let tcx = cx.rcx.tcx;
     // Issue #22443: Watch out for overflow. While we are careful to
@@ -402,16 +406,27 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
     // unbounded type parameter `T`, we must resume the recursive
     // analysis on `T` (since it would be ignored by
     // type_must_outlive).
-    if has_dtor_of_interest(tcx, ty) {
-        debug!("iterate_over_potentially_unsafe_regions_in_type \
-                {}ty: {} - is a dtorck type!",
-               (0..depth).map(|_| ' ').collect::<String>(),
-               ty);
-
-        cx.rcx.type_must_outlive(infer::SubregionOrigin::SafeDestructor(cx.span),
-                                 ty, tcx.mk_region(ty::ReScope(cx.parent_scope)));
-
-        return Ok(());
+    let dropck_kind = has_dtor_of_interest(tcx, ty);
+    debug!("iterate_over_potentially_unsafe_regions_in_type \
+            ty: {:?} dropck_kind: {:?}", ty, dropck_kind);
+    match dropck_kind {
+        DropckKind::NoBorrowedDataAccessedInMyDtor => {
+            // The maximally blind attribute.
+        }
+        DropckKind::BorrowedDataMustStrictlyOutliveSelf => {
+            cx.rcx.type_must_outlive(infer::SubregionOrigin::SafeDestructor(cx.span),
+                                     ty, tcx.mk_region(ty::ReScope(cx.parent_scope)));
+            return Ok(());
+        }
+        DropckKind::RevisedSelf(revised_ty) => {
+            cx.rcx.type_must_outlive(infer::SubregionOrigin::SafeDestructor(cx.span),
+                                     revised_ty, tcx.mk_region(ty::ReScope(cx.parent_scope)));
+            // Do not return early from this case; we want
+            // to recursively process the internal structure of Self
+            // (because even though the Drop for Self has been asserted
+            //  safe, the types instantiated for the generics of Self
+            //  may themselves carry dropck constraints.)
+        }
     }
 
     debug!("iterate_over_potentially_unsafe_regions_in_type \
@@ -492,16 +507,140 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum DropckKind<'tcx> {
+    /// The "safe" kind; i.e. conservatively assume any borrow
+    /// accessed by dtor, and therefore such data must strictly
+    /// outlive self.
+    ///
+    /// Equivalent to RevisedTy with no change to the self type.
+    BorrowedDataMustStrictlyOutliveSelf,
+
+    /// The nearly completely-unsafe kind.
+    ///
+    /// Equivalent to RevisedSelf with *all* parameters remapped to ()
+    /// (maybe...?)
+    NoBorrowedDataAccessedInMyDtor,
+
+    /// Assume all borrowed data access by dtor occurs as if Self has the
+    /// type carried by this variant. In practice this means that some
+    /// of the type parameters are remapped to `()` (and some lifetime
+    /// parameters remapped to `'static`), because the developer has asserted
+    /// that the destructor will not access their contents.
+    RevisedSelf(Ty<'tcx>),
+}
+
+/// Returns the classification of what kind of check should be applied
+/// to `ty`, which may include a revised type where some of the type
+/// parameters are re-mapped to `()` to reflect the destructor's
+/// "purity" with respect to their actual contents.
 fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                        ty: Ty<'tcx>) -> bool {
+                                        ty: Ty<'tcx>)
+                                        -> DropckKind<'tcx> {
     match ty.sty {
-        ty::TyAdt(def, _) => {
-            def.is_dtorck(tcx)
+        ty::TyAdt(adt_def, substs) => {
+            if !adt_def.is_dtorck(tcx) {
+                return DropckKind::NoBorrowedDataAccessedInMyDtor;
+            }
+
+            // Find the `impl<..> Drop for _` to inspect any
+            // attributes attached to the impl's generics.
+            let dtor_method = adt_def.destructor()
+                .expect("dtorck type without destructor impossible");
+            let method = tcx.impl_or_trait_item(dtor_method);
+            let impl_id: DefId = method.container().id();
+            let revised_ty = revise_self_ty(tcx, adt_def, impl_id, substs);
+            return DropckKind::RevisedSelf(revised_ty);
         }
         ty::TyTrait(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
             debug!("ty: {:?} isn't known, and therefore is a dropck type", ty);
-            true
+            return DropckKind::BorrowedDataMustStrictlyOutliveSelf;
         },
-        _ => false
+        _ => {
+            return DropckKind::NoBorrowedDataAccessedInMyDtor;
+        }
     }
+}
+
+// Constructs new Ty just like the type defined by `adt_def` coupled
+// with `substs`, except each type and lifetime parameter marked as
+// `#[may_dangle]` in the Drop impl (identified by `impl_id`) is
+// respectively mapped to `()` or `'static`.
+//
+// For example: If the `adt_def` maps to:
+//
+//   enum Foo<'a, X, Y> { ... }
+//
+// and the `impl_id` maps to:
+//
+//   impl<#[may_dangle] 'a, X, #[may_dangle] Y> Drop for Foo<'a, X, Y> { ... }
+//
+// then revises input: `Foo<'r,i64,&'r i64>` to: `Foo<'static,i64,()>`
+fn revise_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                  adt_def: ty::AdtDef<'tcx>,
+                                  impl_id: DefId,
+                                  substs: &Substs<'tcx>)
+                                  -> Ty<'tcx> {
+    // Get generics for `impl Drop` to query for `#[may_dangle]` attr.
+    let impl_bindings = tcx.lookup_generics(impl_id);
+
+    // Get Substs attached to Self on `impl Drop`; process in parallel
+    // with `substs`, replacing dangling entries as appropriate.
+    let self_substs = {
+        let impl_self_ty: Ty<'tcx> = tcx.lookup_item_type(impl_id).ty;
+        if let ty::TyAdt(self_adt_def, self_substs) = impl_self_ty.sty {
+            assert_eq!(adt_def, self_adt_def);
+            self_substs
+        } else {
+            bug!("Self in `impl Drop for _` must be an Adt.");
+        }
+    };
+
+    // Walk `substs` + `self_substs`, build new substs appropriate for
+    // `adt_def`; each non-dangling param reuses entry from `substs`.
+    //
+    // Note: The manner we map from a right-hand side (i.e. Region or
+    // Ty) for a given `def` to generic parameter associated with that
+    // right-hand side is tightly coupled to `Drop` impl constraints.
+    //
+    // E.g. we know such a Ty must be `TyParam`, because a destructor
+    // for `struct Foo<X>` is defined via `impl<Y> Drop for Foo<Y>`,
+    // and never by (for example) `impl<Z> Drop for Foo<Vec<Z>>`.
+    let substs = Substs::for_item(
+        tcx,
+        adt_def.did,
+        |def, _| {
+            let r_orig = substs.region_for_def(def);
+            let impl_self_orig = self_substs.region_for_def(def);
+            let r = if let ty::Region::ReEarlyBound(ref ebr) = *impl_self_orig {
+                if impl_bindings.region_param(ebr).pure_wrt_drop {
+                    tcx.mk_region(ty::ReStatic)
+                } else {
+                    r_orig
+                }
+            } else {
+                bug!("substs for an impl must map regions to ReEarlyBound");
+            };
+            debug!("has_dtor_of_interest mapping def {:?} orig {:?} to {:?}",
+                   def, r_orig, r);
+            r
+        },
+        |def, _| {
+            let t_orig = substs.type_for_def(def);
+            let impl_self_orig = self_substs.type_for_def(def);
+            let t = if let ty::TypeVariants::TyParam(ref pt) = impl_self_orig.sty {
+                if impl_bindings.type_param(pt).pure_wrt_drop {
+                    tcx.mk_nil()
+                } else {
+                    t_orig
+                }
+            } else {
+                bug!("substs for an impl must map types to TyParam");
+            };
+            debug!("has_dtor_of_interest mapping def {:?} orig {:?} {:?} to {:?} {:?}",
+                   def, t_orig, t_orig.sty, t, t.sty);
+            t
+        });
+
+    return tcx.mk_adt(adt_def, &substs);
 }

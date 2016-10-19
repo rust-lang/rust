@@ -1231,16 +1231,17 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                          lifetime: hir::Lifetime,
                          region_names: &HashSet<ast::Name>)
                          -> hir::HirVec<hir::TyParam> {
-        ty_params.iter().map(|ty_param| {
-            let bounds = self.rebuild_ty_param_bounds(ty_param.bounds.clone(),
+        ty_params.into_iter().map(|ty_param| {
+            let bounds = self.rebuild_ty_param_bounds(ty_param.bounds,
                                                       lifetime,
                                                       region_names);
             hir::TyParam {
                 name: ty_param.name,
                 id: ty_param.id,
                 bounds: bounds,
-                default: ty_param.default.clone(),
+                default: ty_param.default,
                 span: ty_param.span,
+                pure_wrt_drop: ty_param.pure_wrt_drop,
             }
         }).collect()
     }
@@ -1299,8 +1300,11 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                         -> hir::Generics {
         let mut lifetimes = Vec::new();
         for lt in add {
-            lifetimes.push(hir::LifetimeDef { lifetime: *lt,
-                                              bounds: hir::HirVec::new() });
+            lifetimes.push(hir::LifetimeDef {
+                lifetime: *lt,
+                bounds: hir::HirVec::new(),
+                pure_wrt_drop: false,
+            });
         }
         for lt in &generics.lifetimes {
             if keep.contains(&lt.lifetime.name) ||
