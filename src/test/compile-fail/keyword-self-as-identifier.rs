@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
-
 fn main() {
-    let super = "foo"; //~ error: expected identifier, found keyword `super`
+    let Self = "foo"; //~ ERROR unresolved unit struct/variant or constant `Self`
 }

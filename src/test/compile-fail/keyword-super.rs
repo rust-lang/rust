@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,26 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(untagged_unions)]
-
-macro_rules! union {
-    () => (struct S;)
-}
-
-union!();
-
-fn union() {}
-
 fn main() {
-    union();
-
-    let union = 10;
-
-    union;
-
-    union as u8;
-
-    union U {
-        a: u8,
-    }
+    let super: isize; //~ ERROR unresolved unit struct/variant or constant `super`
 }
