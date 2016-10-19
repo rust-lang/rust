@@ -25,9 +25,7 @@ One of the major goals of Rust's development process is *stability without stagn
             -   [Reference](#reference)
                 -   [The state of the reference](#the-current-state-of-the-reference)
             -   [_The Rust Programming Language_][trpl]
-            -   [_Rust By Example_][rbe]
-        -   [Standard library](#standard-library)
-        -   [Release notes][release-notes]
+        -   [Standard library][standard-library]
 -   [How do we teach this?](#how-do-we-teach-this)
 -   [Drawbacks](#drawbacks)
 -   [Alternatives][alternatives]
@@ -111,24 +109,22 @@ The basic process of developing new language features will remain largely the sa
 
 - [a new section in the RFC][new-rfc-section], "How do we teach this?" modeled on Ember's updated RFC process
 
-- [a new requirement that the changes themselves be properly documented before being merged to stable][require-documentation-before-stabilization]
+- [a new requirement][require-documentation-before-stabilization] that the changes themselves be properly documented before being merged to stable
 
 
 ## New RFC section: "How do we teach this?"
 [new-rfc-section]: #new-rfc-section-how-do-we-teach-this
 
-Following the example of Ember.js, we will add a new section to the RFC, just after **Detailed design**, titled **How do we teach this?** The section should to explain what changes need to be made to documentation, and if the feature substantially changes what would be considered the "best" way to solve a problem or is a fairly mainstream issue, discuss how it might be incorporated into _The Rust Programming Language_ and/or _Rust by Example_.
+Following the example of Ember.js, we must add a new section to the RFC, just after **Detailed design**, titled **How do we teach this?** The section should explain what changes need to be made to documentation, and if the feature substantially changes what would be considered the "best" way to solve a problem or is a fairly mainstream issue, discuss how it might be incorporated into _The Rust Programming Language_ and/or _Rust by Example_.
 
-Here is the Ember RFC section, with suggested substitutions:
+Here is the Ember RFC section, with appropriate substitutions and modifications:
 
 > # How We Teach This
-> What names and terminology work best for these concepts and why? How is this idea best presented? As a continuation of existing ~~Ember~~ **Rust** patterns, or as a wholly new one?
+> What names and terminology work best for these concepts and why? How is this idea best presented? As a continuation of existing Rust patterns, or as a wholly new one?
 >
-> Would the acceptance of this proposal mean ~~Ember guides~~ **_The Rust Programing Language_, _Rust by Example_, or the Rust Reference** must be re-organized or altered? Does it change how ~~Ember~~ **Rust** is taught to new users at any level?
+> Would the acceptance of this proposal change how Rust is taught to new users at any level?  What additions or changes to the Rust Reference, _The Rust Programing Language_, and/or _Rust by Example_ does it entail?
 >
-> How should this feature be introduced and taught to existing ~~Ember~~ **Rust** users?
-
-We may also find it valuable to add other, more Rust-specific (or programming language- rather than framework-specific) verbiage there.
+> How should this feature be introduced and taught to existing Rust users?
 
 For a great example of this in practice, see the (currently open) [Ember RFC: Module Unification], which includes several sections discussing conventions, tooling, concepts, and impacts on testing.
 
@@ -149,10 +145,12 @@ Prior to stabilizing a feature, the features will now be documented as follows:
     - a single line for the changelog
     - a longer summary for the long-form release announcement.
 
+Stabilization of a feature must not proceed until the requirements outlined in the **How We Teach This** section of the originating RFC have been fulfilled.
+
 ### Language features
 [language-features]: #language-features
 
-We will document *all* language features in the Rust Reference, as well as making some updates to _The Rust Programming Language_ and _Rust by Example_.
+We will document *all* language features in the Rust Reference, as well as updating _The Rust Programming Language_ and _Rust by Example_ as appropriate. (Not all features or changes will require updates to the books.)
 
 #### Reference
 
@@ -162,44 +160,39 @@ This will necessarily be a manual process, involving updates to the `reference.m
 
 Feature documentation does not need to be written by the feature author. In fact, this is one of the areas where the community may be most able to support the language/compiler developers even if not themselves programming language theorists or compiler hackers. This may free up the compiler developers' time. It will also help communicate the features in a way that is accessible to ordinary Rust users.
 
-New features do not need to be documented to be merged into `master`/nightly, and in many cases *should* not, since the features may change substantially before landing on stable, at which point the reference material would need to be rewritten.
+New features do not need to be documented to be merged into `master`/nightly
 
 Instead, the documentation process should immediately precede the move to stabilize. Once the *feature* has been deemed ready for stabilization, either the author or a community volunteer should write the *reference material* for the feature, to be incorporated into the Rust Reference.
 
 The reference material need not be especially long, but it should be long enough for ordinary users to learn how to use the language feature *without reading the RFCs*.
 
-When the discussing whether to stabilize a feature in a given release, the reference material will now be a part of that decision. Once the feature *and* reference material are complete, it will be merged normally, and the pull request will simply include the reference material as well as the new feature.
+Discussion of stabilizing a feature in a given release will now include the status of the reference material.
 
-##### The current state of the reference.
+##### The current state of the reference
 
 [refstate]: #the-current-state-of-the-reference
 
-Since the reference is fairly out of date, we should create a "strike team" to update it, organize it, and improve its presentation. (A single web page with *all* of this content is difficult to navigate at best.) This can proceed in parallel with the documentation of new features.
+Since the reference is fairly out of date, we should create a "strike team" to update it. This can proceed in parallel with the documentation of new features.
 
-Updating the reference may proceed stepwise:
+Updating the reference should proceed stepwise:
 
 1. Begin by adding an appendix in the reference with links to all accepted RFCs which have been implemented but are not yet referenced in the documentation.
 2. As the reference material is written for each of those RFC features, remove it from that appendix.
+
+The current presentation of the reference is also in need of improvement: a single web page with *all* of this content is difficult to navigate, or to update. Therefore, the strike team may also take this opportunity to reorganize the reference and update its presentation.
 
 #### _The Rust Programming Language_
 
 [trpl]: #the-rust-programming-language
 
+Most new language features should be added to _The Rust Programming Language_. However, since the book is planned to go to print, the main text of the book is expected to be fixed between major revisions. As such, new features should be documented in an online appendix to the book, which may be titled e.g. "Newest Features."
 
-
-#### _Rust by Example_
-
-[rbe]: #rust-by-example
+The published version of the book should note that changes and languages features made available after the book went to print will be documented in that online appendix.
 
 ### Standard library
-[std]: #standard-library
+[standard-library]: #standard-library
 
 In the case of the standard library, this could conceivably be managed by setting the `#[forbid(missing_docs)]` attribute on the library roots. In lieu of that, manual code review and general discipline should continue to serve. However, if automated tools *can* be employed here, they should.
-
-### Release Notes
-
-[release-notes]: #release-notes
-
 
 # How do we teach this?
 
@@ -244,7 +237,7 @@ At a "messaging" level, we should continue to emphasize that *documentation is j
 
 -   **Just add the "How do we teach this?" section.**
 
-      Of all the alternatives, this is the easiest (and probably the best). It does not substantially change the state with regard to the documentation, and even having the section in the RFC does not mean that it will end up added to the docs, as evidence by the [`#[deprecated]` RFC][RFC 1270], which included as part of its text:
+    Of all the alternatives, this is the easiest (and probably the best). It does not substantially change the state with regard to the documentation, and even having the section in the RFC does not mean that it will end up added to the docs, as evidence by the [`#[deprecated]` RFC][RFC 1270], which included as part of its text:
 
     > The language reference will be extended to describe this feature as outlined in this RFC. Authors shall be advised to leave their users enough time to react before removing a deprecated item.
 
@@ -252,13 +245,14 @@ At a "messaging" level, we should continue to emphasize that *documentation is j
 
 -   **Embrace the documentation, but do not include "How do we teach this?" section in new RFCs.**
 
-        This still gives us most of the benefits (and was in fact the original form of the proposal), and does not place a new burden on RFC authors to make sure that knowing how to *teach* something is part of any new language or standard library feature.
+    This still gives us most of the benefits (and was in fact the original form of the proposal), and does not place a new burden on RFC authors to make sure that knowing how to *teach* something is part of any new language or standard library feature.
 
-        On the other hand, thinking about the impact on teaching should further improve consideration of the general ergonomics of a proposed feature. If something cannot be *taught* well, it's likely the design needs further refinement.
+    On the other hand, thinking about the impact on teaching should further improve consideration of the general ergonomics of a proposed feature. If something cannot be *taught* well, it's likely the design needs further refinement.
 
 -   **No change; leave RFCs as canonical documentation.**
 
-        This approach can take (at least) two forms:
+    This approach can take (at least) two forms:
+
 
     1. We can leave things as they are, where the RFC and surrounding discussion form the primary point of documentation for newer-than-1.0 language features. As part of that, we could just link more prominently to the RFC repository and describe the process from the documentation pages.
     2. We could automatically render the text of the RFCs into part of the documentation used on the site (via submodules and the existing tooling around Markdown documents used for Rust documentation).
@@ -267,21 +261,21 @@ At a "messaging" level, we should continue to emphasize that *documentation is j
 
 -   **Add a rule for the standard library but not for language features.**
 
-        This would basically just turn the _status quo_ into an official policy. It has all the same drawbacks as no change at all, but with the possible benefit of enabling automated checks on standard library documentation.
+    This would basically just turn the _status quo_ into an official policy. It has all the same drawbacks as no change at all, but with the possible benefit of enabling automated checks on standard library documentation.
 
 -   **Add a rule for language features but not for the standard library.**
 
-        The standard library is in much better shape, in no small part because of the ease of writing inline documentation for new modules. Adding a formal rule may not be necessary if good habits are already in place.
+    The standard library is in much better shape, in no small part because of the ease of writing inline documentation for new modules. Adding a formal rule may not be necessary if good habits are already in place.
 
-        On the other hand, having a formal policy would not seem to *hurt* anything here; it would simply formalize what is already happening (and perhaps, via linting attributes, make it easy to spot when it has failed).
+    On the other hand, having a formal policy would not seem to *hurt* anything here; it would simply formalize what is already happening (and perhaps, via linting attributes, make it easy to spot when it has failed).
 
 -   **Eliminate the reference entirely.**
 
-        Since the reference is already substantially out of date, it might make sense to stop presenting it publicly at all, at least until such a time as it has been completely reworked and updated.
+    Since the reference is already substantially out of date, it might make sense to stop presenting it publicly at all, at least until such a time as it has been completely reworked and updated.
 
-        The main upside to this is the reality that an outdated and inaccurate reference may be worse than no reference at all, as it may substantially mislead Rust users.
+    The main upside to this is the reality that an outdated and inaccurate reference may be worse than no reference at all, as it may mislead espiecally new Rust users.
 
-        The main downside, of course, is that this would leave very large swaths of the language basically without *any* documentation, and even more of it only documented in RFCs than is the case today.
+    The main downside, of course, is that this would leave very large swaths of the language basically without *any* documentation, and even more of it only documented in RFCs than is the case today.
 
 
 [RFC 1270]: https://github.com/rust-lang/rfcs/pull/1270
@@ -290,7 +284,4 @@ At a "messaging" level, we should continue to emphasize that *documentation is j
 [unresolved]: #unresolved-questions
 
 - How do we clearly distinguish between features on nightly, beta, and stable Rust—in the reference especially, but also in the book?
-- How will the requirement for documentation in the reference be enforced?
-- Given that the reference is out of date, does it need to be brought up to date before beginning enforcement of this policy?
-- Given that the book is in the process of a rewrite for print publication, how shall we apply this requirement to RFCs merged during its development?
 - For the standard library, once it migrates to a crates structure, should it simply include the `#[forbid(missing_docs)]` attribute on all crates to set this as a build error?
