@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
+// ignore-pretty issue #37201
 
 struct X { val: i32 }
 impl std::ops::Deref for X {

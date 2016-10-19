@@ -545,15 +545,12 @@ pub trait PrintState<'a> {
     }
 
     fn maybe_print_comment(&mut self, pos: BytePos) -> io::Result<()> {
-        loop {
-            match self.next_comment() {
-                Some(ref cmnt) => {
-                    if (*cmnt).pos < pos {
-                        try!(self.print_comment(cmnt));
-                        self.cur_cmnt_and_lit().cur_cmnt += 1;
-                    } else { break; }
-                }
-                _ => break
+        while let Some(ref cmnt) = self.next_comment() {
+            if cmnt.pos < pos {
+                try!(self.print_comment(cmnt));
+                self.cur_cmnt_and_lit().cur_cmnt += 1;
+            } else {
+                break
             }
         }
         Ok(())
@@ -581,7 +578,9 @@ pub trait PrintState<'a> {
                 Ok(())
             }
             comments::Trailing => {
-                try!(word(self.writer(), " "));
+                if !self.is_bol() {
+                    try!(word(self.writer(), " "));
+                }
                 if cmnt.lines.len() == 1 {
                     try!(word(self.writer(), &cmnt.lines[0]));
                     hardbreak(self.writer())
@@ -1361,6 +1360,7 @@ impl<'a> State<'a> {
                 if comma {
                     try!(self.word_space(","))
                 }
+                try!(self.print_outer_attributes_inline(&lifetime_def.attrs));
                 try!(self.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds));
                 comma = true;
             }
@@ -1715,6 +1715,7 @@ impl<'a> State<'a> {
         for (i, st) in blk.stmts.iter().enumerate() {
             match st.node {
                 ast::StmtKind::Expr(ref expr) if i == blk.stmts.len() - 1 => {
+                    try!(self.maybe_print_comment(st.span.lo));
                     try!(self.space_if_not_bol());
                     try!(self.print_expr_outer_attr_style(&expr, false));
                     try!(self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi)));
@@ -2604,6 +2605,7 @@ impl<'a> State<'a> {
         }
         try!(self.cbox(INDENT_UNIT));
         try!(self.ibox(0));
+        try!(self.maybe_print_comment(arm.pats[0].span.lo));
         try!(self.print_outer_attributes(&arm.attrs));
         let mut first = true;
         for p in &arm.pats {
@@ -2803,6 +2805,7 @@ impl<'a> State<'a> {
         try!(self.commasep(Inconsistent, &ints[..], |s, &idx| {
             if idx < generics.lifetimes.len() {
                 let lifetime_def = &generics.lifetimes[idx];
+                try!(s.print_outer_attributes_inline(&lifetime_def.attrs));
                 s.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds)
             } else {
                 let idx = idx - generics.lifetimes.len();
@@ -2816,6 +2819,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ty_param(&mut self, param: &ast::TyParam) -> io::Result<()> {
+        try!(self.print_outer_attributes_inline(&param.attrs));
         try!(self.print_ident(param.ident));
         try!(self.print_bounds(":", &param.bounds));
         match param.default {
@@ -3007,15 +3011,11 @@ impl<'a> State<'a> {
             _ => return Ok(())
         };
         if let Some(ref cmnt) = self.next_comment() {
-            if (*cmnt).style != comments::Trailing { return Ok(()) }
+            if cmnt.style != comments::Trailing { return Ok(()) }
             let span_line = cm.lookup_char_pos(span.hi);
-            let comment_line = cm.lookup_char_pos((*cmnt).pos);
-            let mut next = (*cmnt).pos + BytePos(1);
-            if let Some(p) = next_pos {
-                next = p;
-            }
-            if span.hi < (*cmnt).pos && (*cmnt).pos < next &&
-               span_line.line == comment_line.line {
+            let comment_line = cm.lookup_char_pos(cmnt.pos);
+            let next = next_pos.unwrap_or(cmnt.pos + BytePos(1));
+            if span.hi < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
                 self.print_comment(cmnt)?;
                 self.cur_cmnt_and_lit.cur_cmnt += 1;
             }

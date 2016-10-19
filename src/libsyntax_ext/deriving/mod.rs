@@ -12,7 +12,7 @@
 
 use syntax::ast::{self, MetaItem};
 use syntax::attr::HasAttrs;
-use syntax::ext::base::{Annotatable, ExtCtxt};
+use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxExtension};
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
 use syntax::codemap;
@@ -158,10 +158,14 @@ pub fn expand_derive(cx: &mut ExtCtxt,
         let tword = titem.word().unwrap();
         let tname = tword.name();
 
-        let derive_mode = ast::Ident::with_empty_ctxt(intern(&tname));
-        let derive_mode = cx.resolver.resolve_derive_mode(derive_mode);
-        if is_builtin_trait(&tname) || derive_mode.is_some() {
-            return true
+        if is_builtin_trait(&tname) || {
+            let derive_mode =
+                ast::Path::from_ident(titem.span, ast::Ident::with_empty_ctxt(intern(&tname)));
+            cx.resolver.resolve_macro(cx.current_expansion.mark, &derive_mode, false).map(|ext| {
+                if let SyntaxExtension::CustomDerive(_) = *ext { true } else { false }
+            }).unwrap_or(false)
+        } {
+            return true;
         }
 
         if !cx.ecfg.enable_custom_derive() {
@@ -216,7 +220,9 @@ pub fn expand_derive(cx: &mut ExtCtxt,
                                  .next();
     if let Some((i, titem)) = macros_11_derive {
         let tname = ast::Ident::with_empty_ctxt(intern(&titem.name().unwrap()));
-        let ext = cx.resolver.resolve_derive_mode(tname).unwrap();
+        let path = ast::Path::from_ident(titem.span, tname);
+        let ext = cx.resolver.resolve_macro(cx.current_expansion.mark, &path, false).unwrap();
+
         traits.remove(i);
         if traits.len() > 0 {
             item = item.map(|mut i| {
@@ -232,7 +238,11 @@ pub fn expand_derive(cx: &mut ExtCtxt,
                                  intern_and_get_ident("derive"),
                                  vec![titem]);
         let item = Annotatable::Item(item);
-        return ext.expand(cx, mitem.span, &mitem, item)
+        if let SyntaxExtension::CustomDerive(ref ext) = *ext {
+            return ext.expand(cx, mitem.span, &mitem, item);
+        } else {
+            unreachable!()
+        }
     }
 
     // Ok, at this point we know that there are no old-style `#[derive_Foo]` nor

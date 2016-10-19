@@ -14,7 +14,6 @@
 // error-pattern:should be a positive integer
 // compile-flags: --test
 // exec-env:RUST_TEST_THREADS=foo
-// ignore-pretty: does not work well with `--test`
 // ignore-emscripten
 
 #[test]

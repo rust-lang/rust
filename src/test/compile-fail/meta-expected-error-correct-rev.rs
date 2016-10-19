@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // revisions: a
-// pretty-expanded FIXME #23616
 
 // Counterpart to `meta-expected-error-wrong-rev.rs`
 

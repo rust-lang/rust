@@ -11,7 +11,6 @@
 //! Used by `rustc` when loading a crate with exported macros.
 
 use std::collections::HashSet;
-use std::rc::Rc;
 use std::env;
 use std::mem;
 
@@ -212,7 +211,7 @@ impl<'a> CrateLoader<'a> {
             fn register_custom_derive(&mut self,
                                       trait_name: &str,
                                       expand: fn(TokenStream) -> TokenStream) {
-                let derive = Rc::new(CustomDerive::new(expand));
+                let derive = Box::new(CustomDerive::new(expand));
                 self.0.push(LoadedMacro {
                     kind: LoadedMacroKind::CustomDerive(trait_name.to_string(), derive),
                     import_site: self.1,

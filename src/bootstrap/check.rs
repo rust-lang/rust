@@ -214,7 +214,7 @@ pub fn compiletest(build: &Build,
             }
         }
     }
-    build.add_bootstrap_key(compiler, &mut cmd);
+    build.add_bootstrap_key(&mut cmd);
 
     cmd.arg("--adb-path").arg("adb");
     cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);

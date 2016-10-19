@@ -2218,10 +2218,12 @@ fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
         } else {
             "expected"
         };
+        let arguments_plural = if required == 1 { "" } else { "s" };
         struct_span_err!(tcx.sess, span, E0243, "wrong number of type arguments")
             .span_label(
                 span,
-                &format!("{} {} type arguments, found {}", expected, required, supplied)
+                &format!("{} {} type argument{}, found {}",
+                         expected, required, arguments_plural, supplied)
             )
             .emit();
     } else if supplied > accepted {
@@ -2232,11 +2234,12 @@ fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
         } else {
             format!("expected {}", accepted)
         };
+        let arguments_plural = if accepted == 1 { "" } else { "s" };
 
         struct_span_err!(tcx.sess, span, E0244, "wrong number of type arguments")
             .span_label(
                 span,
-                &format!("{} type arguments, found {}", expected, supplied)
+                &format!("{} type argument{}, found {}", expected, arguments_plural, supplied)
             )
             .emit();
     }

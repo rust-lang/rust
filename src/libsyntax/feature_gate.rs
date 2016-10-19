@@ -30,7 +30,7 @@ use ast::{self, NodeId, PatKind};
 use attr;
 use codemap::{CodeMap, Spanned};
 use syntax_pos::Span;
-use errors::Handler;
+use errors::{DiagnosticBuilder, Handler};
 use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
 use parse::token::InternedString;
@@ -166,6 +166,9 @@ declare_features! (
     // Allows using the unsafe_destructor_blind_to_params attribute;
     // RFC 1238
     (active, dropck_parametricity, "1.3.0", Some(28498)),
+
+    // Allows using the may_dangle attribute; RFC 1327
+    (active, dropck_eyepatch, "1.10.0", Some(34761)),
 
     // Allows the use of custom attributes; RFC 572
     (active, custom_attribute, "1.0.0", Some(29642)),
@@ -616,6 +619,11 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
            "unsafe_destructor_blind_to_params has unstable semantics \
             and may be removed in the future",
            cfg_fn!(dropck_parametricity))),
+    ("may_dangle",
+     Normal,
+     Gated("dropck_eyepatch",
+           "may_dangle has unstable semantics and may be removed in the future",
+           cfg_fn!(dropck_eyepatch))),
     ("unwind", Whitelisted, Gated("unwind_attributes", "#[unwind] is experimental",
                                   cfg_fn!(unwind_attributes))),
 
@@ -792,6 +800,11 @@ pub enum GateIssue {
 
 pub fn emit_feature_err(sess: &ParseSess, feature: &str, span: Span, issue: GateIssue,
                         explain: &str) {
+    feature_err(sess, feature, span, issue, explain).emit();
+}
+
+pub fn feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue: GateIssue,
+                   explain: &str) -> DiagnosticBuilder<'a> {
     let diag = &sess.span_diagnostic;
 
     let issue = match issue {
@@ -812,7 +825,7 @@ pub fn emit_feature_err(sess: &ParseSess, feature: &str, span: Span, issue: Gate
                           feature));
     }
 
-    err.emit();
+    err
 }
 
 const EXPLAIN_BOX_SYNTAX: &'static str =
@@ -1317,15 +1330,12 @@ impl UnstableFeatures {
     pub fn from_environment() -> UnstableFeatures {
         // Whether this is a feature-staged build, i.e. on the beta or stable channel
         let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
-        // The secret key needed to get through the rustc build itself by
-        // subverting the unstable features lints
-        let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
-        // The matching key to the above, only known by the build system
-        let bootstrap_provided_key = env::var("RUSTC_BOOTSTRAP_KEY").ok();
-        match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
-            (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
-            (true, _, _) => UnstableFeatures::Disallow,
-            (false, _, _) => UnstableFeatures::Allow
+        // Whether we should enable unstable features for bootstrapping
+        let bootstrap = env::var("RUSTC_BOOTSTRAP").is_ok();
+        match (disable_unstable_features, bootstrap) {
+            (_, true) => UnstableFeatures::Cheat,
+            (true, _) => UnstableFeatures::Disallow,
+            (false, _) => UnstableFeatures::Allow
         }
     }
 

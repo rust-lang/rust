@@ -29,7 +29,7 @@
 
 use syntax::ast;
 use std::cell::RefCell;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
@@ -43,21 +43,22 @@ use self::def_path_hash::DefPathHashes;
 use self::svh_visitor::StrictVersionHashVisitor;
 use self::caching_codemap_view::CachingCodemapView;
 use self::hasher::IchHasher;
+use ich::Fingerprint;
 
 mod def_path_hash;
 mod svh_visitor;
 mod caching_codemap_view;
-mod hasher;
+pub mod hasher;
 
 pub struct IncrementalHashesMap {
-    hashes: FnvHashMap<DepNode<DefId>, u64>,
+    hashes: FnvHashMap<DepNode<DefId>, Fingerprint>,
 
     // These are the metadata hashes for the current crate as they were stored
     // during the last compilation session. They are only loaded if
     // -Z query-dep-graph was specified and are needed for auto-tests using
     // the #[rustc_metadata_dirty] and #[rustc_metadata_clean] attributes to
     // check whether some metadata hash has changed in between two revisions.
-    pub prev_metadata_hashes: RefCell<FnvHashMap<DefId, u64>>,
+    pub prev_metadata_hashes: RefCell<FnvHashMap<DefId, Fingerprint>>,
 }
 
 impl IncrementalHashesMap {
@@ -68,11 +69,12 @@ impl IncrementalHashesMap {
         }
     }
 
-    pub fn insert(&mut self, k: DepNode<DefId>, v: u64) -> Option<u64> {
+    pub fn insert(&mut self, k: DepNode<DefId>, v: Fingerprint) -> Option<Fingerprint> {
         self.hashes.insert(k, v)
     }
 
-    pub fn iter<'a>(&'a self) -> ::std::collections::hash_map::Iter<'a, DepNode<DefId>, u64> {
+    pub fn iter<'a>(&'a self)
+                    -> ::std::collections::hash_map::Iter<'a, DepNode<DefId>, Fingerprint> {
         self.hashes.iter()
     }
 
@@ -82,9 +84,9 @@ impl IncrementalHashesMap {
 }
 
 impl<'a> ::std::ops::Index<&'a DepNode<DefId>> for IncrementalHashesMap {
-    type Output = u64;
+    type Output = Fingerprint;
 
-    fn index(&self, index: &'a DepNode<DefId>) -> &u64 {
+    fn index(&self, index: &'a DepNode<DefId>) -> &Fingerprint {
         &self.hashes[index]
     }
 }
@@ -141,12 +143,13 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
                                                    &mut self.def_path_hashes,
                                                    &mut self.codemap,
                                                    self.hash_spans));
+        let bytes_hashed = state.bytes_hashed();
         let item_hash = state.finish();
         self.hashes.insert(DepNode::Hir(def_id), item_hash);
         debug!("calculate_item_hash: def_id={:?} hash={:?}", def_id, item_hash);
 
         let bytes_hashed = self.tcx.sess.perf_stats.incr_comp_bytes_hashed.get() +
-                           state.bytes_hashed();
+                           bytes_hashed;
         self.tcx.sess.perf_stats.incr_comp_bytes_hashed.set(bytes_hashed);
     }
 

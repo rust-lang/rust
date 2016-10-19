@@ -351,12 +351,10 @@ impl TypeId {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_type_id)]
-    ///
     /// use std::any::{Any, TypeId};
     ///
-    /// fn is_string(s: &Any) -> bool {
-    ///     TypeId::of::<String>() == s.get_type_id()
+    /// fn is_string<T: ?Sized + Any>(_s: &T) -> bool {
+    ///     TypeId::of::<String>() == TypeId::of::<T>()
     /// }
     ///
     /// fn main() {

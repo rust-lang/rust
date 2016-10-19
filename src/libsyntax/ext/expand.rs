@@ -240,7 +240,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             let scope =
                 if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
-            let ext = match self.cx.resolver.resolve_invoc(scope, &invoc, force) {
+            let resolution = match invoc.kind {
+                InvocationKind::Bang { ref mac, .. } => {
+                    self.cx.resolver.resolve_macro(scope, &mac.node.path, force)
+                }
+                InvocationKind::Attr { ref attr, .. } => {
+                    let ident = ast::Ident::with_empty_ctxt(intern(&*attr.name()));
+                    let path = ast::Path::from_ident(attr.span, ident);
+                    self.cx.resolver.resolve_macro(scope, &path, force)
+                }
+            };
+            let ext = match resolution {
                 Ok(ext) => Some(ext),
                 Err(Determinacy::Determined) => None,
                 Err(Determinacy::Undetermined) => {
@@ -354,7 +364,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
                 self.parse_expansion(tok_result, kind, name, attr.span)
             }
-            _ => unreachable!(),
+            SyntaxExtension::CustomDerive(_) => {
+                self.cx.span_err(attr.span, &format!("`{}` is a derive mode", name));
+                kind.dummy(attr.span)
+            }
+            _ => {
+                let msg = &format!("macro `{}` may not be used in attributes", name);
+                self.cx.span_err(attr.span, &msg);
+                kind.dummy(attr.span)
+            }
         }
     }
 
@@ -426,6 +444,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             MultiDecorator(..) | MultiModifier(..) | SyntaxExtension::AttrProcMacro(..) => {
                 self.cx.span_err(path.span,
                                  &format!("`{}` can only be used in attributes", extname));
+                return kind.dummy(span);
+            }
+
+            SyntaxExtension::CustomDerive(..) => {
+                self.cx.span_err(path.span, &format!("`{}` is a derive mode", extname));
                 return kind.dummy(span);
             }
 

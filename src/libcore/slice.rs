@@ -1968,6 +1968,7 @@ unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a T {
         &*self.ptr.offset(i as isize)
     }
+    fn may_have_side_effect() -> bool { false }
 }
 
 #[doc(hidden)]
@@ -1975,4 +1976,5 @@ unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut T {
         &mut *self.ptr.offset(i as isize)
     }
+    fn may_have_side_effect() -> bool { false }
 }

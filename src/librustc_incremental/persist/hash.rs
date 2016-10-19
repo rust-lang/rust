@@ -18,6 +18,7 @@ use rustc_serialize::Decodable;
 use rustc_serialize::opaque::Decoder;
 
 use IncrementalHashesMap;
+use ich::Fingerprint;
 use super::data::*;
 use super::fs::*;
 use super::file_format;
@@ -25,7 +26,7 @@ use super::file_format;
 pub struct HashContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     incremental_hashes_map: &'a IncrementalHashesMap,
-    item_metadata_hashes: FnvHashMap<DefId, u64>,
+    item_metadata_hashes: FnvHashMap<DefId, Fingerprint>,
     crate_hashes: FnvHashMap<CrateNum, Svh>,
 }
 
@@ -50,7 +51,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<u64> {
+    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<Fingerprint> {
         match *dep_node {
             DepNode::Krate => {
                 Some(self.incremental_hashes_map[dep_node])
@@ -89,7 +90,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    fn metadata_hash(&mut self, def_id: DefId) -> u64 {
+    fn metadata_hash(&mut self, def_id: DefId) -> Fingerprint {
         debug!("metadata_hash(def_id={:?})", def_id);
 
         assert!(!def_id.is_local());
@@ -102,14 +103,15 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
             // check whether we did not find detailed metadata for this
             // krate; in that case, we just use the krate's overall hash
-            if let Some(&hash) = self.crate_hashes.get(&def_id.krate) {
-                debug!("metadata_hash: def_id={:?} crate_hash={:?}", def_id, hash);
+            if let Some(&svh) = self.crate_hashes.get(&def_id.krate) {
+                debug!("metadata_hash: def_id={:?} crate_hash={:?}", def_id, svh);
 
                 // micro-"optimization": avoid a cache miss if we ask
                 // for metadata from this particular def-id again.
-                self.item_metadata_hashes.insert(def_id, hash.as_u64());
+                let fingerprint = svh_to_fingerprint(svh);
+                self.item_metadata_hashes.insert(def_id, fingerprint);
 
-                return hash.as_u64();
+                return fingerprint;
             }
 
             // otherwise, load the data and repeat.
@@ -205,4 +207,8 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
         Ok(())
     }
+}
+
+fn svh_to_fingerprint(svh: Svh) -> Fingerprint {
+    Fingerprint::from_smaller_hash(svh.as_u64())
 }

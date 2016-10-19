@@ -10,10 +10,6 @@
 
 // Issue #7580
 
-// ignore-pretty
-//
-// Expanded pretty printing causes resolve conflicts.
-
 // error-pattern:panic works
 
 use std::*;

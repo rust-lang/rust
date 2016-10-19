@@ -130,7 +130,7 @@ pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap,
                        -> LinkMeta {
     let r = LinkMeta {
         crate_name: name.to_owned(),
-        crate_hash: Svh::new(incremental_hashes_map[&DepNode::Krate]),
+        crate_hash: Svh::new(incremental_hashes_map[&DepNode::Krate].to_smaller_hash()),
     };
     info!("{:?}", r);
     return r;
