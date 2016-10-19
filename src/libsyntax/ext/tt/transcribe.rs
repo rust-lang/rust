@@ -14,7 +14,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use errors::{Handler, DiagnosticBuilder};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{DocComment, MatchNt, SubstNt};
-use parse::token::{Token, Interpolated, NtIdent, NtTT, SpecialMacroVar};
+use parse::token::{Token, Interpolated, NtIdent, NtTT};
 use parse::token;
 use parse::lexer::TokenAndSpan;
 use tokenstream::{self, TokenTree};
@@ -39,10 +39,7 @@ pub struct TtReader<'a> {
     stack: Vec<TtFrame>,
     /* for MBE-style macro transcription */
     interpolations: HashMap<Ident, Rc<NamedMatch>>,
-    imported_from: Option<Ident>,
 
-    // Some => return imported_from as the next token
-    crate_name_next: Option<Span>,
     repeat_idx: Vec<usize>,
     repeat_len: Vec<usize>,
     /* cached: */
@@ -59,10 +56,9 @@ pub struct TtReader<'a> {
 /// (and should) be None.
 pub fn new_tt_reader(sp_diag: &Handler,
                      interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
-                     imported_from: Option<Ident>,
                      src: Vec<tokenstream::TokenTree>)
                      -> TtReader {
-    new_tt_reader_with_doc_flag(sp_diag, interp, imported_from, src, false)
+    new_tt_reader_with_doc_flag(sp_diag, interp, src, false)
 }
 
 /// The extra `desugar_doc_comments` flag enables reading doc comments
@@ -73,7 +69,6 @@ pub fn new_tt_reader(sp_diag: &Handler,
 /// (and should) be None.
 pub fn new_tt_reader_with_doc_flag(sp_diag: &Handler,
                                    interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
-                                   imported_from: Option<Ident>,
                                    src: Vec<tokenstream::TokenTree>,
                                    desugar_doc_comments: bool)
                                    -> TtReader {
@@ -93,8 +88,6 @@ pub fn new_tt_reader_with_doc_flag(sp_diag: &Handler,
             None => HashMap::new(),
             Some(x) => x,
         },
-        imported_from: imported_from,
-        crate_name_next: None,
         repeat_idx: Vec::new(),
         repeat_len: Vec::new(),
         desugar_doc_comments: desugar_doc_comments,
@@ -189,14 +182,6 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         sp: r.cur_span.clone(),
     };
     loop {
-        match r.crate_name_next.take() {
-            None => (),
-            Some(sp) => {
-                r.cur_span = sp;
-                r.cur_tok = token::Ident(r.imported_from.unwrap());
-                return ret_val;
-            },
-        }
         let should_pop = match r.stack.last() {
             None => {
                 assert_eq!(ret_val.tok, token::Eof);
@@ -345,18 +330,6 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                    dotdotdoted: false,
                    sep: None
                 });
-            }
-            TokenTree::Token(sp, token::SpecialVarNt(SpecialMacroVar::CrateMacroVar)) => {
-                r.stack.last_mut().unwrap().idx += 1;
-
-                if r.imported_from.is_some() {
-                    r.cur_span = sp;
-                    r.cur_tok = token::ModSep;
-                    r.crate_name_next = Some(sp);
-                    return ret_val;
-                }
-
-                // otherwise emit nothing and proceed to the next token
             }
             TokenTree::Token(sp, tok) => {
                 r.cur_span = sp;
