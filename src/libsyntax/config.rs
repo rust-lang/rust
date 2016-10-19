@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use attr::HasAttrs;
-use feature_gate::{emit_feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
+use feature_gate::{feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
 use {fold, attr};
 use ast;
 use codemap::{Spanned, respan};
@@ -157,11 +157,15 @@ impl<'a> StripUnconfigured<'a> {
         // flag the offending attributes
         for attr in attrs.iter() {
             if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
-                emit_feature_err(&self.sess,
-                                 "stmt_expr_attributes",
-                                 attr.span,
-                                 GateIssue::Language,
-                                 EXPLAIN_STMT_ATTR_SYNTAX);
+                let mut err = feature_err(&self.sess,
+                                          "stmt_expr_attributes",
+                                          attr.span,
+                                          GateIssue::Language,
+                                          EXPLAIN_STMT_ATTR_SYNTAX);
+                if attr.node.is_sugared_doc {
+                    err.help("`///` is for documentation comments. For a plain comment, use `//`.");
+                }
+                err.emit();
             }
         }
     }
