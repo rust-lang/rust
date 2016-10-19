@@ -215,12 +215,11 @@ impl<'b> Resolver<'b> {
                 }
 
                 let loaded_macros = if legacy_imports != LegacyMacroImports::default() {
-                    Some(self.crate_loader.load_macros(item))
+                    self.crate_loader.process_item(item, &self.definitions, true)
                 } else {
-                    None
+                    self.crate_loader.process_item(item, &self.definitions, false)
                 };
 
-                self.crate_loader.process_item(item, &self.definitions);
                 // n.b. we don't need to look at the path option here, because cstore already did
                 let crate_id = self.session.cstore.extern_mod_stmt_cnum(item.id);
                 let module = if let Some(crate_id) = crate_id {
@@ -270,7 +269,9 @@ impl<'b> Resolver<'b> {
                 self.current_module = module;
             }
 
-            ItemKind::ForeignMod(..) => self.crate_loader.process_item(item, &self.definitions),
+            ItemKind::ForeignMod(..) => {
+                self.crate_loader.process_item(item, &self.definitions, false);
+            }
 
             // These items live in the value namespace.
             ItemKind::Static(_, m, _) => {
