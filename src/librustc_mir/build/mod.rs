@@ -176,8 +176,9 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         unpack!(block = builder.in_scope(arg_extent, block, |builder| {
             builder.args_and_body(block, return_ty, &arguments, arg_extent, ast_block)
         }));
-
-        let source_info = builder.source_info(span);
+        // Attribute epilogue to function's closing brace
+        let fn_end = Span { lo: span.hi, ..span };
+        let source_info = builder.source_info(fn_end);
         let return_block = builder.return_block();
         builder.cfg.terminate(block, source_info,
                               TerminatorKind::Goto { target: return_block });
