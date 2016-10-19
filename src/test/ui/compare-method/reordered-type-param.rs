@@ -10,6 +10,8 @@
 
 // Tests that ty params get matched correctly when comparing
 // an impl against a trait
+//
+// cc #26111
 
 trait A {
   fn b<C:Clone,D>(&self, x: C) -> C;
