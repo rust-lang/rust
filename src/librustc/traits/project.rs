@@ -1405,9 +1405,8 @@ impl<'tcx> ProjectionCache<'tcx> {
     /// cache hit, so it's actually a good thing).
     fn try_start(&mut self, key: ty::ProjectionTy<'tcx>)
                  -> Result<(), ProjectionCacheEntry<'tcx>> {
-        match self.map.get(&key) {
-            Some(entry) => return Err(entry.clone()),
-            None => { }
+        if let Some(entry) = self.map.get(&key) {
+            return Err(entry.clone());
         }
 
         self.map.insert(key, ProjectionCacheEntry::InProgress);

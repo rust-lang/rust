@@ -2449,13 +2449,10 @@ impl<'a> State<'a> {
                     |s, ty| s.print_type(&ty)));
                 try!(word(&mut self.s, ")"));
 
-                match data.output {
-                    None => { }
-                    Some(ref ty) => {
-                        try!(self.space_if_not_bol());
-                        try!(self.word_space("->"));
-                        try!(self.print_type(&ty));
-                    }
+                if let Some(ref ty) = data.output {
+                    try!(self.space_if_not_bol());
+                    try!(self.word_space("->"));
+                    try!(self.print_type(&ty));
                 }
             }
         }

@@ -788,14 +788,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                stack);
         assert!(!stack.obligation.predicate.has_escaping_regions());
 
-        match self.check_candidate_cache(&cache_fresh_trait_pred) {
-            Some(c) => {
-                debug!("CACHE HIT: SELECT({:?})={:?}",
-                       cache_fresh_trait_pred,
-                       c);
-                return c;
-            }
-            None => { }
+        if let Some(c) = self.check_candidate_cache(&cache_fresh_trait_pred) {
+            debug!("CACHE HIT: SELECT({:?})={:?}",
+                   cache_fresh_trait_pred,
+                   c);
+            return c;
         }
 
         // If no match, compute result and insert into cache.
