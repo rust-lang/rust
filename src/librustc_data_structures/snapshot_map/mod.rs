@@ -23,7 +23,7 @@ pub struct SnapshotMap<K, V>
 }
 
 pub struct Snapshot {
-    len: usize
+    len: usize,
 }
 
 enum UndoLog<K, V> {
@@ -39,7 +39,7 @@ impl<K, V> SnapshotMap<K, V>
     pub fn new() -> Self {
         SnapshotMap {
             map: FnvHashMap(),
-            undo_log: vec![]
+            undo_log: vec![],
         }
     }
 
@@ -68,9 +68,7 @@ impl<K, V> SnapshotMap<K, V>
                 }
                 true
             }
-            None => {
-                false
-            }
+            None => false,
         }
     }
 
@@ -88,7 +86,7 @@ impl<K, V> SnapshotMap<K, V>
         assert!(snapshot.len < self.undo_log.len());
         assert!(match self.undo_log[snapshot.len] {
             UndoLog::OpenSnapshot => true,
-            _ => false
+            _ => false,
         });
     }
 
@@ -110,7 +108,7 @@ impl<K, V> SnapshotMap<K, V>
                     panic!("cannot rollback an uncommitted snapshot");
                 }
 
-                UndoLog::CommittedSnapshot => { }
+                UndoLog::CommittedSnapshot => {}
 
                 UndoLog::Inserted(key) => {
                     self.map.remove(&key);
@@ -123,7 +121,10 @@ impl<K, V> SnapshotMap<K, V>
         }
 
         let v = self.undo_log.pop().unwrap();
-        assert!(match v { UndoLog::OpenSnapshot => true, _ => false });
+        assert!(match v {
+            UndoLog::OpenSnapshot => true,
+            _ => false,
+        });
         assert!(self.undo_log.len() == snapshot.len);
     }
 }
