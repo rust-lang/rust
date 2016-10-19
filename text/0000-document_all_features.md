@@ -273,5 +273,3 @@ At a "messaging" level, we should continue to emphasize that *documentation is j
 
 - How do we clearly distinguish between features on nightly, beta, and stable Rust—in the reference especially, but also in the book?
 - For the standard library, once it migrates to a crates structure, should it simply include the `#[forbid(missing_docs)]` attribute on all crates to set this as a build error?
-
-[detailed-design]:
