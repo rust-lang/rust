@@ -17,6 +17,5 @@ fn f(v: &[isize]) -> isize {
     for e in v {
         n = *e; // This comment once triggered pretty printer bug
     }
-
     n
 }

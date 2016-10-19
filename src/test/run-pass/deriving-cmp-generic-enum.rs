@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-pretty-expanded FIXME #15189
-
-
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum E<T> {
     E0,

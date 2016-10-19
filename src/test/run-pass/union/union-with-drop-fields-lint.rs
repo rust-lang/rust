@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
-
 #![feature(untagged_unions)]
 #![allow(dead_code)]
 #![allow(unions_with_drop_fields)]

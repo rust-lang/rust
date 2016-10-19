@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty - token trees can't pretty print
 // compile-flags: --cfg foo
 
 macro_rules! compiles_fine {

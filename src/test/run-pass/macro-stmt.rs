@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty - token trees can't pretty print
-
 macro_rules! myfn {
     ( $f:ident, ( $( $x:ident ),* ), $body:block ) => (
         fn $f( $( $x : isize),* ) -> isize $body

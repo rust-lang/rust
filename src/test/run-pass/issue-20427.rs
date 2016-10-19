@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:i8.rs
-// ignore-pretty (#23623)
+// ignore-pretty issue #37201
 
 extern crate i8;
 use std::string as i16;

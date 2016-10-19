@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty : (#23623) problems when  ending with // comments
-
 // error-pattern:thread 'main' panicked at 'attempt to add with overflow'
 // compile-flags: -C debug-assertions
-
 
 fn main() {
     let _x = 200u8 + 200u8 + 200u8;
