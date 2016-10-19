@@ -369,7 +369,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                       cause: &traits::ObligationCause<'tcx>,
                       sup_type: Ty<'tcx>)
                       -> SubregionOrigin<'tcx> {
-        SubregionOrigin::from_cause(cause, || infer::RelateParamBound(cause.span, sup_type))
+        SubregionOrigin::from_obligation_cause(cause,
+                                               || infer::RelateParamBound(cause.span, sup_type))
     }
 
     /// This method populates the region map's `free_region_map`. It walks over the transformed

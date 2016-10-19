@@ -1,4 +1,3 @@
-
 // Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -185,7 +184,7 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 // `'a: 'b`.
 
                 // Ignore `for<'a> T: 'a` -- we might in the future
-                // consider this as evidence that `Foo: 'static`, but
+                // consider this as evidence that `T: 'static`, but
                 // I'm a bit wary of such constructions and so for now
                 // I want to be conservative. --nmatsakis
                 let ty_max = data.skip_binder().0;
