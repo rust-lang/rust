@@ -76,6 +76,9 @@
 # library and facade crates.
 #compiler-docs = false
 
+# Indicate whether submodules are managed and updated automatically.
+#submodules = true
+
 # =============================================================================
 # Options for compiling Rust code itself
 # =============================================================================
