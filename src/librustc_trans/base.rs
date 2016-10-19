@@ -1250,12 +1250,27 @@ fn write_metadata(cx: &SharedCrateContext,
                   reachable_ids: &NodeSet) -> Vec<u8> {
     use flate;
 
-    let any_library = cx.sess()
-                        .crate_types
-                        .borrow()
-                        .iter()
-                        .any(|ty| *ty != config::CrateTypeExecutable);
-    if !any_library {
+    #[derive(PartialEq, Eq, PartialOrd, Ord)]
+    enum MetadataKind {
+        None,
+        Uncompressed,
+        Compressed
+    }
+
+    let kind = cx.sess().crate_types.borrow().iter().map(|ty| {
+        match *ty {
+            config::CrateTypeExecutable |
+            config::CrateTypeStaticlib |
+            config::CrateTypeCdylib => MetadataKind::None,
+
+            config::CrateTypeRlib => MetadataKind::Uncompressed,
+
+            config::CrateTypeDylib |
+            config::CrateTypeProcMacro => MetadataKind::Compressed,
+        }
+    }).max().unwrap();
+
+    if kind == MetadataKind::None {
         return Vec::new();
     }
 
@@ -1265,6 +1280,11 @@ fn write_metadata(cx: &SharedCrateContext,
                                           cx.link_meta(),
                                           reachable_ids,
                                           cx.mir_map());
+    if kind == MetadataKind::Uncompressed {
+        return metadata;
+    }
+
+    assert!(kind == MetadataKind::Compressed);
     let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.extend_from_slice(&flate::deflate_bytes(&metadata));
 
