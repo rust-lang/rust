@@ -891,6 +891,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Projection(ref proj) => return self.eval_lvalue_projection(proj),
         };
+
+        self.dump_local(lvalue);
+
         Ok(lvalue)
     }
 
@@ -1420,6 +1423,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                       dest_ty),
         }
         Ok(())
+    }
+
+    fn dump_local(&self, lvalue: Lvalue) {
+        if let Lvalue::Local { frame, local } = lvalue {
+            if let Some(val) = self.stack[frame].get_local(local) {
+                match val {
+                    Value::ByRef(ptr) => {
+                        trace!("frame[{}] {:?}:", frame, local);
+                        self.memory.dump(ptr.alloc_id);
+                    }
+                    Value::ByVal(a) => {
+                        trace!("frame[{}] {:?}: {:?}", frame, local, a);
+                    }
+                    Value::ByValPair(a, b) => {
+                        trace!("frame[{}] {:?}: ({:?}, {:?})", frame, local, a, b);
+                    }
+                }
+            }
+        }
     }
 
     fn dump_locals(&self, limit: usize) {
