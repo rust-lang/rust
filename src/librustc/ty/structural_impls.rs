@@ -716,6 +716,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeParameterDef<'tcx> {
             default: self.default.fold_with(folder),
             default_def_id: self.default_def_id,
             object_lifetime_default: self.object_lifetime_default.fold_with(folder),
+            pure_wrt_drop: self.pure_wrt_drop,
         }
     }
 
@@ -754,6 +755,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::RegionParameterDef<'tcx> {
             def_id: self.def_id,
             index: self.index,
             bounds: self.bounds.fold_with(folder),
+            pure_wrt_drop: self.pure_wrt_drop,
         }
     }
 

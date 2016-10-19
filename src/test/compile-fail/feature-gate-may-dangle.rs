@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+// Check that `may_dangle` is rejected if `dropck_eyepatch` feature gate is absent.
 
-struct Foo;
+#![feature(generic_param_attrs)]
 
-trait Bar { }
-unsafe impl Bar for Foo { } //~ ERROR implementing the trait `Bar` is not unsafe [E0199]
-
-fn main() {
+struct Pt<A>(A);
+impl<#[may_dangle] A> Drop for Pt<A> {
+    //~^ ERROR may_dangle has unstable semantics and may be removed in the future
+    //~| HELP add #![feature(dropck_eyepatch)] to the crate attributes to enable
+    fn drop(&mut self) { }
 }
