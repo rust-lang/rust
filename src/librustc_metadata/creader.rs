@@ -42,12 +42,6 @@ use log;
 
 pub struct CrateLoader<'a> {
     pub sess: &'a Session,
-    pub creader: CrateReader<'a>,
-    cstore: &'a CStore,
-}
-
-pub struct CrateReader<'a> {
-    sess: &'a Session,
     cstore: &'a CStore,
     next_crate_num: CrateNum,
     foreign_item_map: FnvHashMap<String, Vec<ast::NodeId>>,
@@ -159,13 +153,13 @@ pub struct Macros {
     pub dylib: Option<PathBuf>,
 }
 
-impl<'a> CrateReader<'a> {
+impl<'a> CrateLoader<'a> {
     pub fn new(sess: &'a Session,
                cstore: &'a CStore,
                local_crate_name: &str,
                local_crate_config: ast::CrateConfig)
-               -> CrateReader<'a> {
-        CrateReader {
+               -> Self {
+        CrateLoader {
             sess: sess,
             cstore: cstore,
             next_crate_num: cstore.next_crate_num(),
@@ -890,7 +884,7 @@ impl<'a> CrateReader<'a> {
 }
 
 impl ExtensionCrate {
-    fn register(self, creader: &mut CrateReader) {
+    fn register(self, loader: &mut CrateLoader) {
         if !self.should_link {
             return
         }
@@ -901,31 +895,17 @@ impl ExtensionCrate {
         };
 
         // Register crate now to avoid double-reading metadata
-        creader.register_crate(&None,
-                               &self.ident,
-                               &self.name,
-                               self.span,
-                               library,
-                               true);
+        loader.register_crate(&None, &self.ident, &self.name, self.span, library, true);
     }
 }
 
 impl<'a> CrateLoader<'a> {
-    pub fn new(sess: &'a Session, cstore: &'a CStore, krate: &ast::Crate, crate_name: &str)
-               -> Self {
-        let loader = CrateLoader {
-            sess: sess,
-            cstore: cstore,
-            creader: CrateReader::new(sess, cstore, crate_name, krate.config.clone()),
-        };
-
+    pub fn preprocess(&mut self, krate: &ast::Crate) {
         for attr in krate.attrs.iter().filter(|m| m.name() == "link_args") {
             if let Some(ref linkarg) = attr.value_str() {
-                loader.cstore.add_used_link_args(&linkarg);
+                self.cstore.add_used_link_args(&linkarg);
             }
         }
-
-        loader
     }
 
     fn process_foreign_mod(&mut self, i: &ast::Item, fm: &ast::ForeignMod) {
@@ -982,7 +962,7 @@ impl<'a> CrateLoader<'a> {
                 Some(name) => name,
                 None => continue,
             };
-            let list = self.creader.foreign_item_map.entry(lib_name.to_string())
+            let list = self.foreign_item_map.entry(lib_name.to_string())
                                                     .or_insert(Vec::new());
             list.extend(fm.items.iter().map(|it| it.id));
         }
@@ -991,8 +971,8 @@ impl<'a> CrateLoader<'a> {
 
 impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
     fn postprocess(&mut self, krate: &ast::Crate) {
-        self.creader.inject_allocator_crate();
-        self.creader.inject_panic_runtime(krate);
+        self.inject_allocator_crate();
+        self.inject_panic_runtime(krate);
 
         if log_enabled!(log::INFO) {
             dump_crates(&self.cstore);
@@ -1001,7 +981,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         for &(ref name, kind) in &self.sess.opts.libs {
             register_native_lib(self.sess, self.cstore, None, name.clone(), kind);
         }
-        self.creader.register_statically_included_foreign_items();
+        self.register_statically_included_foreign_items();
     }
 
     fn process_item(&mut self, item: &ast::Item, definitions: &hir_map::Definitions) {
@@ -1024,12 +1004,12 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
             }
         }
 
-        if let Some(info) = self.creader.extract_crate_info(item) {
+        if let Some(info) = self.extract_crate_info(item) {
             if !info.should_link {
                 return;
             }
 
-            let (cnum, ..) = self.creader.resolve_crate(
+            let (cnum, ..) = self.resolve_crate(
                 &None, &info.ident, &info.name, None, item.span, PathKind::Crate, true,
             );
 
@@ -1038,7 +1018,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
 
             let extern_crate =
                 ExternCrate { def_id: def_id, span: item.span, direct: true, path_len: len };
-            self.creader.update_extern_crate(cnum, extern_crate, &mut FnvHashSet());
+            self.update_extern_crate(cnum, extern_crate, &mut FnvHashSet());
 
             self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
         }
