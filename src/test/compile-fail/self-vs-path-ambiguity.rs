@@ -8,8 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// Check that `self::foo` is parsed as a general pattern and not a self argument.
 
-fn main() {
-    let Self = "foo"; //~ error: expected identifier, found keyword `Self`
+struct S;
+
+impl S {
+    fn f(self::S: S) {}
+    fn g(&self::S: &S) {}
+    fn h(&mut self::S: &mut S) {}
+    fn i(&'a self::S: &S) {} //~ ERROR unexpected lifetime `'a` in pattern
+                             //~^ ERROR expected one of `)` or `mut`, found `'a`
 }
+
+fn main() {}

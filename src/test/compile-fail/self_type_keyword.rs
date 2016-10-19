@@ -17,12 +17,7 @@ struct Bar<'Self>;
 //~^ ERROR lifetimes cannot use keyword names
 
 pub fn main() {
-    let Self = 5;
-    //~^ ERROR expected identifier, found keyword `Self`
-
     match 15 {
-        Self => (),
-        //~^ ERROR expected identifier, found keyword `Self`
         ref Self => (),
         //~^ ERROR expected identifier, found keyword `Self`
         mut Self => (),
@@ -31,8 +26,6 @@ pub fn main() {
         //~^ ERROR expected identifier, found keyword `Self`
         Self!() => (),
         //~^ ERROR macro undefined: 'Self!'
-        Foo { x: Self } => (),
-        //~^ ERROR expected identifier, found keyword `Self`
         Foo { Self } => (),
         //~^ ERROR expected identifier, found keyword `Self`
     }
