@@ -327,18 +327,24 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
                 SubSupConflict(ref var_origin, ref sub_origin, sub, ref sup_origin, sup) => {
                     debug!("processing SubSupConflict sub: {:?} sup: {:?}", sub, sup);
-                    if let SubregionOrigin::CompareImplMethodObligation { .. } = *sub_origin {
-                        // As above, when comparing an impl method
-                        // against a trait method, it is not helpful
-                        // to suggest changes to the impl method.
-                    } else if let SubregionOrigin::CompareImplMethodObligation { .. } = *sup_origin {
-                        // See above.
-                    } else if let Some(same_frs) = free_regions_from_same_fn(self.tcx, sub, sup) {
-                        origins.push(
-                            ProcessedErrorOrigin::VariableFailure(
-                                var_origin.clone()));
-                        append_to_same_regions(&mut same_regions, &same_frs);
-                        continue;
+                    match (sub_origin, sup_origin) {
+                        (&SubregionOrigin::CompareImplMethodObligation { .. }, _) => {
+                            // As above, when comparing an impl method
+                            // against a trait method, it is not helpful
+                            // to suggest changes to the impl method.
+                        }
+                        (_, &SubregionOrigin::CompareImplMethodObligation { .. }) => {
+                            // See above.
+                        }
+                        _ => {
+                            if let Some(same_frs) = free_regions_from_same_fn(self.tcx, sub, sup) {
+                                origins.push(
+                                    ProcessedErrorOrigin::VariableFailure(
+                                        var_origin.clone()));
+                                append_to_same_regions(&mut same_regions, &same_frs);
+                                continue;
+                            }
+                        }
                     }
                 }
                 GenericBoundFailure(ref origin, ref kind, region) => {
