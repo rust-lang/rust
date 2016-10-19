@@ -2105,12 +2105,17 @@ actual:\n\
                                                  .collect::<Vec<_>>().join(" ");
 
             cmd.env("IS_MSVC", "1")
+               .env("IS_WINDOWS", "1")
                .env("MSVC_LIB", format!("'{}' -nologo", lib.display()))
                .env("CC", format!("'{}' {}", self.config.cc, cflags))
                .env("CXX", &self.config.cxx);
         } else {
             cmd.env("CC", format!("{} {}", self.config.cc, self.config.cflags))
                .env("CXX", format!("{} {}", self.config.cxx, self.config.cflags));
+
+            if self.config.target.contains("windows") {
+                cmd.env("IS_WINDOWS", "1");
+            }
         }
 
         let output = cmd.output().expect("failed to spawn `make`");
