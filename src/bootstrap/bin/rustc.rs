@@ -112,6 +112,8 @@ fn main() {
         // code.
         if env::var("RUSTC_DEBUGINFO") == Ok("true".to_string()) {
             cmd.arg("-g");
+        } else if env::var("RUSTC_DEBUGINFO_LINES") == Ok("true".to_string()) {
+            cmd.arg("-Cdebuginfo=1");
         }
         let debug_assertions = match env::var("RUSTC_DEBUG_ASSERTIONS") {
             Ok(s) => if s == "true" {"y"} else {"n"},
