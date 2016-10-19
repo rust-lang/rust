@@ -1172,7 +1172,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.commit_if_ok(|snapshot| {
             let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
-            let origin = SubregionOrigin::from_cause(cause, || RelateRegionParamBound(cause.span));
+            let origin =
+                SubregionOrigin::from_obligation_cause(cause,
+                                                       || RelateRegionParamBound(cause.span));
             self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
             self.leak_check(false, cause.span, &skol_map, snapshot)?;
             Ok(self.pop_skolemized(skol_map, snapshot))
@@ -1809,9 +1811,9 @@ impl<'tcx> SubregionOrigin<'tcx> {
         }
     }
 
-    pub fn from_cause<F>(cause: &traits::ObligationCause<'tcx>,
-                         default: F)
-                         -> Self
+    pub fn from_obligation_cause<F>(cause: &traits::ObligationCause<'tcx>,
+                                    default: F)
+                                    -> Self
         where F: FnOnce() -> Self
     {
         match cause.code {
