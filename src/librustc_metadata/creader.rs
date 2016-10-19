@@ -148,17 +148,6 @@ enum LoadResult {
     Loaded(Library),
 }
 
-pub struct Macros {
-    pub macro_rules: Vec<ast::MacroDef>,
-
-    /// An array of pairs where the first element is the name of the custom
-    /// derive (e.g. the trait being derived) and the second element is the
-    /// index of the definition.
-    pub custom_derive_registrar: Option<DefIndex>,
-    pub svh: Svh,
-    pub dylib: Option<PathBuf>,
-}
-
 impl<'a> CrateLoader<'a> {
     pub fn new(sess: &'a Session,
                cstore: &'a CStore,
@@ -554,18 +543,13 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    pub fn read_macros(&mut self, item: &ast::Item) -> Macros {
+    pub fn read_macros(&mut self, item: &ast::Item) -> LoadedMacros {
         let ci = self.extract_crate_info(item).unwrap();
         let ekrate = self.read_extension_crate(item.span, &ci);
-
         let root = ekrate.metadata.get_root();
         let source_name = format!("<{} macros>", item.ident);
-        let mut ret = Macros {
-            macro_rules: Vec::new(),
-            custom_derive_registrar: None,
-            svh: root.hash,
-            dylib: None,
-        };
+        let mut macro_rules = Vec::new();
+
         for def in root.macro_defs.decode(&*ekrate.metadata) {
             // NB: Don't use parse::parse_tts_from_source_str because it parses with
             // quote_depth > 0.
@@ -589,7 +573,7 @@ impl<'a> CrateLoader<'a> {
                 attr::mark_used(attr);
             }
 
-            ret.macro_rules.push(ast::MacroDef {
+            macro_rules.push(ast::MacroDef {
                 ident: ast::Ident::with_empty_ctxt(def.name),
                 id: ast::DUMMY_NODE_ID,
                 span: local_span,
@@ -602,9 +586,24 @@ impl<'a> CrateLoader<'a> {
                 .insert(local_span, (def.name.as_str().to_string(), def.span));
         }
 
-        match root.macro_derive_registrar {
-            Some(id) => ret.custom_derive_registrar = Some(id),
+        if let Some(id) = root.macro_derive_registrar {
+            let dylib = match ekrate.dylib.clone() {
+                Some(dylib) => dylib,
+                None => span_bug!(item.span, "proc-macro crate not dylib"),
+            };
+            if ekrate.target_only {
+                let message = format!("proc-macro crate is not available for \
+                                       triple `{}` (only found {})",
+                                      config::host_triple(),
+                                      self.sess.opts.target_triple);
+                self.sess.span_fatal(item.span, &message);
+            }
 
+            // custom derive crates currently should not have any macro_rules!
+            // exported macros, enforced elsewhere
+            assert_eq!(macro_rules.len(), 0);
+            LoadedMacros::ProcMacros(self.load_derive_macros(item, id, root.hash, dylib))
+        } else {
             // If this crate is not a proc-macro crate then we might be able to
             // register it with the local crate store to prevent loading the
             // metadata twice.
@@ -612,27 +611,9 @@ impl<'a> CrateLoader<'a> {
             // If it's a proc-macro crate, though, then we definitely don't
             // want to register it with the local crate store as we're just
             // going to use it as we would a plugin.
-            None => {
-                ekrate.register(self);
-                return ret
-            }
+            ekrate.register(self);
+            LoadedMacros::MacroRules(macro_rules)
         }
-
-        self.cstore.add_used_for_derive_macros(item);
-        ret.dylib = ekrate.dylib.clone();
-        if ret.dylib.is_none() {
-            span_bug!(item.span, "proc-macro crate not dylib");
-        }
-
-        if ekrate.target_only {
-            let message = format!("proc-macro crate is not available for \
-                                   triple `{}` (only found {})",
-                                  config::host_triple(),
-                                  self.sess.opts.target_triple);
-            self.sess.span_fatal(item.span, &message);
-        }
-
-        return ret
     }
 
     /// Load custom derive macros.
@@ -642,7 +623,7 @@ impl<'a> CrateLoader<'a> {
     /// implemented as dynamic libraries, but we have a possible future where
     /// custom derive (and other macro-1.1 style features) are implemented via
     /// executables and custom IPC.
-    fn load_derive_macros(&mut self, span: Span, macros: &Macros, index: DefIndex)
+    fn load_derive_macros(&mut self, item: &ast::Item, index: DefIndex, svh: Svh, path: PathBuf)
                           -> Vec<(ast::Name, SyntaxExtension)> {
         use std::{env, mem};
         use proc_macro::TokenStream;
@@ -650,19 +631,20 @@ impl<'a> CrateLoader<'a> {
         use rustc_back::dynamic_lib::DynamicLibrary;
         use syntax_ext::deriving::custom::CustomDerive;
 
+        self.cstore.add_used_for_derive_macros(item);
+
         // Make sure the path contains a / or the linker will search for it.
-        let path = macros.dylib.as_ref().unwrap();
         let path = env::current_dir().unwrap().join(path);
         let lib = match DynamicLibrary::open(Some(&path)) {
             Ok(lib) => lib,
-            Err(err) => self.sess.span_fatal(span, &err),
+            Err(err) => self.sess.span_fatal(item.span, &err),
         };
 
-        let sym = self.sess.generate_derive_registrar_symbol(&macros.svh, index);
+        let sym = self.sess.generate_derive_registrar_symbol(&svh, index);
         let registrar = unsafe {
             let sym = match lib.symbol(&sym) {
                 Ok(f) => f,
-                Err(err) => self.sess.span_fatal(span, &err),
+                Err(err) => self.sess.span_fatal(item.span, &err),
             };
             mem::transmute::<*mut u8, fn(&mut Registry)>(sym)
         };
@@ -1079,16 +1061,6 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
     }
 
     fn load_macros(&mut self, extern_crate: &ast::Item) -> LoadedMacros {
-        let macros = self.read_macros(extern_crate);
-
-        if let Some(index) = macros.custom_derive_registrar {
-            // custom derive crates currently should not have any macro_rules!
-            // exported macros, enforced elsewhere
-            assert_eq!(macros.macro_rules.len(), 0);
-            let custom_derives = self.load_derive_macros(extern_crate.span, &macros, index);
-            LoadedMacros::ProcMacros(custom_derives)
-        } else {
-            LoadedMacros::MacroRules(macros.macro_rules)
-        }
+        self.read_macros(extern_crate)
     }
 }
