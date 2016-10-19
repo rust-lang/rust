@@ -491,8 +491,8 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             if as_.len() == bs.len() {
                 let ts = as_.iter().zip(bs)
                             .map(|(a, b)| relation.relate(a, b))
-                            .collect::<Result<_, _>>()?;
-                Ok(tcx.mk_tup(ts))
+                            .collect::<Result<Vec<_>, _>>()?;
+                Ok(tcx.mk_tup(&ts))
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(
                     expected_found(relation, &as_.len(), &bs.len())))
@@ -547,7 +547,7 @@ impl<'tcx> Relate<'tcx> for ty::ClosureSubsts<'tcx> {
         let upvar_tys = relation.relate_zip(&a.upvar_tys, &b.upvar_tys)?;
         Ok(ty::ClosureSubsts {
             func_substs: substs,
-            upvar_tys: relation.tcx().mk_type_list(upvar_tys)
+            upvar_tys: relation.tcx().mk_type_list(&upvar_tys)
         })
     }
 }

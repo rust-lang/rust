@@ -1797,7 +1797,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
             _ if tys.references_error() => tcx.types.err,
             0 => tcx.types.bool,
             1 => tys[0],
-            _ => tcx.mk_tup(tys)
+            _ => tcx.mk_tup(&tys)
         };
 
         match self.sized_constraint.get(dep_node()) {
