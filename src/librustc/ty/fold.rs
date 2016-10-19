@@ -91,6 +91,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn needs_subst(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_SUBST)
     }
+    fn has_re_skol(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_SKOL)
+    }
     fn has_closure_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_CLOSURE)
     }
@@ -632,26 +635,15 @@ struct HasTypeFlagsVisitor {
 
 impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     fn visit_ty(&mut self, t: Ty) -> bool {
-        t.flags.get().intersects(self.flags)
+        let flags = t.flags.get();
+        debug!("HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}", t, flags, self.flags);
+        flags.intersects(self.flags)
     }
 
     fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
-        if self.flags.intersects(ty::TypeFlags::HAS_LOCAL_NAMES) {
-            // does this represent a region that cannot be named
-            // in a global way? used in fulfillment caching.
-            match *r {
-                ty::ReStatic | ty::ReEmpty | ty::ReErased => {}
-                _ => return true,
-            }
-        }
-        if self.flags.intersects(ty::TypeFlags::HAS_RE_INFER |
-                                 ty::TypeFlags::KEEP_IN_LOCAL_TCX) {
-            match *r {
-                ty::ReVar(_) | ty::ReSkolemized(..) => { return true }
-                _ => {}
-            }
-        }
-        false
+        let flags = r.type_flags();
+        debug!("HasTypeFlagsVisitor: r={:?} r.flags={:?} self.flags={:?}", r, flags, self.flags);
+        flags.intersects(self.flags)
     }
 }
 
