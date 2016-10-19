@@ -115,7 +115,7 @@ impl<'a> CrateLoader<'a> {
             return Vec::new();
         }
 
-        let mut macros = self.creader.read_macros(vi);
+        let mut macros = self.read_macros(vi);
         let mut ret = Vec::new();
         let mut seen = HashSet::new();
 

@@ -645,7 +645,8 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
     let _ignore = sess.dep_graph.in_ignore();
-    let mut crate_loader = CrateLoader::new(sess, &cstore, &krate, crate_name);
+    let mut crate_loader = CrateLoader::new(sess, &cstore, crate_name, krate.config.clone());
+    crate_loader.preprocess(&krate);
     let resolver_arenas = Resolver::arenas();
     let mut resolver =
         Resolver::new(sess, &krate, make_glob_map, &mut crate_loader, &resolver_arenas);
