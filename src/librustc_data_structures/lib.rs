@@ -42,6 +42,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 extern crate libc;
 
 pub mod bitslice;
+pub mod blake2b;
 pub mod bitvec;
 pub mod graph;
 pub mod ivar;
