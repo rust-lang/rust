@@ -12,7 +12,6 @@
 
 #![feature(rustc_private)]
 #![feature(rustdoc)]
-#![feature(question_mark)]
 
 extern crate rustdoc;
 extern crate rustc_back;

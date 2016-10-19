@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! id {
-    ($e:expr) => { $e }
+#![allow(private_in_public)]
+
+mod foo {
+    pub mod bar {
+        extern crate core;
+    }
+}
+
+mod baz {
+    pub use foo::bar::core;
 }
 
 fn main() {
-    id!(x?);  //~ error: the `?` operator is not stable (see issue #31436)
-    y?;  //~ error: the `?` operator is not stable (see issue #31436)
+    baz::core::cell::Cell::new(0u32);
 }

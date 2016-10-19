@@ -89,7 +89,7 @@
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 #![feature(never_type)]
 #![feature(prelude_import)]
 

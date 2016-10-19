@@ -153,7 +153,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     // Visit attributes on expression and statements (but not attributes on items in blocks).
-    fn visit_stmt_or_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
+    fn visit_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
         // flag the offending attributes
         for attr in attrs.iter() {
             if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
@@ -227,7 +227,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
-        self.visit_stmt_or_expr_attrs(expr.attrs());
+        self.visit_expr_attrs(expr.attrs());
 
         // If an expr is valid to cfg away it will have been removed by the
         // outer stmt or expression folder before descending in here.
@@ -245,7 +245,6 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_stmt(&mut self, stmt: ast::Stmt) -> Option<ast::Stmt> {
-        self.visit_stmt_or_expr_attrs(stmt.attrs());
         self.configure(stmt)
     }
 }

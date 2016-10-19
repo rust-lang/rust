@@ -270,7 +270,6 @@ use error;
 use fmt;
 use mem;
 use cell::UnsafeCell;
-use marker::Reflect;
 use time::{Duration, Instant};
 
 #[unstable(feature = "mpsc_select", issue = "27800")]
@@ -1163,7 +1162,7 @@ impl<T> fmt::Display for SendError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send + Reflect> error::Error for SendError<T> {
+impl<T: Send> error::Error for SendError<T> {
     fn description(&self) -> &str {
         "sending on a closed channel"
     }
@@ -1198,7 +1197,7 @@ impl<T> fmt::Display for TrySendError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send + Reflect> error::Error for TrySendError<T> {
+impl<T: Send> error::Error for TrySendError<T> {
 
     fn description(&self) -> &str {
         match *self {

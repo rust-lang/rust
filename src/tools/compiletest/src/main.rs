@@ -13,7 +13,6 @@
 #![feature(box_syntax)]
 #![feature(rustc_private)]
 #![feature(test)]
-#![feature(question_mark)]
 #![feature(libc)]
 
 #![deny(warnings)]

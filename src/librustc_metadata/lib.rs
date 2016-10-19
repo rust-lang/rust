@@ -21,7 +21,7 @@
 #![feature(core_intrinsics)]
 #![feature(box_patterns)]
 #![feature(dotdot_in_tuple_patterns)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_macro_lib)]

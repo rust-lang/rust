@@ -11,8 +11,6 @@
 // Regression test for #21400 which itself was extracted from
 // stackoverflow.com/questions/28031155/is-my-borrow-checker-drunk/28031580
 
-#![feature(question_mark)]
-
 fn main() {
     let mut t = Test;
     assert_eq!(t.method1("one"), Ok(1));

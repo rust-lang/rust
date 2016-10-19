@@ -20,7 +20,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(dotdot_in_tuple_patterns)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(rand)]
