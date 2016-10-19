@@ -458,8 +458,6 @@ pub struct MacroDef {
     pub id: NodeId,
     pub span: Span,
     pub imported_from: Option<Name>,
-    pub export: bool,
-    pub use_locally: bool,
     pub allow_internal_unstable: bool,
     pub body: HirVec<TokenTree>,
 }

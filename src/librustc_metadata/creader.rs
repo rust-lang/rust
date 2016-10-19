@@ -594,9 +594,6 @@ impl<'a> CrateLoader<'a> {
                 id: ast::DUMMY_NODE_ID,
                 span: local_span,
                 imported_from: Some(item.ident),
-                // overridden in plugin/load.rs
-                export: false,
-                use_locally: false,
                 allow_internal_unstable: attr::contains_name(&def.attrs, "allow_internal_unstable"),
                 attrs: def.attrs,
                 body: body,
