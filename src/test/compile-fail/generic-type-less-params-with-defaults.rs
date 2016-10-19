@@ -18,5 +18,5 @@ struct Vec<T, A = Heap>(
 fn main() {
     let _: Vec;
     //~^ ERROR E0243
-    //~| NOTE expected at least 1 type arguments, found 0
+    //~| NOTE expected at least 1 type argument, found 0
 }
