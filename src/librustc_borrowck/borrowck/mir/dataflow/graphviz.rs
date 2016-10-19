@@ -88,7 +88,7 @@ pub trait MirWithFlowState<'tcx> {
 }
 
 impl<'a, 'tcx: 'a, BD> MirWithFlowState<'tcx> for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
-    where 'a, 'tcx: 'a, BD: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>>
+    where 'tcx: 'a, BD: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>>
 {
     type BD = BD;
     fn node_id(&self) -> NodeId { self.node_id }
