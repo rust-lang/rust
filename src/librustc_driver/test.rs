@@ -275,7 +275,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_pair(&self, ty1: Ty<'tcx>, ty2: Ty<'tcx>) -> Ty<'tcx> {
-        self.infcx.tcx.mk_tup(vec![ty1, ty2])
+        self.infcx.tcx.mk_tup(&[ty1, ty2])
     }
 
     pub fn t_param(&self, index: u32) -> Ty<'tcx> {
@@ -803,8 +803,8 @@ fn walk_ty() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.mk_tup(vec![int_ty, uint_ty, int_ty, uint_ty]);
-        let tup2_ty = tcx.mk_tup(vec![tup1_ty, tup1_ty, uint_ty]);
+        let tup1_ty = tcx.mk_tup(&[int_ty, uint_ty, int_ty, uint_ty]);
+        let tup2_ty = tcx.mk_tup(&[tup1_ty, tup1_ty, uint_ty]);
         let uniq_ty = tcx.mk_box(tup2_ty);
         let walked: Vec<_> = uniq_ty.walk().collect();
         assert_eq!(walked,
@@ -819,8 +819,8 @@ fn walk_ty_skip_subtree() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.mk_tup(vec![int_ty, uint_ty, int_ty, uint_ty]);
-        let tup2_ty = tcx.mk_tup(vec![tup1_ty, tup1_ty, uint_ty]);
+        let tup1_ty = tcx.mk_tup(&[int_ty, uint_ty, int_ty, uint_ty]);
+        let tup2_ty = tcx.mk_tup(&[tup1_ty, tup1_ty, uint_ty]);
         let uniq_ty = tcx.mk_box(tup2_ty);
 
         // types we expect to see (in order), plus a boolean saying
