@@ -16,13 +16,13 @@ use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::io::{self, Cursor, Write};
 use std::fs::{self, File};
 use std::path::PathBuf;
-use std::collections::hash_map::DefaultHasher;
 
 use IncrementalHashesMap;
+use ich::Fingerprint;
 use super::data::*;
 use super::directory::*;
 use super::hash::*;
@@ -30,6 +30,7 @@ use super::preds::*;
 use super::fs::*;
 use super::dirty_clean;
 use super::file_format;
+use calculate_svh::hasher::IchHasher;
 
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 incremental_hashes_map: &IncrementalHashesMap,
@@ -185,7 +186,7 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
                               svh: Svh,
                               preds: &Predecessors,
                               builder: &mut DefIdDirectoryBuilder,
-                              current_metadata_hashes: &mut FnvHashMap<DefId, u64>,
+                              current_metadata_hashes: &mut FnvHashMap<DefId, Fingerprint>,
                               encoder: &mut Encoder)
                               -> io::Result<()> {
     // For each `MetaData(X)` node where `X` is local, accumulate a
@@ -233,7 +234,7 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
         // is the det. hash of the def-path. This is convenient
         // because we can sort this to get a stable ordering across
         // compilations, even if the def-ids themselves have changed.
-        let mut hashes: Vec<(DepNode<u64>, u64)> = sources.iter()
+        let mut hashes: Vec<(DepNode<u64>, Fingerprint)> = sources.iter()
             .map(|dep_node| {
                 let hash_dep_node = dep_node.map_def(|&def_id| Some(def_id_hash(def_id))).unwrap();
                 let hash = preds.hashes[dep_node];
@@ -242,7 +243,7 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
             .collect();
 
         hashes.sort();
-        let mut state = DefaultHasher::new();
+        let mut state = IchHasher::new();
         hashes.hash(&mut state);
         let hash = state.finish();
 

@@ -57,13 +57,10 @@ unsafe extern "C" fn rust_eh_personality(version: c_int,
                                          exception_object: *mut uw::_Unwind_Exception,
                                          context: *mut uw::_Unwind_Context)
                                          -> uw::_Unwind_Reason_Code {
-    __gxx_personality_v0(version, actions,
-                         exception_class,
-                         exception_object,
-                         context)
+    __gxx_personality_v0(version, actions, exception_class, exception_object, context)
 }
 
-extern {
+extern "C" {
     fn __cxa_allocate_exception(thrown_size: libc::size_t) -> *mut libc::c_void;
     fn __cxa_free_exception(thrown_exception: *mut libc::c_void);
     fn __cxa_throw(thrown_exception: *mut libc::c_void,

@@ -95,6 +95,7 @@ impl fmt::Debug for Lifetime {
 pub struct LifetimeDef {
     pub lifetime: Lifetime,
     pub bounds: HirVec<Lifetime>,
+    pub pure_wrt_drop: bool,
 }
 
 /// A "Path" is essentially Rust's notion of a name; for instance:
@@ -290,6 +291,7 @@ pub struct TyParam {
     pub bounds: TyParamBounds,
     pub default: Option<P<Ty>>,
     pub span: Span,
+    pub pure_wrt_drop: bool,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
@@ -325,6 +327,36 @@ impl Generics {
 
     pub fn is_parameterized(&self) -> bool {
         self.is_lt_parameterized() || self.is_type_parameterized()
+    }
+}
+
+pub enum UnsafeGeneric {
+    Region(LifetimeDef, &'static str),
+    Type(TyParam, &'static str),
+}
+
+impl UnsafeGeneric {
+    pub fn attr_name(&self) -> &'static str {
+        match *self {
+            UnsafeGeneric::Region(_, s) => s,
+            UnsafeGeneric::Type(_, s) => s,
+        }
+    }
+}
+
+impl Generics {
+    pub fn carries_unsafe_attr(&self) -> Option<UnsafeGeneric> {
+        for r in &self.lifetimes {
+            if r.pure_wrt_drop {
+                return Some(UnsafeGeneric::Region(r.clone(), "may_dangle"));
+            }
+        }
+        for t in &self.ty_params {
+            if t.pure_wrt_drop {
+                return Some(UnsafeGeneric::Type(t.clone(), "may_dangle"));
+            }
+        }
+        return None;
     }
 }
 

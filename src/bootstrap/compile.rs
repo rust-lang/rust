@@ -119,7 +119,7 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
     for file in t!(fs::read_dir(build.src.join("src/rtstartup"))) {
         let file = t!(file);
         let mut cmd = Command::new(&compiler_path);
-        build.add_bootstrap_key(&compiler, &mut cmd);
+        build.add_bootstrap_key(&mut cmd);
         build.run(cmd.arg("--target").arg(target)
                      .arg("--emit=obj")
                      .arg("--out-dir").arg(into)
@@ -185,7 +185,6 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     cargo.env("CFG_RELEASE", &build.release)
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
          .env("CFG_VERSION", &build.version)
-         .env("CFG_BOOTSTRAP_KEY", &build.bootstrap_key)
          .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(String::new()))
          .env("CFG_LIBDIR_RELATIVE", "lib");
 

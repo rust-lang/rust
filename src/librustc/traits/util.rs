@@ -486,7 +486,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         let arguments_tuple = match tuple_arguments {
             TupleArgumentsFlag::No => sig.0.inputs[0],
-            TupleArgumentsFlag::Yes => self.mk_tup(sig.0.inputs.to_vec()),
+            TupleArgumentsFlag::Yes => self.mk_tup(&sig.0.inputs),
         };
         let trait_ref = ty::TraitRef {
             def_id: fn_trait_def_id,

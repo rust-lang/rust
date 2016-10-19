@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty : (#23623) problems when  ending with // comments
-
 // error-pattern:attempt to calculate the remainder with a divisor of zero
 
 fn main() {

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-pretty-expanded FIXME #15189
-
 pub fn main() {
     let x = vec!(1, 2, 3);
     let mut y = 0;

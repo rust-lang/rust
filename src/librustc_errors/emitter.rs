@@ -51,8 +51,8 @@ impl ColorConfig {
     fn use_color(&self) -> bool {
         match *self {
             ColorConfig::Always => true,
-            ColorConfig::Never  => false,
-            ColorConfig::Auto   => stderr_isatty(),
+            ColorConfig::Never => false,
+            ColorConfig::Auto => stderr_isatty(),
         }
     }
 }
@@ -83,22 +83,22 @@ macro_rules! println_maybe_styled {
 }
 
 impl EmitterWriter {
-    pub fn stderr(color_config: ColorConfig,
-                  code_map: Option<Rc<CodeMapper>>)
-                  -> EmitterWriter {
+    pub fn stderr(color_config: ColorConfig, code_map: Option<Rc<CodeMapper>>) -> EmitterWriter {
         if color_config.use_color() {
             let dst = Destination::from_stderr();
-            EmitterWriter { dst: dst,
-                            cm: code_map}
+            EmitterWriter {
+                dst: dst,
+                cm: code_map,
+            }
         } else {
-            EmitterWriter { dst: Raw(Box::new(io::stderr())),
-                            cm: code_map}
+            EmitterWriter {
+                dst: Raw(Box::new(io::stderr())),
+                cm: code_map,
+            }
         }
     }
 
-    pub fn new(dst: Box<Write + Send>,
-               code_map: Option<Rc<CodeMapper>>)
-               -> EmitterWriter {
+    pub fn new(dst: Box<Write + Send>, code_map: Option<Rc<CodeMapper>>) -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst),
             cm: code_map,
@@ -107,9 +107,9 @@ impl EmitterWriter {
 
     fn preprocess_annotations(&self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
-                                    file: Rc<FileMap>,
-                                    line_index: usize,
-                                    ann: Annotation) {
+                                  file: Rc<FileMap>,
+                                  line_index: usize,
+                                  ann: Annotation) {
 
             for slot in file_vec.iter_mut() {
                 // Look through each of our files for the one we're adding to
@@ -168,15 +168,15 @@ impl EmitterWriter {
                 }
 
                 add_annotation_to_file(&mut output,
-                                        lo.file,
-                                        lo.line,
-                                        Annotation {
-                                            start_col: lo.col.0,
-                                            end_col: hi.col.0,
-                                            is_primary: span_label.is_primary,
-                                            is_minimized: is_minimized,
-                                            label: span_label.label.clone(),
-                                        });
+                                       lo.file,
+                                       lo.line,
+                                       Annotation {
+                                           start_col: lo.col.0,
+                                           end_col: hi.col.0,
+                                           is_primary: span_label.is_primary,
+                                           is_minimized: is_minimized,
+                                           label: span_label.label.clone(),
+                                       });
             }
         }
         output
@@ -237,9 +237,7 @@ impl EmitterWriter {
                                 '^',
                                 Style::UnderlinePrimary);
                     if !annotation.is_minimized {
-                        buffer.set_style(line_offset,
-                                            width_offset + p,
-                                            Style::UnderlinePrimary);
+                        buffer.set_style(line_offset, width_offset + p, Style::UnderlinePrimary);
                     }
                 } else {
                     buffer.putc(line_offset + 1,
@@ -247,9 +245,7 @@ impl EmitterWriter {
                                 '-',
                                 Style::UnderlineSecondary);
                     if !annotation.is_minimized {
-                        buffer.set_style(line_offset,
-                                            width_offset + p,
-                                            Style::UnderlineSecondary);
+                        buffer.set_style(line_offset, width_offset + p, Style::UnderlineSecondary);
                     }
                 }
             }
@@ -429,8 +425,7 @@ impl EmitterWriter {
                         }
                         // Check to make sure we're not in any <*macros>
                         if !cm.span_to_filename(def_site).contains("macros>") &&
-                            !trace.macro_decl_name.starts_with("#[")
-                        {
+                           !trace.macro_decl_name.starts_with("#[") {
                             new_labels.push((trace.call_site,
                                              "in this macro invocation".to_string()));
                             break;
@@ -475,10 +470,10 @@ impl EmitterWriter {
         if spans_updated {
             children.push(SubDiagnostic {
                 level: Level::Note,
-                message:"this error originates in a macro outside of the current \
-                         crate".to_string(),
+                message: "this error originates in a macro outside of the current crate"
+                    .to_string(),
                 span: MultiSpan::new(),
-                render_span: None
+                render_span: None,
             });
         }
     }
@@ -502,8 +497,7 @@ impl EmitterWriter {
             buffer.append(0, &level.to_string(), Style::HeaderMsg);
             buffer.append(0, ": ", Style::NoStyle);
             buffer.append(0, msg, Style::NoStyle);
-        }
-        else {
+        } else {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             match code {
                 &Some(ref code) => {
@@ -522,23 +516,21 @@ impl EmitterWriter {
         let mut annotated_files = self.preprocess_annotations(msp);
 
         // Make sure our primary file comes first
-        let primary_lo =
-            if let (Some(ref cm), Some(ref primary_span)) = (self.cm.as_ref(),
-                                                             msp.primary_span().as_ref()) {
-                if primary_span != &&DUMMY_SP && primary_span != &&COMMAND_LINE_SP {
-                    cm.lookup_char_pos(primary_span.lo)
-                }
-                else {
-                    emit_to_destination(&buffer.render(), level, &mut self.dst)?;
-                    return Ok(());
-                }
+        let primary_lo = if let (Some(ref cm), Some(ref primary_span)) =
+            (self.cm.as_ref(), msp.primary_span().as_ref()) {
+            if primary_span != &&DUMMY_SP && primary_span != &&COMMAND_LINE_SP {
+                cm.lookup_char_pos(primary_span.lo)
             } else {
-                // If we don't have span information, emit and exit
                 emit_to_destination(&buffer.render(), level, &mut self.dst)?;
                 return Ok(());
-            };
+            }
+        } else {
+            // If we don't have span information, emit and exit
+            emit_to_destination(&buffer.render(), level, &mut self.dst)?;
+            return Ok(());
+        };
         if let Ok(pos) =
-                annotated_files.binary_search_by(|x| x.file.name.cmp(&primary_lo.file.name)) {
+            annotated_files.binary_search_by(|x| x.file.name.cmp(&primary_lo.file.name)) {
             annotated_files.swap(0, pos);
         }
 
@@ -554,8 +546,8 @@ impl EmitterWriter {
                 buffer.prepend(buffer_msg_line_offset, "--> ", Style::LineNumber);
                 let loc = primary_lo.clone();
                 buffer.append(buffer_msg_line_offset,
-                                &format!("{}:{}:{}", loc.file.name, loc.line, loc.col.0 + 1),
-                                Style::LineAndColumn);
+                              &format!("{}:{}:{}", loc.file.name, loc.line, loc.col.0 + 1),
+                              Style::LineAndColumn);
                 for _ in 0..max_line_num_len {
                     buffer.prepend(buffer_msg_line_offset, " ", Style::NoStyle);
                 }
@@ -569,8 +561,8 @@ impl EmitterWriter {
                 // Then, the secondary file indicator
                 buffer.prepend(buffer_msg_line_offset + 1, "::: ", Style::LineNumber);
                 buffer.append(buffer_msg_line_offset + 1,
-                                &annotated_file.file.name,
-                                Style::LineAndColumn);
+                              &annotated_file.file.name,
+                              Style::LineAndColumn);
                 for _ in 0..max_line_num_len {
                     buffer.prepend(buffer_msg_line_offset + 1, " ", Style::NoStyle);
                 }
@@ -591,7 +583,7 @@ impl EmitterWriter {
                 // this annotated line and the next one
                 if line_idx < (annotated_file.lines.len() - 1) {
                     let line_idx_delta = annotated_file.lines[line_idx + 1].line_index -
-                                            annotated_file.lines[line_idx].line_index;
+                                         annotated_file.lines[line_idx].line_index;
                     if line_idx_delta > 2 {
                         let last_buffer_line_num = buffer.num_lines();
                         buffer.puts(last_buffer_line_num, 0, "...", Style::LineNumber);
@@ -672,12 +664,7 @@ impl EmitterWriter {
         let max_line_num = self.get_max_line_num(span, children);
         let max_line_num_len = max_line_num.to_string().len();
 
-        match self.emit_message_default(span,
-                                        message,
-                                        code,
-                                        level,
-                                        max_line_num_len,
-                                        false) {
+        match self.emit_message_default(span, message, code, level, max_line_num_len, false) {
             Ok(()) => {
                 if !children.is_empty() {
                     let mut buffer = StyledBuffer::new();
@@ -723,13 +710,15 @@ impl EmitterWriter {
                     }
                 }
             }
-            Err(e) => panic!("failed to emit error: {}", e)
+            Err(e) => panic!("failed to emit error: {}", e),
         }
         match write!(&mut self.dst, "\n") {
             Err(e) => panic!("failed to emit error: {}", e),
-            _ => match self.dst.flush() {
-                Err(e) => panic!("failed to emit error: {}", e),
-                _ => ()
+            _ => {
+                match self.dst.flush() {
+                    Err(e) => panic!("failed to emit error: {}", e),
+                    _ => (),
+                }
             }
         }
     }
@@ -753,8 +742,9 @@ fn overlaps(a1: &Annotation, a2: &Annotation) -> bool {
 }
 
 fn emit_to_destination(rendered_buffer: &Vec<Vec<StyledString>>,
-        lvl: &Level,
-        dst: &mut Destination) -> io::Result<()> {
+                       lvl: &Level,
+                       dst: &mut Destination)
+                       -> io::Result<()> {
     use lock;
 
     // In order to prevent error message interleaving, where multiple error lines get intermixed
@@ -795,8 +785,7 @@ fn stderr_isatty() -> bool {
     const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
     extern "system" {
         fn GetStdHandle(which: DWORD) -> HANDLE;
-        fn GetConsoleMode(hConsoleHandle: HANDLE,
-                          lpMode: *mut DWORD) -> BOOL;
+        fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: *mut DWORD) -> BOOL;
     }
     unsafe {
         let handle = GetStdHandle(STD_ERROR_HANDLE);
@@ -824,9 +813,7 @@ impl BufferedWriter {
     // note: we use _new because the conditional compilation at its use site may make this
     // this function unused on some platforms
     fn _new() -> BufferedWriter {
-        BufferedWriter {
-            buffer: vec![]
-        }
+        BufferedWriter { buffer: vec![] }
     }
 }
 
@@ -853,35 +840,34 @@ impl Destination {
     /// When not on Windows, prefer the buffered terminal so that we can buffer an entire error
     /// to be emitted at one time.
     fn from_stderr() -> Destination {
-        let stderr: Option<Box<BufferedStderr>>  =
+        let stderr: Option<Box<BufferedStderr>> =
             term::TerminfoTerminal::new(BufferedWriter::_new())
                 .map(|t| Box::new(t) as Box<BufferedStderr>);
 
         match stderr {
             Some(t) => BufferedTerminal(t),
-            None    => Raw(Box::new(io::stderr())),
+            None => Raw(Box::new(io::stderr())),
         }
     }
 
     #[cfg(windows)]
     /// Return a normal, unbuffered terminal when on Windows.
     fn from_stderr() -> Destination {
-        let stderr: Option<Box<term::StderrTerminal>> =
-            term::TerminfoTerminal::new(io::stderr())
-                .map(|t| Box::new(t) as Box<term::StderrTerminal>)
-                .or_else(|| term::WinConsole::new(io::stderr()).ok()
-                    .map(|t| Box::new(t) as Box<term::StderrTerminal>));
+        let stderr: Option<Box<term::StderrTerminal>> = term::TerminfoTerminal::new(io::stderr())
+            .map(|t| Box::new(t) as Box<term::StderrTerminal>)
+            .or_else(|| {
+                term::WinConsole::new(io::stderr())
+                    .ok()
+                    .map(|t| Box::new(t) as Box<term::StderrTerminal>)
+            });
 
         match stderr {
             Some(t) => Terminal(t),
-            None    => Raw(Box::new(io::stderr())),
+            None => Raw(Box::new(io::stderr())),
         }
     }
 
-    fn apply_style(&mut self,
-                   lvl: Level,
-                   style: Style)
-                   -> io::Result<()> {
+    fn apply_style(&mut self, lvl: Level, style: Style) -> io::Result<()> {
         match style {
             Style::FileNameStyle | Style::LineAndColumn => {}
             Style::LineNumber => {
@@ -931,18 +917,26 @@ impl Destination {
 
     fn start_attr(&mut self, attr: term::Attr) -> io::Result<()> {
         match *self {
-            Terminal(ref mut t) => { t.attr(attr)?; }
-            BufferedTerminal(ref mut t) => { t.attr(attr)?; }
-            Raw(_) => { }
+            Terminal(ref mut t) => {
+                t.attr(attr)?;
+            }
+            BufferedTerminal(ref mut t) => {
+                t.attr(attr)?;
+            }
+            Raw(_) => {}
         }
         Ok(())
     }
 
     fn reset_attrs(&mut self) -> io::Result<()> {
         match *self {
-            Terminal(ref mut t) => { t.reset()?; }
-            BufferedTerminal(ref mut t) => { t.reset()?; }
-            Raw(_) => { }
+            Terminal(ref mut t) => {
+                t.reset()?;
+            }
+            BufferedTerminal(ref mut t) => {
+                t.reset()?;
+            }
+            Raw(_) => {}
         }
         Ok(())
     }

@@ -401,6 +401,7 @@ impl<'a> LoweringContext<'a> {
             bounds: self.lower_bounds(&tp.bounds),
             default: tp.default.as_ref().map(|x| self.lower_ty(x)),
             span: tp.span,
+            pure_wrt_drop: tp.attrs.iter().any(|attr| attr.check_name("may_dangle")),
         }
     }
 
@@ -420,6 +421,7 @@ impl<'a> LoweringContext<'a> {
         hir::LifetimeDef {
             lifetime: self.lower_lifetime(&l.lifetime),
             bounds: self.lower_lifetimes(&l.bounds),
+            pure_wrt_drop: l.attrs.iter().any(|attr| attr.check_name("may_dangle")),
         }
     }
 

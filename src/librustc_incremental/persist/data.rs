@@ -14,6 +14,7 @@ use rustc::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use rustc::hir::def_id::DefIndex;
 use std::sync::Arc;
 use rustc_data_structures::fnv::FnvHashMap;
+use ich::Fingerprint;
 
 use super::directory::DefPathIndex;
 
@@ -60,7 +61,7 @@ pub struct SerializedHash {
 
     /// the hash as of previous compilation, computed by code in
     /// `hash` module
-    pub hash: u64,
+    pub hash: Fingerprint,
 }
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
@@ -116,5 +117,5 @@ pub struct SerializedMetadataHash {
     pub def_index: DefIndex,
 
     /// the hash itself, computed by `calculate_item_hash`
-    pub hash: u64,
+    pub hash: Fingerprint,
 }

@@ -660,7 +660,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             span: output_span
         };
 
-        (self.tcx().mk_tup(inputs), output_binding)
+        (self.tcx().mk_tup(&inputs), output_binding)
     }
 
     pub fn instantiate_poly_trait_ref(&self,
@@ -1663,8 +1663,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TyTup(ref fields) => {
                 let flds = fields.iter()
                                  .map(|t| self.ast_ty_to_ty(rscope, &t))
-                                 .collect();
-                tcx.mk_tup(flds)
+                                 .collect::<Vec<_>>();
+                tcx.mk_tup(&flds)
             }
             hir::TyBareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
@@ -2218,10 +2218,12 @@ fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
         } else {
             "expected"
         };
+        let arguments_plural = if required == 1 { "" } else { "s" };
         struct_span_err!(tcx.sess, span, E0243, "wrong number of type arguments")
             .span_label(
                 span,
-                &format!("{} {} type arguments, found {}", expected, required, supplied)
+                &format!("{} {} type argument{}, found {}",
+                         expected, required, arguments_plural, supplied)
             )
             .emit();
     } else if supplied > accepted {
@@ -2232,11 +2234,12 @@ fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
         } else {
             format!("expected {}", accepted)
         };
+        let arguments_plural = if accepted == 1 { "" } else { "s" };
 
         struct_span_err!(tcx.sess, span, E0244, "wrong number of type arguments")
             .span_label(
                 span,
-                &format!("{} type arguments, found {}", expected, supplied)
+                &format!("{} type argument{}, found {}", expected, arguments_plural, supplied)
             )
             .emit();
     }

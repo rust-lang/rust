@@ -8,18 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// force-host
-// no-prefer-dynamic
-
-#![feature(proc_macro)]
-#![feature(proc_macro_lib)]
-#![crate_type = "proc-macro"]
-
-extern crate proc_macro;
-
-use proc_macro::TokenStream;
-
-#[proc_macro_derive(A)]
-pub fn derive_a(input: TokenStream) -> TokenStream {
-    input
+macro_rules! m { (<$t:ty>) => { stringify!($t) } }
+fn main() {
+    println!("{}", m!(<Vec<i32>>));
 }

@@ -333,6 +333,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     }
                 }
                 Err(err) => {
+                    stalled = false;
                     let backtrace = self.error_at(index);
                     errors.push(Error {
                         error: err,
@@ -340,6 +341,16 @@ impl<O: ForestObligation> ObligationForest<O> {
                     });
                 }
             }
+        }
+
+        if stalled {
+            // There's no need to perform marking, cycle processing and compression when nothing
+            // changed.
+            return Outcome {
+                completed: vec![],
+                errors: errors,
+                stalled: stalled,
+            };
         }
 
         self.mark_as_waiting();

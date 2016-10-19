@@ -94,7 +94,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::T
     // The file will be added to the code map by the parser
     let p =
         parse::new_sub_parser_from_file(cx.parse_sess(),
-                                        cx.cfg(),
+                                        cx.cfg().clone(),
                                         &res_rel_file(cx,
                                                       sp,
                                                       Path::new(&file)),
