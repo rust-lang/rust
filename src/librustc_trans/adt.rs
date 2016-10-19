@@ -777,8 +777,8 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         offset += machine::llsize_of_alloc(ccx, val_ty(val));
     }
 
-    if offset < st.min_size.bytes() {
-        cfields.push(padding(ccx, st.min_size.bytes() - offset));
+    if offset < st.stride().bytes() {
+        cfields.push(padding(ccx, st.stride().bytes() - offset));
     }
 
     cfields
