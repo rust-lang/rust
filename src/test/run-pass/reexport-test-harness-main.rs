@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
 // compile-flags:--test
 
 #![reexport_test_harness_main = "test_main"]

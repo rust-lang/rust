@@ -10,7 +10,6 @@
 
 // revisions: a
 // should-fail
-// pretty-expanded FIXME #23616
 
 // This is a "meta-test" of the compilertest framework itself.  In
 // particular, it includes the right error message, but the message

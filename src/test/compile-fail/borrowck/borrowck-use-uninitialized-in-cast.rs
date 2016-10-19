@@ -12,8 +12,6 @@
 // The problem was specified to casting to `*`, as creating unsafe
 // pointers was not being fully checked. Issue #20791.
 
-// pretty-expanded FIXME #23616
-
 fn main() {
     let x: &i32;
     let y = x as *const i32; //~ ERROR use of possibly uninitialized variable: `*x`
