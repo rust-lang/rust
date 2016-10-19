@@ -271,4 +271,3 @@ At a "messaging" level, we should continue to emphasize that *documentation is j
 - Given that the reference is out of date, does it need to be brought up to date before beginning enforcement of this policy?
 - Given that the book is in the process of a rewrite for print publication, how shall we apply this requirement to RFCs merged during its development?
 - For the standard library, once it migrates to a crates structure, should it simply include the `#[forbid(missing_docs)]` attribute on all crates to set this as a build error?
-- Is a documentation subteam, _a la_ the one used by Ember, worth creating?
