@@ -51,6 +51,7 @@ use rustc_data_structures::fnv::{FnvHashSet, FnvHashMap};
 use syntax::parse::token::InternedString;
 use syntax_pos::Span;
 use rustc::ty::TyCtxt;
+use ich::Fingerprint;
 
 use {ATTR_DIRTY, ATTR_CLEAN, ATTR_DIRTY_METADATA, ATTR_CLEAN_METADATA};
 
@@ -186,8 +187,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
 }
 
 pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  prev_metadata_hashes: &FnvHashMap<DefId, u64>,
-                                  current_metadata_hashes: &FnvHashMap<DefId, u64>) {
+                                  prev_metadata_hashes: &FnvHashMap<DefId, Fingerprint>,
+                                  current_metadata_hashes: &FnvHashMap<DefId, Fingerprint>) {
     if !tcx.sess.opts.debugging_opts.query_dep_graph {
         return;
     }
@@ -204,8 +205,8 @@ pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub struct DirtyCleanMetadataVisitor<'a, 'tcx:'a, 'm> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    prev_metadata_hashes: &'m FnvHashMap<DefId, u64>,
-    current_metadata_hashes: &'m FnvHashMap<DefId, u64>,
+    prev_metadata_hashes: &'m FnvHashMap<DefId, Fingerprint>,
+    current_metadata_hashes: &'m FnvHashMap<DefId, Fingerprint>,
 }
 
 impl<'a, 'tcx, 'm> Visitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {

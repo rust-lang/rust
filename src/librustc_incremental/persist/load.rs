@@ -22,6 +22,7 @@ use std::fs;
 use std::path::{Path};
 
 use IncrementalHashesMap;
+use ich::Fingerprint;
 use super::data::*;
 use super::directory::*;
 use super::dirty_clean;
@@ -315,7 +316,7 @@ fn delete_dirty_work_product(tcx: TyCtxt,
 
 fn load_prev_metadata_hashes(tcx: TyCtxt,
                              retraced: &RetracedDefIdDirectory,
-                             output: &mut FnvHashMap<DefId, u64>) {
+                             output: &mut FnvHashMap<DefId, Fingerprint>) {
     if !tcx.sess.opts.debugging_opts.query_dep_graph {
         return
     }
