@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // compile-flags:--test
-// no-pretty-expanded
 
 // This verifies that the test generation doesn't crash when we have
 // no tests - for more information, see PR #16892.

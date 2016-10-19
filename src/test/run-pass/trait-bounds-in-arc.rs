@@ -12,8 +12,6 @@
 // and shared between threads as long as all types fulfill Send.
 
 // ignore-emscripten no threads support
-// ignore-pretty
-
 #![allow(unknown_features)]
 #![feature(box_syntax, std_misc)]
 

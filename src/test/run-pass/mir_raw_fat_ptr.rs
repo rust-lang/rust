@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty : (#23623) problems when  ending with // comments
-
 // check raw fat pointer ops in mir
 // FIXME: please improve this when we get monomorphization support
 

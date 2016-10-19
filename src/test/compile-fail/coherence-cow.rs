@@ -12,8 +12,6 @@
 
 // aux-build:coherence_lib.rs
 
-// pretty-expanded FIXME #23616
-
 // Test that the `Pair` type reports an error if it contains type
 // parameters, even when they are covered by local types. This test
 // was originally intended to test the opposite, but the rules changed

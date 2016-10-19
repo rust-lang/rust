@@ -9,8 +9,6 @@
 // except according to those terms.
 
 // compile-flags: --test
-// ignore-pretty: does not work well with `--test`
-
 #[test]
 #[should_panic(expected = "foo")]
 pub fn test_foo() {
