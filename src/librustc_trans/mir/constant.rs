@@ -773,7 +773,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let rhs = self.const_operand(rhs, span)?;
                 let ty = lhs.ty;
                 let val_ty = op.ty(tcx, lhs.ty, rhs.ty);
-                let binop_ty = tcx.mk_tup(vec![val_ty, tcx.types.bool]);
+                let binop_ty = tcx.mk_tup(&[val_ty, tcx.types.bool]);
                 let (lhs, rhs) = (lhs.llval, rhs.llval);
                 assert!(!ty.is_fp());
 

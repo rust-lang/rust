@@ -71,7 +71,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let closure_type = self.tcx.mk_closure(expr_def_id,
                                                self.parameter_environment.free_substs,
-                                               upvar_tys);
+                                               &upvar_tys);
 
         let fn_sig = self.tcx
             .liberate_late_bound_regions(self.tcx.region_maps.call_site_extent(expr.id, body.id),
@@ -88,7 +88,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Tuple up the arguments and insert the resulting function type into
         // the `closures` table.
-        fn_ty.sig.0.inputs = vec![self.tcx.mk_tup(fn_ty.sig.0.inputs)];
+        fn_ty.sig.0.inputs = vec![self.tcx.mk_tup(&fn_ty.sig.0.inputs)];
 
         debug!("closure for {:?} --> sig={:?} opt_kind={:?}",
                expr_def_id,
