@@ -425,6 +425,9 @@ pub use self::hash_map::HashMap;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::hash_set::HashSet;
 
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core_collections::range;
+
 mod hash;
 
 #[stable(feature = "rust1", since = "1.0.0")]
