@@ -53,7 +53,6 @@ use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
-use syntax::ext::base::MultiItemModifier;
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, IntTy, UintTy};
@@ -1082,7 +1081,6 @@ pub struct Resolver<'a> {
     new_import_semantics: bool, // true if `#![feature(item_like_imports)]`
 
     pub exported_macros: Vec<ast::MacroDef>,
-    pub derive_modes: FnvHashMap<Name, Rc<MultiItemModifier>>,
     crate_loader: &'a mut CrateLoader,
     macro_names: FnvHashSet<Name>,
     builtin_macros: FnvHashMap<Name, Rc<SyntaxExtension>>,
@@ -1273,7 +1271,6 @@ impl<'a> Resolver<'a> {
             new_import_semantics: session.features.borrow().item_like_imports,
 
             exported_macros: Vec::new(),
-            derive_modes: FnvHashMap(),
             crate_loader: crate_loader,
             macro_names: FnvHashSet(),
             builtin_macros: FnvHashMap(),
