@@ -57,9 +57,9 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
                     // (*)
                     // (*) dominators for `pred` have been calculated
                     new_idom = intersect_opt(&post_order_rank,
-                                                  &immediate_dominators,
-                                                  new_idom,
-                                                  Some(pred));
+                                             &immediate_dominators,
+                                             new_idom,
+                                             Some(pred));
                 }
             }
 
@@ -77,10 +77,10 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
 }
 
 fn intersect_opt<Node: Idx>(post_order_rank: &IndexVec<Node, usize>,
-                                      immediate_dominators: &IndexVec<Node, Option<Node>>,
-                                      node1: Option<Node>,
-                                      node2: Option<Node>)
-                                      -> Option<Node> {
+                            immediate_dominators: &IndexVec<Node, Option<Node>>,
+                            node1: Option<Node>,
+                            node2: Option<Node>)
+                            -> Option<Node> {
     match (node1, node2) {
         (None, None) => None,
         (Some(n), None) | (None, Some(n)) => Some(n),
@@ -89,10 +89,10 @@ fn intersect_opt<Node: Idx>(post_order_rank: &IndexVec<Node, usize>,
 }
 
 fn intersect<Node: Idx>(post_order_rank: &IndexVec<Node, usize>,
-                                  immediate_dominators: &IndexVec<Node, Option<Node>>,
-                                  mut node1: Node,
-                                  mut node2: Node)
-                                  -> Node {
+                        immediate_dominators: &IndexVec<Node, Option<Node>>,
+                        mut node1: Node,
+                        mut node2: Node)
+                        -> Node {
     while node1 != node2 {
         while post_order_rank[node1] < post_order_rank[node2] {
             node1 = immediate_dominators[node1].unwrap();
@@ -142,9 +142,9 @@ impl<Node: Idx> Dominators<Node> {
                 "node {:?} is not reachable",
                 node2);
         intersect::<Node>(&self.post_order_rank,
-                  &self.immediate_dominators,
-                  node1,
-                  node2)
+                          &self.immediate_dominators,
+                          node1,
+                          node2)
     }
 
     pub fn mutual_dominator<I>(&self, iter: I) -> Option<Node>
