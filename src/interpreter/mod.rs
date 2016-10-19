@@ -1156,29 +1156,50 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn write_value(
         &mut self,
-        value: Value,
+        src_val: Value,
         dest: Lvalue,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
         match dest {
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
-                self.write_value_to_ptr(value, ptr, dest_ty)?;
+                self.write_value_to_ptr(src_val, ptr, dest_ty)?;
             }
+
+            // The cases here can be a bit subtle. Read carefully!
             Lvalue::Local { frame, local } => {
-                if let Value::ByRef(src_ptr) = value {
-                    let dest_val = self.stack[frame].get_local(local);
-                    let dest_ptr = if let Some(Value::ByRef(ptr)) = dest_val {
-                        ptr
-                    } else {
-                        let ptr = self.alloc_ptr(dest_ty)?;
-                        self.stack[frame].set_local(local, Value::ByRef(ptr));
-                        ptr
-                    };
+                let dest_val = self.stack[frame].get_local(local);
+
+                if let Some(Value::ByRef(dest_ptr)) = dest_val {
+                    // If the local value is already `ByRef` (that is, backed by an `Allocation`),
+                    // then we must write the new value into this allocation, because there may be
+                    // other pointers into the allocation. These other pointers are logically
+                    // pointers into the local variable, and must be able to observe the change.
+                    //
+                    // Thus, it would be an error to replace the `ByRef` with a `ByVal`, unless we
+                    // knew for certain that there were no outstanding pointers to this local.
+                    self.write_value_to_ptr(src_val, dest_ptr, dest_ty)?;
+
+                } else if let Value::ByRef(src_ptr) = src_val {
+                    // If the local value is not `ByRef`, then we know there are no pointers to it
+                    // and we can simply overwrite the `Value` in the locals array directly.
+                    //
+                    // In this specific case, where the source value is `ByRef`, we must duplicate
+                    // the allocation, because this is a by-value operation. It would be incorrect
+                    // if they referred to the same allocation, since then a change to one would
+                    // implicitly change the other.
+                    //
+                    // TODO(solson): It would be valid to attempt reading a primitive value out of
+                    // the source and writing that into the destination without making an
+                    // allocation. This would be a pure optimization.
+                    let dest_ptr = self.alloc_ptr(dest_ty)?;
                     self.copy(src_ptr, dest_ptr, dest_ty)?;
+                    self.stack[frame].set_local(local, Value::ByRef(dest_ptr));
+
                 } else {
-                    // FIXME(solson): Is it safe to free the existing local here?
-                    self.stack[frame].set_local(local, value);
+                    // Finally, we have the simple case where neither source nor destination are
+                    // `ByRef`. We may simply copy the source value over the the destintion local.
+                    self.stack[frame].set_local(local, src_val);
                 }
             }
         }
