@@ -22,7 +22,12 @@ One of the major goals of Rust's development process is *stability without stagn
     -   [New RFC section: “How do we teach this?”](#new-rfc-section-how-do-we-teach-this)
     -   [New requirement to document changes before stabilizing](#new-requirement-to-document-changes-before-stabilizing)
         -   [Language features](#language-features)
+            -   [Reference](#reference)
+                -   [The state of the reference](#the-current-state-of-the-reference)
+            -   [_The Rust Programming Language_][trpl]
+            -   [_Rust By Example_][rbe]
         -   [Standard library](#standard-library)
+        -   [Release notes][release-notes]
 -   [How do we teach this?](#how-do-we-teach-this)
 -   [Drawbacks](#drawbacks)
 -   [Alternatives](#alternatives)
@@ -57,13 +62,13 @@ Although the standard library is in excellent shape regarding documentation, inc
 ## The Current Situation
 [current-situation]: #the-current-situation
 
-Today, the canonical source of information about new language features is the RFCs which define them.
+Today, the canonical source of information about new language features is the RFCs which define them. The Rust Reference is substantially out of date, and not all new features have made their way into _The Rust Programming Language_.
 
-There are several serious problems with the _status quo_:
+There are several serious problems with the _status quo_ of using RFCs as ad hoc documentation:
 
 1. Many users of Rust may simply not know that these RFCs exist. The number of users who do not know (or especially care) about the RFC process or its history will only increase as Rust becomes more popular.
 
-2. In many cases, especially in more complicated language features, some important elements of the decision, details of implementation, and expected behavior are fleshed out either in the associated RFC (pull-request) discussion or in the implementation issues which follow them.
+2. In many cases, especially in more complicated language features, some important elements of the decision, details of implementation, and expected behavior are fleshed out either in the pull-request discussion for the RFC, or in the implementation issues which follow them.
 
 3. The RFCs themselves, and even more so the associated pull request discussions, are often dense with programming langauge theory. This is as it should be in context, but it means that the relevant information may be inaccessible to Rust users without prior PLT background, or without the patience to wade through it.
 
@@ -72,6 +77,8 @@ There are several serious problems with the _status quo_:
 5. Information on how the features will be used is often closely coupled to information on how the features will be implemented, both in the RFCs and in the discussion threads. Again, this is as it should be, but it makes it difficult (at best!) for ordinary Rust users to read.
 
 In short, RFCs are a poor source of information about language features for the ordinary Rust user. Rust users should not need to be troubled with details of how the language is implemented works simply to learn how pieces of it work. Nor should they need to dig through tens (much less hundreds) of comments to determine what the final form of the feature is.
+
+However, there is currently no other documentation at all for many newer features. This is a significant barrier to adoption of the language, and equally of adoption of new features which will improve the ergonomics of the language.
 
 ## Precedent
 [precedent]: #precedent
@@ -102,9 +109,9 @@ The basic decision has led to a substantial improvement in the currency of the d
 
 The basic process of developing new language features will remain largely the same as today. The required changes are two additions:
 
-- a new section in the RFC, "How do we teach this?" modeled on Ember's updated RFC process
+- [a new section in the RFC][new-rfc-section], "How do we teach this?" modeled on Ember's updated RFC process
 
-- a new requirement that the changes themselves be properly documented before being merged to stable
+- [a new requirement that the changes themselves be properly documented before being merged to stable][]
 
 
 ## New RFC section: "How do we teach this?"
@@ -129,10 +136,12 @@ For a great example of this in practice, see the (currently open) [Ember RFC: Mo
 
 ## New requirement to document changes before stabilizing
 
+[require-documentation-before-stabilization]: #new-requirement-to-document-changes-before-stabilizing
+
 Prior to stabilizing a feature, the features will now be documented as follows:
 
 - Language features:
-    - must be documented in the reference.
+    - must be documented in the Rust Reference.
     - should be documented in _The Rust Programming Language_.
     - may be documented in _Rust by Example_.
 - Standard library additions must include documentation in `std` API docs.
@@ -143,39 +152,53 @@ Prior to stabilizing a feature, the features will now be documented as follows:
 ### Language features
 [language-features]: #language-features
 
-We will document *all* language features in the Rust Reference, as well as making some updates to _The Rust Programming Language_ and _Rust by Example_ as necessary.
+We will document *all* language features in the Rust Reference, as well as making some updates to _The Rust Programming Language_ and _Rust by Example_.
+
+#### Reference
+
+[reference]: #reference
 
 This will necessarily be a manual process, involving updates to the `reference.md` file. (It may at some point be sensible to break up the Reference file for easier maintenance; that is left aside as orthogonal to this discussion.)
 
-Note that the feature documentation does not need to be written by the feature author. In fact, this is one of the areas where the community may be most able to support the language/compiler developers even if not themselves programming language theorists or compiler hackers. This may free up the compiler developers' time. It will also help communicate the features in a way that is accessible to ordinary Rust users.
+Feature documentation does not need to be written by the feature author. In fact, this is one of the areas where the community may be most able to support the language/compiler developers even if not themselves programming language theorists or compiler hackers. This may free up the compiler developers' time. It will also help communicate the features in a way that is accessible to ordinary Rust users.
 
 New features do not need to be documented to be merged into `master`/nightly, and in many cases *should* not, since the features may change substantially before landing on stable, at which point the reference material would need to be rewritten.
 
-Instead, the documentation process should immediately precede the move to stabilize. Once the *feature* has been deemed ready for stabilization, either the author or a community volunteer should write the *reference material* for the feature.
+Instead, the documentation process should immediately precede the move to stabilize. Once the *feature* has been deemed ready for stabilization, either the author or a community volunteer should write the *reference material* for the feature, to be incorporated into the Rust Reference.
 
-This need not be especially long, but it should be long enough for ordinary users to learn how to use the language feature *without reading the RFCs*.
+The reference material need not be especially long, but it should be long enough for ordinary users to learn how to use the language feature *without reading the RFCs*.
 
 When the discussing whether to stabilize a feature in a given release, the reference material will now be a part of that decision. Once the feature *and* reference material are complete, it will be merged normally, and the pull request will simply include the reference material as well as the new feature.
 
-Given the current state of the reference, this may need to proceed in two steps:
+##### The current state of the reference.
 
-#### The current state of the reference.
 [refstate]: #the-current-state-of-the-reference
 
-Since the reference is currently fairly out of date in a number of areas, it may be worth creating a "strike team" to invest a couple months working on the reference: updating it, organizing it, and improving its presentation. (A single web page with *all* of this content is difficult to navigate at best.) This can proceed in parallel with the documentation of new features. It is probably a necessity for this proposal to be particularly effective in the long term.
+Since the reference is fairly out of date, we should create a "strike team" to update it, organize it, and improve its presentation. (A single web page with *all* of this content is difficult to navigate at best.) This can proceed in parallel with the documentation of new features.
 
-Once the reference is up to date, the nucleus responsible for that work may either disband or possibly (depending on the core team's evaluation of the necessity of it and the interest of the "strike team" members) become the basis of a new documentation subteam.
-
-Updating the reference could proceed stepwise:
+Updating the reference may proceed stepwise:
 
 1. Begin by adding an appendix in the reference with links to all accepted RFCs which have been implemented but are not yet referenced in the documentation.
+2. As the reference material is written for each of those RFC features, remove it from that appendix.
 
-2. As the reference material is written for each of those RFC features, it can be removed from that appendix.
+#### _The Rust Programming Language_
+
+[trpl]: #the-rust-programming-language
+
+
+
+#### _Rust by Example_
+
+[rbe]: #rust-by-example
 
 ### Standard library
 [std]: #standard-library
 
 In the case of the standard library, this could conceivably be managed by setting the `#[forbid(missing_docs)]` attribute on the library roots. In lieu of that, manual code review and general discipline should continue to serve. However, if automated tools *can* be employed here, they should.
+
+### Release Notes
+
+[release-notes]: #release-notes
 
 
 # How do we teach this?
