@@ -9,9 +9,7 @@
 // except according to those terms.
 
 // ignore-emscripten no threads support
-// ignore-pretty : (#23623) problems when  ending with // comments
-
-#![feature(rustc_attrs, stmt_expr_attributes, zero_one)]
+#![feature(rustc_attrs, zero_one)]
 
 use std::num::Zero;
 use std::thread;

@@ -32,6 +32,7 @@ use rustc_const_math::ConstInt;
 
 use rustc::mir::repr::Mir;
 
+use std::borrow::Cow;
 use std::cell::Ref;
 use std::io;
 use std::mem;
@@ -202,7 +203,7 @@ impl<'doc, 'tcx> Decoder for DecodeContext<'doc, 'tcx> {
         read_f64 -> f64;
         read_f32 -> f32;
         read_char -> char;
-        read_str -> String;
+        read_str -> Cow<str>;
     }
 
     fn error(&mut self, err: &str) -> Self::Error {
@@ -373,7 +374,7 @@ impl<'a, 'tcx> SpecializedDecoder<ty::GenericPredicates<'tcx>> for DecodeContext
 
 impl<'a, 'tcx> SpecializedDecoder<&'tcx Substs<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
-        Ok(self.tcx().mk_substs(Decodable::decode(self)?))
+        Ok(self.tcx().mk_substs(&Vec::decode(self)?))
     }
 }
 
@@ -385,7 +386,7 @@ impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Region> for DecodeContext<'a, 'tcx> 
 
 impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Slice<Ty<'tcx>>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx ty::Slice<Ty<'tcx>>, Self::Error> {
-        Ok(self.tcx().mk_type_list(Decodable::decode(self)?))
+        Ok(self.tcx().mk_type_list(&Vec::decode(self)?))
     }
 }
 

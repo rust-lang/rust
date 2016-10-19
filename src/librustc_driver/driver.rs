@@ -649,7 +649,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     let resolver_arenas = Resolver::arenas();
     let mut resolver =
         Resolver::new(sess, &krate, make_glob_map, &mut crate_loader, &resolver_arenas);
-    syntax_ext::register_builtins(&mut resolver, sess.features.borrow().quote);
+    syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features.borrow().quote);
 
     krate = time(time_passes, "expansion", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
@@ -686,11 +686,17 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
             ..syntax::ext::expand::ExpansionConfig::default(crate_name.to_string())
         };
         let mut ecx = ExtCtxt::new(&sess.parse_sess, krate.config.clone(), cfg, &mut resolver);
-        let ret = syntax::ext::expand::expand_crate(&mut ecx, syntax_exts, krate);
+        let err_count = ecx.parse_sess.span_diagnostic.err_count();
+
+        let krate = ecx.monotonic_expander().expand_crate(krate);
+
+        if ecx.parse_sess.span_diagnostic.err_count() - ecx.resolve_err_count > err_count {
+            ecx.parse_sess.span_diagnostic.abort_if_errors();
+        }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
-        ret
+        krate
     });
 
     krate.exported_macros = mem::replace(&mut resolver.exported_macros, Vec::new());
@@ -710,14 +716,14 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         krate = time(time_passes, "maybe creating a macro crate", || {
             let crate_types = sess.crate_types.borrow();
             let num_crate_types = crate_types.len();
-            let is_rustc_macro_crate = crate_types.contains(&config::CrateTypeRustcMacro);
-            syntax_ext::rustc_macro_registrar::modify(&sess.parse_sess,
-                                                      &mut resolver,
-                                                      krate,
-                                                      is_rustc_macro_crate,
-                                                      num_crate_types,
-                                                      sess.diagnostic(),
-                                                      &sess.features.borrow())
+            let is_proc_macro_crate = crate_types.contains(&config::CrateTypeProcMacro);
+            syntax_ext::proc_macro_registrar::modify(&sess.parse_sess,
+                                                     &mut resolver,
+                                                     krate,
+                                                     is_proc_macro_crate,
+                                                     num_crate_types,
+                                                     sess.diagnostic(),
+                                                     &sess.features.borrow())
         });
     }
 
@@ -1181,8 +1187,8 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                          Some(ref n) if *n == "staticlib" => {
                              Some(config::CrateTypeStaticlib)
                          }
-                         Some(ref n) if *n == "rustc-macro" => {
-                             Some(config::CrateTypeRustcMacro)
+                         Some(ref n) if *n == "proc-macro" => {
+                             Some(config::CrateTypeProcMacro)
                          }
                          Some(ref n) if *n == "bin" => Some(config::CrateTypeExecutable),
                          Some(_) => {

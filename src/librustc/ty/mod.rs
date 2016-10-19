@@ -34,7 +34,7 @@ use util::nodemap::FnvHashMap;
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::hash::{Hash, Hasher};
 use std::iter;
 use std::ops::Deref;
@@ -521,7 +521,7 @@ pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 impl<'tcx> serialize::UseSpecializedEncodable for Ty<'tcx> {}
 impl<'tcx> serialize::UseSpecializedDecodable for Ty<'tcx> {}
 
-/// A wrapper for slices with the additioanl invariant
+/// A wrapper for slices with the additional invariant
 /// that the slice is interned and no other slice with
 /// the same contents can exist in the same context.
 /// This means we can use pointer + length for both
@@ -680,6 +680,11 @@ pub struct TypeParameterDef<'tcx> {
     pub default_def_id: DefId, // for use in error reporing about defaults
     pub default: Option<Ty<'tcx>>,
     pub object_lifetime_default: ObjectLifetimeDefault<'tcx>,
+
+    /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
+    /// on generic parameter `T`, asserts data behind the parameter
+    /// `T` won't be accessed during the parent type's `Drop` impl.
+    pub pure_wrt_drop: bool,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -688,6 +693,11 @@ pub struct RegionParameterDef<'tcx> {
     pub def_id: DefId,
     pub index: u32,
     pub bounds: Vec<&'tcx ty::Region>,
+
+    /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
+    /// on generic parameter `'a`, asserts data of lifetime `'a`
+    /// won't be accessed during the parent type's `Drop` impl.
+    pub pure_wrt_drop: bool,
 }
 
 impl<'tcx> RegionParameterDef<'tcx> {
@@ -731,6 +741,14 @@ impl<'tcx> Generics<'tcx> {
 
     pub fn count(&self) -> usize {
         self.parent_count() + self.own_count()
+    }
+
+    pub fn region_param(&self, param: &EarlyBoundRegion) -> &RegionParameterDef<'tcx> {
+        &self.regions[param.index as usize - self.has_self as usize]
+    }
+
+    pub fn type_param(&self, param: &ParamTy) -> &TypeParameterDef<'tcx> {
+        &self.types[param.idx as usize - self.has_self as usize - self.regions.len()]
     }
 }
 
@@ -1220,6 +1238,12 @@ pub struct ParameterEnvironment<'tcx> {
     /// regions don't have this implicit scope and instead introduce
     /// relationships in the environment.
     pub free_id_outlive: CodeExtent,
+
+    /// A cache for `moves_by_default`.
+    pub is_copy_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
+
+    /// A cache for `type_is_sized`
+    pub is_sized_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
 }
 
 impl<'a, 'tcx> ParameterEnvironment<'tcx> {
@@ -1232,6 +1256,8 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             implicit_region_bound: self.implicit_region_bound,
             caller_bounds: caller_bounds,
             free_id_outlive: self.free_id_outlive,
+            is_copy_cache: RefCell::new(FnvHashMap()),
+            is_sized_cache: RefCell::new(FnvHashMap()),
         }
     }
 
@@ -1771,7 +1797,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
             _ if tys.references_error() => tcx.types.err,
             0 => tcx.types.bool,
             1 => tys[0],
-            _ => tcx.mk_tup(tys)
+            _ => tcx.mk_tup(&tys)
         };
 
         match self.sized_constraint.get(dep_node()) {
@@ -2323,7 +2349,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let enum_did = self.parent_def_id(did).unwrap();
                 self.lookup_adt_def(enum_did).variant_with_id(did)
             }
-            Def::Struct(did) | Def::StructCtor(did, ..) | Def::Union(did) => {
+            Def::Struct(did) | Def::Union(did) => {
+                self.lookup_adt_def(did).struct_variant()
+            }
+            Def::StructCtor(ctor_did, ..) => {
+                let did = self.parent_def_id(ctor_did).expect("struct ctor has no parent");
                 self.lookup_adt_def(did).struct_variant()
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)
@@ -2769,7 +2799,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             free_substs: Substs::empty(self),
             caller_bounds: Vec::new(),
             implicit_region_bound: self.mk_region(ty::ReEmpty),
-            free_id_outlive: free_id_outlive
+            free_id_outlive: free_id_outlive,
+            is_copy_cache: RefCell::new(FnvHashMap()),
+            is_sized_cache: RefCell::new(FnvHashMap()),
         }
     }
 
@@ -2840,6 +2872,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             implicit_region_bound: tcx.mk_region(ty::ReScope(free_id_outlive)),
             caller_bounds: predicates,
             free_id_outlive: free_id_outlive,
+            is_copy_cache: RefCell::new(FnvHashMap()),
+            is_sized_cache: RefCell::new(FnvHashMap()),
         };
 
         let cause = traits::ObligationCause::misc(span, free_id_outlive.node_id(&self.region_maps));

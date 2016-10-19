@@ -31,7 +31,7 @@ fn main() {
 //     _2 = _1;
 //     _3 = _2;
 //     _0 = Baz::Foo { x: _3 };
-//     goto -> bb1;
+//     return;
 // }
 // END rustc.node10.Deaggregator.before.mir
 // START rustc.node10.Deaggregator.after.mir
@@ -40,6 +40,6 @@ fn main() {
 //     _3 = _2;
 //     ((_0 as Foo).0: usize) = _3;
 //     discriminant(_0) = 1;
-//     goto -> bb1;
+//     return;
 // }
 // END rustc.node10.Deaggregator.after.mir

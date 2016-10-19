@@ -272,7 +272,7 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
 }
 
 pub fn parse(sess: &ParseSess,
-             cfg: ast::CrateConfig,
+             cfg: &ast::CrateConfig,
              mut rdr: TtReader,
              ms: &[TokenTree])
              -> NamedParseResult {
@@ -476,24 +476,21 @@ pub fn parse(sess: &ParseSess,
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let mut rust_parser = Parser::new(sess, cfg.clone(), Box::new(rdr.clone()));
-
-                let mut ei = bb_eis.pop().unwrap();
-                match ei.top_elts.get_tt(ei.idx) {
-                    TokenTree::Token(span, MatchNt(_, ident)) => {
+                rdr.next_tok = {
+                    let mut rust_parser = Parser::new(sess, cfg.clone(), Box::new(&mut rdr));
+                    let mut ei = bb_eis.pop().unwrap();
+                    if let TokenTree::Token(span, MatchNt(_, ident)) = ei.top_elts.get_tt(ei.idx) {
                         let match_cur = ei.match_cur;
                         (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
                             parse_nt(&mut rust_parser, span, &ident.name.as_str()))));
                         ei.idx += 1;
                         ei.match_cur += 1;
+                    } else {
+                        unreachable!()
                     }
-                    _ => panic!()
-                }
-                cur_eis.push(ei);
-
-                for _ in 0..rust_parser.tokens_consumed {
-                    let _ = rdr.next_token();
-                }
+                    cur_eis.push(ei);
+                    Some(TokenAndSpan { tok: rust_parser.token, sp: rust_parser.span })
+                };
             }
         }
 

@@ -27,7 +27,7 @@
 #![feature(staged_api)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 

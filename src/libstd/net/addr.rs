@@ -93,6 +93,26 @@ impl SocketAddr {
             SocketAddr::V6(ref mut a) => a.set_port(new_port),
         }
     }
+
+    /// Returns true if the IP in this `SocketAddr` is a valid IPv4 address,
+    /// false if it's a valid IPv6 address.
+    #[unstable(feature = "sockaddr_checker", issue = "36949")]
+    pub fn is_ipv4(&self) -> bool {
+        match *self {
+            SocketAddr::V4(_) => true,
+            SocketAddr::V6(_) => false,
+        }
+    }
+
+    /// Returns true if the IP in this `SocketAddr` is a valid IPv6 address,
+    /// false if it's a valid IPv4 address.
+    #[unstable(feature = "sockaddr_checker", issue = "36949")]
+    pub fn is_ipv6(&self) -> bool {
+        match *self {
+            SocketAddr::V4(_) => false,
+            SocketAddr::V6(_) => true,
+        }
+    }
 }
 
 impl SocketAddrV4 {
@@ -630,5 +650,20 @@ mod tests {
         assert_eq!(v6.scope_id(), 10);
         v6.set_scope_id(20);
         assert_eq!(v6.scope_id(), 20);
+    }
+
+    #[test]
+    fn is_v4() {
+        let v4 = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(77, 88, 21, 11), 80));
+        assert!(v4.is_ipv4());
+        assert!(!v4.is_ipv6());
+    }
+
+    #[test]
+    fn is_v6() {
+        let v6 = SocketAddr::V6(SocketAddrV6::new(
+                Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 80, 10, 0));
+        assert!(!v6.is_ipv4());
+        assert!(v6.is_ipv6());
     }
 }

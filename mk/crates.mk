@@ -59,8 +59,8 @@ RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_platform_intrinsics rustc_errors \
                 rustc_plugin rustc_metadata rustc_passes rustc_save_analysis \
-                rustc_const_eval rustc_const_math rustc_incremental rustc_macro
-HOST_CRATES := syntax syntax_ext proc_macro syntax_pos $(RUSTC_CRATES) rustdoc fmt_macros \
+                rustc_const_eval rustc_const_math rustc_incremental proc_macro
+HOST_CRATES := syntax syntax_ext proc_macro_plugin syntax_pos $(RUSTC_CRATES) rustdoc fmt_macros \
 		flate arena graphviz log serialize
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
 
@@ -101,8 +101,8 @@ DEPS_term := std
 DEPS_test := std getopts term native:rust_test_helpers
 
 DEPS_syntax := std term serialize log arena libc rustc_bitflags rustc_unicode rustc_errors syntax_pos
-DEPS_syntax_ext := syntax syntax_pos rustc_errors fmt_macros rustc_macro
-DEPS_proc_macro := syntax syntax_pos rustc_plugin log
+DEPS_syntax_ext := syntax syntax_pos rustc_errors fmt_macros proc_macro
+DEPS_proc_macro_plugin := syntax syntax_pos rustc_plugin log
 DEPS_syntax_pos := serialize
 
 DEPS_rustc_const_math := std syntax log serialize
@@ -118,15 +118,15 @@ DEPS_rustc_data_structures := std log serialize libc
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
                      rustc_typeck rustc_mir rustc_resolve log syntax serialize rustc_llvm \
                      rustc_trans rustc_privacy rustc_lint rustc_plugin \
-                     rustc_metadata syntax_ext proc_macro \
+                     rustc_metadata syntax_ext proc_macro_plugin \
                      rustc_passes rustc_save_analysis rustc_const_eval \
-                     rustc_incremental syntax_pos rustc_errors rustc_macro
+                     rustc_incremental syntax_pos rustc_errors proc_macro
 DEPS_rustc_errors := log libc serialize syntax_pos
 DEPS_rustc_lint := rustc log syntax syntax_pos rustc_const_eval
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
-DEPS_rustc_macro := std syntax
+DEPS_proc_macro := std syntax
 DEPS_rustc_metadata := rustc syntax syntax_pos rustc_errors rustc_const_math \
-			rustc_macro syntax_ext
+			proc_macro syntax_ext
 DEPS_rustc_passes := syntax syntax_pos rustc core rustc_const_eval rustc_errors
 DEPS_rustc_mir := rustc syntax syntax_pos rustc_const_math rustc_const_eval rustc_bitflags
 DEPS_rustc_resolve := arena rustc log syntax syntax_pos rustc_errors

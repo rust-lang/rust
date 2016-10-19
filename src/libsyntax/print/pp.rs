@@ -125,9 +125,8 @@ impl fmt::Display for Token {
     }
 }
 
-fn buf_str(toks: &[Token], szs: &[isize], left: usize, right: usize, lim: usize) -> String {
-    let n = toks.len();
-    assert_eq!(n, szs.len());
+fn buf_str(buf: &[BufEntry], left: usize, right: usize, lim: usize) -> String {
+    let n = buf.len();
     let mut i = left;
     let mut l = lim;
     let mut s = String::from("[");
@@ -136,7 +135,7 @@ fn buf_str(toks: &[Token], szs: &[isize], left: usize, right: usize, lim: usize)
         if i != left {
             s.push_str(", ");
         }
-        s.push_str(&format!("{}={}", szs[i], &toks[i]));
+        s.push_str(&format!("{}={}", buf[i].size, &buf[i].token));
         i += 1;
         i %= n;
     }
@@ -159,13 +158,9 @@ pub struct PrintStackElem {
 const SIZE_INFINITY: isize = 0xffff;
 
 pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
-    // Yes 55, it makes the ring buffers big enough to never
-    // fall behind.
+    // Yes 55, it makes the ring buffers big enough to never fall behind.
     let n: usize = 55 * linewidth;
     debug!("mk_printer {}", linewidth);
-    let token = vec![Token::Eof; n];
-    let size = vec![0; n];
-    let scan_stack = VecDeque::with_capacity(n);
     Printer {
         out: out,
         buf_len: n,
@@ -173,11 +168,10 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
         space: linewidth as isize,
         left: 0,
         right: 0,
-        token: token,
-        size: size,
+        buf: vec![BufEntry { token: Token::Eof, size: 0 }; n],
         left_total: 0,
         right_total: 0,
-        scan_stack: scan_stack,
+        scan_stack: VecDeque::new(),
         print_stack: Vec::new(),
         pending_indentation: 0
     }
@@ -269,10 +263,8 @@ pub struct Printer<'a> {
     left: usize,
     /// Index of right side of input stream
     right: usize,
-    /// Ring-buffer stream goes through
-    token: Vec<Token> ,
-    /// Ring-buffer of calculated sizes
-    size: Vec<isize> ,
+    /// Ring-buffer of tokens and calculated sizes
+    buf: Vec<BufEntry>,
     /// Running size of stream "...left"
     left_total: isize,
     /// Running size of stream "...right"
@@ -283,20 +275,26 @@ pub struct Printer<'a> {
     /// Begin (if there is any) on top of it. Stuff is flushed off the
     /// bottom as it becomes irrelevant due to the primary ring-buffer
     /// advancing.
-    scan_stack: VecDeque<usize> ,
+    scan_stack: VecDeque<usize>,
     /// Stack of blocks-in-progress being flushed by print
     print_stack: Vec<PrintStackElem> ,
     /// Buffered indentation to avoid writing trailing whitespace
     pending_indentation: isize,
 }
 
+#[derive(Clone)]
+struct BufEntry {
+    token: Token,
+    size: isize,
+}
+
 impl<'a> Printer<'a> {
     pub fn last_token(&mut self) -> Token {
-        self.token[self.right].clone()
+        self.buf[self.right].token.clone()
     }
     // be very careful with this!
     pub fn replace_last_token(&mut self, t: Token) {
-        self.token[self.right] = t;
+        self.buf[self.right].token = t;
     }
     pub fn pretty_print(&mut self, token: Token) -> io::Result<()> {
         debug!("pp Vec<{},{}>", self.left, self.right);
@@ -318,8 +316,7 @@ impl<'a> Printer<'a> {
             } else { self.advance_right(); }
             debug!("pp Begin({})/buffer Vec<{},{}>",
                    b.offset, self.left, self.right);
-            self.token[self.right] = token;
-            self.size[self.right] = -self.right_total;
+            self.buf[self.right] = BufEntry { token: token, size: -self.right_total };
             let right = self.right;
             self.scan_push(right);
             Ok(())
@@ -331,8 +328,7 @@ impl<'a> Printer<'a> {
             } else {
                 debug!("pp End/buffer Vec<{},{}>", self.left, self.right);
                 self.advance_right();
-                self.token[self.right] = token;
-                self.size[self.right] = -1;
+                self.buf[self.right] = BufEntry { token: token, size: -1 };
                 let right = self.right;
                 self.scan_push(right);
                 Ok(())
@@ -350,8 +346,7 @@ impl<'a> Printer<'a> {
             self.check_stack(0);
             let right = self.right;
             self.scan_push(right);
-            self.token[self.right] = token;
-            self.size[self.right] = -self.right_total;
+            self.buf[self.right] = BufEntry { token: token, size: -self.right_total };
             self.right_total += b.blank_space;
             Ok(())
           }
@@ -364,8 +359,7 @@ impl<'a> Printer<'a> {
                 debug!("pp String('{}')/buffer Vec<{},{}>",
                        s, self.left, self.right);
                 self.advance_right();
-                self.token[self.right] = Token::String(s, len);
-                self.size[self.right] = len;
+                self.buf[self.right] = BufEntry { token: Token::String(s, len), size: len };
                 self.right_total += len;
                 self.check_stream()
             }
@@ -381,7 +375,7 @@ impl<'a> Printer<'a> {
             if Some(&self.left) == self.scan_stack.back() {
                 debug!("setting {} to infinity and popping", self.left);
                 let scanned = self.scan_pop_bottom();
-                self.size[scanned] = SIZE_INFINITY;
+                self.buf[scanned].size = SIZE_INFINITY;
             }
             self.advance_left()?;
             if self.left != self.right {
@@ -410,12 +404,12 @@ impl<'a> Printer<'a> {
     }
     pub fn advance_left(&mut self) -> io::Result<()> {
         debug!("advance_left Vec<{},{}>, sizeof({})={}", self.left, self.right,
-               self.left, self.size[self.left]);
+               self.left, self.buf[self.left].size);
 
-        let mut left_size = self.size[self.left];
+        let mut left_size = self.buf[self.left].size;
 
         while left_size >= 0 {
-            let left = self.token[self.left].clone();
+            let left = self.buf[self.left].token.clone();
 
             let len = match left {
                 Token::Break(b) => b.blank_space,
@@ -437,7 +431,7 @@ impl<'a> Printer<'a> {
             self.left += 1;
             self.left %= self.buf_len;
 
-            left_size = self.size[self.left];
+            left_size = self.buf[self.left].size;
         }
 
         Ok(())
@@ -445,23 +439,23 @@ impl<'a> Printer<'a> {
     pub fn check_stack(&mut self, k: isize) {
         if !self.scan_stack.is_empty() {
             let x = self.scan_top();
-            match self.token[x] {
+            match self.buf[x].token {
                 Token::Begin(_) => {
                     if k > 0 {
                         let popped = self.scan_pop();
-                        self.size[popped] = self.size[x] + self.right_total;
+                        self.buf[popped].size = self.buf[x].size + self.right_total;
                         self.check_stack(k - 1);
                     }
                 }
                 Token::End => {
                     // paper says + not =, but that makes no sense.
                     let popped = self.scan_pop();
-                    self.size[popped] = 1;
+                    self.buf[popped].size = 1;
                     self.check_stack(k + 1);
                 }
                 _ => {
                     let popped = self.scan_pop();
-                    self.size[popped] = self.size[x] + self.right_total;
+                    self.buf[popped].size = self.buf[x].size + self.right_total;
                     if k > 0 {
                         self.check_stack(k);
                     }
@@ -499,8 +493,7 @@ impl<'a> Printer<'a> {
     pub fn print(&mut self, token: Token, l: isize) -> io::Result<()> {
         debug!("print {} {} (remaining line space={})", token, l,
                self.space);
-        debug!("{}", buf_str(&self.token,
-                             &self.size,
+        debug!("{}", buf_str(&self.buf,
                              self.left,
                              self.right,
                              6));

@@ -22,7 +22,7 @@ use middle::free_region::FreeRegionMap;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime;
 use middle::stability;
-use ty::subst::Substs;
+use ty::subst::{Kind, Substs};
 use traits;
 use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
@@ -54,8 +54,8 @@ use hir;
 pub struct CtxtArenas<'tcx> {
     // internings
     type_: TypedArena<TyS<'tcx>>,
-    type_list: TypedArena<Vec<Ty<'tcx>>>,
-    substs: TypedArena<Substs<'tcx>>,
+    type_list: TypedArena<Ty<'tcx>>,
+    substs: TypedArena<Kind<'tcx>>,
     bare_fn: TypedArena<BareFnTy<'tcx>>,
     region: TypedArena<Region>,
     stability: TypedArena<attr::Stability>,
@@ -493,7 +493,7 @@ pub struct GlobalCtxt<'tcx> {
     pub layout_depth: Cell<usize>,
 
     /// Map from function to the `#[derive]` mode that it's defining. Only used
-    /// by `rustc-macro` crates.
+    /// by `proc-macro` crates.
     pub derive_macros: RefCell<NodeMap<token::InternedString>>,
 }
 
@@ -824,7 +824,7 @@ impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
 impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     type Lifted = &'tcx Substs<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Substs<'tcx>> {
-        if let Some(&Interned(substs)) = tcx.interners.substs.borrow().get(*self) {
+        if let Some(&Interned(substs)) = tcx.interners.substs.borrow().get(&self[..]) {
             if *self as *const _ == substs as *const _ {
                 return Some(substs);
             }
@@ -1097,9 +1097,9 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[Ty<'lcx>]> for Interned<'tcx, Slice<Ty<'tcx>>> {
     }
 }
 
-impl<'tcx: 'lcx, 'lcx> Borrow<Substs<'lcx>> for Interned<'tcx, Substs<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a Substs<'lcx> {
-        self.0
+impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, Substs<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a [Kind<'lcx>] {
+        &self.0[..]
     }
 }
 
@@ -1117,6 +1117,7 @@ impl<'tcx> Borrow<Region> for Interned<'tcx, Region> {
 
 macro_rules! intern_method {
     ($lt_tcx:tt, $name:ident: $method:ident($alloc:ty,
+                                            $alloc_method:ident,
                                             $alloc_to_key:expr,
                                             $alloc_to_ret:expr,
                                             $needs_infer:expr) -> $ty:ty) => {
@@ -1142,7 +1143,8 @@ macro_rules! intern_method {
                         let v = unsafe {
                             mem::transmute(v)
                         };
-                        let i = ($alloc_to_ret)(self.global_interners.arenas.$name.alloc(v));
+                        let i = ($alloc_to_ret)(self.global_interners.arenas.$name
+                                                    .$alloc_method(v));
                         self.global_interners.$name.borrow_mut().insert(Interned(i));
                         return i;
                     }
@@ -1156,7 +1158,7 @@ macro_rules! intern_method {
                     }
                 }
 
-                let i = ($alloc_to_ret)(self.interners.arenas.$name.alloc(v));
+                let i = ($alloc_to_ret)(self.interners.arenas.$name.$alloc_method(v));
                 self.interners.$name.borrow_mut().insert(Interned(i));
                 i
             }
@@ -1180,7 +1182,7 @@ macro_rules! direct_interners {
             }
         }
 
-        intern_method!($lt_tcx, $name: $method($ty, |x| x, |x| x, $needs_infer) -> $ty);)+
+        intern_method!($lt_tcx, $name: $method($ty, alloc, |x| x, |x| x, $needs_infer) -> $ty);)+
     }
 }
 
@@ -1189,9 +1191,6 @@ fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 }
 
 direct_interners!('tcx,
-    substs: mk_substs(|substs: &Substs| {
-        substs.params().iter().any(keep_local)
-    }) -> Substs<'tcx>,
     bare_fn: mk_bare_fn(|fty: &BareFnTy| {
         keep_local(&fty.sig)
     }) -> BareFnTy<'tcx>,
@@ -1203,10 +1202,18 @@ direct_interners!('tcx,
     }) -> Region
 );
 
-intern_method!('tcx,
-    type_list: mk_type_list(Vec<Ty<'tcx>>, Deref::deref, |xs: &[Ty]| -> &Slice<Ty> {
-        unsafe { mem::transmute(xs) }
-    }, keep_local) -> Slice<Ty<'tcx>>
+macro_rules! slice_interners {
+    ($($field:ident: $method:ident($ty:ident)),+) => (
+        $(intern_method!('tcx, $field: $method(&[$ty<'tcx>], alloc_slice, Deref::deref,
+                                               |xs: &[$ty]| -> &Slice<$ty> {
+            unsafe { mem::transmute(xs) }
+        }, |xs: &[$ty]| xs.iter().any(keep_local)) -> Slice<$ty<'tcx>>);)+
+    )
+}
+
+slice_interners!(
+    type_list: mk_type_list(Ty),
+    substs: mk_substs(Kind)
 );
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -1311,12 +1318,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TySlice(ty))
     }
 
-    pub fn mk_tup(self, ts: Vec<Ty<'tcx>>) -> Ty<'tcx> {
+    pub fn mk_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
         self.mk_ty(TyTuple(self.mk_type_list(ts)))
     }
 
     pub fn mk_nil(self) -> Ty<'tcx> {
-        self.mk_tup(Vec::new())
+        self.mk_tup(&[])
     }
 
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
@@ -1358,7 +1365,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_closure(self,
                       closure_id: DefId,
                       substs: &'tcx Substs<'tcx>,
-                      tys: Vec<Ty<'tcx>>)
+                      tys: &[Ty<'tcx>])
                       -> Ty<'tcx> {
         self.mk_closure_from_closure_substs(closure_id, ClosureSubsts {
             func_substs: substs,

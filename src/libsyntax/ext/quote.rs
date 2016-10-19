@@ -331,7 +331,7 @@ pub mod rt {
             panictry!(parse::parse_item_from_source_str(
                 "<quote expansion>".to_string(),
                 s,
-                self.cfg(),
+                self.cfg().clone(),
                 self.parse_sess())).expect("parse error")
         }
 
@@ -339,7 +339,7 @@ pub mod rt {
             panictry!(parse::parse_stmt_from_source_str(
                 "<quote expansion>".to_string(),
                 s,
-                self.cfg(),
+                self.cfg().clone(),
                 self.parse_sess())).expect("parse error")
         }
 
@@ -347,7 +347,7 @@ pub mod rt {
             panictry!(parse::parse_expr_from_source_str(
                 "<quote expansion>".to_string(),
                 s,
-                self.cfg(),
+                self.cfg().clone(),
                 self.parse_sess()))
         }
 
@@ -355,7 +355,7 @@ pub mod rt {
             panictry!(parse::parse_tts_from_source_str(
                 "<quote expansion>".to_string(),
                 s,
-                self.cfg(),
+                self.cfg().clone(),
                 self.parse_sess()))
         }
     }
@@ -924,6 +924,10 @@ fn expand_parse_call(cx: &ExtCtxt,
         sp, cx.expr_ident(sp, id_ext("ext_cx")),
         id_ext("cfg"), Vec::new());
 
+    let cfg_clone_call = || cx.expr_method_call(
+        sp, cfg_call(),
+        id_ext("clone"), Vec::new());
+
     let parse_sess_call = || cx.expr_method_call(
         sp, cx.expr_ident(sp, id_ext("ext_cx")),
         id_ext("parse_sess"), Vec::new());
@@ -931,7 +935,7 @@ fn expand_parse_call(cx: &ExtCtxt,
     let new_parser_call =
         cx.expr_call(sp,
                      cx.expr_ident(sp, id_ext("new_parser_from_tts")),
-                     vec!(parse_sess_call(), cfg_call(), tts_expr));
+                     vec!(parse_sess_call(), cfg_clone_call(), tts_expr));
 
     let path = vec![id_ext("syntax"), id_ext("ext"), id_ext("quote"), id_ext(parse_method)];
     let mut args = vec![cx.expr_mut_addr_of(sp, new_parser_call)];

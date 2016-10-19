@@ -12,12 +12,12 @@
 
 //! Single-threaded reference-counting pointers.
 //!
-//! The type [`Rc<T>`][rc] provides shared ownership of a value, allocated
-//! in the heap. Invoking [`clone`][clone] on `Rc` produces a new pointer
-//! to the same value in the heap. When the last `Rc` pointer to a given
-//! value is destroyed, the pointed-to value is also destroyed.
+//! The type [`Rc<T>`][rc] provides shared ownership of a value of type `T`,
+//! allocated in the heap. Invoking [`clone`][clone] on `Rc` produces a new
+//! pointer to the same value in the heap. When the last `Rc` pointer to a
+//! given value is destroyed, the pointed-to value is also destroyed.
 //!
-//! Shared pointers in Rust disallow mutation by default, and `Rc` is no
+//! Shared references in Rust disallow mutation by default, and `Rc` is no
 //! exception. If you need to mutate through an `Rc`, use [`Cell`][cell] or
 //! [`RefCell`][refcell].
 //!
@@ -44,8 +44,9 @@
 //! functions][assoc], called using function-like syntax:
 //!
 //! ```
-//! # use std::rc::Rc;
-//! # let my_rc = Rc::new(());
+//! use std::rc::Rc;
+//! let my_rc = Rc::new(());
+//!
 //! Rc::downgrade(&my_rc);
 //! ```
 //!
@@ -229,13 +230,14 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::{abort, assume};
 use core::marker;
 use core::marker::Unsize;
-use core::mem::{self, align_of_val, forget, size_of_val, uninitialized};
+use core::mem::{self, align_of_val, forget, size_of, size_of_val, uninitialized};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 use core::convert::From;
 
 use heap::deallocate;
+use raw_vec::RawVec;
 
 struct RcBox<T: ?Sized> {
     strong: Cell<usize>,
@@ -294,9 +296,12 @@ impl<T> Rc<T> {
 
     /// Returns the contained value, if the `Rc` has exactly one strong reference.
     ///
-    /// Otherwise, an `Err` is returned with the same `Rc` that was passed in.
+    /// Otherwise, an [`Err`][result] is returned with the same `Rc` that was
+    /// passed in.
     ///
     /// This will succeed even if there are outstanding weak references.
+    ///
+    /// [result]: ../../std/result/enum.Result.html
     ///
     /// # Examples
     ///
@@ -331,7 +336,11 @@ impl<T> Rc<T> {
         }
     }
 
-    /// Checks whether `Rc::try_unwrap` would return `Ok`.
+    /// Checks whether [`Rc::try_unwrap`][try_unwrap] would return
+    /// [`Ok`][result].
+    ///
+    /// [try_unwrap]: struct.Rc.html#method.try_unwrap
+    /// [result]: ../../std/result/enum.Result.html
     ///
     /// # Examples
     ///
@@ -354,6 +363,31 @@ impl<T> Rc<T> {
                issue = "28356")]
     pub fn would_unwrap(this: &Self) -> bool {
         Rc::strong_count(&this) == 1
+    }
+}
+
+impl Rc<str> {
+    /// Constructs a new `Rc<str>` from a string slice.
+    #[doc(hidden)]
+    #[unstable(feature = "rustc_private",
+               reason = "for internal use in rustc",
+               issue = "0")]
+    pub fn __from_str(value: &str) -> Rc<str> {
+        unsafe {
+            // Allocate enough space for `RcBox<str>`.
+            let aligned_len = 2 + (value.len() + size_of::<usize>() - 1) / size_of::<usize>();
+            let vec = RawVec::<usize>::with_capacity(aligned_len);
+            let ptr = vec.ptr();
+            forget(vec);
+            // Initialize fields of `RcBox<str>`.
+            *ptr.offset(0) = 1; // strong: Cell::new(1)
+            *ptr.offset(1) = 1; // weak: Cell::new(1)
+            ptr::copy_nonoverlapping(value.as_ptr(), ptr.offset(2) as *mut u8, value.len());
+            // Combine the allocation address and the string length into a fat pointer to `RcBox`.
+            let rcbox_ptr: *mut RcBox<str> = mem::transmute([ptr as usize, value.len()]);
+            assert!(aligned_len * size_of::<usize>() == size_of_val(&*rcbox_ptr));
+            Rc { ptr: Shared::new(rcbox_ptr) }
+        }
     }
 }
 
@@ -582,8 +616,10 @@ impl<T: ?Sized> Drop for Rc<T> {
     /// Drops the `Rc`.
     ///
     /// This will decrement the strong reference count. If the strong reference
-    /// count reaches zero then the only other references (if any) are `Weak`,
-    /// so we `drop` the inner value.
+    /// count reaches zero then the only other references (if any) are
+    /// [`Weak`][weak], so we `drop` the inner value.
+    ///
+    /// [weak]: struct.Weak.html
     ///
     /// # Examples
     ///

@@ -804,7 +804,7 @@ impl CodeMap {
     }
 
     pub fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace> {
-        let mut last_span = DUMMY_SP;
+        let mut prev_span = DUMMY_SP;
         let mut span = span;
         let mut result = vec![];
         loop {
@@ -827,14 +827,14 @@ impl CodeMap {
                 None => break,
                 Some((call_site, macro_decl_name, def_site_span)) => {
                     // Don't print recursive invocations
-                    if !call_site.source_equal(&last_span) {
+                    if !call_site.source_equal(&prev_span) {
                         result.push(MacroBacktrace {
                             call_site: call_site,
                             macro_decl_name: macro_decl_name,
                             def_site_span: def_site_span,
                         });
                     }
-                    last_span = span;
+                    prev_span = span;
                     span = call_site;
                 }
             }

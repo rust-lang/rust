@@ -20,6 +20,51 @@ use sys;
 use sys_common::{FromInner, AsInner, AsInnerMut};
 use sys::platform::fs::MetadataExt as UnixMetadataExt;
 
+/// Unix-specific extensions to `File`
+#[unstable(feature = "file_offset", issue = "35918")]
+pub trait FileExt {
+    /// Reads a number of bytes starting from a given offset.
+    ///
+    /// Returns the number of bytes read.
+    ///
+    /// The offset is relative to the start of the file and thus independent
+    /// from the current cursor.
+    ///
+    /// The current file cursor is not affected by this function.
+    ///
+    /// Note that similar to `File::read`, it is not an error to return with a
+    /// short read.
+    #[unstable(feature = "file_offset", issue = "35918")]
+    fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
+
+    /// Writes a number of bytes starting from a given offset.
+    ///
+    /// Returns the number of bytes written.
+    ///
+    /// The offset is relative to the start of the file and thus independent
+    /// from the current cursor.
+    ///
+    /// The current file cursor is not affected by this function.
+    ///
+    /// When writing beyond the end of the file, the file is appropiately
+    /// extended and the intermediate bytes are initialized with the value 0.
+    ///
+    /// Note that similar to `File::write`, it is not an error to return a
+    /// short write.
+    #[unstable(feature = "file_offset", issue = "35918")]
+    fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
+}
+
+#[unstable(feature = "file_offset", issue = "35918")]
+impl FileExt for fs::File {
+    fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        self.as_inner().read_at(buf, offset)
+    }
+    fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        self.as_inner().write_at(buf, offset)
+    }
+}
+
 /// Unix-specific extensions to `Permissions`
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait PermissionsExt {

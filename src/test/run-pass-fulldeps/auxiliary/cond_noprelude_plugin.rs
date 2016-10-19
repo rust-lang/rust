@@ -12,13 +12,13 @@
 #![feature(plugin)]
 #![feature(plugin_registrar)]
 #![feature(rustc_private)]
-#![plugin(proc_macro)]
+#![plugin(proc_macro_plugin)]
 
 extern crate rustc_plugin;
-extern crate proc_macro;
+extern crate proc_macro_plugin;
 extern crate syntax;
 
-use proc_macro::build::ident_eq;
+use proc_macro_plugin::build::ident_eq;
 
 use syntax::ext::base::{ExtCtxt, MacResult};
 use syntax::ext::proc_macro_shim::build_block_emitter;

@@ -31,7 +31,7 @@
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 
 extern crate arena;
 extern crate flate;
@@ -729,6 +729,10 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
+        unsafe {
+            println!("LLVM version: {}.{}",
+                     llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor());
+        }
     }
 }
 
@@ -1110,7 +1114,7 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                              errors::Level::Note);
             }
 
-            println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
+            writeln!(io::stderr(), "{}", str::from_utf8(&data.lock().unwrap()).unwrap()).unwrap();
         }
 
         exit_on_err();

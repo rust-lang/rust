@@ -118,6 +118,8 @@ pub struct PerfStats {
     pub incr_comp_hashes_time: Cell<Duration>,
     // The number of incr. comp. hash computations performed
     pub incr_comp_hashes_count: Cell<u64>,
+    // The number of bytes hashed when computing ICH values
+    pub incr_comp_bytes_hashed: Cell<u64>,
     // The accumulated time spent on computing symbol hashes
     pub symbol_hash_time: Cell<Duration>,
 }
@@ -439,6 +441,11 @@ impl Session {
                  duration_to_secs_str(self.perf_stats.incr_comp_hashes_time.get()));
         println!("Total number of incr. comp. hashes computed:   {}",
                  self.perf_stats.incr_comp_hashes_count.get());
+        println!("Total number of bytes hashed for incr. comp.:  {}",
+                 self.perf_stats.incr_comp_bytes_hashed.get());
+        println!("Average bytes hashed per incr. comp. HIR node: {}",
+                 self.perf_stats.incr_comp_bytes_hashed.get() /
+                 self.perf_stats.incr_comp_hashes_count.get());
         println!("Total time spent computing symbol hashes:      {}",
                  duration_to_secs_str(self.perf_stats.symbol_hash_time.get()));
     }
@@ -571,6 +578,7 @@ pub fn build_session_(sopts: config::Options,
             svh_time: Cell::new(Duration::from_secs(0)),
             incr_comp_hashes_time: Cell::new(Duration::from_secs(0)),
             incr_comp_hashes_count: Cell::new(0),
+            incr_comp_bytes_hashed: Cell::new(0),
             symbol_hash_time: Cell::new(Duration::from_secs(0)),
         }
     };

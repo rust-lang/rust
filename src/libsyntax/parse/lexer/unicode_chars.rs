@@ -234,7 +234,7 @@ pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
     .iter()
     .find(|&&(c, _, _)| c == ch)
     .map(|&(_, u_name, ascii_char)| {
-        let span = make_span(reader.last_pos, reader.pos);
+        let span = make_span(reader.pos, reader.next_pos);
         match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
             Some(&(ascii_char, ascii_name)) => {
                 let msg =

@@ -139,9 +139,9 @@ impl<'a> SpanUtils<'a> {
         let mut prev = toks.real_token();
         let mut result = None;
         let mut bracket_count = 0;
-        let mut last_span = None;
+        let mut prev_span = None;
         while prev.tok != token::Eof {
-            last_span = None;
+            prev_span = None;
             let mut next = toks.real_token();
 
             if (next.tok == token::OpenDelim(token::Paren) || next.tok == token::Lt) &&
@@ -166,12 +166,12 @@ impl<'a> SpanUtils<'a> {
             };
 
             if prev.tok.is_ident() && bracket_count == 0 {
-                last_span = Some(prev.sp);
+                prev_span = Some(prev.sp);
             }
             prev = next;
         }
-        if result.is_none() && last_span.is_some() {
-            return self.make_sub_span(span, last_span);
+        if result.is_none() && prev_span.is_some() {
+            return self.make_sub_span(span, prev_span);
         }
         return self.make_sub_span(span, result);
     }

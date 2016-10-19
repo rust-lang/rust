@@ -61,8 +61,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Compute the rust-call form of the closure call method.
     let sig = &tcx.closure_type(closure_id, substs).sig;
-    let sig = tcx.erase_late_bound_regions(sig);
-    let sig = tcx.normalize_associated_type(&sig);
+    let sig = tcx.erase_late_bound_regions_and_normalize(sig);
     let closure_type = tcx.mk_closure_from_closure_substs(closure_id, substs);
     let function_type = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Normal,
@@ -126,8 +125,7 @@ pub fn trans_closure_body_via_mir<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // of the closure expression.
 
         let sig = &tcx.closure_type(closure_def_id, closure_substs).sig;
-        let sig = tcx.erase_late_bound_regions(sig);
-        let sig = tcx.normalize_associated_type(&sig);
+        let sig = tcx.erase_late_bound_regions_and_normalize(sig);
 
         let closure_type = tcx.mk_closure_from_closure_substs(closure_def_id,
                                                               closure_substs);
@@ -217,6 +215,10 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     llreffn: ValueRef)
     -> ValueRef
 {
+    if let Some(&llfn) = ccx.instances().borrow().get(&method_instance) {
+        return llfn;
+    }
+
     debug!("trans_fn_once_adapter_shim(closure_def_id={:?}, substs={:?}, llreffn={:?})",
            closure_def_id, substs, Value(llreffn));
 
@@ -245,8 +247,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     assert_eq!(abi, Abi::RustCall);
     sig.0.inputs[0] = closure_ty;
 
-    let sig = tcx.erase_late_bound_regions(&sig);
-    let sig = tcx.normalize_associated_type(&sig);
+    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
     let llonce_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
@@ -257,7 +258,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Create the by-value helper.
     let function_name = method_instance.symbol_name(ccx.shared());
-    let lloncefn = declare::declare_fn(ccx, &function_name, llonce_fn_ty);
+    let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
@@ -311,6 +312,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 
     fcx.finish(bcx, DebugLoc::None);
+
+    ccx.instances().borrow_mut().insert(method_instance, lloncefn);
 
     lloncefn
 }

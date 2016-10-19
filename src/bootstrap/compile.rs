@@ -90,16 +90,16 @@ pub fn std_link(build: &Build,
     add_to_sysroot(&out_dir, &libdir);
 
     if target.contains("musl") && !target.contains("mips") {
-        copy_musl_third_party_objects(build, &libdir);
+        copy_musl_third_party_objects(build, target, &libdir);
     }
 }
 
 /// Copies the crt(1,i,n).o startup objects
 ///
 /// Only required for musl targets that statically link to libc
-fn copy_musl_third_party_objects(build: &Build, into: &Path) {
+fn copy_musl_third_party_objects(build: &Build, target: &str, into: &Path) {
     for &obj in &["crt1.o", "crti.o", "crtn.o"] {
-        copy(&build.config.musl_root.as_ref().unwrap().join("lib").join(obj), &into.join(obj));
+        copy(&build.musl_root(target).unwrap().join("lib").join(obj), &into.join(obj));
     }
 }
 
@@ -119,7 +119,7 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
     for file in t!(fs::read_dir(build.src.join("src/rtstartup"))) {
         let file = t!(file);
         let mut cmd = Command::new(&compiler_path);
-        build.add_bootstrap_key(&compiler, &mut cmd);
+        build.add_bootstrap_key(&mut cmd);
         build.run(cmd.arg("--target").arg(target)
                      .arg("--emit=obj")
                      .arg("--out-dir").arg(into)
@@ -185,7 +185,6 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     cargo.env("CFG_RELEASE", &build.release)
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
          .env("CFG_VERSION", &build.version)
-         .env("CFG_BOOTSTRAP_KEY", &build.bootstrap_key)
          .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(String::new()))
          .env("CFG_LIBDIR_RELATIVE", "lib");
 

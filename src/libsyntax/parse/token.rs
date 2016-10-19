@@ -53,21 +53,6 @@ pub enum DelimToken {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
-pub enum SpecialMacroVar {
-    /// `$crate` will be filled in with the name of the crate a macro was
-    /// imported from, if any.
-    CrateMacroVar,
-}
-
-impl SpecialMacroVar {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            SpecialMacroVar::CrateMacroVar => "crate",
-        }
-    }
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum Lit {
     Byte(ast::Name),
     Char(ast::Name),
@@ -148,8 +133,6 @@ pub enum Token {
     // In right-hand-sides of MBE macros:
     /// A syntactic variable that will be filled in by macro expansion.
     SubstNt(ast::Ident),
-    /// A macro variable with special meaning.
-    SpecialVarNt(SpecialMacroVar),
 
     // Junk. These carry no data because we don't really care about the data
     // they *would* carry, and don't really want to allocate a new ident for
@@ -478,27 +461,20 @@ pub fn clear_ident_interner() {
 /// somehow.
 #[derive(Clone, PartialEq, Hash, PartialOrd, Eq, Ord)]
 pub struct InternedString {
-    string: Rc<String>,
+    string: Rc<str>,
 }
 
 impl InternedString {
     #[inline]
     pub fn new(string: &'static str) -> InternedString {
         InternedString {
-            string: Rc::new(string.to_owned()),
-        }
-    }
-
-    #[inline]
-    fn new_from_rc_str(string: Rc<String>) -> InternedString {
-        InternedString {
-            string: string,
+            string: Rc::__from_str(string),
         }
     }
 
     #[inline]
     pub fn new_from_name(name: ast::Name) -> InternedString {
-        with_ident_interner(|interner| InternedString::new_from_rc_str(interner.get(name)))
+        with_ident_interner(|interner| InternedString { string: interner.get(name) })
     }
 }
 
@@ -566,7 +542,7 @@ impl PartialEq<InternedString> for str {
 
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(intern(d.read_str()?.as_ref()).as_str())
+        Ok(intern(&d.read_str()?).as_str())
     }
 }
 

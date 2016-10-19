@@ -26,7 +26,6 @@ extern crate md5;
 extern crate num_cpus;
 extern crate rustc_serialize;
 extern crate toml;
-extern crate regex;
 
 use std::collections::HashMap;
 use std::env;
@@ -62,6 +61,7 @@ mod config;
 mod dist;
 mod doc;
 mod flags;
+mod install;
 mod native;
 mod sanity;
 mod step;
@@ -453,6 +453,8 @@ impl Build {
                 DistStd { compiler } => dist::std(self, &compiler, target.target),
                 DistSrc { _dummy } => dist::rust_src(self),
 
+                Install { stage } => install::install(self, stage, target.target),
+
                 DebuggerScripts { stage } => {
                     let compiler = Compiler::new(stage, target.target);
                     dist::debugger_scripts(self,
@@ -660,7 +662,7 @@ impl Build {
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
-        self.add_bootstrap_key(compiler, &mut cargo);
+        self.add_bootstrap_key(&mut cargo);
 
         // Specify some various options for build scripts used throughout
         // the build.
@@ -869,16 +871,11 @@ impl Build {
     }
 
     /// Adds the compiler's bootstrap key to the environment of `cmd`.
-    fn add_bootstrap_key(&self, compiler: &Compiler, cmd: &mut Command) {
-        // In stage0 we're using a previously released stable compiler, so we
-        // use the stage0 bootstrap key. Otherwise we use our own build's
-        // bootstrap key.
-        let bootstrap_key = if compiler.is_snapshot(self) && !self.local_rebuild {
-            &self.bootstrap_key_stage0
-        } else {
-            &self.bootstrap_key
-        };
-        cmd.env("RUSTC_BOOTSTRAP_KEY", bootstrap_key);
+    fn add_bootstrap_key(&self, cmd: &mut Command) {
+        cmd.env("RUSTC_BOOTSTRAP", "");
+        // FIXME: Transitionary measure to bootstrap using the old bootstrap logic.
+        // Remove this once the bootstrap compiler uses the new login in Issue #36548.
+        cmd.env("RUSTC_BOOTSTRAP_KEY", "62b3e239");
     }
 
     /// Returns the compiler's libdir where it stores the dynamic libraries that
@@ -989,7 +986,8 @@ impl Build {
 
     /// Returns the "musl root" for this `target`, if defined
     fn musl_root(&self, target: &str) -> Option<&Path> {
-        self.config.target_config[target].musl_root.as_ref()
+        self.config.target_config.get(target)
+            .and_then(|t| t.musl_root.as_ref())
             .or(self.config.musl_root.as_ref())
             .map(|p| &**p)
     }

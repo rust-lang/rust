@@ -7,10 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
-// ignore-pretty
+
+// ignore-pretty issue #37195
 
 mod issue_26873_multifile;
 
 fn main() {}
-

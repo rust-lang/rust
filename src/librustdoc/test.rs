@@ -355,7 +355,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
     if dont_insert_main || s.contains("fn main") {
         prog.push_str(&everything_else);
     } else {
-        prog.push_str("fn main() {\n    ");
+        prog.push_str("fn main() {\n");
         prog.push_str(&everything_else);
         prog = prog.trim().into();
         prog.push_str("\n}");
@@ -443,7 +443,7 @@ impl Collector {
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
             },
-            testfn: testing::DynTestFn(box move|| {
+            testfn: testing::DynTestFn(box move |()| {
                 runtest(&test,
                         &cratename,
                         cfgs,

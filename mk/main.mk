@@ -53,17 +53,6 @@ endif
 # versions in the same place
 CFG_FILENAME_EXTRA=$(shell printf '%s' $(CFG_RELEASE)$(CFG_EXTRA_FILENAME) | $(CFG_HASH_COMMAND))
 
-# A magic value that allows the compiler to use unstable features during the
-# bootstrap even when doing so would normally be an error because of feature
-# staging or because the build turns on warnings-as-errors and unstable features
-# default to warnings. The build has to match this key in an env var.
-#
-# This value is keyed off the release to ensure that all compilers for one
-# particular release have the same bootstrap key. Note that this is
-# intentionally not "secure" by any definition, this is largely just a deterrent
-# from users enabling unstable features on the stable compiler.
-CFG_BOOTSTRAP_KEY=$(CFG_FILENAME_EXTRA)
-
 # If local-rust is the same as the current version, then force a local-rebuild
 ifdef CFG_ENABLE_LOCAL_RUST
 ifeq ($(CFG_RELEASE),\
@@ -71,14 +60,6 @@ ifeq ($(CFG_RELEASE),\
     CFG_INFO := $(info cfg: auto-detected local-rebuild $(CFG_RELEASE))
     CFG_ENABLE_LOCAL_REBUILD = 1
 endif
-endif
-
-# The stage0 compiler needs to use the previous key recorded in src/stage0.txt,
-# except for local-rebuild when it just uses the same current key.
-ifdef CFG_ENABLE_LOCAL_REBUILD
-CFG_BOOTSTRAP_KEY_STAGE0=$(CFG_BOOTSTRAP_KEY)
-else
-CFG_BOOTSTRAP_KEY_STAGE0=$(shell sed -ne 's/^rustc_key: //p' $(S)src/stage0.txt)
 endif
 
 # The name of the package to use for creating tarballs, installers etc.
@@ -387,12 +368,15 @@ CFG_INFO := $(info cfg: disabling unstable features (CFG_DISABLE_UNSTABLE_FEATUR
 # Turn on feature-staging
 export CFG_DISABLE_UNSTABLE_FEATURES
 # Subvert unstable feature lints to do the self-build
-export RUSTC_BOOTSTRAP_KEY:=$(CFG_BOOTSTRAP_KEY)
+export RUSTC_BOOTSTRAP
 endif
-export CFG_BOOTSTRAP_KEY
 ifdef CFG_MUSL_ROOT
 export CFG_MUSL_ROOT
 endif
+
+# FIXME: Transitionary measure to bootstrap using the old bootstrap logic.
+# Remove this once the bootstrap compiler uses the new login in Issue #36548.
+export RUSTC_BOOTSTRAP_KEY=62b3e239
 
 ######################################################################
 # Per-stage targets and runner

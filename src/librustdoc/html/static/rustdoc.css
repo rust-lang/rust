@@ -570,8 +570,11 @@ pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
 pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }
+pre.rust .question-mark {
+    color: #ff9011;
+    font-weight: bold;
+}
 
-.rusttest { display: none; }
 pre.rust { position: relative; }
 a.test-arrow {
     background-color: rgba(78, 139, 202, 0.2);
@@ -585,6 +588,7 @@ a.test-arrow {
 }
 a.test-arrow:hover{
     background-color: #4e8bca;
+    text-decoration: none;
 }
 
 .section-header:hover a:after {

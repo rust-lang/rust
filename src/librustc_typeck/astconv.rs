@@ -55,7 +55,7 @@ use hir::def_id::DefId;
 use hir::print as pprust;
 use middle::resolve_lifetime as rl;
 use rustc::lint;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
@@ -124,7 +124,7 @@ pub trait AstConv<'gcx, 'tcx> {
     /// Same as ty_infer, but with a known type parameter definition.
     fn ty_infer_for_def(&self,
                         _def: &ty::TypeParameterDef<'tcx>,
-                        _substs: &Substs<'tcx>,
+                        _substs: &[Kind<'tcx>],
                         span: Span) -> Ty<'tcx> {
         self.ty_infer(span)
     }
@@ -561,15 +561,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     /// Returns the appropriate lifetime to use for any output lifetimes
     /// (if one exists) and a vector of the (pattern, number of lifetimes)
     /// corresponding to each input type/pattern.
-    fn find_implied_output_region(&self,
-                                  input_tys: &[Ty<'tcx>],
-                                  input_pats: Vec<String>) -> ElidedLifetime
+    fn find_implied_output_region<F>(&self,
+                                     input_tys: &[Ty<'tcx>],
+                                     input_pats: F) -> ElidedLifetime
+        where F: FnOnce() -> Vec<String>
     {
         let tcx = self.tcx();
         let mut lifetimes_for_params = Vec::new();
         let mut possible_implied_output_region = None;
 
-        for (input_type, input_pat) in input_tys.iter().zip(input_pats) {
+        for input_type in input_tys.iter() {
             let mut regions = FnvHashSet();
             let have_bound_regions = tcx.collect_regions(input_type, &mut regions);
 
@@ -583,8 +584,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 possible_implied_output_region = regions.iter().cloned().next();
             }
 
+            // Use a placeholder for `name` because computing it can be
+            // expensive and we don't want to do it until we know it's
+            // necessary.
             lifetimes_for_params.push(ElisionFailureInfo {
-                name: input_pat,
+                name: String::new(),
                 lifetime_count: regions.len(),
                 have_bound_regions: have_bound_regions
             });
@@ -593,6 +597,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         if lifetimes_for_params.iter().map(|e| e.lifetime_count).sum::<usize>() == 1 {
             Ok(*possible_implied_output_region.unwrap())
         } else {
+            // Fill in the expensive `name` fields now that we know they're
+            // needed.
+            for (info, input_pat) in lifetimes_for_params.iter_mut().zip(input_pats()) {
+                info.name = input_pat;
+            }
             Err(Some(lifetimes_for_params))
         }
     }
@@ -620,7 +629,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     fn convert_parenthesized_parameters(&self,
                                         rscope: &RegionScope,
-                                        region_substs: &Substs<'tcx>,
+                                        region_substs: &[Kind<'tcx>],
                                         data: &hir::ParenthesizedParameterData)
                                         -> (Ty<'tcx>, ConvertedBinding<'tcx>)
     {
@@ -629,7 +638,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let inputs: Vec<_> = data.inputs.iter().map(|a_t| {
             self.ast_ty_arg_to_ty(&binding_rscope, None, region_substs, a_t)
         }).collect();
-        let input_params = vec![String::new(); inputs.len()];
+        let inputs_len = inputs.len();
+        let input_params = || vec![String::new(); inputs_len];
         let implied_output_region = self.find_implied_output_region(&inputs, input_params);
 
         let (output, output_span) = match data.output {
@@ -650,7 +660,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             span: output_span
         };
 
-        (self.tcx().mk_tup(inputs), output_binding)
+        (self.tcx().mk_tup(&inputs), output_binding)
     }
 
     pub fn instantiate_poly_trait_ref(&self,
@@ -1431,7 +1441,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn ast_ty_arg_to_ty(&self,
                         rscope: &RegionScope,
                         def: Option<&ty::TypeParameterDef<'tcx>>,
-                        region_substs: &Substs<'tcx>,
+                        region_substs: &[Kind<'tcx>],
                         ast_ty: &hir::Ty)
                         -> Ty<'tcx>
     {
@@ -1653,8 +1663,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TyTup(ref fields) => {
                 let flds = fields.iter()
                                  .map(|t| self.ast_ty_to_ty(rscope, &t))
-                                 .collect();
-                tcx.mk_tup(flds)
+                                 .collect::<Vec<_>>();
+                tcx.mk_tup(&flds)
             }
             hir::TyBareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
@@ -1861,15 +1871,22 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
         let arg_tys: Vec<Ty> =
             arg_params.iter().map(|a| self.ty_of_arg(&rb, a, None)).collect();
-        let arg_pats: Vec<String> =
-            arg_params.iter().map(|a| pprust::pat_to_string(&a.pat)).collect();
 
         // Second, if there was exactly one lifetime (either a substitution or a
         // reference) in the arguments, then any anonymous regions in the output
         // have that lifetime.
         let implied_output_region = match explicit_self_category {
             ty::ExplicitSelfCategory::ByReference(region, _) => Ok(*region),
-            _ => self.find_implied_output_region(&arg_tys, arg_pats)
+            _ => {
+                // `pat_to_string` is expensive and
+                // `find_implied_output_region` only needs its result when
+                // there's an error. So we wrap it in a closure to avoid
+                // calling it until necessary.
+                let arg_pats = || {
+                    arg_params.iter().map(|a| pprust::pat_to_string(&a.pat)).collect()
+                };
+                self.find_implied_output_region(&arg_tys, arg_pats)
+            }
         };
 
         let output_ty = match decl.output {
@@ -2201,10 +2218,12 @@ fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
         } else {
             "expected"
         };
+        let arguments_plural = if required == 1 { "" } else { "s" };
         struct_span_err!(tcx.sess, span, E0243, "wrong number of type arguments")
             .span_label(
                 span,
-                &format!("{} {} type arguments, found {}", expected, required, supplied)
+                &format!("{} {} type argument{}, found {}",
+                         expected, required, arguments_plural, supplied)
             )
             .emit();
     } else if supplied > accepted {
@@ -2215,11 +2234,12 @@ fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
         } else {
             format!("expected {}", accepted)
         };
+        let arguments_plural = if accepted == 1 { "" } else { "s" };
 
         struct_span_err!(tcx.sess, span, E0244, "wrong number of type arguments")
             .span_label(
                 span,
-                &format!("{} type arguments, found {}", expected, supplied)
+                &format!("{} type argument{}, found {}", expected, arguments_plural, supplied)
             )
             .emit();
     }

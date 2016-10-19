@@ -12,11 +12,60 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fs::{OpenOptions, Metadata};
+use fs::{self, OpenOptions, Metadata};
 use io;
 use path::Path;
 use sys;
 use sys_common::{AsInnerMut, AsInner};
+
+/// Windows-specific extensions to `File`
+#[unstable(feature = "file_offset", issue = "35918")]
+pub trait FileExt {
+    /// Seeks to a given position and reads a number of bytes.
+    ///
+    /// Returns the number of bytes read.
+    ///
+    /// The offset is relative to the start of the file and thus independent
+    /// from the current cursor. The current cursor **is** affected by this
+    /// function, it is set to the end of the read.
+    ///
+    /// Reading beyond the end of the file will always return with a length of
+    /// 0.
+    ///
+    /// Note that similar to `File::read`, it is not an error to return with a
+    /// short read. When returning from such a short read, the file pointer is
+    /// still updated.
+    #[unstable(feature = "file_offset", issue = "35918")]
+    fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
+
+    /// Seeks to a given position and writes a number of bytes.
+    ///
+    /// Returns the number of bytes written.
+    ///
+    /// The offset is relative to the start of the file and thus independent
+    /// from the current cursor. The current cursor **is** affected by this
+    /// function, it is set to the end of the write.
+    ///
+    /// When writing beyond the end of the file, the file is appropiately
+    /// extended and the intermediate bytes are left uninitialized.
+    ///
+    /// Note that similar to `File::write`, it is not an error to return a
+    /// short write. When returning from such a short write, the file pointer
+    /// is still updated.
+    #[unstable(feature = "file_offset", issue = "35918")]
+    fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
+}
+
+#[unstable(feature = "file_offset", issue = "35918")]
+impl FileExt for fs::File {
+    fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        self.as_inner().read_at(buf, offset)
+    }
+
+    fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        self.as_inner().write_at(buf, offset)
+    }
+}
 
 /// Windows-specific extensions to `OpenOptions`
 #[stable(feature = "open_options_ext", since = "1.10.0")]

@@ -577,11 +577,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                          terr: &TypeError<'tcx>)
                                          -> DiagnosticBuilder<'tcx>
     {
-        // FIXME: do we want to use a different error code for each origin?
-        let mut diag = struct_span_err!(
-            self.tcx.sess, trace.origin.span(), E0308,
-            "{}", trace.origin.as_failure_str()
-        );
+        let span = trace.origin.span();
+        let failure_str = trace.origin.as_failure_str();
+        let mut diag = match trace.origin {
+            TypeOrigin::IfExpressionWithNoElse(_) => {
+                struct_span_err!(self.tcx.sess, span, E0317, "{}", failure_str)
+            },
+            _ => {
+                struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str)
+            },
+        };
         self.note_type_err(&mut diag, trace.origin, None, Some(trace.values), terr);
         diag
     }
@@ -1226,16 +1231,17 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                          lifetime: hir::Lifetime,
                          region_names: &HashSet<ast::Name>)
                          -> hir::HirVec<hir::TyParam> {
-        ty_params.iter().map(|ty_param| {
-            let bounds = self.rebuild_ty_param_bounds(ty_param.bounds.clone(),
+        ty_params.into_iter().map(|ty_param| {
+            let bounds = self.rebuild_ty_param_bounds(ty_param.bounds,
                                                       lifetime,
                                                       region_names);
             hir::TyParam {
                 name: ty_param.name,
                 id: ty_param.id,
                 bounds: bounds,
-                default: ty_param.default.clone(),
+                default: ty_param.default,
                 span: ty_param.span,
+                pure_wrt_drop: ty_param.pure_wrt_drop,
             }
         }).collect()
     }
@@ -1294,8 +1300,11 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                         -> hir::Generics {
         let mut lifetimes = Vec::new();
         for lt in add {
-            lifetimes.push(hir::LifetimeDef { lifetime: *lt,
-                                              bounds: hir::HirVec::new() });
+            lifetimes.push(hir::LifetimeDef {
+                lifetime: *lt,
+                bounds: hir::HirVec::new(),
+                pure_wrt_drop: false,
+            });
         }
         for lt in &generics.lifetimes {
             if keep.contains(&lt.lifetime.name) ||

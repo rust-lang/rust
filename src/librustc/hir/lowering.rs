@@ -44,9 +44,8 @@ use hir;
 use hir::map::Definitions;
 use hir::map::definitions::DefPathData;
 use hir::def_id::{DefIndex, DefId};
-use hir::def::{Def, CtorKind, PathResolution};
+use hir::def::{Def, PathResolution};
 use session::Session;
-use lint;
 
 use std::collections::BTreeMap;
 use std::iter;
@@ -95,13 +94,7 @@ pub fn lower_crate(sess: &Session,
     let _ignore = sess.dep_graph.in_ignore();
 
     LoweringContext {
-        crate_root: if std_inject::no_core(krate) {
-            None
-        } else if std_inject::no_std(krate) {
-            Some("core")
-        } else {
-            Some("std")
-        },
+        crate_root: std_inject::injected_crate_name(krate),
         sess: sess,
         parent_def: None,
         resolver: resolver,
@@ -408,6 +401,7 @@ impl<'a> LoweringContext<'a> {
             bounds: self.lower_bounds(&tp.bounds),
             default: tp.default.as_ref().map(|x| self.lower_ty(x)),
             span: tp.span,
+            pure_wrt_drop: tp.attrs.iter().any(|attr| attr.check_name("may_dangle")),
         }
     }
 
@@ -427,6 +421,7 @@ impl<'a> LoweringContext<'a> {
         hir::LifetimeDef {
             lifetime: self.lower_lifetime(&l.lifetime),
             bounds: self.lower_lifetimes(&l.bounds),
+            pure_wrt_drop: l.attrs.iter().any(|attr| attr.check_name("may_dangle")),
         }
     }
 
@@ -857,22 +852,8 @@ impl<'a> LoweringContext<'a> {
                 }
                 PatKind::Lit(ref e) => hir::PatKind::Lit(self.lower_expr(e)),
                 PatKind::TupleStruct(ref path, ref pats, ddpos) => {
-                    match self.resolver.get_resolution(p.id).map(|d| d.base_def) {
-                        Some(def @ Def::StructCtor(_, CtorKind::Const)) |
-                        Some(def @ Def::VariantCtor(_, CtorKind::Const)) => {
-                            // Temporarily lower `UnitVariant(..)` into `UnitVariant`
-                            // for backward compatibility.
-                            let msg = format!("expected tuple struct/variant, found {} `{}`",
-                                            def.kind_name(), path);
-                            self.sess.add_lint(
-                                lint::builtin::MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
-                                p.id, p.span, msg
-                            );
-                            hir::PatKind::Path(None, self.lower_path(path))
-                        }
-                        _ => hir::PatKind::TupleStruct(self.lower_path(path),
+                    hir::PatKind::TupleStruct(self.lower_path(path),
                                         pats.iter().map(|x| self.lower_pat(x)).collect(), ddpos)
-                    }
                 }
                 PatKind::Path(ref opt_qself, ref path) => {
                     let opt_qself = opt_qself.as_ref().map(|qself| {

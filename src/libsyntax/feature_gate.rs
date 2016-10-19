@@ -30,7 +30,7 @@ use ast::{self, NodeId, PatKind};
 use attr;
 use codemap::{CodeMap, Spanned};
 use syntax_pos::Span;
-use errors::Handler;
+use errors::{DiagnosticBuilder, Handler};
 use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
 use parse::token::InternedString;
@@ -167,6 +167,9 @@ declare_features! (
     // RFC 1238
     (active, dropck_parametricity, "1.3.0", Some(28498)),
 
+    // Allows using the may_dangle attribute; RFC 1327
+    (active, dropck_eyepatch, "1.10.0", Some(34761)),
+
     // Allows the use of custom attributes; RFC 572
     (active, custom_attribute, "1.0.0", Some(29642)),
 
@@ -253,9 +256,6 @@ declare_features! (
     // a...b and ...b
     (active, inclusive_range_syntax, "1.7.0", Some(28237)),
 
-    // `expr?`
-    (active, question_mark, "1.9.0", Some(31436)),
-
     // impl specialization (RFC 1210)
     (active, specialization, "1.7.0", Some(31844)),
 
@@ -292,7 +292,7 @@ declare_features! (
     (active, item_like_imports, "1.13.0", Some(35120)),
 
     // Macros 1.1
-    (active, rustc_macro, "1.13.0", Some(35900)),
+    (active, proc_macro, "1.13.0", Some(35900)),
 
     // Allows untagged unions `union U { ... }`
     (active, untagged_unions, "1.13.0", Some(32836)),
@@ -348,6 +348,8 @@ declare_features! (
     (accepted, while_let, "1.0.0", None),
     // Allows `#[deprecated]` attribute
     (accepted, deprecated, "1.9.0", Some(29935)),
+    // `expr?`
+    (accepted, question_mark, "1.14.0", Some(31436)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -576,10 +578,10 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                    is an experimental feature",
                                   cfg_fn!(linked_from))),
 
-    ("rustc_macro_derive", Normal, Gated("rustc_macro",
-                                         "the `#[rustc_macro_derive]` attribute \
-                                          is an experimental feature",
-                                         cfg_fn!(rustc_macro))),
+    ("proc_macro_derive", Normal, Gated("proc_macro",
+                                        "the `#[proc_macro_derive]` attribute \
+                                         is an experimental feature",
+                                        cfg_fn!(proc_macro))),
 
     ("rustc_copy_clone_marker", Whitelisted, Gated("rustc_attrs",
                                                    "internal implementation detail",
@@ -617,6 +619,11 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
            "unsafe_destructor_blind_to_params has unstable semantics \
             and may be removed in the future",
            cfg_fn!(dropck_parametricity))),
+    ("may_dangle",
+     Normal,
+     Gated("dropck_eyepatch",
+           "may_dangle has unstable semantics and may be removed in the future",
+           cfg_fn!(dropck_eyepatch))),
     ("unwind", Whitelisted, Gated("unwind_attributes", "#[unwind] is experimental",
                                   cfg_fn!(unwind_attributes))),
 
@@ -658,7 +665,7 @@ const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)]
     ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
     ("target_thread_local", "cfg_target_thread_local", cfg_fn!(cfg_target_thread_local)),
     ("target_has_atomic", "cfg_target_has_atomic", cfg_fn!(cfg_target_has_atomic)),
-    ("rustc_macro", "rustc_macro", cfg_fn!(rustc_macro)),
+    ("proc_macro", "proc_macro", cfg_fn!(proc_macro)),
 ];
 
 #[derive(Debug, Eq, PartialEq)]
@@ -793,6 +800,11 @@ pub enum GateIssue {
 
 pub fn emit_feature_err(sess: &ParseSess, feature: &str, span: Span, issue: GateIssue,
                         explain: &str) {
+    feature_err(sess, feature, span, issue, explain).emit();
+}
+
+pub fn feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue: GateIssue,
+                   explain: &str) -> DiagnosticBuilder<'a> {
     let diag = &sess.span_diagnostic;
 
     let issue = match issue {
@@ -813,7 +825,7 @@ pub fn emit_feature_err(sess: &ParseSess, feature: &str, span: Span, issue: Gate
                           feature));
     }
 
-    err.emit();
+    err
 }
 
 const EXPLAIN_BOX_SYNTAX: &'static str =
@@ -1072,9 +1084,6 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                                   e.span,
                                   "inclusive range syntax is experimental");
             }
-            ast::ExprKind::Try(..) => {
-                gate_feature_post!(&self, question_mark, e.span, "the `?` operator is not stable");
-            }
             ast::ExprKind::InPlace(..) => {
                 gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
             }
@@ -1321,15 +1330,12 @@ impl UnstableFeatures {
     pub fn from_environment() -> UnstableFeatures {
         // Whether this is a feature-staged build, i.e. on the beta or stable channel
         let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
-        // The secret key needed to get through the rustc build itself by
-        // subverting the unstable features lints
-        let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
-        // The matching key to the above, only known by the build system
-        let bootstrap_provided_key = env::var("RUSTC_BOOTSTRAP_KEY").ok();
-        match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
-            (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
-            (true, _, _) => UnstableFeatures::Disallow,
-            (false, _, _) => UnstableFeatures::Allow
+        // Whether we should enable unstable features for bootstrapping
+        let bootstrap = env::var("RUSTC_BOOTSTRAP").is_ok();
+        match (disable_unstable_features, bootstrap) {
+            (_, true) => UnstableFeatures::Cheat,
+            (true, _) => UnstableFeatures::Disallow,
+            (false, _) => UnstableFeatures::Allow
         }
     }
 

@@ -55,7 +55,6 @@ use any::TypeId;
 use cell;
 use char;
 use fmt::{self, Debug, Display};
-use marker::Reflect;
 use mem::transmute;
 use num;
 use str;
@@ -63,12 +62,14 @@ use string;
 
 /// Base functionality for all errors in Rust.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Error: Debug + Display + Reflect {
+pub trait Error: Debug + Display {
     /// A short description of the error.
     ///
-    /// The description should not contain newlines or sentence-ending
-    /// punctuation, to facilitate embedding in larger user-facing
-    /// strings.
+    /// The description should only be used for a simple message.
+    /// It should not contain newlines or sentence-ending punctuation,
+    /// to facilitate embedding in larger user-facing strings.
+    /// For showing formatted error messages with more information see
+    /// [Display](https://doc.rust-lang.org/std/fmt/trait.Display.html).
     ///
     /// # Examples
     ///

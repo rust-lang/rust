@@ -25,9 +25,8 @@ use std::process::Command;
 
 use {Build, Compiler};
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy};
-use regex::{RegexSet, quote};
 
-fn package_vers(build: &Build) -> &str {
+pub fn package_vers(build: &Build) -> &str {
     match &build.config.channel[..] {
         "stable" => &build.release,
         "beta" => "beta",
@@ -40,7 +39,7 @@ fn distdir(build: &Build) -> PathBuf {
     build.out.join("dist")
 }
 
-fn tmpdir(build: &Build) -> PathBuf {
+pub fn tmpdir(build: &Build) -> PathBuf {
     build.out.join("tmp/dist")
 }
 
@@ -315,49 +314,31 @@ pub fn rust_src(build: &Build) {
         "mk"
     ];
 
-    // Exclude paths matching these wildcard expressions
-    let excludes = [
-        // exclude-vcs
-        "CVS", "RCS", "SCCS", ".git", ".gitignore", ".gitmodules", ".gitattributes", ".cvsignore",
-        ".svn", ".arch-ids", "{arch}", "=RELEASE-ID", "=meta-update", "=update", ".bzr",
-        ".bzrignore", ".bzrtags", ".hg", ".hgignore", ".hgrags", "_darcs",
-        // extensions
-        "*~", "*.pyc",
-        // misc
-        "llvm/test/*/*.ll",
-        "llvm/test/*/*.td",
-        "llvm/test/*/*.s",
-        "llvm/test/*/*/*.ll",
-        "llvm/test/*/*/*.td",
-        "llvm/test/*/*/*.s"
-    ];
-
-    // Construct a set of regexes for efficiently testing whether paths match one of the above
-    // expressions.
-    let regex_set = t!(RegexSet::new(
-        // This converts a wildcard expression to a regex
-        excludes.iter().map(|&s| {
-            // Prefix ensures that matching starts on a path separator boundary
-            r"^(.*[\\/])?".to_owned() + (
-                // Escape the expression to produce a regex matching exactly that string
-                &quote(s)
-                // Replace slashes with a pattern matching either forward or backslash
-                .replace(r"/", r"[\\/]")
-                // Replace wildcards with a pattern matching a single path segment, ie. containing
-                // no slashes.
-                .replace(r"\*", r"[^\\/]*")
-            // Suffix anchors to the end of the path
-            ) + "$"
-        })
-    ));
-
-    // Create a filter which skips files which match the regex set or contain invalid unicode
     let filter_fn = move |path: &Path| {
-        if let Some(path) = path.to_str() {
-            !regex_set.is_match(path)
-        } else {
-            false
+        let spath = match path.to_str() {
+            Some(path) => path,
+            None => return false,
+        };
+        if spath.ends_with("~") || spath.ends_with(".pyc") {
+            return false
         }
+        if spath.contains("llvm/test") || spath.contains("llvm\\test") {
+            if spath.ends_with(".ll") ||
+               spath.ends_with(".td") ||
+               spath.ends_with(".s") {
+                return false
+            }
+        }
+
+        let excludes = [
+            "CVS", "RCS", "SCCS", ".git", ".gitignore", ".gitmodules",
+            ".gitattributes", ".cvsignore", ".svn", ".arch-ids", "{arch}",
+            "=RELEASE-ID", "=meta-update", "=update", ".bzr", ".bzrignore",
+            ".bzrtags", ".hg", ".hgignore", ".hgrags", "_darcs",
+        ];
+        !path.iter()
+             .map(|s| s.to_str().unwrap())
+             .any(|s| excludes.contains(&s))
     };
 
     // Copy the directories using our filter
@@ -418,7 +399,7 @@ fn chmod(_path: &Path, _perms: u32) {}
 
 // We have to run a few shell scripts, which choke quite a bit on both `\`
 // characters and on `C:\` paths, so normalize both of them away.
-fn sanitize_sh(path: &Path) -> String {
+pub fn sanitize_sh(path: &Path) -> String {
     let path = path.to_str().unwrap().replace("\\", "/");
     return change_drive(&path).unwrap_or(path);
 

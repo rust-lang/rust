@@ -13,10 +13,8 @@ use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
-use abi;
 use adt;
 use base;
-use builder::Builder;
 use common::{self, BlockAndBuilder, CrateContext, C_uint, C_undef};
 use consts;
 use machine;
@@ -67,18 +65,6 @@ impl<'tcx> LvalueRef<'tcx> {
             _ => bug!("unexpected type `{}` in LvalueRef::len", ty)
         }
     }
-}
-
-pub fn get_meta(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
-    b.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
-}
-
-pub fn get_dataptr(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
-    b.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
-}
-
-pub fn load_fat_ptr(b: &Builder, fat_ptr: ValueRef) -> (ValueRef, ValueRef) {
-    (b.load(get_dataptr(b, fat_ptr)), b.load(get_meta(b, fat_ptr)))
 }
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {

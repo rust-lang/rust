@@ -193,6 +193,14 @@ impl FromInner<u32> for FilePermissions {
     }
 }
 
+impl fmt::Debug for ReadDir {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
+        // Thus the result will be e g 'ReadDir("/home")'
+        fmt::Debug::fmt(&*self.root, f)
+    }
+}
+
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
@@ -483,8 +491,16 @@ impl File {
         self.0.read_to_end(buf)
     }
 
+    pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        self.0.read_at(buf, offset)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
+    }
+
+    pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        self.0.write_at(buf, offset)
     }
 
     pub fn flush(&self) -> io::Result<()> { Ok(()) }
@@ -669,7 +685,7 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
 
     loop {
         let buf_read = cvt(unsafe {
-            libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity() as libc::size_t)
+            libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity())
         })? as usize;
 
         unsafe { buf.set_len(buf_read); }

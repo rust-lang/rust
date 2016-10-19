@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty #27582
+// ignore-pretty issue #37201
 
 // Check that when a `let`-binding occurs in a loop, its associated
 // drop-flag is reinitialized (to indicate "needs-drop" at the end of

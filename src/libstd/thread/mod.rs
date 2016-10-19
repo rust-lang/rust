@@ -166,6 +166,7 @@ use panicking;
 use str;
 use sync::{Mutex, Condvar, Arc};
 use sys::thread as imp;
+use sys_common::mutex;
 use sys_common::thread_info;
 use sys_common::util;
 use sys_common::{AsInner, IntoInner};
@@ -525,12 +526,52 @@ pub fn park_timeout(dur: Duration) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// ThreadId
+////////////////////////////////////////////////////////////////////////////////
+
+/// A unique identifier for a running thread.
+///
+/// A `ThreadId` is an opaque object that has a unique value for each thread
+/// that creates one. `ThreadId`s do not correspond to a thread's system-
+/// designated identifier.
+#[unstable(feature = "thread_id", issue = "21507")]
+#[derive(Eq, PartialEq, Copy, Clone)]
+pub struct ThreadId(u64);
+
+impl ThreadId {
+    // Generate a new unique thread ID.
+    fn new() -> ThreadId {
+        static GUARD: mutex::Mutex = mutex::Mutex::new();
+        static mut COUNTER: u64 = 0;
+
+        unsafe {
+            GUARD.lock();
+
+            // If we somehow use up all our bits, panic so that we're not
+            // covering up subtle bugs of IDs being reused.
+            if COUNTER == ::u64::MAX {
+                GUARD.unlock();
+                panic!("failed to generate unique thread ID: bitspace exhausted");
+            }
+
+            let id = COUNTER;
+            COUNTER += 1;
+
+            GUARD.unlock();
+
+            ThreadId(id)
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Thread
 ////////////////////////////////////////////////////////////////////////////////
 
 /// The internal representation of a `Thread` handle
 struct Inner {
     name: Option<CString>,      // Guaranteed to be UTF-8
+    id: ThreadId,
     lock: Mutex<bool>,          // true when there is a buffered unpark
     cvar: Condvar,
 }
@@ -551,6 +592,7 @@ impl Thread {
         Thread {
             inner: Arc::new(Inner {
                 name: cname,
+                id: ThreadId::new(),
                 lock: Mutex::new(false),
                 cvar: Condvar::new(),
             })
@@ -567,6 +609,12 @@ impl Thread {
             *guard = true;
             self.inner.cvar.notify_one();
         }
+    }
+
+    /// Gets the thread's unique identifier.
+    #[unstable(feature = "thread_id", issue = "21507")]
+    pub fn id(&self) -> ThreadId {
+        self.inner.id
     }
 
     /// Gets the thread's name.
@@ -975,6 +1023,17 @@ mod tests {
     #[test]
     fn sleep_ms_smoke() {
         thread::sleep(Duration::from_millis(2));
+    }
+
+    #[test]
+    fn test_thread_id_equal() {
+        assert!(thread::current().id() == thread::current().id());
+    }
+
+    #[test]
+    fn test_thread_id_not_equal() {
+        let spawned_id = thread::spawn(|| thread::current().id()).join().unwrap();
+        assert!(thread::current().id() != spawned_id);
     }
 
     // NOTE: the corresponding test for stderr is in run-pass/thread-stderr, due

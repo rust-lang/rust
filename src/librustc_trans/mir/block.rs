@@ -35,7 +35,7 @@ use syntax::parse::token;
 use super::{MirContext, LocalRef};
 use super::analyze::CleanupKind;
 use super::constant::Const;
-use super::lvalue::{LvalueRef, load_fat_ptr};
+use super::lvalue::{LvalueRef};
 use super::operand::OperandRef;
 use super::operand::OperandValue::*;
 
@@ -418,7 +418,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     _ => bug!("{} is not callable", callee.ty)
                 };
 
-                let sig = bcx.tcx().erase_late_bound_regions(sig);
+                let sig = bcx.tcx().erase_late_bound_regions_and_normalize(sig);
 
                 // Handle intrinsics old trans wants Expr's for, ourselves.
                 let intrinsic = match (&callee.ty.sty, &callee.data) {
@@ -703,7 +703,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 for (n, &ty) in arg_types.iter().enumerate() {
                     let ptr = adt::trans_field_ptr_builder(bcx, tuple.ty, base, Disr(0), n);
                     let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
-                        let (lldata, llextra) = load_fat_ptr(bcx, ptr);
+                        let (lldata, llextra) = base::load_fat_ptr_builder(bcx, ptr, ty);
                         Pair(lldata, llextra)
                     } else {
                         // trans_argument will load this if it needs to

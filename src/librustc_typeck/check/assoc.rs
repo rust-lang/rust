@@ -9,13 +9,13 @@
 // except according to those terms.
 
 use rustc::infer::InferCtxt;
-use rustc::traits::{self, FulfillmentContext, Normalized, MiscObligation,
-                     SelectionContext, ObligationCause};
+use rustc::traits::{self, FulfillmentContext, Normalized, MiscObligation, SelectionContext,
+                    ObligationCause};
 use rustc::ty::fold::TypeFoldable;
 use syntax::ast;
 use syntax_pos::Span;
 
-//FIXME(@jroesch): Ideally we should be able to drop the fulfillment_cx argument.
+// FIXME(@jroesch): Ideally we should be able to drop the fulfillment_cx argument.
 pub fn normalize_associated_types_in<'a, 'gcx, 'tcx, T>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     fulfillment_cx: &mut FulfillmentContext<'tcx>,

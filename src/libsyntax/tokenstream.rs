@@ -134,7 +134,6 @@ impl TokenTree {
                     AttrStyle::Inner => 3,
                 }
             }
-            TokenTree::Token(_, token::SpecialVarNt(..)) => 2,
             TokenTree::Token(_, token::MatchNt(..)) => 3,
             TokenTree::Token(_, token::Interpolated(Nonterminal::NtTT(..))) => 1,
             TokenTree::Delimited(_, ref delimed) => delimed.tts.len() + 2,
@@ -188,11 +187,6 @@ impl TokenTree {
                 }
                 delimed.tts[index - 1].clone()
             }
-            (&TokenTree::Token(sp, token::SpecialVarNt(var)), _) => {
-                let v = [TokenTree::Token(sp, token::Dollar),
-                         TokenTree::Token(sp, token::Ident(token::str_to_ident(var.as_str())))];
-                v[index].clone()
-            }
             (&TokenTree::Token(sp, token::MatchNt(name, kind)), _) => {
                 let v = [TokenTree::Token(sp, token::SubstNt(name)),
                          TokenTree::Token(sp, token::Colon),
@@ -223,7 +217,6 @@ impl TokenTree {
                  -> macro_parser::NamedParseResult {
         // `None` is because we're not interpolating
         let arg_rdr = lexer::new_tt_reader_with_doc_flag(&cx.parse_sess().span_diagnostic,
-                                                         None,
                                                          None,
                                                          tts.iter().cloned().collect(),
                                                          true);

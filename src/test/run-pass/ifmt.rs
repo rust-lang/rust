@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-pretty-expanded unnecessary unsafe block generated
-
 #![deny(warnings)]
 #![allow(unused_must_use)]
 #![allow(unused_features)]
 #![feature(box_syntax)]
-#![feature(question_mark)]
 
 use std::fmt::{self, Write};
 use std::usize;
