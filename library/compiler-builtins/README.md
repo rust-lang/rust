@@ -11,16 +11,24 @@ See [rust-lang/rust#35437][0].
 
 ## When and how to use this crate?
 
-If you are working with a target that doesn't have binary releases of std available via rustup (this
-probably means you are building the core crate yourself) and need compiler-rt intrinsics (i.e. you
-are probably getting linker errors when building an executable: `undefined reference to
-__aeabi_memcpy`), you can use this crate to get those intrinsics and solve the linker errors. To do
-that, simply add this crate as a Cargo dependency (it doesn't matter where in the dependency graph
-this crate ends up, as long as it's there):
+If you are working with a target that doesn't have binary releases of std
+available via rustup (this probably means you are building the core crate
+yourself) and need compiler-rt intrinsics (i.e. you are probably getting linker
+errors when building an executable: `undefined reference to __aeabi_memcpy`),
+you can use this crate to get those intrinsics and solve the linker errors. To
+do that, add this crate somewhere in the dependency graph of the crate you are
+building:
 
 ``` toml
+# Cargo.toml
 [dependencies]
 compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
+```
+
+``` rust
+extern crate compiler_builtins;
+
+// ...
 ```
 
 If you still get an "undefined reference to $INTRINSIC" error after that change,
