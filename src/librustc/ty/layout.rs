@@ -597,7 +597,8 @@ impl<'a, 'gcx, 'tcx> Struct {
                                   -> Result<Option<FieldPath>, LayoutError<'gcx>> {
         let tcx = infcx.tcx.global_tcx();
         match (ty.layout(infcx)?, &ty.sty) {
-            (&Scalar { non_zero: true, .. }, _) => Ok(Some(vec![])),
+            (&Scalar { non_zero: true, .. }, _) |
+            (&CEnum { non_zero: true, .. }, _) => Ok(Some(vec![])),
             (&FatPointer { non_zero: true, .. }, _) => {
                 Ok(Some(vec![FAT_PTR_ADDR as u32]))
             }
@@ -769,6 +770,7 @@ pub enum Layout {
     CEnum {
         discr: Integer,
         signed: bool,
+        non_zero: bool,
         // Inclusive discriminant range.
         // If min > max, it represents min...u64::MAX followed by 0...max.
         // FIXME(eddyb) always use the shortest range, e.g. by finding
@@ -1002,9 +1004,10 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                 if def.is_enum() && def.variants.iter().all(|v| v.fields.is_empty()) {
                     // All bodies empty -> intlike
-                    let (mut min, mut max) = (i64::MAX, i64::MIN);
+                    let (mut min, mut max, mut non_zero) = (i64::MAX, i64::MIN, true);
                     for v in &def.variants {
                         let x = v.disr_val.to_u64_unchecked() as i64;
+                        if x == 0 { non_zero = false; }
                         if x < min { min = x; }
                         if x > max { max = x; }
                     }
@@ -1013,6 +1016,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
+                        non_zero: non_zero,
                         min: min as u64,
                         max: max as u64
                     });
@@ -1069,19 +1073,17 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                         // FIXME(eddyb) should take advantage of a newtype.
                         if path == &[0] && variants[discr].len() == 1 {
-                            match *variants[discr][0].layout(infcx)? {
-                                Scalar { value, .. } => {
-                                    return success(RawNullablePointer {
-                                        nndiscr: discr as u64,
-                                        value: value
-                                    });
-                                }
-                                _ => {
-                                    bug!("Layout::compute: `{}`'s non-zero \
-                                        `{}` field not scalar?!",
-                                        ty, variants[discr][0])
-                                }
-                            }
+                            let value = match *variants[discr][0].layout(infcx)? {
+                                Scalar { value, .. } => value,
+                                CEnum { discr, .. } => Int(discr),
+                                _ => bug!("Layout::compute: `{}`'s non-zero \
+                                           `{}` field not scalar?!",
+                                           ty, variants[discr][0])
+                            };
+                            return success(RawNullablePointer {
+                                nndiscr: discr as u64,
+                                value: value,
+                            });
                         }
 
                         path.push(0); // For GEP through a pointer.

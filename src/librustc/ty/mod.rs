@@ -680,6 +680,11 @@ pub struct TypeParameterDef<'tcx> {
     pub default_def_id: DefId, // for use in error reporing about defaults
     pub default: Option<Ty<'tcx>>,
     pub object_lifetime_default: ObjectLifetimeDefault<'tcx>,
+
+    /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
+    /// on generic parameter `T`, asserts data behind the parameter
+    /// `T` won't be accessed during the parent type's `Drop` impl.
+    pub pure_wrt_drop: bool,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -688,6 +693,11 @@ pub struct RegionParameterDef<'tcx> {
     pub def_id: DefId,
     pub index: u32,
     pub bounds: Vec<&'tcx ty::Region>,
+
+    /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
+    /// on generic parameter `'a`, asserts data of lifetime `'a`
+    /// won't be accessed during the parent type's `Drop` impl.
+    pub pure_wrt_drop: bool,
 }
 
 impl<'tcx> RegionParameterDef<'tcx> {
@@ -731,6 +741,14 @@ impl<'tcx> Generics<'tcx> {
 
     pub fn count(&self) -> usize {
         self.parent_count() + self.own_count()
+    }
+
+    pub fn region_param(&self, param: &EarlyBoundRegion) -> &RegionParameterDef<'tcx> {
+        &self.regions[param.index as usize - self.has_self as usize]
+    }
+
+    pub fn type_param(&self, param: &ParamTy) -> &TypeParameterDef<'tcx> {
+        &self.types[param.idx as usize - self.has_self as usize - self.regions.len()]
     }
 }
 

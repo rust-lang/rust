@@ -11,8 +11,6 @@
 // Test that the lifetime from the enclosing `&` is "inherited"
 // through the `MyBox` struct.
 
-// pretty-expanded FIXME #23616
-
 #![allow(dead_code)]
 #![feature(rustc_error)]
 

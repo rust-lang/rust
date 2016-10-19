@@ -14,6 +14,7 @@ use rustc_data_structures::fnv::FnvHashMap;
 use rustc_data_structures::graph::{DepthFirstTraversal, INCOMING, NodeIndex};
 
 use super::hash::*;
+use ich::Fingerprint;
 
 /// A data-structure that makes it easy to enumerate the hashable
 /// predecessors of any given dep-node.
@@ -26,7 +27,7 @@ pub struct Predecessors<'query> {
 
     // - Keys: some hashable node
     // - Values: the hash thereof
-    pub hashes: FnvHashMap<&'query DepNode<DefId>, u64>,
+    pub hashes: FnvHashMap<&'query DepNode<DefId>, Fingerprint>,
 }
 
 impl<'q> Predecessors<'q> {

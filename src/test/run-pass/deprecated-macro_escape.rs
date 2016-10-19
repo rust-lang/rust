@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
-
 #[macro_escape] //~ WARNING macro_escape is a deprecated synonym for macro_use
 mod foo {
 }

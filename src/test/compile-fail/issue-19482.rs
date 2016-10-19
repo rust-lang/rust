@@ -11,8 +11,6 @@
 // Test that a partially specified trait object with unspecified associated
 // type does not type-check.
 
-// pretty-expanded FIXME #23616
-
 trait Foo {
     type A;
 

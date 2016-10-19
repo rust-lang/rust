@@ -22,9 +22,6 @@ RLIB_GLOB = lib$(1)*.rlib
 BIN = $(1)
 
 UNAME = $(shell uname)
-ifneq (,$(findstring MINGW,$(UNAME)))
-IS_WINDOWS=1
-endif
 
 ifeq ($(UNAME),Darwin)
 RUN = $(TARGET_RPATH_ENV) $(RUN_BINFILE)

@@ -13,12 +13,12 @@
 use syntax_pos::{Span, FileMap};
 use CodeMapper;
 use std::rc::Rc;
-use {Level};
+use Level;
 
 #[derive(Clone)]
 pub struct SnippetData {
     codemap: Rc<CodeMapper>,
-    files: Vec<FileInfo>
+    files: Vec<FileInfo>,
 }
 
 #[derive(Clone)]

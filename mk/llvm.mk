@@ -36,22 +36,27 @@ endif
 # If CFG_LLVM_ROOT is defined then we don't build LLVM ourselves
 ifeq ($(CFG_LLVM_ROOT),)
 
-LLVM_STAMP_$(1) = $$(CFG_LLVM_BUILD_DIR_$(1))/llvm-auto-clean-stamp
+LLVM_STAMP_$(1) = $(S)src/rustllvm/llvm-auto-clean-trigger
 LLVM_DONE_$(1) = $$(CFG_LLVM_BUILD_DIR_$(1))/llvm-finished-building
 
 $$(LLVM_CONFIG_$(1)): $$(LLVM_DONE_$(1))
 
+ifneq ($$(CFG_NINJA),)
+BUILD_LLVM_$(1) := $$(CFG_NINJA) -C $$(CFG_LLVM_BUILD_DIR_$(1))
+else ifeq ($$(findstring msvc,$(1)),msvc)
+BUILD_LLVM_$(1) := $$(CFG_CMAKE) --build $$(CFG_LLVM_BUILD_DIR_$(1)) \
+			--config $$(LLVM_BUILD_CONFIG_MODE)
+else
+BUILD_LLVM_$(1) := $$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1))
+endif
+
 $$(LLVM_DONE_$(1)): $$(LLVM_DEPS_TARGET_$(1)) $$(LLVM_STAMP_$(1))
 	@$$(call E, cmake: llvm)
-ifneq ($$(CFG_NINJA),)
-	$$(Q)$$(CFG_NINJA) -C $$(CFG_LLVM_BUILD_DIR_$(1))
-else ifeq ($$(findstring msvc,$(1)),msvc)
-	$$(Q)$$(CFG_CMAKE) --build $$(CFG_LLVM_BUILD_DIR_$(1)) \
-		--config $$(LLVM_BUILD_CONFIG_MODE)
-else
-	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1))
-endif
-	$$(Q)touch $$@
+	$$(Q)if ! cmp $$(LLVM_STAMP_$(1)) $$(LLVM_DONE_$(1)); then \
+		$$(MAKE) clean-llvm$(1); \
+		$$(BUILD_LLVM_$(1)); \
+	fi
+	$$(Q)cp $$(LLVM_STAMP_$(1)) $$@
 
 ifneq ($$(CFG_NINJA),)
 clean-llvm$(1):
@@ -74,17 +79,6 @@ clean-llvm$(1):
 endif
 
 $$(LLVM_AR_$(1)): $$(LLVM_CONFIG_$(1))
-
-# This is used to independently force an LLVM clean rebuild
-# when we changed something not otherwise captured by builtin
-# dependencies. In these cases, commit a change that touches
-# the stamp in the source dir.
-$$(LLVM_STAMP_$(1)): $$(S)src/rustllvm/llvm-auto-clean-trigger
-	@$$(call E, make: cleaning llvm)
-	$$(Q)touch $$@.start_time
-	$$(Q)$$(MAKE) clean-llvm$(1)
-	@$$(call E, make: done cleaning llvm)
-	touch -r $$@.start_time $$@ && rm $$@.start_time
 
 ifeq ($$(CFG_ENABLE_LLVM_STATIC_STDCPP),1)
 LLVM_STDCPP_RUSTFLAGS_$(1) = -L "$$(dir $$(shell $$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \

@@ -116,7 +116,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext) -> EHAction {
         // The "IP" is an index into the call-site table, with two exceptions:
         // -1 means 'no-action', and 0 means 'terminate'.
         match ip as isize {
-           -1 => return EHAction::None,
+            -1 => return EHAction::None,
             0 => return EHAction::Terminate,
             _ => (),
         }
@@ -182,12 +182,8 @@ unsafe fn read_encoded_pointer(reader: &mut DwarfReader,
             assert!(context.func_start != 0);
             context.func_start
         }
-        DW_EH_PE_textrel => {
-            (*context.get_text_start)()
-        }
-        DW_EH_PE_datarel => {
-            (*context.get_data_start)()
-        }
+        DW_EH_PE_textrel => (*context.get_text_start)(),
+        DW_EH_PE_datarel => (*context.get_data_start)(),
         _ => panic!(),
     };
 

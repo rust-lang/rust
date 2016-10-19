@@ -9,13 +9,12 @@
 // except according to those terms.
 
 // aux-build:derive-a.rs
-// aux-build:derive-a-2.rs
 
 #![feature(proc_macro)]
 
 #[macro_use]
 extern crate derive_a;
 #[macro_use]
-extern crate derive_a_2; //~ ERROR: cannot shadow existing derive mode `A`
+extern crate derive_a; //~ ERROR `derive_a` has already been defined
 
 fn main() {}
