@@ -617,11 +617,11 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree])
         -> parser::Parser<'a> {
-        parse::tts_to_parser(self.parse_sess, tts.to_vec(), self.cfg())
+        parse::tts_to_parser(self.parse_sess, tts.to_vec(), self.cfg().clone())
     }
     pub fn codemap(&self) -> &'a CodeMap { self.parse_sess.codemap() }
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
-    pub fn cfg(&self) -> ast::CrateConfig { self.cfg.clone() }
+    pub fn cfg(&self) -> &ast::CrateConfig { &self.cfg }
     pub fn call_site(&self) -> Span {
         self.codemap().with_expn_info(self.backtrace(), |ei| match ei {
             Some(expn_info) => expn_info.call_site,
