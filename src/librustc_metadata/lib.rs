@@ -53,7 +53,7 @@ mod index_builder;
 mod index;
 mod encoder;
 mod decoder;
-mod csearch;
+mod cstore_impl;
 mod schema;
 
 pub mod creader;
