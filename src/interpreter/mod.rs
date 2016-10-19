@@ -1242,9 +1242,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         use syntax::ast::FloatTy;
 
-        let val = match &ty.sty {
-            &ty::TyBool => PrimVal::Bool(self.memory.read_bool(ptr)?),
-            &ty::TyChar => {
+        let val = match ty.sty {
+            ty::TyBool => PrimVal::Bool(self.memory.read_bool(ptr)?),
+            ty::TyChar => {
                 let c = self.memory.read_uint(ptr, 4)? as u32;
                 match ::std::char::from_u32(c) {
                     Some(ch) => PrimVal::Char(ch),
@@ -1252,7 +1252,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            &ty::TyInt(int_ty) => {
+            ty::TyInt(int_ty) => {
                 use syntax::ast::IntTy::*;
                 let size = match int_ty {
                     I8 => 1,
@@ -1265,7 +1265,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 PrimVal::int_with_size(n, size)
             }
 
-            &ty::TyUint(uint_ty) => {
+            ty::TyUint(uint_ty) => {
                 use syntax::ast::UintTy::*;
                 let size = match uint_ty {
                     U8 => 1,
@@ -1278,16 +1278,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 PrimVal::uint_with_size(n, size)
             }
 
-            &ty::TyFloat(FloatTy::F32) => PrimVal::F32(self.memory.read_f32(ptr)?),
-            &ty::TyFloat(FloatTy::F64) => PrimVal::F64(self.memory.read_f64(ptr)?),
+            ty::TyFloat(FloatTy::F32) => PrimVal::F32(self.memory.read_f32(ptr)?),
+            ty::TyFloat(FloatTy::F64) => PrimVal::F64(self.memory.read_f64(ptr)?),
 
-            &ty::TyFnDef(def_id, substs, fn_ty) => {
+            ty::TyFnDef(def_id, substs, fn_ty) => {
                 PrimVal::FnPtr(self.memory.create_fn_ptr(def_id, substs, fn_ty))
             },
-            &ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::FnPtr)?,
-            &ty::TyBox(ty) |
-            &ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-            &ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+            ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::FnPtr)?,
+            ty::TyBox(ty) |
+            ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                 let p = self.memory.read_ptr(ptr)?;
                 if self.type_is_sized(ty) {
                     PrimVal::Ptr(p)
@@ -1304,7 +1304,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            &ty::TyAdt(..) => {
+            ty::TyAdt(..) => {
                 use rustc::ty::layout::Layout::*;
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty) {
                     let size = discr.size().bytes() as usize;
@@ -1322,6 +1322,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             _ => bug!("primitive read of non-primitive type: {:?}", ty),
         };
+
         Ok(Value::ByVal(val))
     }
 
