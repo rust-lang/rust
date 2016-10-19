@@ -892,7 +892,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Projection(ref proj) => return self.eval_lvalue_projection(proj),
         };
 
-        if log_enabled!(::log::LogLevel::Debug) {
+        if log_enabled!(::log::LogLevel::Trace) {
             self.dump_local(lvalue);
         }
 
