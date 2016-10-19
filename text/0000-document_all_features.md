@@ -30,8 +30,8 @@ One of the major goals of Rust's development process is *stability without stagn
         -   [Release notes][release-notes]
 -   [How do we teach this?](#how-do-we-teach-this)
 -   [Drawbacks](#drawbacks)
--   [Alternatives](#alternatives)
--   [Unresolved questions](#unresolved-questions)
+-   [Alternatives][alternatives]
+-   [Unresolved questions][unresolved-questions]
 
 
 # Motivation
@@ -111,7 +111,7 @@ The basic process of developing new language features will remain largely the sa
 
 - [a new section in the RFC][new-rfc-section], "How do we teach this?" modeled on Ember's updated RFC process
 
-- [a new requirement that the changes themselves be properly documented before being merged to stable][]
+- [a new requirement that the changes themselves be properly documented before being merged to stable][require-documentation-before-stabilization]
 
 
 ## New RFC section: "How do we teach this?"
