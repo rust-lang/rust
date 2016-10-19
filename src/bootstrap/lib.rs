@@ -649,6 +649,7 @@ impl Build {
              .env("RUSTC_REAL", self.compiler_path(compiler))
              .env("RUSTC_STAGE", stage.to_string())
              .env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
+             .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
              .env("RUSTC_CODEGEN_UNITS",
                   self.config.rust_codegen_units.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
