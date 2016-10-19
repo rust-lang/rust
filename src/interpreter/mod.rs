@@ -892,7 +892,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Projection(ref proj) => return self.eval_lvalue_projection(proj),
         };
 
-        self.dump_local(lvalue);
+        if log_enabled!(::log::LogLevel::Debug) {
+            self.dump_local(lvalue);
+        }
 
         Ok(lvalue)
     }
@@ -1443,27 +1445,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
         }
     }
-
-    fn dump_locals(&self, limit: usize) {
-        for (frame_index, frame) in self.stack.iter().enumerate() {
-            trace!("frame[{}]:", frame_index);
-
-            let locals: Vec<(mir::Local, Value)> = frame.mir.local_decls
-                .indices()
-                .filter_map(|i| {
-                    if i == mir::RETURN_POINTER { return None; }
-                    frame.get_local(i).map(|local| (i, local))
-                })
-                .collect();
-
-            for &(i, v) in locals.iter().take(limit) {
-                trace!("  {:?}: {:?}", i, v);
-            }
-            if locals.len() > limit {
-                trace!("  ...");
-            }
-        }
-    }
 }
 
 impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
@@ -1545,13 +1526,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
 
     for _ in 0..step_limit {
         match ecx.step() {
-            Ok(true) => {
-                use std::env::var;
-                let limit_opt = var("MIRI_LOG_LOCALS_LIMIT").ok().and_then(|s| s.parse().ok());
-                if let Some(limit) = limit_opt {
-                    ecx.dump_locals(limit);
-                }
-            }
+            Ok(true) => {}
             Ok(false) => return,
             Err(e) => {
                 report(tcx, &ecx, e);
