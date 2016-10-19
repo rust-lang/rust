@@ -139,6 +139,9 @@ pub enum ExprKind<'tcx> {
     Cast {
         source: ExprRef<'tcx>,
     },
+    Use {
+        source: ExprRef<'tcx>,
+    }, // Use a lexpr to get a vexpr.
     NeverToAny {
         source: ExprRef<'tcx>,
     },
