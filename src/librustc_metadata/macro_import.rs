@@ -110,7 +110,7 @@ impl<'a> CrateLoader<'a> {
             if sel.is_empty() && reexport.is_empty() {
                 // Make sure we can read macros from `#[no_link]` crates.
                 if no_link {
-                    self.creader.read_macros(vi);
+                    self.read_macros(vi);
                 }
                 return Vec::new();
             }
@@ -122,7 +122,7 @@ impl<'a> CrateLoader<'a> {
             return Vec::new();
         }
 
-        let mut macros = self.creader.read_macros(vi);
+        let mut macros = self.read_macros(vi);
         let mut ret = Vec::new();
         let mut seen = HashSet::new();
 
