@@ -304,8 +304,15 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let params = self.iter().map(|k| k.fold_with(folder)).collect();
-        folder.tcx().mk_substs(params)
+        let params: Vec<_> = self.iter().map(|k| k.fold_with(folder)).collect();
+
+        // If folding doesn't change the substs, it's faster to avoid
+        // calling `mk_substs` and instead reuse the existing substs.
+        if params[..] == self[..] {
+            self
+        } else {
+            folder.tcx().mk_substs(params)
+        }
     }
 
     fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
