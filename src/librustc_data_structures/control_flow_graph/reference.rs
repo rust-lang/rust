@@ -21,13 +21,13 @@ impl<'graph, G: ControlFlowGraph> ControlFlowGraph for &'graph G {
         (**self).start_node()
     }
 
-    fn predecessors<'iter>(&'iter self, node: Self::Node)
-                            -> <Self as GraphPredecessors<'iter>>::Iter {
+    fn predecessors<'iter>(&'iter self,
+                           node: Self::Node)
+                           -> <Self as GraphPredecessors<'iter>>::Iter {
         (**self).predecessors(node)
     }
 
-    fn successors<'iter>(&'iter self, node: Self::Node)
-                          -> <Self as GraphSuccessors<'iter>>::Iter {
+    fn successors<'iter>(&'iter self, node: Self::Node) -> <Self as GraphSuccessors<'iter>>::Iter {
         (**self).successors(node)
     }
 }
