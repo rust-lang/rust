@@ -1398,8 +1398,8 @@ impl<'tcx> ProjectionCache<'tcx> {
         self.map.rollback_to(snapshot.snapshot);
     }
 
-    pub fn partial_rollback(&mut self, snapshot: &ProjectionCacheSnapshot) {
-        self.map.partial_rollback(&snapshot.snapshot);
+    pub fn rollback_skolemized(&mut self, snapshot: &ProjectionCacheSnapshot) {
+        self.map.partial_rollback(&snapshot.snapshot, &|k| k.has_re_skol());
     }
 
     pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {

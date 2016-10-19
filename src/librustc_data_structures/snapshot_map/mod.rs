@@ -102,15 +102,19 @@ impl<K, V> SnapshotMap<K, V>
         }
     }
 
-    pub fn partial_rollback(&mut self, snapshot: &Snapshot) {
+    pub fn partial_rollback<F>(&mut self,
+                               snapshot: &Snapshot,
+                               should_revert_key: &F)
+        where F: Fn(&K) -> bool
+    {
         self.assert_open_snapshot(snapshot);
         for i in (snapshot.len + 1..self.undo_log.len()).rev() {
             let reverse = match self.undo_log[i] {
                 UndoLog::OpenSnapshot => false,
                 UndoLog::CommittedSnapshot => false,
                 UndoLog::Noop => false,
-                UndoLog::Inserted(..) => true,
-                UndoLog::Overwrite(..) => true,
+                UndoLog::Inserted(ref k) => should_revert_key(k),
+                UndoLog::Overwrite(ref k, _) => should_revert_key(k),
             };
 
             if reverse {
