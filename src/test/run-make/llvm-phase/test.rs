@@ -22,6 +22,7 @@ use rustc_driver::driver::CompileController;
 use rustc_trans::ModuleSource;
 use rustc::session::Session;
 use syntax::codemap::FileLoader;
+use std::env;
 use std::io;
 use std::path::{PathBuf, Path};
 
@@ -75,9 +76,11 @@ fn main() {
     path.pop();
     path.pop();
 
-    let args: Vec<String> =
+    let mut args: Vec<String> =
         format!("_ _ --sysroot {} --crate-type dylib", path.to_str().unwrap())
         .split(' ').map(|s| s.to_string()).collect();
+    args.push("--out-dir".to_string());
+    args.push(env::var("TMPDIR").unwrap());
 
     let (result, _) = rustc_driver::run_compiler(
         &args, &mut JitCalls, Some(box JitLoader), None);
