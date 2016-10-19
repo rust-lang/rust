@@ -423,7 +423,7 @@ pub enum LoadedMacros {
 }
 
 pub trait CrateLoader {
-    fn load_macros(&mut self, extern_crate: &ast::Item) -> LoadedMacros;
-    fn process_item(&mut self, item: &ast::Item, defs: &Definitions);
+    fn process_item(&mut self, item: &ast::Item, defs: &Definitions, load_macros: bool)
+                    -> Option<LoadedMacros>;
     fn postprocess(&mut self, krate: &ast::Crate);
 }

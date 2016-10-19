@@ -23,7 +23,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::middle;
 use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
 use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
-use rustc::hir::map as hir_map;
+use rustc::hir::map::Definitions;
 
 use std::cell::{RefCell, Cell};
 use std::ops::Deref;
@@ -631,8 +631,6 @@ impl<'a> CrateLoader<'a> {
         use rustc_back::dynamic_lib::DynamicLibrary;
         use syntax_ext::deriving::custom::CustomDerive;
 
-        self.cstore.add_used_for_derive_macros(item);
-
         // Make sure the path contains a / or the linker will search for it.
         let path = env::current_dir().unwrap().join(path);
         let lib = match DynamicLibrary::open(Some(&path)) {
@@ -1020,12 +1018,18 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         self.register_statically_included_foreign_items();
     }
 
-    fn process_item(&mut self, item: &ast::Item, definitions: &hir_map::Definitions) {
+    fn process_item(&mut self, item: &ast::Item, definitions: &Definitions, load_macros: bool)
+                    -> Option<LoadedMacros> {
         match item.node {
             ast::ItemKind::ExternCrate(_) => {}
-            ast::ItemKind::ForeignMod(ref fm) => return self.process_foreign_mod(item, fm),
-            _ => return,
+            ast::ItemKind::ForeignMod(ref fm) => {
+                self.process_foreign_mod(item, fm);
+                return None;
+            }
+            _ => return None,
         }
+
+        let loaded_macros = if load_macros { Some(self.read_macros(item)) } else { None };
 
         // If this `extern crate` item has `#[macro_use]` then we can safely skip it.
         // These annotations were processed during macro expansion and are already loaded
@@ -1034,15 +1038,13 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         // Note that it's important we *don't* fall through below as some `#[macro_use]`
         // crates are explicitly not linked (e.g. macro crates) so we want to ensure
         // we avoid `resolve_crate` with those.
-        if attr::contains_name(&item.attrs, "macro_use") {
-            if self.cstore.was_used_for_derive_macros(item) {
-                return
-            }
+        if let Some(LoadedMacros::CustomDerives(..)) = loaded_macros {
+            return loaded_macros;
         }
 
         if let Some(info) = self.extract_crate_info(item) {
             if !info.should_link {
-                return;
+                return loaded_macros;
             }
 
             let (cnum, ..) = self.resolve_crate(
@@ -1058,9 +1060,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
 
             self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
         }
-    }
 
-    fn load_macros(&mut self, extern_crate: &ast::Item) -> LoadedMacros {
-        self.read_macros(extern_crate)
+        loaded_macros
     }
 }
