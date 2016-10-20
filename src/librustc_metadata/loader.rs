@@ -213,6 +213,7 @@
 //! metadata::loader or metadata::creader for all the juicy details!
 
 use cstore::MetadataBlob;
+use creader::Library;
 use schema::{METADATA_HEADER, rustc_version};
 
 use rustc::hir::svh::Svh;
@@ -261,12 +262,6 @@ pub struct Context<'a> {
     pub rejected_via_kind: Vec<CrateMismatch>,
     pub rejected_via_version: Vec<CrateMismatch>,
     pub should_match_name: bool,
-}
-
-pub struct Library {
-    pub dylib: Option<(PathBuf, PathKind)>,
-    pub rlib: Option<(PathBuf, PathKind)>,
-    pub metadata: MetadataBlob,
 }
 
 pub struct ArchiveMetadata {
