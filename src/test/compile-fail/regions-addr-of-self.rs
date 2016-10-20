@@ -14,7 +14,17 @@ struct dog {
 
 impl dog {
     pub fn chase_cat(&mut self) {
-        let p: &'static mut usize = &mut self.cats_chased; //~ ERROR cannot infer
+        //~^ NOTE the lifetime cannot outlive the anonymous lifetime #1 defined on the block
+        let p: &'static mut usize = &mut self.cats_chased;
+        //~^ ERROR cannot infer an appropriate lifetime for borrow expression due to conflicting
+        //~| ERROR cannot infer an appropriate lifetime for borrow expression due to conflicting
+        //~| ERROR cannot infer an appropriate lifetime for borrow expression due to conflicting
+        //~| NOTE cannot infer an appropriate lifetime
+        //~| NOTE so that reference does not outlive borrowed content
+        //~| NOTE so that reference does not outlive borrowed content
+        //~| NOTE the lifetime must be valid for the static lifetime
+        //~| NOTE the lifetime must be valid for the static lifetime
+        //~| NOTE the lifetime must be valid for the static lifetime
         *p += 1;
     }
 

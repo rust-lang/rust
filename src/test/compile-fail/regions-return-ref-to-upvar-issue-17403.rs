@@ -14,8 +14,16 @@ fn main() {
     // Unboxed closure case
     {
         let mut x = 0;
-        let mut f = || &mut x; //~ ERROR cannot infer
+        let mut f = || &mut x;
+        //~^ ERROR cannot infer an appropriate lifetime for borrow expression
+        //~| ERROR cannot infer an appropriate lifetime for borrow expression
+        //~| ERROR cannot infer an appropriate lifetime for borrow expression
+        //~| NOTE cannot infer an appropriate lifetime
+        //~| NOTE the lifetime cannot outlive the lifetime  as defined on the block
+        //~| NOTE ...so that closure can access `x`
         let x = f();
         let y = f();
+        //~^ NOTE the lifetime must be valid for the call
+        //~| NOTE ...so type
     }
 }

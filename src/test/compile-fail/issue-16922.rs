@@ -11,8 +11,15 @@
 use std::any::Any;
 
 fn foo<T: Any>(value: &T) -> Box<Any> {
+    //~^ NOTE the lifetime cannot outlive the anonymous lifetime #1 defined on the block
     Box::new(value) as Box<Any>
-    //~^ ERROR: cannot infer an appropriate lifetime
+    //~^ ERROR: cannot infer an appropriate lifetime due to conflicting requirements
+    //~| ERROR: cannot infer an appropriate lifetime due to conflicting requirements
+    //~| NOTE cannot infer an appropriate lifetime
+    //~| NOTE so that expression is assignable (expected &T, found &T)
+    //~| NOTE so that the type `&T` will meet its required lifetime bounds
+    //~| NOTE the lifetime must be valid for the static lifetime
+    //~| NOTE the lifetime must be valid for the static lifetime
 }
 
 fn main() {

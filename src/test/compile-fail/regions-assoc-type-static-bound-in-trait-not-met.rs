@@ -17,7 +17,16 @@ trait Foo {
 }
 
 impl<'a> Foo for &'a i32 {
-    //~^ ERROR cannot infer
+    //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting
+    //~| ERROR cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting
+    //~| ERROR cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting
+    //~| NOTE cannot infer an appropriate lifetime
+    //~| NOTE the lifetime cannot outlive the lifetime 'a as defined on the impl
+    //~| NOTE ...so that trait type parameters matches those specified on the impl
+    //~| NOTE ...so that the type `&i32` will meet its required lifetime bounds
+    //~| NOTE the lifetime must be valid for the static lifetime
+    //~| NOTE the lifetime must be valid for the static lifetime
+    //~| NOTE the lifetime must be valid for the static lifetime
     type Value = &'a i32;
 }
 
