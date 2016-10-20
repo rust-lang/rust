@@ -34,7 +34,6 @@ use middle::stability;
 use rustc::cfg;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::adjustment;
 use rustc::traits::{self, Reveal};
 use rustc::hir::map as hir_map;
 use util::nodemap::NodeSet;
@@ -941,6 +940,8 @@ impl LateLintPass for UnconditionalRecursion {
                                                 method: &ty::Method,
                                                 id: ast::NodeId)
                                                 -> bool {
+            use rustc::ty::adjustment::*;
+
             // Check for method calls and overloaded operators.
             let opt_m = tcx.tables().method_map.get(&ty::MethodCall::expr(id)).cloned();
             if let Some(m) = opt_m {
@@ -951,8 +952,8 @@ impl LateLintPass for UnconditionalRecursion {
 
             // Check for overloaded autoderef method calls.
             let opt_adj = tcx.tables().adjustments.get(&id).cloned();
-            if let Some(adjustment::AdjustDerefRef(adj)) = opt_adj {
-                for i in 0..adj.autoderefs {
+            if let Some(Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) = opt_adj {
+                for i in 0..autoderefs {
                     let method_call = ty::MethodCall::autoderef(id, i as u32);
                     if let Some(m) = tcx.tables().method_map.get(&method_call)
                                                             .cloned() {

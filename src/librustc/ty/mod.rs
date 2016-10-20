@@ -2124,34 +2124,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.tables.borrow()
     }
 
-    /// Returns the type of `expr`, considering any `AutoAdjustment`
-    /// entry recorded for that expression.
-    ///
-    /// It would almost certainly be better to store the adjusted ty in with
-    /// the `AutoAdjustment`, but I opted not to do this because it would
-    /// require serializing and deserializing the type and, although that's not
-    /// hard to do, I just hate that code so much I didn't want to touch it
-    /// unless it was to fix it properly, which seemed a distraction from the
-    /// thread at hand! -nmatsakis
-    pub fn expr_ty_adjusted(self, expr: &hir::Expr) -> Ty<'gcx> {
-        self.tables().expr_ty(expr)
-            .adjust(self.global_tcx(), expr.span, expr.id,
-                    self.tables().adjustments.get(&expr.id),
-                    |method_call| {
-            self.tables().method_map.get(&method_call).map(|method| method.ty)
-        })
-    }
-
-    pub fn expr_ty_adjusted_opt(self, expr: &hir::Expr) -> Option<Ty<'gcx>> {
-        self.tables().expr_ty_opt(expr).map(|t| t.adjust(self.global_tcx(),
-                                                expr.span,
-                                                expr.id,
-                                                self.tables().adjustments.get(&expr.id),
-                                                |method_call| {
-            self.tables().method_map.get(&method_call).map(|method| method.ty)
-        }))
-    }
-
     pub fn expr_span(self, id: NodeId) -> Span {
         match self.map.find(id) {
             Some(ast_map::NodeExpr(e)) => {

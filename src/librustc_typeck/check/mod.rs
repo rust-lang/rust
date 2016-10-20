@@ -1564,20 +1564,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn write_autoderef_adjustment(&self,
                                       node_id: ast::NodeId,
-                                      derefs: usize) {
-        self.write_adjustment(
-            node_id,
-            adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
+                                      derefs: usize,
+                                      adjusted_ty: Ty<'tcx>) {
+        self.write_adjustment(node_id, adjustment::Adjustment {
+            kind: adjustment::Adjust::DerefRef {
                 autoderefs: derefs,
                 autoref: None,
-                unsize: None
-            })
-        );
+                unsize: false
+            },
+            target: adjusted_ty
+        });
     }
 
     pub fn write_adjustment(&self,
                             node_id: ast::NodeId,
-                            adj: adjustment::AutoAdjustment<'tcx>) {
+                            adj: adjustment::Adjustment<'tcx>) {
         debug!("write_adjustment(node_id={}, adj={:?})", node_id, adj);
 
         if adj.is_identity() {
@@ -1741,21 +1742,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let t = AstConv::ast_ty_to_ty(self, self, ast_t);
         self.register_wf_obligation(t, ast_t.span, traits::MiscObligation);
         t
-    }
-
-    /// Apply `adjustment` to the type of `expr`
-    pub fn adjust_expr_ty(&self,
-                          expr: &hir::Expr,
-                          adjustment: Option<&adjustment::AutoAdjustment<'tcx>>)
-                          -> Ty<'tcx>
-    {
-        let raw_ty = self.node_ty(expr.id);
-        let raw_ty = self.shallow_resolve(raw_ty);
-        let resolve_ty = |ty: Ty<'tcx>| self.resolve_type_vars_if_possible(&ty);
-        raw_ty.adjust(self.tcx, expr.span, expr.id, adjustment, |method_call| {
-            self.tables.borrow().method_map.get(&method_call)
-                                        .map(|method| resolve_ty(method.ty))
-        })
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
@@ -2294,7 +2280,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 debug!("try_index_step: success, using built-in indexing");
                 // If we had `[T; N]`, we should've caught it before unsizing to `[T]`.
                 assert!(!unsize);
-                self.write_autoderef_adjustment(base_expr.id, autoderefs);
+                self.write_autoderef_adjustment(base_expr.id, autoderefs, adjusted_ty);
                 return Some((tcx.types.usize, ty));
             }
             _ => {}
@@ -2850,9 +2836,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // In case we did perform an adjustment, we have to update
                 // the type of the block, because old trans still uses it.
-                let adj = self.tables.borrow().adjustments.get(&then.id).cloned();
-                if res.is_ok() && adj.is_some() {
-                    self.write_ty(then_blk.id, self.adjust_expr_ty(then, adj.as_ref()));
+                if res.is_ok() {
+                    let adj = self.tables.borrow().adjustments.get(&then.id).cloned();
+                    if let Some(adj) = adj {
+                        self.write_ty(then_blk.id, adj.target);
+                    }
                 }
 
                 res
@@ -2913,7 +2901,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let field_ty = self.field_ty(expr.span, field, substs);
                         if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
                             autoderef.finalize(lvalue_pref, Some(base));
-                            self.write_autoderef_adjustment(base.id, autoderefs);
+                            self.write_autoderef_adjustment(base.id, autoderefs, base_t);
                             return field_ty;
                         }
                         private_candidate = Some((base_def.did, field_ty));
@@ -3031,7 +3019,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             if let Some(field_ty) = field {
                 autoderef.finalize(lvalue_pref, Some(base));
-                self.write_autoderef_adjustment(base.id, autoderefs);
+                self.write_autoderef_adjustment(base.id, autoderefs, base_t);
                 return field_ty;
             }
         }
@@ -3341,8 +3329,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if ty.is_never() {
             if let Some(hir::map::NodeExpr(_)) = self.tcx.map.find(expr.id) {
                 let adj_ty = self.next_diverging_ty_var();
-                let adj = adjustment::AdjustNeverToAny(adj_ty);
-                self.write_adjustment(expr.id, adj);
+                self.write_adjustment(expr.id, adjustment::Adjustment {
+                    kind: adjustment::Adjust::NeverToAny,
+                    target: adj_ty
+                });
                 return adj_ty;
             }
         }

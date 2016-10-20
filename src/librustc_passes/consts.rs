@@ -625,14 +625,16 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
 
 /// Check the adjustments of an expression
 fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr) {
-    match v.tcx.tables().adjustments.get(&e.id) {
-        None |
-        Some(&ty::adjustment::AdjustNeverToAny(..)) |
-        Some(&ty::adjustment::AdjustReifyFnPointer) |
-        Some(&ty::adjustment::AdjustUnsafeFnPointer) |
-        Some(&ty::adjustment::AdjustMutToConstPointer) => {}
+    use rustc::ty::adjustment::*;
 
-        Some(&ty::adjustment::AdjustDerefRef(ty::adjustment::AutoDerefRef { autoderefs, .. })) => {
+    match v.tcx.tables().adjustments.get(&e.id).map(|adj| adj.kind) {
+        None |
+        Some(Adjust::NeverToAny) |
+        Some(Adjust::ReifyFnPointer) |
+        Some(Adjust::UnsafeFnPointer) |
+        Some(Adjust::MutToConstPointer) => {}
+
+        Some(Adjust::DerefRef { autoderefs, .. }) => {
             if (0..autoderefs as u32)
                 .any(|autoderef| v.tcx.tables().is_overloaded_autoderef(e.id, autoderef)) {
                 v.add_qualif(ConstQualif::NOT_CONST);

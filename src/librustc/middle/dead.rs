@@ -128,7 +128,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
-        match self.tcx.expr_ty_adjusted(lhs).sty {
+        match self.tcx.tables().expr_ty_adjusted(lhs).sty {
             ty::TyAdt(def, _) => {
                 self.insert_def_id(def.struct_variant().field_named(name).did);
             }
@@ -137,7 +137,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_tup_field_access(&mut self, lhs: &hir::Expr, idx: usize) {
-        match self.tcx.expr_ty_adjusted(lhs).sty {
+        match self.tcx.tables().expr_ty_adjusted(lhs).sty {
             ty::TyAdt(def, _) => {
                 self.insert_def_id(def.struct_variant().fields[idx].did);
             }

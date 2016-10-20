@@ -168,7 +168,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 }
             }
             hir::ExprCall(ref base, _) => {
-                let base_type = self.tcx.expr_ty_adjusted(base);
+                let base_type = self.tcx.tables().expr_ty_adjusted(base);
                 debug!("effect: call case, base type is {:?}",
                         base_type);
                 if type_is_unsafe_function(base_type) {
@@ -176,7 +176,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 }
             }
             hir::ExprUnary(hir::UnDeref, ref base) => {
-                let base_type = self.tcx.expr_ty_adjusted(base);
+                let base_type = self.tcx.tables().expr_ty_adjusted(base);
                 debug!("effect: unary case, base type is {:?}",
                         base_type);
                 if let ty::TyRawPtr(_) = base_type.sty {
@@ -200,7 +200,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 }
             }
             hir::ExprField(ref base_expr, field) => {
-                if let ty::TyAdt(adt, ..) = self.tcx.expr_ty_adjusted(base_expr).sty {
+                if let ty::TyAdt(adt, ..) = self.tcx.tables().expr_ty_adjusted(base_expr).sty {
                     if adt.is_union() {
                         self.require_unsafe(field.span, "access to union field");
                     }

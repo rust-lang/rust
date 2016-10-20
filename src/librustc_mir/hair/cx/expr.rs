@@ -35,15 +35,15 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
         debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
 
         let mut expr = make_mirror_unadjusted(cx, self);
+        let adj = cx.tcx.tables().adjustments.get(&self.id).cloned();
 
         debug!("make_mirror: unadjusted-expr={:?} applying adjustments={:?}",
-               expr, cx.tcx.tables().adjustments.get(&self.id));
+               expr, adj);
 
         // Now apply adjustments, if any.
-        match cx.tcx.tables().adjustments.get(&self.id) {
+        match adj.map(|adj| (adj.kind, adj.target)) {
             None => {}
-            Some(&ty::adjustment::AdjustReifyFnPointer) => {
-                let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
+            Some((ty::adjustment::Adjust::ReifyFnPointer, adjusted_ty)) => {
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
                     ty: adjusted_ty,
@@ -51,8 +51,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     kind: ExprKind::ReifyFnPointer { source: expr.to_ref() },
                 };
             }
-            Some(&ty::adjustment::AdjustUnsafeFnPointer) => {
-                let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
+            Some((ty::adjustment::Adjust::UnsafeFnPointer, adjusted_ty)) => {
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
                     ty: adjusted_ty,
@@ -60,7 +59,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
                 };
             }
-            Some(&ty::adjustment::AdjustNeverToAny(adjusted_ty)) => {
+            Some((ty::adjustment::Adjust::NeverToAny, adjusted_ty)) => {
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
                     ty: adjusted_ty,
@@ -68,8 +67,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     kind: ExprKind::NeverToAny { source: expr.to_ref() },
                 };
             }
-            Some(&ty::adjustment::AdjustMutToConstPointer) => {
-                let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
+            Some((ty::adjustment::Adjust::MutToConstPointer, adjusted_ty)) => {
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
                     ty: adjusted_ty,
@@ -77,8 +75,9 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     kind: ExprKind::Cast { source: expr.to_ref() },
                 };
             }
-            Some(&ty::adjustment::AdjustDerefRef(ref adj)) => {
-                for i in 0..adj.autoderefs {
+            Some((ty::adjustment::Adjust::DerefRef { autoderefs, autoref, unsize },
+                  adjusted_ty)) => {
+                for i in 0..autoderefs {
                     let i = i as u32;
                     let adjusted_ty =
                         expr.ty.adjust_for_autoderef(
@@ -128,10 +127,10 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     };
                 }
 
-                if let Some(autoref) = adj.autoref {
+                if let Some(autoref) = autoref {
                     let adjusted_ty = expr.ty.adjust_for_autoref(cx.tcx, Some(autoref));
                     match autoref {
-                        ty::adjustment::AutoPtr(r, m) => {
+                        ty::adjustment::AutoBorrow::Ref(r, m) => {
                             expr = Expr {
                                 temp_lifetime: temp_lifetime,
                                 ty: adjusted_ty,
@@ -143,7 +142,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                                 },
                             };
                         }
-                        ty::adjustment::AutoUnsafe(m) => {
+                        ty::adjustment::AutoBorrow::RawPtr(m) => {
                             // Convert this to a suitable `&foo` and
                             // then an unsafe coercion. Limit the region to be just this
                             // expression.
@@ -169,10 +168,10 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     }
                 }
 
-                if let Some(target) = adj.unsize {
+                if unsize {
                     expr = Expr {
                         temp_lifetime: temp_lifetime,
-                        ty: target,
+                        ty: adjusted_ty,
                         span: self.span,
                         kind: ExprKind::Unsize { source: expr.to_ref() },
                     };
@@ -578,7 +577,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ExprKind::Loop { condition: None,
                              body: block::to_expr_ref(cx, body) },
         hir::ExprField(ref source, name) => {
-            let index = match cx.tcx.expr_ty_adjusted(source).sty {
+            let index = match cx.tcx.tables().expr_ty_adjusted(source).sty {
                 ty::TyAdt(adt_def, _) =>
                     adt_def.variants[0].index_of_field_named(name.node),
                 ref ty =>
@@ -893,7 +892,7 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             argrefs.extend(
                 args.iter()
                     .map(|arg| {
-                        let arg_ty = cx.tcx.expr_ty_adjusted(arg);
+                        let arg_ty = cx.tcx.tables().expr_ty_adjusted(arg);
                         let adjusted_ty =
                             cx.tcx.mk_ref(region,
                                        ty::TypeAndMut { ty: arg_ty,

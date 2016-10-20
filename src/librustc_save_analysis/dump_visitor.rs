@@ -1380,7 +1380,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                         return;
                     }
                 };
-                let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
+                let ty = &self.tcx.tables().expr_ty_adjusted(&hir_node).sty;
                 match *ty {
                     ty::TyAdt(def, _) => {
                         let sub_span = self.span.sub_span_after_token(ex.span, token::Dot);
