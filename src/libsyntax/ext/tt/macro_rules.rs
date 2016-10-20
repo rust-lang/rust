@@ -139,9 +139,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     macro_ident: name
                 })
             }
-            Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
+            Failure(sp, msg) => if sp.lo >= best_fail_spot.lo {
                 best_fail_spot = sp;
-                best_fail_msg = (*msg).clone();
+                best_fail_msg = msg;
             },
             Error(err_sp, ref msg) => {
                 cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..])
