@@ -422,6 +422,15 @@ pub enum LoadedMacros {
     ProcMacros(Vec<(ast::Name, SyntaxExtension)>),
 }
 
+impl LoadedMacros {
+    pub fn is_proc_macros(&self) -> bool {
+        match *self {
+            LoadedMacros::ProcMacros(_) => true,
+            _ => false,
+        }
+    }
+}
+
 pub trait CrateLoader {
     fn process_item(&mut self, item: &ast::Item, defs: &Definitions, load_macros: bool)
                     -> Option<LoadedMacros>;
