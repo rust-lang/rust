@@ -27,7 +27,7 @@ mod tests;
 ///
 /// Clients are expected to provide implementations of this trait; you
 /// can see some examples in the `test` module.
-pub trait UnifyKey : Copy + Clone + Debug + PartialEq {
+pub trait UnifyKey: Copy + Clone + Debug + PartialEq {
     type Value: Clone + PartialEq + Debug;
 
     fn index(&self) -> u32;
@@ -115,11 +115,7 @@ impl<K: UnifyKey> VarValue<K> {
     }
 
     fn if_not_self(&self, key: K, self_key: K) -> Option<K> {
-        if key == self_key {
-            None
-        } else {
-            Some(key)
-        }
+        if key == self_key { None } else { Some(key) }
     }
 }
 
@@ -236,7 +232,8 @@ impl<K: UnifyKey> UnificationTable<K> {
                      new_rank: u32,
                      old_root: VarValue<K>,
                      new_root: VarValue<K>,
-                     new_value: K::Value) -> K {
+                     new_value: K::Value)
+                     -> K {
         let old_root_key = old_root.key();
         let new_root_key = new_root.key();
         self.set(old_root_key, old_root.redirect(new_root_key));
@@ -306,7 +303,8 @@ impl<'tcx, K, V> UnificationTable<K>
         let combined = {
             match (&node_a.value, &node_b.value) {
                 (&None, &None) => None,
-                (&Some(ref v), &None) | (&None, &Some(ref v)) => Some(v.clone()),
+                (&Some(ref v), &None) |
+                (&None, &Some(ref v)) => Some(v.clone()),
                 (&Some(ref v1), &Some(ref v2)) => {
                     if *v1 != *v2 {
                         return Err((v1.clone(), v2.clone()));

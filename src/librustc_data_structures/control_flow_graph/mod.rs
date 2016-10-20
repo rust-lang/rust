@@ -36,10 +36,10 @@ pub trait ControlFlowGraph
 
 pub trait GraphPredecessors<'graph> {
     type Item;
-    type Iter: Iterator<Item=Self::Item>;
+    type Iter: Iterator<Item = Self::Item>;
 }
 
 pub trait GraphSuccessors<'graph> {
     type Item;
-    type Iter: Iterator<Item=Self::Item>;
+    type Iter: Iterator<Item = Self::Item>;
 }

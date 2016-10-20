@@ -119,9 +119,8 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("get_vtable(trait_ref={:?})", trait_ref);
 
     // Check the cache.
-    match ccx.vtables().borrow().get(&trait_ref) {
-        Some(&val) => { return val }
-        None => { }
+    if let Some(&val) = ccx.vtables().borrow().get(&trait_ref) {
+        return val;
     }
 
     // Not in the cache. Build it.
