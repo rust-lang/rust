@@ -58,7 +58,7 @@ mod schema;
 
 pub mod creader;
 pub mod cstore;
-pub mod loader;
+pub mod locator;
 pub mod macro_import;
 
 __build_diagnostic_array! { librustc_metadata, DIAGNOSTICS }

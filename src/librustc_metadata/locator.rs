@@ -210,7 +210,7 @@
 //!
 //! That's the general overview of loading crates in the compiler, but it's by
 //! no means all of the necessary details. Take a look at the rest of
-//! metadata::loader or metadata::creader for all the juicy details!
+//! metadata::locator or metadata::creader for all the juicy details!
 
 use cstore::MetadataBlob;
 use creader::Library;
@@ -310,10 +310,10 @@ impl<'a> Context<'a> {
     }
 
     pub fn load_library_crate(&mut self) -> Library {
-        self.find_library_crate().unwrap_or_else(|| self.report_load_errs())
+        self.find_library_crate().unwrap_or_else(|| self.report_errs())
     }
 
-    pub fn report_load_errs(&mut self) -> ! {
+    pub fn report_errs(&mut self) -> ! {
         let add = match self.root {
             &None => String::new(),
             &Some(ref r) => format!(" which `{}` depends on",
