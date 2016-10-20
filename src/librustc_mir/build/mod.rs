@@ -233,7 +233,7 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
                                        ast_expr: &'tcx hir::Expr)
                                        -> (Mir<'tcx>, ScopeAuxiliaryVec) {
     let tcx = hir.tcx();
-    let ty = tcx.expr_ty_adjusted(ast_expr);
+    let ty = tcx.tables().expr_ty_adjusted(ast_expr);
     let span = tcx.map.span(item_id);
     let mut builder = Builder::new(hir, span, 0, ty);
 

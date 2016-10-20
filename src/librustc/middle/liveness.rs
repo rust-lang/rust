@@ -1114,7 +1114,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprCall(ref f, ref args) => {
             // FIXME(canndrew): This is_never should really be an is_uninhabited
             let diverges = !self.ir.tcx.tables().is_method_call(expr.id) &&
-                self.ir.tcx.expr_ty_adjusted(&f).fn_ret().0.is_never();
+                self.ir.tcx.tables().expr_ty_adjusted(&f).fn_ret().0.is_never();
             let succ = if diverges {
                 self.s.exit_ln
             } else {

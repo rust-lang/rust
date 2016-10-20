@@ -442,15 +442,14 @@ impl LateLintPass for UnusedAllocation {
         }
 
         if let Some(adjustment) = cx.tcx.tables().adjustments.get(&e.id) {
-            if let adjustment::AdjustDerefRef(adjustment::AutoDerefRef { ref autoref, .. }) =
-                *adjustment {
+            if let adjustment::Adjust::DerefRef { autoref, .. } = adjustment.kind {
                 match autoref {
-                    &Some(adjustment::AutoPtr(_, hir::MutImmutable)) => {
+                    Some(adjustment::AutoBorrow::Ref(_, hir::MutImmutable)) => {
                         cx.span_lint(UNUSED_ALLOCATION,
                                      e.span,
                                      "unnecessary allocation, use & instead");
                     }
-                    &Some(adjustment::AutoPtr(_, hir::MutMutable)) => {
+                    Some(adjustment::AutoBorrow::Ref(_, hir::MutMutable)) => {
                         cx.span_lint(UNUSED_ALLOCATION,
                                      e.span,
                                      "unnecessary allocation, use &mut instead");

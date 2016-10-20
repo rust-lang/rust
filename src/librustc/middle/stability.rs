@@ -559,7 +559,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
         }
         hir::ExprField(ref base_e, ref field) => {
             span = field.span;
-            match tcx.expr_ty_adjusted(base_e).sty {
+            match tcx.tables().expr_ty_adjusted(base_e).sty {
                 ty::TyAdt(def, _) => {
                     def.struct_variant().field_named(field.node).did
                 }
@@ -569,7 +569,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
         }
         hir::ExprTupField(ref base_e, ref field) => {
             span = field.span;
-            match tcx.expr_ty_adjusted(base_e).sty {
+            match tcx.tables().expr_ty_adjusted(base_e).sty {
                 ty::TyAdt(def, _) => {
                     def.struct_variant().fields[field.node].did
                 }

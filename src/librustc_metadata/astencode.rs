@@ -38,7 +38,7 @@ enum TableEntry<'tcx> {
     Def(Def),
     NodeType(Ty<'tcx>),
     ItemSubsts(ty::ItemSubsts<'tcx>),
-    Adjustment(ty::adjustment::AutoAdjustment<'tcx>),
+    Adjustment(ty::adjustment::Adjustment<'tcx>),
     ConstQualif(ConstQualif),
 }
 

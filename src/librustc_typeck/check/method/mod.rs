@@ -16,7 +16,7 @@ use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
-use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::infer;
 
 use syntax::ast;
@@ -294,11 +294,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        unsize,
                        method_ty.explicit_self);
 
-                match method_ty.explicit_self {
+                let autoref = match method_ty.explicit_self {
                     ty::ExplicitSelfCategory::ByValue => {
                         // Trait method is fn(self), no transformation needed.
                         assert!(!unsize);
-                        self.write_autoderef_adjustment(self_expr.id, autoderefs);
+                        None
                     }
 
                     ty::ExplicitSelfCategory::ByReference(..) => {
@@ -306,16 +306,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // autoref. Pull the region etc out of the type of first argument.
                         match transformed_self_ty.sty {
                             ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ }) => {
-                                self.write_adjustment(self_expr.id,
-                                                      AdjustDerefRef(AutoDerefRef {
-                                                          autoderefs: autoderefs,
-                                                          autoref: Some(AutoPtr(region, mutbl)),
-                                                          unsize: if unsize {
-                                                              Some(transformed_self_ty)
-                                                          } else {
-                                                              None
-                                                          },
-                                                      }));
+                                Some(AutoBorrow::Ref(region, mutbl))
                             }
 
                             _ => {
@@ -331,7 +322,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   "unexpected explicit self type in operator method: {:?}",
                                   method_ty.explicit_self);
                     }
-                }
+                };
+
+                self.write_adjustment(self_expr.id, Adjustment {
+                    kind: Adjust::DerefRef {
+                        autoderefs: autoderefs,
+                        autoref: autoref,
+                        unsize: unsize
+                    },
+                    target: transformed_self_ty
+                });
             }
         }
 

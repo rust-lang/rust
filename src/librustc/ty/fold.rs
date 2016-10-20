@@ -176,8 +176,8 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
         r.super_fold_with(self)
     }
 
-    fn fold_autoref(&mut self, ar: &adjustment::AutoRef<'tcx>)
-                    -> adjustment::AutoRef<'tcx> {
+    fn fold_autoref(&mut self, ar: &adjustment::AutoBorrow<'tcx>)
+                    -> adjustment::AutoBorrow<'tcx> {
         ar.super_fold_with(self)
     }
 }

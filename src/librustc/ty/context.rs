@@ -212,7 +212,7 @@ pub struct Tables<'tcx> {
     /// other items.
     pub item_substs: NodeMap<ty::ItemSubsts<'tcx>>,
 
-    pub adjustments: NodeMap<ty::adjustment::AutoAdjustment<'tcx>>,
+    pub adjustments: NodeMap<ty::adjustment::Adjustment<'tcx>>,
 
     pub method_map: ty::MethodMap<'tcx>,
 
@@ -287,7 +287,7 @@ impl<'a, 'gcx, 'tcx> Tables<'tcx> {
     // Returns the type of an expression as a monotype.
     //
     // NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
-    // some cases, we insert `AutoAdjustment` annotations such as auto-deref or
+    // some cases, we insert `Adjustment` annotations such as auto-deref or
     // auto-ref.  The type returned by this function does not consider such
     // adjustments.  See `expr_ty_adjusted()` instead.
     //
@@ -302,6 +302,17 @@ impl<'a, 'gcx, 'tcx> Tables<'tcx> {
         self.node_id_to_type_opt(expr.id)
     }
 
+    /// Returns the type of `expr`, considering any `Adjustment`
+    /// entry recorded for that expression.
+    pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> Ty<'tcx> {
+        self.adjustments.get(&expr.id)
+            .map_or_else(|| self.expr_ty(expr), |adj| adj.target)
+    }
+
+    pub fn expr_ty_adjusted_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
+        self.adjustments.get(&expr.id)
+            .map(|adj| adj.target).or_else(|| self.expr_ty_opt(expr))
+    }
 
     pub fn is_method_call(&self, expr_id: NodeId) -> bool {
         self.method_map.contains_key(&ty::MethodCall::expr(expr_id))
