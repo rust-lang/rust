@@ -244,7 +244,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "uninit" => {
-                // FIXME(solson)
+                // FIXME(solson): Attempt writing a None over the destination when it's an
+                // Lvalue::Local (that is not ByRef). Otherwise do the mark_definedness as usual.
                 let dest = self.force_allocation(dest)?.to_ptr();
 
                 let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
