@@ -11,7 +11,7 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
 use cstore::{self, CStore, CrateSource, MetadataBlob};
-use loader::{self, CratePaths};
+use locator::{self, CratePaths};
 use macro_import;
 use schema::CrateRoot;
 
@@ -352,7 +352,7 @@ impl<'a> CrateLoader<'a> {
             Some(cnum) => LoadResult::Previous(cnum),
             None => {
                 info!("falling back to a load");
-                let mut load_ctxt = loader::Context {
+                let mut locate_ctxt = locator::Context {
                     sess: self.sess,
                     span: span,
                     ident: ident,
@@ -368,9 +368,9 @@ impl<'a> CrateLoader<'a> {
                     rejected_via_version: vec!(),
                     should_match_name: true,
                 };
-                match self.load(&mut load_ctxt) {
+                match self.load(&mut locate_ctxt) {
                     Some(result) => result,
-                    None => load_ctxt.report_load_errs(),
+                    None => locate_ctxt.report_errs(),
                 }
             }
         };
@@ -390,8 +390,8 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn load(&mut self, loader: &mut loader::Context) -> Option<LoadResult> {
-        let library = match loader.maybe_load_library_crate() {
+    fn load(&mut self, locate_ctxt: &mut locator::Context) -> Option<LoadResult> {
+        let library = match locate_ctxt.maybe_load_library_crate() {
             Some(lib) => lib,
             None => return None,
         };
@@ -405,11 +405,11 @@ impl<'a> CrateLoader<'a> {
         // don't want to match a host crate against an equivalent target one
         // already loaded.
         let root = library.metadata.get_root();
-        if loader.triple == self.sess.opts.target_triple {
+        if locate_ctxt.triple == self.sess.opts.target_triple {
             let mut result = LoadResult::Loaded(library);
             self.cstore.iter_crate_data(|cnum, data| {
                 if data.name() == root.name && root.hash == data.hash() {
-                    assert!(loader.hash.is_none());
+                    assert!(locate_ctxt.hash.is_none());
                     info!("load success, going to previous cnum: {}", cnum);
                     result = LoadResult::Previous(cnum);
                 }
@@ -494,7 +494,7 @@ impl<'a> CrateLoader<'a> {
         let mut target_only = false;
         let ident = info.ident.clone();
         let name = info.name.clone();
-        let mut load_ctxt = loader::Context {
+        let mut locate_ctxt = locator::Context {
             sess: self.sess,
             span: span,
             ident: &ident[..],
@@ -510,7 +510,7 @@ impl<'a> CrateLoader<'a> {
             rejected_via_version: vec!(),
             should_match_name: true,
         };
-        let library = self.load(&mut load_ctxt).or_else(|| {
+        let library = self.load(&mut locate_ctxt).or_else(|| {
             if !is_cross {
                 return None
             }
@@ -519,15 +519,15 @@ impl<'a> CrateLoader<'a> {
             target_only = true;
             should_link = info.should_link;
 
-            load_ctxt.target = &self.sess.target.target;
-            load_ctxt.triple = target_triple;
-            load_ctxt.filesearch = self.sess.target_filesearch(PathKind::Crate);
+            locate_ctxt.target = &self.sess.target.target;
+            locate_ctxt.triple = target_triple;
+            locate_ctxt.filesearch = self.sess.target_filesearch(PathKind::Crate);
 
-            self.load(&mut load_ctxt)
+            self.load(&mut locate_ctxt)
         });
         let library = match library {
             Some(l) => l,
-            None => load_ctxt.report_load_errs(),
+            None => locate_ctxt.report_errs(),
         };
 
         let (dylib, metadata) = match library {

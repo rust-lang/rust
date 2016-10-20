@@ -11,7 +11,7 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-use loader;
+use locator;
 use schema;
 
 use rustc::dep_graph::DepGraph;
@@ -43,7 +43,7 @@ pub type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
 pub enum MetadataBlob {
     Inflated(Bytes),
-    Archive(loader::ArchiveMetadata),
+    Archive(locator::ArchiveMetadata),
 }
 
 /// Holds information about a syntax_pos::FileMap imported from another crate.

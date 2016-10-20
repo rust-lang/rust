@@ -10,7 +10,7 @@
 
 use cstore;
 use encoder;
-use loader;
+use locator;
 use schema;
 
 use rustc::middle::cstore::{InlinedItem, CrateStore, CrateSource, ExternCrate};
@@ -497,12 +497,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn metadata_filename(&self) -> &str
     {
-        loader::METADATA_FILENAME
+        locator::METADATA_FILENAME
     }
 
     fn metadata_section_name(&self, target: &Target) -> &str
     {
-        loader::meta_section_name(target)
+        locator::meta_section_name(target)
     }
 
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, Option<PathBuf>)>
