@@ -88,15 +88,24 @@ impl DepGraphThreadData {
         }
     }
 
+    /// True if we are actually building the full dep-graph.
     #[inline]
-    pub fn enabled(&self) -> bool {
+    pub fn is_fully_enabled(&self) -> bool {
         self.enabled
+    }
+
+    /// True if (a) we are actually building the full dep-graph, or (b) we are
+    /// only enqueuing messages in order to sanity-check them (which happens
+    /// when debug assertions are enabled).
+    #[inline]
+    pub fn is_enqueue_enabled(&self) -> bool {
+        self.is_fully_enabled() || self.shadow_graph.enabled()
     }
 
     /// Sends the current batch of messages to the thread. Installs a
     /// new vector of messages.
     fn swap(&self) {
-        assert!(self.enabled, "should never swap if not enabled");
+        assert!(self.is_fully_enabled(), "should never swap if not fully enabled");
 
         // should be a buffer waiting for us (though of course we may
         // have to wait for depgraph thread to finish processing the
@@ -112,7 +121,7 @@ impl DepGraphThreadData {
     }
 
     pub fn query(&self) -> DepGraphQuery<DefId> {
-        assert!(self.enabled, "cannot query if dep graph construction not enabled");
+        assert!(self.is_fully_enabled(), "should never query if not fully enabled");
         self.enqueue(DepMessage::Query);
         self.swap();
         self.query_in.recv().unwrap()
@@ -122,9 +131,9 @@ impl DepGraphThreadData {
     /// the buffer is full, this may swap.)
     #[inline]
     pub fn enqueue(&self, message: DepMessage) {
+        assert!(self.is_enqueue_enabled(), "should never enqueue if not enqueue-enabled");
         self.shadow_graph.enqueue(&message);
-
-        if self.enabled {
+        if self.is_fully_enabled() {
             self.enqueue_enabled(message);
         }
     }
