@@ -377,8 +377,16 @@ impl<O: ForestObligation> ObligationForest<O> {
     {
         let mut stack = self.scratch.take().unwrap();
 
-        for node in 0..self.nodes.len() {
-            self.find_cycles_from_node(&mut stack, processor, node);
+        for index in 0..self.nodes.len() {
+            // For rustc-benchmarks/inflate-0.1.0 this state test is extremely
+            // hot and the state is almost always `Pending` or `Waiting`. It's
+            // a win to handle the no-op cases immediately to avoid the cost of
+            // the function call.
+            let state = self.nodes[index].state.get();
+            match state {
+                NodeState::Waiting | NodeState::Pending | NodeState::Done | NodeState::Error => {},
+                _ => self.find_cycles_from_node(&mut stack, processor, index),
+            }
         }
 
         self.scratch = Some(stack);
@@ -476,7 +484,18 @@ impl<O: ForestObligation> ObligationForest<O> {
         trace
     }
 
-    /// Marks all nodes that depend on a pending node as NodeState;:Waiting.
+    #[inline]
+    fn mark_neighbors_as_waiting_from(&self, node: &Node<O>) {
+        if let Some(parent) = node.parent {
+            self.mark_as_waiting_from(&self.nodes[parent.get()]);
+        }
+
+        for dependent in &node.dependents {
+            self.mark_as_waiting_from(&self.nodes[dependent.get()]);
+        }
+    }
+
+    /// Marks all nodes that depend on a pending node as NodeState::Waiting.
     fn mark_as_waiting(&self) {
         for node in &self.nodes {
             if node.state.get() == NodeState::Waiting {
@@ -486,27 +505,19 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         for node in &self.nodes {
             if node.state.get() == NodeState::Pending {
-                self.mark_as_waiting_from(node)
+                self.mark_neighbors_as_waiting_from(node);
             }
         }
     }
 
     fn mark_as_waiting_from(&self, node: &Node<O>) {
         match node.state.get() {
-            NodeState::Pending | NodeState::Done => {},
             NodeState::Waiting | NodeState::Error | NodeState::OnDfsStack => return,
-            NodeState::Success => {
-                node.state.set(NodeState::Waiting);
-            }
+            NodeState::Success => node.state.set(NodeState::Waiting),
+            NodeState::Pending | NodeState::Done => {},
         }
 
-        if let Some(parent) = node.parent {
-            self.mark_as_waiting_from(&self.nodes[parent.get()]);
-        }
-
-        for dependent in &node.dependents {
-            self.mark_as_waiting_from(&self.nodes[dependent.get()]);
-        }
+        self.mark_neighbors_as_waiting_from(node);
     }
 
     /// Compresses the vector, removing all popped nodes. This adjusts
@@ -532,28 +543,28 @@ impl<O: ForestObligation> ObligationForest<O> {
         //     self.nodes[i..] are unchanged
         for i in 0..self.nodes.len() {
             match self.nodes[i].state.get() {
+                NodeState::Pending | NodeState::Waiting => {
+                    if dead_nodes > 0 {
+                        self.nodes.swap(i, i - dead_nodes);
+                        node_rewrites[i] -= dead_nodes;
+                    }
+                }
                 NodeState::Done => {
                     self.waiting_cache.remove(self.nodes[i].obligation.as_predicate());
                     // FIXME(HashMap): why can't I get my key back?
                     self.done_cache.insert(self.nodes[i].obligation.as_predicate().clone());
+                    node_rewrites[i] = nodes_len;
+                    dead_nodes += 1;
                 }
                 NodeState::Error => {
                     // We *intentionally* remove the node from the cache at this point. Otherwise
                     // tests must come up with a different type on every type error they
                     // check against.
                     self.waiting_cache.remove(self.nodes[i].obligation.as_predicate());
+                    node_rewrites[i] = nodes_len;
+                    dead_nodes += 1;
                 }
-                _ => {}
-            }
-
-            if self.nodes[i].is_popped() {
-                node_rewrites[i] = nodes_len;
-                dead_nodes += 1;
-            } else {
-                if dead_nodes > 0 {
-                    self.nodes.swap(i, i - dead_nodes);
-                    node_rewrites[i] -= dead_nodes;
-                }
+                NodeState::OnDfsStack | NodeState::Success => unreachable!()
             }
         }
 
@@ -631,14 +642,6 @@ impl<O> Node<O> {
             parent: parent,
             state: Cell::new(NodeState::Pending),
             dependents: vec![],
-        }
-    }
-
-    fn is_popped(&self) -> bool {
-        match self.state.get() {
-            NodeState::Pending | NodeState::Waiting => false,
-            NodeState::Error | NodeState::Done => true,
-            NodeState::OnDfsStack | NodeState::Success => unreachable!()
         }
     }
 }
