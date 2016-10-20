@@ -68,7 +68,7 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::{FromIterator, FusedIterator};
+use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::mem;
 use core::ops::{Index, IndexMut};
 use core::ops;
@@ -1589,6 +1589,18 @@ impl<T> SpecExtend<Vec<T>> for Vec<T> {
     }
 }
 
+trait IsTrustedLen : Iterator {
+    fn trusted_len(&self) -> Option<usize> { None }
+}
+impl<I> IsTrustedLen for I where I: Iterator { }
+
+impl<I> IsTrustedLen for I where I: TrustedLen
+{
+    fn trusted_len(&self) -> Option<usize> {
+        self.size_hint().1
+    }
+}
+
 impl<T> Vec<T> {
     fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
         // This function should be the moral equivalent of:
@@ -1596,16 +1608,30 @@ impl<T> Vec<T> {
         //      for item in iterator {
         //          self.push(item);
         //      }
-        while let Some(element) = iterator.next() {
-            let len = self.len();
-            if len == self.capacity() {
-                let (lower, _) = iterator.size_hint();
-                self.reserve(lower.saturating_add(1));
-            }
+        if let Some(additional) = iterator.trusted_len() {
+            self.reserve(additional);
             unsafe {
-                ptr::write(self.get_unchecked_mut(len), element);
-                // NB can't overflow since we would have had to alloc the address space
-                self.set_len(len + 1);
+                let mut ptr = self.as_mut_ptr().offset(self.len() as isize);
+                let mut local_len = SetLenOnDrop::new(&mut self.len);
+                for element in iterator {
+                    ptr::write(ptr, element);
+                    ptr = ptr.offset(1);
+                    // NB can't overflow since we would have had to alloc the address space
+                    local_len.increment_len(1);
+                }
+            }
+        } else {
+            while let Some(element) = iterator.next() {
+                let len = self.len();
+                if len == self.capacity() {
+                    let (lower, _) = iterator.size_hint();
+                    self.reserve(lower.saturating_add(1));
+                }
+                unsafe {
+                    ptr::write(self.get_unchecked_mut(len), element);
+                    // NB can't overflow since we would have had to alloc the address space
+                    self.set_len(len + 1);
+                }
             }
         }
     }
