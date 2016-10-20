@@ -61,9 +61,8 @@ impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
                   -> Ty<'tcx> where
         F: FnOnce(u32) -> ty::InferTy,
     {
-        match opt_ty {
-            Some(ty) => { return ty.fold_with(self); }
-            None => { }
+        if let Some(ty) = opt_ty {
+            return ty.fold_with(self);
         }
 
         match self.freshen_map.entry(key) {

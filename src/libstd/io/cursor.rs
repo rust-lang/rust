@@ -15,22 +15,28 @@ use cmp;
 use io::{self, SeekFrom, Error, ErrorKind};
 
 /// A `Cursor` wraps another type and provides it with a
-/// [`Seek`](trait.Seek.html) implementation.
+/// [`Seek`] implementation.
 ///
-/// Cursors are typically used with in-memory buffers to allow them to
-/// implement `Read` and/or `Write`, allowing these buffers to be used
+/// `Cursor`s are typically used with in-memory buffers to allow them to
+/// implement [`Read`] and/or [`Write`], allowing these buffers to be used
 /// anywhere you might use a reader or writer that does actual I/O.
 ///
 /// The standard library implements some I/O traits on various types which
-/// are commonly used as a buffer, like `Cursor<Vec<u8>>` and `Cursor<&[u8]>`.
+/// are commonly used as a buffer, like `Cursor<`[`Vec`]`<u8>>` and
+/// `Cursor<`[`&[u8]`]`>`.
 ///
 /// # Examples
 ///
-/// We may want to write bytes to a [`File`][file] in our production
+/// We may want to write bytes to a [`File`] in our production
 /// code, but use an in-memory buffer in our tests. We can do this with
 /// `Cursor`:
 ///
-/// [file]: ../fs/struct.File.html
+/// [`Seek`]: trait.Seek.html
+/// [`Read`]: ../../std/io/trait.Read.html
+/// [`Write`]: ../../std/io/trait.Write.html
+/// [`Vec`]: ../../std/vec/struct.Vec.html
+/// [`&[u8]`]: ../../std/primitive.slice.html
+/// [`File`]: ../fs/struct.File.html
 ///
 /// ```no_run
 /// use std::io::prelude::*;
