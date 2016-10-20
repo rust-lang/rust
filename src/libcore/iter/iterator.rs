@@ -195,13 +195,9 @@ pub trait Iterator {
         last
     }
 
-    /// Consumes the `n` first elements of the iterator, then returns the
-    /// `next()` one.
+    /// Returns the `n`th element of the iterator.
     ///
-    /// This method will evaluate the iterator `n` times, discarding those elements.
-    /// After it does so, it will call [`next()`] and return its value.
-    ///
-    /// [`next()`]: #tymethod.next
+    /// Note that all preceding elements will be consumed (i.e. discarded).
     ///
     /// Like most indexing operations, the count starts from zero, so `nth(0)`
     /// returns the first value, `nth(1)` the second, and so on.
