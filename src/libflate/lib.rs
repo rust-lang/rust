@@ -94,11 +94,14 @@ extern "C" {
                                     -> *mut c_void;
 }
 
-const LZ_NORM: c_int = 0x80;  // LZ with 128 probes, "normal"
+const LZ_FAST: c_int = 0x01;  // LZ with 1 probe, "fast"
+const TDEFL_GREEDY_PARSING_FLAG: c_int = 0x04000; // fast greedy parsing instead of lazy parsing
 
-/// Compress a buffer without writing any sort of header on the output.
+/// Compress a buffer without writing any sort of header on the output. Fast
+/// compression is used because it is almost twice as fast as default
+/// compression and the compression ratio is only marginally worse.
 pub fn deflate_bytes(bytes: &[u8]) -> Bytes {
-    let flags = LZ_NORM;
+    let flags = LZ_FAST | TDEFL_GREEDY_PARSING_FLAG;
     unsafe {
         let mut outsz: size_t = 0;
         let res = tdefl_compress_mem_to_heap(bytes.as_ptr() as *const _,
