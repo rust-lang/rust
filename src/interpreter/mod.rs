@@ -17,7 +17,7 @@ use syntax::codemap::{self, DUMMY_SP};
 use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer, AllocId};
 use primval::{self, PrimVal, PrimValKind};
-use self::value::Value;
+pub use self::value::Value;
 
 use std::collections::HashMap;
 
@@ -1462,7 +1462,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
-    fn get_local(&self, local: mir::Local) -> Option<Value> {
+    pub fn get_local(&self, local: mir::Local) -> Option<Value> {
         // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
         self.locals[local.index() - 1]
     }
@@ -1474,7 +1474,7 @@ impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
 }
 
 impl Lvalue {
-    fn from_ptr(ptr: Pointer) -> Self {
+    pub fn from_ptr(ptr: Pointer) -> Self {
         Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None }
     }
 

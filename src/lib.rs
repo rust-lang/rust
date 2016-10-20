@@ -36,10 +36,18 @@ pub use interpreter::{
     eval_main,
     run_mir_passes,
     StackPopCleanup,
+    Value,
+    Lvalue,
+    LvalueExtra,
 };
 
 pub use memory::{
     Memory,
     Pointer,
     AllocId,
+};
+
+pub use primval::{
+    PrimVal,
+    PrimValKind,
 };
