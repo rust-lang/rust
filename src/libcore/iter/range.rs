@@ -12,7 +12,7 @@ use mem;
 use ops::{self, Add, Sub};
 use usize;
 
-use super::FusedIterator;
+use super::{FusedIterator, TrustedLen};
 
 /// Objects that can be stepped over in both directions.
 ///
@@ -532,6 +532,9 @@ impl<A: Step + Clone> DoubleEndedIterator for ops::Range<A> where
 #[unstable(feature = "fused", issue = "35602")]
 impl<A> FusedIterator for ops::Range<A>
     where A: Step, for<'a> &'a A: Add<&'a A, Output = A> {}
+
+#[unstable(feature = "trusted_len", issue = "0")]
+unsafe impl TrustedLen for ops::Range<usize> { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step> Iterator for ops::RangeFrom<A> where
