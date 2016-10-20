@@ -120,11 +120,6 @@ struct ExtensionCrate {
     metadata: PMDSource,
     dylib: Option<PathBuf>,
     target_only: bool,
-
-    ident: String,
-    name: String,
-    span: Span,
-    should_link: bool,
 }
 
 enum PMDSource {
@@ -479,7 +474,6 @@ impl<'a> CrateLoader<'a> {
               info.id, info.name, info.ident, info.should_link);
         let target_triple = &self.sess.opts.target_triple[..];
         let is_cross = target_triple != config::host_triple();
-        let mut should_link = info.should_link && !is_cross;
         let mut target_only = false;
         let ident = info.ident.clone();
         let name = info.name.clone();
@@ -506,7 +500,6 @@ impl<'a> CrateLoader<'a> {
             // Try loading from target crates. This will abort later if we
             // try to load a plugin registrar function,
             target_only = true;
-            should_link = info.should_link;
 
             locate_ctxt.target = &self.sess.target.target;
             locate_ctxt.triple = target_triple;
@@ -536,16 +529,10 @@ impl<'a> CrateLoader<'a> {
             metadata: metadata,
             dylib: dylib.map(|p| p.0),
             target_only: target_only,
-            name: info.name.to_string(),
-            ident: info.ident.to_string(),
-            span: span,
-            should_link: should_link,
         }
     }
 
-    pub fn read_macros(&mut self, item: &ast::Item) -> LoadedMacros {
-        let ci = self.extract_crate_info(item).unwrap();
-        let ekrate = self.read_extension_crate(item.span, &ci);
+    fn read_macros(&mut self, item: &ast::Item, ekrate: &ExtensionCrate) -> LoadedMacros {
         let root = ekrate.metadata.get_root();
         let source_name = format!("<{} macros>", item.ident);
         let mut macro_rules = Vec::new();
@@ -604,14 +591,6 @@ impl<'a> CrateLoader<'a> {
             assert_eq!(macro_rules.len(), 0);
             LoadedMacros::ProcMacros(self.load_derive_macros(item, id, root.hash, dylib))
         } else {
-            // If this crate is not a proc-macro crate then we might be able to
-            // register it with the local crate store to prevent loading the
-            // metadata twice.
-            //
-            // If it's a proc-macro crate, though, then we definitely don't
-            // want to register it with the local crate store as we're just
-            // going to use it as we would a plugin.
-            ekrate.register(self);
             LoadedMacros::MacroRules(macro_rules)
         }
     }
@@ -917,22 +896,6 @@ impl<'a> CrateLoader<'a> {
     }
 }
 
-impl ExtensionCrate {
-    fn register(self, loader: &mut CrateLoader) {
-        if !self.should_link {
-            return
-        }
-
-        let library = match self.metadata {
-            PMDSource::Owned(lib) => lib,
-            PMDSource::Registered(_) => return,
-        };
-
-        // Register crate now to avoid double-reading metadata
-        loader.register_crate(&None, &self.ident, &self.name, self.span, library, true);
-    }
-}
-
 impl<'a> CrateLoader<'a> {
     pub fn preprocess(&mut self, krate: &ast::Crate) {
         for attr in krate.attrs.iter().filter(|m| m.name() == "link_args") {
@@ -1029,37 +992,44 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
             _ => return None,
         }
 
-        let loaded_macros = if load_macros { Some(self.read_macros(item)) } else { None };
+        let info = self.extract_crate_info(item).unwrap();
+        let loaded_macros = if load_macros {
+            let ekrate = self.read_extension_crate(item.span, &info);
+            let loaded_macros = self.read_macros(item, &ekrate);
 
-        // If this `extern crate` item has `#[macro_use]` then we can safely skip it.
-        // These annotations were processed during macro expansion and are already loaded
-        // (if necessary) into our crate store.
-        //
-        // Note that it's important we *don't* fall through below as some `#[macro_use]`
-        // crates are explicitly not linked (e.g. macro crates) so we want to ensure
-        // we avoid `resolve_crate` with those.
-        if let Some(LoadedMacros::CustomDerives(..)) = loaded_macros {
-            return loaded_macros;
-        }
-
-        if let Some(info) = self.extract_crate_info(item) {
-            if !info.should_link {
-                return loaded_macros;
+            // If this is a proc-macro crate or `#[no_link]` crate, it is only used at compile time,
+            // so we return here to avoid registering the crate.
+            if loaded_macros.is_proc_macros() || !info.should_link {
+                return Some(loaded_macros);
             }
 
-            let (cnum, ..) = self.resolve_crate(
-                &None, &info.ident, &info.name, None, item.span, PathKind::Crate, true,
-            );
+            // Register crate now to avoid double-reading metadata
+            if let PMDSource::Owned(lib) = ekrate.metadata {
+                if ekrate.target_only || config::host_triple() == self.sess.opts.target_triple {
+                    let ExternCrateInfo { ref ident, ref name, .. } = info;
+                    self.register_crate(&None, ident, name, item.span, lib, true);
+                }
+            }
 
-            let def_id = definitions.opt_local_def_id(item.id).unwrap();
-            let len = definitions.def_path(def_id.index).data.len();
+            Some(loaded_macros)
+        } else {
+            if !info.should_link {
+                return None;
+            }
+            None
+        };
 
-            let extern_crate =
-                ExternCrate { def_id: def_id, span: item.span, direct: true, path_len: len };
-            self.update_extern_crate(cnum, extern_crate, &mut FnvHashSet());
+        let (cnum, ..) = self.resolve_crate(
+            &None, &info.ident, &info.name, None, item.span, PathKind::Crate, true,
+        );
 
-            self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
-        }
+        let def_id = definitions.opt_local_def_id(item.id).unwrap();
+        let len = definitions.def_path(def_id.index).data.len();
+
+        let extern_crate =
+            ExternCrate { def_id: def_id, span: item.span, direct: true, path_len: len };
+        self.update_extern_crate(cnum, extern_crate, &mut FnvHashSet());
+        self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
 
         loaded_macros
     }
