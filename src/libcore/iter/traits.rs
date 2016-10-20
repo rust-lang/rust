@@ -665,3 +665,10 @@ pub trait FusedIterator: Iterator {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
+
+/// An iterator that has correct length
+#[unstable(feature = "trusted_len", issue = "0")]
+pub unsafe trait TrustedLen : Iterator {}
+
+#[unstable(feature = "trusted_len", issue = "0")]
+unsafe impl<'a, I: TrustedLen + ?Sized> TrustedLen for &'a mut I {}
