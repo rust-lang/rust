@@ -40,6 +40,12 @@ use syntax::parse::token::InternedString;
 use syntax_pos::{self, Span, mk_sp};
 use log;
 
+pub struct Library {
+    pub dylib: Option<(PathBuf, PathKind)>,
+    pub rlib: Option<(PathBuf, PathKind)>,
+    pub metadata: MetadataBlob,
+}
+
 pub struct CrateLoader<'a> {
     pub sess: &'a Session,
     cstore: &'a CStore,
@@ -123,7 +129,7 @@ struct ExtensionCrate {
 
 enum PMDSource {
     Registered(Rc<cstore::CrateMetadata>),
-    Owned(loader::Library),
+    Owned(Library),
 }
 
 impl Deref for PMDSource {
@@ -139,7 +145,7 @@ impl Deref for PMDSource {
 
 enum LoadResult {
     Previous(CrateNum),
-    Loaded(loader::Library),
+    Loaded(Library),
 }
 
 pub struct Macros {
@@ -275,7 +281,7 @@ impl<'a> CrateLoader<'a> {
                       ident: &str,
                       name: &str,
                       span: Span,
-                      lib: loader::Library,
+                      lib: Library,
                       explicitly_linked: bool)
                       -> (CrateNum, Rc<cstore::CrateMetadata>,
                           cstore::CrateSource) {
@@ -300,7 +306,7 @@ impl<'a> CrateLoader<'a> {
         // Maintain a reference to the top most crate.
         let root = if root.is_some() { root } else { &crate_paths };
 
-        let loader::Library { dylib, rlib, metadata } = lib;
+        let Library { dylib, rlib, metadata } = lib;
 
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span);
 
