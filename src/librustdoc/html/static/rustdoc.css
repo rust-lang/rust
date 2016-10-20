@@ -201,10 +201,13 @@ nav.sub {
     margin-bottom: 8px;
     text-align: center;
 }
-.block ul, .block li {
+.block ul {
     margin: 0;
     padding: 0;
+}
+.block li {
     list-style: none;
+    display:inline-block;
 }
 
 .block a {
@@ -212,7 +215,7 @@ nav.sub {
     text-overflow: ellipsis;
     overflow: hidden;
     line-height: 15px;
-    padding: 7px 5px;
+    padding: 2px 5px;
     font-size: 14px;
     font-weight: 300;
     transition: border 500ms ease-out;
