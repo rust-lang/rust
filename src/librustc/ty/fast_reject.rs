@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir;
 use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
@@ -24,8 +25,9 @@ pub enum SimplifiedType {
     FloatSimplifiedType(ast::FloatTy),
     AdtSimplifiedType(DefId),
     StrSimplifiedType,
-    ArraySimplifiedType,
-    PtrSimplifiedType,
+    ArraySimplifiedType(usize),
+    SliceSimplifiedType,
+    PtrSimplifiedType(hir::Mutability),
     NeverSimplifiedType,
     TupleSimplifiedType(usize),
     TraitSimplifiedType(DefId),
@@ -57,8 +59,9 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyFloat(float_type) => Some(FloatSimplifiedType(float_type)),
         ty::TyAdt(def, _) => Some(AdtSimplifiedType(def.did)),
         ty::TyStr => Some(StrSimplifiedType),
-        ty::TyArray(..) | ty::TySlice(_) => Some(ArraySimplifiedType),
-        ty::TyRawPtr(_) => Some(PtrSimplifiedType),
+        ty::TyArray(_, n) => Some(ArraySimplifiedType(n)),
+        ty::TySlice(_) => Some(SliceSimplifiedType),
+        ty::TyRawPtr(mt) => Some(PtrSimplifiedType(mt.mutbl)),
         ty::TyTrait(ref trait_info) => {
             Some(TraitSimplifiedType(trait_info.principal.def_id()))
         }

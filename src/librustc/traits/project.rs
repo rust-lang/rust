@@ -162,24 +162,29 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
            obligation);
 
     let infcx = selcx.infcx();
-    infcx.commit_if_ok(|snapshot| {
-        let (skol_predicate, skol_map) =
-            infcx.skolemize_late_bound_regions(&obligation.predicate, snapshot);
+    if let Some(skol_predicate) = infcx.tcx.no_late_bound_regions(&obligation.predicate) {
+        // Fastpath: no escaping regions.
+        project_and_unify_type(selcx, &obligation.with(skol_predicate))
+    } else {
+        infcx.commit_if_ok(|snapshot| {
+            let (skol_predicate, skol_map) =
+                infcx.skolemize_late_bound_regions(&obligation.predicate, snapshot);
 
-        let skol_obligation = obligation.with(skol_predicate);
-        match project_and_unify_type(selcx, &skol_obligation) {
-            Ok(result) => {
-                let span = obligation.cause.span;
-                match infcx.leak_check(false, span, &skol_map, snapshot) {
-                    Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, result)),
-                    Err(e) => Err(MismatchedProjectionTypes { err: e }),
+            let skol_obligation = obligation.with(skol_predicate);
+            match project_and_unify_type(selcx, &skol_obligation) {
+                Ok(result) => {
+                    let span = obligation.cause.span;
+                    match infcx.leak_check(false, span, &skol_map, snapshot) {
+                        Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, result)),
+                        Err(e) => Err(MismatchedProjectionTypes { err: e }),
+                    }
+                }
+                Err(e) => {
+                    Err(e)
                 }
             }
-            Err(e) => {
-                Err(e)
-            }
-        }
-    })
+        })
+    }
 }
 
 /// Evaluates constraints of the form:

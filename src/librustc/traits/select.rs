@@ -2665,6 +2665,49 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
     }
 
+    fn match_impl_fastpath(&mut self,
+                           impl_def_id: DefId,
+                           impl_trait_ref: ty::TraitRef<'tcx>,
+                           obligation: &TraitObligation<'tcx>)
+                           -> Option<Result<&'tcx Substs<'tcx>, ()>>
+    {
+        debug!("match_impl_fastpath({:?}={:?}, {:?}) entry",
+               impl_def_id, impl_trait_ref, obligation);
+
+        if impl_trait_ref.has_projection_types() {
+            return None;
+        }
+
+        let obligation_predicate = self.tcx().no_late_bound_regions(&obligation.predicate);
+        let obligation_trait_ref = match obligation_predicate {
+            Some(predicate) => predicate.trait_ref,
+            _ => return None
+        };
+
+        let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span,
+                                                           impl_def_id);
+        let impl_trait_ref = impl_trait_ref.subst(self.tcx(), impl_substs);
+
+        debug!("match_impl(impl_def_id={:?}, obligation={:?}, \
+               impl_trait_ref={:?}, skol_obligation_trait_ref={:?}) fastpath",
+               impl_def_id,
+               obligation,
+               impl_trait_ref,
+               obligation_trait_ref);
+
+        let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
+        match self.infcx.eq_trait_refs(false, origin, impl_trait_ref, obligation_trait_ref) {
+            Ok(InferOk { obligations, .. }) => {
+                self.inferred_obligations.extend(obligations);
+                Some(Ok(impl_substs))
+            }
+            Err(e) => {
+                debug!("match_impl_fastpath: failed eq_trait_refs due to `{}`", e);
+                Some(Err(()))
+            }
+        }
+    }
+
     fn match_impl(&mut self,
                   impl_def_id: DefId,
                   obligation: &TraitObligation<'tcx>,
@@ -2679,6 +2722,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // and so forth that we need to.
         if self.fast_reject_trait_refs(obligation, &impl_trait_ref) {
             return Err(());
+        }
+
+        if let Some(result) = self.match_impl_fastpath(impl_def_id, impl_trait_ref, obligation) {
+            return result.map(|substs| (
+                Normalized { value: substs, obligations: vec![] },
+                FnvHashMap()
+            ));
         }
 
         let (skol_obligation, skol_map) = self.infcx().skolemize_late_bound_regions(
@@ -2699,7 +2749,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                           &impl_trait_ref);
 
         debug!("match_impl(impl_def_id={:?}, obligation={:?}, \
-               impl_trait_ref={:?}, skol_obligation_trait_ref={:?})",
+               impl_trait_ref={:?}, skol_obligation_trait_ref={:?}) slowpath",
                impl_def_id,
                obligation,
                impl_trait_ref,
