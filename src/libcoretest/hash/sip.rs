@@ -14,6 +14,7 @@ use test::{Bencher, black_box};
 
 use core::hash::{Hash, Hasher};
 use core::hash::{SipHasher, SipHasher13, SipHasher24};
+use core::{slice, mem};
 
 // Hash just the bytes of the slice, without length prefix
 struct Bytes<'a>(&'a [u8]);
@@ -325,6 +326,26 @@ fn test_hash_no_concat_alias() {
 
     assert!(v != w);
     assert!(hash(&v) != hash(&w));
+}
+
+#[test]
+fn test_write_short_works() {
+    let test_usize = 0xd0c0b0a0usize;
+    let mut h1 = SipHasher24::new();
+    h1.write_usize(test_usize);
+    h1.write(b"bytes");
+    h1.write(b"string");
+    h1.write_u8(0xFFu8);
+    h1.write_u8(0x01u8);
+    let mut h2 = SipHasher24::new();
+    h2.write(unsafe {
+        slice::from_raw_parts(&test_usize as *const _ as *const u8,
+                              mem::size_of::<usize>())
+    });
+    h2.write(b"bytes");
+    h2.write(b"string");
+    h2.write(&[0xFFu8, 0x01u8]);
+    assert_eq!(h1.finish(), h2.finish());
 }
 
 #[bench]
