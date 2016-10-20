@@ -49,8 +49,13 @@ pub struct Pointer {
 }
 
 impl Pointer {
+    pub fn new(alloc_id: AllocId, offset: usize) -> Self {
+        Pointer { alloc_id: alloc_id, offset: offset }
+    }
+
     pub fn offset(self, i: isize) -> Self {
-        Pointer { offset: (self.offset as isize + i) as usize, ..self }
+        let new_offset = (self.offset as isize + i) as usize;
+        Pointer::new(self.alloc_id, new_offset)
     }
 
     pub fn points_to_zst(&self) -> bool {
@@ -65,25 +70,18 @@ impl Pointer {
         }
     }
 
+    // FIXME(solson): Integer pointers should use u64, not usize. Target pointers can be larger
+    // than host usize.
     pub fn from_int(i: usize) -> Self {
-        Pointer {
-            alloc_id: ZST_ALLOC_ID,
-            offset: i,
-        }
+        Pointer::new(ZST_ALLOC_ID, i)
     }
 
     pub fn zst_ptr() -> Self {
-        Pointer {
-            alloc_id: ZST_ALLOC_ID,
-            offset: 0,
-        }
+        Pointer::new(ZST_ALLOC_ID, 0)
     }
 
     pub fn never_ptr() -> Self {
-        Pointer {
-            alloc_id: NEVER_ALLOC_ID,
-            offset: 0,
-        }
+        Pointer::new(NEVER_ALLOC_ID, 0)
     }
 }
 
@@ -167,20 +165,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     fn create_fn_alloc(&mut self, def: FunctionDefinition<'tcx>) -> Pointer {
         if let Some(&alloc_id) = self.function_alloc_cache.get(&def) {
-            return Pointer {
-                alloc_id: alloc_id,
-                offset: 0,
-            };
+            return Pointer::new(alloc_id, 0);
         }
         let id = self.next_id;
         debug!("creating fn ptr: {}", id);
         self.next_id.0 += 1;
         self.functions.insert(id, def.clone());
         self.function_alloc_cache.insert(def, id);
-        Pointer {
-            alloc_id: id,
-            offset: 0,
-        }
+        Pointer::new(id, 0)
     }
 
     pub fn allocate(&mut self, size: usize, align: usize) -> EvalResult<'tcx, Pointer> {
@@ -207,10 +199,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let id = self.next_id;
         self.next_id.0 += 1;
         self.alloc_map.insert(id, alloc);
-        Ok(Pointer {
-            alloc_id: id,
-            offset: 0,
-        })
+        Ok(Pointer::new(id, 0))
     }
 
     // TODO(solson): Track which allocations were returned from __rust_allocate and report an error
@@ -241,10 +230,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             alloc.undef_mask.truncate(new_size);
         }
 
-        Ok(Pointer {
-            alloc_id: ptr.alloc_id,
-            offset: 0,
-        })
+        Ok(Pointer::new(ptr.alloc_id, 0))
     }
 
     // TODO(solson): See comment on `reallocate`.
@@ -535,7 +521,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let offset = read_target_uint(endianess, bytes).unwrap() as usize;
         let alloc = self.get(ptr.alloc_id)?;
         match alloc.relocations.get(&ptr.offset) {
-            Some(&alloc_id) => Ok(Pointer { alloc_id: alloc_id, offset: offset }),
+            Some(&alloc_id) => Ok(Pointer::new(alloc_id, offset)),
             None => Ok(Pointer::from_int(offset)),
         }
     }
@@ -547,22 +533,24 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn write_primval(&mut self, ptr: Pointer, val: PrimVal) -> EvalResult<'tcx, ()> {
-        match val {
-            PrimVal::Bool(b) => self.write_bool(ptr, b),
-            PrimVal::I8(n)   => self.write_int(ptr, n as i64, 1),
-            PrimVal::I16(n)  => self.write_int(ptr, n as i64, 2),
-            PrimVal::I32(n)  => self.write_int(ptr, n as i64, 4),
-            PrimVal::I64(n)  => self.write_int(ptr, n as i64, 8),
-            PrimVal::U8(n)   => self.write_uint(ptr, n as u64, 1),
-            PrimVal::U16(n)  => self.write_uint(ptr, n as u64, 2),
-            PrimVal::U32(n)  => self.write_uint(ptr, n as u64, 4),
-            PrimVal::U64(n)  => self.write_uint(ptr, n as u64, 8),
-            PrimVal::Char(c) => self.write_uint(ptr, c as u64, 4),
-            PrimVal::F32(f) => self.write_f32(ptr, f),
-            PrimVal::F64(f) => self.write_f64(ptr, f),
-            PrimVal::FnPtr(p) |
-            PrimVal::Ptr(p) => self.write_ptr(ptr, p),
+        use primval::PrimValKind::*;
+        match val.kind {
+            FnPtr(alloc_id) | Ptr(alloc_id) => {
+                let p = Pointer::new(alloc_id, val.bits as usize);
+                return self.write_ptr(ptr, p);
+            }
+            _ => {}
         }
+
+        let (size, bits) = match val.kind {
+            I8 | U8 | Bool         => (1, val.bits as u8  as u64),
+            I16 | U16              => (2, val.bits as u16 as u64),
+            I32 | U32 | F32 | Char => (4, val.bits as u32 as u64),
+            I64 | U64 | F64        => (8, val.bits),
+            FnPtr(_) | Ptr(_)      => bug!("handled above"),
+        };
+
+        self.write_uint(ptr, bits, size)
     }
 
     pub fn read_bool(&self, ptr: Pointer) -> EvalResult<'tcx, bool> {

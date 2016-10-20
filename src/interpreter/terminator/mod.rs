@@ -87,7 +87,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match func_ty.sty {
                     ty::TyFnPtr(bare_fn_ty) => {
                         let fn_ptr = self.eval_operand_to_primval(func)?
-                            .expect_fn_ptr("TyFnPtr callee did not evaluate to PrimVal::FnPtr");
+                            .expect_fn_ptr("TyFnPtr callee did not evaluate to FnPtr");
                         let (def_id, substs, fn_ty) = self.memory.get_fn(fn_ptr.alloc_id)?;
                         if fn_ty != bare_fn_ty {
                             return Err(EvalError::FunctionPointerTyMismatch(fn_ty, bare_fn_ty));
@@ -293,7 +293,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let align = self.value_to_primval(args[1], usize)?
                     .expect_uint("__rust_allocate second arg not usize");
                 let ptr = self.memory.allocate(size as usize, align as usize)?;
-                self.write_primval(dest, PrimVal::Ptr(ptr))?;
+                self.write_primval(dest, PrimVal::from_ptr(ptr))?;
             }
 
             "__rust_reallocate" => {
@@ -301,7 +301,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let size = self.value_to_primval(args[2], usize)?.expect_uint("__rust_reallocate third arg not usize");
                 let align = self.value_to_primval(args[3], usize)?.expect_uint("__rust_reallocate fourth arg not usize");
                 let new_ptr = self.memory.reallocate(ptr, size as usize, align as usize)?;
-                self.write_primval(dest, PrimVal::Ptr(new_ptr))?;
+                self.write_primval(dest, PrimVal::from_ptr(new_ptr))?;
             }
 
             "memcmp" => {
@@ -321,7 +321,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 };
 
-                self.write_primval(dest, PrimVal::int_with_size(result, dest_size))?;
+                self.write_primval(dest, PrimVal::from_int_with_size(result, dest_size))?;
             }
 
             _ => {
@@ -430,7 +430,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         // FIXME: this is a memory leak, should probably add the pointer to the
                         // current stack.
                         let first = self.value_to_ptr_dont_use(args[0].0, args[0].1)?;
-                        args[0].0 = Value::ByVal(PrimVal::Ptr(first));
+                        args[0].0 = Value::ByVal(PrimVal::from_ptr(first));
                         args[0].1 = self.tcx.mk_mut_ptr(args[0].1);
                     }
 
@@ -453,7 +453,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let idx = self.tcx.get_vtable_index_of_object_method(data, def_id);
                 if let Some(&mut(ref mut first_arg, ref mut first_ty)) = args.get_mut(0) {
                     let (self_ptr, vtable) = first_arg.expect_ptr_vtable_pair(&self.memory)?;
-                    *first_arg = Value::ByVal(PrimVal::Ptr(self_ptr));
+                    *first_arg = Value::ByVal(PrimVal::from_ptr(self_ptr));
                     let idx = idx + 3;
                     let offset = idx * self.memory.pointer_size();
                     let fn_ptr = self.memory.read_ptr(vtable.offset(offset as isize))?;

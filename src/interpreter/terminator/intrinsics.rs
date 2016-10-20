@@ -7,7 +7,7 @@ use rustc::ty::{self, Ty};
 use error::{EvalError, EvalResult};
 use interpreter::value::Value;
 use interpreter::{EvalContext, Lvalue};
-use primval::{self, PrimVal};
+use primval::{self, PrimVal, PrimValKind};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn call_intrinsic(
@@ -46,7 +46,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let offset = self.value_to_primval(args_ptrs[1], isize)?
                     .expect_int("arith_offset second arg not isize");
                 let new_ptr = ptr.offset(offset as isize);
-                self.write_primval(dest, PrimVal::Ptr(new_ptr))?;
+                self.write_primval(dest, PrimVal::from_ptr(new_ptr))?;
             }
 
             "assume" => {
@@ -99,19 +99,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = substs.type_at(0);
                 let adt_ptr = args_ptrs[0].read_ptr(&self.memory)?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
-                self.write_primval(dest, PrimVal::U64(discr_val))?;
+                self.write_primval(dest, PrimVal::new(discr_val, PrimValKind::U64))?;
             }
 
             "fabsf32" => {
                 let f = self.value_to_primval(args_ptrs[2], f32)?
                     .expect_f32("fabsf32 read non f32");
-                self.write_primval(dest, PrimVal::F32(f.abs()))?;
+                self.write_primval(dest, PrimVal::from_f32(f.abs()))?;
             }
 
             "fabsf64" => {
                 let f = self.value_to_primval(args_ptrs[2], f64)?
                     .expect_f64("fabsf64 read non f64");
-                self.write_primval(dest, PrimVal::F64(f.abs()))?;
+                self.write_primval(dest, PrimVal::from_f64(f.abs()))?;
             }
 
             "fadd_fast" => {
@@ -159,7 +159,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = substs.type_at(0);
                 let env = self.tcx.empty_parameter_environment();
                 let needs_drop = self.tcx.type_needs_drop_given_env(ty, &env);
-                self.write_primval(dest, PrimVal::Bool(needs_drop))?;
+                self.write_primval(dest, PrimVal::from_bool(needs_drop))?;
             }
 
             "offset" => {
@@ -170,7 +170,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let ptr = args_ptrs[0].read_ptr(&self.memory)?;
                 let result_ptr = ptr.offset(offset as isize * pointee_size);
-                self.write_primval(dest, PrimVal::Ptr(result_ptr))?;
+                self.write_primval(dest, PrimVal::from_ptr(result_ptr))?;
             }
 
             "overflowing_sub" => {
@@ -190,7 +190,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     .expect_f32("powif32 first arg not f32");
                 let i = self.value_to_primval(args_ptrs[1], i32)?
                     .expect_int("powif32 second arg not i32");
-                self.write_primval(dest, PrimVal::F32(f.powi(i as i32)))?;
+                self.write_primval(dest, PrimVal::from_f32(f.powi(i as i32)))?;
             }
 
             "powif64" => {
@@ -198,19 +198,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     .expect_f64("powif64 first arg not f64");
                 let i = self.value_to_primval(args_ptrs[1], i32)?
                     .expect_int("powif64 second arg not i32");
-                self.write_primval(dest, PrimVal::F64(f.powi(i as i32)))?;
+                self.write_primval(dest, PrimVal::from_f64(f.powi(i as i32)))?;
             }
 
             "sqrtf32" => {
                 let f = self.value_to_primval(args_ptrs[0], f32)?
                     .expect_f32("sqrtf32 first arg not f32");
-                self.write_primval(dest, PrimVal::F32(f.sqrt()))?;
+                self.write_primval(dest, PrimVal::from_f32(f.sqrt()))?;
             }
 
             "sqrtf64" => {
                 let f = self.value_to_primval(args_ptrs[0], f64)?
                     .expect_f64("sqrtf64 first arg not f64");
-                self.write_primval(dest, PrimVal::F64(f.sqrt()))?;
+                self.write_primval(dest, PrimVal::from_f64(f.sqrt()))?;
             }
 
             "size_of" => {
@@ -235,7 +235,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "type_id" => {
                 let ty = substs.type_at(0);
                 let n = self.tcx.type_id_hash(ty);
-                self.write_primval(dest, PrimVal::U64(n))?;
+                self.write_primval(dest, PrimVal::new(n, PrimValKind::U64))?;
             }
 
             "transmute" => {
@@ -362,53 +362,33 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 }
 
+macro_rules! integer_intrinsic {
+    ($name:expr, $val:expr, $method:ident) => ({
+        let val = $val;
+
+        use primval::PrimValKind::*;
+        let bits = match val.kind {
+            I8 => (val.bits as i8).$method() as u64,
+            U8 => (val.bits as u8).$method() as u64,
+            I16 => (val.bits as i16).$method() as u64,
+            U16 => (val.bits as u16).$method() as u64,
+            I32 => (val.bits as i32).$method() as u64,
+            U32 => (val.bits as u32).$method() as u64,
+            I64 => (val.bits as i64).$method() as u64,
+            U64 => (val.bits as u64).$method() as u64,
+            _ => bug!("invalid `{}` argument: {:?}", $name, val),
+        };
+
+        PrimVal::new(bits, val.kind)
+    });
+}
+
 fn numeric_intrinsic(name: &str, val: PrimVal) -> PrimVal {
-    use primval::PrimVal::*;
     match name {
-        "ctpop" => match val {
-            I8(i) => I8(i.count_ones() as i8),
-            U8(i) => U8(i.count_ones() as u8),
-            I16(i) => I16(i.count_ones() as i16),
-            U16(i) => U16(i.count_ones() as u16),
-            I32(i) => I32(i.count_ones() as i32),
-            U32(i) => U32(i.count_ones() as u32),
-            I64(i) => I64(i.count_ones() as i64),
-            U64(i) => U64(i.count_ones() as u64),
-            other => bug!("invalid `ctpop` argument: {:?}", other),
-        },
-        "cttz" => match val {
-            I8(i) => I8(i.trailing_zeros() as i8),
-            U8(i) => U8(i.trailing_zeros() as u8),
-            I16(i) => I16(i.trailing_zeros() as i16),
-            U16(i) => U16(i.trailing_zeros() as u16),
-            I32(i) => I32(i.trailing_zeros() as i32),
-            U32(i) => U32(i.trailing_zeros() as u32),
-            I64(i) => I64(i.trailing_zeros() as i64),
-            U64(i) => U64(i.trailing_zeros() as u64),
-            other => bug!("invalid `cttz` argument: {:?}", other),
-        },
-        "ctlz" => match val {
-            I8(i) => I8(i.leading_zeros() as i8),
-            U8(i) => U8(i.leading_zeros() as u8),
-            I16(i) => I16(i.leading_zeros() as i16),
-            U16(i) => U16(i.leading_zeros() as u16),
-            I32(i) => I32(i.leading_zeros() as i32),
-            U32(i) => U32(i.leading_zeros() as u32),
-            I64(i) => I64(i.leading_zeros() as i64),
-            U64(i) => U64(i.leading_zeros() as u64),
-            other => bug!("invalid `ctlz` argument: {:?}", other),
-        },
-        "bswap" => match val {
-            I8(i) => I8(i.swap_bytes() as i8),
-            U8(i) => U8(i.swap_bytes() as u8),
-            I16(i) => I16(i.swap_bytes() as i16),
-            U16(i) => U16(i.swap_bytes() as u16),
-            I32(i) => I32(i.swap_bytes() as i32),
-            U32(i) => U32(i.swap_bytes() as u32),
-            I64(i) => I64(i.swap_bytes() as i64),
-            U64(i) => U64(i.swap_bytes() as u64),
-            other => bug!("invalid `bswap` argument: {:?}", other),
-        },
-        _ => bug!("not a numeric intrinsic: {}", name),
+        "bswap" => integer_intrinsic!("bswap", val, swap_bytes),
+        "ctlz"  => integer_intrinsic!("ctlz", val, leading_zeros),
+        "ctpop" => integer_intrinsic!("ctpop", val, count_ones),
+        "cttz"  => integer_intrinsic!("cttz", val, trailing_zeros),
+        _       => bug!("not a numeric intrinsic: {}", name),
     }
 }

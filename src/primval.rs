@@ -1,306 +1,402 @@
 #![allow(unknown_lints)]
 #![allow(float_cmp)]
 
+use std::mem::transmute;
+
 use rustc::mir::repr as mir;
 
 use error::{EvalError, EvalResult};
-use memory::Pointer;
+use memory::{AllocId, Pointer};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum PrimVal {
-    Bool(bool),
-    I8(i8), I16(i16), I32(i32), I64(i64),
-    U8(u8), U16(u16), U32(u32), U64(u64),
-
-    Ptr(Pointer),
-    FnPtr(Pointer),
-    Char(char),
-
-    F32(f32), F64(f64),
+fn bits_to_f32(bits: u64) -> f32 {
+    unsafe { transmute::<u32, f32>(bits as u32) }
 }
 
-macro_rules! declare_expect_fn {
-    ($name:ident, $variant:ident, $t:ty) => (
-        pub fn $name(self, error_msg: &str) -> $t {
-            match self {
-                PrimVal::$variant(x) => x,
-                _ => bug!("{}", error_msg),
-            }
+fn bits_to_f64(bits: u64) -> f64 {
+    unsafe { transmute::<u64, f64>(bits) }
+}
+
+fn f32_to_bits(f: f32) -> u64 {
+    unsafe { transmute::<f32, u32>(f) as u64 }
+}
+
+fn f64_to_bits(f: f64) -> u64 {
+    unsafe { transmute::<f64, u64>(f) }
+}
+
+fn bits_to_bool(n: u64) -> bool {
+    // FIXME(solson): Can we reach here due to user error?
+    debug_assert!(n == 0 || n == 1, "bits interpreted as bool were {}", n);
+    n & 1 == 1
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PrimVal {
+    pub bits: u64,
+    pub kind: PrimValKind,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PrimValKind {
+    I8, I16, I32, I64,
+    U8, U16, U32, U64,
+    F32, F64,
+    Bool,
+    Char,
+    Ptr(AllocId),
+    FnPtr(AllocId),
+}
+
+impl PrimValKind {
+    pub fn is_int(self) -> bool {
+        use self::PrimValKind::*;
+        match self {
+            I8 | I16 | I32 | I64 | U8 | U16 | U32 | U64 => true,
+            _ => false,
         }
-    );
+    }
 }
 
 impl PrimVal {
-    declare_expect_fn!(expect_bool, Bool, bool);
-    declare_expect_fn!(expect_f32, F32, f32);
-    declare_expect_fn!(expect_f64, F64, f64);
-    declare_expect_fn!(expect_fn_ptr, FnPtr, Pointer);
-    declare_expect_fn!(expect_ptr, Ptr, Pointer);
+    pub fn new(bits: u64, kind: PrimValKind) -> Self {
+        PrimVal { bits: bits, kind: kind }
+    }
+
+    pub fn from_ptr(ptr: Pointer) -> Self {
+        PrimVal::new(ptr.offset as u64, PrimValKind::Ptr(ptr.alloc_id))
+    }
+
+    pub fn from_fn_ptr(ptr: Pointer) -> Self {
+        PrimVal::new(ptr.offset as u64, PrimValKind::FnPtr(ptr.alloc_id))
+    }
+
+    pub fn from_bool(b: bool) -> Self {
+        PrimVal::new(b as u64, PrimValKind::Bool)
+    }
+
+    pub fn from_char(c: char) -> Self {
+        PrimVal::new(c as u64, PrimValKind::Char)
+    }
+
+    pub fn from_f32(f: f32) -> Self {
+        PrimVal::new(f32_to_bits(f), PrimValKind::F32)
+    }
+
+    pub fn from_f64(f: f64) -> Self {
+        PrimVal::new(f64_to_bits(f), PrimValKind::F64)
+    }
+
+    pub fn from_uint_with_size(n: u64, size: usize) -> Self {
+        let kind = match size {
+            1 => PrimValKind::U8,
+            2 => PrimValKind::U16,
+            4 => PrimValKind::U32,
+            8 => PrimValKind::U64,
+            _ => bug!("can't make uint ({}) with size {}", n, size),
+        };
+        PrimVal::new(n, kind)
+    }
+
+    pub fn from_int_with_size(n: i64, size: usize) -> Self {
+        let kind = match size {
+            1 => PrimValKind::I8,
+            2 => PrimValKind::I16,
+            4 => PrimValKind::I32,
+            8 => PrimValKind::I64,
+            _ => bug!("can't make int ({}) with size {}", n, size),
+        };
+        PrimVal::new(n as u64, kind)
+    }
+
+    pub fn to_f32(self) -> f32 {
+        bits_to_f32(self.bits)
+    }
+
+    pub fn to_f64(self) -> f64 {
+        bits_to_f64(self.bits)
+    }
 
     pub fn expect_uint(self, error_msg: &str) -> u64 {
-        use self::PrimVal::*;
-        match self {
-            U8(u)  => u as u64,
-            U16(u) => u as u64,
-            U32(u) => u as u64,
-            U64(u) => u,
-            Ptr(ptr) => ptr.to_int().expect("non abstract ptr") as u64,
+        use self::PrimValKind::*;
+        match self.kind {
+            U8 | U16 | U32 | U64 => self.bits,
+            Ptr(alloc_id) => {
+                let ptr = Pointer::new(alloc_id, self.bits as usize);
+                ptr.to_int().expect("non abstract ptr") as u64
+            }
             _ => bug!("{}", error_msg),
         }
     }
 
     pub fn expect_int(self, error_msg: &str) -> i64 {
-        use self::PrimVal::*;
-        match self {
-            I8(i)  => i as i64,
-            I16(i) => i as i64,
-            I32(i) => i as i64,
-            I64(i) => i,
-            Ptr(ptr) => ptr.to_int().expect("non abstract ptr") as i64,
+        use self::PrimValKind::*;
+        match self.kind {
+            I8 | I16 | I32 | I64 => self.bits as i64,
+            Ptr(alloc_id) => {
+                let ptr = Pointer::new(alloc_id, self.bits as usize);
+                ptr.to_int().expect("non abstract ptr") as i64
+            }
             _ => bug!("{}", error_msg),
         }
     }
 
-    pub fn uint_with_size(n: u64, size: usize) -> Self {
-        use self::PrimVal::*;
-        match size {
-            1 => U8(n as u8),
-            2 => U16(n as u16),
-            4 => U32(n as u32),
-            8 => U64(n),
-            _ => bug!("can't make uint ({}) with size {}", n, size),
+    pub fn expect_bool(self, error_msg: &str) -> bool {
+        match (self.kind, self.bits) {
+            (PrimValKind::Bool, 0) => false,
+            (PrimValKind::Bool, 1) => true,
+            _ => bug!("{}", error_msg),
         }
     }
 
-    pub fn int_with_size(n: i64, size: usize) -> Self {
-        use self::PrimVal::*;
-        match size {
-            1 => I8(n as i8),
-            2 => I16(n as i16),
-            4 => I32(n as i32),
-            8 => I64(n),
-            _ => bug!("can't make int ({}) with size {}", n, size),
+    pub fn expect_f32(self, error_msg: &str) -> f32 {
+        match self.kind {
+            PrimValKind::F32 => bits_to_f32(self.bits),
+            _ => bug!("{}", error_msg),
+        }
+    }
+
+    pub fn expect_f64(self, error_msg: &str) -> f64 {
+        match self.kind {
+            PrimValKind::F32 => bits_to_f64(self.bits),
+            _ => bug!("{}", error_msg),
+        }
+    }
+
+    pub fn expect_ptr(self, error_msg: &str) -> Pointer {
+        match self.kind {
+            PrimValKind::Ptr(alloc_id) => Pointer::new(alloc_id, self.bits as usize),
+            _ => bug!("{}", error_msg),
+        }
+    }
+
+    pub fn expect_fn_ptr(self, error_msg: &str) -> Pointer {
+        match self.kind {
+            PrimValKind::FnPtr(alloc_id) => Pointer::new(alloc_id, self.bits as usize),
+            _ => bug!("{}", error_msg),
         }
     }
 }
 
-/// returns the result of the operation and whether the operation overflowed
-pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResult<'tcx, (PrimVal, bool)> {
+////////////////////////////////////////////////////////////////////////////////
+// MIR operator evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+macro_rules! overflow {
+    ($kind:expr, $op:ident, $l:expr, $r:expr) => ({
+        let (val, overflowed) = $l.$op($r);
+        let primval = PrimVal::new(val as u64, $kind);
+        Ok((primval, overflowed))
+    })
+}
+
+macro_rules! int_arithmetic {
+    ($kind:expr, $int_op:ident, $l:expr, $r:expr) => ({
+        let l = $l;
+        let r = $r;
+        match $kind {
+            I8  => overflow!(I8,  $int_op, l as i8,  r as i8),
+            I16 => overflow!(I16, $int_op, l as i16, r as i16),
+            I32 => overflow!(I32, $int_op, l as i32, r as i32),
+            I64 => overflow!(I64, $int_op, l as i64, r as i64),
+            U8  => overflow!(U8,  $int_op, l as u8,  r as u8),
+            U16 => overflow!(U16, $int_op, l as u16, r as u16),
+            U32 => overflow!(U32, $int_op, l as u32, r as u32),
+            U64 => overflow!(U64, $int_op, l as u64, r as u64),
+            _ => bug!("int_arithmetic should only be called on int primvals"),
+        }
+    })
+}
+
+macro_rules! int_shift {
+    ($kind:expr, $int_op:ident, $l:expr, $r:expr) => ({
+        let l = $l;
+        let r = $r;
+        match $kind {
+            I8  => overflow!(I8,  $int_op, l as i8,  r),
+            I16 => overflow!(I16, $int_op, l as i16, r),
+            I32 => overflow!(I32, $int_op, l as i32, r),
+            I64 => overflow!(I64, $int_op, l as i64, r),
+            U8  => overflow!(U8,  $int_op, l as u8,  r),
+            U16 => overflow!(U16, $int_op, l as u16, r),
+            U32 => overflow!(U32, $int_op, l as u32, r),
+            U64 => overflow!(U64, $int_op, l as u64, r),
+            _ => bug!("int_shift should only be called on int primvals"),
+        }
+    })
+}
+
+macro_rules! float_arithmetic {
+    ($kind:expr, $from_bits:ident, $to_bits:ident, $float_op:tt, $l:expr, $r:expr) => ({
+        let l = $from_bits($l);
+        let r = $from_bits($r);
+        let bits = $to_bits(l $float_op r);
+        PrimVal::new(bits, $kind)
+    })
+}
+
+macro_rules! f32_arithmetic {
+    ($float_op:tt, $l:expr, $r:expr) => (
+        float_arithmetic!(F32, bits_to_f32, f32_to_bits, $float_op, $l, $r)
+    )
+}
+
+macro_rules! f64_arithmetic {
+    ($float_op:tt, $l:expr, $r:expr) => (
+        float_arithmetic!(F64, bits_to_f64, f64_to_bits, $float_op, $l, $r)
+    )
+}
+
+/// Returns the result of the specified operation and whether it overflowed.
+pub fn binary_op<'tcx>(
+    bin_op: mir::BinOp,
+    left: PrimVal,
+    right: PrimVal
+) -> EvalResult<'tcx, (PrimVal, bool)> {
     use rustc::mir::repr::BinOp::*;
-    use self::PrimVal::*;
+    use self::PrimValKind::*;
 
-    macro_rules! overflow {
-        ($v:ident, $v2:ident, $l:ident, $op:ident, $r:ident) => ({
-            let (val, of) = $l.$op($r);
-            if of {
-                return Ok(($v(val), true));
-            } else {
-                $v(val)
-            }
-        })
-    }
-
-    macro_rules! int_binops {
-        ($v:ident, $l:ident, $r:ident) => ({
-            match bin_op {
-                Add    => overflow!($v, $v, $l, overflowing_add, $r),
-                Sub    => overflow!($v, $v, $l, overflowing_sub, $r),
-                Mul    => overflow!($v, $v, $l, overflowing_mul, $r),
-                Div    => overflow!($v, $v, $l, overflowing_div, $r),
-                Rem    => overflow!($v, $v, $l, overflowing_rem, $r),
-                BitXor => $v($l ^ $r),
-                BitAnd => $v($l & $r),
-                BitOr  => $v($l | $r),
-
-                // these have already been handled
-                Shl | Shr => bug!("`{}` operation should already have been handled", bin_op.to_hir_binop().as_str()),
-
-                Eq => Bool($l == $r),
-                Ne => Bool($l != $r),
-                Lt => Bool($l < $r),
-                Le => Bool($l <= $r),
-                Gt => Bool($l > $r),
-                Ge => Bool($l >= $r),
-            }
-        })
-    }
-
-    macro_rules! float_binops {
-        ($v:ident, $l:ident, $r:ident) => ({
-            match bin_op {
-                Add    => $v($l + $r),
-                Sub    => $v($l - $r),
-                Mul    => $v($l * $r),
-                Div    => $v($l / $r),
-                Rem    => $v($l % $r),
-
-                // invalid float ops
-                BitXor | BitAnd | BitOr |
-                Shl | Shr => bug!("`{}` is not a valid operation on floats", bin_op.to_hir_binop().as_str()),
-
-                Eq => Bool($l == $r),
-                Ne => Bool($l != $r),
-                Lt => Bool($l < $r),
-                Le => Bool($l <= $r),
-                Gt => Bool($l > $r),
-                Ge => Bool($l >= $r),
-            }
-        })
-    }
-
-    fn unrelated_ptr_ops<'tcx>(bin_op: mir::BinOp) -> EvalResult<'tcx, PrimVal> {
-        use rustc::mir::repr::BinOp::*;
-        match bin_op {
-            Eq => Ok(Bool(false)),
-            Ne => Ok(Bool(true)),
-            Lt | Le | Gt | Ge => Err(EvalError::InvalidPointerMath),
-            _ => unimplemented!(),
-        }
-    }
-
-    match bin_op {
-        // can have rhs with a different numeric type
-        Shl | Shr => {
-            // these numbers are the maximum number a bitshift rhs could possibly have
-            // e.g. u16 can be bitshifted by 0..16, so masking with 0b1111 (16 - 1) will ensure we are in that range
-            let type_bits: u32 = match left {
-                I8(_) | U8(_) => 8,
-                I16(_) | U16(_) => 16,
-                I32(_) | U32(_) => 32,
-                I64(_) | U64(_) => 64,
-                _ => bug!("bad MIR: bitshift lhs is not integral"),
-            };
-            assert!(type_bits.is_power_of_two());
-            // turn into `u32` because `overflowing_sh{l,r}` only take `u32`
-            let r = match right {
-                I8(i) => i as u32,
-                I16(i) => i as u32,
-                I32(i) => i as u32,
-                I64(i) => i as u32,
-                U8(i) => i as u32,
-                U16(i) => i as u32,
-                U32(i) => i as u32,
-                U64(i) => i as u32,
-                _ => bug!("bad MIR: bitshift rhs is not integral"),
-            };
-            // apply mask
-            let r = r & (type_bits - 1);
-            macro_rules! shift {
-                ($v:ident, $l:ident, $r:ident) => ({
-                    match bin_op {
-                        Shl => overflow!($v, U32, $l, overflowing_shl, $r),
-                        Shr => overflow!($v, U32, $l, overflowing_shr, $r),
-                        _ => bug!("it has already been checked that this is a shift op"),
-                    }
-                })
-            }
-            let val = match left {
-                I8(l) => shift!(I8, l, r),
-                I16(l) => shift!(I16, l, r),
-                I32(l) => shift!(I32, l, r),
-                I64(l) => shift!(I64, l, r),
-                U8(l) => shift!(U8, l, r),
-                U16(l) => shift!(U16, l, r),
-                U32(l) => shift!(U32, l, r),
-                U64(l) => shift!(U64, l, r),
-                _ => bug!("bad MIR: bitshift lhs is not integral (should already have been checked)"),
-            };
-            return Ok((val, false));
-        },
-        _ => {},
-    }
-
-    let val = match (left, right) {
-        (I8(l),  I8(r))  => int_binops!(I8, l, r),
-        (I16(l), I16(r)) => int_binops!(I16, l, r),
-        (I32(l), I32(r)) => int_binops!(I32, l, r),
-        (I64(l), I64(r)) => int_binops!(I64, l, r),
-        (U8(l),  U8(r))  => int_binops!(U8, l, r),
-        (U16(l), U16(r)) => int_binops!(U16, l, r),
-        (U32(l), U32(r)) => int_binops!(U32, l, r),
-        (U64(l), U64(r)) => int_binops!(U64, l, r),
-        (F32(l), F32(r)) => float_binops!(F32, l, r),
-        (F64(l), F64(r)) => float_binops!(F64, l, r),
-        (Char(l), Char(r)) => match bin_op {
-            Eq => Bool(l == r),
-            Ne => Bool(l != r),
-            Lt => Bool(l < r),
-            Le => Bool(l <= r),
-            Gt => Bool(l > r),
-            Ge => Bool(l >= r),
-            _ => bug!("invalid char op: {:?}", bin_op),
-        },
-
-        (Bool(l), Bool(r)) => {
-            Bool(match bin_op {
-                Eq => l == r,
-                Ne => l != r,
-                Lt => l < r,
-                Le => l <= r,
-                Gt => l > r,
-                Ge => l >= r,
-                BitOr => l | r,
-                BitXor => l ^ r,
-                BitAnd => l & r,
-                Add | Sub | Mul | Div | Rem | Shl | Shr => return Err(EvalError::InvalidBoolOp(bin_op)),
-            })
-        }
-
+    match (left.kind, right.kind) {
         (FnPtr(_), Ptr(_)) |
-        (Ptr(_), FnPtr(_)) =>
-            unrelated_ptr_ops(bin_op)?,
+        (Ptr(_), FnPtr(_)) => return Ok((unrelated_ptr_ops(bin_op)?, false)),
 
-        (FnPtr(l_ptr), FnPtr(r_ptr)) => match bin_op {
-            Eq => Bool(l_ptr == r_ptr),
-            Ne => Bool(l_ptr != r_ptr),
-            _ => return Err(EvalError::Unimplemented(format!("unimplemented fn ptr comparison: {:?}", bin_op))),
-        },
+        (Ptr(l_alloc), Ptr(r_alloc)) if l_alloc != r_alloc
+            => return Ok((unrelated_ptr_ops(bin_op)?, false)),
 
-        (Ptr(l_ptr), Ptr(r_ptr)) => {
-            if l_ptr.alloc_id != r_ptr.alloc_id {
-                return Ok((unrelated_ptr_ops(bin_op)?, false));
-            }
-
-            let l = l_ptr.offset;
-            let r = r_ptr.offset;
-
+        (FnPtr(l_alloc), FnPtr(r_alloc)) => {
             match bin_op {
-                Eq => Bool(l == r),
-                Ne => Bool(l != r),
-                Lt => Bool(l < r),
-                Le => Bool(l <= r),
-                Gt => Bool(l > r),
-                Ge => Bool(l >= r),
-                _ => return Err(EvalError::Unimplemented(format!("unimplemented ptr op: {:?}", bin_op))),
+                Eq => return Ok((PrimVal::from_bool(l_alloc == r_alloc), false)),
+                Ne => return Ok((PrimVal::from_bool(l_alloc != r_alloc), false)),
+                _ => {}
             }
         }
 
-        (l, r) => return Err(EvalError::Unimplemented(format!("unimplemented binary op: {:?}, {:?}, {:?}", l, r, bin_op))),
+        _ => {}
+    }
+
+    let (l, r) = (left.bits, right.bits);
+
+    // These ops can have an RHS with a different numeric type.
+    if bin_op == Shl || bin_op == Shr {
+        // These are the maximum values a bitshift RHS could possibly have. For example, u16
+        // can be bitshifted by 0..16, so masking with 0b1111 (16 - 1) will ensure we are in
+        // that range.
+        let type_bits: u32 = match left.kind {
+            I8  | U8  => 8,
+            I16 | U16 => 16,
+            I32 | U32 => 32,
+            I64 | U64 => 64,
+            _ => bug!("bad MIR: bitshift lhs is not integral"),
+        };
+
+        // Cast to `u32` because `overflowing_sh{l,r}` only take `u32`, then apply the bitmask
+        // to ensure it's within the valid shift value range.
+        let r = (right.bits as u32) & (type_bits - 1);
+
+        return match bin_op {
+            Shl => int_shift!(left.kind, overflowing_shl, l, r),
+            Shr => int_shift!(left.kind, overflowing_shr, l, r),
+            _ => bug!("it has already been checked that this is a shift op"),
+        };
+    }
+
+    if left.kind != right.kind {
+        let msg = format!("unimplemented binary op: {:?}, {:?}, {:?}", left, right, bin_op);
+        return Err(EvalError::Unimplemented(msg));
+    }
+
+    let val = match (bin_op, left.kind) {
+        (Eq, F32) => PrimVal::from_bool(bits_to_f32(l) == bits_to_f32(r)),
+        (Ne, F32) => PrimVal::from_bool(bits_to_f32(l) != bits_to_f32(r)),
+        (Lt, F32) => PrimVal::from_bool(bits_to_f32(l) <  bits_to_f32(r)),
+        (Le, F32) => PrimVal::from_bool(bits_to_f32(l) <= bits_to_f32(r)),
+        (Gt, F32) => PrimVal::from_bool(bits_to_f32(l) >  bits_to_f32(r)),
+        (Ge, F32) => PrimVal::from_bool(bits_to_f32(l) >= bits_to_f32(r)),
+
+        (Eq, F64) => PrimVal::from_bool(bits_to_f64(l) == bits_to_f64(r)),
+        (Ne, F64) => PrimVal::from_bool(bits_to_f64(l) != bits_to_f64(r)),
+        (Lt, F64) => PrimVal::from_bool(bits_to_f64(l) <  bits_to_f64(r)),
+        (Le, F64) => PrimVal::from_bool(bits_to_f64(l) <= bits_to_f64(r)),
+        (Gt, F64) => PrimVal::from_bool(bits_to_f64(l) >  bits_to_f64(r)),
+        (Ge, F64) => PrimVal::from_bool(bits_to_f64(l) >= bits_to_f64(r)),
+
+        (Add, F32) => f32_arithmetic!(+, l, r),
+        (Sub, F32) => f32_arithmetic!(-, l, r),
+        (Mul, F32) => f32_arithmetic!(*, l, r),
+        (Div, F32) => f32_arithmetic!(/, l, r),
+        (Rem, F32) => f32_arithmetic!(%, l, r),
+
+        (Add, F64) => f64_arithmetic!(+, l, r),
+        (Sub, F64) => f64_arithmetic!(-, l, r),
+        (Mul, F64) => f64_arithmetic!(*, l, r),
+        (Div, F64) => f64_arithmetic!(/, l, r),
+        (Rem, F64) => f64_arithmetic!(%, l, r),
+
+        (Eq, _) => PrimVal::from_bool(l == r),
+        (Ne, _) => PrimVal::from_bool(l != r),
+        (Lt, _) => PrimVal::from_bool(l <  r),
+        (Le, _) => PrimVal::from_bool(l <= r),
+        (Gt, _) => PrimVal::from_bool(l >  r),
+        (Ge, _) => PrimVal::from_bool(l >= r),
+
+        (BitOr,  k) => PrimVal::new(l | r, k),
+        (BitAnd, k) => PrimVal::new(l & r, k),
+        (BitXor, k) => PrimVal::new(l ^ r, k),
+
+        (Add, k) if k.is_int() => return int_arithmetic!(k, overflowing_add, l, r),
+        (Sub, k) if k.is_int() => return int_arithmetic!(k, overflowing_sub, l, r),
+        (Mul, k) if k.is_int() => return int_arithmetic!(k, overflowing_mul, l, r),
+        (Div, k) if k.is_int() => return int_arithmetic!(k, overflowing_div, l, r),
+        (Rem, k) if k.is_int() => return int_arithmetic!(k, overflowing_rem, l, r),
+
+        _ => {
+            let msg = format!("unimplemented binary op: {:?}, {:?}, {:?}", left, right, bin_op);
+            return Err(EvalError::Unimplemented(msg));
+        }
     };
 
     Ok((val, false))
 }
 
+fn unrelated_ptr_ops<'tcx>(bin_op: mir::BinOp) -> EvalResult<'tcx, PrimVal> {
+    use rustc::mir::repr::BinOp::*;
+    match bin_op {
+        Eq => Ok(PrimVal::from_bool(false)),
+        Ne => Ok(PrimVal::from_bool(true)),
+        Lt | Le | Gt | Ge => Err(EvalError::InvalidPointerMath),
+        _ => bug!(),
+    }
+}
+
 pub fn unary_op<'tcx>(un_op: mir::UnOp, val: PrimVal) -> EvalResult<'tcx, PrimVal> {
     use rustc::mir::repr::UnOp::*;
-    use self::PrimVal::*;
-    match (un_op, val) {
-        (Not, Bool(b)) => Ok(Bool(!b)),
-        (Not, I8(n))  => Ok(I8(!n)),
-        (Neg, I8(n))  => Ok(I8(-n)),
-        (Not, I16(n)) => Ok(I16(!n)),
-        (Neg, I16(n)) => Ok(I16(-n)),
-        (Not, I32(n)) => Ok(I32(!n)),
-        (Neg, I32(n)) => Ok(I32(-n)),
-        (Not, I64(n)) => Ok(I64(!n)),
-        (Neg, I64(n)) => Ok(I64(-n)),
-        (Not, U8(n))  => Ok(U8(!n)),
-        (Not, U16(n)) => Ok(U16(!n)),
-        (Not, U32(n)) => Ok(U32(!n)),
-        (Not, U64(n)) => Ok(U64(!n)),
+    use self::PrimValKind::*;
 
-        (Neg, F64(n)) => Ok(F64(-n)),
-        (Neg, F32(n)) => Ok(F32(-n)),
-        _ => Err(EvalError::Unimplemented(format!("unimplemented unary op: {:?}, {:?}", un_op, val))),
-    }
+    let bits = match (un_op, val.kind) {
+        (Not, Bool) => !bits_to_bool(val.bits) as u64,
+
+        (Not, U8)  => !(val.bits as u8) as u64,
+        (Not, U16) => !(val.bits as u16) as u64,
+        (Not, U32) => !(val.bits as u32) as u64,
+        (Not, U64) => !val.bits,
+
+        (Not, I8)  => !(val.bits as i8) as u64,
+        (Not, I16) => !(val.bits as i16) as u64,
+        (Not, I32) => !(val.bits as i32) as u64,
+        (Not, I64) => !(val.bits as i64) as u64,
+
+        (Neg, I8)  => -(val.bits as i8) as u64,
+        (Neg, I16) => -(val.bits as i16) as u64,
+        (Neg, I32) => -(val.bits as i32) as u64,
+        (Neg, I64) => -(val.bits as i64) as u64,
+
+        (Neg, F32) => f32_to_bits(-bits_to_f32(val.bits)),
+        (Neg, F64) => f64_to_bits(-bits_to_f64(val.bits)),
+
+        _ => {
+            let msg = format!("unimplemented unary op: {:?}, {:?}", un_op, val);
+            return Err(EvalError::Unimplemented(msg));
+        }
+    };
+
+    Ok(PrimVal::new(bits, val.kind))
 }

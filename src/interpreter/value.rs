@@ -1,6 +1,6 @@
 use error::EvalResult;
 use memory::{Memory, Pointer};
-use primval::PrimVal;
+use primval::{PrimVal, PrimValKind};
 
 /// A `Value` represents a single self-contained Rust value.
 ///
@@ -22,8 +22,13 @@ impl<'a, 'tcx: 'a> Value {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr),
-            ByVal(PrimVal::Ptr(ptr)) |
-            ByVal(PrimVal::FnPtr(ptr)) => Ok(ptr),
+
+            ByVal(PrimVal { kind: PrimValKind::Ptr(alloc), bits: offset }) |
+            ByVal(PrimVal { kind: PrimValKind::FnPtr(alloc), bits: offset }) => {
+                let ptr = Pointer::new(alloc, offset as usize);
+                Ok(ptr)
+            }
+
             ByValPair(..) => unimplemented!(),
             ByVal(_other) => unimplemented!(),
         }
@@ -40,7 +45,16 @@ impl<'a, 'tcx: 'a> Value {
                 let vtable = mem.read_ptr(ptr.offset(mem.pointer_size() as isize))?;
                 Ok((ptr, vtable))
             }
-            ByValPair(PrimVal::Ptr(ptr), PrimVal::Ptr(vtable)) => Ok((ptr, vtable)),
+
+            ByValPair(
+                PrimVal { kind: PrimValKind::Ptr(ptr_alloc), bits: ptr_offset },
+                PrimVal { kind: PrimValKind::Ptr(vtable_alloc), bits: vtable_offset },
+            ) => {
+                let ptr = Pointer::new(ptr_alloc, ptr_offset as usize);
+                let vtable = Pointer::new(vtable_alloc, vtable_offset as usize);
+                Ok((ptr, vtable))
+            }
+
             _ => bug!("expected ptr and vtable, got {:?}", self),
         }
     }
@@ -49,10 +63,7 @@ impl<'a, 'tcx: 'a> Value {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_usize(ptr.offset(mem.pointer_size() as isize)),
-            ByValPair(_, PrimVal::U8(len)) => Ok(len as u64),
-            ByValPair(_, PrimVal::U16(len)) => Ok(len as u64),
-            ByValPair(_, PrimVal::U32(len)) => Ok(len as u64),
-            ByValPair(_, PrimVal::U64(len)) => Ok(len),
+            ByValPair(_, val) if val.kind.is_int() => Ok(val.bits),
             _ => unimplemented!(),
         }
     }
