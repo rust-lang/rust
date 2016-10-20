@@ -425,8 +425,8 @@ pub fn parse(sess: &ParseSess,
                         cur_eis.push(ei);
                     }
                     TokenTree::Token(_, ref t) => {
-                        let mut ei_t = ei.clone();
                         if token_name_eq(t,&tok) {
+                            let mut ei_t = ei.clone();
                             ei_t.idx += 1;
                             next_eis.push(ei_t);
                         }
