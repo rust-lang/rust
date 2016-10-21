@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Lvalue::Static(cid) => {
                 let dest = *self.statics.get_mut(&cid).expect("static should be cached");
                 assert!(dest.mutable);
-                self.write_value_to_dest(
+                self.write_value_possibly_by_val(
                     src_val,
                     |this, val| *this.statics.get_mut(&cid).expect("already checked") = Constant { data: Some(val), ..dest },
                     dest.data,
@@ -1256,7 +1256,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Lvalue::Local { frame, local } => {
                 let dest = self.stack[frame].get_local(local);
-                self.write_value_to_dest(
+                self.write_value_possibly_by_val(
                     src_val,
                     |this, val| this.stack[frame].set_local(local, val),
                     dest,
@@ -1267,14 +1267,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     // The cases here can be a bit subtle. Read carefully!
-    fn write_value_to_dest<F: FnOnce(&mut Self, Value)>(
+    fn write_value_possibly_by_val<F: FnOnce(&mut Self, Value)>(
         &mut self,
         src_val: Value,
         write_dest: F,
-        dest_val: Option<Value>,
+        old_dest_val: Option<Value>,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
-        if let Some(Value::ByRef(dest_ptr)) = dest_val {
+        if let Some(Value::ByRef(dest_ptr)) = old_dest_val {
             // If the local value is already `ByRef` (that is, backed by an `Allocation`),
             // then we must write the new value into this allocation, because there may be
             // other pointers into the allocation. These other pointers are logically
