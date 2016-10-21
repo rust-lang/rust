@@ -652,9 +652,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Cast(kind, ref operand, cast_ty) => {
-                // FIXME(solson)
-                let dest = self.force_allocation(dest)?.to_ptr();
-
                 debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
                 use rustc::mir::repr::CastKind::*;
                 match kind {
@@ -669,34 +666,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let src_ty = self.operand_ty(operand);
                         if self.type_is_fat_ptr(src_ty) {
                             trace!("misc cast: {:?}", src);
-                            let ptr_size = self.memory.pointer_size();
                             match (src, self.type_is_fat_ptr(dest_ty)) {
-                                (Value::ByValPair(data, meta), true) => {
-                                    self.memory.write_primval(dest, data)?;
-                                    self.memory.write_primval(dest.offset(ptr_size as isize), meta)?;
+                                (Value::ByRef(_), _) |
+                                (Value::ByValPair(..), true) => {
+                                    self.write_value(src, dest, dest_ty)?;
                                 },
                                 (Value::ByValPair(data, _), false) => {
-                                    self.memory.write_primval(dest, data)?;
-                                },
-                                (Value::ByRef(ptr), true) => {
-                                    self.memory.copy(ptr, dest, ptr_size * 2, ptr_size)?;
-                                },
-                                (Value::ByRef(ptr), false) => {
-                                    self.memory.copy(ptr, dest, ptr_size, ptr_size)?;
+                                    self.write_value(Value::ByVal(data), dest, dest_ty)?;
                                 },
                                 (Value::ByVal(_), _) => bug!("expected fat ptr"),
                             }
                         } else {
                             let src_val = self.value_to_primval(src, src_ty)?;
                             let dest_val = self.cast_primval(src_val, dest_ty)?;
-                            self.memory.write_primval(dest, dest_val)?;
+                            self.write_value(Value::ByVal(dest_val), dest, dest_ty)?;
                         }
                     }
 
                     ReifyFnPointer => match self.operand_ty(operand).sty {
                         ty::TyFnDef(def_id, substs, fn_ty) => {
                             let fn_ptr = self.memory.create_fn_ptr(def_id, substs, fn_ty);
-                            self.memory.write_ptr(dest, fn_ptr)?;
+                            self.write_value(Value::ByVal(PrimVal::from_fn_ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("reify fn pointer on {:?}", other),
                     },
@@ -707,7 +697,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let ptr = src.read_ptr(&self.memory)?;
                             let (def_id, substs, _) = self.memory.get_fn(ptr.alloc_id)?;
                             let fn_ptr = self.memory.create_fn_ptr(def_id, substs, unsafe_fn_ty);
-                            self.memory.write_ptr(dest, fn_ptr)?;
+                            self.write_value(Value::ByVal(PrimVal::from_fn_ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("fn to unsafe fn cast on {:?}", other),
                     },
@@ -1492,7 +1482,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         src: Value,
         src_ty: Ty<'tcx>,
-        dest: Pointer,
+        dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
         match (&src_ty.sty, &dest_ty.sty) {
@@ -1506,33 +1496,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                     (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                         let ptr = src.read_ptr(&self.memory)?;
-                        self.memory.write_ptr(dest, ptr)?;
-                        let ptr_size = self.memory.pointer_size() as isize;
-                        let dest_extra = dest.offset(ptr_size);
-                        self.memory.write_usize(dest_extra, length as u64)?;
+                        let len = self.usize_primval(length as u64);
+                        let ptr = PrimVal::from_ptr(ptr);
+                        self.write_value(Value::ByValPair(ptr, len), dest, dest_ty)?;
                     }
                     (&ty::TyTrait(_), &ty::TyTrait(_)) => {
                         // For now, upcasts are limited to changes in marker
                         // traits, and hence never actually require an actual
                         // change to the vtable.
-                        self.write_value_to_ptr(src, dest, dest_ty)?;
+                        self.write_value(src, dest, dest_ty)?;
                     },
                     (_, &ty::TyTrait(ref data)) => {
                         let trait_ref = data.principal.with_self_ty(self.tcx, src_pointee_ty);
                         let trait_ref = self.tcx.erase_regions(&trait_ref);
                         let vtable = self.get_vtable(trait_ref)?;
                         let ptr = src.read_ptr(&self.memory)?;
-
-                        self.memory.write_ptr(dest, ptr)?;
-                        let ptr_size = self.memory.pointer_size() as isize;
-                        let dest_extra = dest.offset(ptr_size);
-                        self.memory.write_ptr(dest_extra, vtable)?;
+                        let ptr = PrimVal::from_ptr(ptr);
+                        let extra = PrimVal::from_ptr(vtable);
+                        self.write_value(Value::ByValPair(ptr, extra), dest, dest_ty)?;
                     },
 
                     _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
                 }
             }
             (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) => {
+                // FIXME(solson)
+                let dest = self.force_allocation(dest)?.to_ptr();
                 // unsizing of generic struct with pointer fields
                 // Example: `Arc<T>` -> `Arc<Trait>`
                 // here we need to increase the size of every &T thin ptr field to a fat ptr
@@ -1563,7 +1552,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     if src_fty == dst_fty {
                         self.copy(src_f_ptr, dst_f_ptr, src_fty)?;
                     } else {
-                        self.unsize_into(Value::ByRef(src_f_ptr), src_fty, dst_f_ptr, dst_fty)?;
+                        self.unsize_into(Value::ByRef(src_f_ptr), src_fty, Lvalue::from_ptr(dst_f_ptr), dst_fty)?;
                     }
                 }
             }
