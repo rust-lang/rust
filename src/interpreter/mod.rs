@@ -687,10 +687,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     ReifyFnPointer => match self.operand_ty(operand).sty {
                         ty::TyFnDef(def_id, substs, fn_ty) => {
-                            // FIXME(solson)
-                            let dest = self.force_allocation(dest)?.to_ptr();
                             let fn_ptr = self.memory.create_fn_ptr(def_id, substs, fn_ty);
-                            self.memory.write_ptr(dest, fn_ptr)?;
+                            self.write_value(Value::ByVal(PrimVal::from_fn_ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("reify fn pointer on {:?}", other),
                     },
