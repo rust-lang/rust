@@ -74,6 +74,12 @@ pub struct TokenAndSpan {
     pub sp: Span,
 }
 
+impl Default for TokenAndSpan {
+    fn default() -> Self {
+        TokenAndSpan { tok: token::Underscore, sp: syntax_pos::DUMMY_SP }
+    }
+}
+
 pub struct StringReader<'a> {
     pub span_diagnostic: &'a Handler,
     /// The absolute offset within the codemap of the next character to read

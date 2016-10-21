@@ -159,10 +159,8 @@ impl Token {
     /// Returns `true` if the token can appear at the start of an expression.
     pub fn can_begin_expr(&self) -> bool {
         match *self {
-            OpenDelim(_)                => true,
+            OpenDelim(..)               => true,
             Ident(..)                   => true,
-            Underscore                  => true,
-            Tilde                       => true,
             Literal(..)                 => true,
             Not                         => true,
             BinOp(Minus)                => true,
@@ -172,6 +170,7 @@ impl Token {
             OrOr                        => true, // in lambda syntax
             AndAnd                      => true, // double borrow
             DotDot | DotDotDot          => true, // range notation
+            Lt | BinOp(Shl)             => true, // associated path
             ModSep                      => true,
             Interpolated(NtExpr(..))    => true,
             Interpolated(NtIdent(..))   => true,
@@ -236,8 +235,12 @@ impl Token {
         self.is_keyword(keywords::Const)
     }
 
+    pub fn is_qpath_start(&self) -> bool {
+        self == &Lt || self == &BinOp(Shl)
+    }
+
     pub fn is_path_start(&self) -> bool {
-        self == &ModSep || self == &Lt || self.is_path() ||
+        self == &ModSep || self.is_qpath_start() || self.is_path() ||
         self.is_path_segment_keyword() || self.is_ident() && !self.is_any_keyword()
     }
 
