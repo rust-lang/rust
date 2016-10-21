@@ -14,8 +14,8 @@
 #![feature(rustc_private)]
 #![plugin(proc_macro_plugin)]
 
-extern crate proc_macro_plugin;
-use proc_macro_plugin::prelude::*;
+extern crate proc_macro_tokens;
+use proc_macro_tokens::prelude::*;
 
 extern crate syntax;
 use syntax::ast::Ident;
