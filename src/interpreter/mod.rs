@@ -1274,17 +1274,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
         if let Some(Value::ByRef(dest_ptr)) = old_dest_val {
-            // If the local value is already `ByRef` (that is, backed by an `Allocation`),
+            // If the value is already `ByRef` (that is, backed by an `Allocation`),
             // then we must write the new value into this allocation, because there may be
             // other pointers into the allocation. These other pointers are logically
             // pointers into the local variable, and must be able to observe the change.
             //
             // Thus, it would be an error to replace the `ByRef` with a `ByVal`, unless we
-            // knew for certain that there were no outstanding pointers to this local.
+            // knew for certain that there were no outstanding pointers to this allocation.
             self.write_value_to_ptr(src_val, dest_ptr, dest_ty)?;
 
         } else if let Value::ByRef(src_ptr) = src_val {
-            // If the local value is not `ByRef`, then we know there are no pointers to it
+            // If the value is not `ByRef`, then we know there are no pointers to it
             // and we can simply overwrite the `Value` in the locals array directly.
             //
             // In this specific case, where the source value is `ByRef`, we must duplicate
@@ -1301,7 +1301,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         } else {
             // Finally, we have the simple case where neither source nor destination are
-            // `ByRef`. We may simply copy the source value over the the destintion local.
+            // `ByRef`. We may simply copy the source value over the the destintion.
             write_dest(self, src_val);
         }
         Ok(())
