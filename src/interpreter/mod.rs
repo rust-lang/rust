@@ -15,7 +15,7 @@ use std::rc::Rc;
 use syntax::codemap::{self, DUMMY_SP};
 
 use error::{EvalError, EvalResult};
-use memory::{Memory, Pointer, AllocId};
+use memory::{Memory, Pointer};
 use primval::{self, PrimVal, PrimValKind};
 pub use self::value::Value;
 
@@ -41,8 +41,7 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     memory: Memory<'a, 'tcx>,
 
     /// Precomputed statics, constants and promoteds.
-    // FIXME(solson): Change from Pointer to Value.
-    statics: HashMap<ConstantId<'tcx>, Pointer>,
+    statics: HashMap<ConstantId<'tcx>, Constant<'tcx>>,
 
     /// The virtual call stack.
     stack: Vec<Frame<'a, 'tcx>>,
@@ -111,9 +110,11 @@ pub enum Lvalue<'tcx> {
     Local {
         frame: usize,
         local: mir::Local,
-    }
+    },
 
-    // TODO(solson): Static/Const? None/Never?
+    Static(ConstantId<'tcx>),
+
+    // TODO(solson): None/Never?
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -130,9 +131,9 @@ pub enum CachedMir<'mir, 'tcx: 'mir> {
     Owned(Rc<mir::Mir<'tcx>>)
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 /// Uniquely identifies a specific constant or static
-struct ConstantId<'tcx> {
+pub struct ConstantId<'tcx> {
     /// the def id of the constant/static or in case of promoteds, the def id of the function they belong to
     def_id: DefId,
     /// In case of statics and constants this is `Substs::empty()`, so only promoteds and associated
@@ -143,18 +144,36 @@ struct ConstantId<'tcx> {
     kind: ConstantKind,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 enum ConstantKind {
     Promoted(mir::Promoted),
     /// Statics, constants and associated constants
     Global,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct Constant<'tcx> {
+    data: Option<Value>,
+    mutable: bool,
+    ty: Ty<'tcx>,
+}
+
+impl<'tcx> Constant<'tcx> {
+    fn uninitialized(ty: Ty<'tcx>) -> Self {
+        Constant {
+            data: None,
+            mutable: true,
+            ty: ty,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum StackPopCleanup {
     /// The stackframe existed to compute the initial value of a static/constant, make sure the
-    /// static isn't modifyable afterwards
-    Freeze(AllocId),
+    /// static isn't modifyable afterwards. The allocation of the result is frozen iff it's an
+    /// actual allocation. `PrimVal`s are unmodifyable anyway.
+    Freeze,
     /// A regular stackframe added due to a function call will need to get forwarded to the next
     /// block
     Goto(mir::BasicBlock),
@@ -380,7 +399,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         match frame.return_to_block {
-            StackPopCleanup::Freeze(alloc_id) => self.memory.freeze(alloc_id)?,
+            StackPopCleanup::Freeze => if let Lvalue::Static(id) = frame.return_lvalue {
+                let static_value = self.statics
+                                       .get_mut(&id)
+                                       .expect("static should have been cached (freeze)");
+                if let Value::ByRef(ptr) = static_value.data.expect("static should have been initialized") {
+                    self.memory.freeze(ptr.alloc_id)?;
+                }
+                assert!(static_value.mutable);
+                static_value.mutable = false;
+            } else {
+                bug!("StackPopCleanup::Freeze on: {:?}", frame.return_lvalue);
+            },
             StackPopCleanup::Goto(target) => self.goto_block(target),
             StackPopCleanup::None => {},
         }
@@ -817,9 +847,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 substs: substs,
                                 kind: ConstantKind::Global,
                             };
-                            let static_ptr = *self.statics.get(&cid)
-                                .expect("static should have been cached (rvalue)");
-                            Value::ByRef(static_ptr)
+                            self.read_lvalue(Lvalue::Static(cid))?
                         }
                     }
 
@@ -829,9 +857,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             substs: self.substs(),
                             kind: ConstantKind::Promoted(index),
                         };
-                        let static_ptr = *self.statics.get(&cid)
-                            .expect("a promoted constant hasn't been precomputed");
-                        Value::ByRef(static_ptr)
+                        self.read_lvalue(Lvalue::Static(cid))?
                     }
                 };
 
@@ -864,6 +890,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Lvalue::Local { frame, local } => {
                 self.stack[frame].get_local(local).ok_or(EvalError::ReadUndefBytes)
             }
+            Lvalue::Static(cid) => Ok(self.statics
+                                          .get(&cid)
+                                          .expect("static not cached")
+                                          .data
+                                          .expect("static not initialized")),
         }
     }
 
@@ -886,9 +917,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     substs: substs,
                     kind: ConstantKind::Global,
                 };
-                let ptr = *self.statics.get(&cid)
-                    .expect("static should have been cached (lvalue)");
-                Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None }
+                Lvalue::Static(cid)
             }
 
             Projection(ref proj) => return self.eval_lvalue_projection(proj),
@@ -1078,8 +1107,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn force_allocation(&mut self, lvalue: Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
         let new_lvalue = match lvalue {
             Lvalue::Local { frame, local } => {
-                let ptr = match self.stack[frame].get_local(local) {
-                    Some(Value::ByRef(ptr)) => ptr,
+                match self.stack[frame].get_local(local) {
+                    Some(Value::ByRef(ptr)) => Lvalue::from_ptr(ptr),
                     opt_val => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
                         let substs = self.stack[frame].substs;
@@ -1088,12 +1117,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         if let Some(val) = opt_val {
                             self.write_value_to_ptr(val, ptr, ty)?;
                         }
-                        ptr
+                        Lvalue::from_ptr(ptr)
                     }
-                };
-                Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None }
+                }
             }
             Lvalue::Ptr { .. } => lvalue,
+            Lvalue::Static(cid) => {
+                let static_val = *self.statics.get(&cid).expect("static not cached");
+                match static_val.data {
+                    Some(Value::ByRef(ptr)) => Lvalue::from_ptr(ptr),
+                    _ => {
+                        let ptr = self.alloc_ptr_with_substs(static_val.ty, cid.substs)?;
+                        if let Some(val) = static_val.data {
+                            self.write_value_to_ptr(val, ptr, static_val.ty)?;
+                        }
+                        if !static_val.mutable {
+                            self.memory.freeze(ptr.alloc_id)?;
+                        }
+                        let lval = self.statics.get_mut(&cid).expect("already checked");
+                        *lval = Constant {
+                            data: Some(Value::ByRef(ptr)),
+                            .. static_val
+                        };
+                        Lvalue::from_ptr(ptr)
+                    },
+                }
+            }
         };
         Ok(new_lvalue)
     }
@@ -1173,6 +1222,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.stack[frame].set_local(local, Value::ByVal(val));
                 Ok(())
             }
+            Lvalue::Static(cid) => {
+                let static_val = self.statics.get_mut(&cid).expect("static not cached");
+                assert!(static_val.mutable);
+                static_val.data = Some(Value::ByVal(val));
+                Ok(())
+            }
         }
     }
 
@@ -1183,47 +1238,72 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
         match dest {
+            Lvalue::Static(cid) => {
+                let dest = *self.statics.get_mut(&cid).expect("static should be cached");
+                assert!(dest.mutable);
+                self.write_value_to_dest(
+                    src_val,
+                    |this, val| *this.statics.get_mut(&cid).expect("already checked") = Constant { data: Some(val), ..dest },
+                    dest.data,
+                    dest_ty,
+                )
+            },
+
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
-                self.write_value_to_ptr(src_val, ptr, dest_ty)?;
+                self.write_value_to_ptr(src_val, ptr, dest_ty)
             }
 
-            // The cases here can be a bit subtle. Read carefully!
             Lvalue::Local { frame, local } => {
-                let dest_val = self.stack[frame].get_local(local);
-
-                if let Some(Value::ByRef(dest_ptr)) = dest_val {
-                    // If the local value is already `ByRef` (that is, backed by an `Allocation`),
-                    // then we must write the new value into this allocation, because there may be
-                    // other pointers into the allocation. These other pointers are logically
-                    // pointers into the local variable, and must be able to observe the change.
-                    //
-                    // Thus, it would be an error to replace the `ByRef` with a `ByVal`, unless we
-                    // knew for certain that there were no outstanding pointers to this local.
-                    self.write_value_to_ptr(src_val, dest_ptr, dest_ty)?;
-
-                } else if let Value::ByRef(src_ptr) = src_val {
-                    // If the local value is not `ByRef`, then we know there are no pointers to it
-                    // and we can simply overwrite the `Value` in the locals array directly.
-                    //
-                    // In this specific case, where the source value is `ByRef`, we must duplicate
-                    // the allocation, because this is a by-value operation. It would be incorrect
-                    // if they referred to the same allocation, since then a change to one would
-                    // implicitly change the other.
-                    //
-                    // TODO(solson): It would be valid to attempt reading a primitive value out of
-                    // the source and writing that into the destination without making an
-                    // allocation. This would be a pure optimization.
-                    let dest_ptr = self.alloc_ptr(dest_ty)?;
-                    self.copy(src_ptr, dest_ptr, dest_ty)?;
-                    self.stack[frame].set_local(local, Value::ByRef(dest_ptr));
-
-                } else {
-                    // Finally, we have the simple case where neither source nor destination are
-                    // `ByRef`. We may simply copy the source value over the the destintion local.
-                    self.stack[frame].set_local(local, src_val);
-                }
+                let dest = self.stack[frame].get_local(local);
+                self.write_value_to_dest(
+                    src_val,
+                    |this, val| this.stack[frame].set_local(local, val),
+                    dest,
+                    dest_ty,
+                )
             }
+        }
+    }
+
+    // The cases here can be a bit subtle. Read carefully!
+    fn write_value_to_dest<F: FnOnce(&mut Self, Value)>(
+        &mut self,
+        src_val: Value,
+        write_dest: F,
+        dest_val: Option<Value>,
+        dest_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, ()> {
+        if let Some(Value::ByRef(dest_ptr)) = dest_val {
+            // If the local value is already `ByRef` (that is, backed by an `Allocation`),
+            // then we must write the new value into this allocation, because there may be
+            // other pointers into the allocation. These other pointers are logically
+            // pointers into the local variable, and must be able to observe the change.
+            //
+            // Thus, it would be an error to replace the `ByRef` with a `ByVal`, unless we
+            // knew for certain that there were no outstanding pointers to this local.
+            self.write_value_to_ptr(src_val, dest_ptr, dest_ty)?;
+
+        } else if let Value::ByRef(src_ptr) = src_val {
+            // If the local value is not `ByRef`, then we know there are no pointers to it
+            // and we can simply overwrite the `Value` in the locals array directly.
+            //
+            // In this specific case, where the source value is `ByRef`, we must duplicate
+            // the allocation, because this is a by-value operation. It would be incorrect
+            // if they referred to the same allocation, since then a change to one would
+            // implicitly change the other.
+            //
+            // TODO(solson): It would be valid to attempt reading a primitive value out of
+            // the source and writing that into the destination without making an
+            // allocation. This would be a pure optimization.
+            let dest_ptr = self.alloc_ptr(dest_ty)?;
+            self.copy(src_ptr, dest_ptr, dest_ty)?;
+            write_dest(self, Value::ByRef(dest_ptr));
+
+        } else {
+            // Finally, we have the simple case where neither source nor destination are
+            // `ByRef`. We may simply copy the source value over the the destintion local.
+            write_dest(self, src_val);
         }
         Ok(())
     }

@@ -9,6 +9,7 @@ use super::{
     Lvalue,
     ConstantKind,
     StackPopCleanup,
+    Constant,
 };
 use error::EvalResult;
 use rustc::mir::repr as mir;
@@ -128,15 +129,13 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         }
         self.try(|this| {
             let mir = this.ecx.load_mir(def_id)?;
-            // FIXME(solson): Don't allocate a pointer unconditionally.
-            let ptr = this.ecx.alloc_ptr_with_substs(mir.return_ty, substs)?;
-            this.ecx.statics.insert(cid.clone(), ptr);
+            this.ecx.statics.insert(cid.clone(), Constant::uninitialized(mir.return_ty));
             let cleanup = if immutable && !mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe() {
-                StackPopCleanup::Freeze(ptr.alloc_id)
+                StackPopCleanup::Freeze
             } else {
                 StackPopCleanup::None
             };
-            this.ecx.push_stack_frame(def_id, span, mir, substs, Lvalue::from_ptr(ptr), cleanup)
+            this.ecx.push_stack_frame(def_id, span, mir, substs, Lvalue::Static(cid.clone()), cleanup)
         });
     }
     fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx, ()>>(&mut self, f: F) {
@@ -167,6 +166,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 }
             },
             mir::Literal::Promoted { index } => {
+                let mir = self.mir.promoted[index].clone();
                 let cid = ConstantId {
                     def_id: self.def_id,
                     substs: self.substs,
@@ -175,19 +175,16 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 if self.ecx.statics.contains_key(&cid) {
                     return;
                 }
-                let mir = self.mir.promoted[index].clone();
-                let return_ty = mir.return_ty;
                 self.try(|this| {
-                    // FIXME(solson): Don't allocate a pointer unconditionally.
-                    let return_ptr = this.ecx.alloc_ptr_with_substs(return_ty, cid.substs)?;
                     let mir = CachedMir::Owned(Rc::new(mir));
-                    this.ecx.statics.insert(cid.clone(), return_ptr);
+                    let ty = this.ecx.monomorphize(mir.return_ty, this.substs);
+                    this.ecx.statics.insert(cid.clone(), Constant::uninitialized(ty));
                     this.ecx.push_stack_frame(this.def_id,
                                               constant.span,
                                               mir,
                                               this.substs,
-                                              Lvalue::from_ptr(return_ptr),
-                                              StackPopCleanup::Freeze(return_ptr.alloc_id))
+                                              Lvalue::Static(cid.clone()),
+                                              StackPopCleanup::Freeze)
                 });
             }
         }
