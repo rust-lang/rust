@@ -92,7 +92,7 @@ fn main()
     let _ = v as *const [u8]; //~ ERROR cannot cast
     let _ = fat_v as *const Foo;
     //~^ ERROR the trait bound `[u8]: std::marker::Sized` is not satisfied
-    //~| NOTE trait `[u8]: std::marker::Sized` not satisfied
+    //~| NOTE the trait `std::marker::Sized` is not implemented for `[u8]`
     //~| NOTE `[u8]` does not have a constant size known at compile-time
     //~| NOTE required for the cast to the object type `Foo`
     let _ = foo as *const str; //~ ERROR casting
@@ -107,7 +107,7 @@ fn main()
     let a : *const str = "hello";
     let _ = a as *const Foo;
     //~^ ERROR the trait bound `str: std::marker::Sized` is not satisfied
-    //~| NOTE trait `str: std::marker::Sized` not satisfied
+    //~| NOTE the trait `std::marker::Sized` is not implemented for `str`
     //~| NOTE `str` does not have a constant size known at compile-time
     //~| NOTE required for the cast to the object type `Foo`
 
