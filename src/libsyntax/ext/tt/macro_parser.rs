@@ -92,6 +92,7 @@ use parse::token;
 use print::pprust;
 use ptr::P;
 use tokenstream::{self, TokenTree};
+use util::small_vector::SmallVector;
 
 use std::mem;
 use std::rc::Rc;
@@ -284,12 +285,9 @@ pub fn parse(sess: &ParseSess,
              mut rdr: TtReader,
              ms: &[TokenTree])
              -> NamedParseResult {
-    let mut cur_eis = Vec::new();
-    cur_eis.push(initial_matcher_pos(Rc::new(ms.iter()
-                                                .cloned()
-                                                .collect()),
-                                     None,
-                                     rdr.peek().sp.lo));
+    let mut cur_eis = SmallVector::one(initial_matcher_pos(Rc::new(ms.to_owned()),
+                                                           None,
+                                                           rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = Vec::new(); // black-box parsed by parser.rs
