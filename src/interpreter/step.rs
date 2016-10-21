@@ -4,12 +4,12 @@
 
 use super::{
     CachedMir,
-    ConstantId,
+    GlobalId,
     EvalContext,
     Lvalue,
-    ConstantKind,
+    GlobalKind,
     StackPopCleanup,
-    Constant,
+    Global,
 };
 use error::EvalResult;
 use rustc::mir::repr as mir;
@@ -119,17 +119,17 @@ struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
 
 impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
     fn global_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span, immutable: bool) {
-        let cid = ConstantId {
+        let cid = GlobalId {
             def_id: def_id,
             substs: substs,
-            kind: ConstantKind::Global,
+            kind: GlobalKind::Global,
         };
-        if self.ecx.statics.contains_key(&cid) {
+        if self.ecx.globals.contains_key(&cid) {
             return;
         }
         self.try(|this| {
             let mir = this.ecx.load_mir(def_id)?;
-            this.ecx.statics.insert(cid, Constant::uninitialized(mir.return_ty));
+            this.ecx.globals.insert(cid, Global::uninitialized(mir.return_ty));
             let cleanup = if immutable && !mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe() {
                 StackPopCleanup::Freeze
             } else {
@@ -167,18 +167,18 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
             },
             mir::Literal::Promoted { index } => {
                 let mir = self.mir.promoted[index].clone();
-                let cid = ConstantId {
+                let cid = GlobalId {
                     def_id: self.def_id,
                     substs: self.substs,
-                    kind: ConstantKind::Promoted(index),
+                    kind: GlobalKind::Promoted(index),
                 };
-                if self.ecx.statics.contains_key(&cid) {
+                if self.ecx.globals.contains_key(&cid) {
                     return;
                 }
                 self.try(|this| {
                     let mir = CachedMir::Owned(Rc::new(mir));
                     let ty = this.ecx.monomorphize(mir.return_ty, this.substs);
-                    this.ecx.statics.insert(cid, Constant::uninitialized(ty));
+                    this.ecx.globals.insert(cid, Global::uninitialized(ty));
                     this.ecx.push_stack_frame(this.def_id,
                                               constant.span,
                                               mir,

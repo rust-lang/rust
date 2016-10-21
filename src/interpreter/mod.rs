@@ -41,7 +41,7 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     memory: Memory<'a, 'tcx>,
 
     /// Precomputed statics, constants and promoteds.
-    statics: HashMap<ConstantId<'tcx>, Constant<'tcx>>,
+    globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
 
     /// The virtual call stack.
     stack: Vec<Frame<'a, 'tcx>>,
@@ -112,7 +112,7 @@ pub enum Lvalue<'tcx> {
         local: mir::Local,
     },
 
-    Static(ConstantId<'tcx>),
+    Static(GlobalId<'tcx>),
 
     // TODO(solson): None/Never?
 }
@@ -133,7 +133,7 @@ pub enum CachedMir<'mir, 'tcx: 'mir> {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 /// Uniquely identifies a specific constant or static
-pub struct ConstantId<'tcx> {
+pub struct GlobalId<'tcx> {
     /// the def id of the constant/static or in case of promoteds, the def id of the function they belong to
     def_id: DefId,
     /// In case of statics and constants this is `Substs::empty()`, so only promoteds and associated
@@ -141,26 +141,26 @@ pub struct ConstantId<'tcx> {
     /// but that would only require more branching when working with constants, and not bring any
     /// real benefits.
     substs: &'tcx Substs<'tcx>,
-    kind: ConstantKind,
+    kind: GlobalKind,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-enum ConstantKind {
+enum GlobalKind {
     Promoted(mir::Promoted),
     /// Statics, constants and associated constants
     Global,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Constant<'tcx> {
+pub struct Global<'tcx> {
     data: Option<Value>,
     mutable: bool,
     ty: Ty<'tcx>,
 }
 
-impl<'tcx> Constant<'tcx> {
+impl<'tcx> Global<'tcx> {
     fn uninitialized(ty: Ty<'tcx>) -> Self {
-        Constant {
+        Global {
             data: None,
             mutable: true,
             ty: ty,
@@ -188,7 +188,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             mir_map: mir_map,
             mir_cache: RefCell::new(DefIdMap()),
             memory: Memory::new(&tcx.data_layout, memory_size),
-            statics: HashMap::new(),
+            globals: HashMap::new(),
             stack: Vec::new(),
             stack_limit: stack_limit,
         }
@@ -400,7 +400,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         match frame.return_to_block {
             StackPopCleanup::Freeze => if let Lvalue::Static(id) = frame.return_lvalue {
-                let static_value = self.statics
+                let static_value = self.globals
                                        .get_mut(&id)
                                        .expect("static should have been cached (freeze)");
                 if let Value::ByRef(ptr) = static_value.data.expect("static should have been initialized") {
@@ -842,20 +842,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             // function items are zero sized
                             Value::ByRef(self.memory.allocate(0, 0)?)
                         } else {
-                            let cid = ConstantId {
+                            let cid = GlobalId {
                                 def_id: def_id,
                                 substs: substs,
-                                kind: ConstantKind::Global,
+                                kind: GlobalKind::Global,
                             };
                             self.read_lvalue(Lvalue::Static(cid))?
                         }
                     }
 
                     Literal::Promoted { index } => {
-                        let cid = ConstantId {
+                        let cid = GlobalId {
                             def_id: self.frame().def_id,
                             substs: self.substs(),
-                            kind: ConstantKind::Promoted(index),
+                            kind: GlobalKind::Promoted(index),
                         };
                         self.read_lvalue(Lvalue::Static(cid))?
                     }
@@ -890,7 +890,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Lvalue::Local { frame, local } => {
                 self.stack[frame].get_local(local).ok_or(EvalError::ReadUndefBytes)
             }
-            Lvalue::Static(cid) => self.statics
+            Lvalue::Static(cid) => self.globals
                                        .get(&cid)
                                        .expect("static not cached")
                                        .data
@@ -912,10 +912,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Static(def_id) => {
                 let substs = subst::Substs::empty(self.tcx);
-                let cid = ConstantId {
+                let cid = GlobalId {
                     def_id: def_id,
                     substs: substs,
-                    kind: ConstantKind::Global,
+                    kind: GlobalKind::Global,
                 };
                 Lvalue::Static(cid)
             }
@@ -1123,7 +1123,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
             Lvalue::Ptr { .. } => lvalue,
             Lvalue::Static(cid) => {
-                let static_val = *self.statics.get(&cid).expect("static not cached");
+                let static_val = *self.globals.get(&cid).expect("static not cached");
                 match static_val.data {
                     Some(Value::ByRef(ptr)) => Lvalue::from_ptr(ptr),
                     _ => {
@@ -1134,8 +1134,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         if !static_val.mutable {
                             self.memory.freeze(ptr.alloc_id)?;
                         }
-                        let lval = self.statics.get_mut(&cid).expect("already checked");
-                        *lval = Constant {
+                        let lval = self.globals.get_mut(&cid).expect("already checked");
+                        *lval = Global {
                             data: Some(Value::ByRef(ptr)),
                             .. static_val
                         };
@@ -1223,7 +1223,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(())
             }
             Lvalue::Static(cid) => {
-                let static_val = self.statics.get_mut(&cid).expect("static not cached");
+                let static_val = self.globals.get_mut(&cid).expect("static not cached");
                 assert!(static_val.mutable);
                 static_val.data = Some(Value::ByVal(val));
                 Ok(())
@@ -1239,11 +1239,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, ()> {
         match dest {
             Lvalue::Static(cid) => {
-                let dest = *self.statics.get_mut(&cid).expect("static should be cached");
+                let dest = *self.globals.get_mut(&cid).expect("static should be cached");
                 assert!(dest.mutable);
                 self.write_value_possibly_by_val(
                     src_val,
-                    |this, val| *this.statics.get_mut(&cid).expect("already checked") = Constant { data: Some(val), ..dest },
+                    |this, val| *this.globals.get_mut(&cid).expect("already checked") = Global { data: Some(val), ..dest },
                     dest.data,
                     dest_ty,
                 )
