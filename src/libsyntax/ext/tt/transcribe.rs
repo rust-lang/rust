@@ -10,14 +10,15 @@
 use self::LockstepIterSize::*;
 
 use ast::Ident;
-use syntax_pos::{Span, DUMMY_SP};
 use errors::{Handler, DiagnosticBuilder};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, Interpolated, NtIdent, NtTT};
 use parse::token;
 use parse::lexer::TokenAndSpan;
+use syntax_pos::{Span, DUMMY_SP};
 use tokenstream::{self, TokenTree};
+use util::small_vector::SmallVector;
 
 use std::rc::Rc;
 use std::ops::Add;
@@ -36,7 +37,7 @@ struct TtFrame {
 pub struct TtReader<'a> {
     pub sp_diag: &'a Handler,
     /// the unzipped tree:
-    stack: Vec<TtFrame>,
+    stack: SmallVector<TtFrame>,
     /* for MBE-style macro transcription */
     interpolations: HashMap<Ident, Rc<NamedMatch>>,
 
@@ -74,7 +75,7 @@ pub fn new_tt_reader_with_doc_flag(sp_diag: &Handler,
                                    -> TtReader {
     let mut r = TtReader {
         sp_diag: sp_diag,
-        stack: vec!(TtFrame {
+        stack: SmallVector::one(TtFrame {
             forest: TokenTree::Sequence(DUMMY_SP, Rc::new(tokenstream::SequenceRepetition {
                 tts: src,
                 // doesn't matter. This merely holds the root unzipping.
