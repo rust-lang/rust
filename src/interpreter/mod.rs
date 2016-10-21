@@ -851,8 +851,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
         }
+        let lvalue = self.eval_lvalue(lvalue)?;
+        self.read_lvalue(lvalue)
+    }
 
-        match self.eval_lvalue(lvalue)? {
+    fn read_lvalue(&mut self, lvalue: Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
+        match lvalue {
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
                 Ok(Value::ByRef(ptr))
