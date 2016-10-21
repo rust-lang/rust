@@ -10,8 +10,64 @@ system.
 
 ## Using rustbuild
 
-When configuring Rust via `./configure`, pass the following to enable building
-via this build system:
+The rustbuild build system has a primary entry point, a top level `x.py` script:
+
+```
+python ./x.py build
+```
+
+Note that if you're on Unix you should be able to execute the script directly:
+
+```
+./x.py build
+```
+
+The script accepts commands, flags, and filters to determine what to do:
+
+* `build` - a general purpose command for compiling code. Alone `build` will
+  bootstrap the entire compiler, and otherwise arguments passed indicate what to
+  build. For example:
+
+  ```
+  # build the whole compiler
+  ./x.py build
+
+  # build the stage1 compier
+  ./x.py build --stage 1
+
+  # build stage0 libstd
+  ./x.py build --stage 0 src/libstd
+
+  # build a particular crate in stage0
+  ./x.py build --stage 0 src/libtest
+  ```
+
+* `test` - a command for executing unit tests. Like the `build` command this
+  will execute the entire test suite by default, and otherwise it can be used to
+  select which test suite is run:
+
+  ```
+  # run all unit tests
+  ./x.py test
+
+  # execute the run-pass test suite
+  ./x.py test src/test/run-pass
+
+  # execute only some tests in the run-pass test suite
+  ./x.py test src/test/run-pass --filter my-filter
+
+  # execute tests in the standard library in stage0
+  ./x.py test --stage 0 src/libstd
+
+  # execute all doc tests
+  ./x.py test src/doc
+  ```
+
+* `doc` - a command for building documentation. Like above can take arguments
+  for what to document.
+
+If you're more used to `./configure` and `make`, however, then you can also
+configure the build system to use rustbuild instead of the old makefiles:
 
 ```
 ./configure --enable-rustbuild
@@ -19,15 +75,7 @@ make
 ```
 
 Afterwards the `Makefile` which is generated will have a few commands like
-`make check`, `make tidy`, etc. For finer-grained control, the
-`bootstrap.py` entry point can be used:
-
-```
-python src/bootstrap/bootstrap.py
-```
-
-This accepts a number of options like `--stage` and `--step` which can configure
-what's actually being done.
+`make check`, `make tidy`, etc.
 
 ## Configuring rustbuild
 
@@ -47,7 +95,7 @@ being invoked manually (via the python script).
 The rustbuild build system goes through a few phases to actually build the
 compiler. What actually happens when you invoke rustbuild is:
 
-1. The entry point script, `src/bootstrap/bootstrap.py` is run. This script is
+1. The entry point script, `x.py` is run. This script is
    responsible for downloading the stage0 compiler/Cargo binaries, and it then
    compiles the build system itself (this folder). Finally, it then invokes the
    actual `bootstrap` binary build system.

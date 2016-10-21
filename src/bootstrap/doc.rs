@@ -19,7 +19,6 @@
 
 use std::fs::{self, File};
 use std::io::prelude::*;
-use std::path::Path;
 use std::process::Command;
 
 use {Build, Compiler, Mode};
@@ -30,8 +29,9 @@ use util::{up_to_date, cp_r};
 ///
 /// This will not actually generate any documentation if the documentation has
 /// already been generated.
-pub fn rustbook(build: &Build, stage: u32, target: &str, name: &str, out: &Path) {
-    t!(fs::create_dir_all(out));
+pub fn rustbook(build: &Build, stage: u32, target: &str, name: &str) {
+    let out = build.doc_out(target);
+    t!(fs::create_dir_all(&out));
 
     let out = out.join(name);
     let compiler = Compiler::new(stage, &build.config.build);
@@ -57,9 +57,10 @@ pub fn rustbook(build: &Build, stage: u32, target: &str, name: &str, out: &Path)
 /// `STAMP` alongw ith providing the various header/footer HTML we've cutomized.
 ///
 /// In the end, this is just a glorified wrapper around rustdoc!
-pub fn standalone(build: &Build, stage: u32, target: &str, out: &Path) {
+pub fn standalone(build: &Build, stage: u32, target: &str) {
     println!("Documenting stage{} standalone ({})", stage, target);
-    t!(fs::create_dir_all(out));
+    let out = build.doc_out(target);
+    t!(fs::create_dir_all(&out));
 
     let compiler = Compiler::new(stage, &build.config.build);
 
@@ -109,7 +110,7 @@ pub fn standalone(build: &Build, stage: u32, target: &str, out: &Path) {
            .arg("--html-in-header").arg(&favicon)
            .arg("--markdown-playground-url")
            .arg("https://play.rust-lang.org/")
-           .arg("-o").arg(out)
+           .arg("-o").arg(&out)
            .arg(&path);
 
         if filename == "reference.md" {
@@ -131,9 +132,10 @@ pub fn standalone(build: &Build, stage: u32, target: &str, out: &Path) {
 ///
 /// This will generate all documentation for the standard library and its
 /// dependencies. This is largely just a wrapper around `cargo doc`.
-pub fn std(build: &Build, stage: u32, target: &str, out: &Path) {
+pub fn std(build: &Build, stage: u32, target: &str) {
     println!("Documenting stage{} std ({})", stage, target);
-    t!(fs::create_dir_all(out));
+    let out = build.doc_out(target);
+    t!(fs::create_dir_all(&out));
     let compiler = Compiler::new(stage, &build.config.build);
     let out_dir = build.stage_out(&compiler, Mode::Libstd)
                        .join(target).join("doc");
@@ -146,16 +148,17 @@ pub fn std(build: &Build, stage: u32, target: &str, out: &Path) {
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
          .arg("--features").arg(build.std_features());
     build.run(&mut cargo);
-    cp_r(&out_dir, out)
+    cp_r(&out_dir, &out)
 }
 
 /// Compile all libtest documentation.
 ///
 /// This will generate all documentation for libtest and its dependencies. This
 /// is largely just a wrapper around `cargo doc`.
-pub fn test(build: &Build, stage: u32, target: &str, out: &Path) {
+pub fn test(build: &Build, stage: u32, target: &str) {
     println!("Documenting stage{} test ({})", stage, target);
-    t!(fs::create_dir_all(out));
+    let out = build.doc_out(target);
+    t!(fs::create_dir_all(&out));
     let compiler = Compiler::new(stage, &build.config.build);
     let out_dir = build.stage_out(&compiler, Mode::Libtest)
                        .join(target).join("doc");
@@ -167,16 +170,17 @@ pub fn test(build: &Build, stage: u32, target: &str, out: &Path) {
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
     build.run(&mut cargo);
-    cp_r(&out_dir, out)
+    cp_r(&out_dir, &out)
 }
 
 /// Generate all compiler documentation.
 ///
 /// This will generate all documentation for the compiler libraries and their
 /// dependencies. This is largely just a wrapper around `cargo doc`.
-pub fn rustc(build: &Build, stage: u32, target: &str, out: &Path) {
+pub fn rustc(build: &Build, stage: u32, target: &str) {
     println!("Documenting stage{} compiler ({})", stage, target);
-    t!(fs::create_dir_all(out));
+    let out = build.doc_out(target);
+    t!(fs::create_dir_all(&out));
     let compiler = Compiler::new(stage, &build.config.build);
     let out_dir = build.stage_out(&compiler, Mode::Librustc)
                        .join(target).join("doc");
@@ -189,14 +193,15 @@ pub fn rustc(build: &Build, stage: u32, target: &str, out: &Path) {
          .arg(build.src.join("src/rustc/Cargo.toml"))
          .arg("--features").arg(build.rustc_features());
     build.run(&mut cargo);
-    cp_r(&out_dir, out)
+    cp_r(&out_dir, &out)
 }
 
 /// Generates the HTML rendered error-index by running the
 /// `error_index_generator` tool.
-pub fn error_index(build: &Build, stage: u32, target: &str, out: &Path) {
+pub fn error_index(build: &Build, stage: u32, target: &str) {
     println!("Documenting stage{} error index ({})", stage, target);
-    t!(fs::create_dir_all(out));
+    let out = build.doc_out(target);
+    t!(fs::create_dir_all(&out));
     let compiler = Compiler::new(stage, &build.config.build);
     let mut index = build.tool_cmd(&compiler, "error_index_generator");
     index.arg("html");
