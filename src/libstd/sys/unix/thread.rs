@@ -137,7 +137,7 @@ impl Thread {
     }
     #[cfg(target_os = "fuchsia")]
     pub fn set_name(_name: &CStr) {
-        // TODO: determine whether Fuchsia has a way to set a thread name.
+        // FIXME: determine whether Fuchsia has a way to set a thread name.
     }
 
     pub fn sleep(dur: Duration) {
