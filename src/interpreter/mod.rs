@@ -141,14 +141,8 @@ pub struct GlobalId<'tcx> {
     /// but that would only require more branching when working with constants, and not bring any
     /// real benefits.
     substs: &'tcx Substs<'tcx>,
-    kind: GlobalKind,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-enum GlobalKind {
-    Promoted(mir::Promoted),
-    /// Statics, constants and associated constants
-    Global,
+    /// this `Option` is `Some` for promoted constants
+    promoted: Option<mir::Promoted>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -845,7 +839,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let cid = GlobalId {
                                 def_id: def_id,
                                 substs: substs,
-                                kind: GlobalKind::Global,
+                                promoted: None,
                             };
                             self.read_lvalue(Lvalue::Global(cid))?
                         }
@@ -855,7 +849,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let cid = GlobalId {
                             def_id: self.frame().def_id,
                             substs: self.substs(),
-                            kind: GlobalKind::Promoted(index),
+                            promoted: Some(index),
                         };
                         self.read_lvalue(Lvalue::Global(cid))?
                     }
@@ -915,7 +909,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let cid = GlobalId {
                     def_id: def_id,
                     substs: substs,
-                    kind: GlobalKind::Global,
+                    promoted: None,
                 };
                 Lvalue::Global(cid)
             }

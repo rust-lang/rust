@@ -7,7 +7,6 @@ use super::{
     GlobalId,
     EvalContext,
     Lvalue,
-    GlobalKind,
     StackPopCleanup,
     Global,
 };
@@ -122,7 +121,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         let cid = GlobalId {
             def_id: def_id,
             substs: substs,
-            kind: GlobalKind::Global,
+            promoted: None,
         };
         if self.ecx.globals.contains_key(&cid) {
             return;
@@ -170,7 +169,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 let cid = GlobalId {
                     def_id: self.def_id,
                     substs: self.substs,
-                    kind: GlobalKind::Promoted(index),
+                    promoted: Some(index),
                 };
                 if self.ecx.globals.contains_key(&cid) {
                     return;
