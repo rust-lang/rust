@@ -890,11 +890,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Lvalue::Local { frame, local } => {
                 self.stack[frame].get_local(local).ok_or(EvalError::ReadUndefBytes)
             }
-            Lvalue::Static(cid) => Ok(self.statics
-                                          .get(&cid)
-                                          .expect("static not cached")
-                                          .data
-                                          .expect("static not initialized")),
+            Lvalue::Static(cid) => self.statics
+                                       .get(&cid)
+                                       .expect("static not cached")
+                                       .data
+                                       .ok_or(EvalError::ReadUndefBytes),
         }
     }
 
