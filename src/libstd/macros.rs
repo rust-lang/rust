@@ -452,9 +452,10 @@ pub mod builtin {
     #[macro_export]
     macro_rules! cfg { ($($cfg:tt)*) => ({ /* compiler built-in */ }) }
 
-    /// Parse the file provided in the argument as an expression or an
-    /// item according to the context. This file is located relative
-    /// to the current file (similarly to how modules are found).
+    /// Parse a file as an expression or an item according to the context.
+    ///
+    /// The file is located relative to the current file (similarly to how
+    /// modules are found)
     ///
     /// Using this macro is often a bad idea, because if the file is
     /// parsed as an expression, it is going to be placed in the
