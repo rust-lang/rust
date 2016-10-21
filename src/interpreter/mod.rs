@@ -652,13 +652,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Cast(kind, ref operand, cast_ty) => {
-                // FIXME(solson)
-                let dest = self.force_allocation(dest)?.to_ptr();
-
                 debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
                 use rustc::mir::repr::CastKind::*;
                 match kind {
                     Unsize => {
+                        // FIXME(solson)
+                        let dest = self.force_allocation(dest)?.to_ptr();
                         let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
                         self.unsize_into(src, src_ty, dest, dest_ty)?;
@@ -669,32 +668,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let src_ty = self.operand_ty(operand);
                         if self.type_is_fat_ptr(src_ty) {
                             trace!("misc cast: {:?}", src);
-                            let ptr_size = self.memory.pointer_size();
                             match (src, self.type_is_fat_ptr(dest_ty)) {
-                                (Value::ByValPair(data, meta), true) => {
-                                    self.memory.write_primval(dest, data)?;
-                                    self.memory.write_primval(dest.offset(ptr_size as isize), meta)?;
+                                (Value::ByRef(_), _) |
+                                (Value::ByValPair(..), true) => {
+                                    self.write_value(src, dest, dest_ty)?;
                                 },
                                 (Value::ByValPair(data, _), false) => {
-                                    self.memory.write_primval(dest, data)?;
-                                },
-                                (Value::ByRef(ptr), true) => {
-                                    self.memory.copy(ptr, dest, ptr_size * 2, ptr_size)?;
-                                },
-                                (Value::ByRef(ptr), false) => {
-                                    self.memory.copy(ptr, dest, ptr_size, ptr_size)?;
+                                    self.write_value(Value::ByVal(data), dest, dest_ty)?;
                                 },
                                 (Value::ByVal(_), _) => bug!("expected fat ptr"),
                             }
                         } else {
                             let src_val = self.value_to_primval(src, src_ty)?;
                             let dest_val = self.cast_primval(src_val, dest_ty)?;
-                            self.memory.write_primval(dest, dest_val)?;
+                            self.write_value(Value::ByVal(dest_val), dest, dest_ty)?;
                         }
                     }
 
                     ReifyFnPointer => match self.operand_ty(operand).sty {
                         ty::TyFnDef(def_id, substs, fn_ty) => {
+                            // FIXME(solson)
+                            let dest = self.force_allocation(dest)?.to_ptr();
                             let fn_ptr = self.memory.create_fn_ptr(def_id, substs, fn_ty);
                             self.memory.write_ptr(dest, fn_ptr)?;
                         },
@@ -703,6 +697,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     UnsafeFnPointer => match dest_ty.sty {
                         ty::TyFnPtr(unsafe_fn_ty) => {
+                            // FIXME(solson)
+                            let dest = self.force_allocation(dest)?.to_ptr();
                             let src = self.eval_operand(operand)?;
                             let ptr = src.read_ptr(&self.memory)?;
                             let (def_id, substs, _) = self.memory.get_fn(ptr.alloc_id)?;
