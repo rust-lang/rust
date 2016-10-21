@@ -77,7 +77,7 @@ pub struct Frame<'a, 'tcx: 'a> {
     pub return_to_block: StackPopCleanup,
 
     /// The location where the result of the current stack frame should be written to.
-    pub return_lvalue: Lvalue,
+    pub return_lvalue: Lvalue<'tcx>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[arguments..., variables..., temporaries...]`. The locals are stored as `Value`s, which
@@ -99,7 +99,7 @@ pub struct Frame<'a, 'tcx: 'a> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Lvalue {
+pub enum Lvalue<'tcx> {
     /// An lvalue referring to a value allocated in the `Memory` system.
     Ptr {
         ptr: Pointer,
@@ -347,7 +347,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         span: codemap::Span,
         mir: CachedMir<'a, 'tcx>,
         substs: &'tcx Substs<'tcx>,
-        return_lvalue: Lvalue,
+        return_lvalue: Lvalue<'tcx>,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx, ()> {
         ::log_settings::settings().indentation += 1;
@@ -406,7 +406,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         op: mir::BinOp,
         left: &mir::Operand<'tcx>,
         right: &mir::Operand<'tcx>,
-        dest: Lvalue,
+        dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
         let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
@@ -421,7 +421,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         op: mir::BinOp,
         left: &mir::Operand<'tcx>,
         right: &mir::Operand<'tcx>,
-        dest: Lvalue,
+        dest: Lvalue<'tcx>,
     ) -> EvalResult<'tcx, bool> {
         let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
         self.write_primval(dest, val)?;
@@ -430,7 +430,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn assign_fields<I: IntoIterator<Item = u64>>(
         &mut self,
-        dest: Lvalue,
+        dest: Lvalue<'tcx>,
         offsets: I,
         operands: &[mir::Operand<'tcx>],
     ) -> EvalResult<'tcx, ()> {
@@ -863,7 +863,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn eval_lvalue(&mut self, mir_lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue> {
+    fn eval_lvalue(&mut self, mir_lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
         use rustc::mir::repr::Lvalue::*;
         let lvalue = match *mir_lvalue {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
@@ -900,7 +900,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn eval_lvalue_projection(
         &mut self,
         proj: &mir::LvalueProjection<'tcx>,
-    ) -> EvalResult<'tcx, Lvalue> {
+    ) -> EvalResult<'tcx, Lvalue<'tcx>> {
         let base = self.eval_lvalue(&proj.base)?;
         let base_ty = self.lvalue_ty(&proj.base);
         let base_layout = self.type_layout(base_ty);
@@ -1071,7 +1071,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn force_allocation(&mut self, lvalue: Lvalue) -> EvalResult<'tcx, Lvalue> {
+    fn force_allocation(&mut self, lvalue: Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
         let new_lvalue = match lvalue {
             Lvalue::Local { frame, local } => {
                 let ptr = match self.stack[frame].get_local(local) {
@@ -1157,7 +1157,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn write_primval(
         &mut self,
-        dest: Lvalue,
+        dest: Lvalue<'tcx>,
         val: PrimVal,
     ) -> EvalResult<'tcx, ()> {
         match dest {
@@ -1175,7 +1175,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn write_value(
         &mut self,
         src_val: Value,
-        dest: Lvalue,
+        dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
         match dest {
@@ -1441,7 +1441,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn dump_local(&self, lvalue: Lvalue) {
+    fn dump_local(&self, lvalue: Lvalue<'tcx>) {
         if let Lvalue::Local { frame, local } = lvalue {
             if let Some(val) = self.stack[frame].get_local(local) {
                 match val {
@@ -1473,7 +1473,7 @@ impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
     }
 }
 
-impl Lvalue {
+impl<'tcx> Lvalue<'tcx> {
     pub fn from_ptr(ptr: Pointer) -> Self {
         Lvalue::Ptr { ptr: ptr, extra: LvalueExtra::None }
     }
@@ -1492,7 +1492,7 @@ impl Lvalue {
         ptr
     }
 
-    fn elem_ty_and_len<'tcx>(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
+    fn elem_ty_and_len(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
         match ty.sty {
             ty::TyArray(elem, n) => (elem, n as u64),
 
