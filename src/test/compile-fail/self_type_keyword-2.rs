@@ -10,4 +10,14 @@
 
 use self::Self as Foo; //~ ERROR unresolved import `self::Self`
 
-pub fn main() {}
+pub fn main() {
+    let Self = 5;
+    //~^ ERROR unresolved unit struct/variant or constant `Self`
+
+    match 15 {
+        Self => (),
+        //~^ ERROR unresolved unit struct/variant or constant `Self`
+        Foo { x: Self } => (),
+        //~^ ERROR unresolved unit struct/variant or constant `Self`
+    }
+}
