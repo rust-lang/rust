@@ -656,8 +656,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 use rustc::mir::repr::CastKind::*;
                 match kind {
                     Unsize => {
-                        // FIXME(solson)
-                        let dest = self.force_allocation(dest)?.to_ptr();
                         let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
                         self.unsize_into(src, src_ty, dest, dest_ty)?;
@@ -1484,7 +1482,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         src: Value,
         src_ty: Ty<'tcx>,
-        dest: Pointer,
+        dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
         match (&src_ty.sty, &dest_ty.sty) {
@@ -1498,33 +1496,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                     (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                         let ptr = src.read_ptr(&self.memory)?;
-                        self.memory.write_ptr(dest, ptr)?;
-                        let ptr_size = self.memory.pointer_size() as isize;
-                        let dest_extra = dest.offset(ptr_size);
-                        self.memory.write_usize(dest_extra, length as u64)?;
+                        let len = self.usize_primval(length as u64);
+                        let ptr = PrimVal::from_ptr(ptr);
+                        self.write_value(Value::ByValPair(ptr, len), dest, dest_ty)?;
                     }
                     (&ty::TyTrait(_), &ty::TyTrait(_)) => {
                         // For now, upcasts are limited to changes in marker
                         // traits, and hence never actually require an actual
                         // change to the vtable.
-                        self.write_value_to_ptr(src, dest, dest_ty)?;
+                        self.write_value(src, dest, dest_ty)?;
                     },
                     (_, &ty::TyTrait(ref data)) => {
                         let trait_ref = data.principal.with_self_ty(self.tcx, src_pointee_ty);
                         let trait_ref = self.tcx.erase_regions(&trait_ref);
                         let vtable = self.get_vtable(trait_ref)?;
                         let ptr = src.read_ptr(&self.memory)?;
-
-                        self.memory.write_ptr(dest, ptr)?;
-                        let ptr_size = self.memory.pointer_size() as isize;
-                        let dest_extra = dest.offset(ptr_size);
-                        self.memory.write_ptr(dest_extra, vtable)?;
+                        let ptr = PrimVal::from_ptr(ptr);
+                        let extra = PrimVal::from_ptr(vtable);
+                        self.write_value(Value::ByValPair(ptr, extra), dest, dest_ty)?;
                     },
 
                     _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
                 }
             }
             (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) => {
+                // FIXME(solson)
+                let dest = self.force_allocation(dest)?.to_ptr();
                 // unsizing of generic struct with pointer fields
                 // Example: `Arc<T>` -> `Arc<Trait>`
                 // here we need to increase the size of every &T thin ptr field to a fat ptr
@@ -1555,7 +1552,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     if src_fty == dst_fty {
                         self.copy(src_f_ptr, dst_f_ptr, src_fty)?;
                     } else {
-                        self.unsize_into(Value::ByRef(src_f_ptr), src_fty, dst_f_ptr, dst_fty)?;
+                        self.unsize_into(Value::ByRef(src_f_ptr), src_fty, Lvalue::from_ptr(dst_f_ptr), dst_fty)?;
                     }
                 }
             }
