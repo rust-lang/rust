@@ -807,6 +807,8 @@ impl<T: Default, E> Result<T, E> {
     /// `Err` on error.
     ///
     /// ```
+    /// #![feature(result_unwrap_or_default)]
+    ///
     /// let good_year_from_input = "1909";
     /// let bad_year_from_input = "190blarg";
     /// let good_year = good_year_from_input.parse().unwrap_or_default();

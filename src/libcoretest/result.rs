@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(result_unwrap_or_default)]
-
 fn op1() -> Result<isize, &'static str> { Ok(666) }
 fn op2() -> Result<isize, &'static str> { Err("sadface") }
 
