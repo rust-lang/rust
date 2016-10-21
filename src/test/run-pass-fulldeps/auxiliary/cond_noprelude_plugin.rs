@@ -15,10 +15,10 @@
 #![plugin(proc_macro_plugin)]
 
 extern crate rustc_plugin;
-extern crate proc_macro_plugin;
+extern crate proc_macro_tokens;
 extern crate syntax;
 
-use proc_macro_plugin::build::ident_eq;
+use proc_macro_tokens::build::ident_eq;
 
 use syntax::ext::base::{ExtCtxt, MacResult};
 use syntax::ext::proc_macro_shim::build_block_emitter;
