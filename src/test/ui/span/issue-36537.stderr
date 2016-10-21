@@ -1,0 +1,12 @@
+error: `a` does not live long enough
+  --> $DIR/issue-36537.rs:15:1
+   |
+14 |     p = &a; //~ NOTE borrow occurs here
+   |          - borrow occurs here
+15 | }
+   | ^ `a` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to previous error
+

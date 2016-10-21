@@ -24,8 +24,10 @@ fn main() {
     let x: i8 = 3;
     let y: i8 = 4;
 
-    v.push(&x); //~ ERROR `x` does not live long enough
-    v.push(&y); //~ ERROR `y` does not live long enough
+    v.push(&x);
+    v.push(&y);
 
     assert_eq!(v, [&3, &4]);
 }
+//~^ ERROR `x` does not live long enough
+//~| ERROR `y` does not live long enough

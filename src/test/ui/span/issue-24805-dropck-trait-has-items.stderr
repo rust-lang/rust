@@ -1,0 +1,32 @@
+error: `d1` does not live long enough
+  --> $DIR/issue-24805-dropck-trait-has-items.rs:48:1
+   |
+47 |     _d = D_HasSelfMethod(&d1);
+   |                           -- borrow occurs here
+48 | }
+   | ^ `d1` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: `d1` does not live long enough
+  --> $DIR/issue-24805-dropck-trait-has-items.rs:54:1
+   |
+53 |     _d = D_HasMethodWithSelfArg(&d1);
+   |                                  -- borrow occurs here
+54 | }
+   | ^ `d1` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: `d1` does not live long enough
+  --> $DIR/issue-24805-dropck-trait-has-items.rs:60:1
+   |
+59 |     _d = D_HasType(&d1);
+   |                     -- borrow occurs here
+60 | }
+   | ^ `d1` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to 3 previous errors
+

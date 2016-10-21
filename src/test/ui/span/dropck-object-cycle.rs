@@ -35,7 +35,7 @@ impl<'t> MakerTrait for Box<Trait<'t>+'static> {
 pub fn main() {
     let m : Box<Trait+'static> = make_val();
     assert_eq!(object_invoke1(&*m), (4,5));
-    //~^ ERROR `*m` does not live long enough
+    //~^ NOTE borrow occurs here
 
     // the problem here is that the full type of `m` is
     //
@@ -55,3 +55,7 @@ pub fn main() {
     // the type of `m` *strictly outlives* `'m`. Hence we get an
     // error.
 }
+//~^ ERROR `*m` does not live long enough
+//~| NOTE `*m` dropped here while still borrowed
+//~| NOTE values in a scope are dropped in the opposite order they are created
+

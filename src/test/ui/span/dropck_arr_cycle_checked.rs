@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Reject mixing cyclic structure and Drop when using Vec.
+// Reject mixing cyclic structure and Drop when using fixed length
+// arrays.
 //
-// (Compare against compile-fail/dropck_arr_cycle_checked.rs)
+// (Compare against compile-fail/dropck_vec_cycle_checked.rs)
 
 #![feature(const_fn)]
 
@@ -74,46 +75,44 @@ impl<T:HasId> Drop for CheckId<T> {
 }
 
 #[derive(Debug)]
-struct C<'a> {
+struct B<'a> {
     id: Id,
-    v: Vec<CheckId<Cell<Option<&'a C<'a>>>>>,
+    a: [CheckId<Cell<Option<&'a B<'a>>>>; 2]
 }
 
-impl<'a> HasId for Cell<Option<&'a C<'a>>> {
+impl<'a> HasId for Cell<Option<&'a B<'a>>> {
     fn count(&self) -> usize {
         match self.get() {
             None => 1,
-            Some(c) => c.id.count(),
+            Some(b) => b.id.count(),
         }
     }
 }
 
-impl<'a> C<'a> {
-    fn new() -> C<'a> {
-        C { id: Id::new(), v: Vec::new() }
+impl<'a> B<'a> {
+    fn new() -> B<'a> {
+        B { id: Id::new(), a: [CheckId(Cell::new(None)), CheckId(Cell::new(None))] }
     }
 }
 
 fn f() {
-    let (mut c1, mut c2, mut c3);
-    c1 = C::new();
-    c2 = C::new();
-    c3 = C::new();
-
-    c1.v.push(CheckId(Cell::new(None)));
-    c1.v.push(CheckId(Cell::new(None)));
-    c2.v.push(CheckId(Cell::new(None)));
-    c2.v.push(CheckId(Cell::new(None)));
-    c3.v.push(CheckId(Cell::new(None)));
-    c3.v.push(CheckId(Cell::new(None)));
-
-    c1.v[0].v.set(Some(&c2)); //~ ERROR `c2` does not live long enough
-    c1.v[1].v.set(Some(&c3)); //~ ERROR `c3` does not live long enough
-    c2.v[0].v.set(Some(&c2)); //~ ERROR `c2` does not live long enough
-    c2.v[1].v.set(Some(&c3)); //~ ERROR `c3` does not live long enough
-    c3.v[0].v.set(Some(&c1)); //~ ERROR `c1` does not live long enough
-    c3.v[1].v.set(Some(&c2)); //~ ERROR `c2` does not live long enough
+    let (b1, b2, b3);
+    b1 = B::new();
+    b2 = B::new();
+    b3 = B::new();
+    b1.a[0].v.set(Some(&b2));
+    b1.a[1].v.set(Some(&b3));
+    b2.a[0].v.set(Some(&b2));
+    b2.a[1].v.set(Some(&b3));
+    b3.a[0].v.set(Some(&b1));
+    b3.a[1].v.set(Some(&b2));
 }
+//~^ ERROR `b2` does not live long enough
+//~| ERROR `b3` does not live long enough
+//~| ERROR `b2` does not live long enough
+//~| ERROR `b3` does not live long enough
+//~| ERROR `b1` does not live long enough
+//~| ERROR `b2` does not live long enough
 
 fn main() {
     f();

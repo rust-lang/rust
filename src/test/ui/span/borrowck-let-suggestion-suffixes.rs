@@ -17,9 +17,7 @@ fn f() {
     let young = ['y'];       // statement 3
 
     v2.push(&young[0]);      // statement 4
-    //~^ ERROR `young[..]` does not live long enough
-    //~| NOTE does not live long enough
-    //~| NOTE values in a scope are dropped in the opposite order they are created
+    //~^ NOTE borrow occurs here
 
     let mut v3 = Vec::new(); // statement 5
 
@@ -52,7 +50,9 @@ fn f() {
 
     v1.push(&old[0]);
 }
-//~^ NOTE borrowed value dropped before borrower
+//~^ ERROR `young[..]` does not live long enough
+//~| NOTE `young[..]` dropped here while still borrowed
+//~| NOTE values in a scope are dropped in the opposite order they are created
 //~| NOTE temporary value needs to live until here
 //~| NOTE temporary value needs to live until here
 
