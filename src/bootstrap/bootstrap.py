@@ -399,12 +399,10 @@ def main():
 
     # Run the bootstrap
     args = [os.path.join(rb.build_dir, "bootstrap/debug/bootstrap")]
-    args.append('--src')
-    args.append(rb.rust_root)
-    args.append('--build')
-    args.append(rb.build)
     args.extend(sys.argv[1:])
     env = os.environ.copy()
+    env["BUILD"] = rb.build
+    env["SRC"] = rb.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     rb.run(args, env)
 

@@ -25,17 +25,17 @@ pub fn clean(build: &Build) {
     rm_rf(build, &build.out.join("tmp"));
 
     for host in build.config.host.iter() {
+        let entries = match build.out.join(host).read_dir() {
+            Ok(iter) => iter,
+            Err(_) => continue,
+        };
 
-        let out = build.out.join(host);
-
-        rm_rf(build, &out.join("doc"));
-
-        for stage in 0..4 {
-            rm_rf(build, &out.join(format!("stage{}", stage)));
-            rm_rf(build, &out.join(format!("stage{}-std", stage)));
-            rm_rf(build, &out.join(format!("stage{}-rustc", stage)));
-            rm_rf(build, &out.join(format!("stage{}-tools", stage)));
-            rm_rf(build, &out.join(format!("stage{}-test", stage)));
+        for entry in entries {
+            let entry = t!(entry);
+            if entry.file_name().to_str() == Some("llvm") {
+                continue
+            }
+            t!(fs::remove_dir_all(&entry.path()));
         }
     }
 }

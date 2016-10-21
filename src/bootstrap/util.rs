@@ -57,8 +57,7 @@ pub fn cp_r(src: &Path, dst: &Path) {
         let name = path.file_name().unwrap();
         let dst = dst.join(name);
         if t!(f.file_type()).is_dir() {
-            let _ = fs::remove_dir_all(&dst);
-            t!(fs::create_dir(&dst));
+            t!(fs::create_dir_all(&dst));
             cp_r(&path, &dst);
         } else {
             let _ = fs::remove_file(&dst);
