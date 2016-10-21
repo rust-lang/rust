@@ -25,7 +25,7 @@ pub fn opts() -> TargetOptions {
             // resolutions the linker does). This option only applies to all
             // following libraries so we're sure to pass it as one of the first
             // arguments.
-            // TODO: doesn't seem to be supported by clang toolchain
+            // FIXME: figure out whether these linker args are desirable
             //"-Wl,--as-needed".to_string(),
 
             // Always enable NX protection when it is available
