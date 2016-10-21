@@ -35,12 +35,8 @@ fn main() {
     // that the feature set used by std is the same across all
     // targets, which means we have to build the alloc_jemalloc crate
     // for targets like emscripten, even if we don't use it.
-    if target.contains("rumprun") ||
-        target.contains("bitrig") ||
-        target.contains("openbsd") ||
-        target.contains("msvc") ||
-        target.contains("emscripten")
-    {
+    if target.contains("rumprun") || target.contains("bitrig") || target.contains("openbsd") ||
+       target.contains("msvc") || target.contains("emscripten") {
         println!("cargo:rustc-cfg=dummy_jemalloc");
         return;
     }
@@ -64,16 +60,16 @@ fn main() {
     // only msvc returns None for ar so unwrap is okay
     let ar = build_helper::cc2ar(compiler.path(), &target).unwrap();
     let cflags = compiler.args()
-                         .iter()
-                         .map(|s| s.to_str().unwrap())
-                         .collect::<Vec<_>>()
-                         .join(" ");
+        .iter()
+        .map(|s| s.to_str().unwrap())
+        .collect::<Vec<_>>()
+        .join(" ");
 
     let mut stack = src_dir.join("../jemalloc")
-                           .read_dir()
-                           .unwrap()
-                           .map(|e| e.unwrap())
-                           .collect::<Vec<_>>();
+        .read_dir()
+        .unwrap()
+        .map(|e| e.unwrap())
+        .collect::<Vec<_>>();
     while let Some(entry) = stack.pop() {
         let path = entry.path();
         if entry.file_type().unwrap().is_dir() {
@@ -155,10 +151,10 @@ fn main() {
 
     run(&mut cmd);
     run(Command::new("make")
-            .current_dir(&build_dir)
-            .arg("build_lib_static")
-            .arg("-j")
-            .arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
+        .current_dir(&build_dir)
+        .arg("build_lib_static")
+        .arg("-j")
+        .arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
 
     if target.contains("windows") {
         println!("cargo:rustc-link-lib=static=jemalloc");
