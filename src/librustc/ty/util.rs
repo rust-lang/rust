@@ -392,25 +392,25 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-// When hashing a type this ends up affecting properties like symbol names. We
-// want these symbol names to be calculated independent of other factors like
-// what architecture you're compiling *from*.
-//
-// The hashing just uses the standard `Hash` trait, but the implementations of
-// `Hash` for the `usize` and `isize` types are *not* architecture independent
-// (e.g. they has 4 or 8 bytes). As a result we want to avoid `usize` and
-// `isize` completely when hashing. To ensure that these don't leak in we use a
-// custom hasher implementation here which inflates the size of these to a `u64`
-// and `i64`.
-//
-// The same goes for endianess: We always convert multi-byte integers to little
-// endian before hashing.
-struct ArchIndependentHasher<H> {
+/// When hashing a type this ends up affecting properties like symbol names. We
+/// want these symbol names to be calculated independent of other factors like
+/// what architecture you're compiling *from*.
+///
+/// The hashing just uses the standard `Hash` trait, but the implementations of
+/// `Hash` for the `usize` and `isize` types are *not* architecture independent
+/// (e.g. they has 4 or 8 bytes). As a result we want to avoid `usize` and
+/// `isize` completely when hashing. To ensure that these don't leak in we use a
+/// custom hasher implementation here which inflates the size of these to a `u64`
+/// and `i64`.
+///
+/// The same goes for endianess: We always convert multi-byte integers to little
+/// endian before hashing.
+pub struct ArchIndependentHasher<H> {
     inner: H,
 }
 
 impl<H> ArchIndependentHasher<H> {
-    fn new(inner: H) -> ArchIndependentHasher<H> {
+    pub fn new(inner: H) -> ArchIndependentHasher<H> {
         ArchIndependentHasher { inner: inner }
     }
 }
