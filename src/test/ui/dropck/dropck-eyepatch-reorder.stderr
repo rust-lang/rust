@@ -1,44 +1,44 @@
 error: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-reorder.rs:57:20
+  --> $DIR/dropck-eyepatch-reorder.rs:73:1
    |
 57 |     dt = Dt("dt", &c); //~ ERROR `c` does not live long enough
-   |                    ^ does not live long enough
+   |                    - borrow occurs here
 ...
 73 | }
-   | - borrowed value dropped before borrower
+   | ^ `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-reorder.rs:58:20
+  --> $DIR/dropck-eyepatch-reorder.rs:73:1
    |
 58 |     dr = Dr("dr", &c); //~ ERROR `c` does not live long enough
-   |                    ^ does not live long enough
+   |                    - borrow occurs here
 ...
 73 | }
-   | - borrowed value dropped before borrower
+   | ^ `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-reorder.rs:65:29
+  --> $DIR/dropck-eyepatch-reorder.rs:73:1
    |
 65 |     pt = Pt("pt", &c_long, &c); //~ ERROR `c` does not live long enough
-   |                             ^ does not live long enough
+   |                             - borrow occurs here
 ...
 73 | }
-   | - borrowed value dropped before borrower
+   | ^ `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-reorder.rs:66:29
+  --> $DIR/dropck-eyepatch-reorder.rs:73:1
    |
 66 |     pr = Pr("pr", &c_long, &c); //~ ERROR `c` does not live long enough
-   |                             ^ does not live long enough
+   |                             - borrow occurs here
 ...
 73 | }
-   | - borrowed value dropped before borrower
+   | ^ `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 

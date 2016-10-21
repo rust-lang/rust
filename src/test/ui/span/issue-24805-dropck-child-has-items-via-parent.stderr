@@ -1,0 +1,13 @@
+error: `d1` does not live long enough
+  --> $DIR/issue-24805-dropck-child-has-items-via-parent.rs:42:1
+   |
+38 |     _d = D_Child(&d1);
+   |                   -- borrow occurs here
+...
+42 | }
+   | ^ `d1` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to previous error
+

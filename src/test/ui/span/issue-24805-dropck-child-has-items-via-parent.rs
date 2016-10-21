@@ -35,11 +35,12 @@ fn f_child() {
 
     d1 = D_Child(1);
     // ... we store a reference to `d1` within `_d` ...
-    _d = D_Child(&d1); //~ ERROR `d1` does not live long enough
+    _d = D_Child(&d1);
 
     // ... dropck *should* complain, because Drop of _d could (and
     // does) access the already dropped `d1` via the `foo` method.
 }
+//~^ ERROR `d1` does not live long enough
 
 fn main() {
     f_child();

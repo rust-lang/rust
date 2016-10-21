@@ -1,0 +1,23 @@
+error: `bomb` does not live long enough
+  --> $DIR/dropck_misc_variants.rs:34:1
+   |
+33 |     _w = Wrap::<&[&str]>(NoisyDrop(&bomb));
+   |                                     ---- borrow occurs here
+34 | }
+   | ^ `bomb` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: `v` does not live long enough
+  --> $DIR/dropck_misc_variants.rs:44:1
+   |
+41 |         let u = NoisyDrop(&v);
+   |                            - borrow occurs here
+...
+44 | }
+   | ^ `v` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to 2 previous errors
+

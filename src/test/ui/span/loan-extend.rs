@@ -17,7 +17,8 @@ fn main() {
     let long;
     let mut short = 0;
     long = borrow(&mut short);
-    //~^ ERROR `short` does not live long enough
-    //~| NOTE does not live long enough
-    //~| NOTE values in a scope are dropped in the opposite order they are created
-} //~ borrowed value dropped before borrower
+    //~^ NOTE borrow occurs here
+}
+//~^ ERROR `short` does not live long enough
+//~| NOTE `short` dropped here while still borrowed
+//~| NOTE values in a scope are dropped in the opposite order they are created

@@ -1,0 +1,12 @@
+error: `ticking` does not live long enough
+  --> $DIR/issue-26656.rs:51:1
+   |
+50 |     zook.button = B::BigRedButton(&ticking);
+   |                                    ------- borrow occurs here
+51 | }
+   | ^ `ticking` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to previous error
+

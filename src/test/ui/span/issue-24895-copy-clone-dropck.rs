@@ -34,5 +34,5 @@ impl<T:Copy> Drop for D<T> {
 fn main() {
     let (d2, d1);
     d1 = D(34, "d1");
-    d2 = D(S(&d1, "inner"), "d2"); //~ ERROR `d1` does not live long enough
-}
+    d2 = D(S(&d1, "inner"), "d2");
+} //~ ERROR `d1` does not live long enough

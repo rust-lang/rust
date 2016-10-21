@@ -1024,13 +1024,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
 
             err_out_of_scope(super_scope, sub_scope, cause) => {
-                let (value_kind, value_msg) = match err.cmt.cat {
+                let (value_kind, value_msg, is_temporary) = match err.cmt.cat {
                     mc::Categorization::Rvalue(_) =>
-                        ("temporary value", "temporary value created here"),
+                        ("temporary value", "temporary value created here", true),
                     _ =>
-                        ("borrowed value", "does not live long enough")
+                        ("borrowed value", "does not live long enough", false)
                 };
-                match cause {
+
+                let is_closure = match cause {
                     euv::ClosureCapture(s) => {
                         // The primary span starts out as the closure creation point.
                         // Change the primary span here to highlight the use of the variable
@@ -1041,21 +1042,36 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                 db.span = MultiSpan::from_span(s);
                                 db.span_label(primary, &format!("capture occurs here"));
                                 db.span_label(s, &value_msg);
+                                true
                             }
-                            None => ()
+                            None => false
                         }
                     }
                     _ => {
                         db.span_label(error_span, &value_msg);
+                        false
                     }
-                }
+                };
 
                 let sub_span = self.region_end_span(sub_scope);
                 let super_span = self.region_end_span(super_scope);
 
                 match (sub_span, super_span) {
                     (Some(s1), Some(s2)) if s1 == s2 => {
-                        db.span_label(s1, &format!("{} dropped before borrower", value_kind));
+                        if !is_temporary && !is_closure {
+                            db.span = MultiSpan::from_span(s1);
+                            db.span_label(error_span, &format!("borrow occurs here"));
+                            let msg = match opt_loan_path(&err.cmt) {
+                                None => "borrowed value".to_string(),
+                                Some(lp) => {
+                                    format!("`{}`", self.loan_path_to_string(&lp))
+                                }
+                            };
+                            db.span_label(s1,
+                                          &format!("{} dropped here while still borrowed", msg));
+                        } else {
+                            db.span_label(s1, &format!("{} dropped before borrower", value_kind));
+                        }
                         db.note("values in a scope are dropped in the opposite order \
                                 they are created");
                     }
