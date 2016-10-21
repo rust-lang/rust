@@ -381,9 +381,11 @@ pub mod builtin {
 
     /// Includes a utf8-encoded file as a string.
     ///
+    /// The file is located relative to the current file. (similarly to how
+    /// modules are found)
+    ///
     /// This macro will yield an expression of type `&'static str` which is the
-    /// contents of the filename specified. The file is located relative to the
-    /// current file (similarly to how modules are found),
+    /// contents of the file.
     ///
     /// # Examples
     ///
@@ -396,9 +398,11 @@ pub mod builtin {
 
     /// Includes a file as a reference to a byte array.
     ///
+    /// The file is located relative to the current file. (similarly to how
+    /// modules are found)
+    ///
     /// This macro will yield an expression of type `&'static [u8; N]` which is
-    /// the contents of the filename specified. The file is located relative to
-    /// the current file (similarly to how modules are found),
+    /// the contents of the file.
     ///
     /// # Examples
     ///
@@ -454,7 +458,7 @@ pub mod builtin {
 
     /// Parse a file as an expression or an item according to the context.
     ///
-    /// The file is located relative to the current file (similarly to how
+    /// The file is located relative to the current file. (similarly to how
     /// modules are found)
     ///
     /// Using this macro is often a bad idea, because if the file is
