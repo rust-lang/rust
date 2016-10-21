@@ -49,6 +49,7 @@ use ty::relate::{RelateResult, TypeRelation};
 use traits::PredicateObligations;
 
 use syntax::ast;
+use syntax::util::small_vector::SmallVector;
 use syntax_pos::Span;
 
 #[derive(Clone)]
@@ -181,7 +182,9 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
                        a_is_expected: bool)
                        -> RelateResult<'tcx, ()>
     {
-        let mut stack = Vec::new();
+        // We use SmallVector here instead of Vec because this code is hot and
+        // it's rare that the stack length exceeds 1.
+        let mut stack = SmallVector::zero();
         stack.push((a_ty, dir, b_vid));
         loop {
             // For each turn of the loop, we extract a tuple
