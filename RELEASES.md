@@ -1,3 +1,30 @@
+Version 1.12.1 (2016-10-20)
+===========================
+
+Regression Fixes
+----------------
+
+* [ICE: 'rustc' panicked at 'assertion failed: concrete_substs.is_normalized_for_trans()' #36381][36381]
+* [Confusion with double negation and booleans][36856]
+* [rustc 1.12.0 fails with SIGSEGV in release mode (syn crate 0.8.0)][36875]
+* [Rustc 1.12.0 Windows build of `ethcore` crate fails with LLVM error][36924]
+* [1.12.0: High memory usage when linking in release mode with debug info][36926]
+* [Corrupted memory after updated to 1.12][36936]
+* ["Let NullaryConstructor = something;" causes internal compiler error: "tried to overwrite interned AdtDef"][37026]
+* [Fix ICE: inject bitcast if types mismatch for invokes/calls/stores][37112]
+* [debuginfo: Handle spread_arg case in MIR-trans in a more stable way.][37153]
+
+[36381]: https://github.com/rust-lang/rust/issues/36381
+[36856]: https://github.com/rust-lang/rust/issues/36856
+[36875]: https://github.com/rust-lang/rust/issues/36875
+[36924]: https://github.com/rust-lang/rust/issues/36924
+[36926]: https://github.com/rust-lang/rust/issues/36926
+[36936]: https://github.com/rust-lang/rust/issues/36936
+[37026]: https://github.com/rust-lang/rust/issues/37026
+[37112]: https://github.com/rust-lang/rust/issues/37112
+[37153]: https://github.com/rust-lang/rust/issues/37153
+
+
 Version 1.12.0 (2016-09-29)
 ===========================
 
