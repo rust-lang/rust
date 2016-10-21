@@ -11,6 +11,7 @@
 use self::SmallVectorRepr::*;
 use self::IntoIterRepr::*;
 
+use core::ops;
 use std::iter::{IntoIterator, FromIterator};
 use std::mem;
 use std::slice;
@@ -19,10 +20,12 @@ use std::vec;
 use util::move_map::MoveMap;
 
 /// A vector type optimized for cases where the size is almost always 0 or 1
+#[derive(Clone)]
 pub struct SmallVector<T> {
     repr: SmallVectorRepr<T>,
 }
 
+#[derive(Clone)]
 enum SmallVectorRepr<T> {
     Zero,
     One(T),
@@ -75,16 +78,11 @@ impl<T> SmallVector<T> {
     }
 
     pub fn as_slice(&self) -> &[T] {
-        match self.repr {
-            Zero => {
-                let result: &[T] = &[];
-                result
-            }
-            One(ref v) => {
-                unsafe { slice::from_raw_parts(v, 1) }
-            }
-            Many(ref vs) => vs
-        }
+        self
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        self
     }
 
     pub fn pop(&mut self) -> Option<T> {
@@ -160,6 +158,38 @@ impl<T> SmallVector<T> {
             Many(vec) => Many(vec.into_iter().map(f).collect()),
         };
         SmallVector { repr: repr }
+    }
+}
+
+impl<T> ops::Deref for SmallVector<T> {
+    type Target = [T];
+
+    fn deref(&self) -> &[T] {
+        match self.repr {
+            Zero => {
+                let result: &[T] = &[];
+                result
+            }
+            One(ref v) => {
+                unsafe { slice::from_raw_parts(v, 1) }
+            }
+            Many(ref vs) => vs
+        }
+    }
+}
+
+impl<T> ops::DerefMut for SmallVector<T> {
+    fn deref_mut(&mut self) -> &mut [T] {
+        match self.repr {
+            Zero => {
+                let result: &mut [T] = &mut [];
+                result
+            }
+            One(ref mut v) => {
+                unsafe { slice::from_raw_parts_mut(v, 1) }
+            }
+            Many(ref mut vs) => vs
+        }
     }
 }
 
