@@ -1224,9 +1224,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
             Lvalue::Global(cid) => {
                 let global_val = self.globals.get_mut(&cid).expect("global not cached");
-                assert!(global_val.mutable);
-                global_val.data = Some(Value::ByVal(val));
-                Ok(())
+                if global_val.mutable {
+                    global_val.data = Some(Value::ByVal(val));
+                    Ok(())
+                } else {
+                    Err(EvalError::ModifiedConstantMemory)
+                }
             }
         }
     }
@@ -1240,7 +1243,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match dest {
             Lvalue::Global(cid) => {
                 let dest = *self.globals.get_mut(&cid).expect("global should be cached");
-                assert!(dest.mutable);
+                if !dest.mutable {
+                    return Err(EvalError::ModifiedConstantMemory);
+                }
                 self.write_value_possibly_by_val(
                     src_val,
                     |this, val| *this.globals.get_mut(&cid).expect("already checked") = Global { data: Some(val), ..dest },
