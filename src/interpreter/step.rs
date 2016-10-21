@@ -129,13 +129,13 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         }
         self.try(|this| {
             let mir = this.ecx.load_mir(def_id)?;
-            this.ecx.statics.insert(cid.clone(), Constant::uninitialized(mir.return_ty));
+            this.ecx.statics.insert(cid, Constant::uninitialized(mir.return_ty));
             let cleanup = if immutable && !mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe() {
                 StackPopCleanup::Freeze
             } else {
                 StackPopCleanup::None
             };
-            this.ecx.push_stack_frame(def_id, span, mir, substs, Lvalue::Static(cid.clone()), cleanup)
+            this.ecx.push_stack_frame(def_id, span, mir, substs, Lvalue::Static(cid), cleanup)
         });
     }
     fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx, ()>>(&mut self, f: F) {
@@ -178,12 +178,12 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 self.try(|this| {
                     let mir = CachedMir::Owned(Rc::new(mir));
                     let ty = this.ecx.monomorphize(mir.return_ty, this.substs);
-                    this.ecx.statics.insert(cid.clone(), Constant::uninitialized(ty));
+                    this.ecx.statics.insert(cid, Constant::uninitialized(ty));
                     this.ecx.push_stack_frame(this.def_id,
                                               constant.span,
                                               mir,
                                               this.substs,
-                                              Lvalue::Static(cid.clone()),
+                                              Lvalue::Static(cid),
                                               StackPopCleanup::Freeze)
                 });
             }
