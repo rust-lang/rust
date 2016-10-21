@@ -56,6 +56,7 @@ pub struct Config {
     pub rust_codegen_units: u32,
     pub rust_debug_assertions: bool,
     pub rust_debuginfo: bool,
+    pub rust_debuginfo_lines: bool,
     pub rust_rpath: bool,
     pub rustc_default_linker: Option<String>,
     pub rustc_default_ar: Option<String>,
@@ -141,6 +142,7 @@ struct Rust {
     codegen_units: Option<u32>,
     debug_assertions: Option<bool>,
     debuginfo: Option<bool>,
+    debuginfo_lines: Option<bool>,
     debug_jemalloc: Option<bool>,
     use_jemalloc: Option<bool>,
     backtrace: Option<bool>,
@@ -239,6 +241,7 @@ impl Config {
         if let Some(ref rust) = toml.rust {
             set(&mut config.rust_debug_assertions, rust.debug_assertions);
             set(&mut config.rust_debuginfo, rust.debuginfo);
+            set(&mut config.rust_debuginfo_lines, rust.debuginfo_lines);
             set(&mut config.rust_optimize, rust.optimize);
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
@@ -329,6 +332,7 @@ impl Config {
                 ("OPTIMIZE", self.rust_optimize),
                 ("DEBUG_ASSERTIONS", self.rust_debug_assertions),
                 ("DEBUGINFO", self.rust_debuginfo),
+                ("DEBUGINFO_LINES", self.rust_debuginfo_lines),
                 ("JEMALLOC", self.use_jemalloc),
                 ("DEBUG_JEMALLOC", self.debug_jemalloc),
                 ("RPATH", self.rust_rpath),
