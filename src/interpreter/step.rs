@@ -4,11 +4,11 @@
 
 use super::{
     CachedMir,
-    ConstantId,
+    GlobalId,
     EvalContext,
     Lvalue,
-    ConstantKind,
     StackPopCleanup,
+    Global,
 };
 use error::EvalResult;
 use rustc::mir::repr as mir;
@@ -118,25 +118,23 @@ struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
 
 impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
     fn global_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span, immutable: bool) {
-        let cid = ConstantId {
+        let cid = GlobalId {
             def_id: def_id,
             substs: substs,
-            kind: ConstantKind::Global,
+            promoted: None,
         };
-        if self.ecx.statics.contains_key(&cid) {
+        if self.ecx.globals.contains_key(&cid) {
             return;
         }
         self.try(|this| {
             let mir = this.ecx.load_mir(def_id)?;
-            // FIXME(solson): Don't allocate a pointer unconditionally.
-            let ptr = this.ecx.alloc_ptr_with_substs(mir.return_ty, substs)?;
-            this.ecx.statics.insert(cid.clone(), ptr);
+            this.ecx.globals.insert(cid, Global::uninitialized(mir.return_ty));
             let cleanup = if immutable && !mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe() {
-                StackPopCleanup::Freeze(ptr.alloc_id)
+                StackPopCleanup::Freeze
             } else {
                 StackPopCleanup::None
             };
-            this.ecx.push_stack_frame(def_id, span, mir, substs, Lvalue::from_ptr(ptr), cleanup)
+            this.ecx.push_stack_frame(def_id, span, mir, substs, Lvalue::Global(cid), cleanup)
         });
     }
     fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx, ()>>(&mut self, f: F) {
@@ -167,27 +165,25 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 }
             },
             mir::Literal::Promoted { index } => {
-                let cid = ConstantId {
+                let mir = self.mir.promoted[index].clone();
+                let cid = GlobalId {
                     def_id: self.def_id,
                     substs: self.substs,
-                    kind: ConstantKind::Promoted(index),
+                    promoted: Some(index),
                 };
-                if self.ecx.statics.contains_key(&cid) {
+                if self.ecx.globals.contains_key(&cid) {
                     return;
                 }
-                let mir = self.mir.promoted[index].clone();
-                let return_ty = mir.return_ty;
                 self.try(|this| {
-                    // FIXME(solson): Don't allocate a pointer unconditionally.
-                    let return_ptr = this.ecx.alloc_ptr_with_substs(return_ty, cid.substs)?;
                     let mir = CachedMir::Owned(Rc::new(mir));
-                    this.ecx.statics.insert(cid.clone(), return_ptr);
+                    let ty = this.ecx.monomorphize(mir.return_ty, this.substs);
+                    this.ecx.globals.insert(cid, Global::uninitialized(ty));
                     this.ecx.push_stack_frame(this.def_id,
                                               constant.span,
                                               mir,
                                               this.substs,
-                                              Lvalue::from_ptr(return_ptr),
-                                              StackPopCleanup::Freeze(return_ptr.alloc_id))
+                                              Lvalue::Global(cid),
+                                              StackPopCleanup::Freeze)
                 });
             }
         }

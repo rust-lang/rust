@@ -15,7 +15,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
         args: &[mir::Operand<'tcx>],
-        dest: Lvalue,
+        dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
         dest_layout: &'tcx Layout,
     ) -> EvalResult<'tcx, ()> {

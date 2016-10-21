@@ -148,7 +148,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
         fn_ty: &'tcx BareFnTy,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
     ) -> EvalResult<'tcx, ()> {
@@ -262,7 +262,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         def_id: DefId,
         args: &[mir::Operand<'tcx>],
-        dest: Lvalue,
+        dest: Lvalue<'tcx>,
         dest_size: usize,
     ) -> EvalResult<'tcx, ()> {
         let name = self.tcx.item_name(def_id);
