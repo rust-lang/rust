@@ -1578,7 +1578,13 @@ impl<I> IsTrustedLen for I where I: Iterator { }
 impl<I> IsTrustedLen for I where I: TrustedLen
 {
     fn trusted_len(&self) -> Option<usize> {
-        self.size_hint().1
+        let (low, high) = self.size_hint();
+        if let Some(high_value) = high {
+            debug_assert_eq!(low, high_value,
+                             "TrustedLen iterator's size hint is not exact: {:?}",
+                             (low, high));
+        }
+        high
     }
 }
 
