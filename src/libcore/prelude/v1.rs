@@ -18,36 +18,50 @@
 
 // Reexported core operators
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use marker::{Copy, Send, Sized, Sync};
+#[doc(no_inline)]
+pub use marker::{Copy, Send, Sized, Sync};
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
+#[doc(no_inline)]
+pub use ops::{Drop, Fn, FnMut, FnOnce};
 
 // Reexported functions
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use mem::drop;
+#[doc(no_inline)]
+pub use mem::drop;
 
 // Reexported types and traits
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use clone::Clone;
+#[doc(no_inline)]
+pub use clone::Clone;
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
+#[doc(no_inline)]
+pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use convert::{AsRef, AsMut, Into, From};
+#[doc(no_inline)]
+pub use convert::{AsRef, AsMut, Into, From};
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use default::Default;
+#[doc(no_inline)]
+pub use default::Default;
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use iter::{Iterator, Extend, IntoIterator};
+#[doc(no_inline)]
+pub use iter::{Iterator, Extend, IntoIterator};
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use iter::{DoubleEndedIterator, ExactSizeIterator};
+#[doc(no_inline)]
+pub use iter::{DoubleEndedIterator, ExactSizeIterator};
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use option::Option::{self, Some, None};
+#[doc(no_inline)]
+pub use option::Option::{self, Some, None};
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use result::Result::{self, Ok, Err};
+#[doc(no_inline)]
+pub use result::Result::{self, Ok, Err};
 
 // Reexported extension traits for primitive types
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use slice::SliceExt;
+#[doc(no_inline)]
+pub use slice::SliceExt;
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use str::StrExt;
+#[doc(no_inline)]
+pub use str::StrExt;
 #[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)] pub use char::CharExt;
+#[doc(no_inline)]
+pub use char::CharExt;
