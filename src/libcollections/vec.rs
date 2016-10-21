@@ -1212,26 +1212,7 @@ impl<T: Clone> Vec<T> {
     /// ```
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
-        self.reserve(other.len());
-
-        // Unsafe code so this can be optimised to a memcpy (or something
-        // similarly fast) when T is Copy. LLVM is easily confused, so any
-        // extra operations during the loop can prevent this optimisation.
-        unsafe {
-            let len = self.len();
-            let ptr = self.get_unchecked_mut(len) as *mut T;
-            // Use SetLenOnDrop to work around bug where compiler
-            // may not realize the store through `ptr` trough self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            for i in 0..other.len() {
-                ptr::write(ptr.offset(i as isize), other.get_unchecked(i).clone());
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
-        }
+        self.extend(other.iter().cloned())
     }
 }
 
@@ -1640,24 +1621,7 @@ impl<T> Vec<T> {
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        <I as SpecExtendVec<T>>::extend_vec(iter, self);
-    }
-}
-
-// helper trait for specialization of Vec's Extend impl
-trait SpecExtendVec<T> {
-    fn extend_vec(self, vec: &mut Vec<T>);
-}
-
-impl <'a, T: 'a + Copy, I: IntoIterator<Item=&'a T>> SpecExtendVec<T> for I {
-    default fn extend_vec(self, vec: &mut Vec<T>) {
-        vec.extend(self.into_iter().cloned());
-    }
-}
-
-impl<'a, T: Copy> SpecExtendVec<T> for &'a [T] {
-    fn extend_vec(self, vec: &mut Vec<T>) {
-        vec.extend_from_slice(self);
+        self.extend(iter.into_iter().map(|&x| x))
     }
 }
 
