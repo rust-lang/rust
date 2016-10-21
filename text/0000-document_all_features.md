@@ -42,7 +42,7 @@ Importantly, though, this warning only appears on the [main site][home-to-refere
 
 [home-to-reference]: https://www.rust-lang.org/documentation.html
 
-For example, the change in Rust 1.9 to allow users to use the `#[deprecated]` attribute for their own libraries is, at the time of writing this RFC, *nowhere* reflected in official documentation. (Many other examples could be supplied; this one is chosen for its relative simplicity and recency.) The Book's [discussion of attributes][book-attributes] links to the [reference list of attributes][ref-attributes], but as of the time of writing the reference [still specifies][ref-compiler-attributes] that `deprecated` is a compiler-only feature. The two places where users might become aware of the change are [the Rust 1.9 release blog post][1.9-blog] and the [RFC itself][RFC-1270]. Neither (yet) ranks highly in search; users are likely to be misled.
+For example, the change in Rust 1.9 to allow users to use the `#[deprecated]` attribute for their own libraries was, at the time of writing this RFC, *nowhere* reflected in official documentation. (Many other examples could be supplied; this one was chosen for its relative simplicity and recency.) The Book's [discussion of attributes][book-attributes] linked to the [reference list of attributes][ref-attributes], but as of the time of writing the reference [still specifies][ref-compiler-attributes] that `deprecated` was a compiler-only feature. The two places where users might have become aware of the change are [the Rust 1.9 release blog post][1.9-blog] and the [RFC itself][RFC-1270]. Neither (yet) ranked highly in search; users were likely to be misled.
 
 [book-attributes]: https://doc.rust-lang.org/book/attributes.html
 [ref-attributes]: https://doc.rust-lang.org/reference.html#attributes
@@ -64,7 +64,7 @@ There are several serious problems with the _status quo_ of using RFCs as ad hoc
 
 2. In many cases, especially in more complicated language features, some important elements of the decision, details of implementation, and expected behavior are fleshed out either in the pull-request discussion for the RFC, or in the implementation issues which follow them.
 
-3. The RFCs themselves, and even more so the associated pull request discussions, are often dense with programming langauge theory. This is as it should be in context, but it means that the relevant information may be inaccessible to Rust users without prior PLT background, or without the patience to wade through it.
+3. The RFCs themselves, and even more so the associated pull request discussions, are often dense with programming language theory. This is as it should be in context, but it means that the relevant information may be inaccessible to Rust users without prior PLT background, or without the patience to wade through it.
 
 4. Similarly, information about the final decisions on language features is often buried deep at the end of long and winding threads (especially for a complicated feature like `impl` specialization).
 
