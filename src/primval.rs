@@ -33,6 +33,15 @@ fn bits_to_bool(n: u64) -> bool {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PrimVal {
     pub bits: u64,
+
+    /// This field is initialized when the `PrimVal` represents a pointer into an `Allocation`. An
+    /// `Allocation` in the `memory` module has a list of relocations, but a `PrimVal` is only
+    /// large enough to contain one, hence the `Option`.
+    pub relocation: Option<AllocId>,
+
+    // FIXME(solson): I think we can make this field unnecessary, or at least move it outside of
+    // this struct. We can either match over `Ty`s or generate simple `PrimVal`s from `Ty`s and
+    // match over those to decide which operations to perform on `PrimVal`s.
     pub kind: PrimValKind,
 }
 
@@ -43,8 +52,8 @@ pub enum PrimValKind {
     F32, F64,
     Bool,
     Char,
-    Ptr(AllocId),
-    FnPtr(AllocId),
+    Ptr,
+    FnPtr,
 }
 
 impl PrimValKind {
@@ -55,19 +64,43 @@ impl PrimValKind {
             _ => false,
         }
     }
+
+    pub fn from_uint_size(size: usize) -> Self {
+        match size {
+            1 => PrimValKind::U8,
+            2 => PrimValKind::U16,
+            4 => PrimValKind::U32,
+            8 => PrimValKind::U64,
+            _ => bug!("can't make uint with size {}", size),
+        }
+    }
+
+    pub fn from_int_size(size: usize) -> Self {
+        match size {
+            1 => PrimValKind::I8,
+            2 => PrimValKind::I16,
+            4 => PrimValKind::I32,
+            8 => PrimValKind::I64,
+            _ => bug!("can't make int with size {}", size),
+        }
+    }
 }
 
 impl PrimVal {
     pub fn new(bits: u64, kind: PrimValKind) -> Self {
-        PrimVal { bits: bits, kind: kind }
+        PrimVal { bits: bits, relocation: None, kind: kind }
+    }
+
+    pub fn new_with_relocation(bits: u64, kind: PrimValKind, alloc_id: AllocId) -> Self {
+        PrimVal { bits: bits, relocation: Some(alloc_id), kind: kind }
     }
 
     pub fn from_ptr(ptr: Pointer) -> Self {
-        PrimVal::new(ptr.offset as u64, PrimValKind::Ptr(ptr.alloc_id))
+        PrimVal::new_with_relocation(ptr.offset as u64, PrimValKind::Ptr, ptr.alloc_id)
     }
 
     pub fn from_fn_ptr(ptr: Pointer) -> Self {
-        PrimVal::new(ptr.offset as u64, PrimValKind::FnPtr(ptr.alloc_id))
+        PrimVal::new_with_relocation(ptr.offset as u64, PrimValKind::FnPtr, ptr.alloc_id)
     }
 
     pub fn from_bool(b: bool) -> Self {
@@ -87,64 +120,58 @@ impl PrimVal {
     }
 
     pub fn from_uint_with_size(n: u64, size: usize) -> Self {
-        let kind = match size {
-            1 => PrimValKind::U8,
-            2 => PrimValKind::U16,
-            4 => PrimValKind::U32,
-            8 => PrimValKind::U64,
-            _ => bug!("can't make uint ({}) with size {}", n, size),
-        };
-        PrimVal::new(n, kind)
+        PrimVal::new(n, PrimValKind::from_uint_size(size))
     }
 
     pub fn from_int_with_size(n: i64, size: usize) -> Self {
-        let kind = match size {
-            1 => PrimValKind::I8,
-            2 => PrimValKind::I16,
-            4 => PrimValKind::I32,
-            8 => PrimValKind::I64,
-            _ => bug!("can't make int ({}) with size {}", n, size),
-        };
-        PrimVal::new(n as u64, kind)
+        PrimVal::new(n as u64, PrimValKind::from_int_size(size))
     }
 
     pub fn to_f32(self) -> f32 {
+        assert!(self.relocation.is_none());
         bits_to_f32(self.bits)
     }
 
     pub fn to_f64(self) -> f64 {
+        assert!(self.relocation.is_none());
         bits_to_f64(self.bits)
     }
 
+    pub fn try_as_ptr(self) -> Option<Pointer> {
+        self.relocation.map(|alloc_id| {
+            Pointer::new(alloc_id, self.bits as usize)
+        })
+    }
+
     pub fn expect_uint(self, error_msg: &str) -> u64 {
+        if let Some(ptr) = self.try_as_ptr() {
+            return ptr.to_int().expect("non abstract ptr") as u64
+        }
+
         use self::PrimValKind::*;
         match self.kind {
             U8 | U16 | U32 | U64 => self.bits,
-            Ptr(alloc_id) => {
-                let ptr = Pointer::new(alloc_id, self.bits as usize);
-                ptr.to_int().expect("non abstract ptr") as u64
-            }
             _ => bug!("{}", error_msg),
         }
     }
 
     pub fn expect_int(self, error_msg: &str) -> i64 {
+        if let Some(ptr) = self.try_as_ptr() {
+            return ptr.to_int().expect("non abstract ptr") as i64
+        }
+
         use self::PrimValKind::*;
         match self.kind {
             I8 | I16 | I32 | I64 => self.bits as i64,
-            Ptr(alloc_id) => {
-                let ptr = Pointer::new(alloc_id, self.bits as usize);
-                ptr.to_int().expect("non abstract ptr") as i64
-            }
             _ => bug!("{}", error_msg),
         }
     }
 
-    pub fn expect_bool(self, error_msg: &str) -> bool {
-        match (self.kind, self.bits) {
-            (PrimValKind::Bool, 0) => false,
-            (PrimValKind::Bool, 1) => true,
-            _ => bug!("{}", error_msg),
+    pub fn try_as_bool<'tcx>(self) -> EvalResult<'tcx, bool> {
+        match self.bits {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => Err(EvalError::InvalidBool),
         }
     }
 
@@ -163,17 +190,12 @@ impl PrimVal {
     }
 
     pub fn expect_ptr(self, error_msg: &str) -> Pointer {
-        match self.kind {
-            PrimValKind::Ptr(alloc_id) => Pointer::new(alloc_id, self.bits as usize),
-            _ => bug!("{}", error_msg),
-        }
+        self.try_as_ptr().expect(error_msg)
     }
 
+    /// FIXME(solson): Refactored into a duplicate of `expect_ptr`. Investigate removal.
     pub fn expect_fn_ptr(self, error_msg: &str) -> Pointer {
-        match self.kind {
-            PrimValKind::FnPtr(alloc_id) => Pointer::new(alloc_id, self.bits as usize),
-            _ => bug!("{}", error_msg),
-        }
+        self.try_as_ptr().expect(error_msg)
     }
 }
 
@@ -255,22 +277,19 @@ pub fn binary_op<'tcx>(
     use rustc::mir::repr::BinOp::*;
     use self::PrimValKind::*;
 
-    match (left.kind, right.kind) {
-        (FnPtr(_), Ptr(_)) |
-        (Ptr(_), FnPtr(_)) => return Ok((unrelated_ptr_ops(bin_op)?, false)),
-
-        (Ptr(l_alloc), Ptr(r_alloc)) if l_alloc != r_alloc
-            => return Ok((unrelated_ptr_ops(bin_op)?, false)),
-
-        (FnPtr(l_alloc), FnPtr(r_alloc)) => {
-            match bin_op {
-                Eq => return Ok((PrimVal::from_bool(l_alloc == r_alloc), false)),
-                Ne => return Ok((PrimVal::from_bool(l_alloc != r_alloc), false)),
-                _ => {}
+    match (left.try_as_ptr(), right.try_as_ptr()) {
+        (Some(left_ptr), Some(right_ptr)) => {
+            if left_ptr.alloc_id != right_ptr.alloc_id {
+                return Ok((unrelated_ptr_ops(bin_op)?, false));
             }
+
+            // If the pointers are into the same allocation, fall through to the more general match
+            // later, which will do comparisons on the `bits` fields, which are the pointer offsets
+            // in this case.
         }
 
-        _ => {}
+        (None, None) => {}
+        _ => unimplemented!(),
     }
 
     let (l, r) = (left.bits, right.bits);

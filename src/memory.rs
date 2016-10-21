@@ -532,25 +532,21 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn write_primval(&mut self, ptr: Pointer, val: PrimVal) -> EvalResult<'tcx, ()> {
-        use primval::PrimValKind::*;
-        match val.kind {
-            FnPtr(alloc_id) | Ptr(alloc_id) => {
-                let p = Pointer::new(alloc_id, val.bits as usize);
-                return self.write_ptr(ptr, p);
-            }
-            _ => {}
+    pub fn write_primval(&mut self, dest: Pointer, val: PrimVal) -> EvalResult<'tcx, ()> {
+        if let Some(ptr) = val.try_as_ptr() {
+            return self.write_ptr(dest, ptr);
         }
 
+        use primval::PrimValKind::*;
         let (size, bits) = match val.kind {
             I8 | U8 | Bool         => (1, val.bits as u8  as u64),
             I16 | U16              => (2, val.bits as u16 as u64),
             I32 | U32 | F32 | Char => (4, val.bits as u32 as u64),
             I64 | U64 | F64        => (8, val.bits),
-            FnPtr(_) | Ptr(_)      => bug!("handled above"),
+            FnPtr | Ptr            => bug!("handled above"),
         };
 
-        self.write_uint(ptr, bits, size)
+        self.write_uint(dest, bits, size)
     }
 
     pub fn read_bool(&self, ptr: Pointer) -> EvalResult<'tcx, bool> {

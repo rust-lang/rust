@@ -1,6 +1,6 @@
 use error::EvalResult;
 use memory::{Memory, Pointer};
-use primval::{PrimVal, PrimValKind};
+use primval::PrimVal;
 
 /// A `Value` represents a single self-contained Rust value.
 ///
@@ -23,10 +23,8 @@ impl<'a, 'tcx: 'a> Value {
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr),
 
-            ByVal(PrimVal { kind: PrimValKind::Ptr(alloc), bits: offset }) |
-            ByVal(PrimVal { kind: PrimValKind::FnPtr(alloc), bits: offset }) => {
-                let ptr = Pointer::new(alloc, offset as usize);
-                Ok(ptr)
+            ByVal(ptr) if ptr.try_as_ptr().is_some() => {
+                Ok(ptr.try_as_ptr().unwrap())
             }
 
             ByValPair(..) => unimplemented!(),
@@ -46,12 +44,11 @@ impl<'a, 'tcx: 'a> Value {
                 Ok((ptr, vtable))
             }
 
-            ByValPair(
-                PrimVal { kind: PrimValKind::Ptr(ptr_alloc), bits: ptr_offset },
-                PrimVal { kind: PrimValKind::Ptr(vtable_alloc), bits: vtable_offset },
-            ) => {
-                let ptr = Pointer::new(ptr_alloc, ptr_offset as usize);
-                let vtable = Pointer::new(vtable_alloc, vtable_offset as usize);
+            ByValPair(ptr, vtable)
+                if ptr.try_as_ptr().is_some() && vtable.try_as_ptr().is_some()
+            => {
+                let ptr = ptr.try_as_ptr().unwrap();
+                let vtable = vtable.try_as_ptr().unwrap();
                 Ok((ptr, vtable))
             }
 

@@ -35,8 +35,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Goto { target } => self.goto_block(target),
 
             If { ref cond, targets: (then_target, else_target) } => {
-                let cond_val = self.eval_operand_to_primval(cond)?
-                    .expect_bool("TerminatorKind::If condition constant was not a bool");
+                let cond_val = self.eval_operand_to_primval(cond)?.try_as_bool()?;
                 self.goto_block(if cond_val { then_target } else { else_target });
             }
 
@@ -116,8 +115,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Assert { ref cond, expected, ref msg, target, .. } => {
-                let cond_val = self.eval_operand_to_primval(cond)?
-                    .expect_bool("TerminatorKind::Assert condition constant was not a bool");
+                let cond_val = self.eval_operand_to_primval(cond)?.try_as_bool()?;
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {

@@ -972,7 +972,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Deref => {
-                use primval::PrimValKind::*;
                 use interpreter::value::Value::*;
 
                 let val = match self.eval_and_read_lvalue(&proj.base)? {
@@ -981,22 +980,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
 
                 match val {
-                    ByValPair(
-                        PrimVal { kind: Ptr(ptr_alloc), bits: ptr_offset },
-                        PrimVal { kind: Ptr(vtable_alloc), bits: vtable_offset },
-                    ) => {
-                        let ptr = Pointer::new(ptr_alloc, ptr_offset as usize);
-                        let vtable = Pointer::new(vtable_alloc, vtable_offset as usize);
+                    ByValPair(ptr, vtable)
+                        if ptr.try_as_ptr().is_some() && vtable.try_as_ptr().is_some()
+                    => {
+                        let ptr = ptr.try_as_ptr().unwrap();
+                        let vtable = vtable.try_as_ptr().unwrap();
                         (ptr, LvalueExtra::Vtable(vtable))
                     }
 
-                    ByValPair(PrimVal { kind: Ptr(alloc), bits: offset }, n) => {
-                        let ptr = Pointer::new(alloc, offset as usize);
+                    ByValPair(ptr, n) if ptr.try_as_ptr().is_some() => {
+                        let ptr = ptr.try_as_ptr().unwrap();
                         (ptr, LvalueExtra::Length(n.expect_uint("slice length")))
                     }
 
-                    ByVal(PrimVal { kind: Ptr(alloc), bits: offset }) => {
-                        let ptr = Pointer::new(alloc, offset as usize);
+                    ByVal(ptr) if ptr.try_as_ptr().is_some() => {
+                        let ptr = ptr.try_as_ptr().unwrap();
                         (ptr, LvalueExtra::None)
                     }
 
@@ -1122,37 +1120,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
             },
 
-            // FIXME(solson): This unnecessarily allocates to work around a new issue my `Value`
-            // locals refactoring introduced. There is code that calls this function and expects to
-            // get a PrimVal reflecting the specific type that it asked for, e.g. `PrimVal::Bool`
-            // when it was asking for `TyBool`. This used to always work because it would go
-            // through `read_value` which does the right thing.
-            //
-            // This is the comment and implementation from before my refactor:
-            //
-            //     TODO(solson): Sanity-check the primval type against the input type.
-            //     Value::ByVal(primval) => Ok(primval),
-            //
-            // Turns out sanity-checking isn't enough now, and we need conversion.
-            //
-            // Now that we can possibly be reading a `ByVal` straight out of the locals vec, if the
-            // user did something tricky like transmuting a `u8` to a `bool`, then we'll have a
-            // `PrimVal::U8` and need to convert to `PrimVal::Bool`.
-            //
-            // I want to avoid handling the full set of conversions between `PrimVal`s, so for now
-            // I will use this hack. I have a plan to change the representation of `PrimVal` to be
-            // more like a small piece of memory tagged with a `PrimValKind`, which should make the
-            // conversion easy and make the problem solveable using code already in `Memory`.
             Value::ByVal(primval) => {
-                let ptr = self.alloc_ptr(ty)?;
-                self.memory.write_primval(ptr, primval)?;
-                let primval = self.value_to_primval(Value::ByRef(ptr), ty)?;
-                self.memory.deallocate(ptr)?;
-                Ok(primval)
+                let new_primval = self.transmute_primval(primval, ty)?;
+                self.ensure_valid_value(new_primval, ty)?;
+                Ok(new_primval)
             }
 
             Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
         }
+    }
+
+    fn transmute_primval(&self, val: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+        Ok(PrimVal { kind: self.ty_to_primval_kind(ty)?, ..val })
     }
 
     fn write_primval(
@@ -1250,6 +1229,77 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.memory.write_primval(ptr.offset(field_0), a)?;
         self.memory.write_primval(ptr.offset(field_1), b)?;
         Ok(())
+    }
+
+    fn ty_to_primval_kind(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimValKind> {
+        use syntax::ast::FloatTy;
+
+        let kind = match ty.sty {
+            ty::TyBool => PrimValKind::Bool,
+            ty::TyChar => PrimValKind::Char,
+
+            ty::TyInt(int_ty) => {
+                use syntax::ast::IntTy::*;
+                let size = match int_ty {
+                    I8 => 1,
+                    I16 => 2,
+                    I32 => 4,
+                    I64 => 8,
+                    Is => self.memory.pointer_size(),
+                };
+                PrimValKind::from_int_size(size)
+            }
+
+            ty::TyUint(uint_ty) => {
+                use syntax::ast::UintTy::*;
+                let size = match uint_ty {
+                    U8 => 1,
+                    U16 => 2,
+                    U32 => 4,
+                    U64 => 8,
+                    Us => self.memory.pointer_size(),
+                };
+                PrimValKind::from_uint_size(size)
+            }
+
+            ty::TyFloat(FloatTy::F32) => PrimValKind::F32,
+            ty::TyFloat(FloatTy::F64) => PrimValKind::F64,
+
+            ty::TyFnPtr(_) => PrimValKind::FnPtr,
+
+            ty::TyBox(ty) |
+            ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) if self.type_is_sized(ty) => PrimValKind::Ptr,
+
+            ty::TyAdt(..) => {
+                use rustc::ty::layout::Layout::*;
+                if let CEnum { discr, signed, .. } = *self.type_layout(ty) {
+                    let size = discr.size().bytes() as usize;
+                    if signed {
+                        PrimValKind::from_int_size(size)
+                    } else {
+                        PrimValKind::from_uint_size(size)
+                    }
+                } else {
+                    bug!("primitive read of non-clike enum: {:?}", ty);
+                }
+            },
+
+            _ => bug!("primitive read of non-primitive type: {:?}", ty),
+        };
+
+        Ok(kind)
+    }
+
+    fn ensure_valid_value(&self, val: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
+        match ty.sty {
+            ty::TyBool if val.bits > 1 => Err(EvalError::InvalidBool),
+
+            ty::TyChar if ::std::char::from_u32(val.bits as u32).is_none()
+                => Err(EvalError::InvalidChar(val.bits as u32 as u64)),
+
+            _ => Ok(()),
+        }
     }
 
     fn read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
