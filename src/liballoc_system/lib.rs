@@ -221,11 +221,7 @@ mod imp {
                                   HEAP_REALLOC_IN_PLACE_ONLY,
                                   ptr as LPVOID,
                                   size as SIZE_T) as *mut u8;
-            if new.is_null() {
-                old_size
-            } else {
-                size
-            }
+            if new.is_null() { old_size } else { size }
         } else {
             old_size
         }

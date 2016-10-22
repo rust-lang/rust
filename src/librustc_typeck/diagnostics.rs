@@ -1915,6 +1915,45 @@ More details can be found in [RFC 438].
 [RFC 438]: https://github.com/rust-lang/rfcs/pull/438
 "##,
 
+E0182: r##"
+You bound an associated type in an expression path which is not
+allowed.
+
+Erroneous code example:
+
+```compile_fail,E0182
+trait Foo {
+    type A;
+    fn bar() -> isize;
+}
+
+impl Foo for isize {
+    type A = usize;
+    fn bar() -> isize { 42 }
+}
+
+// error: unexpected binding of associated item in expression path
+let x: isize = Foo::<A=usize>::bar();
+```
+
+To give a concrete type when using the Universal Function Call Syntax,
+use "Type as Trait". Example:
+
+```
+trait Foo {
+    type A;
+    fn bar() -> isize;
+}
+
+impl Foo for isize {
+    type A = usize;
+    fn bar() -> isize { 42 }
+}
+
+let x: isize = <isize as Foo>::bar(); // ok!
+```
+"##,
+
 E0184: r##"
 Explicitly implementing both Drop and Copy for a type is currently disallowed.
 This feature can make some sense in theory, but the current implementation is
@@ -2749,6 +2788,30 @@ following compiles correctly:
 fn main() {
     let _: Box<std::io::Read + Send + Sync>;
 }
+```
+"##,
+
+E0230: r##"
+The trait has more type parameters specified than appear in its definition.
+
+Erroneous example code:
+
+```compile_fail,E0230
+#![feature(on_unimplemented)]
+#[rustc_on_unimplemented = "Trait error on `{Self}` with `<{A},{B},{C}>`"]
+// error: there is no type parameter C on trait TraitWithThreeParams
+trait TraitWithThreeParams<A,B>
+{}
+```
+
+Include the correct number of type parameters and the compilation should
+proceed:
+
+```
+#![feature(on_unimplemented)]
+#[rustc_on_unimplemented = "Trait error on `{Self}` with `<{A},{B},{C}>`"]
+trait TraitWithThreeParams<A,B,C> // ok!
+{}
 ```
 "##,
 
@@ -3587,6 +3650,44 @@ fn together_we_will_rule_the_galaxy(son: &A<i32>) {} // Ok!
 ```
 "##,
 
+E0399: r##"
+You implemented a trait, overriding one or more of its associated types but did
+not reimplement its default methods.
+
+Example of erroneous code:
+
+```compile_fail,E0399
+#![feature(associated_type_defaults)]
+
+pub trait Foo {
+    type Assoc = u8;
+    fn bar(&self) {}
+}
+
+impl Foo for i32 {
+    // error - the following trait items need to be reimplemented as
+    //         `Assoc` was overridden: `bar`
+    type Assoc = i32;
+}
+```
+
+To fix this, add an implementation for each default method from the trait:
+
+```
+#![feature(associated_type_defaults)]
+
+pub trait Foo {
+    type Assoc = u8;
+    fn bar(&self) {}
+}
+
+impl Foo for i32 {
+    type Assoc = i32;
+    fn bar(&self) {} // ok!
+}
+```
+"##,
+
 E0439: r##"
 The length of the platform-intrinsic function `simd_shuffle`
 wasn't specified. Erroneous code example:
@@ -4074,7 +4175,6 @@ register_diagnostics! {
 //  E0168,
 //  E0173, // manual implementations of unboxed closure traits are experimental
 //  E0174,
-    E0182,
     E0183,
 //  E0187, // can't infer the kind of the closure
 //  E0188, // can not cast an immutable reference to a mutable pointer
@@ -4098,7 +4198,6 @@ register_diagnostics! {
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
     E0228, // explicit lifetime bound required
-    E0230, // there is no type parameter on trait
     E0231, // only named substitution parameters are allowed
 //  E0233,
 //  E0234,
@@ -4120,8 +4219,6 @@ register_diagnostics! {
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0399, // trait items need to be implemented because the associated
-           // type `{}` was overridden
     E0436, // functional record update requires a struct
     E0521, // redundant default implementations of trait
     E0533, // `{}` does not name a unit variant, unit struct or a constant

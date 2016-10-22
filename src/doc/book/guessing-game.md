@@ -276,7 +276,7 @@ displaying the message.
 [expect]: ../std/result/enum.Result.html#method.expect
 [panic]: error-handling.html
 
-If we leave off calling this method, our program will compile, but
+If we do not call `expect()`, our program will compile, but
 we’ll get a warning:
 
 ```bash

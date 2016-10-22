@@ -36,8 +36,9 @@ fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
-    let target = args.windows(2).find(|w| &*w[0] == "--target")
-                                .and_then(|w| w[1].to_str());
+    let target = args.windows(2)
+        .find(|w| &*w[0] == "--target")
+        .and_then(|w| w[1].to_str());
     let version = args.iter().find(|w| &**w == "-vV");
 
     // Build scripts always use the snapshot compiler which is guaranteed to be
@@ -64,9 +65,10 @@ fn main() {
 
     let mut cmd = Command::new(rustc);
     cmd.args(&args)
-       .arg("--cfg").arg(format!("stage{}", stage))
-       .env(bootstrap::util::dylib_path_var(),
-            env::join_paths(&dylib_path).unwrap());
+        .arg("--cfg")
+        .arg(format!("stage{}", stage))
+        .env(bootstrap::util::dylib_path_var(),
+             env::join_paths(&dylib_path).unwrap());
 
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
@@ -101,9 +103,8 @@ fn main() {
         // This... is a bit of a hack how we detect this. Ideally this
         // information should be encoded in the crate I guess? Would likely
         // require an RFC amendment to RFC 1513, however.
-        let is_panic_abort = args.windows(2).any(|a| {
-            &*a[0] == "--crate-name" && &*a[1] == "panic_abort"
-        });
+        let is_panic_abort = args.windows(2)
+            .any(|a| &*a[0] == "--crate-name" && &*a[1] == "panic_abort");
         if is_panic_abort {
             cmd.arg("-C").arg("panic=abort");
         }
@@ -116,7 +117,7 @@ fn main() {
             cmd.arg("-Cdebuginfo=1");
         }
         let debug_assertions = match env::var("RUSTC_DEBUG_ASSERTIONS") {
-            Ok(s) => if s == "true" {"y"} else {"n"},
+            Ok(s) => if s == "true" { "y" } else { "n" },
             Err(..) => "n",
         };
         cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
