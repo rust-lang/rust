@@ -11,6 +11,7 @@
 use fnv::FnvHashMap;
 use std::hash::Hash;
 use std::ops;
+use std::mem;
 
 #[cfg(test)]
 mod test;
@@ -31,6 +32,7 @@ enum UndoLog<K, V> {
     CommittedSnapshot,
     Inserted(K),
     Overwrite(K, V),
+    Noop,
 }
 
 impl<K, V> SnapshotMap<K, V>
@@ -100,24 +102,33 @@ impl<K, V> SnapshotMap<K, V>
         }
     }
 
+    pub fn partial_rollback<F>(&mut self,
+                               snapshot: &Snapshot,
+                               should_revert_key: &F)
+        where F: Fn(&K) -> bool
+    {
+        self.assert_open_snapshot(snapshot);
+        for i in (snapshot.len + 1..self.undo_log.len()).rev() {
+            let reverse = match self.undo_log[i] {
+                UndoLog::OpenSnapshot => false,
+                UndoLog::CommittedSnapshot => false,
+                UndoLog::Noop => false,
+                UndoLog::Inserted(ref k) => should_revert_key(k),
+                UndoLog::Overwrite(ref k, _) => should_revert_key(k),
+            };
+
+            if reverse {
+                let entry = mem::replace(&mut self.undo_log[i], UndoLog::Noop);
+                self.reverse(entry);
+            }
+        }
+    }
+
     pub fn rollback_to(&mut self, snapshot: Snapshot) {
         self.assert_open_snapshot(&snapshot);
         while self.undo_log.len() > snapshot.len + 1 {
-            match self.undo_log.pop().unwrap() {
-                UndoLog::OpenSnapshot => {
-                    panic!("cannot rollback an uncommitted snapshot");
-                }
-
-                UndoLog::CommittedSnapshot => {}
-
-                UndoLog::Inserted(key) => {
-                    self.map.remove(&key);
-                }
-
-                UndoLog::Overwrite(key, old_value) => {
-                    self.map.insert(key, old_value);
-                }
-            }
+            let entry = self.undo_log.pop().unwrap();
+            self.reverse(entry);
         }
 
         let v = self.undo_log.pop().unwrap();
@@ -126,6 +137,26 @@ impl<K, V> SnapshotMap<K, V>
             _ => false,
         });
         assert!(self.undo_log.len() == snapshot.len);
+    }
+
+    fn reverse(&mut self, entry: UndoLog<K, V>) {
+        match entry {
+            UndoLog::OpenSnapshot => {
+                panic!("cannot rollback an uncommitted snapshot");
+            }
+
+            UndoLog::CommittedSnapshot => {}
+
+            UndoLog::Inserted(key) => {
+                self.map.remove(&key);
+            }
+
+            UndoLog::Overwrite(key, old_value) => {
+                self.map.insert(key, old_value);
+            }
+
+            UndoLog::Noop => {}
+        }
     }
 }
 

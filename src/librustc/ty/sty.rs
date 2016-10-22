@@ -406,7 +406,7 @@ impl<T> Binder<T> {
 
 impl fmt::Debug for TypeFlags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.bits)
+        write!(f, "{:x}", self.bits)
     }
 }
 
@@ -865,6 +865,35 @@ impl Region {
             }, r),
             r => r
         }
+    }
+
+    pub fn type_flags(&self) -> TypeFlags {
+        let mut flags = TypeFlags::empty();
+
+        match *self {
+            ty::ReVar(..) => {
+                flags = flags | TypeFlags::HAS_RE_INFER;
+                flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
+            }
+            ty::ReSkolemized(..) => {
+                flags = flags | TypeFlags::HAS_RE_INFER;
+                flags = flags | TypeFlags::HAS_RE_SKOL;
+                flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
+            }
+            ty::ReLateBound(..) => { }
+            ty::ReEarlyBound(..) => { flags = flags | TypeFlags::HAS_RE_EARLY_BOUND; }
+            ty::ReStatic | ty::ReErased => { }
+            _ => { flags = flags | TypeFlags::HAS_FREE_REGIONS; }
+        }
+
+        match *self {
+            ty::ReStatic | ty::ReEmpty | ty::ReErased => (),
+            _ => flags = flags | TypeFlags::HAS_LOCAL_NAMES,
+        }
+
+        debug!("type_flags({:?}) = {:?}", self, flags);
+
+        flags
     }
 }
 

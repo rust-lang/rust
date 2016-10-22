@@ -11,6 +11,7 @@
 use ty::subst::Substs;
 use ty::{self, Ty, TypeFlags, TypeFoldable};
 
+#[derive(Debug)]
 pub struct FlagComputation {
     pub flags: TypeFlags,
 
@@ -182,24 +183,9 @@ impl FlagComputation {
     }
 
     fn add_region(&mut self, r: &ty::Region) {
-        match *r {
-            ty::ReVar(..) => {
-                self.add_flags(TypeFlags::HAS_RE_INFER);
-                self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX);
-            }
-            ty::ReSkolemized(..) => {
-                self.add_flags(TypeFlags::HAS_RE_INFER);
-                self.add_flags(TypeFlags::HAS_RE_SKOL);
-                self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX);
-            }
-            ty::ReLateBound(debruijn, _) => { self.add_depth(debruijn.depth); }
-            ty::ReEarlyBound(..) => { self.add_flags(TypeFlags::HAS_RE_EARLY_BOUND); }
-            ty::ReStatic | ty::ReErased => {}
-            _ => { self.add_flags(TypeFlags::HAS_FREE_REGIONS); }
-        }
-
-        if !r.is_global() {
-            self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
+        self.add_flags(r.type_flags());
+        if let ty::ReLateBound(debruijn, _) = *r {
+            self.add_depth(debruijn.depth);
         }
     }
 
