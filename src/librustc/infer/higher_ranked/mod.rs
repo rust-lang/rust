@@ -839,5 +839,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         debug!("pop_skolemized({:?})", skol_map);
         let skol_regions: FnvHashSet<_> = skol_map.values().cloned().collect();
         self.region_vars.pop_skolemized(&skol_regions, &snapshot.region_vars_snapshot);
+        if !skol_map.is_empty() {
+            self.projection_cache.borrow_mut().rollback_skolemized(
+                &snapshot.projection_cache_snapshot);
+        }
     }
 }
