@@ -27,7 +27,8 @@ use syntax_pos::{self, Span};
 use std::marker::PhantomData;
 
 pub fn rustc_version() -> String {
-    format!("rustc {}", option_env!("CFG_VERSION").unwrap_or("unknown version"))
+    format!("rustc {}",
+            option_env!("CFG_VERSION").unwrap_or("unknown version"))
 }
 
 /// Metadata encoding version.
@@ -41,11 +42,8 @@ pub const METADATA_VERSION: u8 = 3;
 /// as a length of 0 by old compilers.
 ///
 /// This header is followed by the position of the `CrateRoot`.
-pub const METADATA_HEADER: &'static [u8; 12] = &[
-    0, 0, 0, 0,
-    b'r', b'u', b's', b't',
-    0, 0, 0, METADATA_VERSION
-];
+pub const METADATA_HEADER: &'static [u8; 12] =
+    &[0, 0, 0, 0, b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -70,14 +68,14 @@ pub const SHORTHAND_OFFSET: usize = 0x80;
 #[must_use]
 pub struct Lazy<T> {
     pub position: usize,
-    _marker: PhantomData<T>
+    _marker: PhantomData<T>,
 }
 
 impl<T> Lazy<T> {
     pub fn with_position(position: usize) -> Lazy<T> {
         Lazy {
             position: position,
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 
@@ -90,7 +88,9 @@ impl<T> Lazy<T> {
 
 impl<T> Copy for Lazy<T> {}
 impl<T> Clone for Lazy<T> {
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<T> serialize::UseSpecializedEncodable for Lazy<T> {}
@@ -112,7 +112,7 @@ impl<T> serialize::UseSpecializedDecodable for Lazy<T> {}
 pub struct LazySeq<T> {
     pub len: usize,
     pub position: usize,
-    _marker: PhantomData<T>
+    _marker: PhantomData<T>,
 }
 
 impl<T> LazySeq<T> {
@@ -124,7 +124,7 @@ impl<T> LazySeq<T> {
         LazySeq {
             len: len,
             position: position,
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 
@@ -136,7 +136,9 @@ impl<T> LazySeq<T> {
 
 impl<T> Copy for LazySeq<T> {}
 impl<T> Clone for LazySeq<T> {
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<T> serialize::UseSpecializedEncodable for LazySeq<T> {}
@@ -155,7 +157,7 @@ pub enum LazyState {
     /// Inside a metadata node, with a previous `Lazy` or `LazySeq`.
     /// The position is a conservative estimate of where that
     /// previous `Lazy` / `LazySeq` would end (see their comments).
-    Previous(usize)
+    Previous(usize),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -185,13 +187,13 @@ pub struct CrateRoot {
 pub struct CrateDep {
     pub name: ast::Name,
     pub hash: hir::svh::Svh,
-    pub explicitly_linked: bool
+    pub explicitly_linked: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct TraitImpls {
     pub trait_id: (u32, DefIndex),
-    pub impls: LazySeq<DefIndex>
+    pub impls: LazySeq<DefIndex>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -199,7 +201,7 @@ pub struct MacroDef {
     pub name: ast::Name,
     pub attrs: Vec<ast::Attribute>,
     pub span: Span,
-    pub body: String
+    pub body: String,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -219,7 +221,7 @@ pub struct Entry<'tcx> {
     pub predicates: Option<Lazy<ty::GenericPredicates<'tcx>>>,
 
     pub ast: Option<Lazy<astencode::Ast<'tcx>>>,
-    pub mir: Option<Lazy<mir::repr::Mir<'tcx>>>
+    pub mir: Option<Lazy<mir::repr::Mir<'tcx>>>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
@@ -245,18 +247,18 @@ pub enum EntryKind<'tcx> {
     DefaultImpl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
     AssociatedType(AssociatedContainer),
-    AssociatedConst(AssociatedContainer)
+    AssociatedConst(AssociatedContainer),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ModData {
-    pub reexports: LazySeq<def::Export>
+    pub reexports: LazySeq<def::Export>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct FnData {
     pub constness: hir::Constness,
-    pub arg_names: LazySeq<ast::Name>
+    pub arg_names: LazySeq<ast::Name>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -266,7 +268,7 @@ pub struct VariantData {
 
     /// If this is a struct's only variant, this
     /// is the index of the "struct ctor" item.
-    pub struct_ctor: Option<DefIndex>
+    pub struct_ctor: Option<DefIndex>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -275,7 +277,7 @@ pub struct TraitData<'tcx> {
     pub paren_sugar: bool,
     pub has_default_impl: bool,
     pub trait_ref: Lazy<ty::TraitRef<'tcx>>,
-    pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>
+    pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -283,7 +285,7 @@ pub struct ImplData<'tcx> {
     pub polarity: hir::ImplPolarity,
     pub parent_impl: Option<DefId>,
     pub coerce_unsized_kind: Option<ty::adjustment::CustomCoerceUnsized>,
-    pub trait_ref: Option<Lazy<ty::TraitRef<'tcx>>>
+    pub trait_ref: Option<Lazy<ty::TraitRef<'tcx>>>,
 }
 
 /// Describes whether the container of an associated item
@@ -294,21 +296,17 @@ pub enum AssociatedContainer {
     TraitRequired,
     TraitWithDefault,
     ImplDefault,
-    ImplFinal
+    ImplFinal,
 }
 
 impl AssociatedContainer {
     pub fn with_def_id(&self, def_id: DefId) -> ty::ImplOrTraitItemContainer {
         match *self {
             AssociatedContainer::TraitRequired |
-            AssociatedContainer::TraitWithDefault => {
-                ty::TraitContainer(def_id)
-            }
+            AssociatedContainer::TraitWithDefault => ty::TraitContainer(def_id),
 
             AssociatedContainer::ImplDefault |
-            AssociatedContainer::ImplFinal => {
-                ty::ImplContainer(def_id)
-            }
+            AssociatedContainer::ImplFinal => ty::ImplContainer(def_id),
         }
     }
 
@@ -318,7 +316,7 @@ impl AssociatedContainer {
 
             AssociatedContainer::TraitWithDefault |
             AssociatedContainer::ImplDefault |
-            AssociatedContainer::ImplFinal => true
+            AssociatedContainer::ImplFinal => true,
         }
     }
 
@@ -328,7 +326,7 @@ impl AssociatedContainer {
             AssociatedContainer::TraitWithDefault |
             AssociatedContainer::ImplDefault => hir::Defaultness::Default,
 
-            AssociatedContainer::ImplFinal => hir::Defaultness::Final
+            AssociatedContainer::ImplFinal => hir::Defaultness::Final,
         }
     }
 }
@@ -337,11 +335,11 @@ impl AssociatedContainer {
 pub struct MethodData<'tcx> {
     pub fn_data: FnData,
     pub container: AssociatedContainer,
-    pub explicit_self: Lazy<ty::ExplicitSelfCategory<'tcx>>
+    pub explicit_self: Lazy<ty::ExplicitSelfCategory<'tcx>>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ClosureData<'tcx> {
     pub kind: ty::ClosureKind,
-    pub ty: Lazy<ty::ClosureTy<'tcx>>
+    pub ty: Lazy<ty::ClosureTy<'tcx>>,
 }

@@ -30,8 +30,10 @@
 #![feature(specialization)]
 #![feature(staged_api)]
 
-#[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate syntax;
 extern crate syntax_pos;
 extern crate flate;
 extern crate serialize as rustc_serialize; // used by deriving

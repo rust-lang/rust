@@ -138,11 +138,11 @@ pub trait DepGraphRead {
 }
 
 impl DepGraphRead for DefId {
-    fn read(&self, _tcx: TyCtxt) { }
+    fn read(&self, _tcx: TyCtxt) {}
 }
 
 impl DepGraphRead for ast::NodeId {
-    fn read(&self, _tcx: TyCtxt) { }
+    fn read(&self, _tcx: TyCtxt) {}
 }
 
 impl<T> DepGraphRead for Option<T>
@@ -179,8 +179,8 @@ macro_rules! read_tuple {
         }
     }
 }
-read_tuple!(A,B);
-read_tuple!(A,B,C);
+read_tuple!(A, B);
+read_tuple!(A, B, C);
 
 macro_rules! read_hir {
     ($t:ty) => {
@@ -208,7 +208,7 @@ read_hir!(hir::ForeignItem);
 pub struct Untracked<T>(pub T);
 
 impl<T> DepGraphRead for Untracked<T> {
-    fn read(&self, _tcx: TyCtxt) { }
+    fn read(&self, _tcx: TyCtxt) {}
 }
 
 /// Newtype that can be used to package up misc data extracted from a
