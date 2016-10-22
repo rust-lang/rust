@@ -2,7 +2,7 @@ use rustc::hir::*;
 use rustc::hir::map::Node::{NodeItem, NodeImplItem};
 use rustc::lint::*;
 use utils::paths;
-use utils::{is_expn_of, match_path, span_lint};
+use utils::{is_expn_of, match_path, match_def_path, resolve_node, span_lint};
 use format::get_argument_fmtstr_parts;
 
 /// **What it does:** This lint warns when you using `print!()` with a format string that
@@ -67,63 +67,69 @@ impl LintPass for Pass {
 
 impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let ExprCall(ref fun, ref args) = expr.node {
-            if let ExprPath(_, ref path) = fun.node {
-                // Search for `std::io::_print(..)` which is unique in a
-                // `print!` expansion.
-                if match_path(path, &paths::IO_PRINT) {
-                    if let Some(span) = is_expn_of(cx, expr.span, "print") {
-                        // `println!` uses `print!`.
-                        let (span, name) = match is_expn_of(cx, span, "println") {
-                            Some(span) => (span, "println"),
-                            None => (span, "print"),
-                        };
+        if_let_chain! {[
+            let ExprCall(ref fun, ref args) = expr.node,
+            let ExprPath(..) = fun.node,
+            let Some(fun) = resolve_node(cx, fun.id),
+        ], {
+            let fun_id = fun.def_id();
 
-                        span_lint(cx, PRINT_STDOUT, span, &format!("use of `{}!`", name));
+            // Search for `std::io::_print(..)` which is unique in a
+            // `print!` expansion.
+            if match_def_path(cx, fun_id, &paths::IO_PRINT) {
+                if let Some(span) = is_expn_of(cx, expr.span, "print") {
+                    // `println!` uses `print!`.
+                    let (span, name) = match is_expn_of(cx, span, "println") {
+                        Some(span) => (span, "println"),
+                        None => (span, "print"),
+                    };
 
-                        // Check print! with format string ending in "\n".
-                        if_let_chain!{[
-                            name == "print",
+                    span_lint(cx, PRINT_STDOUT, span, &format!("use of `{}!`", name));
 
-                            // ensure we're calling Arguments::new_v1
-                            args.len() == 1,
-                            let ExprCall(ref args_fun, ref args_args) = args[0].node,
-                            let ExprPath(_, ref args_path) = args_fun.node,
-                            match_path(args_path, &paths::FMT_ARGUMENTS_NEWV1),
-                            args_args.len() == 2,
-                            let ExprAddrOf(_, ref match_expr) = args_args[1].node,
-                            let ExprMatch(ref args, _, _) = match_expr.node,
-                            let ExprTup(ref args) = args.node,
+                    // Check print! with format string ending in "\n".
+                    if_let_chain!{[
+                        name == "print",
 
-                            // collect the format string parts and check the last one
-                            let Some(fmtstrs) = get_argument_fmtstr_parts(cx, &args_args[0]),
-                            let Some(last_str) = fmtstrs.last(),
-                            let Some('\n') = last_str.chars().last(),
+                        // ensure we're calling Arguments::new_v1
+                        args.len() == 1,
+                        let ExprCall(ref args_fun, ref args_args) = args[0].node,
+                        let ExprPath(..) = args_fun.node,
+                        let Some(def) = resolve_node(cx, args_fun.id),
+                        match_def_path(cx, def.def_id(), &paths::FMT_ARGUMENTS_NEWV1),
+                        args_args.len() == 2,
+                        let ExprAddrOf(_, ref match_expr) = args_args[1].node,
+                        let ExprMatch(ref args, _, _) = match_expr.node,
+                        let ExprTup(ref args) = args.node,
 
-                            // "foo{}bar" is made into two strings + one argument,
-                            // if the format string starts with `{}` (eg. "{}foo"),
-                            // the string array is prepended an empty string "".
-                            // We only want to check the last string after any `{}`:
-                            args.len() < fmtstrs.len(),
-                        ], {
-                            span_lint(cx, PRINT_WITH_NEWLINE, span,
-                                      "using `print!()` with a format string that ends in a \
-                                       newline, consider using `println!()` instead");
-                        }}
-                    }
+                        // collect the format string parts and check the last one
+                        let Some(fmtstrs) = get_argument_fmtstr_parts(cx, &args_args[0]),
+                        let Some(last_str) = fmtstrs.last(),
+                        let Some('\n') = last_str.chars().last(),
+
+                        // "foo{}bar" is made into two strings + one argument,
+                        // if the format string starts with `{}` (eg. "{}foo"),
+                        // the string array is prepended an empty string "".
+                        // We only want to check the last string after any `{}`:
+                        args.len() < fmtstrs.len(),
+                    ], {
+                        span_lint(cx, PRINT_WITH_NEWLINE, span,
+                                  "using `print!()` with a format string that ends in a \
+                                   newline, consider using `println!()` instead");
+                    }}
                 }
-                // Search for something like
-                // `::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Debug::fmt)`
-                else if args.len() == 2 && match_path(path, &paths::FMT_ARGUMENTV1_NEW) {
-                    if let ExprPath(None, ref path) = args[1].node {
-                        if match_path(path, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr) &&
-                           is_expn_of(cx, expr.span, "panic").is_none() {
-                            span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");
-                        }
+            }
+            // Search for something like
+            // `::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Debug::fmt)`
+            else if args.len() == 2 && match_def_path(cx, fun_id, &paths::FMT_ARGUMENTV1_NEW) {
+                if let ExprPath(None, _) = args[1].node {
+                    let def_id = resolve_node(cx, args[1].id).unwrap().def_id();
+                    if match_def_path(cx, def_id, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr) &&
+                       is_expn_of(cx, expr.span, "panic").is_none() {
+                        span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");
                     }
                 }
             }
-        }
+        }}
     }
 }
 

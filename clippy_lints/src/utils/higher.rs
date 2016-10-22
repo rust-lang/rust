@@ -6,7 +6,7 @@ use rustc::hir;
 use rustc::lint::LateContext;
 use syntax::ast;
 use syntax::ptr::P;
-use utils::{is_expn_of, match_path, paths};
+use utils::{is_expn_of, match_path, match_def_path, resolve_node, paths};
 
 /// Convert a hir binary operator to the corresponding `ast` type.
 pub fn binop(op: hir::BinOp_) -> ast::BinOpKind {
@@ -170,9 +170,10 @@ pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e
     if_let_chain!{[
         let hir::ExprCall(ref fun, ref args) = expr.node,
         let hir::ExprPath(_, ref path) = fun.node,
-        is_expn_of(cx, fun.span, "vec").is_some()
+        let Some(fun_def) = resolve_node(cx, fun.id),
+        is_expn_of(cx, fun.span, "vec").is_some(),
     ], {
-        return if match_path(path, &paths::VEC_FROM_ELEM) && args.len() == 2 {
+        return if match_def_path(cx, fun_def.def_id(), &paths::VEC_FROM_ELEM) && args.len() == 2 {
             // `vec![elem; size]` case
             Some(VecArgs::Repeat(&args[0], &args[1]))
         }

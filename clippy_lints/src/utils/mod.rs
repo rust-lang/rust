@@ -279,6 +279,11 @@ pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, 
     })
 }
 
+/// Resolve the definition of a node from its `NodeId`.
+pub fn resolve_node(cx: &LateContext, id: NodeId) -> Option<def::Def> {
+    cx.tcx.def_map.borrow().get(&id).map(|d| d.full_def())
+}
+
 /// Match an `Expr` against a chain of methods, and return the matched `Expr`s.
 ///
 /// For example, if `expr` represents the `.baz()` in `foo.bar().baz()`,
