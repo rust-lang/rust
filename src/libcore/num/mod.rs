@@ -2778,7 +2778,6 @@ pub use num::dec2flt::ParseFloatError;
 
 // Conversion traits for primitive integer and float types
 // Conversions T -> T are covered by a blanket impl and therefore excluded
-// Some conversions from and to usize/isize are not implemented due to portability concerns
 macro_rules! impl_from {
     ($Small: ty, $Large: ty) => {
         #[stable(feature = "lossless_prim_conv", since = "1.5.0")]
@@ -2791,6 +2790,14 @@ macro_rules! impl_from {
     }
 }
 
+// Conditionally supported conversions from and to usize/isize
+macro_rules! impl_from_cond {
+    ($Small: ty, $Large: ty | $($width: expr),*) => {
+        #[cfg(any($(target_pointer_width = $width,)*))]
+        impl_from! { $Small, $Large }
+    }
+}
+
 // Unsigned -> Unsigned
 impl_from! { u8, u16 }
 impl_from! { u8, u32 }
@@ -2799,6 +2806,12 @@ impl_from! { u8, usize }
 impl_from! { u16, u32 }
 impl_from! { u16, u64 }
 impl_from! { u32, u64 }
+impl_from_cond! { u16, usize | "16", "32", "64" }
+impl_from_cond! { u32, usize | "32", "64" }
+impl_from_cond! { u64, usize | "64" }
+impl_from_cond! { usize, u16 | "16" }
+impl_from_cond! { usize, u32 | "16", "32" }
+impl_from_cond! { usize, u64 | "16", "32", "64" }
 
 // Signed -> Signed
 impl_from! { i8, i16 }
@@ -2808,6 +2821,12 @@ impl_from! { i8, isize }
 impl_from! { i16, i32 }
 impl_from! { i16, i64 }
 impl_from! { i32, i64 }
+impl_from_cond! { i16, isize | "16", "32", "64" }
+impl_from_cond! { i32, isize | "32", "64" }
+impl_from_cond! { i64, isize | "64" }
+impl_from_cond! { isize, i16 | "16" }
+impl_from_cond! { isize, i32 | "16", "32" }
+impl_from_cond! { isize, i64 | "16", "32", "64" }
 
 // Unsigned -> Signed
 impl_from! { u8, i16 }
@@ -2816,6 +2835,11 @@ impl_from! { u8, i64 }
 impl_from! { u16, i32 }
 impl_from! { u16, i64 }
 impl_from! { u32, i64 }
+impl_from_cond! { u8, isize | "16", "32", "64" }
+impl_from_cond! { u16, isize | "32", "64" }
+impl_from_cond! { u32, isize | "64" }
+impl_from_cond! { usize, i32 | "16" }
+impl_from_cond! { usize, i64 | "16", "32" }
 
 // Note: integers can only be represented with full precision in a float if
 // they fit in the significand, which is 24 bits in f32 and 53 bits in f64.
