@@ -77,7 +77,7 @@ use rustc::session::config::nightly_options;
 use rustc::session::early_error;
 use rustc::lint::Lint;
 use rustc::lint;
-use rustc_metadata::loader;
+use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc::util::common::time;
 
@@ -578,8 +578,7 @@ impl RustcDefaultCalls {
                 &Input::File(ref ifile) => {
                     let path = &(*ifile);
                     let mut v = Vec::new();
-                    loader::list_file_metadata(&sess.target.target, path, &mut v)
-                        .unwrap();
+                    locator::list_file_metadata(&sess.target.target, path, &mut v).unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
                 }
                 &Input::Str { .. } => {

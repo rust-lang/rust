@@ -11,7 +11,7 @@
 //! Used by `rustc` when loading a plugin.
 
 use rustc::session::Session;
-use rustc_metadata::creader::CrateReader;
+use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 use registry::Registry;
 
@@ -33,7 +33,7 @@ pub struct PluginRegistrar {
 
 struct PluginLoader<'a> {
     sess: &'a Session,
-    reader: CrateReader<'a>,
+    reader: CrateLoader<'a>,
     plugins: Vec<PluginRegistrar>,
 }
 
@@ -96,7 +96,7 @@ impl<'a> PluginLoader<'a> {
             -> PluginLoader<'a> {
         PluginLoader {
             sess: sess,
-            reader: CrateReader::new(sess, cstore, crate_name, crate_config),
+            reader: CrateLoader::new(sess, cstore, crate_name, crate_config),
             plugins: vec![],
         }
     }
