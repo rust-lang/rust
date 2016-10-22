@@ -117,7 +117,8 @@ impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext<'a, 'tcx> {
-    fn specialized_encode(&mut self, predicates: &ty::GenericPredicates<'tcx>)
+    fn specialized_encode(&mut self,
+                          predicates: &ty::GenericPredicates<'tcx>)
                           -> Result<(), Self::Error> {
         predicates.parent.encode(self)?;
         predicates.predicates.len().encode(self)?;
@@ -142,13 +143,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         r
     }
 
-    fn emit_lazy_distance(&mut self, position: usize, min_size: usize)
+    fn emit_lazy_distance(&mut self,
+                          position: usize,
+                          min_size: usize)
                           -> Result<(), <Self as Encoder>::Error> {
         let min_end = position + min_size;
         let distance = match self.lazy_state {
-            LazyState::NoNode => {
-                bug!("emit_lazy_distance: outside of a metadata node")
-            }
+            LazyState::NoNode => bug!("emit_lazy_distance: outside of a metadata node"),
             LazyState::NodeStart(start) => {
                 assert!(min_end <= start);
                 start - min_end
@@ -172,7 +173,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn lazy_seq<I, T>(&mut self, iter: I) -> LazySeq<T>
-    where I: IntoIterator<Item=T>, T: Encodable {
+        where I: IntoIterator<Item = T>,
+              T: Encodable
+    {
         self.emit_node(|ecx, pos| {
             let len = iter.into_iter().map(|value| value.encode(ecx).unwrap()).count();
 
@@ -182,7 +185,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn lazy_seq_ref<'b, I, T>(&mut self, iter: I) -> LazySeq<T>
-    where I: IntoIterator<Item=&'b T>, T: 'b + Encodable {
+        where I: IntoIterator<Item = &'b T>,
+              T: 'b + Encodable
+    {
         self.emit_node(|ecx, pos| {
             let len = iter.into_iter().map(|value| value.encode(ecx).unwrap()).count();
 
@@ -192,11 +197,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     /// Encode the given value or a previously cached shorthand.
-    fn encode_with_shorthand<T, U, M>(&mut self, value: &T, variant: &U, map: M)
+    fn encode_with_shorthand<T, U, M>(&mut self,
+                                      value: &T,
+                                      variant: &U,
+                                      map: M)
                                       -> Result<(), <Self as Encoder>::Error>
-    where M: for<'b> Fn(&'b mut Self) -> &'b mut FnvHashMap<T, usize>,
-          T: Clone + Eq + Hash,
-          U: Encodable {
+        where M: for<'b> Fn(&'b mut Self) -> &'b mut FnvHashMap<T, usize>,
+              T: Clone + Eq + Hash,
+              U: Encodable
+    {
         let existing_shorthand = map(self).get(value).cloned();
         if let Some(shorthand) = existing_shorthand {
             return self.emit_usize(shorthand);
@@ -208,9 +217,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // The shorthand encoding uses the same usize as the
         // discriminant, with an offset so they can't conflict.
-        let discriminant = unsafe {
-            intrinsics::discriminant_value(variant)
-        };
+        let discriminant = unsafe { intrinsics::discriminant_value(variant) };
         assert!(discriminant < SHORTHAND_OFFSET as u64);
         let shorthand = start + SHORTHAND_OFFSET;
 
@@ -250,8 +257,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     /// the right to access any information in the adt-def (including,
     /// e.g., the length of the various vectors).
     fn encode_enum_variant_info(&mut self,
-                                (enum_did, Untracked(index)):
-                                (DefId, Untracked<usize>)) -> Entry<'tcx> {
+                                (enum_did, Untracked(index)): (DefId, Untracked<usize>))
+                                -> Entry<'tcx> {
         let tcx = self.tcx;
         let def = tcx.lookup_adt_def(enum_did);
         let variant = &def.variants[index];
@@ -260,7 +267,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             disr: variant.disr_val.to_u64_unchecked(),
-            struct_ctor: None
+            struct_ctor: None,
         };
 
         let enum_id = tcx.map.as_local_node_id(enum_did).unwrap();
@@ -285,24 +292,23 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: None,
-            mir: None
+            mir: None,
         }
     }
 
     fn encode_info_for_mod(&mut self,
-                           FromId(id, (md, attrs, vis)):
-                           FromId<(&hir::Mod, &[ast::Attribute], &hir::Visibility)>)
+                           FromId(id, (md, attrs, vis)): FromId<(&hir::Mod,
+                                                                 &[ast::Attribute],
+                                                                 &hir::Visibility)>)
                            -> Entry<'tcx> {
         let tcx = self.tcx;
         let def_id = tcx.map.local_def_id(id);
 
         let data = ModData {
             reexports: match self.reexports.get(&id) {
-                Some(exports) if *vis == hir::Public => {
-                    self.lazy_seq_ref(exports)
-                }
-                _ => LazySeq::empty()
-            }
+                Some(exports) if *vis == hir::Public => self.lazy_seq_ref(exports),
+                _ => LazySeq::empty(),
+            },
         };
 
         Entry {
@@ -353,8 +359,7 @@ impl Visibility for ty::Visibility {
 }
 
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
-    fn encode_fields(&mut self,
-                     adt_def_id: DefId) {
+    fn encode_fields(&mut self, adt_def_id: DefId) {
         let def = self.tcx.lookup_adt_def(adt_def_id);
         for (variant_index, variant) in def.variants.iter().enumerate() {
             for (field_index, field) in variant.fields.iter().enumerate() {
@@ -374,8 +379,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     /// the adt-def (including, e.g., the length of the various
     /// vectors).
     fn encode_field(&mut self,
-                    (adt_def_id, Untracked((variant_index, field_index))):
-                    (DefId, Untracked<(usize, usize)>)) -> Entry<'tcx> {
+                    (adt_def_id, Untracked((variant_index, field_index))): (DefId,
+                                                                            Untracked<(usize,
+                                                                                       usize)>))
+                    -> Entry<'tcx> {
         let tcx = self.tcx;
         let variant = &tcx.lookup_adt_def(adt_def_id).variants[variant_index];
         let field = &variant.fields[field_index];
@@ -400,19 +407,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: None,
-            mir: None
+            mir: None,
         }
     }
 
-    fn encode_struct_ctor(&mut self, (adt_def_id, def_id): (DefId, DefId))
-                          -> Entry<'tcx> {
+    fn encode_struct_ctor(&mut self, (adt_def_id, def_id): (DefId, DefId)) -> Entry<'tcx> {
         let tcx = self.tcx;
         let variant = tcx.lookup_adt_def(adt_def_id).struct_variant();
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             disr: variant.disr_val.to_u64_unchecked(),
-            struct_ctor: Some(def_id.index)
+            struct_ctor: Some(def_id.index),
         };
 
         let struct_id = tcx.map.as_local_node_id(adt_def_id).unwrap();
@@ -434,7 +440,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: None,
-            mir: None
+            mir: None,
         }
     }
 
@@ -469,7 +475,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let fn_data = if let hir::MethodTraitItem(ref sig, _) = ast_item.node {
                     FnData {
                         constness: hir::Constness::NotConst,
-                        arg_names: self.encode_fn_arg_names(&sig.decl)
+                        arg_names: self.encode_fn_arg_names(&sig.decl),
                     }
                 } else {
                     bug!()
@@ -477,13 +483,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let data = MethodData {
                     fn_data: fn_data,
                     container: container(method_ty.has_body),
-                    explicit_self: self.lazy(&method_ty.explicit_self)
+                    explicit_self: self.lazy(&method_ty.explicit_self),
                 };
                 EntryKind::Method(self.lazy(&data))
             }
-            ty::TypeTraitItem(_) => {
-                EntryKind::AssociatedType(container(false))
-            }
+            ty::TypeTraitItem(_) => EntryKind::AssociatedType(container(false)),
         };
 
         Entry {
@@ -497,9 +501,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             ty: match trait_item {
                 ty::ConstTraitItem(_) |
-                ty::MethodTraitItem(_) => {
-                    Some(self.encode_item_type(def_id))
-                }
+                ty::MethodTraitItem(_) => Some(self.encode_item_type(def_id)),
                 ty::TypeTraitItem(ref associated_type) => {
                     associated_type.ty.map(|ty| self.lazy(&ty))
                 }
@@ -515,7 +517,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             } else {
                 None
             },
-            mir: self.encode_mir(def_id)
+            mir: self.encode_mir(def_id),
         }
     }
 
@@ -527,18 +529,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let container = match ast_item.defaultness {
             hir::Defaultness::Default => AssociatedContainer::ImplDefault,
-            hir::Defaultness::Final => AssociatedContainer::ImplFinal
+            hir::Defaultness::Final => AssociatedContainer::ImplFinal,
         };
 
         let kind = match impl_item {
-            ty::ConstTraitItem(_) => {
-                EntryKind::AssociatedConst(container)
-            }
+            ty::ConstTraitItem(_) => EntryKind::AssociatedConst(container),
             ty::MethodTraitItem(ref method_ty) => {
                 let fn_data = if let hir::ImplItemKind::Method(ref sig, _) = ast_item.node {
                     FnData {
                         constness: sig.constness,
-                        arg_names: self.encode_fn_arg_names(&sig.decl)
+                        arg_names: self.encode_fn_arg_names(&sig.decl),
                     }
                 } else {
                     bug!()
@@ -546,13 +546,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let data = MethodData {
                     fn_data: fn_data,
                     container: container,
-                    explicit_self: self.lazy(&method_ty.explicit_self)
+                    explicit_self: self.lazy(&method_ty.explicit_self),
                 };
                 EntryKind::Method(self.lazy(&data))
             }
-            ty::TypeTraitItem(_) => {
-                EntryKind::AssociatedType(container)
-            }
+            ty::TypeTraitItem(_) => EntryKind::AssociatedType(container),
         };
 
         let (ast, mir) = if let ty::ConstTraitItem(_) = impl_item {
@@ -578,9 +576,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             ty: match impl_item {
                 ty::ConstTraitItem(_) |
-                ty::MethodTraitItem(_) => {
-                    Some(self.encode_item_type(def_id))
-                }
+                ty::MethodTraitItem(_) => Some(self.encode_item_type(def_id)),
                 ty::TypeTraitItem(ref associated_type) => {
                     associated_type.ty.map(|ty| self.lazy(&ty))
                 }
@@ -595,11 +591,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             } else {
                 None
             },
-            mir: if mir {
-                self.encode_mir(def_id)
-            } else {
-                None
-            }
+            mir: if mir { self.encode_mir(def_id) } else { None },
         }
     }
 
@@ -638,8 +630,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.tcx.lookup_deprecation(def_id).map(|depr| self.lazy(&depr))
     }
 
-    fn encode_info_for_item(&mut self,
-                            (def_id, item): (DefId, &hir::Item)) -> Entry<'tcx> {
+    fn encode_info_for_item(&mut self, (def_id, item): (DefId, &hir::Item)) -> Entry<'tcx> {
         let tcx = self.tcx;
 
         debug!("encoding info for item at {}",
@@ -652,7 +643,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemFn(ref decl, _, constness, ..) => {
                 let data = FnData {
                     constness: constness,
-                    arg_names: self.encode_fn_arg_names(&decl)
+                    arg_names: self.encode_fn_arg_names(&decl),
                 };
 
                 EntryKind::Fn(self.lazy(&data))
@@ -666,9 +657,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemStruct(ref struct_def, _) => {
                 let variant = tcx.lookup_adt_def(def_id).struct_variant();
 
-                /* Encode def_ids for each field and method
-                for methods, write all the stuff get_trait_method
-                needs to know*/
+                // Encode def_ids for each field and method
+                // for methods, write all the stuff get_trait_method
+                // needs to know
                 let struct_ctor = if !struct_def.is_struct() {
                     Some(tcx.map.local_def_id(struct_def.id()).index)
                 } else {
@@ -677,7 +668,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 EntryKind::Struct(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
                     disr: variant.disr_val.to_u64_unchecked(),
-                    struct_ctor: struct_ctor
+                    struct_ctor: struct_ctor,
                 }))
             }
             hir::ItemUnion(..) => {
@@ -686,7 +677,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 EntryKind::Union(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
                     disr: variant.disr_val.to_u64_unchecked(),
-                    struct_ctor: None
+                    struct_ctor: None,
                 }))
             }
             hir::ItemDefaultImpl(..) => {
@@ -694,7 +685,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     polarity: hir::ImplPolarity::Positive,
                     parent_impl: None,
                     coerce_unsized_kind: None,
-                    trait_ref: tcx.impl_trait_ref(def_id).map(|trait_ref| self.lazy(&trait_ref))
+                    trait_ref: tcx.impl_trait_ref(def_id).map(|trait_ref| self.lazy(&trait_ref)),
                 };
 
                 EntryKind::DefaultImpl(self.lazy(&data))
@@ -716,9 +707,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let data = ImplData {
                     polarity: polarity,
                     parent_impl: parent,
-                    coerce_unsized_kind: tcx.custom_coerce_unsized_kinds.borrow()
-                                            .get(&def_id).cloned(),
-                    trait_ref: trait_ref.map(|trait_ref| self.lazy(&trait_ref))
+                    coerce_unsized_kind: tcx.custom_coerce_unsized_kinds
+                        .borrow()
+                        .get(&def_id)
+                        .cloned(),
+                    trait_ref: trait_ref.map(|trait_ref| self.lazy(&trait_ref)),
                 };
 
                 EntryKind::Impl(self.lazy(&data))
@@ -730,14 +723,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     paren_sugar: trait_def.paren_sugar,
                     has_default_impl: tcx.trait_has_default_impl(def_id),
                     trait_ref: self.lazy(&trait_def.trait_ref),
-                    super_predicates: self.lazy(&tcx.lookup_super_predicates(def_id))
+                    super_predicates: self.lazy(&tcx.lookup_super_predicates(def_id)),
                 };
 
                 EntryKind::Trait(self.lazy(&data))
             }
-            hir::ItemExternCrate(_) | hir::ItemUse(_) => {
-                bug!("cannot encode info for item {:?}", item)
-            }
+            hir::ItemExternCrate(_) |
+            hir::ItemUse(_) => bug!("cannot encode info for item {:?}", item),
         };
 
         Entry {
@@ -747,9 +739,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             attributes: self.encode_attributes(&item.attrs),
             children: match item.node {
                 hir::ItemForeignMod(ref fm) => {
-                    self.lazy_seq(fm.items.iter().map(|foreign_item| {
-                        tcx.map.local_def_id(foreign_item.id).index
-                    }))
+                    self.lazy_seq(fm.items
+                        .iter()
+                        .map(|foreign_item| tcx.map.local_def_id(foreign_item.id).index))
                 }
                 hir::ItemEnum(..) => {
                     let def = self.tcx.lookup_adt_def(def_id);
@@ -773,7 +765,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         def_id.index
                     }))
                 }
-                _ => LazySeq::empty()
+                _ => LazySeq::empty(),
             },
             stability: self.encode_stability(def_id),
             deprecation: self.encode_deprecation(def_id),
@@ -786,20 +778,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 hir::ItemEnum(..) |
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
-                hir::ItemImpl(..) => {
-                    Some(self.encode_item_type(def_id))
-                }
-                _ => None
+                hir::ItemImpl(..) => Some(self.encode_item_type(def_id)),
+                _ => None,
             },
             inherent_impls: self.encode_inherent_implementations(def_id),
             variances: match item.node {
                 hir::ItemEnum(..) |
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
-                hir::ItemTrait(..) => {
-                    self.encode_item_variances(def_id)
-                }
-                _ => LazySeq::empty()
+                hir::ItemTrait(..) => self.encode_item_variances(def_id),
+                _ => LazySeq::empty(),
             },
             generics: match item.node {
                 hir::ItemStatic(..) |
@@ -810,10 +798,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
                 hir::ItemImpl(..) |
-                hir::ItemTrait(..) => {
-                    Some(self.encode_generics(def_id))
-                }
-                _ => None
+                hir::ItemTrait(..) => Some(self.encode_generics(def_id)),
+                _ => None,
             },
             predicates: match item.node {
                 hir::ItemStatic(..) |
@@ -824,10 +810,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
                 hir::ItemImpl(..) |
-                hir::ItemTrait(..) => {
-                    Some(self.encode_predicates(def_id))
-                }
-                _ => None
+                hir::ItemTrait(..) => Some(self.encode_predicates(def_id)),
+                _ => None,
             },
 
             ast: match item.node {
@@ -835,12 +819,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 hir::ItemFn(_, _, hir::Constness::Const, ..) => {
                     Some(self.encode_inlined_item(InlinedItemRef::Item(def_id, item)))
                 }
-                _ => None
+                _ => None,
             },
             mir: match item.node {
-                hir::ItemConst(..) => {
-                    self.encode_mir(def_id)
-                }
+                hir::ItemConst(..) => self.encode_mir(def_id),
                 hir::ItemFn(_, _, constness, _, ref generics, _) => {
                     let tps_len = generics.ty_params.len();
                     let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
@@ -850,8 +832,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         None
                     }
                 }
-                _ => None
-            }
+                _ => None,
+            },
         }
     }
 }
@@ -861,8 +843,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     /// encode some sub-items. Usually we want some info from the item
     /// so it's easier to do that here then to wait until we would encounter
     /// normally in the visitor walk.
-    fn encode_addl_info_for_item(&mut self,
-                                 item: &hir::Item) {
+    fn encode_addl_info_for_item(&mut self, item: &hir::Item) {
         let def_id = self.tcx.map.local_def_id(item.id);
         match item.node {
             hir::ItemStatic(..) |
@@ -930,12 +911,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ForeignItemFn(ref fndecl, _) => {
                 let data = FnData {
                     constness: hir::Constness::NotConst,
-                    arg_names: self.encode_fn_arg_names(&fndecl)
+                    arg_names: self.encode_fn_arg_names(&fndecl),
                 };
                 EntryKind::ForeignFn(self.lazy(&data))
             }
             hir::ForeignItemStatic(_, true) => EntryKind::ForeignMutStatic,
-            hir::ForeignItemStatic(_, false) => EntryKind::ForeignImmStatic
+            hir::ForeignItemStatic(_, false) => EntryKind::ForeignImmStatic,
         };
 
         Entry {
@@ -954,7 +935,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: None,
-            mir: None
+            mir: None,
         }
     }
 }
@@ -972,10 +953,9 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
         intravisit::walk_item(self, item);
         let def_id = self.index.tcx.map.local_def_id(item.id);
         match item.node {
-            hir::ItemExternCrate(_) | hir::ItemUse(_) => (), // ignore these
-            _ => self.index.record(def_id,
-                                   EncodeContext::encode_info_for_item,
-                                   (def_id, item)),
+            hir::ItemExternCrate(_) |
+            hir::ItemUse(_) => (), // ignore these
+            _ => self.index.record(def_id, EncodeContext::encode_info_for_item, (def_id, item)),
         }
         self.index.encode_addl_info_for_item(item);
     }
@@ -996,9 +976,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
         if let hir::TyImplTrait(_) = ty.node {
             let def_id = self.tcx.map.local_def_id(ty.id);
-            self.record(def_id,
-                        EncodeContext::encode_info_for_anon_ty,
-                        def_id);
+            self.record(def_id, EncodeContext::encode_info_for_anon_ty, def_id);
         }
     }
 
@@ -1006,11 +984,9 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         match expr.node {
             hir::ExprClosure(..) => {
                 let def_id = self.tcx.map.local_def_id(expr.id);
-                self.record(def_id,
-                            EncodeContext::encode_info_for_closure,
-                            def_id);
+                self.record(def_id, EncodeContext::encode_info_for_closure, def_id);
             }
-            _ => { }
+            _ => {}
         }
     }
 }
@@ -1033,7 +1009,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: None,
-            mir: None
+            mir: None,
         }
     }
 
@@ -1042,7 +1018,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = ClosureData {
             kind: tcx.closure_kind(def_id),
-            ty: self.lazy(&tcx.tables.borrow().closure_tys[&def_id])
+            ty: self.lazy(&tcx.tables.borrow().closure_tys[&def_id]),
         };
 
         Entry {
@@ -1061,7 +1037,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: None,
 
             ast: None,
-            mir: self.encode_mir(def_id)
+            mir: self.encode_mir(def_id),
         }
     }
 
@@ -1071,9 +1047,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         index.record(DefId::local(CRATE_DEF_INDEX),
                      EncodeContext::encode_info_for_mod,
                      FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &hir::Public)));
-        let mut visitor = EncodeVisitor {
-            index: index,
-        };
+        let mut visitor = EncodeVisitor { index: index };
         krate.visit_all_items(&mut visitor);
         visitor.index.into_items()
     }
@@ -1083,8 +1057,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_crate_deps(&mut self) -> LazySeq<CrateDep> {
-        fn get_ordered_deps(cstore: &cstore::CStore)
-                            -> Vec<(CrateNum, Rc<cstore::CrateMetadata>)> {
+        fn get_ordered_deps(cstore: &cstore::CStore) -> Vec<(CrateNum, Rc<cstore::CrateMetadata>)> {
             // Pull the cnums and name,vers,hash out of cstore
             let mut deps = Vec::new();
             cstore.iter_crate_data(|cnum, val| {
@@ -1113,13 +1086,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             CrateDep {
                 name: syntax::parse::token::intern(dep.name()),
                 hash: dep.hash(),
-                explicitly_linked: dep.explicitly_linked.get()
+                explicitly_linked: dep.explicitly_linked.get(),
             }
         }))
     }
 
-    fn encode_lang_items(&mut self)
-                         -> (LazySeq<(DefIndex, usize)>, LazySeq<lang_items::LangItem>) {
+    fn encode_lang_items(&mut self) -> (LazySeq<(DefIndex, usize)>, LazySeq<lang_items::LangItem>) {
         let tcx = self.tcx;
         let lang_items = tcx.lang_items.items().iter();
         (self.lazy_seq(lang_items.enumerate().filter_map(|(i, &opt_def_id)| {
@@ -1129,7 +1101,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
             None
-        })), self.lazy_seq_ref(&tcx.lang_items.missing))
+        })),
+         self.lazy_seq_ref(&tcx.lang_items.missing))
     }
 
     fn encode_native_libraries(&mut self) -> LazySeq<(NativeLibraryKind, String)> {
@@ -1137,9 +1110,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_seq(used_libraries.into_iter().filter_map(|(lib, kind)| {
             match kind {
                 cstore::NativeStatic => None, // these libraries are not propagated
-                cstore::NativeFramework | cstore::NativeUnknown => {
-                    Some((kind, lib))
-                }
+                cstore::NativeFramework | cstore::NativeUnknown => Some((kind, lib)),
             }
         }))
     }
@@ -1147,13 +1118,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_codemap(&mut self) -> LazySeq<syntax_pos::FileMap> {
         let codemap = self.tcx.sess.codemap();
         let all_filemaps = codemap.files.borrow();
-        self.lazy_seq_ref(all_filemaps.iter().filter(|filemap| {
-            // No need to export empty filemaps, as they can't contain spans
-            // that need translation.
-            // Also no need to re-export imported filemaps, as any downstream
-            // crate will import them from their original source.
-            !filemap.lines.borrow().is_empty() && !filemap.is_imported()
-        }).map(|filemap| &**filemap))
+        self.lazy_seq_ref(all_filemaps.iter()
+            .filter(|filemap| {
+                // No need to export empty filemaps, as they can't contain spans
+                // that need translation.
+                // Also no need to re-export imported filemaps, as any downstream
+                // crate will import them from their original source.
+                !filemap.lines.borrow().is_empty() && !filemap.is_imported()
+            })
+            .map(|filemap| &**filemap))
     }
 
     /// Serialize the text of the exported macros
@@ -1164,15 +1137,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 name: def.name,
                 attrs: def.attrs.to_vec(),
                 span: def.span,
-                body: ::syntax::print::pprust::tts_to_string(&def.body)
+                body: ::syntax::print::pprust::tts_to_string(&def.body),
             }
         }))
     }
 }
 
-struct ImplVisitor<'a, 'tcx:'a> {
+struct ImplVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    impls: FnvHashMap<DefId, Vec<DefIndex>>
+    impls: FnvHashMap<DefId, Vec<DefIndex>>,
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
@@ -1180,7 +1153,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
         if let hir::ItemImpl(..) = item.node {
             let impl_id = self.tcx.map.local_def_id(item.id);
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id) {
-                self.impls.entry(trait_ref.def_id)
+                self.impls
+                    .entry(trait_ref.def_id)
                     .or_insert(vec![])
                     .push(impl_id.index);
             }
@@ -1193,16 +1167,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_impls(&mut self) -> LazySeq<TraitImpls> {
         let mut visitor = ImplVisitor {
             tcx: self.tcx,
-            impls: FnvHashMap()
+            impls: FnvHashMap(),
         };
         self.tcx.map.krate().visit_all_items(&mut visitor);
 
-        let all_impls: Vec<_> = visitor.impls.into_iter().map(|(trait_def_id, impls)| {
-            TraitImpls {
-                trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
-                impls: self.lazy_seq(impls)
-            }
-        }).collect();
+        let all_impls: Vec<_> = visitor.impls
+            .into_iter()
+            .map(|(trait_def_id, impls)| {
+                TraitImpls {
+                    trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
+                    impls: self.lazy_seq(impls),
+                }
+            })
+            .collect();
 
         self.lazy_seq(all_impls)
     }
@@ -1232,7 +1209,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }))
             }
-            None => LazySeq::empty()
+            None => LazySeq::empty(),
         }
     }
 
@@ -1291,9 +1268,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator().to_string(),
             panic_strategy: tcx.sess.panic_strategy(),
-            plugin_registrar_fn: tcx.sess.plugin_registrar_fn.get().map(|id| {
-                tcx.map.local_def_id(id).index
-            }),
+            plugin_registrar_fn: tcx.sess
+                .plugin_registrar_fn
+                .get()
+                .map(|id| tcx.map.local_def_id(id).index),
             macro_derive_registrar: if is_proc_macro {
                 let id = tcx.sess.derive_registrar_fn.get().unwrap();
                 Some(tcx.map.local_def_id(id).index)
@@ -1369,7 +1347,8 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  reexports: &def::ExportMap,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet,
-                                 mir_map: &MirMap<'tcx>) -> Vec<u8> {
+                                 mir_map: &MirMap<'tcx>)
+                                 -> Vec<u8> {
     let mut cursor = Cursor::new(vec![]);
     cursor.write_all(METADATA_HEADER).unwrap();
 
@@ -1377,17 +1356,18 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cursor.write_all(&[0, 0, 0, 0]).unwrap();
 
     let root = EncodeContext {
-        opaque: opaque::Encoder::new(&mut cursor),
-        tcx: tcx,
-        reexports: reexports,
-        link_meta: link_meta,
-        cstore: cstore,
-        reachable: reachable,
-        mir_map: mir_map,
-        lazy_state: LazyState::NoNode,
-        type_shorthands: Default::default(),
-        predicate_shorthands: Default::default()
-    }.encode_crate_root();
+            opaque: opaque::Encoder::new(&mut cursor),
+            tcx: tcx,
+            reexports: reexports,
+            link_meta: link_meta,
+            cstore: cstore,
+            reachable: reachable,
+            mir_map: mir_map,
+            lazy_state: LazyState::NoNode,
+            type_shorthands: Default::default(),
+            predicate_shorthands: Default::default(),
+        }
+        .encode_crate_root();
     let mut result = cursor.into_inner();
 
     // Encode the root position.
@@ -1395,8 +1375,8 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let pos = root.position;
     result[header + 0] = (pos >> 24) as u8;
     result[header + 1] = (pos >> 16) as u8;
-    result[header + 2] = (pos >>  8) as u8;
-    result[header + 3] = (pos >>  0) as u8;
+    result[header + 2] = (pos >> 8) as u8;
+    result[header + 3] = (pos >> 0) as u8;
 
     result
 }
