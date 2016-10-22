@@ -252,6 +252,8 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ordering_chaining)]
+    ///
     /// use std::cmp::Ordering;
     ///
     /// let result = Ordering::Equal.or(Ordering::Less);
@@ -268,7 +270,7 @@ impl Ordering {
     ///
     /// let x: (i64, i64, i64) = (1, 2, 7);
     /// let y: (i64, i64, i64) = (1, 5, 3);
-    /// let result = x.0.cmp(y.0).or(x.1.cmp(y.1)).or(x.2.cmp(y.2));
+    /// let result = x.0.cmp(&y.0).or(x.1.cmp(&y.1)).or(x.2.cmp(&y.2));
     ///
     /// assert_eq!(result, Ordering::Less);
     /// ```
@@ -288,6 +290,8 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ordering_chaining)]
+    ///
     /// use std::cmp::Ordering;
     ///
     /// let result = Ordering::Equal.or_else(|| Ordering::Less);
