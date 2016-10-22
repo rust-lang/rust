@@ -56,8 +56,10 @@ POSSIBILITY OF SUCH DAMAGE.  */
    details. So we recalculate it each time the file is accessed.
    We also use QueryFullProcessImageName instead of APIs like
    GetModuleFileName because it's correctly updated when the
-   executable is renamed. */
+   executable is renamed. We alse validate that the opened file
+   is indeed our executable by using NtAreMappedFilesTheSame. */
 #if USE_WIN_EXECNAME
+
 #undef getexecname
 static const char *getexecname(void) {
   /* Accesses to backtrace functionality from Rust are serialized,
@@ -70,7 +72,42 @@ static const char *getexecname(void) {
   HANDLE process_handle = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, GetCurrentProcessId());
   return QueryFullProcessImageNameA(process_handle, 0, buf, &buf_size) ? buf : NULL;
 }
+
+static int validate_descriptor(int descriptor) {
+  FARPROC NtAreMappedFilesTheSame = GetProcAddress(GetModuleHandleW(L"ntdll.dll"),
+                                                   "NtAreMappedFilesTheSame");
+  if (!NtAreMappedFilesTheSame) {
+    return 0;
+  }
+  HANDLE file_handle = (HANDLE) _get_osfhandle(descriptor);
+  if (file_handle == INVALID_HANDLE_VALUE) {
+    return 0;
+  }
+  /* Map the opened file into memory */
+  HANDLE file_mapping = CreateFileMappingW(file_handle, NULL, PAGE_READONLY | SEC_IMAGE,
+                                           0, 0, NULL);
+  if (!file_mapping) {
+    return 0;
+  }
+  LPVOID mapped_view = MapViewOfFile(file_mapping, FILE_MAP_READ, 0, 0, 0);
+  if (!mapped_view) {
+    CloseHandle(file_mapping);
+    return 0;
+  }
+  /* Now "compare" memory at which the opened file is mapped (mapped_view) with memory
+     at which the current executable is mapped (returned by GetModuleHandleW) */
+  NTSTATUS status = NtAreMappedFilesTheSame(GetModuleHandleW(NULL), mapped_view);
+  UnmapViewOfFile(mapped_view);
+  CloseHandle(file_mapping);
+  return status == 0;
 }
+
+#else /* USE_WIN_EXECNAME */
+
+static int validate_descriptor(int descriptor) {
+  return 1;
+}
+
 #endif /* USE_WIN_EXECNAME */
 
 /* Initialize the fileline information from the executable.  Returns 1
@@ -141,6 +178,11 @@ fileline_initialize (struct backtrace_state *state,
 	  called_error_callback = 1;
 	  break;
 	}
+      if (!validate_descriptor(descriptor)) {
+        close(descriptor);
+        descriptor = -1;
+        break;
+      }
       if (descriptor >= 0)
 	break;
     }
