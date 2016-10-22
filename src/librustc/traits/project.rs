@@ -167,7 +167,7 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
             infcx.skolemize_late_bound_regions(&obligation.predicate, snapshot);
 
         let skol_obligation = obligation.with(skol_predicate);
-        match project_and_unify_type(selcx, &skol_obligation) {
+        let r = match project_and_unify_type(selcx, &skol_obligation) {
             Ok(result) => {
                 let span = obligation.cause.span;
                 match infcx.leak_check(false, span, &skol_map, snapshot) {
@@ -178,7 +178,9 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
             Err(e) => {
                 Err(e)
             }
-        }
+        };
+
+        r
     })
 }
 
@@ -1394,6 +1396,10 @@ impl<'tcx> ProjectionCache<'tcx> {
 
     pub fn rollback_to(&mut self, snapshot: ProjectionCacheSnapshot) {
         self.map.rollback_to(snapshot.snapshot);
+    }
+
+    pub fn rollback_skolemized(&mut self, snapshot: &ProjectionCacheSnapshot) {
+        self.map.partial_rollback(&snapshot.snapshot, &|k| k.has_re_skol());
     }
 
     pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
