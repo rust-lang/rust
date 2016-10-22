@@ -380,7 +380,7 @@ impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
             graph: graph,
             stack: vec![],
             visited: visited,
-            direction: direction
+            direction: direction,
         }
     }
 
@@ -394,7 +394,7 @@ impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
             graph: graph,
             stack: vec![start_node],
             visited: visited,
-            direction: direction
+            direction: direction,
         }
     }
 

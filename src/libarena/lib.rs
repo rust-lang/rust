@@ -335,9 +335,8 @@ mod tests {
 
         let arena = Wrap(TypedArena::new());
 
-        let result = arena.alloc_outer(|| {
-            Outer { inner: arena.alloc_inner(|| Inner { value: 10 }) }
-        });
+        let result =
+            arena.alloc_outer(|| Outer { inner: arena.alloc_inner(|| Inner { value: 10 }) });
 
         assert_eq!(result.inner.value, 10);
     }

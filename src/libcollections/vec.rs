@@ -16,13 +16,13 @@
 //!
 //! # Examples
 //!
-//! You can explicitly create a `Vec<T>` with `new()`:
+//! You can explicitly create a [`Vec<T>`] with [`new()`]:
 //!
 //! ```
 //! let v: Vec<i32> = Vec::new();
 //! ```
 //!
-//! ...or by using the `vec!` macro:
+//! ...or by using the [`vec!`] macro:
 //!
 //! ```
 //! let v: Vec<i32> = vec![];
@@ -32,7 +32,7 @@
 //! let v = vec![0; 10]; // ten zeroes
 //! ```
 //!
-//! You can `push` values onto the end of a vector (which will grow the vector
+//! You can [`push`] values onto the end of a vector (which will grow the vector
 //! as needed):
 //!
 //! ```
@@ -49,13 +49,20 @@
 //! let two = v.pop();
 //! ```
 //!
-//! Vectors also support indexing (through the `Index` and `IndexMut` traits):
+//! Vectors also support indexing (through the [`Index`] and [`IndexMut`] traits):
 //!
 //! ```
 //! let mut v = vec![1, 2, 3];
 //! let three = v[2];
 //! v[1] = v[1] + 5;
 //! ```
+//!
+//! [`Vec<T>`]: ../../std/vec/struct.Vec.html
+//! [`new()`]: ../../std/vec/struct.Vec.html#method.new
+//! [`push`]: ../../std/vec/struct.Vec.html#method.push
+//! [`Index`]: ../../std/ops/trait.Index.html
+//! [`IndexMut`]: ../../std/ops/trait.IndexMut.html
+//! [`vec!`]: ../../std/macro.vec.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -79,7 +86,7 @@ use core::slice;
 use super::SpecExtend;
 use super::range::RangeArgument;
 
-/// A contiguous growable array type, written `Vec<T>` but pronounced 'vector.'
+/// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
 ///
 /// # Examples
 ///
@@ -105,7 +112,7 @@ use super::range::RangeArgument;
 /// assert_eq!(vec, [7, 1, 2, 3]);
 /// ```
 ///
-/// The `vec!` macro is provided to make initialization more convenient:
+/// The [`vec!`] macro is provided to make initialization more convenient:
 ///
 /// ```
 /// let mut vec = vec![1, 2, 3];
@@ -137,15 +144,15 @@ use super::range::RangeArgument;
 ///
 /// # Indexing
 ///
-/// The Vec type allows to access values by index, because it implements the
-/// `Index` trait. An example will be more explicit:
+/// The `Vec` type allows to access values by index, because it implements the
+/// [`Index`] trait. An example will be more explicit:
 ///
 /// ```
 /// let v = vec!(0, 2, 4, 6);
 /// println!("{}", v[1]); // it will display '2'
 /// ```
 ///
-/// However be careful: if you try to access an index which isn't in the Vec,
+/// However be careful: if you try to access an index which isn't in the `Vec`,
 /// your software will panic! You cannot do this:
 ///
 /// ```ignore
@@ -158,7 +165,7 @@ use super::range::RangeArgument;
 ///
 /// # Slicing
 ///
-/// A Vec can be mutable. Slices, on the other hand, are read-only objects.
+/// A `Vec` can be mutable. Slices, on the other hand, are read-only objects.
 /// To get a slice, use "&". Example:
 ///
 /// ```
@@ -175,8 +182,8 @@ use super::range::RangeArgument;
 /// ```
 ///
 /// In Rust, it's more common to pass slices as arguments rather than vectors
-/// when you just want to provide a read access. The same goes for String and
-/// &str.
+/// when you just want to provide a read access. The same goes for [`String`] and
+/// [`&str`].
 ///
 /// # Capacity and reallocation
 ///
@@ -191,7 +198,7 @@ use super::range::RangeArgument;
 /// with space for 10 more elements. Pushing 10 or fewer elements onto the
 /// vector will not change its capacity or cause reallocation to occur. However,
 /// if the vector's length is increased to 11, it will have to reallocate, which
-/// can be slow. For this reason, it is recommended to use `Vec::with_capacity`
+/// can be slow. For this reason, it is recommended to use [`Vec::with_capacity`]
 /// whenever possible to specify how big the vector is expected to get.
 ///
 /// # Guarantees
@@ -209,65 +216,83 @@ use super::range::RangeArgument;
 /// The pointer will never be null, so this type is null-pointer-optimized.
 ///
 /// However, the pointer may not actually point to allocated memory. In particular,
-/// if you construct a Vec with capacity 0 via `Vec::new()`, `vec![]`,
-/// `Vec::with_capacity(0)`, or by calling `shrink_to_fit()` on an empty Vec, it
-/// will not allocate memory. Similarly, if you store zero-sized types inside
-/// a Vec, it will not allocate space for them. *Note that in this case the
-/// Vec may not report a `capacity()` of 0*. Vec will allocate if and only
-/// if `mem::size_of::<T>() * capacity() > 0`. In general, Vec's allocation
+/// if you construct a Vec with capacity 0 via [`Vec::new()`], [`vec![]`][`vec!`],
+/// [`Vec::with_capacity(0)`][`Vec::with_capacity`], or by calling [`shrink_to_fit()`]
+/// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
+/// types inside a `Vec`, it will not allocate space for them. *Note that in this case
+/// the `Vec` may not report a [`capacity()`] of 0*. Vec will allocate if and only
+/// if [`mem::size_of::<T>()`]` * capacity() > 0`. In general, `Vec`'s allocation
 /// details are subtle enough that it is strongly recommended that you only
 /// free memory allocated by a Vec by creating a new Vec and dropping it.
 ///
-/// If a Vec *has* allocated memory, then the memory it points to is on the heap
+/// If a `Vec` *has* allocated memory, then the memory it points to is on the heap
 /// (as defined by the allocator Rust is configured to use by default), and its
-/// pointer points to `len()` initialized elements in order (what you would see
-/// if you coerced it to a slice), followed by `capacity() - len()` logically
-/// uninitialized elements.
+/// pointer points to [`len()`] initialized elements in order (what you would see
+/// if you coerced it to a slice), followed by `[capacity()][`capacity()`] -
+/// [len()][`len()`]` logically uninitialized elements.
 ///
-/// Vec will never perform a "small optimization" where elements are actually
+/// `Vec` will never perform a "small optimization" where elements are actually
 /// stored on the stack for two reasons:
 ///
 /// * It would make it more difficult for unsafe code to correctly manipulate
-///   a Vec. The contents of a Vec wouldn't have a stable address if it were
-///   only moved, and it would be more difficult to determine if a Vec had
+///   a `Vec`. The contents of a `Vec` wouldn't have a stable address if it were
+///   only moved, and it would be more difficult to determine if a `Vec` had
 ///   actually allocated memory.
 ///
 /// * It would penalize the general case, incurring an additional branch
 ///   on every access.
 ///
-/// Vec will never automatically shrink itself, even if completely empty. This
-/// ensures no unnecessary allocations or deallocations occur. Emptying a Vec
-/// and then filling it back up to the same `len()` should incur no calls to
-/// the allocator. If you wish to free up unused memory, use `shrink_to_fit`.
+/// `Vec` will never automatically shrink itself, even if completely empty. This
+/// ensures no unnecessary allocations or deallocations occur. Emptying a `Vec`
+/// and then filling it back up to the same [`len()`] should incur no calls to
+/// the allocator. If you wish to free up unused memory, use
+/// [`shrink_to_fit`][`shrink_to_fit()`].
 ///
-/// `push` and `insert` will never (re)allocate if the reported capacity is
-/// sufficient. `push` and `insert` *will* (re)allocate if `len() == capacity()`.
-/// That is, the reported capacity is completely accurate, and can be relied on.
-/// It can even be used to manually free the memory allocated by a Vec if
-/// desired. Bulk insertion methods *may* reallocate, even when not necessary.
+/// [`push`] and [`insert`] will never (re)allocate if the reported capacity is
+/// sufficient. [`push`] and [`insert`] *will* (re)allocate if `[len()][`len()`]
+/// == [capacity()][`capacity()`]`. That is, the reported capacity is completely
+/// accurate, and can be relied on. It can even be used to manually free the memory
+/// allocated by a `Vec` if desired. Bulk insertion methods *may* reallocate, even
+/// when not necessary.
 ///
-/// Vec does not guarantee any particular growth strategy when reallocating
-/// when full, nor when `reserve` is called. The current strategy is basic
+/// `Vec` does not guarantee any particular growth strategy when reallocating
+/// when full, nor when [`reserve`] is called. The current strategy is basic
 /// and it may prove desirable to use a non-constant growth factor. Whatever
-/// strategy is used will of course guarantee `O(1)` amortized `push`.
+/// strategy is used will of course guarantee `O(1)` amortized [`push`].
 ///
-/// `vec![x; n]`, `vec![a, b, c, d]`, and `Vec::with_capacity(n)`, will all
-/// produce a Vec with exactly the requested capacity. If `len() == capacity()`,
-/// (as is the case for the `vec!` macro), then a `Vec<T>` can be converted
-/// to and from a `Box<[T]>` without reallocating or moving the elements.
+/// `vec![x; n]`, `vec![a, b, c, d]`, and
+/// [`Vec::with_capacity(n)`][`Vec::with_capacity`], will all
+/// produce a `Vec` with exactly the requested capacity. If `[len()][`len()`] ==
+/// [capacity()][`capacity()`]`, (as is the case for the [`vec!`] macro), then a
+/// `Vec<T>` can be converted to and from a [`Box<[T]>`] without reallocating or
+/// moving the elements.
 ///
-/// Vec will not specifically overwrite any data that is removed from it,
+/// `Vec` will not specifically overwrite any data that is removed from it,
 /// but also won't specifically preserve it. Its uninitialized memory is
 /// scratch space that it may use however it wants. It will generally just do
 /// whatever is most efficient or otherwise easy to implement. Do not rely on
-/// removed data to be erased for security purposes. Even if you drop a Vec, its
-/// buffer may simply be reused by another Vec. Even if you zero a Vec's memory
+/// removed data to be erased for security purposes. Even if you drop a `Vec`, its
+/// buffer may simply be reused by another `Vec`. Even if you zero a `Vec`'s memory
 /// first, that may not actually happen because the optimizer does not consider
 /// this a side-effect that must be preserved.
 ///
-/// Vec does not currently guarantee the order in which elements are dropped
+/// `Vec` does not currently guarantee the order in which elements are dropped
 /// (the order has changed in the past, and may change again).
 ///
+/// [`vec!`]: ../../std/macro.vec.html
+/// [`Index`]: ../../std/ops/trait.Index.html
+/// [`String`]: ../../std/string/struct.String.html
+/// [`&str`]: ../../std/primitive.str.html
+/// [`Vec::with_capacity`]: ../../std/vec/struct.Vec.html#method.with_capacity
+/// [`Vec::new()`]: ../../std/vec/struct.Vec.html#method.new
+/// [`shrink_to_fit()`]: ../../std/vec/struct.Vec.html#method.shrink_to_fit
+/// [`capacity()`]: ../../std/vec/struct.Vec.html#method.capacity
+/// [`mem::size_of::<T>()`]: ../../std/mem/fn.size_of.html
+/// [`len()`]: ../../std/vec/struct.Vec.html#method.len
+/// [`push`]: ../../std/vec/struct.Vec.html#method.push
+/// [`insert`]: ../../std/vec/struct.Vec.html#method.insert
+/// [`reserve`]: ../../std/vec/struct.Vec.html#method.reserve
+/// [`Box<[T]>`]: ../../std/boxed/struct.Box.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
     buf: RawVec<T>,
@@ -340,7 +365,7 @@ impl<T> Vec<T> {
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
-    /// * `ptr` needs to have been previously allocated via `String`/`Vec<T>`
+    /// * `ptr` needs to have been previously allocated via [`String`]/`Vec<T>`
     ///   (at least, it's highly likely to be incorrect if it wasn't).
     /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
@@ -353,6 +378,8 @@ impl<T> Vec<T> {
     /// contents of memory pointed to by the pointer at will. Ensure
     /// that nothing else uses the pointer after calling this
     /// function.
+    ///
+    /// [`String`]: ../../std/string/struct.String.html
     ///
     /// # Examples
     ///
@@ -470,11 +497,15 @@ impl<T> Vec<T> {
         self.buf.shrink_to_fit(self.len);
     }
 
-    /// Converts the vector into Box<[T]>.
+    /// Converts the vector into [`Box<[T]>`].
     ///
     /// Note that this will drop any excess capacity. Calling this and
-    /// converting back to a vector with `into_vec()` is equivalent to calling
-    /// `shrink_to_fit()`.
+    /// converting back to a vector with [`into_vec()`] is equivalent to calling
+    /// [`shrink_to_fit()`].
+    ///
+    /// [`Box<[T]>`]: ../../std/boxed/struct.Box.html
+    /// [`into_vec()`]: ../../std/primitive.slice.html#method.into_vec
+    /// [`shrink_to_fit()`]: #method.shrink_to_fit
     ///
     /// # Examples
     ///
@@ -673,7 +704,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if `index` is greater than the vector's length.
+    /// Panics if `index` is out of bounds.
     ///
     /// # Examples
     ///
@@ -933,8 +964,10 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Removes the last element from a vector and returns it, or `None` if it
+    /// Removes the last element from a vector and returns it, or [`None`] if it
     /// is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
