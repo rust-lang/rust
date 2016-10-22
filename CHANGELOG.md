@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.96 — 2016-10-22
+* Rustup to *rustc 1.14.0-nightly (f09420685 2016-10-20)*
+* New lint: [`iter_skip_next`]
+
 ## 0.0.95 — 2016-10-06
 * Rustup to *rustc 1.14.0-nightly (3210fd5c2 2016-10-05)*
 
