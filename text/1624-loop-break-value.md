@@ -1,7 +1,7 @@
 - Feature Name: loop_break_value
 - Start Date: 2016-05-20
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1624
+- Rust Issue: https://github.com/rust-lang/rust/issues/37339
 
 # Summary
 [summary]: #summary
