@@ -16,7 +16,7 @@ use ext::expand::{Expansion, ExpansionKind};
 use ext::placeholders;
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
-use ext::tt::macro_parser::parse;
+use ext::tt::macro_parser::{parse, parse_failure_msg};
 use parse::ParseSess;
 use parse::lexer::new_tt_reader;
 use parse::parser::{Parser, Restrictions};
@@ -97,7 +97,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 
     // Which arm's failure should we report? (the one furthest along)
     let mut best_fail_spot = DUMMY_SP;
-    let mut best_fail_msg = "internal error: ran no matchers".to_string();
+    let mut best_fail_tok = None;
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         let lhs_tt = match *lhs {
@@ -134,9 +134,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     macro_ident: name
                 })
             }
-            Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
+            Failure(sp, tok) => if sp.lo >= best_fail_spot.lo {
                 best_fail_spot = sp;
-                best_fail_msg = (*msg).clone();
+                best_fail_tok = Some(tok);
             },
             Error(err_sp, ref msg) => {
                 cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..])
@@ -144,7 +144,8 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
         }
     }
 
-     cx.span_fatal(best_fail_spot.substitute_dummy(sp), &best_fail_msg[..]);
+    let best_fail_msg = parse_failure_msg(best_fail_tok.expect("ran no matchers"));
+    cx.span_fatal(best_fail_spot.substitute_dummy(sp), &best_fail_msg);
 }
 
 pub struct MacroRulesExpander;
@@ -222,8 +223,12 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
 
     let argument_map = match parse(sess, &Vec::new(), arg_reader, &argument_gram) {
         Success(m) => m,
-        Failure(sp, str) | Error(sp, str) => {
-            panic!(sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &str));
+        Failure(sp, tok) => {
+            let s = parse_failure_msg(tok);
+            panic!(sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s));
+        }
+        Error(sp, s) => {
+            panic!(sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s));
         }
     };
 
