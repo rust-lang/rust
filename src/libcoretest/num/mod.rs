@@ -117,6 +117,7 @@ fn test_empty() {
 macro_rules! test_impl_from {
     ($fn_name: ident, $Small: ty, $Large: ty) => {
         #[test]
+        #[allow(nonportable_32_64)]
         fn $fn_name() {
             let small_max = <$Small>::max_value();
             let small_min = <$Small>::min_value();

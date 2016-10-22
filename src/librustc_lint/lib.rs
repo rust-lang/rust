@@ -143,6 +143,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  PluginAsLibrary,
                  MutableTransmutes,
                  UnionsWithDropFields,
+                 NonPortable3264,
                  );
 
     add_builtin_with_new!(sess,

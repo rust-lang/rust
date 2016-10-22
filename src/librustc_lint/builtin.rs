@@ -33,8 +33,8 @@ use rustc::hir::def_id::DefId;
 use middle::stability;
 use rustc::cfg;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::adjustment;
+use rustc::ty::{self, Ty, TyCtxt, TyInt, TyUint};
+use rustc::ty::{adjustment, subst};
 use rustc::traits::{self, Reveal};
 use rustc::hir::map as hir_map;
 use util::nodemap::NodeSet;
@@ -1293,6 +1293,106 @@ impl LateLintPass for UnionsWithDropFields {
                     return;
                 }
             }
+        }
+    }
+}
+
+/// Lint for unions that contain fields with possibly non-trivial destructors.
+pub struct NonPortable3264;
+
+declare_lint! {
+    NONPORTABLE_32_64,
+    Warn,
+    "conversions not portable between 64-bit and 32-bit platforms"
+}
+
+impl LintPass for NonPortable3264 {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(NONPORTABLE_32_64)
+    }
+}
+
+fn is_nonportable_conv(src: subst::Kind, dst: subst::Kind) -> bool {
+    match (src.as_type(), dst.as_type()) {
+        (Some(src), Some(dst)) => {
+            use syntax::ast::IntTy::*;
+            use syntax::ast::UintTy::*;
+            match (&src.sty, &dst.sty) {
+                // All conditional impls from libcore/num/mod.rs
+                // not including "32" and "64" at the same time.
+                (&TyUint(U64), &TyUint(Us)) |
+                (&TyUint(Us), &TyUint(U16)) |
+                (&TyUint(Us), &TyUint(U32)) |
+                (&TyInt(I64), &TyInt(Is)) |
+                (&TyInt(Is), &TyInt(I16)) |
+                (&TyInt(Is), &TyInt(I32)) |
+                (&TyUint(U32), &TyInt(Is)) |
+                (&TyUint(Us), &TyInt(I32)) |
+                (&TyUint(Us), &TyInt(I64)) => true,
+                _ => false,
+            }
+        }
+        _ => false,
+    }
+}
+
+impl LateLintPass for NonPortable3264 {
+    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
+        let tcx = cx.tcx;
+        let report_lint = |span, src: subst::Kind, dst: subst::Kind| {
+            let src_ty = src.as_type().unwrap();
+            let dst_ty = dst.as_type().unwrap();
+            cx.span_lint(NONPORTABLE_32_64, span,
+                         &format!("conversion `{}` -> `{}` is not portable \
+                                   between 64-bit and 32-bit platforms", src_ty, dst_ty));
+        };
+        match e.node {
+            hir::ExprMethodCall(name, ..) => {
+                if name.node.as_str() == "into" {
+                    if let Some(callee) = tcx.tables.borrow().method_map
+                                                    .get(&ty::MethodCall::expr(e.id)).cloned() {
+                        if let ty::TyFnDef(def_id, substs, _) = callee.ty.sty {
+                            let ti = tcx.impl_or_trait_item(def_id);
+                            if let ty::TraitContainer(trait_def_id) = ti.container() {
+                                if substs.len() == 2 {
+                                    if tcx.item_name(trait_def_id).as_str() == "Into" {
+                                        if is_nonportable_conv(substs[0], substs[1]) {
+                                            report_lint(name.span, substs[0], substs[1]);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            hir::ExprPath(..) => {
+                if let Def::Method(def_id) = tcx.expect_def(e.id) {
+                    let ti = tcx.impl_or_trait_item(def_id);
+                    if let ty::MethodTraitItem(ref method) = ti {
+                        if let ty::TraitContainer(trait_def_id) = ti.container() {
+                            let substs = tcx.node_id_item_substs(e.id).substs;
+                            if substs.len() == 2 {
+                                if method.name.as_str() == "into" {
+                                    if tcx.item_name(trait_def_id).as_str() == "Into" {
+                                        if is_nonportable_conv(substs[0], substs[1]) {
+                                            report_lint(e.span, substs[0], substs[1]);
+                                        }
+                                    }
+                                }
+                                if method.name.as_str() == "from" {
+                                    if tcx.item_name(trait_def_id).as_str() == "From" {
+                                        if is_nonportable_conv(substs[1], substs[0]) {
+                                            report_lint(e.span, substs[1], substs[0]);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
         }
     }
 }
