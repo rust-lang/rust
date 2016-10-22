@@ -19,7 +19,7 @@ use rustc_data_structures::fnv::{FnvHashSet, FnvHashMap};
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
 use std::fs;
-use std::path::{Path};
+use std::path::Path;
 
 use IncrementalHashesMap;
 use ich::Fingerprint;
@@ -55,7 +55,7 @@ pub fn load_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // We successfully allocated a session directory, but there is no
             // dep-graph data in it to load (because this is the first
             // compilation session with this incr. comp. dir.)
-            return
+            return;
         }
         Err(()) => {
             // Something went wrong while trying to allocate the session
@@ -73,23 +73,25 @@ fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let dep_graph_path = dep_graph_path(tcx.sess);
     let dep_graph_data = match load_data(tcx.sess, &dep_graph_path) {
         Some(p) => p,
-        None => return // no file
+        None => return, // no file
     };
 
     let work_products_path = work_products_path(tcx.sess);
     let work_products_data = match load_data(tcx.sess, &work_products_path) {
         Some(p) => p,
-        None => return // no file
+        None => return, // no file
     };
 
-    match decode_dep_graph(tcx, incremental_hashes_map, &dep_graph_data, &work_products_data) {
+    match decode_dep_graph(tcx,
+                           incremental_hashes_map,
+                           &dep_graph_data,
+                           &work_products_data) {
         Ok(dirty_nodes) => dirty_nodes,
         Err(err) => {
-            tcx.sess.warn(
-                &format!("decoding error in dep-graph from `{}` and `{}`: {}",
-                         dep_graph_path.display(),
-                         work_products_path.display(),
-                         err));
+            tcx.sess.warn(&format!("decoding error in dep-graph from `{}` and `{}`: {}",
+                                   dep_graph_path.display(),
+                                   work_products_path.display(),
+                                   err));
         }
     }
 }
@@ -102,16 +104,17 @@ fn load_data(sess: &Session, path: &Path) -> Option<Vec<u8>> {
             // compiler version. Neither is an error.
         }
         Err(err) => {
-            sess.err(
-                &format!("could not load dep-graph from `{}`: {}",
-                         path.display(), err));
+            sess.err(&format!("could not load dep-graph from `{}`: {}",
+                              path.display(),
+                              err));
         }
     }
 
     if let Err(err) = delete_all_session_dir_contents(sess) {
         sess.err(&format!("could not clear incompatible incremental \
                            compilation session directory `{}`: {}",
-                          path.display(), err));
+                          path.display(),
+                          err));
     }
 
     None
@@ -123,8 +126,7 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   incremental_hashes_map: &IncrementalHashesMap,
                                   dep_graph_data: &[u8],
                                   work_products_data: &[u8])
-                                  -> Result<(), String>
-{
+                                  -> Result<(), String> {
     // Decode the list of work_products
     let mut work_product_decoder = Decoder::new(work_products_data, 0);
     let work_products = <Vec<SerializedWorkProduct>>::decode(&mut work_product_decoder)?;
@@ -175,13 +177,13 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // the set of symbols that go into a work-product: if any symbols
     // have been removed (or added) the hash will be different and
     // we'll ignore the work-product then.
-    let retraced_edges: Vec<_> =
-        serialized_dep_graph.edges.iter()
-                                  .filter_map(|&(ref raw_source_node, ref raw_target_node)| {
-                                      retraced.map(raw_target_node)
-                                              .map(|target_node| (raw_source_node, target_node))
-                                  })
-                                  .collect();
+    let retraced_edges: Vec<_> = serialized_dep_graph.edges
+        .iter()
+        .filter_map(|&(ref raw_source_node, ref raw_target_node)| {
+            retraced.map(raw_target_node)
+                .map(|target_node| (raw_source_node, target_node))
+        })
+        .collect();
 
     // Compute which work-products have an input that has changed or
     // been removed. Put the dirty ones into a set.
@@ -215,7 +217,9 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let source_node = retraced.map(raw_source_node).unwrap();
 
-        debug!("decode_dep_graph: clean edge: {:?} -> {:?}", source_node, target_node);
+        debug!("decode_dep_graph: clean edge: {:?} -> {:?}",
+               source_node,
+               target_node);
 
         let _task = dep_graph.in_task(target_node);
         dep_graph.read(source_node);
@@ -248,8 +252,8 @@ fn dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let current_hash = hcx.hash(&dep_node).unwrap();
             if current_hash == hash.hash {
                 debug!("initial_dirty_nodes: {:?} is clean (hash={:?})",
-                   dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
-                   current_hash);
+                       dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
+                       current_hash);
                 continue;
             }
             debug!("initial_dirty_nodes: {:?} is dirty as hash is {:?}, was {:?}",
@@ -279,36 +283,35 @@ fn reconcile_work_products<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             debug!("reconcile_work_products: dep-node for {:?} is dirty", swp);
             delete_dirty_work_product(tcx, swp);
         } else {
-            let all_files_exist =
-                swp.work_product
-                   .saved_files
-                   .iter()
-                   .all(|&(_, ref file_name)| {
-                       let path = in_incr_comp_dir_sess(tcx.sess, &file_name);
-                       path.exists()
-                   });
+            let all_files_exist = swp.work_product
+                .saved_files
+                .iter()
+                .all(|&(_, ref file_name)| {
+                    let path = in_incr_comp_dir_sess(tcx.sess, &file_name);
+                    path.exists()
+                });
             if all_files_exist {
                 debug!("reconcile_work_products: all files for {:?} exist", swp);
                 tcx.dep_graph.insert_previous_work_product(&swp.id, swp.work_product);
             } else {
-                debug!("reconcile_work_products: some file for {:?} does not exist", swp);
+                debug!("reconcile_work_products: some file for {:?} does not exist",
+                       swp);
                 delete_dirty_work_product(tcx, swp);
             }
         }
     }
 }
 
-fn delete_dirty_work_product(tcx: TyCtxt,
-                             swp: SerializedWorkProduct) {
+fn delete_dirty_work_product(tcx: TyCtxt, swp: SerializedWorkProduct) {
     debug!("delete_dirty_work_product({:?})", swp);
     for &(_, ref file_name) in &swp.work_product.saved_files {
         let path = in_incr_comp_dir_sess(tcx.sess, file_name);
         match fs::remove_file(&path) {
             Ok(()) => { }
             Err(err) => {
-                tcx.sess.warn(
-                    &format!("file-system error deleting outdated file `{}`: {}",
-                             path.display(), err));
+                tcx.sess.warn(&format!("file-system error deleting outdated file `{}`: {}",
+                                       path.display(),
+                                       err));
             }
         }
     }
@@ -318,7 +321,7 @@ fn load_prev_metadata_hashes(tcx: TyCtxt,
                              retraced: &RetracedDefIdDirectory,
                              output: &mut FnvHashMap<DefId, Fingerprint>) {
     if !tcx.sess.opts.debugging_opts.query_dep_graph {
-        return
+        return;
     }
 
     debug!("load_prev_metadata_hashes() - Loading previous metadata hashes");
@@ -327,23 +330,27 @@ fn load_prev_metadata_hashes(tcx: TyCtxt,
 
     if !file_path.exists() {
         debug!("load_prev_metadata_hashes() - Couldn't find file containing \
-                hashes at `{}`", file_path.display());
-        return
+                hashes at `{}`",
+               file_path.display());
+        return;
     }
 
-    debug!("load_prev_metadata_hashes() - File: {}", file_path.display());
+    debug!("load_prev_metadata_hashes() - File: {}",
+           file_path.display());
 
     let data = match file_format::read_file(&file_path) {
         Ok(Some(data)) => data,
         Ok(None) => {
             debug!("load_prev_metadata_hashes() - File produced by incompatible \
-                    compiler version: {}", file_path.display());
-            return
+                    compiler version: {}",
+                   file_path.display());
+            return;
         }
         Err(err) => {
             debug!("load_prev_metadata_hashes() - Error reading file `{}`: {}",
-                   file_path.display(), err);
-            return
+                   file_path.display(),
+                   err);
+            return;
         }
     };
 
@@ -354,7 +361,8 @@ fn load_prev_metadata_hashes(tcx: TyCtxt,
 
     debug!("load_prev_metadata_hashes() - Mapping DefIds");
 
-    assert_eq!(serialized_hashes.index_map.len(), serialized_hashes.hashes.len());
+    assert_eq!(serialized_hashes.index_map.len(),
+               serialized_hashes.hashes.len());
     for serialized_hash in serialized_hashes.hashes {
         let def_path_index = serialized_hashes.index_map[&serialized_hash.def_index];
         if let Some(def_id) = retraced.def_id(def_path_index) {
@@ -366,4 +374,3 @@ fn load_prev_metadata_hashes(tcx: TyCtxt,
     debug!("load_prev_metadata_hashes() - successfully loaded {} hashes",
            serialized_hashes.index_map.len());
 }
-

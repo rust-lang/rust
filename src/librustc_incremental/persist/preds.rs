@@ -39,16 +39,18 @@ impl<'q> Predecessors<'q> {
 
         let inputs: FnvHashMap<_, _> = all_nodes.iter()
             .enumerate()
-            .filter(|&(_, node)| match node.data {
-                DepNode::WorkProduct(_) => true,
-                DepNode::MetaData(ref def_id) => def_id.is_local(),
+            .filter(|&(_, node)| {
+                match node.data {
+                    DepNode::WorkProduct(_) => true,
+                    DepNode::MetaData(ref def_id) => def_id.is_local(),
 
-                // if -Z query-dep-graph is passed, save more extended data
-                // to enable better unit testing
-                DepNode::TypeckItemBody(_) |
-                DepNode::TransCrateItem(_) => tcx.sess.opts.debugging_opts.query_dep_graph,
+                    // if -Z query-dep-graph is passed, save more extended data
+                    // to enable better unit testing
+                    DepNode::TypeckItemBody(_) |
+                    DepNode::TransCrateItem(_) => tcx.sess.opts.debugging_opts.query_dep_graph,
 
-                _ => false,
+                    _ => false,
+                }
             })
             .map(|(node_index, node)| {
                 dfs.reset(NodeIndex(node_index));
@@ -63,7 +65,7 @@ impl<'q> Predecessors<'q> {
         let mut hashes = FnvHashMap();
         for input in inputs.values().flat_map(|v| v.iter().cloned()) {
             hashes.entry(input)
-                  .or_insert_with(|| hcx.hash(input).unwrap());
+                .or_insert_with(|| hcx.hash(input).unwrap());
         }
 
         Predecessors {

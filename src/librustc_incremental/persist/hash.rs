@@ -44,8 +44,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
     pub fn is_hashable(dep_node: &DepNode<DefId>) -> bool {
         match *dep_node {
-            DepNode::Krate |
-            DepNode::Hir(_) => true,
+            DepNode::Krate | DepNode::Hir(_) => true,
             DepNode::MetaData(def_id) => !def_id.is_local(),
             _ => false,
         }
@@ -53,9 +52,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
     pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<Fingerprint> {
         match *dep_node {
-            DepNode::Krate => {
-                Some(self.incremental_hashes_map[dep_node])
-            }
+            DepNode::Krate => Some(self.incremental_hashes_map[dep_node]),
 
             // HIR nodes (which always come from our crate) are an input:
             DepNode::Hir(def_id) => {
@@ -76,9 +73,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             // MetaData nodes from *our* crates are an *output*; we
             // don't hash them, but we do compute a hash for them and
             // save it for others to use.
-            DepNode::MetaData(def_id) if !def_id.is_local() => {
-                Some(self.metadata_hash(def_id))
-            }
+            DepNode::MetaData(def_id) if !def_id.is_local() => Some(self.metadata_hash(def_id)),
 
             _ => {
                 // Other kinds of nodes represent computed by-products
@@ -134,34 +129,34 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             // Lock the directory we'll be reading  the hashes from.
             let lock_file_path = lock_file_path(&session_dir);
             let _lock = match flock::Lock::new(&lock_file_path,
-                                               false,   // don't wait
-                                               false,   // don't create the lock-file
+                                               false, // don't wait
+                                               false, // don't create the lock-file
                                                false) { // shared lock
                 Ok(lock) => lock,
                 Err(err) => {
                     debug!("Could not acquire lock on `{}` while trying to \
                             load metadata hashes: {}",
-                            lock_file_path.display(),
-                            err);
+                           lock_file_path.display(),
+                           err);
 
                     // Could not acquire the lock. The directory is probably in
                     // in the process of being deleted. It's OK to just exit
                     // here. It's the same scenario as if the file had not
                     // existed in the first place.
-                    return
+                    return;
                 }
             };
 
             let hashes_file_path = metadata_hash_import_path(&session_dir);
 
-            match file_format::read_file(&hashes_file_path)
-            {
+            match file_format::read_file(&hashes_file_path) {
                 Ok(Some(data)) => {
                     match self.load_from_data(cnum, &data, svh) {
                         Ok(()) => { }
                         Err(err) => {
                             bug!("decoding error in dep-graph from `{}`: {}",
-                                 &hashes_file_path.display(), err);
+                                 &hashes_file_path.display(),
+                                 err);
                         }
                     }
                 }
@@ -169,9 +164,9 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
                     // If the file is not found, that's ok.
                 }
                 Err(err) => {
-                    self.tcx.sess.err(
-                        &format!("could not load dep information from `{}`: {}",
-                                 hashes_file_path.display(), err));
+                    self.tcx.sess.err(&format!("could not load dep information from `{}`: {}",
+                                               hashes_file_path.display(),
+                                               err));
                 }
             }
         }
@@ -180,7 +175,8 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
     fn load_from_data(&mut self,
                       cnum: CrateNum,
                       data: &[u8],
-                      expected_svh: Svh) -> Result<(), String> {
+                      expected_svh: Svh)
+                      -> Result<(), String> {
         debug!("load_from_data(cnum={})", cnum);
 
         // Load up the hashes for the def-ids from this crate.
@@ -198,11 +194,16 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             // the hashes are stored with just a def-index, which is
             // always relative to the old crate; convert that to use
             // our internal crate number
-            let def_id = DefId { krate: cnum, index: serialized_hash.def_index };
+            let def_id = DefId {
+                krate: cnum,
+                index: serialized_hash.def_index,
+            };
 
             // record the hash for this dep-node
             let old = self.item_metadata_hashes.insert(def_id, serialized_hash.hash);
-            debug!("load_from_data: def_id={:?} hash={}", def_id, serialized_hash.hash);
+            debug!("load_from_data: def_id={:?} hash={}",
+                   def_id,
+                   serialized_hash.hash);
             assert!(old.is_none(), "already have hash for {:?}", def_id);
         }
         Ok(())

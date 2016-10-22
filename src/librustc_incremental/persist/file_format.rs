@@ -39,8 +39,7 @@ const RUSTC_VERSION: Option<&'static str> = option_env!("CFG_VERSION");
 
 pub fn write_file_header<W: io::Write>(stream: &mut W) -> io::Result<()> {
     stream.write_all(FILE_MAGIC)?;
-    stream.write_all(&[(HEADER_FORMAT_VERSION >> 0) as u8,
-                       (HEADER_FORMAT_VERSION >> 8) as u8])?;
+    stream.write_all(&[(HEADER_FORMAT_VERSION >> 0) as u8, (HEADER_FORMAT_VERSION >> 8) as u8])?;
 
     let rustc_version = rustc_version();
     assert_eq!(rustc_version.len(), (rustc_version.len() as u8) as usize);
@@ -72,7 +71,7 @@ pub fn read_file(path: &Path) -> io::Result<Option<Vec<u8>>> {
         let mut file_magic = [0u8; 4];
         file.read_exact(&mut file_magic)?;
         if file_magic != FILE_MAGIC {
-            return Ok(None)
+            return Ok(None);
         }
     }
 
@@ -85,7 +84,7 @@ pub fn read_file(path: &Path) -> io::Result<Option<Vec<u8>>> {
                                     ((header_format_version[1] as u16) << 8);
 
         if header_format_version != HEADER_FORMAT_VERSION {
-            return Ok(None)
+            return Ok(None);
         }
     }
 
@@ -112,11 +111,10 @@ pub fn read_file(path: &Path) -> io::Result<Option<Vec<u8>>> {
 fn rustc_version() -> String {
     if nightly_options::is_nightly_build() {
         if let Some(val) = env::var_os("RUSTC_FORCE_INCR_COMP_ARTIFACT_HEADER") {
-            return val.to_string_lossy().into_owned()
+            return val.to_string_lossy().into_owned();
         }
     }
 
-    RUSTC_VERSION.expect("Cannot use rustc without explicit version for \
-                          incremental compilation")
-                 .to_string()
+    RUSTC_VERSION.expect("Cannot use rustc without explicit version for incremental compilation")
+        .to_string()
 }

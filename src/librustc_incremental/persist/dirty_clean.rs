@@ -67,10 +67,9 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let _ignore = tcx.dep_graph.in_ignore();
-    let dirty_inputs: FnvHashSet<DepNode<DefId>> =
-        dirty_inputs.iter()
-                   .filter_map(|d| retraced.map(d))
-                   .collect();
+    let dirty_inputs: FnvHashSet<DepNode<DefId>> = dirty_inputs.iter()
+        .filter_map(|d| retraced.map(d))
+        .collect();
     let query = tcx.dep_graph.query();
     debug!("query-nodes: {:?}", query.nodes());
     let krate = tcx.map.krate();
@@ -81,14 +80,13 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 }
 
-pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
+pub struct DirtyCleanVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     query: &'a DepGraphQuery<DefId>,
     dirty_inputs: FnvHashSet<DepNode<DefId>>,
 }
 
 impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
-
     fn dep_node(&self, attr: &Attribute, def_id: DefId) -> DepNode<DefId> {
         for item in attr.meta_item_list().unwrap_or(&[]) {
             if item.check_name(LABEL) {
@@ -115,16 +113,15 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         debug!("assert_dirty({:?})", dep_node);
 
         match dep_node {
-            DepNode::Krate |
-            DepNode::Hir(_) => {
+            DepNode::Krate | DepNode::Hir(_) => {
                 // HIR nodes are inputs, so if we are asserting that the HIR node is
                 // dirty, we check the dirty input set.
                 if !self.dirty_inputs.contains(&dep_node) {
                     let dep_node_str = self.dep_node_str(&dep_node);
-                    self.tcx.sess.span_err(
-                        item.span,
-                        &format!("`{:?}` not found in dirty set, but should be dirty",
-                                 dep_node_str));
+                    self.tcx.sess.span_err(item.span,
+                                           &format!("`{:?}` not found in dirty set, but should \
+                                                     be dirty",
+                                                    dep_node_str));
                 }
             }
             _ => {
@@ -132,9 +129,10 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                 // the dep-graph contains the node.
                 if self.query.contains_node(&dep_node) {
                     let dep_node_str = self.dep_node_str(&dep_node);
-                    self.tcx.sess.span_err(
-                        item.span,
-                        &format!("`{:?}` found in dep graph, but should be dirty", dep_node_str));
+                    self.tcx.sess.span_err(item.span,
+                                           &format!("`{:?}` found in dep graph, but should be \
+                                                     dirty",
+                                                    dep_node_str));
                 }
             }
         }
@@ -144,25 +142,24 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         debug!("assert_clean({:?})", dep_node);
 
         match dep_node {
-            DepNode::Krate |
-            DepNode::Hir(_) => {
+            DepNode::Krate | DepNode::Hir(_) => {
                 // For HIR nodes, check the inputs.
                 if self.dirty_inputs.contains(&dep_node) {
                     let dep_node_str = self.dep_node_str(&dep_node);
-                    self.tcx.sess.span_err(
-                        item.span,
-                        &format!("`{:?}` found in dirty-node set, but should be clean",
-                                 dep_node_str));
+                    self.tcx.sess.span_err(item.span,
+                                           &format!("`{:?}` found in dirty-node set, but should \
+                                                     be clean",
+                                                    dep_node_str));
                 }
             }
             _ => {
                 // Otherwise, check if the dep-node exists.
                 if !self.query.contains_node(&dep_node) {
                     let dep_node_str = self.dep_node_str(&dep_node);
-                    self.tcx.sess.span_err(
-                        item.span,
-                        &format!("`{:?}` not found in dep graph, but should be clean",
-                                 dep_node_str));
+                    self.tcx.sess.span_err(item.span,
+                                           &format!("`{:?}` not found in dep graph, but should \
+                                                     be clean",
+                                                    dep_node_str));
                 }
             }
         }
@@ -187,13 +184,14 @@ impl<'a, 'tcx> Visitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
 }
 
 pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  prev_metadata_hashes: &FnvHashMap<DefId, Fingerprint>,
-                                  current_metadata_hashes: &FnvHashMap<DefId, Fingerprint>) {
+                                            prev_metadata_hashes: &FnvHashMap<DefId, Fingerprint>,
+                                            current_metadata_hashes: &FnvHashMap<DefId,
+                                                                                 Fingerprint>) {
     if !tcx.sess.opts.debugging_opts.query_dep_graph {
         return;
     }
 
-    tcx.dep_graph.with_ignore(||{
+    tcx.dep_graph.with_ignore(|| {
         let krate = tcx.map.krate();
         krate.visit_all_items(&mut DirtyCleanMetadataVisitor {
             tcx: tcx,
@@ -203,7 +201,7 @@ pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 }
 
-pub struct DirtyCleanMetadataVisitor<'a, 'tcx:'a, 'm> {
+pub struct DirtyCleanMetadataVisitor<'a, 'tcx: 'a, 'm> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     prev_metadata_hashes: &'m FnvHashMap<DefId, Fingerprint>,
     current_metadata_hashes: &'m FnvHashMap<DefId, Fingerprint>,
@@ -228,7 +226,6 @@ impl<'a, 'tcx, 'm> Visitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
 }
 
 impl<'a, 'tcx, 'm> DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
-
     fn assert_state(&self, should_be_clean: bool, def_id: DefId, span: Span) {
         let item_path = self.tcx.item_path_str(def_id);
         debug!("assert_state({})", item_path);
@@ -237,24 +234,23 @@ impl<'a, 'tcx, 'm> DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
             let hashes_are_equal = prev_hash == self.current_metadata_hashes[&def_id];
 
             if should_be_clean && !hashes_are_equal {
-                self.tcx.sess.span_err(
-                        span,
-                        &format!("Metadata hash of `{}` is dirty, but should be clean",
-                                 item_path));
+                self.tcx.sess.span_err(span,
+                                       &format!("Metadata hash of `{}` is dirty, but should be \
+                                                 clean",
+                                                item_path));
             }
 
             let should_be_dirty = !should_be_clean;
             if should_be_dirty && hashes_are_equal {
-                self.tcx.sess.span_err(
-                        span,
-                        &format!("Metadata hash of `{}` is clean, but should be dirty",
-                                 item_path));
+                self.tcx.sess.span_err(span,
+                                       &format!("Metadata hash of `{}` is clean, but should be \
+                                                 dirty",
+                                                item_path));
             }
         } else {
-            self.tcx.sess.span_err(
-                        span,
-                        &format!("Could not find previous metadata hash of `{}`",
-                                 item_path));
+            self.tcx.sess.span_err(span,
+                                   &format!("Could not find previous metadata hash of `{}`",
+                                            item_path));
         }
     }
 }
@@ -280,9 +276,7 @@ fn check_config(tcx: TyCtxt, attr: &ast::Attribute) -> bool {
         }
     }
 
-    tcx.sess.span_fatal(
-        attr.span,
-        &format!("no cfg attribute"));
+    tcx.sess.span_fatal(attr.span, &format!("no cfg attribute"));
 }
 
 fn expect_associated_value(tcx: TyCtxt, item: &NestedMetaItem) -> InternedString {

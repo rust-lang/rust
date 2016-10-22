@@ -21,16 +21,17 @@ impl<'a, 'tcx> DefPathHashes<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         DefPathHashes {
             tcx: tcx,
-            data: DefIdMap()
+            data: DefIdMap(),
         }
     }
 
     pub fn hash(&mut self, def_id: DefId) -> u64 {
         let tcx = self.tcx;
-        *self.data.entry(def_id)
-                  .or_insert_with(|| {
-                      let def_path = tcx.def_path(def_id);
-                      def_path.deterministic_hash(tcx)
-                  })
+        *self.data
+            .entry(def_id)
+            .or_insert_with(|| {
+                let def_path = tcx.def_path(def_id);
+                def_path.deterministic_hash(tcx)
+            })
     }
 }

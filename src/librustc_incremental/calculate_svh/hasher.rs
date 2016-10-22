@@ -24,7 +24,7 @@ impl IchHasher {
         let hash_size = mem::size_of::<Fingerprint>();
         IchHasher {
             state: ArchIndependentHasher::new(Blake2bHasher::new(hash_size, &[])),
-            bytes_hashed: 0
+            bytes_hashed: 0,
         }
     }
 
