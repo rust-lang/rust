@@ -4,7 +4,7 @@ use rustc::lint::*;
 use rustc::ty::TypeVariants;
 use syntax::ast::LitKind;
 use utils::paths;
-use utils::{is_expn_of, match_def_path, match_path, match_type, resolve_node, span_lint, walk_ptrs_ty};
+use utils::{is_expn_of, match_def_path, match_type, resolve_node, span_lint, walk_ptrs_ty};
 
 /// **What it does:** Checks for the use of `format!("string literal with no
 /// argument")` and `format!("{}", foo)` where `foo` is a string.
