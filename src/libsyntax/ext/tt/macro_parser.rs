@@ -251,14 +251,22 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
 
 pub enum ParseResult<T> {
     Success(T),
-    /// Arm failed to match
-    Failure(syntax_pos::Span, String),
+    /// Arm failed to match. If the second parameter is `token::Eof`, it
+    /// indicates an unexpected end of macro invocation. Otherwise, it
+    /// indicates that no rules expected the given token.
+    Failure(syntax_pos::Span, Token),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(syntax_pos::Span, String)
 }
 
+pub fn parse_failure_msg(tok: Token) -> String {
+    match tok {
+        token::Eof => "unexpected end of macro invocation".to_string(),
+        _ => format!("no rules expected the token `{}`", pprust::token_to_string(&tok)),
+    }
+}
+
 pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
-pub type PositionalParseResult = ParseResult<Vec<Rc<NamedMatch>>>;
 
 /// Perform a token equality check, ignoring syntax context (that is, an
 /// unhygienic comparison)
@@ -425,8 +433,8 @@ pub fn parse(sess: &ParseSess,
                         cur_eis.push(ei);
                     }
                     TokenTree::Token(_, ref t) => {
-                        let mut ei_t = ei.clone();
                         if token_name_eq(t,&tok) {
+                            let mut ei_t = ei.clone();
                             ei_t.idx += 1;
                             next_eis.push(ei_t);
                         }
@@ -446,7 +454,7 @@ pub fn parse(sess: &ParseSess,
             } else if eof_eis.len() > 1 {
                 return Error(sp, "ambiguity: multiple successful parses".to_string());
             } else {
-                return Failure(sp, "unexpected end of macro invocation".to_string());
+                return Failure(sp, token::Eof);
             }
         } else {
             if (!bb_eis.is_empty() && !next_eis.is_empty())
@@ -467,8 +475,7 @@ pub fn parse(sess: &ParseSess,
                     }
                 ))
             } else if bb_eis.is_empty() && next_eis.is_empty() {
-                return Failure(sp, format!("no rules expected the token `{}`",
-                            pprust::token_to_string(&tok)));
+                return Failure(sp, tok);
             } else if !next_eis.is_empty() {
                 /* Now process the next token */
                 while !next_eis.is_empty() {
