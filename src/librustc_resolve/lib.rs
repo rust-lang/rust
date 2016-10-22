@@ -845,6 +845,10 @@ impl<'a> ModuleS<'a> {
             _ => false,
         }
     }
+
+    fn is_local(&self) -> bool {
+        self.normal_ancestor_id.is_some()
+    }
 }
 
 impl<'a> fmt::Debug for ModuleS<'a> {
@@ -1585,8 +1589,7 @@ impl<'a> Resolver<'a> {
                 ctxt = ctxt.source().0;
             }
             let module = self.invocations[&ctxt.source().1].module.get();
-            let crate_root =
-                if module.def_id().unwrap().is_local() { self.graph_root } else { module };
+            let crate_root = if module.is_local() { self.graph_root } else { module };
             return Success(PrefixFound(crate_root, 1))
         }
 
@@ -2569,7 +2572,8 @@ impl<'a> Resolver<'a> {
         let unqualified_def = resolve_identifier_with_fallback(self, None);
         let qualified_binding = self.resolve_module_relative_path(span, segments, namespace);
         match (qualified_binding, unqualified_def) {
-            (Ok(binding), Some(ref ud)) if binding.def() == ud.def => {
+            (Ok(binding), Some(ref ud)) if binding.def() == ud.def &&
+                                           segments[0].identifier.name.as_str() != "$crate" => {
                 self.session
                     .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                               id,
