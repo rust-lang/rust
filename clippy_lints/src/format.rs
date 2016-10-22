@@ -4,7 +4,7 @@ use rustc::lint::*;
 use rustc::ty::TypeVariants;
 use syntax::ast::LitKind;
 use utils::paths;
-use utils::{is_expn_of, match_path, match_type, span_lint, walk_ptrs_ty};
+use utils::{is_expn_of, match_def_path, match_path, match_type, resolve_node, span_lint, walk_ptrs_ty};
 
 /// **What it does:** Checks for the use of `format!("string literal with no
 /// argument")` and `format!("{}", foo)` where `foo` is a string.
@@ -44,9 +44,10 @@ impl LateLintPass for Pass {
                 // `format!("{}", foo)` expansion
                 ExprCall(ref fun, ref args) => {
                     if_let_chain!{[
-                        let ExprPath(_, ref path) = fun.node,
+                        let ExprPath(..) = fun.node,
                         args.len() == 2,
-                        match_path(path, &paths::FMT_ARGUMENTS_NEWV1),
+                        let Some(fun) = resolve_node(cx, fun.id),
+                        match_def_path(cx, fun.def_id(), &paths::FMT_ARGUMENTS_NEWV1),
                         // ensure the format string is `"{..}"` with only one argument and no text
                         check_static_str(cx, &args[0]),
                         // ensure the format argument is `{}` ie. Display with no fancy option
@@ -127,8 +128,9 @@ fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
         exprs.len() == 1,
         let ExprCall(_, ref args) = exprs[0].node,
         args.len() == 2,
-        let ExprPath(None, ref path) = args[1].node,
-        match_path(path, &paths::DISPLAY_FMT_METHOD)
+        let ExprPath(None, _) = args[1].node,
+        let Some(fun) = resolve_node(cx, args[1].id),
+        match_def_path(cx, fun.def_id(), &paths::DISPLAY_FMT_METHOD),
     ], {
         let ty = walk_ptrs_ty(cx.tcx.pat_ty(&pat[0]));
 
