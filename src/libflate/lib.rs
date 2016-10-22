@@ -94,11 +94,14 @@ extern "C" {
                                     -> *mut c_void;
 }
 
-const LZ_NORM: c_int = 0x80;  // LZ with 128 probes, "normal"
-const TINFL_FLAG_PARSE_ZLIB_HEADER: c_int = 0x1; // parse zlib header and adler32 checksum
-const TDEFL_WRITE_ZLIB_HEADER: c_int = 0x01000; // write zlib header and adler32 checksum
+const LZ_FAST: c_int = 0x01;  // LZ with 1 probe, "fast"
+const TDEFL_GREEDY_PARSING_FLAG: c_int = 0x04000; // fast greedy parsing instead of lazy parsing
 
-fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Bytes {
+/// Compress a buffer without writing any sort of header on the output. Fast
+/// compression is used because it is almost twice as fast as default
+/// compression and the compression ratio is only marginally worse.
+pub fn deflate_bytes(bytes: &[u8]) -> Bytes {
+    let flags = LZ_FAST | TDEFL_GREEDY_PARSING_FLAG;
     unsafe {
         let mut outsz: size_t = 0;
         let res = tdefl_compress_mem_to_heap(bytes.as_ptr() as *const _,
@@ -113,17 +116,9 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Bytes {
     }
 }
 
-/// Compress a buffer, without writing any sort of header on the output.
-pub fn deflate_bytes(bytes: &[u8]) -> Bytes {
-    deflate_bytes_internal(bytes, LZ_NORM)
-}
-
-/// Compress a buffer, using a header that zlib can understand.
-pub fn deflate_bytes_zlib(bytes: &[u8]) -> Bytes {
-    deflate_bytes_internal(bytes, LZ_NORM | TDEFL_WRITE_ZLIB_HEADER)
-}
-
-fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Result<Bytes, Error> {
+/// Decompress a buffer without parsing any sort of header on the input.
+pub fn inflate_bytes(bytes: &[u8]) -> Result<Bytes, Error> {
+    let flags = 0;
     unsafe {
         let mut outsz: size_t = 0;
         let res = tinfl_decompress_mem_to_heap(bytes.as_ptr() as *const _,
@@ -139,16 +134,6 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Result<Bytes, Error> {
             Err(Error::new())
         }
     }
-}
-
-/// Decompress a buffer, without parsing any sort of header on the input.
-pub fn inflate_bytes(bytes: &[u8]) -> Result<Bytes, Error> {
-    inflate_bytes_internal(bytes, 0)
-}
-
-/// Decompress a buffer that starts with a zlib header.
-pub fn inflate_bytes_zlib(bytes: &[u8]) -> Result<Bytes, Error> {
-    inflate_bytes_internal(bytes, TINFL_FLAG_PARSE_ZLIB_HEADER)
 }
 
 #[cfg(test)]
