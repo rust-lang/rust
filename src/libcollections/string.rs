@@ -1860,6 +1860,13 @@ impl<'a> From<&'a str> for String {
     }
 }
 
+#[stable(feature = "string_from_cow_str", since = "1.14.0")]
+impl<'a> From<Cow<'a, str>> for String {
+    fn from(s: Cow<'a, str>) -> String {
+        s.into_owned()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for Cow<'a, str> {
     #[inline]

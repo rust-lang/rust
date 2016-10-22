@@ -36,6 +36,12 @@ fn test_from_str() {
 }
 
 #[test]
+fn test_from_cow_str() {
+    assert_eq!(String::from(Cow::Borrowed("string")), "string");
+    assert_eq!(String::from(Cow::Owned(String::from("string"))), "string");
+}
+
+#[test]
 fn test_unsized_to_string() {
     let s: &str = "abc";
     let _: String = (*s).to_string();

@@ -597,6 +597,14 @@ fn test_cow_from() {
     }
 }
 
+#[test]
+fn test_from_cow() {
+    let borrowed: &[_] = &["borrowed", "(slice)"];
+    let owned = vec!["owned", "(vec)"];
+    assert_eq!(Vec::from(Cow::Borrowed(borrowed)), vec!["borrowed", "(slice)"]);
+    assert_eq!(Vec::from(Cow::Owned(owned)), vec!["owned", "(vec)"]);
+}
+
 #[allow(dead_code)]
 fn assert_covariance() {
     fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> { d }
