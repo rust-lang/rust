@@ -1261,6 +1261,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         if bounds.len() > 1 {
+            let spans = bounds.iter().map(|b| {
+                self.tcx().impl_or_trait_items(b.def_id()).iter()
+                .find(|&&def_id| {
+                    match self.tcx().impl_or_trait_item(def_id) {
+                        ty::TypeTraitItem(ref item) => item.name.as_str() == assoc_name,
+                        _ => false
+                    }
+                })
+                .and_then(|&def_id| self.tcx().map.as_local_node_id(def_id))
+                .and_then(|node_id| self.tcx().map.opt_span(node_id))
+            });
+
             let mut err = struct_span_err!(
                 self.tcx().sess, span, E0221,
                 "ambiguous associated type `{}` in bounds of `{}`",
@@ -1268,11 +1280,17 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 ty_param_name);
             err.span_label(span, &format!("ambiguous associated type `{}`", assoc_name));
 
-            for bound in &bounds {
-                span_note!(&mut err, span,
-                           "associated type `{}` could derive from `{}`",
-                           ty_param_name,
-                           bound);
+            for span_and_bound in spans.zip(&bounds) {
+                if let Some(span) = span_and_bound.0 {
+                    err.span_label(span, &format!("ambiguous `{}` from `{}`",
+                                                  assoc_name,
+                                                  span_and_bound.1));
+                } else {
+                    span_note!(&mut err, span,
+                               "associated type `{}` could derive from `{}`",
+                               ty_param_name,
+                               span_and_bound.1);
+                }
             }
             err.emit();
         }
