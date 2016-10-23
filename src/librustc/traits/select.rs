@@ -1614,7 +1614,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 //
                 // We always upcast when we can because of reason
                 // #2 (region bounds).
-                data_a.principal.def_id() == data_a.principal.def_id() &&
+                data_a.principal.def_id() == data_b.principal.def_id() &&
                 data_a.builtin_bounds.is_superset(&data_b.builtin_bounds)
             }
 
