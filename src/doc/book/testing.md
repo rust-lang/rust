@@ -38,8 +38,9 @@ currently has no body. That's good enough to pass! We can run the tests with
 
 ```bash
 $ cargo test
-   Compiling adder v0.1.0 (file:///home/you/projects/adder)
-     Running target/debug/deps/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///private/tmp/adder)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.15 secs
+     Running target/debug/deps/adder-941f01916ca4a642
 
 running 1 test
 test tests::it_works ... ok
@@ -61,11 +62,11 @@ those later. For now, see this line:
 test tests::it_works ... ok
 ```
 
-Note the `it_works`. This comes from the name of our function:
+Note the `tests::it_works`. This comes from the name of our module and function:
 
 ```rust
 fn it_works() {
-# }
+}
 ```
 
 We also get a summary line:
@@ -78,10 +79,12 @@ So why does our do-nothing test pass? Any test which doesn't `panic!` passes,
 and any test that does `panic!` fails. Let's make our test fail:
 
 ```rust
-# fn main() {}
-#[test]
-fn it_works() {
-    assert!(false);
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        assert!(false);
+    }
 }
 ```
 
@@ -91,16 +94,18 @@ run our tests again:
 
 ```bash
 $ cargo test
-   Compiling adder v0.1.0 (file:///home/you/projects/adder)
-     Running target/debug/deps/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///private/tmp/adder)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.17 secs
+     Running target/debug/deps/adder-941f01916ca4a642
 
 running 1 test
 test tests::it_works ... FAILED
 
 failures:
 
----- test::it_works stdout ----
+---- tests::it_works stdout ----
         thread 'tests::it_works' panicked at 'assertion failed: false', src/lib.rs:5
+note: Run with `RUST_BACKTRACE=1` for a backtrace.
 
 
 failures:
@@ -148,20 +153,24 @@ This is useful if you want to integrate `cargo test` into other tooling.
 We can invert our test's failure with another attribute: `should_panic`:
 
 ```rust
-# fn main() {}
-#[test]
-#[should_panic]
-fn it_works() {
-    assert!(false);
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[should_panic]
+    fn it_works() {
+        assert!(false);
+    }
 }
+
 ```
 
 This test will now succeed if we `panic!` and fail if we complete. Let's try it:
 
 ```bash
 $ cargo test
-   Compiling adder v0.1.0 (file:///home/you/projects/adder)
-     Running target/debug/deps/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///private/tmp/adder)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.17 secs
+     Running target/debug/deps/adder-941f01916ca4a642
 
 running 1 test
 test tests::it_works ... ok
@@ -179,11 +188,13 @@ Rust provides another macro, `assert_eq!`, that compares two arguments for
 equality:
 
 ```rust
-# fn main() {}
-#[test]
-#[should_panic]
-fn it_works() {
-    assert_eq!("Hello", "world");
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[should_panic]
+    fn it_works() {
+        assert_eq!("Hello", "world");
+    }
 }
 ```
 
@@ -192,8 +203,9 @@ passes:
 
 ```bash
 $ cargo test
-   Compiling adder v0.1.0 (file:///home/you/projects/adder)
-     Running target/debug/deps/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///private/tmp/adder)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.21 secs
+     Running target/debug/deps/adder-941f01916ca4a642
 
 running 1 test
 test tests::it_works ... ok
@@ -214,25 +226,31 @@ make sure that the failure message contains the provided text. A safer version
 of the example above would be:
 
 ```rust
-# fn main() {}
-#[test]
-#[should_panic(expected = "assertion failed")]
-fn it_works() {
-    assert_eq!("Hello", "world");
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[should_panic(expected = "assertion failed")]
+    fn it_works() {
+        assert_eq!("Hello", "world");
+    }
 }
 ```
 
 That's all there is to the basics! Let's write one 'real' test:
 
 ```rust,ignore
-# fn main() {}
 pub fn add_two(a: i32) -> i32 {
     a + 2
 }
 
-#[test]
-fn it_works() {
-    assert_eq!(4, add_two(2));
+#[cfg(test)]
+mod tests {
+    use super::add_two;
+    
+    #[test]
+    fn it_works() {
+        assert_eq!(4, add_two(2));
+    }
 }
 ```
 
@@ -245,16 +263,24 @@ Sometimes a few specific tests can be very time-consuming to execute. These
 can be disabled by default by using the `ignore` attribute:
 
 ```rust
-# fn main() {}
-#[test]
-fn it_works() {
-    assert_eq!(4, add_two(2));
+pub fn add_two(a: i32) -> i32 {
+    a + 2
 }
 
-#[test]
-#[ignore]
-fn expensive_test() {
-    // code that takes an hour to run
+#[cfg(test)]
+mod tests {
+    use super::add_two;
+    
+    #[test]
+    fn it_works() {
+        assert_eq!(4, add_two(2));
+    }
+
+    #[test]
+    #[ignore]
+    fn expensive_test() {
+        // code that takes an hour to run
+    }
 }
 ```
 
@@ -263,12 +289,13 @@ not:
 
 ```bash
 $ cargo test
-   Compiling adder v0.1.0 (file:///home/you/projects/adder)
-     Running target/debug/deps/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///private/tmp/adder)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.20 secs
+     Running target/debug/deps/adder-941f01916ca4a642
 
 running 2 tests
-test expensive_test ... ignored
-test it_works ... ok
+test tests::expensive_test ... ignored
+test tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured
 
@@ -283,10 +310,11 @@ The expensive tests can be run explicitly using `cargo test -- --ignored`:
 
 ```bash
 $ cargo test -- --ignored
-     Running target/debug/deps/adder-91b3e234d4ed382a
+    Finished debug [unoptimized + debuginfo] target(s) in 0.0 secs
+     Running target/debug/deps/adder-941f01916ca4a642
 
 running 1 test
-test expensive_test ... ok
+test tests::expensive_test ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
@@ -310,7 +338,6 @@ was missing from our last example. Let's explain what this does.
 The idiomatic way of writing our example looks like this:
 
 ```rust,ignore
-# fn main() {}
 pub fn add_two(a: i32) -> i32 {
     a + 2
 }
@@ -339,7 +366,6 @@ a large module, and so this is a common use of globs. Let's change our
 `src/lib.rs` to make use of it:
 
 ```rust,ignore
-# fn main() {}
 pub fn add_two(a: i32) -> i32 {
     a + 2
 }
