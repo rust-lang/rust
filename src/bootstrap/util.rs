@@ -30,6 +30,29 @@ pub fn staticlib(name: &str, target: &str) -> String {
     }
 }
 
+#[cfg(not(windows))]
+pub fn build_path(path: &str) -> PathBuf {
+    PathBuf::from(path)
+}
+
+#[cfg(windows)]
+pub fn build_path(path: &str) -> PathBuf {
+    use std::io::{stderr, Write};
+    use build_helper::output;
+
+    if path.chars().next() == Some('/') {
+        let output = output(&mut Command::new("cygpath").arg("-w").arg(path));
+        let win_path = output.trim_right();
+        writeln!(&mut stderr(),
+                 "note: Converted Unix path '{}' to Windows path '{}'",
+                 path,
+                 win_path).ok();
+        PathBuf::from(win_path)
+    } else {
+        PathBuf::from(path)
+    }
+}
+
 /// Returns the last-modified time for `path`, or zero if it doesn't exist.
 pub fn mtime(path: &Path) -> FileTime {
     fs::metadata(path).map(|f| {
