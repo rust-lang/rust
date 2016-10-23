@@ -144,7 +144,7 @@ ifdef CFG_ENABLE_DEBUGINFO
   CFG_RUSTC_FLAGS += -g
 else ifdef CFG_ENABLE_DEBUGINFO_LINES
   $(info cfg: enabling line number debuginfo (CFG_ENABLE_DEBUGINFO_LINES))
-  CFG_RUSTC_FLAGS += -C debuginfo=1
+  CFG_RUSTC_FLAGS += -Cdebuginfo=1
 endif
 
 ifdef SAVE_TEMPS
