@@ -722,11 +722,25 @@ case "$CFG_RELEASE_CHANNEL" in
     nightly )
 	msg "overriding settings for $CFG_RELEASE_CHANNEL"
 	CFG_ENABLE_LLVM_ASSERTIONS=1
-	CFG_ENABLE_DEBUGINFO_LINES=1
+
+        # FIXME(#37364) shouldn't have to disable this on windows-gnu
+        case "$CFG_BUILD" in
+          *-pc-windows-gnu)
+            ;;
+          *)
+	    CFG_ENABLE_DEBUGINFO_LINES=1
+            ;;
+        esac
 	;;
     beta | stable)
 	msg "overriding settings for $CFG_RELEASE_CHANNEL"
-	CFG_ENABLE_DEBUGINFO_LINES=1
+        case "$CFG_BUILD" in
+          *-pc-windows-gnu)
+            ;;
+          *)
+	    CFG_ENABLE_DEBUGINFO_LINES=1
+            ;;
+        esac
 	;;
     dev)
 	;;
