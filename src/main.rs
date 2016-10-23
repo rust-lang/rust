@@ -152,11 +152,10 @@ pub fn main() {
                 let package_manifest_path = Path::new(&package.manifest_path);
                 if let Some(ref manifest_path) = manifest_path {
                     package_manifest_path == manifest_path
-                } else if let Ok(ref current_dir) = current_dir {
+                } else {
+                    let current_dir = current_dir.as_ref().expect("could not read current directory");
                     let package_manifest_directory = package_manifest_path.parent().expect("could not find parent directory of package manifest");
                     package_manifest_directory == current_dir
-                } else {
-                    panic!("could not read current directory")
                 }
             })
             .expect("could not find matching package");
