@@ -54,7 +54,7 @@ pub struct ImportedFileMap {
     /// The end of this FileMap within the codemap of its original crate
     pub original_end_pos: syntax_pos::BytePos,
     /// The imported FileMap's representation within the local codemap
-    pub translated_filemap: Rc<syntax_pos::FileMap>
+    pub translated_filemap: Rc<syntax_pos::FileMap>,
 }
 
 pub struct CrateMetadata {
@@ -141,8 +141,8 @@ impl CStore {
         self.metas.borrow_mut().insert(cnum, data);
     }
 
-    pub fn iter_crate_data<I>(&self, mut i: I) where
-        I: FnMut(CrateNum, &Rc<CrateMetadata>),
+    pub fn iter_crate_data<I>(&self, mut i: I)
+        where I: FnMut(CrateNum, &Rc<CrateMetadata>)
     {
         for (&k, v) in self.metas.borrow().iter() {
             i(k, v);
@@ -150,12 +150,14 @@ impl CStore {
     }
 
     /// Like `iter_crate_data`, but passes source paths (if available) as well.
-    pub fn iter_crate_data_origins<I>(&self, mut i: I) where
-        I: FnMut(CrateNum, &CrateMetadata, Option<CrateSource>),
+    pub fn iter_crate_data_origins<I>(&self, mut i: I)
+        where I: FnMut(CrateNum, &CrateMetadata, Option<CrateSource>)
     {
         for (&k, v) in self.metas.borrow().iter() {
             let origin = self.opt_used_crate_source(k);
-            origin.as_ref().map(|cs| { assert!(k == cs.cnum); });
+            origin.as_ref().map(|cs| {
+                assert!(k == cs.cnum);
+            });
             i(k, &v, origin);
         }
     }
@@ -167,10 +169,12 @@ impl CStore {
         }
     }
 
-    pub fn opt_used_crate_source(&self, cnum: CrateNum)
-                                 -> Option<CrateSource> {
-        self.used_crate_sources.borrow_mut()
-            .iter().find(|source| source.cnum == cnum).cloned()
+    pub fn opt_used_crate_source(&self, cnum: CrateNum) -> Option<CrateSource> {
+        self.used_crate_sources
+            .borrow_mut()
+            .iter()
+            .find(|source| source.cnum == cnum)
+            .cloned()
     }
 
     pub fn reset(&self) {
@@ -182,19 +186,17 @@ impl CStore {
         self.statically_included_foreign_items.borrow_mut().clear();
     }
 
-    pub fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum>
-    {
+    pub fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
         self.push_dependencies_in_postorder(&mut ordering, krate);
         ordering.reverse();
         ordering
     }
 
-    pub fn push_dependencies_in_postorder(&self,
-                                          ordering: &mut Vec<CrateNum>,
-                                          krate: CrateNum)
-    {
-        if ordering.contains(&krate) { return }
+    pub fn push_dependencies_in_postorder(&self, ordering: &mut Vec<CrateNum>, krate: CrateNum) {
+        if ordering.contains(&krate) {
+            return;
+        }
 
         let data = self.get_crate_data(krate);
         for &dep in data.cnum_map.borrow().iter() {
@@ -215,7 +217,8 @@ impl CStore {
     // In order to get this left-to-right dependency ordering, we perform a
     // topological sort of all crates putting the leaves at the right-most
     // positions.
-    pub fn do_get_used_crates(&self, prefer: LinkagePreference)
+    pub fn do_get_used_crates(&self,
+                              prefer: LinkagePreference)
                               -> Vec<(CrateNum, Option<PathBuf>)> {
         let mut ordering = Vec::new();
         for (&num, _) in self.metas.borrow().iter() {
@@ -223,12 +226,16 @@ impl CStore {
         }
         info!("topological ordering: {:?}", ordering);
         ordering.reverse();
-        let mut libs = self.used_crate_sources.borrow()
+        let mut libs = self.used_crate_sources
+            .borrow()
             .iter()
-            .map(|src| (src.cnum, match prefer {
-                LinkagePreference::RequireDynamic => src.dylib.clone().map(|p| p.0),
-                LinkagePreference::RequireStatic => src.rlib.clone().map(|p| p.0),
-            }))
+            .map(|src| {
+                (src.cnum,
+                 match prefer {
+                     LinkagePreference::RequireDynamic => src.dylib.clone().map(|p| p.0),
+                     LinkagePreference::RequireStatic => src.rlib.clone().map(|p| p.0),
+                 })
+            })
             .collect::<Vec<_>>();
         libs.sort_by(|&(a, _), &(b, _)| {
             let a = ordering.iter().position(|x| *x == a);
@@ -243,9 +250,7 @@ impl CStore {
         self.used_libraries.borrow_mut().push((lib, kind));
     }
 
-    pub fn get_used_libraries<'a>(&'a self)
-                              -> &'a RefCell<Vec<(String,
-                                                  NativeLibraryKind)>> {
+    pub fn get_used_libraries<'a>(&'a self) -> &'a RefCell<Vec<(String, NativeLibraryKind)>> {
         &self.used_libraries
     }
 
@@ -255,13 +260,11 @@ impl CStore {
         }
     }
 
-    pub fn get_used_link_args<'a>(&'a self) -> &'a RefCell<Vec<String> > {
+    pub fn get_used_link_args<'a>(&'a self) -> &'a RefCell<Vec<String>> {
         &self.used_link_args
     }
 
-    pub fn add_extern_mod_stmt_cnum(&self,
-                                    emod_id: ast::NodeId,
-                                    cnum: CrateNum) {
+    pub fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {
         self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
     }
 
@@ -273,8 +276,7 @@ impl CStore {
         self.statically_included_foreign_items.borrow().contains(&id)
     }
 
-    pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>
-    {
+    pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
         self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
     }
 
@@ -288,14 +290,20 @@ impl CStore {
 }
 
 impl CrateMetadata {
-    pub fn name(&self) -> &str { &self.root.name }
-    pub fn hash(&self) -> Svh { self.root.hash }
-    pub fn disambiguator(&self) -> &str { &self.root.disambiguator }
+    pub fn name(&self) -> &str {
+        &self.root.name
+    }
+    pub fn hash(&self) -> Svh {
+        self.root.hash
+    }
+    pub fn disambiguator(&self) -> &str {
+        &self.root.disambiguator
+    }
 
     pub fn is_staged_api(&self) -> bool {
-        self.get_item_attrs(CRATE_DEF_INDEX).iter().any(|attr| {
-            attr.name() == "stable" || attr.name() == "unstable"
-        })
+        self.get_item_attrs(CRATE_DEF_INDEX)
+            .iter()
+            .any(|attr| attr.name() == "stable" || attr.name() == "unstable")
     }
 
     pub fn is_allocator(&self) -> bool {
