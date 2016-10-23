@@ -140,7 +140,7 @@ pub fn main() {
         // this arm is executed on the initial call to `cargo clippy`
         let manifest_path_arg = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
 
-        let mut metadata = cargo::metadata(&manifest_path_arg).expect("could not obtain cargo metadata");
+        let mut metadata = cargo::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)).expect("could not obtain cargo metadata");
         assert_eq!(metadata.version, 1);
 
         let manifest_path = manifest_path_arg.map(|arg| PathBuf::from(Path::new(&arg["--manifest-path=".len()..])));

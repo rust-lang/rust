@@ -65,10 +65,10 @@ impl From<json::DecoderError> for Error {
     }
 }
 
-pub fn metadata(manifest_path_arg: &Option<String>) -> Result<Metadata, Error> {
+pub fn metadata(manifest_path_arg: Option<&str>) -> Result<Metadata, Error> {
     let mut cmd = Command::new("cargo");
     cmd.arg("metadata").arg("--no-deps");
-    if let Some(ref mani) = *manifest_path_arg {
+    if let Some(mani) = manifest_path_arg {
         cmd.arg(mani);
     }
     let output = cmd.output()?;
