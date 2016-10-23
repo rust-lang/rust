@@ -513,6 +513,7 @@ impl<'b> Resolver<'b> {
                                   legacy_imports: LegacyMacroImports,
                                   allow_shadowing: bool) {
         let import_macro = |this: &mut Self, name, ext: Rc<_>, span| {
+            this.used_crates.insert(module.def_id().unwrap().krate);
             if let SyntaxExtension::NormalTT(..) = *ext {
                 this.macro_names.insert(name);
             }
