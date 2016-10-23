@@ -30,7 +30,7 @@ use rustc_serialize::Encodable;
 pub struct Ast<'tcx> {
     id_range: IdRange,
     item: Lazy<InlinedItem>,
-    side_tables: LazySeq<(ast::NodeId, TableEntry<'tcx>)>
+    side_tables: LazySeq<(ast::NodeId, TableEntry<'tcx>)>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -39,7 +39,7 @@ enum TableEntry<'tcx> {
     NodeType(Ty<'tcx>),
     ItemSubsts(ty::ItemSubsts<'tcx>),
     Adjustment(ty::adjustment::AutoAdjustment<'tcx>),
-    ConstQualif(ConstQualif)
+    ConstQualif(ConstQualif),
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
@@ -48,7 +48,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         match ii {
             InlinedItemRef::Item(_, i) => id_visitor.visit_item(i),
             InlinedItemRef::TraitItem(_, ti) => id_visitor.visit_trait_item(ti),
-            InlinedItemRef::ImplItem(_, ii) => id_visitor.visit_impl_item(ii)
+            InlinedItemRef::ImplItem(_, ii) => id_visitor.visit_impl_item(ii),
         }
 
         let ii_pos = self.position();
@@ -58,12 +58,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tables_count = {
             let mut visitor = SideTableEncodingIdVisitor {
                 ecx: self,
-                count: 0
+                count: 0,
             };
             match ii {
                 InlinedItemRef::Item(_, i) => visitor.visit_item(i),
                 InlinedItemRef::TraitItem(_, ti) => visitor.visit_trait_item(ti),
-                InlinedItemRef::ImplItem(_, ii) => visitor.visit_impl_item(ii)
+                InlinedItemRef::ImplItem(_, ii) => visitor.visit_impl_item(ii),
             }
             visitor.count
         };
@@ -71,14 +71,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy(&Ast {
             id_range: id_visitor.result(),
             item: Lazy::with_position(ii_pos),
-            side_tables: LazySeq::with_position_and_length(tables_pos, tables_count)
+            side_tables: LazySeq::with_position_and_length(tables_pos, tables_count),
         })
     }
 }
 
-struct SideTableEncodingIdVisitor<'a, 'b:'a, 'tcx:'b> {
+struct SideTableEncodingIdVisitor<'a, 'b: 'a, 'tcx: 'b> {
     ecx: &'a mut EncodeContext<'b, 'tcx>,
-    count: usize
+    count: usize,
 }
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
@@ -114,10 +114,11 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
 
     let cnt = ast.id_range.max.as_usize() - ast.id_range.min.as_usize();
     let start = tcx.sess.reserve_node_ids(cnt);
-    let id_ranges = [ast.id_range, IdRange {
-        min: start,
-        max: ast::NodeId::new(start.as_usize() + cnt)
-    }];
+    let id_ranges = [ast.id_range,
+                     IdRange {
+                         min: start,
+                         max: ast::NodeId::new(start.as_usize() + cnt),
+                     }];
 
     let ii = ast.item.decode((cdata, tcx, id_ranges));
     let ii = ast_map::map_decoded_item(&tcx.map,
@@ -129,7 +130,7 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
     let item_node_id = match ii {
         &InlinedItem::Item(_, ref i) => i.id,
         &InlinedItem::TraitItem(_, ref ti) => ti.id,
-        &InlinedItem::ImplItem(_, ref ii) => ii.id
+        &InlinedItem::ImplItem(_, ref ii) => ii.id,
     };
     let inlined_did = tcx.map.local_def_id(item_node_id);
     tcx.register_item_type(inlined_did, tcx.lookup_item_type(orig_did));
