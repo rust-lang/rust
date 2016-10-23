@@ -1518,6 +1518,12 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B where
+        Self: Sized, F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, f)
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
@@ -1541,6 +1547,12 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B where
+        Self: Sized, F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, f)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1588,6 +1600,12 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> B where
+        Self: Sized, F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, move |acc, (k, _)| f(acc, k))
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
@@ -1611,6 +1629,12 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> B where
+        Self: Sized, F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, move |acc, (_, v)| f(acc, v))
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
@@ -1633,6 +1657,12 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
+    }
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> B where
+        Self: Sized, F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, move |acc, (_, v)| f(acc, v))
     }
 }
 #[stable(feature = "map_values_mut", since = "1.10.0")]

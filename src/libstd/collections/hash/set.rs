@@ -942,6 +942,12 @@ impl<'a, K> Iterator for Iter<'a, K> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B where
+        Self: Sized, F: FnMut(B, Self::Item) -> B,
+    {
+        self.iter.fold(init, f)
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K> ExactSizeIterator for Iter<'a, K> {

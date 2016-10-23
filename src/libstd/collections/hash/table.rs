@@ -795,6 +795,24 @@ impl<'a, K, V> Iterator for RawBuckets<'a, K, V> {
 
         None
     }
+
+    fn fold<B, F>(self, init: B, mut f: F) -> B where
+        Self: Sized, F: FnMut(B, Self::Item) -> B,
+    {
+        let mut acc = init;
+        let RawBuckets { mut raw, hashes_end, .. } = self;
+        while raw.hash != hashes_end {
+            unsafe {
+                // We are swapping out the pointer to a bucket and replacing
+                // it with the pointer to the next one.
+                let prev = ptr::replace(&mut raw, raw.offset(1));
+                if *prev.hash != EMPTY_BUCKET {
+                    acc = f(acc, prev)
+                }
+            }
+        }
+        acc
+    }
 }
 
 /// An iterator that moves out buckets in reverse order. It leaves the table
@@ -899,6 +917,15 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.elems_left, Some(self.elems_left))
     }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> B where
+        Self: Sized, F: FnMut(B, Self::Item) -> B,
+    {
+        self.iter.fold(init, move |acc, bucket| {
+            f(acc, unsafe { (&(*bucket.pair).0, &(*bucket.pair).1) })
+        })
+    }
 }
 impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
     fn len(&self) -> usize {
@@ -919,6 +946,16 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.elems_left, Some(self.elems_left))
+    }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> B where
+        Self: Sized, F: FnMut(B, Self::Item) -> B,
+    {
+        self.iter.fold(init, move |acc, bucket| {
+            let pair_mut = bucket.pair as *mut (K, V);
+            f(acc, unsafe { (&(*pair_mut).0, &mut (*pair_mut).1) })
+        })
     }
 }
 impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
