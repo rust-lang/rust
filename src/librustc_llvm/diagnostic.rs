@@ -33,8 +33,7 @@ pub enum OptimizationDiagnosticKind {
 impl OptimizationDiagnosticKind {
     pub fn describe(self) -> &'static str {
         match self {
-            OptimizationRemark |
-            OptimizationRemarkOther => "remark",
+            OptimizationRemark | OptimizationRemarkOther => "remark",
             OptimizationMissed => "missed",
             OptimizationAnalysis => "analysis",
             OptimizationAnalysisFPCommute => "floating-point",
@@ -130,17 +129,13 @@ impl Diagnostic {
                 Optimization(OptimizationDiagnostic::unpack(OptimizationAnalysis, di))
             }
 
-
             Dk::OptimizationRemarkAnalysisFPCommute => {
-                Optimization(OptimizationDiagnostic::unpack(
-                    OptimizationAnalysisFPCommute, di))
+                Optimization(OptimizationDiagnostic::unpack(OptimizationAnalysisFPCommute, di))
             }
 
             Dk::OptimizationRemarkAnalysisAliasing => {
-                Optimization(OptimizationDiagnostic::unpack(
-                    OptimizationAnalysisAliasing, di))
+                Optimization(OptimizationDiagnostic::unpack(OptimizationAnalysisAliasing, di))
             }
-
 
             Dk::OptimizationFailure => {
                 Optimization(OptimizationDiagnostic::unpack(OptimizationFailure, di))
