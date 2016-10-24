@@ -1,6 +1,7 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
+#![feature(static_in_const)]
 
 #![allow(unknown_lints, missing_docs_in_private_items)]
 
@@ -110,6 +111,27 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
 
 use std::path::Path;
 
+const CARGO_CLIPPY_HELP: &str = "\
+Checks a package to catch common mistakes and improve your Rust code.
+
+Usage:
+    cargo clippy [options] [--] [<opts>...]
+
+Common options:
+    -h, --help               Print this message
+    --features               Features to compile for the package
+
+Other options are the same as `cargo rustc`.
+
+To allow or deny a lint from the command line you can use `cargo clippy --` with
+one of:
+
+    -W --warn OPT       Set lint warnings
+    -A --allow OPT      Set lint allowed
+    -D --deny OPT       Set lint denied
+    -F --forbid OPT     Set lint forbidden\
+";
+
 pub fn main() {
     use std::env;
 
@@ -138,9 +160,19 @@ pub fn main() {
 
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // this arm is executed on the initial call to `cargo clippy`
+
+        match std::env::args().nth(2).as_ref().map(AsRef::as_ref) {
+            Some("--help") | Some("-h") => {
+                println!("{}", CARGO_CLIPPY_HELP);
+                return;
+            }
+            _ => (),
+        }
+
         let manifest_path_arg = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
 
         let mut metadata = cargo::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)).expect("could not obtain cargo metadata");
+
         assert_eq!(metadata.version, 1);
 
         let manifest_path = manifest_path_arg.map(|arg| PathBuf::from(Path::new(&arg["--manifest-path=".len()..])));
