@@ -20,6 +20,4 @@ fn new_struct(r: A+'static)
     Struct { r: r }
 }
 
-trait Curve {}
-enum E {X(Curve+'static)}
 fn main() {}
