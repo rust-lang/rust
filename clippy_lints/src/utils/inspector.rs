@@ -14,7 +14,7 @@ use syntax::ast::{Attribute, MetaItemKind};
 ///
 /// **Example:**
 /// ```rust
-/// #[inspect]
+/// #[clippy_dump]
 /// extern crate foo;
 /// ```
 declare_lint! {
