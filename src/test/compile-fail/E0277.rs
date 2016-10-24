@@ -19,6 +19,6 @@ fn some_func<T: Foo>(foo: T) {
 fn main() {
     some_func(5i32);
     //~^ ERROR the trait bound `i32: Foo` is not satisfied
-    //~| NOTE trait `i32: Foo` not satisfied
+    //~| NOTE the trait `Foo` is not implemented for `i32`
     //~| NOTE required by `some_func`
 }
