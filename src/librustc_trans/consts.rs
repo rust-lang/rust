@@ -30,7 +30,6 @@ use rustc::hir;
 use std::ffi::{CStr, CString};
 use syntax::ast;
 use syntax::attr;
-use syntax::parse::token;
 
 pub fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {
     unsafe {
@@ -44,10 +43,7 @@ pub fn addr_of_mut(ccx: &CrateContext,
                    kind: &str)
                     -> ValueRef {
     unsafe {
-        // FIXME: this totally needs a better name generation scheme, perhaps a simple global
-        // counter? Also most other uses of gensym in trans.
-        let gsym = token::gensym("_");
-        let name = format!("{}{}", kind, gsym.0);
+        let name = ccx.generate_local_symbol_name(kind);
         let gv = declare::define_global(ccx, &name[..], val_ty(cv)).unwrap_or_else(||{
             bug!("symbol `{}` is already defined", name);
         });

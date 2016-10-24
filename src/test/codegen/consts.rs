@@ -19,12 +19,12 @@
 // CHECK: @STATIC = {{.*}}, align 4
 
 // This checks the constants from inline_enum_const
-// CHECK: @ref{{[0-9]+}} = {{.*}}, align 2
+// CHECK: @ref.{{[0-9]+}} = {{.*}}, align 2
 
 // This checks the constants from {low,high}_align_const, they share the same
 // constant, but the alignment differs, so the higher one should be used
-// CHECK: [[LOW_HIGH:@ref[0-9]+]] = {{.*}}, align 4
-// CHECK: [[LOW_HIGH_REF:@const[0-9]+]] = {{.*}} [[LOW_HIGH]]
+// CHECK: [[LOW_HIGH:@ref.[0-9]+]] = {{.*}}, align 4
+// CHECK: [[LOW_HIGH_REF:@const.[0-9]+]] = {{.*}} [[LOW_HIGH]]
 
 #[derive(Copy, Clone)]
 

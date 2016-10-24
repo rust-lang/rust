@@ -799,9 +799,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
                                                 s.as_ptr() as *const c_char,
                                                 s.len() as c_uint,
                                                 !null_terminated as Bool);
-
-        let gsym = token::gensym("str");
-        let sym = format!("str{}", gsym.0);
+        let sym = cx.generate_local_symbol_name("str");
         let g = declare::define_global(cx, &sym[..], val_ty(sc)).unwrap_or_else(||{
             bug!("symbol `{}` is already defined", sym);
         });
