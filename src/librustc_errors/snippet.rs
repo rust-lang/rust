@@ -42,6 +42,57 @@ pub struct Line {
 }
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub enum AnnotationType {
+    /// Annotation under a single line of code
+    Singleline,
+
+    /// Annotation under the first character of a multiline span
+    Minimized,
+
+    /// Annotation enclosing the first and last character of a multiline span
+    Multiline {
+        depth: usize,
+        line_start: usize,
+        line_end: usize,
+    },
+
+    // The Multiline type above is replaced with the following three in order
+    // to reuse the current label drawing code.
+    //
+    // Each of these corresponds to one part of the following diagram:
+    //
+    //     x |   foo(1 + bar(x,
+    //       |  _________^ starting here...           < MultilineStart
+    //     x | |             y),                      < MultilineLine
+    //       | |______________^ ...ending here: label < MultilineEnd
+    //     x |       z);
+    /// Annotation marking the first character of a fully shown multiline span
+    MultilineStart(usize),
+    /// Annotation marking the last character of a fully shown multiline span
+    MultilineEnd(usize),
+    /// Line at the left enclosing the lines of a fully shown multiline span
+    MultilineLine(usize),
+}
+
+impl AnnotationType {
+    pub fn depth(&self) -> usize {
+        match self {
+            &AnnotationType::Multiline {depth, ..} |
+                &AnnotationType::MultilineStart(depth) |
+                &AnnotationType::MultilineLine(depth) |
+                &AnnotationType::MultilineEnd(depth) => depth,
+            _ => 0,
+        }
+    }
+
+    pub fn increase_depth(&mut self) {
+        if let AnnotationType::Multiline {ref mut depth, ..} = *self {
+            *depth += 1;
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Annotation {
     /// Start column, 0-based indexing -- counting *characters*, not
     /// utf-8 bytes. Note that it is important that this field goes
@@ -55,11 +106,57 @@ pub struct Annotation {
     /// Is this annotation derived from primary span
     pub is_primary: bool,
 
-    /// Is this a large span minimized down to a smaller span
-    pub is_minimized: bool,
-
     /// Optional label to display adjacent to the annotation.
     pub label: Option<String>,
+
+    /// Is this a single line, multiline or multiline span minimized down to a
+    /// smaller span.
+    pub annotation_type: AnnotationType,
+}
+
+impl Annotation {
+    pub fn is_minimized(&self) -> bool {
+        match self.annotation_type {
+            AnnotationType::Minimized => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_multiline(&self) -> bool {
+        match self.annotation_type {
+            AnnotationType::Multiline {..} |
+                AnnotationType::MultilineStart(_) |
+                AnnotationType::MultilineLine(_) |
+                AnnotationType::MultilineEnd(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn as_start(&self) -> Annotation {
+        let mut a = self.clone();
+        a.annotation_type = AnnotationType::MultilineStart(self.annotation_type.depth());
+        a.end_col = a.start_col + 1;
+        a.label = Some("starting here...".to_owned());
+        a
+    }
+
+    pub fn as_end(&self) -> Annotation {
+        let mut a = self.clone();
+        a.annotation_type = AnnotationType::MultilineEnd(self.annotation_type.depth());
+        a.start_col = a.end_col - 1;
+        a.label = match a.label {
+            Some(l) => Some(format!("...ending here: {}", l)),
+            None => Some("..ending here".to_owned()),
+        };
+        a
+    }
+
+    pub fn as_line(&self) -> Annotation {
+        let mut a = self.clone();
+        a.annotation_type = AnnotationType::MultilineLine(self.annotation_type.depth());
+        a.label = None;
+        a
+    }
 }
 
 #[derive(Debug)]
