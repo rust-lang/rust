@@ -1036,7 +1036,8 @@ fn get_concurrency() -> usize {
               target_os = "ios",
               target_os = "android",
               target_os = "solaris",
-              target_os = "emscripten"))]
+              target_os = "emscripten",
+              target_os = "fuchsia"))]
     fn num_cpus() -> usize {
         unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as usize }
     }

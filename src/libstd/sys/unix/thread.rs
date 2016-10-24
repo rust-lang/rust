@@ -135,6 +135,10 @@ impl Thread {
     pub fn set_name(_name: &CStr) {
         // Newlib, Illumos, Haiku, and Emscripten have no way to set a thread name.
     }
+    #[cfg(target_os = "fuchsia")]
+    pub fn set_name(_name: &CStr) {
+        // FIXME: determine whether Fuchsia has a way to set a thread name.
+    }
 
     pub fn sleep(dur: Duration) {
         let mut secs = dur.as_secs();
