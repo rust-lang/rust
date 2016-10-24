@@ -166,6 +166,9 @@ pub struct LocalCrateContext<'tcx> {
     type_of_depth: Cell<usize>,
 
     symbol_map: Rc<SymbolMap<'tcx>>,
+
+    /// A counter that is used for generating local symbol names
+    local_gen_sym_counter: Cell<usize>,
 }
 
 // Implement DepTrackingMapConfig for `trait_cache`
@@ -688,6 +691,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 n_llvm_insns: Cell::new(0),
                 type_of_depth: Cell::new(0),
                 symbol_map: symbol_map,
+                local_gen_sym_counter: Cell::new(0),
             };
 
             let (int_type, opaque_vec_type, str_slice_ty, mut local_ccx) = {
@@ -1020,6 +1024,16 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
         self.shared().empty_substs_for_def_id(item_def_id)
+    }
+
+    /// Generate a new symbol name with the given prefix. This symbol name must
+    /// only be used for definitions with `internal` or `private` linkage.
+    pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
+        let idx = self.local().local_gen_sym_counter.get();
+        self.local().local_gen_sym_counter.set(idx + 1);
+        // Include a '.' character, so there can be no accidental conflicts with
+        // user defined names
+        format!("{}.{}", prefix, idx)
     }
 }
 
