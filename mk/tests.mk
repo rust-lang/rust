@@ -632,6 +632,7 @@ endif
 # is a separate choice from whether to pass `-g` when building the
 # compiler and standard library themselves.
 CTEST_RUSTC_FLAGS := $$(subst -g,,$$(CTEST_RUSTC_FLAGS))
+CTEST_RUSTC_FLAGS := $$(subst -Cdebuginfo=1,,$$(CTEST_RUSTC_FLAGS))
 ifdef CFG_ENABLE_DEBUGINFO_TESTS
 CTEST_RUSTC_FLAGS += -g
 endif
