@@ -48,16 +48,13 @@ fn main()
 
     let _ = v as f32;
     //~^ ERROR casting
-    //~^^ HELP through a usize first
     let _ = main as f64;
     //~^ ERROR casting
-    //~^^ HELP through a usize first
     let _ = &v as usize;
     //~^ ERROR casting
     //~^^ HELP through a raw pointer first
     let _ = f as *const u8;
     //~^ ERROR casting
-    //~^^ HELP through a usize first
     let _ = 3_i32 as bool;
     //~^ ERROR cannot cast as `bool` [E0054]
     //~| unsupported cast
@@ -80,13 +77,10 @@ fn main()
 
     let _ = false as *const u8;
     //~^ ERROR casting
-    //~^^ HELP through a usize first
     let _ = E::A as *const u8;
     //~^ ERROR casting
-    //~^^ HELP through a usize first
     let _ = 'a' as *const u8;
     //~^ ERROR casting
-    //~^^ HELP through a usize first
 
     let _ = 42usize as *const [u8]; //~ ERROR casting
     let _ = v as *const [u8]; //~ ERROR cannot cast
