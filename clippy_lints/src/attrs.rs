@@ -6,8 +6,7 @@ use rustc::hir::*;
 use semver::Version;
 use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
-use utils::{in_macro, match_path, span_lint, span_lint_and_then, snippet_opt};
-use utils::paths;
+use utils::{in_macro, match_def_path, resolve_node, paths, span_lint, span_lint_and_then, snippet_opt};
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.
@@ -101,7 +100,7 @@ impl LateLintPass for AttrPass {
     }
 
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
-        if is_relevant_item(item) {
+        if is_relevant_item(cx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }
         match item.node {
@@ -140,62 +139,63 @@ impl LateLintPass for AttrPass {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
-        if is_relevant_impl(item) {
+        if is_relevant_impl(cx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
-        if is_relevant_trait(item) {
+        if is_relevant_trait(cx, item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
         }
     }
 }
 
-fn is_relevant_item(item: &Item) -> bool {
+fn is_relevant_item(cx: &LateContext, item: &Item) -> bool {
     if let ItemFn(_, _, _, _, _, ref block) = item.node {
-        is_relevant_block(block)
+        is_relevant_block(cx, block)
     } else {
         false
     }
 }
 
-fn is_relevant_impl(item: &ImplItem) -> bool {
+fn is_relevant_impl(cx: &LateContext, item: &ImplItem) -> bool {
     match item.node {
-        ImplItemKind::Method(_, ref block) => is_relevant_block(block),
+        ImplItemKind::Method(_, ref block) => is_relevant_block(cx, block),
         _ => false,
     }
 }
 
-fn is_relevant_trait(item: &TraitItem) -> bool {
+fn is_relevant_trait(cx: &LateContext, item: &TraitItem) -> bool {
     match item.node {
         MethodTraitItem(_, None) => true,
-        MethodTraitItem(_, Some(ref block)) => is_relevant_block(block),
+        MethodTraitItem(_, Some(ref block)) => is_relevant_block(cx, block),
         _ => false,
     }
 }
 
-fn is_relevant_block(block: &Block) -> bool {
+fn is_relevant_block(cx: &LateContext, block: &Block) -> bool {
     for stmt in &block.stmts {
         match stmt.node {
             StmtDecl(_, _) => return true,
             StmtExpr(ref expr, _) |
             StmtSemi(ref expr, _) => {
-                return is_relevant_expr(expr);
+                return is_relevant_expr(cx, expr);
             }
         }
     }
-    block.expr.as_ref().map_or(false, |e| is_relevant_expr(e))
+    block.expr.as_ref().map_or(false, |e| is_relevant_expr(cx, e))
 }
 
-fn is_relevant_expr(expr: &Expr) -> bool {
+fn is_relevant_expr(cx: &LateContext, expr: &Expr) -> bool {
     match expr.node {
-        ExprBlock(ref block) => is_relevant_block(block),
-        ExprRet(Some(ref e)) => is_relevant_expr(e),
+        ExprBlock(ref block) => is_relevant_block(cx, block),
+        ExprRet(Some(ref e)) => is_relevant_expr(cx, e),
         ExprRet(None) | ExprBreak(_) => false,
         ExprCall(ref path_expr, _) => {
-            if let ExprPath(_, ref path) = path_expr.node {
-                !match_path(path, &paths::BEGIN_PANIC)
+            if let ExprPath(..) = path_expr.node {
+                let fun_id = resolve_node(cx, path_expr.id).expect("function should be resolved").def_id();
+                !match_def_path(cx, fun_id, &paths::BEGIN_PANIC)
             } else {
                 true
             }

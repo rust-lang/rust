@@ -1,6 +1,6 @@
 //! This module contains paths to types and functions Clippy needs to know about.
 
-pub const BEGIN_PANIC: [&'static str; 3] = ["std", "rt", "begin_panic"];
+pub const BEGIN_PANIC: [&'static str; 3] = ["std", "panicking", "begin_panic"];
 pub const BINARY_HEAP: [&'static str; 3] = ["collections", "binary_heap", "BinaryHeap"];
 pub const BOX: [&'static str; 3] = ["std", "boxed", "Box"];
 pub const BOX_NEW: [&'static str; 4] = ["std", "boxed", "Box", "new"];
@@ -13,18 +13,18 @@ pub const CMP_MAX: [&'static str; 3] = ["core", "cmp", "max"];
 pub const CMP_MIN: [&'static str; 3] = ["core", "cmp", "min"];
 pub const COW: [&'static str; 3] = ["collections", "borrow", "Cow"];
 pub const CSTRING_NEW: [&'static str; 4] = ["std", "ffi", "CString", "new"];
-pub const DEBUG_FMT_METHOD: [&'static str; 4] = ["std", "fmt", "Debug", "fmt"];
+pub const DEBUG_FMT_METHOD: [&'static str; 4] = ["core", "fmt", "Debug", "fmt"];
 pub const DEFAULT_TRAIT: [&'static str; 3] = ["core", "default", "Default"];
-pub const DISPLAY_FMT_METHOD: [&'static str; 4] = ["std", "fmt", "Display", "fmt"];
+pub const DISPLAY_FMT_METHOD: [&'static str; 4] = ["core", "fmt", "Display", "fmt"];
 pub const DROP: [&'static str; 3] = ["core", "mem", "drop"];
-pub const FMT_ARGUMENTS_NEWV1: [&'static str; 4] = ["std", "fmt", "Arguments", "new_v1"];
-pub const FMT_ARGUMENTV1_NEW: [&'static str; 4] = ["std", "fmt", "ArgumentV1", "new"];
+pub const FMT_ARGUMENTS_NEWV1: [&'static str; 4] = ["core", "fmt", "Arguments", "new_v1"];
+pub const FMT_ARGUMENTV1_NEW: [&'static str; 4] = ["core", "fmt", "ArgumentV1", "new"];
 pub const HASH: [&'static str; 2] = ["hash", "Hash"];
 pub const HASHMAP: [&'static str; 5] = ["std", "collections", "hash", "map", "HashMap"];
 pub const HASHMAP_ENTRY: [&'static str; 5] = ["std", "collections", "hash", "map", "Entry"];
 pub const HASHSET: [&'static str; 5] = ["std", "collections", "hash", "set", "HashSet"];
 pub const INTO_ITERATOR: [&'static str; 4] = ["core", "iter", "traits", "IntoIterator"];
-pub const IO_PRINT: [&'static str; 3] = ["std", "io", "_print"];
+pub const IO_PRINT: [&'static str; 4] = ["std", "io", "stdio", "_print"];
 pub const ITERATOR: [&'static str; 4] = ["core", "iter", "iterator", "Iterator"];
 pub const LINKED_LIST: [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
 pub const LINT: [&'static str; 3] = ["rustc", "lint", "Lint"];
@@ -64,4 +64,4 @@ pub const STRING: [&'static str; 3] = ["collections", "string", "String"];
 pub const TRANSMUTE: [&'static str; 4] = ["core", "intrinsics", "", "transmute"];
 pub const VEC: [&'static str; 3] = ["collections", "vec", "Vec"];
 pub const VEC_DEQUE: [&'static str; 3] = ["collections", "vec_deque", "VecDeque"];
-pub const VEC_FROM_ELEM: [&'static str; 3] = ["std", "vec", "from_elem"];
+pub const VEC_FROM_ELEM: [&'static str; 3] = ["collections", "vec", "from_elem"];
