@@ -19,11 +19,4 @@ fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
 //
 // Not OK: `T` is not sized.
 
-enum Bar<U: ?Sized> { BarSome(U), BarNone }
-fn bar1<T: ?Sized>() { not_sized::<Bar<T>>() }
-fn bar2<T: ?Sized>() { is_sized::<Bar<T>>() }
-//~^ ERROR `T: std::marker::Sized` is not satisfied
-//
-// Not OK: `Bar<T>` is not sized, but it should be.
-
 fn main() { }

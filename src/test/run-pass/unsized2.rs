@@ -89,19 +89,13 @@ trait T7<X: ?Sized+T> {
     fn m2(&self, x: &T5<X>);
 }
 
-// The last field in a struct or variant may be unsized
+// The last field in a struct may be unsized
 struct S2<X: ?Sized> {
     f: X,
 }
 struct S3<X: ?Sized> {
     f1: isize,
     f2: X,
-}
-enum E<X: ?Sized> {
-    V1(X),
-    V2{x: X},
-    V3(isize, X),
-    V4{u: isize, x: X},
 }
 
 pub fn main() {
