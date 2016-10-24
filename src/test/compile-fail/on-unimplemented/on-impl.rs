@@ -29,8 +29,9 @@ impl Index<usize> for [i32] {
 
 #[rustc_error]
 fn main() {
-    Index::<u32>::index(&[1, 2, 3] as &[i32], 2u32); //~ ERROR E0277
-                                                     //~| NOTE not satisfied
-                                                     //~| NOTE a usize is required
-                                                     //~| NOTE required by
+    Index::<u32>::index(&[1, 2, 3] as &[i32], 2u32);
+    //~^ ERROR E0277
+    //~| NOTE the trait `Index<u32>` is not implemented for `[i32]`
+    //~| NOTE a usize is required
+    //~| NOTE required by
 }
