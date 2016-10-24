@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::{Target, TargetResult};
+use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
@@ -25,6 +25,9 @@ pub fn target() -> TargetResult {
         target_os: "android".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
-        options: base,
+        options: TargetOptions {
+            abi_blacklist: super::arm_base::abi_blacklist(),
+            .. base
+        },
     })
 }

@@ -25,6 +25,7 @@ pub fn target() -> TargetResult {
         options: TargetOptions {
             features: "+v7,+vfp4,+neon".to_string(),
             max_atomic_width: Some(64),
+            abi_blacklist: super::arm_base::abi_blacklist(),
             .. base
         }
     })
