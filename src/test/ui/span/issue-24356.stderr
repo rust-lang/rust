@@ -1,0 +1,10 @@
+error[E0046]: not all trait items implemented, missing: `Target`
+  --> $DIR/issue-24356.rs:30:9
+   |
+30 |         impl Deref for Thing {
+   |         ^ missing `Target` in implementation
+   |
+   = note: `Target` from trait: `type Target;`
+
+error: aborting due to previous error
+
