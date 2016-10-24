@@ -8,14 +8,18 @@ use syntax::ast::{Attribute, MetaItemKind};
 
 /// **What it does:** Dumps every ast/hir node which has the `#[clippy_dump]` attribute
 ///
-/// **Why is this bad?** 😈
-///
-/// **Known problems:** ∅
-///
 /// **Example:**
 /// ```rust
-/// #[inspect]
+/// #[clippy_dump]
 /// extern crate foo;
+/// ```
+///
+/// prints
+///
+/// ```
+/// item `foo`
+/// visibility inherited from outer item
+/// extern crate dylib source: "/path/to/foo.so"
 /// ```
 declare_lint! {
     pub DEEP_CODE_INSPECTION,
