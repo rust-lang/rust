@@ -136,6 +136,11 @@ it to allow or deny lints, eg.:
     #[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
 "#;
 
+#[allow(print_stdout)]
+fn show_help() {
+    println!("{}", CARGO_CLIPPY_HELP);
+}
+
 pub fn main() {
     use std::env;
 
@@ -165,12 +170,9 @@ pub fn main() {
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // this arm is executed on the initial call to `cargo clippy`
 
-        match std::env::args().nth(2).as_ref().map(AsRef::as_ref) {
-            Some("--help") | Some("-h") => {
-                println!("{}", CARGO_CLIPPY_HELP);
-                return;
-            }
-            _ => (),
+        if std::env::args().any(|a| a == "--help" || a == "-h") {
+            show_help();
+            return;
         }
 
         let manifest_path_arg = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
