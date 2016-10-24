@@ -392,27 +392,30 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-// When hashing a type this ends up affecting properties like symbol names. We
-// want these symbol names to be calculated independent of other factors like
-// what architecture you're compiling *from*.
-//
-// The hashing just uses the standard `Hash` trait, but the implementations of
-// `Hash` for the `usize` and `isize` types are *not* architecture independent
-// (e.g. they has 4 or 8 bytes). As a result we want to avoid `usize` and
-// `isize` completely when hashing. To ensure that these don't leak in we use a
-// custom hasher implementation here which inflates the size of these to a `u64`
-// and `i64`.
-struct WidenUsizeHasher<H> {
+/// When hashing a type this ends up affecting properties like symbol names. We
+/// want these symbol names to be calculated independent of other factors like
+/// what architecture you're compiling *from*.
+///
+/// The hashing just uses the standard `Hash` trait, but the implementations of
+/// `Hash` for the `usize` and `isize` types are *not* architecture independent
+/// (e.g. they has 4 or 8 bytes). As a result we want to avoid `usize` and
+/// `isize` completely when hashing. To ensure that these don't leak in we use a
+/// custom hasher implementation here which inflates the size of these to a `u64`
+/// and `i64`.
+///
+/// The same goes for endianess: We always convert multi-byte integers to little
+/// endian before hashing.
+pub struct ArchIndependentHasher<H> {
     inner: H,
 }
 
-impl<H> WidenUsizeHasher<H> {
-    fn new(inner: H) -> WidenUsizeHasher<H> {
-        WidenUsizeHasher { inner: inner }
+impl<H> ArchIndependentHasher<H> {
+    pub fn new(inner: H) -> ArchIndependentHasher<H> {
+        ArchIndependentHasher { inner: inner }
     }
 }
 
-impl<H: Hasher> Hasher for WidenUsizeHasher<H> {
+impl<H: Hasher> Hasher for ArchIndependentHasher<H> {
     fn write(&mut self, bytes: &[u8]) {
         self.inner.write(bytes)
     }
@@ -425,44 +428,44 @@ impl<H: Hasher> Hasher for WidenUsizeHasher<H> {
         self.inner.write_u8(i)
     }
     fn write_u16(&mut self, i: u16) {
-        self.inner.write_u16(i)
+        self.inner.write_u16(i.to_le())
     }
     fn write_u32(&mut self, i: u32) {
-        self.inner.write_u32(i)
+        self.inner.write_u32(i.to_le())
     }
     fn write_u64(&mut self, i: u64) {
-        self.inner.write_u64(i)
+        self.inner.write_u64(i.to_le())
     }
     fn write_usize(&mut self, i: usize) {
-        self.inner.write_u64(i as u64)
+        self.inner.write_u64((i as u64).to_le())
     }
     fn write_i8(&mut self, i: i8) {
         self.inner.write_i8(i)
     }
     fn write_i16(&mut self, i: i16) {
-        self.inner.write_i16(i)
+        self.inner.write_i16(i.to_le())
     }
     fn write_i32(&mut self, i: i32) {
-        self.inner.write_i32(i)
+        self.inner.write_i32(i.to_le())
     }
     fn write_i64(&mut self, i: i64) {
-        self.inner.write_i64(i)
+        self.inner.write_i64(i.to_le())
     }
     fn write_isize(&mut self, i: isize) {
-        self.inner.write_i64(i as i64)
+        self.inner.write_i64((i as i64).to_le())
     }
 }
 
 pub struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a, H> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    state: WidenUsizeHasher<H>,
+    state: ArchIndependentHasher<H>,
 }
 
 impl<'a, 'gcx, 'tcx, H: Hasher> TypeIdHasher<'a, 'gcx, 'tcx, H> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, state: H) -> Self {
         TypeIdHasher {
             tcx: tcx,
-            state: WidenUsizeHasher::new(state),
+            state: ArchIndependentHasher::new(state),
         }
     }
 
@@ -492,6 +495,10 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeIdHasher<'a, 'gcx, 'tcx, H> {
 
     pub fn def_path(&mut self, def_path: &ast_map::DefPath) {
         def_path.deterministic_hash_to(self.tcx, &mut self.state);
+    }
+
+    pub fn into_inner(self) -> H {
+        self.state.inner
     }
 }
 
