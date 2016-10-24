@@ -26,6 +26,7 @@ pub fn target() -> TargetResult {
             features: "+neon,+fp-armv8,+cyclone".to_string(),
             eliminate_frame_pointer: false,
             max_atomic_width: Some(128),
+            abi_blacklist: super::arm_base::abi_blacklist(),
             .. base
         },
     })

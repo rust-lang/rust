@@ -531,12 +531,15 @@ pub fn check_drop_impls(ccx: &CrateCtxt) -> CompileResult {
 fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            decl: &'tcx hir::FnDecl,
                            body: &'tcx hir::Block,
-                           fn_id: ast::NodeId) {
+                           fn_id: ast::NodeId,
+                           span: Span) {
     let raw_fty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(fn_id)).ty;
     let fn_ty = match raw_fty.sty {
         ty::TyFnDef(.., f) => f,
         _ => span_bug!(body.span, "check_bare_fn: function type expected")
     };
+
+    check_abi(ccx, span, fn_ty.abi);
 
     ccx.inherited(fn_id).enter(|inh| {
         // Compute the fty from point of view of inside fn.
@@ -559,6 +562,13 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         fcx.regionck_fn(fn_id, decl, body);
         fcx.resolve_type_vars_in_fn(decl, body, fn_id);
     });
+}
+
+fn check_abi<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, span: Span, abi: Abi) {
+    if !ccx.tcx.sess.target.target.is_abi_supported(abi) {
+        struct_span_err!(ccx.tcx.sess, span, E0570,
+            "The ABI `{}` is not supported for the current target", abi).emit()
+    }
 }
 
 struct GatherLocalsVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
@@ -767,6 +777,8 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         check_bounds_are_used(ccx, generics, pty_ty);
       }
       hir::ItemForeignMod(ref m) => {
+        check_abi(ccx, it.span, m.abi);
+
         if m.abi == Abi::RustIntrinsic {
             for item in &m.items {
                 intrinsic::check_intrinsic_type(ccx, item);
@@ -804,7 +816,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
     let _indenter = indenter();
     match it.node {
       hir::ItemFn(ref decl, .., ref body) => {
-        check_bare_fn(ccx, &decl, &body, it.id);
+        check_bare_fn(ccx, &decl, &body, it.id, it.span);
       }
       hir::ItemImpl(.., ref impl_items) => {
         debug!("ItemImpl {} with id {}", it.name, it.id);
@@ -815,7 +827,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                     check_const(ccx, &expr, impl_item.id)
                 }
                 hir::ImplItemKind::Method(ref sig, ref body) => {
-                    check_bare_fn(ccx, &sig.decl, body, impl_item.id);
+                    check_bare_fn(ccx, &sig.decl, body, impl_item.id, impl_item.span);
                 }
                 hir::ImplItemKind::Type(_) => {
                     // Nothing to do here.
@@ -830,7 +842,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                     check_const(ccx, &expr, trait_item.id)
                 }
                 hir::MethodTraitItem(ref sig, Some(ref body)) => {
-                    check_bare_fn(ccx, &sig.decl, body, trait_item.id);
+                    check_bare_fn(ccx, &sig.decl, body, trait_item.id, trait_item.span);
                 }
                 hir::MethodTraitItem(_, None) |
                 hir::ConstTraitItem(_, None) |
