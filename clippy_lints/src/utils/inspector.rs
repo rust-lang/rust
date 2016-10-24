@@ -35,78 +35,33 @@ impl LateLintPass for Pass {
         if !has_attr(&item.attrs) {
             return;
         }
-        let did = cx.tcx.map.local_def_id(item.id);
-        println!("item `{}`", item.name);
+        print_item(cx, item);
+    }
+
+    fn check_impl_item(&mut self, cx: &LateContext, item: &hir::ImplItem) {
+        if !has_attr(&item.attrs) {
+            return;
+        }
+        println!("impl item `{}`", item.name);
         match item.vis {
             hir::Visibility::Public => println!("public"),
             hir::Visibility::Crate => println!("visible crate wide"),
             hir::Visibility::Restricted { ref path, .. } => println!("visible in module `{}`", path),
             hir::Visibility::Inherited => println!("visibility inherited from outer item"),
         }
+        if item.defaultness.is_default() {
+            println!("default");
+        }
         match item.node {
-            hir::ItemExternCrate(ref _renamed_from) => {
-                if let Some(crate_id) = cx.tcx.sess.cstore.extern_mod_stmt_cnum(item.id) {
-                    let source = cx.tcx.sess.cstore.used_crate_source(crate_id);
-                    if let Some(src) = source.dylib {
-                        println!("extern crate dylib source: {:?}", src.0);
-                    }
-                    if let Some(src) = source.rlib {
-                        println!("extern crate rlib source: {:?}", src.0);
-                    }
-                } else {
-                    println!("weird extern crate without a crate id");
-                }
-            }
-            hir::ItemUse(ref path) => println!("{:?}", path.node),
-            hir::ItemStatic(..) => println!("static item: {:#?}", cx.tcx.opt_lookup_item_type(did)),
-            hir::ItemConst(..) => println!("const item: {:#?}", cx.tcx.opt_lookup_item_type(did)),
-            hir::ItemFn(..) => {
-                let item_ty = cx.tcx.opt_lookup_item_type(did);
-                println!("function: {:#?}", item_ty);
+            hir::ImplItemKind::Const(_, ref e) => {
+                println!("associated constant");
+                print_expr(cx, e, 1);
             },
-            hir::ItemMod(..) => println!("module"),
-            hir::ItemForeignMod(ref fm) => println!("foreign module with abi: {}", fm.abi),
-            hir::ItemTy(..) => {
-                println!("type alias: {:?}", cx.tcx.opt_lookup_item_type(did));
-            },
-            hir::ItemEnum(..) => {
-                println!("enum definition: {:?}", cx.tcx.opt_lookup_item_type(did));
-            },
-            hir::ItemStruct(..) => {
-                println!("struct definition: {:?}", cx.tcx.opt_lookup_item_type(did));
-            },
-            hir::ItemUnion(..) => {
-                println!("union definition: {:?}", cx.tcx.opt_lookup_item_type(did));
-            },
-            hir::ItemTrait(..) => {
-                println!("trait decl");
-                if cx.tcx.trait_has_default_impl(did) {
-                    println!("trait has a default impl");
-                } else {
-                    println!("trait has no default impl");
-                }
-            },
-            hir::ItemDefaultImpl(_, ref trait_ref) => {
-                let trait_did = cx.tcx.map.local_def_id(trait_ref.ref_id);
-                println!("default impl for `{:?}`", cx.tcx.item_path_str(trait_did));
-            },
-            hir::ItemImpl(_, _, _, Some(ref trait_ref), _, _) => {
-                let trait_did = cx.tcx.map.local_def_id(trait_ref.ref_id);
-                println!("impl of trait `{:?}`", cx.tcx.item_path_str(trait_did));
-            },
-            hir::ItemImpl(_, _, _, None, _, _) => {
-                println!("impl");
-            },
+            hir::ImplItemKind::Method(..) => println!("method"),
+            hir::ImplItemKind::Type(_) => println!("associated type"),
         }
     }
-
 /*
-    fn check_impl_item(&mut self, cx: &LateContext, item: &hir::ImplItem) {
-        if !has_attr(&item.attrs) {
-            return;
-        }
-    }
-
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
         if !has_attr(&item.attrs) {
             return;
@@ -133,18 +88,6 @@ impl LateLintPass for Pass {
         print_expr(cx, expr, 0);
     }
 
-    fn check_decl(&mut self, cx: &LateContext, decl: &hir::Decl) {
-        if !has_attr(decl.node.attrs()) {
-            return;
-        }
-        match decl.node {
-            hir::DeclLocal(ref local) => {
-                println!("local variable of type {}", cx.tcx.node_id_to_type(local.id));
-            },
-            hir::DeclItem(_) => println!("item decl"),
-        }
-    }
-/*
     fn check_arm(&mut self, cx: &LateContext, arm: &hir::Arm) {
         if !has_attr(&arm.attrs) {
             return;
@@ -164,13 +107,12 @@ impl LateLintPass for Pass {
         if !has_attr(stmt.node.attrs()) {
             return;
         }
-    }
-
-    fn check_local(&mut self, cx: &LateContext, local: &hir::Local) {
-        if !has_attr(&local.attrs) {
-            return;
+        match stmt.node {
+            hir::StmtDecl(ref decl, _) => print_decl(cx, decl),
+            hir::StmtExpr(ref e, _) | hir::StmtSemi(ref e, _) => print_expr(cx, e, 0),
         }
     }
+/*
 
     fn check_foreign_item(&mut self, cx: &LateContext, item: &hir::ForeignItem) {
         if !has_attr(&item.attrs) {
@@ -380,6 +322,73 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
         },
     }
 }
+
+fn print_item(cx: &LateContext, item: &hir::Item) {
+    let did = cx.tcx.map.local_def_id(item.id);
+    println!("item `{}`", item.name);
+    match item.vis {
+        hir::Visibility::Public => println!("public"),
+        hir::Visibility::Crate => println!("visible crate wide"),
+        hir::Visibility::Restricted { ref path, .. } => println!("visible in module `{}`", path),
+        hir::Visibility::Inherited => println!("visibility inherited from outer item"),
+    }
+    match item.node {
+        hir::ItemExternCrate(ref _renamed_from) => {
+            if let Some(crate_id) = cx.tcx.sess.cstore.extern_mod_stmt_cnum(item.id) {
+                let source = cx.tcx.sess.cstore.used_crate_source(crate_id);
+                if let Some(src) = source.dylib {
+                    println!("extern crate dylib source: {:?}", src.0);
+                }
+                if let Some(src) = source.rlib {
+                    println!("extern crate rlib source: {:?}", src.0);
+                }
+            } else {
+                println!("weird extern crate without a crate id");
+            }
+        }
+        hir::ItemUse(ref path) => println!("{:?}", path.node),
+        hir::ItemStatic(..) => println!("static item: {:#?}", cx.tcx.opt_lookup_item_type(did)),
+        hir::ItemConst(..) => println!("const item: {:#?}", cx.tcx.opt_lookup_item_type(did)),
+        hir::ItemFn(..) => {
+            let item_ty = cx.tcx.opt_lookup_item_type(did);
+            println!("function: {:#?}", item_ty);
+        },
+        hir::ItemMod(..) => println!("module"),
+        hir::ItemForeignMod(ref fm) => println!("foreign module with abi: {}", fm.abi),
+        hir::ItemTy(..) => {
+            println!("type alias: {:?}", cx.tcx.opt_lookup_item_type(did));
+        },
+        hir::ItemEnum(..) => {
+            println!("enum definition: {:?}", cx.tcx.opt_lookup_item_type(did));
+        },
+        hir::ItemStruct(..) => {
+            println!("struct definition: {:?}", cx.tcx.opt_lookup_item_type(did));
+        },
+        hir::ItemUnion(..) => {
+            println!("union definition: {:?}", cx.tcx.opt_lookup_item_type(did));
+        },
+        hir::ItemTrait(..) => {
+            println!("trait decl");
+            if cx.tcx.trait_has_default_impl(did) {
+                println!("trait has a default impl");
+            } else {
+                println!("trait has no default impl");
+            }
+        },
+        hir::ItemDefaultImpl(_, ref trait_ref) => {
+            let trait_did = cx.tcx.map.local_def_id(trait_ref.ref_id);
+            println!("default impl for `{:?}`", cx.tcx.item_path_str(trait_did));
+        },
+        hir::ItemImpl(_, _, _, Some(ref trait_ref), _, _) => {
+            let trait_did = cx.tcx.map.local_def_id(trait_ref.ref_id);
+            println!("impl of trait `{:?}`", cx.tcx.item_path_str(trait_did));
+        },
+        hir::ItemImpl(_, _, _, None, _, _) => {
+            println!("impl");
+        },
+    }
+}
+
 fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
