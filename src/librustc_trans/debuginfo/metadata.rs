@@ -1771,15 +1771,17 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         return;
     }
 
+    let tcx = cx.tcx();
+
     // Don't create debuginfo for globals inlined from other crates. The other
     // crate should already contain debuginfo for it. More importantly, the
     // global might not even exist in un-inlined form anywhere which would lead
     // to a linker errors.
-    if cx.tcx().map.is_inlined_node_id(node_id) {
+    if tcx.map.is_inlined_node_id(node_id) {
         return;
     }
 
-    let node_def_id = cx.tcx().map.local_def_id(node_id);
+    let node_def_id = tcx.map.local_def_id(node_id);
     let (var_scope, span) = get_namespace_and_span_for_item(cx, node_def_id);
 
     let (file_metadata, line_number) = if span != syntax_pos::DUMMY_SP {
@@ -1790,9 +1792,9 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = cx.tcx().node_id_to_type(node_id);
+    let variable_type = tcx.erase_regions(&tcx.node_id_to_type(node_id));
     let type_metadata = type_metadata(cx, variable_type, span);
-    let var_name = cx.tcx().item_name(node_def_id).to_string();
+    let var_name = tcx.item_name(node_def_id).to_string();
     let linkage_name = mangled_name_of_item(cx, node_def_id, "");
 
     let var_name = CString::new(var_name).unwrap();
