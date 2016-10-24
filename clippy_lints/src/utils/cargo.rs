@@ -20,7 +20,7 @@ pub struct Package {
     pub dependencies: Vec<Dependency>,
     pub targets: Vec<Target>,
     features: HashMap<String, Vec<String>>,
-    manifest_path: String,
+    pub manifest_path: String,
 }
 
 #[derive(RustcDecodable, Debug)]
@@ -65,10 +65,10 @@ impl From<json::DecoderError> for Error {
     }
 }
 
-pub fn metadata(manifest_path: Option<String>) -> Result<Metadata, Error> {
+pub fn metadata(manifest_path_arg: Option<&str>) -> Result<Metadata, Error> {
     let mut cmd = Command::new("cargo");
     cmd.arg("metadata").arg("--no-deps");
-    if let Some(ref mani) = manifest_path {
+    if let Some(mani) = manifest_path_arg {
         cmd.arg(mani);
     }
     let output = cmd.output()?;

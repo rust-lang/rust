@@ -138,10 +138,29 @@ pub fn main() {
 
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // this arm is executed on the initial call to `cargo clippy`
-        let manifest_path = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
-        let mut metadata = cargo::metadata(manifest_path).expect("could not obtain cargo metadata");
+        let manifest_path_arg = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
+
+        let mut metadata = cargo::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)).expect("could not obtain cargo metadata");
         assert_eq!(metadata.version, 1);
-        for target in metadata.packages.remove(0).targets {
+
+        let manifest_path = manifest_path_arg.map(|arg| PathBuf::from(Path::new(&arg["--manifest-path=".len()..])));
+
+        let current_dir = std::env::current_dir();
+
+        let package_index = metadata.packages.iter()
+            .position(|package| {
+                let package_manifest_path = Path::new(&package.manifest_path);
+                if let Some(ref manifest_path) = manifest_path {
+                    package_manifest_path == manifest_path
+                } else {
+                    let current_dir = current_dir.as_ref().expect("could not read current directory");
+                    let package_manifest_directory = package_manifest_path.parent().expect("could not find parent directory of package manifest");
+                    package_manifest_directory == current_dir
+                }
+            })
+            .expect("could not find matching package");
+        let package = metadata.packages.remove(package_index);
+        for target in package.targets {
             let args = std::env::args().skip(2);
             if let Some(first) = target.kind.get(0) {
                 if target.kind.len() > 1 || first.ends_with("lib") {
