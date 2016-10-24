@@ -144,4 +144,7 @@ pub mod ext {
     }
 }
 
+#[cfg(test)]
+mod test_snippet;
+
 // __build_diagnostic_array! { libsyntax, DIAGNOSTICS }
