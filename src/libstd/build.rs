@@ -58,6 +58,8 @@ fn main() {
         println!("cargo:rustc-link-lib=ws2_32");
         println!("cargo:rustc-link-lib=userenv");
         println!("cargo:rustc-link-lib=shell32");
+    } else if target.contains("fuchsia") {
+        println!("cargo:rustc-link-lib=magenta");
     }
 }
 
