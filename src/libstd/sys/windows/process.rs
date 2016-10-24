@@ -125,12 +125,8 @@ impl Command {
         self.stderr = Some(stderr);
     }
 
-    pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
-                 -> io::Result<(Process, StdioPipes)> {
-        // To have the spawning semantics of unix/windows stay the same, we need
-        // to read the *child's* PATH if one is provided. See #15149 for more
-        // details.
-        let program = self.env.as_ref().and_then(|env| {
+    pub fn find_program(&mut self) -> Option<Path> {
+        self.env.as_ref().and_then(|env| {
             for (key, v) in env {
                 if OsStr::new("PATH") != &**key { continue }
 
@@ -141,12 +137,33 @@ impl Command {
                                    .with_extension(env::consts::EXE_EXTENSION);
                     if fs::metadata(&path).is_ok() {
                         return Some(path.into_os_string())
+                    } else {
+                        // Windows relies on path extensions to resolve commands.
+                        // Path extensions are found in the PATHEXT environment variable.
+                        if let Some(exts) = self.env.get("PATHEXT") {
+                            for ext in split_paths(&exts) {
+                                let ext_str = pathext.to_str().unwrap().trim_matches('.');
+                                let path = path.join(self.program.to_str().unwrap())
+                                                .with_extension(ext_str);
+                                if fs::metadata(&path).is_ok() {
+                                    return Some(path.into_os_string())
+                                }
+                            }
+                        }
                     }
                 }
                 break
             }
             None
         });
+    }
+
+    pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
+                 -> io::Result<(Process, StdioPipes)> {
+        // To have the spawning semantics of unix/windows stay the same, we need
+        // to read the *child's* PATH if one is provided. See #15149 for more
+        // details.
+        let program = self.find_program();
 
         let mut si = zeroed_startupinfo();
         si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
