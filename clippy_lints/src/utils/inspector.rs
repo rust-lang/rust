@@ -1,3 +1,5 @@
+#![allow(print_stdout, use_debug)]
+
 //! checks for attributes
 
 use rustc::lint::*;
@@ -29,7 +31,6 @@ impl LintPass for Pass {
     }
 }
 
-#[allow(print_stdout, use_debug)]
 impl LateLintPass for Pass {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         if !has_attr(&item.attrs) {
@@ -416,14 +417,14 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
                 print_pat(cx, &field.node.pat, indent + 1);
             }
         },
-        hir::PatKind::TupleStruct(ref path, ref pats, opt_dots_position) => {
+        hir::PatKind::TupleStruct(ref path, ref fields, opt_dots_position) => {
             println!("{}TupleStruct", ind);
             println!("{}path: {}", ind, path);
             if let Some(dot_position) = opt_dots_position {
                 println!("{}dot position: {}", ind, dot_position);
             }
-            for field in pats {
-                print_pat(cx, &field, indent + 1);
+            for field in fields {
+                print_pat(cx, field, indent + 1);
             }
         },
         hir::PatKind::Path(ref sel, ref path) => {
@@ -437,7 +438,7 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
                 println!("{}dot position: {}", ind, dot_position);
             }
             for field in pats {
-                print_pat(cx, &field, indent + 1);
+                print_pat(cx, field, indent + 1);
             }
         },
         hir::PatKind::Box(ref inner) => {
@@ -458,10 +459,10 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
             print_expr(cx, l, indent + 1);
             print_expr(cx, r, indent + 1);
         },
-        hir::PatKind::Slice(ref start, ref range, ref end) => {
+        hir::PatKind::Slice(ref first_pats, ref range, ref last_pats) => {
             println!("{}Slice [a, b, ..i, y, z]", ind);
             println!("[a, b]:");
-            for pat in start {
+            for pat in first_pats {
                 print_pat(cx, pat, indent + 1);
             }
             println!("i:");
@@ -469,7 +470,7 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
                 print_pat(cx, pat, indent + 1);
             }
             println!("[y, z]:");
-            for pat in end {
+            for pat in last_pats {
                 print_pat(cx, pat, indent + 1);
             }
         },
