@@ -1294,14 +1294,18 @@ impl Into<OsString> for PathBuf {
 /// This type supports a number of operations for inspecting a path, including
 /// breaking the path into its components (separated by `/` or `\`, depending on
 /// the platform), extracting the file name, determining whether the path is
-/// absolute, and so on. More details about the overall approach can be found in
-/// the module documentation.
+/// absolute, and so on.
 ///
 /// This is an *unsized* type, meaning that it must always be used behind a
-/// pointer like `&` or [`Box`].
+/// pointer like `&` or [`Box`]. For an owned version of this type,
+/// see [`PathBuf`].
 ///
 /// [`str`]: ../primitive.str.html
 /// [`Box`]: ../boxed/struct.Box.html
+/// [`PathBuf`]: struct.PathBuf.html
+///
+/// More details about the overall approach can be found in
+/// the module documentation.
 ///
 /// # Examples
 ///
