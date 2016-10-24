@@ -27,7 +27,8 @@ fn next_u64(mut fill_buf: &mut FnMut(&mut [u8])) -> u64 {
 #[cfg(all(unix,
           not(target_os = "ios"),
           not(target_os = "openbsd"),
-          not(target_os = "freebsd")))]
+          not(target_os = "freebsd"),
+          not(target_os = "fuchsia")))]
 mod imp {
     use self::OsRngInner::*;
     use super::{next_u32, next_u64};
@@ -335,6 +336,57 @@ mod imp {
                     panic!("kern.arandom sysctl failed! (returned {}, s.len() {}, oldlenp {})",
                            ret, s.len(), s_len);
                 }
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "fuchsia")]
+mod imp {
+    use super::{next_u32, next_u64};
+
+    use io;
+    use rand::Rng;
+
+    #[link(name = "magenta")]
+    extern {
+        fn mx_cprng_draw(buffer: *mut u8, len: usize) -> isize;
+    }
+
+    fn getrandom(buf: &mut [u8]) -> isize {
+        unsafe { mx_cprng_draw(buf.as_mut_ptr(), buf.len()) }
+    }
+
+    pub struct OsRng {
+        // dummy field to ensure that this struct cannot be constructed outside
+        // of this module
+        _dummy: (),
+    }
+
+    impl OsRng {
+        /// Create a new `OsRng`.
+        pub fn new() -> io::Result<OsRng> {
+            Ok(OsRng { _dummy: () })
+        }
+    }
+
+    impl Rng for OsRng {
+        fn next_u32(&mut self) -> u32 {
+            next_u32(&mut |v| self.fill_bytes(v))
+        }
+        fn next_u64(&mut self) -> u64 {
+            next_u64(&mut |v| self.fill_bytes(v))
+        }
+        fn fill_bytes(&mut self, v: &mut [u8]) {
+            let mut buf = v;
+            while !buf.is_empty() {
+                let ret = getrandom(buf);
+                if ret < 0 {
+                    panic!("kernel mx_cprng_draw call failed! (returned {}, buf.len() {})",
+                        ret, buf.len());
+                }
+                let move_buf = buf;
+                buf = &mut move_buf[(ret as usize)..];
             }
         }
     }
