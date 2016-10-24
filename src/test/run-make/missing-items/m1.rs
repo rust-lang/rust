@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn foo();
-}
-
-struct Bar;
-
-impl Foo for Bar {}
-//~^ ERROR E0046
-//~| NOTE missing `foo` in implementation
-
-fn main() {
+#![feature(associated_consts)]
+#![crate_type = "dylib"]
+pub trait X {
+  const CONSTANT: u32;
+  type Type;
+  fn method(&self, s: String) -> Self::Type;
 }
