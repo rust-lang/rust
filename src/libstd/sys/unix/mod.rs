@@ -26,6 +26,7 @@ use libc;
 #[cfg(target_os = "openbsd")]   pub use os::openbsd as platform;
 #[cfg(target_os = "solaris")]   pub use os::solaris as platform;
 #[cfg(target_os = "emscripten")] pub use os::emscripten as platform;
+#[cfg(target_os = "fuchsia")]   pub use os::fuchsia as platform;
 
 #[macro_use]
 pub mod weak;
@@ -88,11 +89,11 @@ pub fn init() {
         }
     }
 
-    #[cfg(not(any(target_os = "nacl", target_os = "emscripten")))]
+    #[cfg(not(any(target_os = "nacl", target_os = "emscripten", target_os="fuchsia")))]
     unsafe fn reset_sigpipe() {
         assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != !0);
     }
-    #[cfg(any(target_os = "nacl", target_os = "emscripten"))]
+    #[cfg(any(target_os = "nacl", target_os = "emscripten", target_os="fuchsia"))]
     unsafe fn reset_sigpipe() {}
 }
 
