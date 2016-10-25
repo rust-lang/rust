@@ -16,6 +16,9 @@ pub fn target() -> TargetResult {
     base.pre_link_args.push("-m64".to_string());
     base.max_atomic_width = Some(64);
 
+    // see #36994
+    base.exe_allocation_crate = "alloc_system".to_string();
+
     Ok(Target {
         llvm_target: "powerpc64-unknown-linux-gnu".to_string(),
         target_endian: "big".to_string(),
