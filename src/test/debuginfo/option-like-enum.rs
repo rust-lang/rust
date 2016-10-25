@@ -18,28 +18,36 @@
 // gdb-command:run
 
 // gdb-command:print some
-// gdb-check:$1 = {RUST$ENCODED$ENUM$0$None = {__0 = 0x12345678}}
+// gdbg-check:$1 = {RUST$ENCODED$ENUM$0$None = {__0 = 0x12345678}}
+// gdbr-check:$1 = core::option::Option<&u32>::Some(0x12345678)
 
 // gdb-command:print none
-// gdb-check:$2 = {RUST$ENCODED$ENUM$0$None = {__0 = 0x0}}
+// gdbg-check:$2 = {RUST$ENCODED$ENUM$0$None = {__0 = 0x0}}
+// gdbr-check:$2 = core::option::Option<&u32>::None
 
 // gdb-command:print full
-// gdb-check:$3 = {RUST$ENCODED$ENUM$1$Empty = {__0 = 454545, __1 = 0x87654321, __2 = 9988}}
+// gdbg-check:$3 = {RUST$ENCODED$ENUM$1$Empty = {__0 = 454545, __1 = 0x87654321, __2 = 9988}}
+// gdbr-check:$3 = option_like_enum::MoreFields::Full(454545, 0x87654321, 9988)
 
-// gdb-command:print empty_gdb->discr
+// gdbg-command:print empty_gdb->discr
+// gdbr-command:print empty_gdb.discr
 // gdb-check:$4 = (isize *) 0x0
 
 // gdb-command:print droid
-// gdb-check:$5 = {RUST$ENCODED$ENUM$2$Void = {id = 675675, range = 10000001, internals = 0x43218765}}
+// gdbg-check:$5 = {RUST$ENCODED$ENUM$2$Void = {id = 675675, range = 10000001, internals = 0x43218765}}
+// gdbr-check:$5 = option_like_enum::NamedFields::Droid{id: 675675, range: 10000001, internals: 0x43218765}
 
-// gdb-command:print void_droid_gdb->internals
+// gdbg-command:print void_droid_gdb->internals
+// gdbr-command:print void_droid_gdb.internals
 // gdb-check:$6 = (isize *) 0x0
 
 // gdb-command:print nested_non_zero_yep
-// gdb-check:$7 = {RUST$ENCODED$ENUM$1$2$Nope = {__0 = 10.5, __1 = {a = 10, b = 20, c = [...]}}}
+// gdbg-check:$7 = {RUST$ENCODED$ENUM$1$2$Nope = {__0 = 10.5, __1 = {a = 10, b = 20, c = [...]}}}
+// gdbr-check:$7 = option_like_enum::NestedNonZero::Yep(10.5, option_like_enum::NestedNonZeroField {a: 10, b: 20, c: 0x[...] "x[...]"})
 
 // gdb-command:print nested_non_zero_nope
-// gdb-check:$8 = {RUST$ENCODED$ENUM$1$2$Nope = {__0 = [...], __1 = {a = [...], b = [...], c = 0x0}}}
+// gdbg-check:$8 = {RUST$ENCODED$ENUM$1$2$Nope = {__0 = [...], __1 = {a = [...], b = [...], c = 0x0}}}
+// gdbr-check:$8 = option_like_enum::NestedNonZero::Nope
 
 // gdb-command:continue
 
