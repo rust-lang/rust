@@ -140,11 +140,10 @@ impl Command {
                     } else {
                         // Windows relies on path extensions to resolve commands.
                         // Path extensions are found in the PATHEXT environment variable.
-                        if let Some(exts) = self.env.get("PATHEXT") {
+                        if let Some(exts) = env_lookup(self.env.as_ref(), "PATHEXT") {
                             for ext in split_paths(&exts) {
                                 let ext_str = pathext.to_str().unwrap().trim_matches('.');
-                                let path = path.join(self.program.to_str().unwrap())
-                                                .with_extension(ext_str);
+                                let path = path.with_extension(ext_str);
                                 if fs::metadata(&path).is_ok() {
                                     return Some(path.into_os_string())
                                 }
@@ -502,6 +501,16 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
         },
         None => Ok((ptr::null(), Vec::new()))
     }
+}
+
+fn env_lookup(env: Option<&collections::HashMap<OsString, OsString>>,
+              var: &OsStr) -> Option<OsString> {
+    if let Some(env) = env {
+        if let Some(value) = env.get(var) {
+            return Some(value.to_os_string())
+        }
+    }
+    None
 }
 
 #[cfg(test)]
