@@ -122,16 +122,16 @@ Common options:
 
 Other options are the same as `cargo rustc`.
 
-To allow or deny a lint from the command line you can use `cargo clippy --` with
-one of:
+To allow or deny a lint from the command line you can use `cargo clippy --`
+with:
 
     -W --warn OPT       Set lint warnings
     -A --allow OPT      Set lint allowed
     -D --deny OPT       Set lint denied
     -F --forbid OPT     Set lint forbidden
 
-The feature `cargo-clippy` is automatically defined for convinence. You can use
-it to allow or deny lints, eg.:
+The feature `cargo-clippy` is automatically defined for convenience. You can use
+it to allow or deny lints from the code, eg.:
 
     #[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
 "#;
