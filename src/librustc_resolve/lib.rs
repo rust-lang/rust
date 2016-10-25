@@ -55,7 +55,7 @@ use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast::{self, FloatTy};
-use syntax::ast::{CRATE_NODE_ID, Name, NodeId, Ident, IntTy, UintTy};
+use syntax::ast::{CRATE_NODE_ID, Name, NodeId, Ident, SpannedIdent, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -2278,7 +2278,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn fresh_binding(&mut self,
-                     ident: &ast::SpannedIdent,
+                     ident: &SpannedIdent,
                      pat_id: NodeId,
                      outer_pat_id: NodeId,
                      pat_src: PatternSource,
@@ -2842,11 +2842,11 @@ impl<'a> Resolver<'a> {
         } SuggestionType::NotFound
     }
 
-    fn resolve_labeled_block(&mut self, label: Option<Ident>, id: NodeId, block: &Block) {
+    fn resolve_labeled_block(&mut self, label: Option<SpannedIdent>, id: NodeId, block: &Block) {
         if let Some(label) = label {
             let def = Def::Label(id);
             self.with_label_rib(|this| {
-                this.label_ribs.last_mut().unwrap().bindings.insert(label, def);
+                this.label_ribs.last_mut().unwrap().bindings.insert(label.node, def);
                 this.visit_block(block);
             });
         } else {
@@ -3039,19 +3039,6 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprKind::Loop(_, Some(label)) | ExprKind::While(.., Some(label)) => {
-                self.with_label_rib(|this| {
-                    let def = Def::Label(expr.id);
-
-                    {
-                        let rib = this.label_ribs.last_mut().unwrap();
-                        rib.bindings.insert(label.node, def);
-                    }
-
-                    visit::walk_expr(this, expr);
-                })
-            }
-
             ExprKind::Break(Some(label)) | ExprKind::Continue(Some(label)) => {
                 match self.search_label(label.node) {
                     None => {
@@ -3081,12 +3068,19 @@ impl<'a> Resolver<'a> {
                 optional_else.as_ref().map(|expr| self.visit_expr(expr));
             }
 
+            ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),
+
+            ExprKind::While(ref subexpression, ref block, label) => {
+                self.visit_expr(subexpression);
+                self.resolve_labeled_block(label, expr.id, &block);
+            }
+
             ExprKind::WhileLet(ref pattern, ref subexpression, ref block, label) => {
                 self.visit_expr(subexpression);
                 self.value_ribs.push(Rib::new(NormalRibKind));
                 self.resolve_pattern(pattern, PatternSource::WhileLet, &mut FnvHashMap());
 
-                self.resolve_labeled_block(label.map(|l| l.node), expr.id, block);
+                self.resolve_labeled_block(label, expr.id, block);
 
                 self.value_ribs.pop();
             }
@@ -3096,7 +3090,7 @@ impl<'a> Resolver<'a> {
                 self.value_ribs.push(Rib::new(NormalRibKind));
                 self.resolve_pattern(pattern, PatternSource::For, &mut FnvHashMap());
 
-                self.resolve_labeled_block(label.map(|l| l.node), expr.id, block);
+                self.resolve_labeled_block(label, expr.id, block);
 
                 self.value_ribs.pop();
             }
