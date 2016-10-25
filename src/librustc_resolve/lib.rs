@@ -596,7 +596,6 @@ impl<'a> Visitor for Resolver<'a> {
     fn visit_fn(&mut self,
                 function_kind: FnKind,
                 declaration: &FnDecl,
-                block: &Block,
                 _: Span,
                 node_id: NodeId) {
         let rib_kind = match function_kind {
@@ -604,13 +603,45 @@ impl<'a> Visitor for Resolver<'a> {
                 self.visit_generics(generics);
                 ItemRibKind
             }
-            FnKind::Method(_, sig, _) => {
+            FnKind::Method(_, sig, _, _) => {
                 self.visit_generics(&sig.generics);
                 MethodRibKind(!sig.decl.has_self())
             }
-            FnKind::Closure => ClosureRibKind(node_id),
+            FnKind::Closure(_) => ClosureRibKind(node_id),
         };
-        self.resolve_function(rib_kind, declaration, block);
+
+        // Create a value rib for the function.
+        self.value_ribs.push(Rib::new(rib_kind));
+
+        // Create a label rib for the function.
+        self.label_ribs.push(Rib::new(rib_kind));
+
+        // Add each argument to the rib.
+        let mut bindings_list = FxHashMap();
+        for argument in &declaration.inputs {
+            self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
+
+            self.visit_ty(&argument.ty);
+
+            debug!("(resolving function) recorded argument");
+        }
+        visit::walk_fn_ret_ty(self, &declaration.output);
+
+        // Resolve the function body.
+        match function_kind {
+            FnKind::ItemFn(.., body) |
+            FnKind::Method(.., body) => {
+                self.visit_block(body);
+            }
+            FnKind::Closure(body) => {
+                self.visit_expr(body);
+            }
+        };
+
+        debug!("(resolving function) leaving function");
+
+        self.label_ribs.pop();
+        self.value_ribs.pop();
     }
 }
 
@@ -1853,36 +1884,6 @@ impl<'a> Resolver<'a> {
         self.type_ribs.push(Rib::new(ConstantItemRibKind));
         f(self);
         self.type_ribs.pop();
-        self.value_ribs.pop();
-    }
-
-    fn resolve_function(&mut self,
-                        rib_kind: RibKind<'a>,
-                        declaration: &FnDecl,
-                        block: &Block) {
-        // Create a value rib for the function.
-        self.value_ribs.push(Rib::new(rib_kind));
-
-        // Create a label rib for the function.
-        self.label_ribs.push(Rib::new(rib_kind));
-
-        // Add each argument to the rib.
-        let mut bindings_list = FxHashMap();
-        for argument in &declaration.inputs {
-            self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
-
-            self.visit_ty(&argument.ty);
-
-            debug!("(resolving function) recorded argument");
-        }
-        visit::walk_fn_ret_ty(self, &declaration.output);
-
-        // Resolve the function body.
-        self.visit_block(block);
-
-        debug!("(resolving function) leaving function");
-
-        self.label_ribs.pop();
         self.value_ribs.pop();
     }
 

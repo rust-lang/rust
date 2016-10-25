@@ -1228,12 +1228,11 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
     fn visit_fn(&mut self,
                 fn_kind: FnKind,
                 fn_decl: &ast::FnDecl,
-                block: &ast::Block,
                 span: Span,
                 _node_id: NodeId) {
         // check for const fn declarations
         match fn_kind {
-            FnKind::ItemFn(_, _, _, Spanned { node: ast::Constness::Const, .. }, _, _) => {
+            FnKind::ItemFn(_, _, _, Spanned { node: ast::Constness::Const, .. }, _, _, _) => {
                 gate_feature_post!(&self, const_fn, span, "const fn is unstable");
             }
             _ => {
@@ -1245,13 +1244,13 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
         }
 
         match fn_kind {
-            FnKind::ItemFn(_, _, _, _, abi, _) |
-            FnKind::Method(_, &ast::MethodSig { abi, .. }, _) => {
+            FnKind::ItemFn(_, _, _, _, abi, _, _) |
+            FnKind::Method(_, &ast::MethodSig { abi, .. }, _, _) => {
                 self.check_abi(abi, span);
             }
             _ => {}
         }
-        visit::walk_fn(self, fn_kind, fn_decl, block, span);
+        visit::walk_fn(self, fn_kind, fn_decl, span);
     }
 
     fn visit_trait_item(&mut self, ti: &ast::TraitItem) {

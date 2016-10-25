@@ -198,17 +198,13 @@ pub trait AstBuilder {
     fn lambda_fn_decl(&self,
                       span: Span,
                       fn_decl: P<ast::FnDecl>,
-                      blk: P<ast::Block>,
+                      body: P<ast::Expr>,
                       fn_decl_span: Span)
                       -> P<ast::Expr>;
 
-    fn lambda(&self, span: Span, ids: Vec<ast::Ident>, blk: P<ast::Block>) -> P<ast::Expr>;
-    fn lambda0(&self, span: Span, blk: P<ast::Block>) -> P<ast::Expr>;
-    fn lambda1(&self, span: Span, blk: P<ast::Block>, ident: ast::Ident) -> P<ast::Expr>;
-
-    fn lambda_expr(&self, span: Span, ids: Vec<ast::Ident> , blk: P<ast::Expr>) -> P<ast::Expr>;
-    fn lambda_expr_0(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Expr>;
-    fn lambda_expr_1(&self, span: Span, expr: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr>;
+    fn lambda(&self, span: Span, ids: Vec<ast::Ident>, body: P<ast::Expr>) -> P<ast::Expr>;
+    fn lambda0(&self, span: Span, body: P<ast::Expr>) -> P<ast::Expr>;
+    fn lambda1(&self, span: Span, body: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr>;
 
     fn lambda_stmts(&self, span: Span, ids: Vec<ast::Ident>,
                     blk: Vec<ast::Stmt>) -> P<ast::Expr>;
@@ -940,19 +936,19 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn lambda_fn_decl(&self,
                       span: Span,
                       fn_decl: P<ast::FnDecl>,
-                      blk: P<ast::Block>,
+                      body: P<ast::Expr>,
                       fn_decl_span: Span) // span of the `|...|` part
                       -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Closure(ast::CaptureBy::Ref,
                                                fn_decl,
-                                               blk,
+                                               body,
                                                fn_decl_span))
     }
 
     fn lambda(&self,
               span: Span,
               ids: Vec<ast::Ident>,
-              blk: P<ast::Block>)
+              body: P<ast::Expr>)
               -> P<ast::Expr> {
         let fn_decl = self.fn_decl(
             ids.iter().map(|id| self.arg(span, *id, self.ty_infer(span))).collect(),
@@ -962,26 +958,15 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         // part of the lambda, but it probably (maybe?) corresponds to
         // the entire lambda body. Probably we should extend the API
         // here, but that's not entirely clear.
-        self.expr(span, ast::ExprKind::Closure(ast::CaptureBy::Ref, fn_decl, blk, span))
+        self.expr(span, ast::ExprKind::Closure(ast::CaptureBy::Ref, fn_decl, body, span))
     }
 
-    fn lambda0(&self, span: Span, blk: P<ast::Block>) -> P<ast::Expr> {
-        self.lambda(span, Vec::new(), blk)
+    fn lambda0(&self, span: Span, body: P<ast::Expr>) -> P<ast::Expr> {
+        self.lambda(span, Vec::new(), body)
     }
 
-    fn lambda1(&self, span: Span, blk: P<ast::Block>, ident: ast::Ident) -> P<ast::Expr> {
-        self.lambda(span, vec![ident], blk)
-    }
-
-    fn lambda_expr(&self, span: Span, ids: Vec<ast::Ident>,
-                   expr: P<ast::Expr>) -> P<ast::Expr> {
-        self.lambda(span, ids, self.block_expr(expr))
-    }
-    fn lambda_expr_0(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
-        self.lambda0(span, self.block_expr(expr))
-    }
-    fn lambda_expr_1(&self, span: Span, expr: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr> {
-        self.lambda1(span, self.block_expr(expr), ident)
+    fn lambda1(&self, span: Span, body: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr> {
+        self.lambda(span, vec![ident], body)
     }
 
     fn lambda_stmts(&self,
@@ -989,14 +974,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                     ids: Vec<ast::Ident>,
                     stmts: Vec<ast::Stmt>)
                     -> P<ast::Expr> {
-        self.lambda(span, ids, self.block(span, stmts))
+        self.lambda(span, ids, self.expr_block(self.block(span, stmts)))
     }
     fn lambda_stmts_0(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Expr> {
-        self.lambda0(span, self.block(span, stmts))
+        self.lambda0(span, self.expr_block(self.block(span, stmts)))
     }
     fn lambda_stmts_1(&self, span: Span, stmts: Vec<ast::Stmt>,
                       ident: ast::Ident) -> P<ast::Expr> {
-        self.lambda1(span, self.block(span, stmts), ident)
+        self.lambda1(span, self.expr_block(self.block(span, stmts)), ident)
     }
 
     fn arg(&self, span: Span, ident: ast::Ident, ty: P<ast::Ty>) -> ast::Arg {

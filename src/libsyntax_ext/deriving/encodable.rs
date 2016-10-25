@@ -197,7 +197,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
                 };
                 let self_ref = cx.expr_addr_of(span, self_.clone());
                 let enc = cx.expr_call(span, fn_path.clone(), vec![self_ref, blkencoder.clone()]);
-                let lambda = cx.lambda_expr_1(span, enc, blkarg);
+                let lambda = cx.lambda1(span, enc, blkarg);
                 let call = cx.expr_method_call(span,
                                                blkencoder.clone(),
                                                emit_struct_field,
@@ -246,7 +246,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
                     let self_ref = cx.expr_addr_of(span, self_.clone());
                     let enc =
                         cx.expr_call(span, fn_path.clone(), vec![self_ref, blkencoder.clone()]);
-                    let lambda = cx.lambda_expr_1(span, enc, blkarg);
+                    let lambda = cx.lambda1(span, enc, blkarg);
                     let call = cx.expr_method_call(span,
                                                    blkencoder.clone(),
                                                    emit_variant_arg,
@@ -273,7 +273,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
                                                 cx.expr_usize(trait_span, idx),
                                                 cx.expr_usize(trait_span, fields.len()),
                                                 blk]);
-            let blk = cx.lambda_expr_1(trait_span, call, blkarg);
+            let blk = cx.lambda1(trait_span, call, blkarg);
             let ret = cx.expr_method_call(trait_span,
                                           encoder,
                                           cx.ident_of("emit_enum"),
