@@ -190,7 +190,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      all_loans: &[Loan<'tcx>],
                                      fn_id: ast::NodeId,
                                      decl: &hir::FnDecl,
-                                     body: &hir::Block) {
+                                     body: &hir::Expr) {
     debug!("check_loans(body id={})", body.id);
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);

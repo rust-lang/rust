@@ -656,7 +656,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                cfg: &cfg::CFG,
                id_range: IdRange,
                decl: &hir::FnDecl,
-               body: &hir::Block)
+               body: &hir::Expr)
                -> FlowedMoveData<'a, 'tcx> {
         let mut dfcx_moves =
             DataFlowContext::new(tcx,

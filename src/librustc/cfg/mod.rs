@@ -59,8 +59,8 @@ pub type CFGEdge = graph::Edge<CFGEdgeData>;
 
 impl CFG {
     pub fn new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         blk: &hir::Block) -> CFG {
-        construct::construct(tcx, blk)
+                         body: &hir::Expr) -> CFG {
+        construct::construct(tcx, body)
     }
 
     pub fn node_is_reachable(&self, id: ast::NodeId) -> bool {

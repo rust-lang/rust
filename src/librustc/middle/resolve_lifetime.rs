@@ -202,7 +202,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'v>, decl: &'v hir::FnDecl,
-                b: &'v hir::Block, s: Span, fn_id: ast::NodeId) {
+                b: &'v hir::Expr, s: Span, fn_id: ast::NodeId) {
         match fk {
             FnKind::ItemFn(_, generics, ..) => {
                 self.visit_early_late(fn_id,decl, generics, |this| {
@@ -403,7 +403,7 @@ fn signal_shadowing_problem(sess: &Session, name: ast::Name, orig: Original, sha
 
 // Adds all labels in `b` to `ctxt.labels_in_fn`, signalling a warning
 // if one of the label shadows a lifetime or another label.
-fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Block) {
+fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Expr) {
     struct GatherLabels<'a> {
         sess: &'a Session,
         scope: Scope<'a>,
@@ -415,7 +415,7 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Block) {
         scope: ctxt.scope,
         labels_in_fn: &mut ctxt.labels_in_fn,
     };
-    gather.visit_block(b);
+    gather.visit_expr(b);
     return;
 
     impl<'v, 'a> Visitor<'v> for GatherLabels<'a> {
@@ -493,7 +493,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn add_scope_and_walk_fn<'b>(&mut self,
                                  fk: FnKind,
                                  fd: &hir::FnDecl,
-                                 fb: &'b hir::Block,
+                                 fb: &'b hir::Expr,
                                  _span: Span,
                                  fn_id: ast::NodeId) {
 
@@ -516,7 +516,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         extract_labels(self, fb);
 
         self.with(FnScope { fn_id: fn_id, body_id: fb.id, s: self.scope },
-                  |_old_scope, this| this.visit_block(fb))
+                  |_old_scope, this| this.visit_expr(fb))
     }
 
     fn with<F>(&mut self, wrap_scope: ScopeChain, f: F) where

@@ -857,11 +857,10 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               callee => signal!(e, CallOn(callee)),
           };
           let (decl, result) = if let Some(fn_like) = lookup_const_fn_by_id(tcx, did) {
-              (fn_like.decl(), &fn_like.body().expr)
+              (fn_like.decl(), fn_like.body())
           } else {
               signal!(e, NonConstPath)
           };
-          let result = result.as_ref().expect("const fn has no result expression");
           assert_eq!(decl.inputs.len(), args.len());
 
           let mut call_args = DefIdMap();
