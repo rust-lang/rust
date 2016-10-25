@@ -25,10 +25,12 @@
 // gdb-check:$2 = -1
 
 // gdb-command:print *char_ref
-// gdb-check:$3 = 97
+// gdbg-check:$3 = 97
+// gdbr-check:$3 = 97 'a'
 
 // gdb-command:print *i8_ref
-// gdb-check:$4 = 68 'D'
+// gdbg-check:$4 = 68 'D'
+// gdbr-check:$4 = 68
 
 // gdb-command:print *i16_ref
 // gdb-check:$5 = -16
@@ -43,7 +45,8 @@
 // gdb-check:$8 = 1
 
 // gdb-command:print *u8_ref
-// gdb-check:$9 = 100 'd'
+// gdbg-check:$9 = 100 'd'
+// gdbr-check:$9 = 100
 
 // gdb-command:print *u16_ref
 // gdb-check:$10 = 16

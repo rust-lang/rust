@@ -26,7 +26,8 @@
 // gdb-command:print i
 // gdb-check:$2 = -1
 // gdb-command:print c
-// gdb-check:$3 = 97
+// gdbg-check:$3 = 97
+// gdbr-check:$3 = 97 'a'
 // gdb-command:print/d i8
 // gdb-check:$4 = 68
 // gdb-command:print i16

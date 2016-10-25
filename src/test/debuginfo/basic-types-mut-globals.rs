@@ -21,64 +21,94 @@
 // gdb-command:run
 
 // Check initializers
-// gdb-command:print 'basic_types_mut_globals::B'
+// gdbg-command:print 'basic_types_mut_globals::B'
+// gdbr-command:print B
 // gdb-check:$1 = false
-// gdb-command:print 'basic_types_mut_globals::I'
+// gdbg-command:print 'basic_types_mut_globals::I'
+// gdbr-command:print I
 // gdb-check:$2 = -1
-// gdb-command:print 'basic_types_mut_globals::C'
-// gdb-check:$3 = 97
-// gdb-command:print/d 'basic_types_mut_globals::I8'
+// gdbg-command:print/d 'basic_types_mut_globals::C'
+// gdbr-command:print C
+// gdbg-check:$3 = 97
+// gdbr-check:$3 = 97 'a'
+// gdbg-command:print/d 'basic_types_mut_globals::I8'
+// gdbr-command:print I8
 // gdb-check:$4 = 68
-// gdb-command:print 'basic_types_mut_globals::I16'
+// gdbg-command:print 'basic_types_mut_globals::I16'
+// gdbr-command:print I16
 // gdb-check:$5 = -16
-// gdb-command:print 'basic_types_mut_globals::I32'
+// gdbg-command:print 'basic_types_mut_globals::I32'
+// gdbr-command:print I32
 // gdb-check:$6 = -32
-// gdb-command:print 'basic_types_mut_globals::I64'
+// gdbg-command:print 'basic_types_mut_globals::I64'
+// gdbr-command:print I64
 // gdb-check:$7 = -64
-// gdb-command:print 'basic_types_mut_globals::U'
+// gdbg-command:print 'basic_types_mut_globals::U'
+// gdbr-command:print U
 // gdb-check:$8 = 1
-// gdb-command:print/d 'basic_types_mut_globals::U8'
+// gdbg-command:print/d 'basic_types_mut_globals::U8'
+// gdbr-command:print U8
 // gdb-check:$9 = 100
-// gdb-command:print 'basic_types_mut_globals::U16'
+// gdbg-command:print 'basic_types_mut_globals::U16'
+// gdbr-command:print U16
 // gdb-check:$10 = 16
-// gdb-command:print 'basic_types_mut_globals::U32'
+// gdbg-command:print 'basic_types_mut_globals::U32'
+// gdbr-command:print U32
 // gdb-check:$11 = 32
-// gdb-command:print 'basic_types_mut_globals::U64'
+// gdbg-command:print 'basic_types_mut_globals::U64'
+// gdbr-command:print U64
 // gdb-check:$12 = 64
-// gdb-command:print 'basic_types_mut_globals::F32'
+// gdbg-command:print 'basic_types_mut_globals::F32'
+// gdbr-command:print F32
 // gdb-check:$13 = 2.5
-// gdb-command:print 'basic_types_mut_globals::F64'
+// gdbg-command:print 'basic_types_mut_globals::F64'
+// gdbr-command:print F64
 // gdb-check:$14 = 3.5
 // gdb-command:continue
 
 // Check new values
-// gdb-command:print 'basic_types_mut_globals'::B
+// gdbg-command:print 'basic_types_mut_globals'::B
+// gdbr-command:print B
 // gdb-check:$15 = true
-// gdb-command:print 'basic_types_mut_globals'::I
+// gdbg-command:print 'basic_types_mut_globals'::I
+// gdbr-command:print I
 // gdb-check:$16 = 2
-// gdb-command:print 'basic_types_mut_globals'::C
-// gdb-check:$17 = 102
-// gdb-command:print/d 'basic_types_mut_globals'::I8
+// gdbg-command:print/d 'basic_types_mut_globals'::C
+// gdbr-command:print C
+// gdbg-check:$17 = 102
+// gdbr-check:$17 = 102 'f'
+// gdbg-command:print/d 'basic_types_mut_globals'::I8
+// gdbr-command:print/d I8
 // gdb-check:$18 = 78
-// gdb-command:print 'basic_types_mut_globals'::I16
+// gdbg-command:print 'basic_types_mut_globals'::I16
+// gdbr-command:print I16
 // gdb-check:$19 = -26
-// gdb-command:print 'basic_types_mut_globals'::I32
+// gdbg-command:print 'basic_types_mut_globals'::I32
+// gdbr-command:print I32
 // gdb-check:$20 = -12
-// gdb-command:print 'basic_types_mut_globals'::I64
+// gdbg-command:print 'basic_types_mut_globals'::I64
+// gdbr-command:print I64
 // gdb-check:$21 = -54
-// gdb-command:print 'basic_types_mut_globals'::U
+// gdbg-command:print 'basic_types_mut_globals'::U
+// gdbr-command:print U
 // gdb-check:$22 = 5
-// gdb-command:print/d 'basic_types_mut_globals'::U8
+// gdbg-command:print/d 'basic_types_mut_globals'::U8
+// gdbr-command:print/d U8
 // gdb-check:$23 = 20
-// gdb-command:print 'basic_types_mut_globals'::U16
+// gdbg-command:print 'basic_types_mut_globals'::U16
+// gdbr-command:print U16
 // gdb-check:$24 = 32
-// gdb-command:print 'basic_types_mut_globals'::U32
+// gdbg-command:print 'basic_types_mut_globals'::U32
+// gdbr-command:print U32
 // gdb-check:$25 = 16
-// gdb-command:print 'basic_types_mut_globals'::U64
+// gdbg-command:print 'basic_types_mut_globals'::U64
+// gdbr-command:print U64
 // gdb-check:$26 = 128
-// gdb-command:print 'basic_types_mut_globals'::F32
+// gdbg-command:print 'basic_types_mut_globals'::F32
+// gdbr-command:print F32
 // gdb-check:$27 = 5.75
-// gdb-command:print 'basic_types_mut_globals'::F64
+// gdbg-command:print 'basic_types_mut_globals'::F64
+// gdbr-command:print F64
 // gdb-check:$28 = 9.25
 
 #![allow(unused_variables)]

@@ -16,7 +16,8 @@
 // gdb-command:run
 
 // gdb-command:print s
-// gdb-check:$1 = [...]"abcd"
+// gdbg-check:$1 = [...]"abcd"
+// gdbr-check:$1 = [...]"abcd\000"
 // gdb-command:print len
 // gdb-check:$2 = 20
 // gdb-command:print local0
