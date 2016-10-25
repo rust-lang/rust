@@ -106,17 +106,18 @@ use util::common::{block_query, ErrorReported, indenter, loop_query};
 use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{Cell, Ref, RefCell};
+use std::cmp;
 use std::mem::replace;
-use std::ops::Deref;
+use std::ops::{self, Deref};
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::{self, Spanned};
+use syntax::codemap::{self, original_sp, Spanned};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{self, Span};
+use syntax_pos::{self, BytePos, Span};
 
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::{self, PatKind};
@@ -351,6 +352,59 @@ impl UnsafetyState {
     }
 }
 
+/// Whether a node ever exits normally or not.
+/// Tracked semi-automatically (through type variables
+/// marked as diverging), with some manual adjustments
+/// for control-flow primitives (approximating a CFG).
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum Diverges {
+    /// Potentially unknown, some cases converge,
+    /// others require a CFG to determine them.
+    Maybe,
+
+    /// Definitely known to diverge and therefore
+    /// not reach the next sibling or its parent.
+    Always,
+
+    /// Same as `Always` but with a reachability
+    /// warning already emitted
+    WarnedAlways
+}
+
+// Convenience impls for combinig `Diverges`.
+
+impl ops::BitAnd for Diverges {
+    type Output = Self;
+    fn bitand(self, other: Self) -> Self {
+        cmp::min(self, other)
+    }
+}
+
+impl ops::BitOr for Diverges {
+    type Output = Self;
+    fn bitor(self, other: Self) -> Self {
+        cmp::max(self, other)
+    }
+}
+
+impl ops::BitAndAssign for Diverges {
+    fn bitand_assign(&mut self, other: Self) {
+        *self = *self & other;
+    }
+}
+
+impl ops::BitOrAssign for Diverges {
+    fn bitor_assign(&mut self, other: Self) {
+        *self = *self | other;
+    }
+}
+
+impl Diverges {
+    fn always(self) -> bool {
+        self >= Diverges::Always
+    }
+}
+
 #[derive(Clone)]
 pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
@@ -370,6 +424,12 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ret_ty: Ty<'tcx>,
 
     ps: RefCell<UnsafetyState>,
+
+    /// Whether the last checked node can ever exit.
+    diverges: Cell<Diverges>,
+
+    /// Whether any child nodes have any type errors.
+    has_errors: Cell<bool>,
 
     inh: &'a Inherited<'a, 'gcx, 'tcx>,
 }
@@ -1491,6 +1551,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ret_ty: rty,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
                                                      ast::CRATE_NODE_ID)),
+            diverges: Cell::new(Diverges::Maybe),
+            has_errors: Cell::new(false),
             inh: inh,
         }
     }
@@ -1505,6 +1567,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn err_count_since_creation(&self) -> usize {
         self.tcx.sess.err_count() - self.err_count_on_creation
+    }
+
+    /// Produce warning on the given node, if the current point in the
+    /// function is unreachable, and there hasn't been another warning.
+    fn warn_if_unreachable(&self, id: ast::NodeId, span: Span, kind: &str) {
+        if self.diverges.get() == Diverges::Always {
+            self.diverges.set(Diverges::WarnedAlways);
+
+            self.tcx.sess.add_lint(lint::builtin::UNREACHABLE_CODE,
+                                   id, span,
+                                   format!("unreachable {}", kind));
+        }
     }
 
     /// Resolves type variables in `ty` if possible. Unlike the infcx
@@ -1577,6 +1651,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("write_ty({}, {:?}) in fcx {}",
                node_id, ty, self.tag());
         self.tables.borrow_mut().node_types.insert(node_id, ty);
+
+        if ty.references_error() {
+            self.has_errors.set(true);
+        }
+
+        // FIXME(canndrew): This is_never should probably be an is_uninhabited
+        if ty.is_never() || self.type_var_diverges(ty) {
+            self.diverges.set(self.diverges.get() | Diverges::Always);
+        }
     }
 
     pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::ItemSubsts<'tcx>) {
@@ -2512,21 +2595,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Check the arguments.
         // We do this in a pretty awful way: first we typecheck any arguments
-        // that are not anonymous functions, then we typecheck the anonymous
-        // functions. This is so that we have more information about the types
-        // of arguments when we typecheck the functions. This isn't really the
-        // right way to do this.
-        let xs = [false, true];
-        let mut any_diverges = false; // has any of the arguments diverged?
-        let mut warned = false; // have we already warned about unreachable code?
-        for check_blocks in &xs {
-            let check_blocks = *check_blocks;
-            debug!("check_blocks={}", check_blocks);
+        // that are not closures, then we typecheck the closures. This is so
+        // that we have more information about the types of arguments when we
+        // typecheck the functions. This isn't really the right way to do this.
+        for &check_closures in &[false, true] {
+            debug!("check_closures={}", check_closures);
 
             // More awful hacks: before we check argument types, try to do
             // an "opportunistic" vtable resolution of any trait bounds on
             // the call. This helps coercions.
-            if check_blocks {
+            if check_closures {
                 self.select_obligations_where_possible();
             }
 
@@ -2541,61 +2619,43 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 supplied_arg_count
             };
             for (i, arg) in args.iter().take(t).enumerate() {
-                if any_diverges && !warned {
-                    self.tcx
-                        .sess
-                        .add_lint(lint::builtin::UNREACHABLE_CODE,
-                                  arg.id,
-                                  arg.span,
-                                  "unreachable expression".to_string());
-                    warned = true;
+                // Warn only for the first loop (the "no closures" one).
+                // Closure arguments themselves can't be diverging, but
+                // a previous argument can, e.g. `foo(panic!(), || {})`.
+                if !check_closures {
+                    self.warn_if_unreachable(arg.id, arg.span, "expression");
                 }
-                let is_block = match arg.node {
+
+                let is_closure = match arg.node {
                     hir::ExprClosure(..) => true,
                     _ => false
                 };
 
-                if is_block == check_blocks {
-                    debug!("checking the argument");
-                    let formal_ty = formal_tys[i];
-
-                    // The special-cased logic below has three functions:
-                    // 1. Provide as good of an expected type as possible.
-                    let expected = expected_arg_tys.get(i).map(|&ty| {
-                        Expectation::rvalue_hint(self, ty)
-                    });
-
-                    let checked_ty = self.check_expr_with_expectation(&arg,
-                                            expected.unwrap_or(ExpectHasType(formal_ty)));
-                    // 2. Coerce to the most detailed type that could be coerced
-                    //    to, which is `expected_ty` if `rvalue_hint` returns an
-                    //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
-                    let coerce_ty = expected.and_then(|e| e.only_has_type(self));
-                    self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty));
-
-                    // 3. Relate the expected type and the formal one,
-                    //    if the expected type was used for the coercion.
-                    coerce_ty.map(|ty| self.demand_suptype(arg.span, formal_ty, ty));
+                if is_closure != check_closures {
+                    continue;
                 }
 
-                if let Some(&arg_ty) = self.tables.borrow().node_types.get(&arg.id) {
-                    // FIXME(canndrew): This is_never should probably be an is_uninhabited
-                    any_diverges = any_diverges ||
-                                   self.type_var_diverges(arg_ty) ||
-                                   arg_ty.is_never();
-                }
-            }
-            if any_diverges && !warned {
-                let parent = self.tcx.map.get_parent_node(args[0].id);
-                self.tcx
-                    .sess
-                    .add_lint(lint::builtin::UNREACHABLE_CODE,
-                              parent,
-                              sp,
-                              "unreachable call".to_string());
-                warned = true;
-            }
+                debug!("checking the argument");
+                let formal_ty = formal_tys[i];
 
+                // The special-cased logic below has three functions:
+                // 1. Provide as good of an expected type as possible.
+                let expected = expected_arg_tys.get(i).map(|&ty| {
+                    Expectation::rvalue_hint(self, ty)
+                });
+
+                let checked_ty = self.check_expr_with_expectation(&arg,
+                                        expected.unwrap_or(ExpectHasType(formal_ty)));
+                // 2. Coerce to the most detailed type that could be coerced
+                //    to, which is `expected_ty` if `rvalue_hint` returns an
+                //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
+                let coerce_ty = expected.and_then(|e| e.only_has_type(self));
+                self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty));
+
+                // 3. Relate the expected type and the formal one,
+                //    if the expected type was used for the coercion.
+                coerce_ty.map(|ty| self.demand_suptype(arg.span, formal_ty, ty));
+            }
         }
 
         // We also need to make sure we at least write the ty of the other
@@ -2846,18 +2906,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        sp: Span,
                        expected: Expectation<'tcx>) -> Ty<'tcx> {
         let cond_ty = self.check_expr_has_type(cond_expr, self.tcx.types.bool);
+        let cond_diverges = self.diverges.get();
+        self.diverges.set(Diverges::Maybe);
 
         let expected = expected.adjust_for_branches(self);
         let then_ty = self.check_block_with_expected(then_blk, expected);
+        let then_diverges = self.diverges.get();
+        self.diverges.set(Diverges::Maybe);
 
         let unit = self.tcx.mk_nil();
         let (origin, expected, found, result) =
         if let Some(else_expr) = opt_else_expr {
             let else_ty = self.check_expr_with_expectation(else_expr, expected);
-            let origin = TypeOrigin::IfExpression(sp);
+            let else_diverges = self.diverges.get();
 
             // Only try to coerce-unify if we have a then expression
             // to assign coercions to, otherwise it's () or diverging.
+            let origin = TypeOrigin::IfExpression(sp);
             let result = if let Some(ref then) = then_blk.expr {
                 let res = self.try_find_coercion_lub(origin, || Some(&**then),
                                                      then_ty, else_expr, else_ty);
@@ -2883,8 +2948,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         })
                 })
             };
+
+            // We won't diverge unless both branches do (or the condition does).
+            self.diverges.set(cond_diverges | then_diverges & else_diverges);
+
             (origin, then_ty, else_ty, result)
         } else {
+            // If the condition is false we can't diverge.
+            self.diverges.set(cond_diverges);
+
             let origin = TypeOrigin::IfExpressionWithNoElse(sp);
             (origin, unit, then_ty,
              self.eq_types(true, origin, unit, then_ty)
@@ -3346,9 +3418,35 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                    lvalue_pref: LvaluePreference) -> Ty<'tcx> {
         debug!(">> typechecking: expr={:?} expected={:?}",
                expr, expected);
+
+        // Warn for expressions after diverging siblings.
+        self.warn_if_unreachable(expr.id, expr.span, "expression");
+
+        // Hide the outer diverging and has_errors flags.
+        let old_diverges = self.diverges.get();
+        let old_has_errors = self.has_errors.get();
+        self.diverges.set(Diverges::Maybe);
+        self.has_errors.set(false);
+
         let ty = self.check_expr_kind(expr, expected, lvalue_pref);
 
+        // Warn for non-block expressions with diverging children.
+        match expr.node {
+            hir::ExprBlock(_) |
+            hir::ExprLoop(..) | hir::ExprWhile(..) |
+            hir::ExprIf(..) | hir::ExprMatch(..) => {}
+
+            _ => self.warn_if_unreachable(expr.id, expr.span, "expression")
+        }
+
+        // Record the type, which applies it effects.
+        // We need to do this after the warning above, so that
+        // we don't warn for the diverging expression itself.
         self.write_ty(expr.id, ty);
+
+        // Combine the diverging and has_error flags.
+        self.diverges.set(self.diverges.get() | old_diverges);
+        self.has_errors.set(self.has_errors.get() | old_has_errors);
 
         debug!("type of expr({}) {} is...", expr.id,
                pprust::expr_to_string(expr));
@@ -3574,22 +3672,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  expr.span, expected)
           }
           hir::ExprWhile(ref cond, ref body, _) => {
-            let cond_ty = self.check_expr_has_type(&cond, tcx.types.bool);
+            self.check_expr_has_type(&cond, tcx.types.bool);
+            let cond_diverging = self.diverges.get();
             self.check_block_no_value(&body);
-            let body_ty = self.node_ty(body.id);
-            if cond_ty.references_error() || body_ty.references_error() {
+
+            // We may never reach the body so it diverging means nothing.
+            self.diverges.set(cond_diverging);
+
+            if self.has_errors.get() {
                 tcx.types.err
-            }
-            else {
+            } else {
                 tcx.mk_nil()
             }
           }
           hir::ExprLoop(ref body, _) => {
             self.check_block_no_value(&body);
-            if !may_break(tcx, expr.id, &body) {
-                tcx.types.never
-            } else {
+            if may_break(tcx, expr.id, &body) {
+                // No way to know whether it's diverging because
+                // of a `break` or an outer `break` or `return.
+                self.diverges.set(Diverges::Maybe);
+
                 tcx.mk_nil()
+            } else {
+                tcx.types.never
             }
           }
           hir::ExprMatch(ref discrim, ref arms, match_src) => {
@@ -3922,55 +4027,66 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_stmt(&self, stmt: &'gcx hir::Stmt) {
-        let node_id;
-        let mut saw_bot = false;
-        let mut saw_err = false;
+        // Don't do all the complex logic below for DeclItem.
         match stmt.node {
-          hir::StmtDecl(ref decl, id) => {
-            node_id = id;
-            match decl.node {
-              hir::DeclLocal(ref l) => {
-                  self.check_decl_local(&l);
-                  let l_t = self.node_ty(l.id);
-                  saw_bot = saw_bot || self.type_var_diverges(l_t);
-                  saw_err = saw_err || l_t.references_error();
-              }
-              hir::DeclItem(_) => {/* ignore for now */ }
+            hir::StmtDecl(ref decl, id) => {
+                match decl.node {
+                    hir::DeclLocal(_) => {}
+                    hir::DeclItem(_) => {
+                        self.write_nil(id);
+                        return;
+                    }
+                }
             }
-          }
-          hir::StmtExpr(ref expr, id) => {
-            node_id = id;
-            // Check with expected type of ()
-            let ty = self.check_expr_has_type(&expr, self.tcx.mk_nil());
-            saw_bot = saw_bot || self.type_var_diverges(ty);
-            saw_err = saw_err || ty.references_error();
-          }
-          hir::StmtSemi(ref expr, id) => {
-            node_id = id;
-            let ty = self.check_expr(&expr);
-            saw_bot |= self.type_var_diverges(ty);
-            saw_err |= ty.references_error();
-          }
+            hir::StmtExpr(..) | hir::StmtSemi(..) => {}
         }
-        if saw_bot {
-            self.write_ty(node_id, self.next_diverging_ty_var());
-        }
-        else if saw_err {
+
+        self.warn_if_unreachable(stmt.node.id(), stmt.span, "statement");
+
+        // Hide the outer diverging and has_errors flags.
+        let old_diverges = self.diverges.get();
+        let old_has_errors = self.has_errors.get();
+        self.diverges.set(Diverges::Maybe);
+        self.has_errors.set(false);
+
+        let node_id = match stmt.node {
+            hir::StmtDecl(ref decl, id) => {
+                match decl.node {
+                    hir::DeclLocal(ref l) => {
+                        self.check_decl_local(&l);
+                    }
+                    hir::DeclItem(_) => {/* ignore for now */ }
+                }
+                id
+            }
+            hir::StmtExpr(ref expr, id) => {
+                // Check with expected type of ()
+                self.check_expr_has_type(&expr, self.tcx.mk_nil());
+                id
+            }
+            hir::StmtSemi(ref expr, id) => {
+                self.check_expr(&expr);
+                id
+            }
+        };
+
+        if self.has_errors.get() {
             self.write_error(node_id);
-        }
-        else {
+        } else if self.diverges.get().always() {
+            self.write_ty(node_id, self.next_diverging_ty_var());
+        } else {
             self.write_nil(node_id);
         }
+
+        // Combine the diverging and has_error flags.
+        self.diverges.set(self.diverges.get() | old_diverges);
+        self.has_errors.set(self.has_errors.get() | old_has_errors);
     }
 
     pub fn check_block_no_value(&self, blk: &'gcx hir::Block)  {
-        let blkty = self.check_block_with_expected(blk, ExpectHasType(self.tcx.mk_nil()));
-        if blkty.references_error() {
-            self.write_error(blk.id);
-        } else {
-            let nilty = self.tcx.mk_nil();
-            self.demand_suptype(blk.span, nilty, blkty);
-        }
+        let unit = self.tcx.mk_nil();
+        let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
+        self.demand_suptype(blk.span, unit, ty);
     }
 
     fn check_block_with_expected(&self,
@@ -3982,72 +4098,81 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             replace(&mut *fcx_ps, unsafety_state)
         };
 
-        let mut warned = false;
-        let mut any_diverges = false;
-        let mut any_err = false;
         for s in &blk.stmts {
             self.check_stmt(s);
-            let s_id = s.node.id();
-            let s_ty = self.node_ty(s_id);
-            if any_diverges && !warned && match s.node {
-                hir::StmtDecl(ref decl, _) => {
-                    match decl.node {
-                        hir::DeclLocal(_) => true,
-                        _ => false,
-                    }
-                }
-                hir::StmtExpr(..) | hir::StmtSemi(..) => true,
-            } {
-                self.tcx
-                    .sess
-                    .add_lint(lint::builtin::UNREACHABLE_CODE,
-                              s_id,
-                              s.span,
-                              "unreachable statement".to_string());
-                warned = true;
-            }
-            // FIXME(canndrew): This is_never should probably be an is_uninhabited
-            any_diverges = any_diverges ||
-                           self.type_var_diverges(s_ty) ||
-                           s_ty.is_never();
-            any_err = any_err || s_ty.references_error();
         }
-        let ty = match blk.expr {
-            None => if any_err {
-                self.tcx.types.err
-            } else if any_diverges {
-                self.next_diverging_ty_var()
-            } else {
-                self.tcx.mk_nil()
-            },
-            Some(ref e) => {
-                if any_diverges && !warned {
-                    self.tcx
-                        .sess
-                        .add_lint(lint::builtin::UNREACHABLE_CODE,
-                                  e.id,
-                                  e.span,
-                                  "unreachable expression".to_string());
-                }
-                let ety = match expected {
-                    ExpectHasType(ety) => {
-                        self.check_expr_coercable_to_type(&e, ety);
-                        ety
-                    }
-                    _ => {
-                        self.check_expr_with_expectation(&e, expected)
-                    }
-                };
 
-                if any_err {
-                    self.tcx.types.err
-                } else if any_diverges {
-                    self.next_diverging_ty_var()
-                } else {
-                    ety
+        let mut ty = match blk.expr {
+            Some(ref e) => self.check_expr_with_expectation(e, expected),
+            None => self.tcx.mk_nil()
+        };
+
+        if self.diverges.get().always() {
+            if let ExpectHasType(ety) = expected {
+                // Avoid forcing a type (only `!` for now) in unreachable code.
+                // FIXME(aburka) do we need this special case? and should it be is_uninhabited?
+                if !ety.is_never() {
+                    if let Some(ref e) = blk.expr {
+                        // Coerce the tail expression to the right type.
+                        self.demand_coerce(e, ty, ety);
+                    }
                 }
             }
-        };
+
+            ty = self.next_diverging_ty_var();
+        } else if let ExpectHasType(ety) = expected {
+            if let Some(ref e) = blk.expr {
+                // Coerce the tail expression to the right type.
+                self.demand_coerce(e, ty, ety);
+            } else {
+                // We're not diverging and there's an expected type, which,
+                // in case it's not `()`, could result in an error higher-up.
+                // We have a chance to error here early and be more helpful.
+                let origin = TypeOrigin::Misc(blk.span);
+                let trace = TypeTrace::types(origin, false, ty, ety);
+                match self.sub_types(false, origin, ty, ety) {
+                    Ok(InferOk { obligations, .. }) => {
+                        // FIXME(#32730) propagate obligations
+                        assert!(obligations.is_empty());
+                    },
+                    Err(err) => {
+                        let mut err = self.report_and_explain_type_error(trace, &err);
+
+                        // Be helpful when the user wrote `{... expr;}` and
+                        // taking the `;` off is enough to fix the error.
+                        let mut extra_semi = None;
+                        if let Some(stmt) = blk.stmts.last() {
+                            if let hir::StmtSemi(ref e, _) = stmt.node {
+                                if self.can_sub_types(self.node_ty(e.id), ety).is_ok() {
+                                    extra_semi = Some(stmt);
+                                }
+                            }
+                        }
+                        if let Some(last_stmt) = extra_semi {
+                            let original_span = original_sp(self.tcx.sess.codemap(),
+                                                            last_stmt.span, blk.span);
+                            let span_semi = Span {
+                                lo: original_span.hi - BytePos(1),
+                                hi: original_span.hi,
+                                expn_id: original_span.expn_id
+                            };
+                            err.span_help(span_semi, "consider removing this semicolon:");
+                        }
+
+                        err.emit();
+                    }
+                }
+            }
+
+            // We already applied the type (and potentially errored),
+            // use the expected type to avoid further errors out.
+            ty = ety;
+        }
+
+        if self.has_errors.get() || ty.references_error() {
+            ty = self.tcx.types.err
+        }
+
         self.write_ty(blk.id, ty);
 
         *self.ps.borrow_mut() = prev;
