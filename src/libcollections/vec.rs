@@ -166,7 +166,7 @@ use super::range::RangeArgument;
 /// # Slicing
 ///
 /// A `Vec` can be mutable. Slices, on the other hand, are read-only objects.
-/// To get a slice, use "&". Example:
+/// To get a slice, use `&`. Example:
 ///
 /// ```
 /// fn read_slice(slice: &[usize]) {
@@ -203,33 +203,33 @@ use super::range::RangeArgument;
 ///
 /// # Guarantees
 ///
-/// Due to its incredibly fundamental nature, Vec makes a lot of guarantees
+/// Due to its incredibly fundamental nature, `Vec` makes a lot of guarantees
 /// about its design. This ensures that it's as low-overhead as possible in
 /// the general case, and can be correctly manipulated in primitive ways
 /// by unsafe code. Note that these guarantees refer to an unqualified `Vec<T>`.
 /// If additional type parameters are added (e.g. to support custom allocators),
 /// overriding their defaults may change the behavior.
 ///
-/// Most fundamentally, Vec is and always will be a (pointer, capacity, length)
+/// Most fundamentally, `Vec` is and always will be a (pointer, capacity, length)
 /// triplet. No more, no less. The order of these fields is completely
 /// unspecified, and you should use the appropriate methods to modify these.
 /// The pointer will never be null, so this type is null-pointer-optimized.
 ///
 /// However, the pointer may not actually point to allocated memory. In particular,
-/// if you construct a Vec with capacity 0 via [`Vec::new()`], [`vec![]`][`vec!`],
+/// if you construct a `Vec` with capacity 0 via [`Vec::new()`], [`vec![]`][`vec!`],
 /// [`Vec::with_capacity(0)`][`Vec::with_capacity`], or by calling [`shrink_to_fit()`]
 /// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
 /// types inside a `Vec`, it will not allocate space for them. *Note that in this case
-/// the `Vec` may not report a [`capacity()`] of 0*. Vec will allocate if and only
+/// the `Vec` may not report a [`capacity()`] of 0*. `Vec` will allocate if and only
 /// if [`mem::size_of::<T>()`]` * capacity() > 0`. In general, `Vec`'s allocation
 /// details are subtle enough that it is strongly recommended that you only
-/// free memory allocated by a Vec by creating a new Vec and dropping it.
+/// free memory allocated by a `Vec` by creating a new `Vec` and dropping it.
 ///
 /// If a `Vec` *has* allocated memory, then the memory it points to is on the heap
 /// (as defined by the allocator Rust is configured to use by default), and its
 /// pointer points to [`len()`] initialized elements in order (what you would see
-/// if you coerced it to a slice), followed by `[capacity()][`capacity()`] -
-/// [len()][`len()`]` logically uninitialized elements.
+/// if you coerced it to a slice), followed by [`capacity()`]` - `[`len()`]
+/// logically uninitialized elements.
 ///
 /// `Vec` will never perform a "small optimization" where elements are actually
 /// stored on the stack for two reasons:
@@ -249,8 +249,8 @@ use super::range::RangeArgument;
 /// [`shrink_to_fit`][`shrink_to_fit()`].
 ///
 /// [`push`] and [`insert`] will never (re)allocate if the reported capacity is
-/// sufficient. [`push`] and [`insert`] *will* (re)allocate if `[len()][`len()`]
-/// == [capacity()][`capacity()`]`. That is, the reported capacity is completely
+/// sufficient. [`push`] and [`insert`] *will* (re)allocate if
+/// [`len()`]` == `[`capacity()`]. That is, the reported capacity is completely
 /// accurate, and can be relied on. It can even be used to manually free the memory
 /// allocated by a `Vec` if desired. Bulk insertion methods *may* reallocate, even
 /// when not necessary.
@@ -261,11 +261,10 @@ use super::range::RangeArgument;
 /// strategy is used will of course guarantee `O(1)` amortized [`push`].
 ///
 /// `vec![x; n]`, `vec![a, b, c, d]`, and
-/// [`Vec::with_capacity(n)`][`Vec::with_capacity`], will all
-/// produce a `Vec` with exactly the requested capacity. If `[len()][`len()`] ==
-/// [capacity()][`capacity()`]`, (as is the case for the [`vec!`] macro), then a
-/// `Vec<T>` can be converted to and from a [`Box<[T]>`] without reallocating or
-/// moving the elements.
+/// [`Vec::with_capacity(n)`][`Vec::with_capacity`], will all produce a `Vec`
+/// with exactly the requested capacity. If [`len()`]` == `[`capacity()`],
+/// (as is the case for the [`vec!`] macro), then a `Vec<T>` can be converted to
+/// and from a [`Box<[T]>`][owned slice] without reallocating or moving the elements.
 ///
 /// `Vec` will not specifically overwrite any data that is removed from it,
 /// but also won't specifically preserve it. Its uninitialized memory is
@@ -292,7 +291,7 @@ use super::range::RangeArgument;
 /// [`push`]: ../../std/vec/struct.Vec.html#method.push
 /// [`insert`]: ../../std/vec/struct.Vec.html#method.insert
 /// [`reserve`]: ../../std/vec/struct.Vec.html#method.reserve
-/// [`Box<[T]>`]: ../../std/boxed/struct.Box.html
+/// [owned slice]: ../../std/boxed/struct.Box.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
     buf: RawVec<T>,
@@ -329,9 +328,10 @@ impl<T> Vec<T> {
     /// reallocating. If `capacity` is 0, the vector will not allocate.
     ///
     /// It is important to note that this function does not specify the *length*
-    /// of the returned vector, but only the *capacity*. (For an explanation of
-    /// the difference between length and capacity, see the main `Vec<T>` docs
-    /// above, 'Capacity and reallocation'.)
+    /// of the returned vector, but only the *capacity*. For an explanation of
+    /// the difference between length and capacity, see *[Capacity and reallocation]*.
+    ///
+    /// [Capacity and reallocation]: #capacity-and-reallocation
     ///
     /// # Examples
     ///
@@ -497,13 +497,13 @@ impl<T> Vec<T> {
         self.buf.shrink_to_fit(self.len);
     }
 
-    /// Converts the vector into [`Box<[T]>`].
+    /// Converts the vector into [`Box<[T]>`][owned slice].
     ///
     /// Note that this will drop any excess capacity. Calling this and
     /// converting back to a vector with [`into_vec()`] is equivalent to calling
     /// [`shrink_to_fit()`].
     ///
-    /// [`Box<[T]>`]: ../../std/boxed/struct.Box.html
+    /// [owned slice]: ../../std/boxed/struct.Box.html
     /// [`into_vec()`]: ../../std/primitive.slice.html#method.into_vec
     /// [`shrink_to_fit()`]: #method.shrink_to_fit
     ///
@@ -779,7 +779,7 @@ impl<T> Vec<T> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns false.
+    /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
     /// This method operates in place and preserves the order of the retained
     /// elements.
     ///
