@@ -587,19 +587,29 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // look for expected with found id
                 self.tcx.populate_inherent_implementations_for_type_if_necessary(found);
                 if let Some(impl_infos) = self.tcx.inherent_impls.borrow().get(&found) {
-                    let mut methods = Vec::new();
+                    let mut methods: Vec<(Option<ast::Attribute>, DefId, ImplOrTraitItem<'tcx>)> = Vec::new();
                     for impl_ in impl_infos {
                         methods.append(&mut self.tcx
                                                 .impl_or_trait_items(*impl_)
                                                 .iter()
-                                                .map(|&did| self.tcx.impl_or_trait_item(did))
-                                                .filter(|x| {
+                                                .map(|&did| (None, did, self.tcx.impl_or_trait_item(did)))
+                                                .filter(|&(_, _, ref x)| {
                                                     self.matches_return_type(x, &expected_ty)
                                                 })
                                                 .collect());
                     }
-                    for method in methods {
-                        println!("==> {:?}", method.name());
+                    let safe_suggestions: Vec<_> = methods.iter()
+                                                  .map(|&(_, ref id, ref x)| (self.find_attr(*id, "safe_suggestion"), id, x))
+                                                  .filter(|&(ref res, _, _)| res.is_some())
+                                                  .collect();
+                    if safe_suggestions.len() > 0 {
+                        for (_, _, method) in safe_suggestions {
+                            println!("safe ==> {:?}", method.name());
+                        }
+                    } else {
+                        for &(_, _, ref method) in methods.iter() {
+                            println!("not safe ==> {:?}", method.name());
+                        }
                     }
                 }
             }
@@ -613,6 +623,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.note_error_origin(diag, &cause);
         self.check_and_note_conflicting_crates(diag, terr, span);
         self.tcx.note_and_explain_type_err(diag, terr, span);
+    }
+
+    fn find_attr(&self, def_id: DefId, attr_name: &str) -> Option<ast::Attribute> {
+        for item in self.tcx.get_attrs(def_id).iter() {
+            if item.check_name(attr_name) {
+                return Some(item.clone());
+            }
+        }
+        None
     }
 
     pub fn report_and_explain_type_error(&self,

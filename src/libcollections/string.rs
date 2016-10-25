@@ -1231,6 +1231,7 @@ impl String {
     /// assert_eq!(a.len(), 3);
     /// ```
     #[inline]
+    #[cfg_attr(not(stage0), safe_suggestion)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
         self.vec.len()
