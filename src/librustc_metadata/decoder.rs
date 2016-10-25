@@ -690,9 +690,7 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F)
         where F: FnMut(def::Export)
     {
-        if self.dep_kind.get() == DepKind::MacrosOnly {
-            return
-        }
+        let macros_only = self.dep_kind.get() == DepKind::MacrosOnly;
 
         // Find the item.
         let item = match self.maybe_entry(id) {
@@ -702,9 +700,19 @@ impl<'a, 'tcx> CrateMetadata {
 
         // Iterate over all children.
         for child_index in item.children.decode(self) {
+            if macros_only {
+                continue
+            }
+
             // Get the item.
             if let Some(child) = self.maybe_entry(child_index) {
                 let child = child.decode(self);
+                match child.kind {
+                    EntryKind::MacroDef(..) => {}
+                    _ if macros_only => continue,
+                    _ => {}
+                }
+
                 // Hand off the item to the callback.
                 match child.kind {
                     // FIXME(eddyb) Don't encode these in children.
@@ -763,6 +771,11 @@ impl<'a, 'tcx> CrateMetadata {
 
         if let EntryKind::Mod(data) = item.kind {
             for exp in data.decode(self).reexports.decode(self) {
+                match exp.def {
+                    Def::Macro(..) => {}
+                    _ if macros_only => continue,
+                    _ => {}
+                }
                 callback(exp);
             }
         }

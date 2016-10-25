@@ -17,7 +17,7 @@ use macros::{InvocationData, LegacyScope};
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport};
 use {Module, ModuleS, ModuleKind};
-use Namespace::{self, TypeNS, ValueNS};
+use Namespace::{self, TypeNS, ValueNS, MacroNS};
 use {NameBinding, NameBindingKind, ToNameBinding};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
@@ -484,6 +484,9 @@ impl<'b> Resolver<'b> {
                 // Record field names for error reporting.
                 let field_names = self.session.cstore.struct_field_names(def_id);
                 self.insert_field_names(def_id, field_names);
+            }
+            Def::Macro(..) => {
+                self.define(parent, name, MacroNS, (def, DUMMY_SP, vis));
             }
             Def::Local(..) |
             Def::PrimTy(..) |
