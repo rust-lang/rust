@@ -17,7 +17,7 @@ struct Bob;
 
 impl<RHS: Scalar> Add <RHS> for Bob {
   type Output = Bob;
-  fn add(self, rhs : RHS) -> Bob {}
+  fn add(self, rhs : RHS) -> Bob { Bob }
 }
 
 fn main() {
