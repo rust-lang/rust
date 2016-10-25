@@ -550,6 +550,25 @@ impl<A, B> Iterator for Chain<A, B> where
         }
     }
 
+    fn fold<Acc, F>(self, init: Acc, mut f: F) -> Acc
+        where F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let mut accum = init;
+        match self.state {
+            ChainState::Both | ChainState::Front => {
+                accum = self.a.fold(accum, &mut f);
+            }
+            _ => { }
+        }
+        match self.state {
+            ChainState::Both | ChainState::Back => {
+                accum = self.b.fold(accum, &mut f);
+            }
+            _ => { }
+        }
+        accum
+    }
+
     #[inline]
     fn nth(&mut self, mut n: usize) -> Option<A::Item> {
         match self.state {
