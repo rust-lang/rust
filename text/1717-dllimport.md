@@ -1,7 +1,7 @@
 - Feature Name: dllimport
 - Start Date: 2016-08-13
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1717](https://github.com/rust-lang/rfcs/pull/1717)
+- Rust Issue: [rust-lang/rust#37403](https://github.com/rust-lang/rust/issues/37403)
 
 # Summary
 [summary]: #summary
@@ -18,10 +18,10 @@ what native libraries need to be linked into a program. On some platforms,
 however, the compiler needs more detailed knowledge about what's being linked
 from where in order to ensure that symbols are wired up correctly.
 
-On Windows, when a symbol is imported from a dynamic library, the code that accesses 
+On Windows, when a symbol is imported from a dynamic library, the code that accesses
 this symbol must be generated differently than for symbols imported from a static library.
 
-Currently the compiler is not aware of associations between the libraries and symbols 
+Currently the compiler is not aware of associations between the libraries and symbols
 imported from them, so it cannot alter code generation based on library kind.
 
 # Detailed design
@@ -35,7 +35,7 @@ are imported from the library mentioned in the `#[link]` attribute adorning the 
 ### Changes to code generation
 
 On platforms other than Windows the above association will have no effect.
-On Windows, however, `#[link(..., kind="dylib")` shall be presumed to mean linking to a dll, 
+On Windows, however, `#[link(..., kind="dylib")` shall be presumed to mean linking to a dll,
 whereas `#[link(..., kind="static")` shall mean static linking.  In the former case, all symbols
 associated with that library will be marked with LLVM [dllimport][1] storage class.
 
@@ -48,13 +48,13 @@ in through Cargo build scripts instead of being written in the source code
 itself. As a recap, a native library may change names across platforms or
 distributions or it may be linked dynamically in some situations and
 statically in others which is why build scripts are leveraged to make these
-dynamic decisions. In order to support this kind of dynamism, the following 
+dynamic decisions. In order to support this kind of dynamism, the following
 modifications are proposed:
 
-- Extend syntax of the `-l` flag to `-l [KIND=]lib[:NEWNAME]`.  The `NEWNAME` 
+- Extend syntax of the `-l` flag to `-l [KIND=]lib[:NEWNAME]`.  The `NEWNAME`
   part may be used to override name of a library specified in the source.
-- Add new meaning to the `KIND` part: if "lib" is already specified in the source, 
-  this will override its kind with KIND.  Note that this override is possible only 
+- Add new meaning to the `KIND` part: if "lib" is already specified in the source,
+  this will override its kind with KIND.  Note that this override is possible only
   for libraries defined in the current crate.
 
 Example:
@@ -63,7 +63,7 @@ Example:
 // mylib.rs
 #[link(name="foo", kind="dylib")]
 extern {
-    // dllimport applied 
+    // dllimport applied
 }
 
 #[link(name="bar", kind="static")]
@@ -73,22 +73,22 @@ extern {
 
 #[link(name="baz")]
 extern {
-    // kind defaults to "dylib", dllimport applied 
+    // kind defaults to "dylib", dllimport applied
 }
 ```
 
 ```sh
-rustc mylib.rs -l static=foo # change foo's kind to "static", dllimport will not be applied  
+rustc mylib.rs -l static=foo # change foo's kind to "static", dllimport will not be applied
 rustc mylib.rs -l foo:newfoo # link newfoo instead of foo, keeping foo's kind as "dylib"
 rustc mylib.rs -l dylib=bar # change bar's kind to "dylib", dllimport will be applied
 ```
 
 ### Unbundled static libs (optional)
 
-It had been pointed out that sometimes one may wish to link to a static system library 
-(i.e. one that is always available to the linker) without bundling it into .lib's and .rlib's.   
+It had been pointed out that sometimes one may wish to link to a static system library
+(i.e. one that is always available to the linker) without bundling it into .lib's and .rlib's.
 For this use case we'll introduce another library "kind", "static-nobundle".
-Such libraries would be treated in the same way as "static", except they will not be bundled into 
+Such libraries would be treated in the same way as "static", except they will not be bundled into
 the target .lib/.rlib.
 
 # Drawbacks
@@ -114,7 +114,7 @@ meaning that it will be common that these attributes are left off by accident.
 
 - Support a `#[dllimport]` on extern blocks (or individual symbols, or both).
   This has the following drawbacks, however:
-  - This attribute would duplicate the information already provided by 
+  - This attribute would duplicate the information already provided by
     `#[link(kind="...")]`.
   - It is not always known whether `#[dllimport]` is needed. Native
     libraires are not always known whether they're linked dynamically or
