@@ -191,6 +191,7 @@ pub fn link_binary(sess: &Session,
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-trans, as they will error.
+        // TODO do we need to check for CrateTypeMetadata here?
         if sess.opts.debugging_opts.no_trans &&
            crate_type == config::CrateTypeExecutable {
             continue;
@@ -263,6 +264,9 @@ pub fn filename_for_input(sess: &Session,
         config::CrateTypeRlib => {
             outputs.out_directory.join(&format!("lib{}.rlib", libname))
         }
+        config::CrateTypeMetadata => {
+            outputs.out_directory.join(&format!("lib{}.rmeta", libname))
+        }
         config::CrateTypeCdylib |
         config::CrateTypeProcMacro |
         config::CrateTypeDylib => {
@@ -322,6 +326,7 @@ fn link_binary_output(sess: &Session,
                       outputs: &OutputFilenames,
                       crate_name: &str) -> PathBuf {
     let objects = object_filenames(trans, outputs);
+    println!("objects: {:?}", objects);
     let default_filename = filename_for_input(sess, crate_type, crate_name,
                                               outputs);
     let out_filename = outputs.outputs.get(&OutputType::Exe)
@@ -345,7 +350,7 @@ fn link_binary_output(sess: &Session,
     };
 
     match crate_type {
-        config::CrateTypeRlib => {
+        config::CrateTypeRlib | config::CrateTypeMetadata => {
             link_rlib(sess, Some(trans), &objects, &out_filename,
                       tmpdir.path()).build();
         }
@@ -403,6 +408,7 @@ fn link_rlib<'a>(sess: &'a Session,
                  tmpdir: &Path) -> ArchiveBuilder<'a> {
     info!("preparing rlib from {:?} to {:?}", objects, out_filename);
     let mut ab = ArchiveBuilder::new(archive_config(sess, out_filename, None));
+
     for obj in objects {
         ab.add_file(obj);
     }

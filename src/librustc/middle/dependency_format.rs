@@ -114,7 +114,7 @@ fn calculate_type(sess: &session::Session,
 
         // No linkage happens with rlibs, we just needed the metadata (which we
         // got long ago), so don't bother with anything.
-        config::CrateTypeRlib => return Vec::new(),
+        config::CrateTypeRlib | config::CrateTypeMetadata => return Vec::new(),
 
         // Staticlibs and cdylibs must have all static dependencies. If any fail
         // to be found, we generate some nice pretty errors.

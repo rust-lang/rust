@@ -45,7 +45,7 @@ use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::dep_graph::{DepNode, WorkProduct};
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
-use session::config::{self, NoDebugInfo};
+use session::config::{self, NoDebugInfo, OutputType};
 use rustc_incremental::IncrementalHashesMap;
 use session::Session;
 use abi::{self, Abi, FnType};
@@ -1260,7 +1260,8 @@ fn write_metadata(cx: &SharedCrateContext,
             config::CrateTypeStaticlib |
             config::CrateTypeCdylib => MetadataKind::None,
 
-            config::CrateTypeRlib => MetadataKind::Uncompressed,
+            config::CrateTypeRlib |
+            config::CrateTypeMetadata => MetadataKind::Uncompressed,
 
             config::CrateTypeDylib |
             config::CrateTypeProcMacro => MetadataKind::Compressed,
@@ -1600,7 +1601,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert_module_sources::assert_module_sources(tcx, &modules);
 
     // Skip crate items and just output metadata in -Z no-trans mode.
-    if tcx.sess.opts.debugging_opts.no_trans {
+    if tcx.sess.opts.debugging_opts.no_trans ||
+       tcx.sess.crate_types.borrow().iter().all(|ct| ct == &config::CrateTypeMetadata) {
         let linker_info = LinkerInfo::new(&shared_ccx, &[]);
         return CrateTranslation {
             modules: modules,
