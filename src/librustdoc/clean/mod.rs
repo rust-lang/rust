@@ -670,7 +670,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
             Some(tcx) => tcx,
             None => return RegionBound(Lifetime::statik())
         };
-        let empty = Substs::empty(tcx);
+        let empty = tcx.intern_substs(&[]);
         let (did, path) = match *self {
             ty::BoundSend =>
                 (tcx.lang_items.send_trait().unwrap(),

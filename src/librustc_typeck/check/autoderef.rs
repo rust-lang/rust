@@ -16,7 +16,6 @@ use rustc::traits;
 use rustc::ty::{self, Ty, TraitRef};
 use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc::ty::{MethodCall, MethodCallee};
-use rustc::ty::subst::Substs;
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::hir;
 
@@ -106,7 +105,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
                 Some(f) => f,
                 None => return None,
             },
-            substs: Substs::new_trait(tcx, self.cur_ty, &[]),
+            substs: tcx.mk_substs_trait(self.cur_ty, &[]),
         };
 
         let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);

@@ -88,7 +88,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Tuple up the arguments and insert the resulting function type into
         // the `closures` table.
-        fn_ty.sig.0.inputs = vec![self.tcx.mk_tup(&fn_ty.sig.0.inputs)];
+        fn_ty.sig.0.inputs = vec![self.tcx.intern_tup(&fn_ty.sig.0.inputs[..])];
 
         debug!("closure for {:?} --> sig={:?} opt_kind={:?}",
                expr_def_id,

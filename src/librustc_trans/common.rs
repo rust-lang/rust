@@ -376,7 +376,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         let tcx = ccx.tcx();
         match tcx.lang_items.eh_personality() {
             Some(def_id) if !base::wants_msvc_seh(ccx.sess()) => {
-                Callee::def(ccx, def_id, Substs::empty(tcx)).reify(ccx)
+                Callee::def(ccx, def_id, tcx.intern_substs(&[])).reify(ccx)
             }
             _ => {
                 if let Some(llpersonality) = ccx.eh_personality().get() {
@@ -403,7 +403,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         let tcx = ccx.tcx();
         assert!(ccx.sess().target.target.options.custom_unwind_resume);
         if let Some(def_id) = tcx.lang_items.eh_unwind_resume() {
-            return Callee::def(ccx, def_id, Substs::empty(tcx));
+            return Callee::def(ccx, def_id, tcx.intern_substs(&[]));
         }
 
         let ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
