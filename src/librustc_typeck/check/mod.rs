@@ -534,7 +534,7 @@ pub fn check_drop_impls(ccx: &CrateCtxt) -> CompileResult {
 
 fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            decl: &'tcx hir::FnDecl,
-                           body: &'tcx hir::Block,
+                           body: &'tcx hir::Expr,
                            fn_id: ast::NodeId,
                            span: Span) {
     let raw_fty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(fn_id)).ty;
@@ -558,7 +558,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let fcx = check_fn(&inh, fn_ty.unsafety, fn_id, &fn_sig, decl, fn_id, body);
 
         fcx.select_all_obligations_and_apply_defaults();
-        fcx.closure_analyze_fn(body);
+        fcx.closure_analyze(body);
         fcx.select_obligations_where_possible();
         fcx.check_casts();
         fcx.select_all_obligations_or_error(); // Casts can introduce new obligations.
@@ -654,7 +654,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 
     // Don't descend into the bodies of nested closures
     fn visit_fn(&mut self, _: intravisit::FnKind<'gcx>, _: &'gcx hir::FnDecl,
-                _: &'gcx hir::Block, _: Span, _: ast::NodeId) { }
+                _: &'gcx hir::Expr, _: Span, _: ast::NodeId) { }
 }
 
 /// Helper used by check_bare_fn and check_expr_fn. Does the grungy work of checking a function
@@ -669,7 +669,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             fn_sig: &ty::FnSig<'tcx>,
                             decl: &'gcx hir::FnDecl,
                             fn_id: ast::NodeId,
-                            body: &'gcx hir::Block)
+                            body: &'gcx hir::Expr)
                             -> FnCtxt<'a, 'gcx, 'tcx>
 {
     let mut fn_sig = fn_sig.clone();
@@ -709,18 +709,12 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             fcx.write_ty(input.id, arg_ty);
         }
 
-        visit.visit_block(body);
+        visit.visit_expr(body);
     }
 
     inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
 
-    // FIXME(aburka) do we need this special case? and should it be is_uninhabited?
-    let expected = if fcx.ret_ty.is_never() {
-        NoExpectation
-    } else {
-        ExpectHasType(fcx.ret_ty)
-    };
-    fcx.check_block_with_expected(body, expected);
+    fcx.check_expr_coercable_to_type(body, fcx.ret_ty);
 
     fcx
 }
@@ -1198,7 +1192,7 @@ fn check_const_with_type<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         fcx.check_expr_coercable_to_type(expr, expected_type);
 
         fcx.select_all_obligations_and_apply_defaults();
-        fcx.closure_analyze_const(expr);
+        fcx.closure_analyze(expr);
         fcx.select_obligations_where_possible();
         fcx.check_casts();
         fcx.select_all_obligations_or_error();

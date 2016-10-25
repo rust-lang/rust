@@ -134,7 +134,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     fn fn_like(&mut self,
                fk: FnKind,
                fd: &hir::FnDecl,
-               b: &hir::Block,
+               b: &hir::Expr,
                s: Span,
                fn_id: ast::NodeId)
                -> ConstQualif {
@@ -265,7 +265,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fk: FnKind<'v>,
                 fd: &'v hir::FnDecl,
-                b: &'v hir::Block,
+                b: &'v hir::Expr,
                 s: Span,
                 fn_id: ast::NodeId) {
         self.fn_like(fk, fd, b, s, fn_id);

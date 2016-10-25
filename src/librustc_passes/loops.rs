@@ -54,7 +54,7 @@ impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
                 self.with_context(Loop, |v| v.visit_block(&b));
             }
             hir::ExprClosure(.., ref b, _) => {
-                self.with_context(Closure, |v| v.visit_block(&b));
+                self.with_context(Closure, |v| v.visit_expr(&b));
             }
             hir::ExprBreak(_) => self.require_loop("break", e.span),
             hir::ExprAgain(_) => self.require_loop("continue", e.span),

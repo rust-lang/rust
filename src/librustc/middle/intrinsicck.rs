@@ -144,7 +144,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Block, s: Span, id: ast::NodeId) {
+                b: &'v hir::Expr, s: Span, id: ast::NodeId) {
         if let FnKind::Closure(..) = fk {
             span_bug!(s, "intrinsicck: closure outside of function")
         }

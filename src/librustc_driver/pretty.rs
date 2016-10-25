@@ -701,8 +701,8 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
                                        mut out: W)
                                        -> io::Result<()> {
     let cfg = match code {
-        blocks::BlockCode(block) => cfg::CFG::new(tcx, &block),
-        blocks::FnLikeCode(fn_like) => cfg::CFG::new(tcx, &fn_like.body()),
+        blocks::Code::Expr(expr) => cfg::CFG::new(tcx, expr),
+        blocks::Code::FnLike(fn_like) => cfg::CFG::new(tcx, fn_like.body()),
     };
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
     let lcfg = LabelledCFG {
@@ -717,12 +717,12 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
             let r = dot::render(&lcfg, &mut out);
             return expand_err_details(r);
         }
-        blocks::BlockCode(_) => {
+        blocks::Code::Expr(_) => {
             tcx.sess.err("--pretty flowgraph with -Z flowgraph-print annotations requires \
                           fn-like node id.");
             return Ok(());
         }
-        blocks::FnLikeCode(fn_like) => {
+        blocks::Code::FnLike(fn_like) => {
             let (bccx, analysis_data) =
                 borrowck::build_borrowck_dataflow_data_for_fn(tcx, fn_like.to_fn_parts(), &cfg);
 
@@ -990,8 +990,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                     tcx.sess.fatal(&format!("--pretty flowgraph couldn't find id: {}", nodeid))
                 });
 
-                let code = blocks::Code::from_node(node);
-                match code {
+                match blocks::Code::from_node(&tcx.map, nodeid) {
                     Some(code) => {
                         let variants = gather_flowgraph_variants(tcx.sess);
 

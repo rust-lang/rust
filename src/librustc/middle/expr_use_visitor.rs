@@ -290,14 +290,14 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
     pub fn walk_fn(&mut self,
                    decl: &hir::FnDecl,
-                   body: &hir::Block) {
+                   body: &hir::Expr) {
         self.walk_arg_patterns(decl, body);
-        self.walk_block(body);
+        self.consume_expr(body);
     }
 
     fn walk_arg_patterns(&mut self,
                          decl: &hir::FnDecl,
-                         body: &hir::Block) {
+                         body: &hir::Expr) {
         for arg in &decl.inputs {
             let arg_ty = return_if_err!(self.mc.infcx.node_ty(arg.pat.id));
 

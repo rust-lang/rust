@@ -164,7 +164,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_fn(&mut self,
                 fk: hir_visit::FnKind<'v>,
                 fd: &'v hir::FnDecl,
-                b: &'v hir::Block,
+                b: &'v hir::Expr,
                 s: Span,
                 id: NodeId) {
         self.record("FnDecl", Id::None, fd);

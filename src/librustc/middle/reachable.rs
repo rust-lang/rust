@@ -248,9 +248,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
-                    hir::ItemFn(.., ref search_block) => {
+                    hir::ItemFn(.., ref body) => {
                         if item_might_be_inlined(&item) {
-                            intravisit::walk_block(self, &search_block)
+                            self.visit_expr(body);
                         }
                     }
 
@@ -278,11 +278,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::MethodTraitItem(_, None) => {
                         // Keep going, nothing to get exported
                     }
-                    hir::ConstTraitItem(_, Some(ref expr)) => {
-                        self.visit_expr(&expr);
-                    }
+                    hir::ConstTraitItem(_, Some(ref body)) |
                     hir::MethodTraitItem(_, Some(ref body)) => {
-                        intravisit::walk_block(self, body);
+                        self.visit_expr(body);
                     }
                     hir::TypeTraitItem(..) => {}
                 }
@@ -295,7 +293,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ImplItemKind::Method(ref sig, ref body) => {
                         let did = self.tcx.map.get_parent_did(search_item);
                         if method_might_be_inlined(self.tcx, sig, impl_item, did) {
-                            intravisit::walk_block(self, body)
+                            self.visit_expr(body)
                         }
                     }
                     hir::ImplItemKind::Type(_) => {}
