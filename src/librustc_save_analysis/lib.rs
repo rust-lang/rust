@@ -565,6 +565,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Def::PrimTy(..) |
             Def::SelfTy(..) |
             Def::Label(..) |
+            Def::Macro(..) |
             Def::Err => None,
         }
     }

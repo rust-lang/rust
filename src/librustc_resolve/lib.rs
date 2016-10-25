@@ -533,6 +533,7 @@ impl PatternSource {
 pub enum Namespace {
     TypeNS,
     ValueNS,
+    MacroNS,
 }
 
 impl<'a> Visitor for Resolver<'a> {
@@ -1346,7 +1347,11 @@ impl<'a> Resolver<'a> {
     }
 
     fn get_ribs<'b>(&'b mut self, ns: Namespace) -> &'b mut Vec<Rib<'a>> {
-        match ns { ValueNS => &mut self.value_ribs, TypeNS => &mut self.type_ribs }
+        match ns {
+            ValueNS => &mut self.value_ribs,
+            TypeNS => &mut self.type_ribs,
+            MacroNS => panic!("The macro namespace has no ribs"),
+        }
     }
 
     fn record_use(&mut self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
@@ -3421,6 +3426,7 @@ impl<'a> Resolver<'a> {
         let msg = {
             let kind = match (ns, old_binding.module()) {
                 (ValueNS, _) => "a value",
+                (MacroNS, _) => "a macro",
                 (TypeNS, _) if old_binding.is_extern_crate() => "an extern crate",
                 (TypeNS, Ok(module)) if module.is_normal() => "a module",
                 (TypeNS, Ok(module)) if module.is_trait() => "a trait",
