@@ -1,7 +1,7 @@
 - Feature Name: `crt_link`
 - Start Date: 2016-08-18
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1721](https://github.com/rust-lang/rfcs/pull/1721)
+- Rust Issue: [rust-lang/rust#37406](https://github.com/rust-lang/rust/issues/37406)
 
 # Summary
 [summary]: #summary
