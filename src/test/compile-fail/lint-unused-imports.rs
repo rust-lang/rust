@@ -17,19 +17,19 @@ use std::mem::*;            // shouldn't get errors for not using
                             // everything imported
 
 // Should get errors for both 'Some' and 'None'
-use std::option::Option::{Some, None}; //~ ERROR unused import
-                                     //~^ ERROR unused import
+use std::option::Option::{Some, None}; //~ ERROR unused import: `Some`
+                                    //~^ ERROR unused import: `None`
 
-use test::A;       //~ ERROR unused import
+use test::A;       //~ ERROR unused import: `test::A`
 // Be sure that if we just bring some methods into scope that they're also
 // counted as being used.
 use test::B;
 // But only when actually used: do not get confused by the method with the same name.
-use test::B2; //~ ERROR unused import
+use test::B2; //~ ERROR unused import: `test::B2`
 
 // Make sure this import is warned about when at least one of its imported names
 // is unused
-use test2::{foo, bar}; //~ ERROR unused import
+use test2::{foo, bar}; //~ ERROR unused import: `bar`
 
 mod test2 {
     pub fn foo() {}
@@ -57,7 +57,7 @@ mod bar {
 
     pub mod c {
         use foo::Point;
-        use foo::Square; //~ ERROR unused import
+        use foo::Square; //~ ERROR unused import: `foo::Square`
         pub fn cc(_p: Point) -> super::Square {
             fn f() -> super::Square {
                 super::Square
@@ -73,7 +73,7 @@ mod bar {
 }
 
 fn g() {
-    use self::g; //~ ERROR unused import
+    use self::g; //~ ERROR unused import: `self::g`
     fn f() {
         self::g();
     }
@@ -82,7 +82,7 @@ fn g() {
 // c.f. issue #35135
 #[allow(unused_variables)]
 fn h() {
-    use test2::foo; //~ ERROR unused import
+    use test2::foo; //~ ERROR unused import: `test2::foo`
     let foo = 0;
 }
 
