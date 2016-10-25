@@ -196,7 +196,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 // Function items are coercible to any closure
                 // type; function pointers are not (that would
                 // require double indirection).
-                // Additionally, we permit coercin of function
+                // Additionally, we permit coercion of function
                 // items to drop the unsafe qualifier.
                 self.coerce_from_fn_item(a, a_f, b)
             }
