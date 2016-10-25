@@ -214,7 +214,7 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Allocate space:
     let def_id = require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem);
-    let r = Callee::def(bcx.ccx(), def_id, Substs::empty(bcx.tcx()))
+    let r = Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[]))
         .call(bcx, debug_loc, &[size, align], None);
 
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
@@ -405,7 +405,7 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
                                              -> CustomCoerceUnsized {
     let trait_ref = ty::Binder(ty::TraitRef {
         def_id: scx.tcx().lang_items.coerce_unsized_trait().unwrap(),
-        substs: Substs::new_trait(scx.tcx(), source_ty, &[target_ty])
+        substs: scx.tcx().mk_substs_trait(source_ty, &[target_ty])
     });
 
     match fulfill_obligation(scx, DUMMY_SP, trait_ref) {
@@ -848,7 +848,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 common::validate_substs(instance.substs);
                 (instance.substs, Some(instance.def))
             }
-            None => (Substs::empty(ccx.tcx()), None)
+            None => (ccx.tcx().intern_substs(&[]), None)
         };
 
         let local_id = def_id.and_then(|id| ccx.tcx().map.as_local_node_id(id));
@@ -1211,7 +1211,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
                     Ok(id) => id,
                     Err(s) => ccx.sess().fatal(&s)
                 };
-                let empty_substs = Substs::empty(ccx.tcx());
+                let empty_substs = ccx.tcx().intern_substs(&[]);
                 let start_fn = Callee::def(ccx, start_def_id, empty_substs).reify(ccx);
                 let args = {
                     let opaque_rust_main =

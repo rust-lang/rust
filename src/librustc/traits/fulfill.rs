@@ -11,7 +11,7 @@
 use dep_graph::DepGraph;
 use infer::{InferCtxt, InferOk};
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, TyCtxt, ToPredicate};
-use ty::subst::{Substs, Subst};
+use ty::subst::Subst;
 use rustc_data_structures::obligation_forest::{ObligationForest, Error};
 use rustc_data_structures::obligation_forest::{ForestObligation, ObligationProcessor};
 use std::marker::PhantomData;
@@ -159,7 +159,7 @@ impl<'a, 'gcx, 'tcx> DeferredObligation<'tcx> {
                 let concrete_ty = ty_scheme.ty.subst(tcx, substs);
                 let predicate = ty::TraitRef {
                     def_id: self.predicate.def_id(),
-                    substs: Substs::new_trait(tcx, concrete_ty, &[])
+                    substs: tcx.mk_substs_trait(concrete_ty, &[])
                 }.to_predicate();
 
                 let original_obligation = Obligation::new(self.cause.clone(),

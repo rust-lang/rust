@@ -233,7 +233,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
             let main_def_id = tcx.map.local_def_id(main_id);
-            let substs = Substs::empty(tcx);
+            let substs = tcx.intern_substs(&[]);
             let se_ty = tcx.mk_fn_def(main_def_id, substs,
                                       tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
@@ -285,7 +285,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             }
 
             let start_def_id = ccx.tcx.map.local_def_id(start_id);
-            let substs = Substs::empty(tcx);
+            let substs = tcx.intern_substs(&[]);
             let se_ty = tcx.mk_fn_def(start_def_id, substs,
                                       tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
