@@ -994,10 +994,10 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
     }
 
     fn visit_fn(&mut self, fk: ast_visit::FnKind, decl: &ast::FnDecl,
-                body: &ast::Block, span: Span, id: ast::NodeId) {
-        run_lints!(self, check_fn, early_passes, fk, decl, body, span, id);
-        ast_visit::walk_fn(self, fk, decl, body, span);
-        run_lints!(self, check_fn_post, early_passes, fk, decl, body, span, id);
+                span: Span, id: ast::NodeId) {
+        run_lints!(self, check_fn, early_passes, fk, decl, span, id);
+        ast_visit::walk_fn(self, fk, decl, span);
+        run_lints!(self, check_fn_post, early_passes, fk, decl, span, id);
     }
 
     fn visit_variant_data(&mut self,
