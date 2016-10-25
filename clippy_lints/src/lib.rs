@@ -136,17 +136,23 @@ mod reexport {
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
-    let conf = match utils::conf::file(reg.args()) {
+    let conf = match utils::conf::file_from_args(reg.args()) {
         Ok(file_name) => {
             // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
             // do not require the file to exist
-            let (file_name, must_exist) = if let Some(ref file_name) = file_name {
-                (&**file_name, true)
+            let file_name = if let Some(file_name) = file_name {
+                Some(file_name)
             } else {
-                ("clippy.toml", false)
+                match utils::conf::lookup_conf_file() {
+                    Ok(path) => path,
+                    Err(error) => {
+                        reg.sess.struct_err(&format!("error reading Clippy's configuration file: {}", error)).emit();
+                        None
+                    }
+                }
             };
 
-            let (conf, errors) = utils::conf::read(file_name, must_exist);
+            let (conf, errors) = utils::conf::read(file_name.as_ref().map(|p| p.as_ref()));
 
             // all conf errors are non-fatal, we just use the default conf in case of error
             for error in errors {
