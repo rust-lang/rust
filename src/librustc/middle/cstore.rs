@@ -37,7 +37,7 @@ use util::nodemap::{NodeSet, DefIdMap};
 use std::path::PathBuf;
 use syntax::ast;
 use syntax::attr;
-use syntax::ext::base::MultiItemModifier;
+use syntax::ext::base::SyntaxExtension;
 use syntax::ptr::P;
 use syntax::parse::token::InternedString;
 use syntax_pos::Span;
@@ -417,18 +417,22 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 
-pub struct LoadedMacro {
-    pub import_site: Span,
-    pub kind: LoadedMacroKind,
+pub enum LoadedMacros {
+    MacroRules(Vec<ast::MacroDef>),
+    ProcMacros(Vec<(ast::Name, SyntaxExtension)>),
 }
 
-pub enum LoadedMacroKind {
-    Def(ast::MacroDef),
-    CustomDerive(String, Box<MultiItemModifier>),
+impl LoadedMacros {
+    pub fn is_proc_macros(&self) -> bool {
+        match *self {
+            LoadedMacros::ProcMacros(_) => true,
+            _ => false,
+        }
+    }
 }
 
 pub trait CrateLoader {
-    fn load_macros(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<LoadedMacro>;
-    fn process_item(&mut self, item: &ast::Item, defs: &Definitions);
+    fn process_item(&mut self, item: &ast::Item, defs: &Definitions, load_macros: bool)
+                    -> Option<LoadedMacros>;
     fn postprocess(&mut self, krate: &ast::Crate);
 }

@@ -114,22 +114,22 @@ impl<'a> base::Resolver for Resolver<'a> {
         invocation.expansion.set(visitor.legacy_scope);
     }
 
-    fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef) {
+    fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef, export: bool) {
         if &def.ident.name.as_str() == "macro_rules" {
             self.session.span_err(def.span, "user-defined macros may not be named `macro_rules`");
         }
-        if def.use_locally {
-            let invocation = self.invocations[&scope];
-            let binding = self.arenas.alloc_legacy_binding(LegacyBinding {
-                parent: invocation.legacy_scope.get(),
-                name: def.ident.name,
-                ext: Rc::new(macro_rules::compile(&self.session.parse_sess, &def)),
-                span: def.span,
-            });
-            invocation.legacy_scope.set(LegacyScope::Binding(binding));
-            self.macro_names.insert(def.ident.name);
-        }
-        if def.export {
+
+        let invocation = self.invocations[&scope];
+        let binding = self.arenas.alloc_legacy_binding(LegacyBinding {
+            parent: invocation.legacy_scope.get(),
+            name: def.ident.name,
+            ext: Rc::new(macro_rules::compile(&self.session.parse_sess, &def)),
+            span: def.span,
+        });
+        invocation.legacy_scope.set(LegacyScope::Binding(binding));
+        self.macro_names.insert(def.ident.name);
+
+        if export {
             def.id = self.next_node_id();
             self.exported_macros.push(def);
         }
