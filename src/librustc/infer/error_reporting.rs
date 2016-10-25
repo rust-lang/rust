@@ -83,7 +83,7 @@ use hir::def_id::DefId;
 use infer;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
-use ty::{self, TyCtxt, TypeFoldable};
+use ty::{self, ImplOrTraitItem, Ty, TyCtxt, TypeFoldable};
 use ty::{Region, ReFree};
 use ty::error::TypeError;
 
@@ -549,7 +549,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         let expected_found = match values {
             None => None,
-            Some(values) => match self.values_str(&values) {
+            Some(ref values) => match self.values_str(&values) {
                 Some((expected, found)) => Some((expected, found)),
                 None => {
                     // Derived error. Cancel the emitter.
@@ -580,6 +580,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
                 } else {
                     diag.note_expected_found(&"type", &expected, &found);
+                }
+            }
+
+            if let Some((found, (expected_ty, _))) = self.get_ids(values) {
+                // look for expected with found id
+                self.tcx.populate_inherent_implementations_for_type_if_necessary(found);
+                if let Some(impl_infos) = self.tcx.inherent_impls.borrow().get(&found) {
+                    let mut methods = Vec::new();
+                    for impl_ in impl_infos {
+                        methods.append(&mut self.tcx
+                                                .impl_or_trait_items(*impl_)
+                                                .iter()
+                                                .map(|&did| self.tcx.impl_or_trait_item(did))
+                                                .filter(|x| {
+                                                    self.matches_return_type(x, &expected_ty)
+                                                })
+                                                .collect());
+                    }
+                    for method in methods {
+                        println!("==> {:?}", method.name());
+                    }
                 }
             }
         }
@@ -619,6 +640,60 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             infer::Types(ref exp_found) => self.expected_found_str(exp_found),
             infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found),
             infer::PolyTraitRefs(ref exp_found) => self.expected_found_str(exp_found),
+        }
+    }
+
+    fn matches_return_type(&self, method: &ImplOrTraitItem<'tcx>, expected: &ty::Ty<'tcx>) -> bool {
+        match *method {
+            ImplOrTraitItem::MethodTraitItem(ref x) => {
+                self.can_sub_types(x.fty.sig.skip_binder().output, expected).is_ok()
+            }
+            _ => false,
+        }
+    }
+
+    fn get_id(&self, ty: Ty<'tcx>) -> Option<DefId> {
+        match ty.sty {
+            ty::TyTrait(box ref data) => Some(data.principal.def_id()),
+            ty::TyAdt(def, _) => Some(def.did),
+            ty::TyBox(ref ty) => self.get_id(*ty), // since we don't want box's methods by type's
+            ty::TyChar => self.tcx.lang_items.char_impl(),
+            ty::TyStr => self.tcx.lang_items.str_impl(),
+            ty::TySlice(_) => self.tcx.lang_items.slice_impl(),
+            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
+                self.tcx.lang_items.const_ptr_impl()
+            }
+            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
+                self.tcx.lang_items.mut_ptr_impl()
+            }
+            ty::TyInt(ast::IntTy::I8) => self.tcx.lang_items.i8_impl(),
+            ty::TyInt(ast::IntTy::I16) => self.tcx.lang_items.i16_impl(),
+            ty::TyInt(ast::IntTy::I32) => self.tcx.lang_items.i32_impl(),
+            ty::TyInt(ast::IntTy::I64) => self.tcx.lang_items.i64_impl(),
+            ty::TyInt(ast::IntTy::Is) => self.tcx.lang_items.isize_impl(),
+            ty::TyUint(ast::UintTy::U8) => self.tcx.lang_items.u8_impl(),
+            ty::TyUint(ast::UintTy::U16) => self.tcx.lang_items.u16_impl(),
+            ty::TyUint(ast::UintTy::U32) => self.tcx.lang_items.u32_impl(),
+            ty::TyUint(ast::UintTy::U64) => self.tcx.lang_items.u64_impl(),
+            ty::TyUint(ast::UintTy::Us) => self.tcx.lang_items.usize_impl(),
+            ty::TyFloat(ast::FloatTy::F32) => self.tcx.lang_items.f32_impl(),
+            ty::TyFloat(ast::FloatTy::F64) => self.tcx.lang_items.f64_impl(),
+            _ => None,
+        }
+    }
+
+    // Yep, returned value super ugly. it'll certainly become `Option<(DefId, ty::Ty<'tcx>)>`
+    // in a close future. Or maybe a struct?
+    fn get_ids(&self, values: Option<ValuePairs<'tcx>>) -> Option<(DefId, (ty::Ty<'tcx>, DefId))> {
+        match values {
+            // for now, only handling non trait types
+            Some(infer::Types(ref exp_found)) => {
+                match (self.get_id(exp_found.found), self.get_id(exp_found.expected)) {
+                    (Some(found), Some(expected)) => Some((found, (exp_found.expected, expected))),
+                    _ => None,
+                }
+            }
+            _ => None,
         }
     }
 
