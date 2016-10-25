@@ -240,7 +240,7 @@ fn main() {
 
 In other words, the mutable borrow is held through the rest of our example. What
 we want is for the mutable borrow by `y` to end so that the resource can be
-returned to the owner, `x`. `x` can then provide a immutable borrow to `println!`.
+returned to the owner, `x`. `x` can then provide an immutable borrow to `println!`.
 In Rust, borrowing is tied to the scope that the borrow is valid for. And our
 scopes look like this:
 
