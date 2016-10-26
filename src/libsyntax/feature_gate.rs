@@ -1317,7 +1317,7 @@ pub enum UnstableFeatures {
     /// Hard errors for unstable features are active, as on
     /// beta/stable channels.
     Disallow,
-    /// Allow features to me activated, as on nightly.
+    /// Allow features to be activated, as on nightly.
     Allow,
     /// Errors are bypassed for bootstrapping. This is required any time
     /// during the build that feature-related lints are set to warn or above
