@@ -35,6 +35,7 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(specialization)]
 
+extern crate core;
 extern crate serialize;
 extern crate term;
 extern crate libc;
