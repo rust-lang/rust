@@ -499,6 +499,10 @@ pub fn build_rules(build: &Build) -> Rules {
          .default(true)
          .dep(|s| s.name("default:doc"))
          .run(move |s| dist::docs(build, s.stage, s.target));
+    rules.dist("dist-analysis", "src/libstd")
+         .dep(|s| s.name("dist-std"))
+         .default(true)
+         .run(move |s| dist::analysis(build, &s.compiler(), s.target));
     rules.dist("install", "src")
          .dep(|s| s.name("default:dist"))
          .run(move |s| install::install(build, s.stage, s.target));

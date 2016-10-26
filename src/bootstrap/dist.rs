@@ -23,7 +23,7 @@ use std::io::Write;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 
-use {Build, Compiler};
+use {Build, Compiler, Mode};
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy};
 
 pub fn package_vers(build: &Build) -> &str {
@@ -287,6 +287,50 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
 pub fn rust_src_location(build: &Build) -> PathBuf {
     let plain_name = format!("rustc-{}-src", package_vers(build));
     distdir(build).join(&format!("{}.tar.gz", plain_name))
+}
+
+/// Creates a tarball of save-analysis metadata, if available.
+pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
+    println!("Dist analysis");
+
+    if build.config.channel != "nightly" {
+        println!("Skipping dist-analysis - not on nightly channel");
+        return;
+    }
+    if compiler.stage != 2 {
+        return
+    }
+
+    let name = format!("rust-analysis-{}", package_vers(build));
+    let image = tmpdir(build).join(format!("{}-{}-image", name, target));
+
+    let src = build.stage_out(compiler, Mode::Libstd).join(target).join("release").join("deps");
+
+    let image_src = src.join("save-analysis");
+    let dst = image.join("lib/rustlib").join(target).join("analysis");
+    t!(fs::create_dir_all(&dst));
+    cp_r(&image_src, &dst);
+
+    let mut cmd = Command::new("sh");
+    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+       .arg("--product-name=Rust")
+       .arg("--rel-manifest-dir=rustlib")
+       .arg("--success-message=save-analysis-saved.")
+       .arg(format!("--image-dir={}", sanitize_sh(&image)))
+       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
+       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg(format!("--package-name={}-{}", name, target))
+       .arg(format!("--component-name=rust-analysis-{}", target))
+       .arg("--legacy-manifest-dirs=rustlib,cargo");
+    build.run(&mut cmd);
+    t!(fs::remove_dir_all(&image));
+
+    // Create plain source tarball
+    let mut cmd = Command::new("tar");
+    cmd.arg("-czf").arg(sanitize_sh(&distdir(build).join(&format!("{}.tar.gz", name))))
+       .arg("analysis")
+       .current_dir(&src);
+    build.run(&mut cmd);
 }
 
 /// Creates the `rust-src` installer component and the plain source tarball

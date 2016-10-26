@@ -507,6 +507,10 @@ impl Build {
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
         }
 
+        if self.config.channel == "nightly" && compiler.stage == 2 {
+            cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
+        }
+
         // Environment variables *required* needed throughout the build
         //
         // FIXME: should update code to not require this env var
