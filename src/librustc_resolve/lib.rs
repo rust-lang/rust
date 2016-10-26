@@ -845,6 +845,10 @@ impl<'a> ModuleS<'a> {
             _ => false,
         }
     }
+
+    fn is_local(&self) -> bool {
+        self.normal_ancestor_id.is_some()
+    }
 }
 
 impl<'a> fmt::Debug for ModuleS<'a> {
@@ -1580,14 +1584,7 @@ impl<'a> Resolver<'a> {
     fn resolve_module_prefix(&mut self, module_path: &[Ident], span: Option<Span>)
                              -> ResolveResult<ModulePrefixResult<'a>> {
         if &*module_path[0].name.as_str() == "$crate" {
-            let mut ctxt = module_path[0].ctxt;
-            while ctxt.source().0 != SyntaxContext::empty() {
-                ctxt = ctxt.source().0;
-            }
-            let module = self.invocations[&ctxt.source().1].module.get();
-            let crate_root =
-                if module.def_id().unwrap().is_local() { self.graph_root } else { module };
-            return Success(PrefixFound(crate_root, 1))
+            return Success(PrefixFound(self.resolve_crate_var(module_path[0].ctxt), 1));
         }
 
         // Start at the current module if we see `self` or `super`, or at the
@@ -1618,6 +1615,14 @@ impl<'a> Resolver<'a> {
                module_to_string(&containing_module));
 
         return Success(PrefixFound(containing_module, i));
+    }
+
+    fn resolve_crate_var(&mut self, mut crate_var_ctxt: SyntaxContext) -> Module<'a> {
+        while crate_var_ctxt.source().0 != SyntaxContext::empty() {
+            crate_var_ctxt = crate_var_ctxt.source().0;
+        }
+        let module = self.invocations[&crate_var_ctxt.source().1].module.get();
+        if module.is_local() { self.graph_root } else { module }
     }
 
     // AST resolution
@@ -2569,7 +2574,8 @@ impl<'a> Resolver<'a> {
         let unqualified_def = resolve_identifier_with_fallback(self, None);
         let qualified_binding = self.resolve_module_relative_path(span, segments, namespace);
         match (qualified_binding, unqualified_def) {
-            (Ok(binding), Some(ref ud)) if binding.def() == ud.def => {
+            (Ok(binding), Some(ref ud)) if binding.def() == ud.def &&
+                                           segments[0].identifier.name.as_str() != "$crate" => {
                 self.session
                     .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                               id,
