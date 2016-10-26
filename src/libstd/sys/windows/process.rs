@@ -112,6 +112,9 @@ impl Command {
     pub fn env_clear(&mut self) {
         self.env = Some(HashMap::new())
     }
+    pub fn with_env(&mut self, env: &HashMap<OsString, OsString>) {
+        self.env = Some(env)
+    }
     pub fn cwd(&mut self, dir: &OsStr) {
         self.cwd = Some(dir.to_os_string())
     }
