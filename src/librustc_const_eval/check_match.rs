@@ -175,7 +175,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             }
         }
 
-        MatchCheckCtxt::create_and_enter(self.tcx, |ref cx| {
+        MatchCheckCtxt::create_and_enter(self.tcx, |ref mut cx| {
             let mut have_errors = false;
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
@@ -235,7 +235,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             "local binding"
         };
 
-        MatchCheckCtxt::create_and_enter(self.tcx, |ref cx| {
+        MatchCheckCtxt::create_and_enter(self.tcx, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx);
             let pats : Matrix = vec![vec![
                 expand_pattern(cx, patcx.lower_pattern(pat))
@@ -302,8 +302,8 @@ fn pat_is_catchall(dm: &DefMap, pat: &Pat) -> bool {
 }
 
 // Check for unreachable patterns
-fn check_arms<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
-                        arms: &[(Vec<(&Pattern<'tcx>, &'a hir::Pat)>, Option<&hir::Expr>)],
+fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
+                        arms: &[(Vec<(&'a Pattern<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
                         source: hir::MatchSource)
 {
     let mut seen = Matrix::empty();
@@ -381,7 +381,7 @@ fn check_arms<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-fn check_exhaustive<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
+fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                               sp: Span,
                               matrix: &Matrix<'a, 'tcx>,
                               source: hir::MatchSource) {
