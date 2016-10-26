@@ -24,6 +24,7 @@ digraph block {
     N22[label="expr _y"];
     N23[label="expr _y = v + 1"];
     N24[label="block {\l    let x = E13::E13b(13);\l    let _y;\l    match x { E13::E13a => _y = 1, E13::E13b(v) => _y = v + 1, }\l}\l"];
+    N25[label="expr {\l    let x = E13::E13b(13);\l    let _y;\l    match x { E13::E13a => _y = 1, E13::E13b(v) => _y = v + 1, }\l}\l"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -48,5 +49,6 @@ digraph block {
     N22 -> N23;
     N23 -> N10;
     N10 -> N24;
-    N24 -> N1;
+    N24 -> N25;
+    N25 -> N1;
 }

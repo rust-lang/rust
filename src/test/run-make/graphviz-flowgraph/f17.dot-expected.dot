@@ -8,6 +8,7 @@ digraph block {
     N6[label="local _v"];
     N7[label="stmt let _v = [1, 7, 17];"];
     N8[label="block { let _v = [1, 7, 17]; }"];
+    N9[label="expr { let _v = [1, 7, 17]; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -15,5 +16,6 @@ digraph block {
     N5 -> N6;
     N6 -> N7;
     N7 -> N8;
-    N8 -> N1;
+    N8 -> N9;
+    N9 -> N1;
 }
