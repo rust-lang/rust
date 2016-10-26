@@ -127,6 +127,7 @@ impl Command {
 
     pub fn find_program(&mut self) -> Option<Path> {
         self.env.as_ref().and_then(|env| {
+            let env_pathext = env.get("PATHEXT");
             for (key, v) in env {
                 if OsStr::new("PATH") != &**key { continue }
 
@@ -140,10 +141,12 @@ impl Command {
                     } else {
                         // Windows relies on path extensions to resolve commands.
                         // Path extensions are found in the PATHEXT environment variable.
-                        if let Some(exts) = env_lookup(self.env.as_ref(), "PATHEXT") {
+                        if let Some(exts) = env_pathext {
                             for ext in split_paths(&exts) {
-                                let ext_str = pathext.to_str().unwrap().trim_matches('.');
-                                let path = path.with_extension(ext_str);
+                                let ext_str = ext.to_string_lossy();
+                                let path = path.with_extension(
+                                                ext_str.trim_matches('.')
+                                );
                                 if fs::metadata(&path).is_ok() {
                                     return Some(path.into_os_string())
                                 }
@@ -503,20 +506,10 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
     }
 }
 
-fn env_lookup(env: Option<&collections::HashMap<OsString, OsString>>,
-              var: &str) -> Option<OsString> {
-    if let Some(env) = env {
-        if let Some(value) = env.get(var) {
-            return Some(value.to_os_string())
-        }
-    }
-    None
-}
-
 #[cfg(test)]
 mod tests {
     use ffi::{OsStr, OsString};
-    use super::{make_command_line, env_lookup};
+    use super::make_command_line;
 
     #[test]
     fn test_make_command_line() {
@@ -554,41 +547,5 @@ mod tests {
             test_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[]),
             "\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}"
         );
-    }
-
-    fn gen_env() -> Option<HashMap<OsString, OsString>> {
-        let env: HashMap<OsString, OsString> = HashMap::new();
-        env.insert(OsString::new("HOMEDRIVE"), OsString::new("C:"));
-        env.insert(OsString::new("PATH"),
-            OsString::new("C:\\awesome\\rust\\blah;C:\\binaries"));
-        env.insert(OsString::new("USERNAME"), OsString::new("rust"));
-        Some(env)
-    }
-
-    #[test]
-    fn test_env_lookup_when_variable_exists() {
-        let env = gen_env();
-        assert_eq!(
-            Some(OsString::new("C:")),
-            env_lookup(env.as_ref(), "HOMEDRIVE")
-        );
-        assert_eq!(
-            Some(OsString::new("rust")),
-            env_lookup(env.as_ref(), "USERNAME")
-        );
-    }
-
-    #[test]
-    fn test_env_lookup_when_variable_does_not_exists() {
-        let env = gen_env();
-        assert_eq!(None, env_lookup(env.as_ref(), "CRAZY_VAR"));
-        assert_eq!(None, env_lookup(env.as_ref(), "THIS_DOESNT_EXIST"));
-    }
-
-    #[test]
-    fn test_env_lookup_when_none_env() {
-        let env = None;
-        assert_eq!(None, env_lookup(env.as_ref(), "HOMEDRIVE"));
-        assert_eq!(None, env_lookup(env.as_ref(), "THIS_DOESNT_EXIST"));
     }
 }
