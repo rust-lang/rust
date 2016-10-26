@@ -90,7 +90,6 @@ use ty::error::TypeError;
 use std::cell::{Cell, RefCell};
 use std::char::from_u32;
 use std::fmt;
-//use std::rc::Rc;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -233,22 +232,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 }
-
-/*struct MethodInfo<'tcx> {
-    ast: Option<ast::Attribute>,
-    id: DefId,
-    item: Rc<ImplOrTraitItem<'tcx>>,
-}
-
-impl<'tcx> MethodInfo<'tcx> {
-    fn new(ast: Option<ast::Attribute>, id: DefId, item: Rc<ImplOrTraitItem<'tcx>>) -> MethodInfo {
-        MethodInfo {
-            ast: ast,
-            id: id,
-            item: item,
-        }
-    }
-}*/
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_region_errors(&self,
@@ -599,54 +582,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     diag.note_expected_found(&"type", &expected, &found);
                 }
             }
-
-            //if let Some((found, (expected_ty, expected))) = self.get_ids(values) {
-                // look for expected with found id
-                /*self.tcx.populate_inherent_implementations_for_type_if_necessary(found);
-                if let Some(impl_infos) = self.tcx.inherent_impls.borrow().get(&found) {
-                    let mut methods: Vec<MethodInfo> = Vec::new();
-                    for impl_ in impl_infos {
-                        methods.append(&mut self.tcx
-                                                .impl_or_trait_items(*impl_)
-                                                .iter()
-                                                .map(|&did| MethodInfo::new(None, did, Rc::new(self.tcx.impl_or_trait_item(did))))
-                                                .filter(|ref x| {
-                                                    self.matches_return_type(&*x.item, &expected_ty)
-                                                })
-                                                .collect());
-                    }
-                    for did in self.tcx.sess.cstore.implementations_of_trait(None) {
-                        if did == found {
-                            methods.append(
-                                self.tcx.sess.cstore.impl_or_trait_items(did)
-                                                    .iter()
-                                                    .map(|&did| MethodInfo::new(None, did, Rc::new(self.tcx.impl_or_trait_item(did))))
-                                                    .filter(|ref x| {
-                                                        self.matches_return_type(&*x.item, &expected_ty)
-                                                    })
-                                                    .collect());
-                            ;
-                        }
-                    }
-                    let safe_suggestions: Vec<_> =
-                        methods.iter()
-                               .map(|ref x| MethodInfo::new(self.find_attr(x.id, "safe_suggestion"), x.id, x.item.clone()))
-                               .filter(|ref x| x.ast.is_some())
-                               .collect();
-                    if safe_suggestions.len() > 0 {
-                        println!("safe");
-                        self.get_best_match(&safe_suggestions);
-                    } else {
-                        println!("not safe");
-                        self.get_best_match(&methods);
-                    }*/
-                    /*let mode = probe::Mode::MethodCall;
-                    if let Ok(ret) = self.probe_return(DUMMY_SP, mode, expected, found,                               DUMMY_NODE_ID) {
-                        println!("got it");
-                    } else {
-                        println!("sad...");
-                    }*/
-            //}
         }
 
         diag.span_label(span, &terr);
@@ -658,32 +593,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.check_and_note_conflicting_crates(diag, terr, span);
         self.tcx.note_and_explain_type_err(diag, terr, span);
     }
-
-    /*fn get_best_match(&self, methods: &[MethodInfo<'tcx>]) -> String {
-        let no_argument_methods: Vec<&MethodInfo> =
-            methods.iter()
-                   .filter(|ref x| self.has_not_input_arg(&*x.item))
-                   .collect();
-        if no_argument_methods.len() > 0 {
-            for ref method in no_argument_methods {
-                println!("best match ==> {:?}", method.item.name());
-            }
-        } else {
-            for ref method in methods.iter() {
-                println!("not best ==> {:?}", method.item.name());
-            }
-        }
-        String::new()
-    }
-
-    fn find_attr(&self, def_id: DefId, attr_name: &str) -> Option<ast::Attribute> {
-        for item in self.tcx.get_attrs(def_id).iter() {
-            if item.check_name(attr_name) {
-                return Some(item.clone());
-            }
-        }
-        None
-    }*/
 
     pub fn report_and_explain_type_error(&self,
                                          trace: TypeTrace<'tcx>,
@@ -712,69 +621,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             infer::PolyTraitRefs(ref exp_found) => self.expected_found_str(exp_found),
         }
     }
-
-    /*fn has_not_input_arg(&self, method: &ImplOrTraitItem<'tcx>) -> bool {
-        match *method {
-            ImplOrTraitItem::MethodTraitItem(ref x) => {
-                x.fty.sig.skip_binder().inputs.len() == 1
-            }
-            _ => false,
-        }
-    }
-
-    fn matches_return_type(&self, method: &ImplOrTraitItem<'tcx>, expected: &ty::Ty<'tcx>) -> bool {
-        match *method {
-            ImplOrTraitItem::MethodTraitItem(ref x) => {
-                self.can_sub_types(x.fty.sig.skip_binder().output, expected).is_ok()
-            }
-            _ => false,
-        }
-    }
-
-    fn get_id(&self, ty: Ty<'tcx>) -> Option<DefId> {
-        match ty.sty {
-            ty::TyTrait(box ref data) => Some(data.principal.def_id()),
-            ty::TyAdt(def, _) => Some(def.did),
-            ty::TyBox(ref ty) => self.get_id(*ty), // since we don't want box's methods by type's
-            ty::TyChar => self.tcx.lang_items.char_impl(),
-            ty::TyStr => self.tcx.lang_items.str_impl(),
-            ty::TySlice(_) => self.tcx.lang_items.slice_impl(),
-            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
-                self.tcx.lang_items.const_ptr_impl()
-            }
-            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
-                self.tcx.lang_items.mut_ptr_impl()
-            }
-            ty::TyInt(ast::IntTy::I8) => self.tcx.lang_items.i8_impl(),
-            ty::TyInt(ast::IntTy::I16) => self.tcx.lang_items.i16_impl(),
-            ty::TyInt(ast::IntTy::I32) => self.tcx.lang_items.i32_impl(),
-            ty::TyInt(ast::IntTy::I64) => self.tcx.lang_items.i64_impl(),
-            ty::TyInt(ast::IntTy::Is) => self.tcx.lang_items.isize_impl(),
-            ty::TyUint(ast::UintTy::U8) => self.tcx.lang_items.u8_impl(),
-            ty::TyUint(ast::UintTy::U16) => self.tcx.lang_items.u16_impl(),
-            ty::TyUint(ast::UintTy::U32) => self.tcx.lang_items.u32_impl(),
-            ty::TyUint(ast::UintTy::U64) => self.tcx.lang_items.u64_impl(),
-            ty::TyUint(ast::UintTy::Us) => self.tcx.lang_items.usize_impl(),
-            ty::TyFloat(ast::FloatTy::F32) => self.tcx.lang_items.f32_impl(),
-            ty::TyFloat(ast::FloatTy::F64) => self.tcx.lang_items.f64_impl(),
-            _ => None,
-        }
-    }
-
-    // Yep, returned value super ugly. it'll certainly become `Option<(DefId, ty::Ty<'tcx>)>`
-    // in a close future. Or maybe a struct?
-    fn get_ids(&self, values: Option<ValuePairs<'tcx>>) -> Option<(DefId, (ty::Ty<'tcx>, DefId))> {
-        match values {
-            // for now, only handling non trait types
-            Some(infer::Types(ref exp_found)) => {
-                match (self.get_id(exp_found.found), self.get_id(exp_found.expected)) {
-                    (Some(found), Some(expected)) => Some((found, (exp_found.expected, expected))),
-                    _ => None,
-                }
-            }
-            _ => None,
-        }
-    }*/
 
     fn expected_found_str<T: fmt::Display + TypeFoldable<'tcx>>(
         &self,
