@@ -15,6 +15,9 @@ use self::WitnessPreference::*;
 use rustc::middle::const_val::ConstVal;
 use eval::{compare_const_vals};
 
+use rustc_const_math::ConstInt;
+
+use rustc_data_structures::fnv::FnvHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
 use pattern::{FieldPattern, Pattern, PatternKind};
@@ -157,6 +160,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     /// associated types to get field types.
     pub wild_pattern: &'a Pattern<'tcx>,
     pub pattern_arena: &'a TypedArena<Pattern<'tcx>>,
+    pub byte_array_map: FnvHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
@@ -177,7 +181,30 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
             tcx: tcx,
             wild_pattern: &wild_pattern,
             pattern_arena: &pattern_arena,
+            byte_array_map: FnvHashMap(),
         })
+    }
+
+    // convert a byte-string pattern to a list of u8 patterns.
+    fn lower_byte_str_pattern(&mut self, pat: &'a Pattern<'tcx>) -> Vec<&'a Pattern<'tcx>> {
+        let pattern_arena = &*self.pattern_arena;
+        let tcx = self.tcx;
+        self.byte_array_map.entry(pat).or_insert_with(|| {
+            match pat.kind {
+                box PatternKind::Constant {
+                    value: ConstVal::ByteStr(ref data)
+                } => {
+                    data.iter().map(|c| &*pattern_arena.alloc(Pattern {
+                        ty: tcx.types.u8,
+                        span: pat.span,
+                        kind: box PatternKind::Constant {
+                            value: ConstVal::Integral(ConstInt::U8(*c))
+                        }
+                    })).collect()
+                }
+                _ => span_bug!(pat.span, "unexpected byte array pattern {:?}", pat)
+            }
+        }).clone()
     }
 }
 
@@ -357,7 +384,8 @@ impl Witness {
 /// Therefore, if there is some pattern that is unmatched by `matrix`, it will
 /// still be unmatched if the first constructor is replaced by any of the constructors
 /// in the return value.
-fn missing_constructors(cx: &MatchCheckCtxt, matrix: &Matrix,
+fn missing_constructors(cx: &mut MatchCheckCtxt,
+                        matrix: &Matrix,
                         pcx: PatternContext) -> Vec<Constructor> {
     let used_constructors: Vec<Constructor> =
         matrix.0.iter()
@@ -371,14 +399,20 @@ fn missing_constructors(cx: &MatchCheckCtxt, matrix: &Matrix,
 
 /// This determines the set of all possible constructors of a pattern matching
 /// values of type `left_ty`. For vectors, this would normally be an infinite set
+///
+/// This intentionally does not list ConstantValue specializations for
+/// non-booleans, because we currently assume that there is always a
+/// "non-standard constant" that matches. See issue #12483.
+///
 /// but is instead bounded by the maximum fixed length of slice patterns in
 /// the column of patterns being analyzed.
-fn all_constructors(_cx: &MatchCheckCtxt, pcx: PatternContext) -> Vec<Constructor> {
+fn all_constructors(_cx: &mut MatchCheckCtxt, pcx: PatternContext) -> Vec<Constructor> {
     match pcx.ty.sty {
         ty::TyBool =>
             [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
         ty::TySlice(_) =>
             (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect(),
+        ty::TyArray(_, length) => vec![Slice(length)],
         ty::TyAdt(def, _) if def.is_enum() && def.variants.len() > 1 =>
             def.variants.iter().map(|v| Variant(v.did)).collect(),
         _ => vec![Single]
@@ -398,7 +432,7 @@ fn all_constructors(_cx: &MatchCheckCtxt, pcx: PatternContext) -> Vec<Constructo
 ///
 /// Note: is_useful doesn't work on empty types, as the paper notes.
 /// So it assumes that v is non-empty.
-pub fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
+pub fn is_useful<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                            matrix: &Matrix<'a, 'tcx>,
                            v: &[&'a Pattern<'tcx>],
                            witness: WitnessPreference)
@@ -416,19 +450,22 @@ pub fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
     if rows[0].is_empty() {
         return NotUseful;
     }
-    assert!(rows.iter().all(|r| r.len() == v.len()));
 
+    let &Matrix(ref rows) = matrix;
+    assert!(rows.iter().all(|r| r.len() == v.len()));
     let pcx = PatternContext {
         ty: rows.iter().map(|r| r[0].ty).find(|ty| !ty.references_error())
             .unwrap_or(v[0].ty),
         max_slice_length: rows.iter().filter_map(|row| match *row[0].kind {
             PatternKind::Slice { ref prefix, slice: _, ref suffix } =>
                 Some(prefix.len() + suffix.len()),
+            PatternKind::Constant { value: ConstVal::ByteStr(ref data) } =>
+                Some(data.len()),
             _ => None
         }).max().map_or(0, |v| v + 1)
     };
 
-    debug!("is_useful: pcx={:?}, expanding {:?}", pcx, v[0]);
+    debug!("is_useful_expand_first_col: pcx={:?}, expanding {:?}", pcx, v[0]);
 
     if let Some(constructors) = pat_constructors(cx, v[0], pcx) {
         debug!("is_useful - expanding constructors: {:?}", constructors);
@@ -453,6 +490,7 @@ pub fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
             }).collect();
             match is_useful(cx, &matrix, &v[1..], witness) {
                 UsefulWithWitness(pats) => {
+                    let cx = &*cx;
                     UsefulWithWitness(pats.into_iter().flat_map(|witness| {
                         constructors.iter().map(move |ctor| {
                             witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
@@ -466,7 +504,7 @@ pub fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
 }
 
 fn is_useful_specialized<'a, 'tcx>(
-    cx: &MatchCheckCtxt<'a, 'tcx>,
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
     &Matrix(ref m): &Matrix<'a, 'tcx>,
     v: &[&'a Pattern<'tcx>],
     ctor: Constructor,
@@ -474,7 +512,7 @@ fn is_useful_specialized<'a, 'tcx>(
     witness: WitnessPreference) -> Usefulness
 {
     let arity = constructor_arity(cx, &ctor, lty);
-    let matrix = Matrix(m.iter().filter_map(|r| {
+    let matrix = Matrix(m.iter().flat_map(|r| {
         specialize(cx, &r[..], &ctor, 0, arity)
     }).collect());
     match specialize(cx, v, &ctor, 0, arity) {
@@ -498,7 +536,7 @@ fn is_useful_specialized<'a, 'tcx>(
 /// `[a, b, ..tail]` can match a slice of length 2, 3, 4 and so on.
 ///
 /// Returns None in case of a catch-all, which can't be specialized.
-fn pat_constructors(_cx: &MatchCheckCtxt,
+fn pat_constructors(_cx: &mut MatchCheckCtxt,
                     pat: &Pattern,
                     pcx: PatternContext)
                     -> Option<Vec<Constructor>>
@@ -506,7 +544,7 @@ fn pat_constructors(_cx: &MatchCheckCtxt,
     match *pat.kind {
         PatternKind::Binding { .. } | PatternKind::Wild =>
             None,
-        PatternKind::Leaf { .. } | PatternKind::Deref { .. } | PatternKind::Array { .. } =>
+        PatternKind::Leaf { .. } | PatternKind::Deref { .. } =>
             Some(vec![Single]),
         PatternKind::Variant { adt_def, variant_index, .. } =>
             Some(vec![Variant(adt_def.variants[variant_index].did)]),
@@ -514,6 +552,10 @@ fn pat_constructors(_cx: &MatchCheckCtxt,
             Some(vec![ConstantValue(value.clone())]),
         PatternKind::Range { ref lo, ref hi } =>
             Some(vec![ConstantRange(lo.clone(), hi.clone())]),
+        PatternKind::Array { .. } => match pcx.ty.sty {
+            ty::TyArray(_, length) => Some(vec![Slice(length)]),
+            _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty)
+        },
         PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
             let pat_len = prefix.len() + suffix.len();
             if slice.is_some() {
@@ -535,21 +577,53 @@ fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize 
     match ty.sty {
         ty::TyTuple(ref fs) => fs.len(),
         ty::TyBox(_) => 1,
-        ty::TySlice(_) => match *ctor {
+        ty::TySlice(..) | ty::TyArray(..) => match *ctor {
             Slice(length) => length,
-            ConstantValue(_) => {
-                // TODO: this is utterly wrong, but required for byte arrays
-                0
-            }
+            ConstantValue(_) => 0,
             _ => bug!("bad slice pattern {:?} {:?}", ctor, ty)
         },
         ty::TyRef(..) => 1,
         ty::TyAdt(adt, _) => {
             ctor.variant_for_adt(adt).fields.len()
         }
-        ty::TyArray(_, n) => n,
         _ => 0
     }
+}
+
+fn slice_pat_covered_by_constructor(_tcx: TyCtxt, _span: Span,
+                                    ctor: &Constructor,
+                                    prefix: &[Pattern],
+                                    slice: &Option<Pattern>,
+                                    suffix: &[Pattern])
+                                    -> Result<bool, ErrorReported> {
+    let data = match *ctor {
+        ConstantValue(ConstVal::ByteStr(ref data)) => data,
+        _ => bug!()
+    };
+
+    let pat_len = prefix.len() + suffix.len();
+    if data.len() < pat_len || (slice.is_none() && data.len() > pat_len) {
+        return Ok(false);
+    }
+
+    for (ch, pat) in
+        data[..prefix.len()].iter().zip(prefix).chain(
+            data[data.len()-suffix.len()..].iter().zip(suffix))
+    {
+        match pat.kind {
+            box PatternKind::Constant { ref value } => match *value {
+                ConstVal::Integral(ConstInt::U8(u)) => {
+                    if u != *ch {
+                        return Ok(false);
+                    }
+                },
+                _ => span_bug!(pat.span, "bad const u8 {:?}", value)
+            },
+            _ => {}
+        }
+    }
+
+    Ok(true)
 }
 
 fn range_covered_by_constructor(tcx: TyCtxt, span: Span,
@@ -568,7 +642,7 @@ fn range_covered_by_constructor(tcx: TyCtxt, span: Span,
 }
 
 fn patterns_for_variant<'a, 'tcx>(
-    cx: &MatchCheckCtxt<'a, 'tcx>,
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
     subpatterns: &'a [FieldPattern<'tcx>],
     arity: usize)
     -> Vec<&'a Pattern<'tcx>>
@@ -592,7 +666,7 @@ fn patterns_for_variant<'a, 'tcx>(
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
 fn specialize<'a, 'tcx>(
-    cx: &MatchCheckCtxt<'a, 'tcx>,
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
     r: &[&'a Pattern<'tcx>],
     constructor: &Constructor, col: usize, arity: usize)
     -> Option<Vec<&'a Pattern<'tcx>>>
@@ -616,13 +690,27 @@ fn specialize<'a, 'tcx>(
         PatternKind::Deref { ref subpattern } => Some(vec![subpattern]),
 
         PatternKind::Constant { ref value } => {
-            assert_eq!(constructor_arity(cx, constructor, pat.ty), 0);
-            match range_covered_by_constructor(
-                cx.tcx, pat.span, constructor, value, value
-            ) {
-                Ok(true) => Some(vec![]),
-                Ok(false) => None,
-                Err(ErrorReported) => None,
+            match *constructor {
+                Slice(..) => match *value {
+                    ConstVal::ByteStr(ref data) => {
+                        if arity == data.len() {
+                            Some(cx.lower_byte_str_pattern(pat))
+                        } else {
+                            None
+                        }
+                    }
+                    _ => span_bug!(pat.span,
+                        "unexpected const-val {:?} with ctor {:?}", value, constructor)
+                },
+                _ => {
+                    match range_covered_by_constructor(
+                        cx.tcx, pat.span, constructor, value, value
+                            ) {
+                        Ok(true) => Some(vec![]),
+                        Ok(false) => None,
+                        Err(ErrorReported) => None,
+                    }
+                }
             }
         }
 
@@ -636,29 +724,36 @@ fn specialize<'a, 'tcx>(
             }
         }
 
-        PatternKind::Array { ref prefix, slice: _, ref suffix } => {
-            let pat_len = prefix.len() + suffix.len();
-            Some(
-                prefix.iter().chain(
-                repeat(cx.wild_pattern).take(arity - pat_len).chain(
-                suffix.iter()
-            )).collect())
-        }
-
+        PatternKind::Array { ref prefix, ref slice, ref suffix } |
         PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
-            let pat_len = prefix.len() + suffix.len();
-            if let Some(slice_count) = arity.checked_sub(pat_len) {
-                if slice_count == 0 || slice.is_some() {
-                    Some(
-                        prefix.iter().chain(
-                        repeat(cx.wild_pattern).take(slice_count).chain(
-                        suffix.iter()
-                    )).collect())
-                } else {
-                    None
+            match *constructor {
+                Slice(..) => {
+                    let pat_len = prefix.len() + suffix.len();
+                    if let Some(slice_count) = arity.checked_sub(pat_len) {
+                        if slice_count == 0 || slice.is_some() {
+                            Some(
+                                prefix.iter().chain(
+                                repeat(cx.wild_pattern).take(slice_count).chain(
+                                suffix.iter()
+                            )).collect())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
                 }
-            } else {
-                None
+                ConstantValue(..) => {
+                    match slice_pat_covered_by_constructor(
+                        cx.tcx, pat.span, constructor, prefix, slice, suffix
+                            ) {
+                        Ok(true) => Some(vec![]),
+                        Ok(false) => None,
+                        Err(ErrorReported) => None
+                    }
+                }
+                _ => span_bug!(pat.span,
+                    "unexpected ctor {:?} for slice pat", constructor)
             }
         }
     };
