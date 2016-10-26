@@ -9,6 +9,7 @@ digraph block {
     N7[label="pat (_x, _y)"];
     N8[label="stmt let (_x, _y) = (5, 55);"];
     N9[label="block { let (_x, _y) = (5, 55); }"];
+    N10[label="expr { let (_x, _y) = (5, 55); }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -17,5 +18,6 @@ digraph block {
     N6 -> N7;
     N7 -> N8;
     N8 -> N9;
-    N9 -> N1;
+    N9 -> N10;
+    N10 -> N1;
 }

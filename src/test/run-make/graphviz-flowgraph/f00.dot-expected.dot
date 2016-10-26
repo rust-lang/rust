@@ -2,6 +2,8 @@ digraph block {
     N0[label="entry"];
     N1[label="exit"];
     N2[label="block { }"];
+    N3[label="expr { }"];
     N0 -> N2;
-    N2 -> N1;
+    N2 -> N3;
+    N3 -> N1;
 }
