@@ -11,6 +11,7 @@
 use infer::type_variable;
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 use std::rc::Rc;
 use syntax::abi;
@@ -448,8 +449,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitObject<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<Ty<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let tys = self.iter().map(|t| t.fold_with(folder)).collect::<Vec<_>>();
-        folder.tcx().mk_type_list(&tys)
+        let v = self.iter().map(|t| t.fold_with(folder)).collect::<AccumulateVec<[_; 8]>>();
+        folder.tcx().intern_type_list(&v)
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {

@@ -20,14 +20,13 @@ use rustc::middle::region::{self, CodeExtent};
 use rustc::middle::region::CodeExtentData;
 use rustc::middle::resolve_lifetime;
 use rustc::middle::stability;
-use rustc::ty::subst::{Kind, Subst, Substs};
+use rustc::ty::subst::{Kind, Subst};
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
-use std::iter;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -275,7 +274,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_pair(&self, ty1: Ty<'tcx>, ty2: Ty<'tcx>) -> Ty<'tcx> {
-        self.infcx.tcx.mk_tup(&[ty1, ty2])
+        self.infcx.tcx.intern_tup(&[ty1, ty2])
     }
 
     pub fn t_param(&self, index: u32) -> Ty<'tcx> {
@@ -679,7 +678,7 @@ fn subst_ty_renumber_bound() {
             env.t_fn(&[t_param], env.t_nil())
         };
 
-        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(t_rptr_bound1)));
+        let substs = env.infcx.tcx.intern_substs(&[Kind::from(t_rptr_bound1)]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
@@ -714,7 +713,7 @@ fn subst_ty_renumber_some_bounds() {
             env.t_pair(t_param, env.t_fn(&[t_param], env.t_nil()))
         };
 
-        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(t_rptr_bound1)));
+        let substs = env.infcx.tcx.intern_substs(&[Kind::from(t_rptr_bound1)]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = (&'a isize, fn(&'a isize))
@@ -776,7 +775,7 @@ fn subst_region_renumber_region() {
             env.t_fn(&[env.t_rptr(re_early)], env.t_nil())
         };
 
-        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(re_bound1)));
+        let substs = env.infcx.tcx.intern_substs(&[Kind::from(re_bound1)]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
@@ -803,8 +802,8 @@ fn walk_ty() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.mk_tup(&[int_ty, uint_ty, int_ty, uint_ty]);
-        let tup2_ty = tcx.mk_tup(&[tup1_ty, tup1_ty, uint_ty]);
+        let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty]);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty]);
         let uniq_ty = tcx.mk_box(tup2_ty);
         let walked: Vec<_> = uniq_ty.walk().collect();
         assert_eq!(walked,
@@ -819,8 +818,8 @@ fn walk_ty_skip_subtree() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.mk_tup(&[int_ty, uint_ty, int_ty, uint_ty]);
-        let tup2_ty = tcx.mk_tup(&[tup1_ty, tup1_ty, uint_ty]);
+        let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty]);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty]);
         let uniq_ty = tcx.mk_box(tup2_ty);
 
         // types we expect to see (in order), plus a boolean saying

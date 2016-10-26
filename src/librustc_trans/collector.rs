@@ -732,7 +732,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             create_fn_trans_item(scx,
                                  exchange_free_fn_def_id,
                                  fn_substs,
-                                 Substs::empty(scx.tcx()));
+                                 scx.tcx().intern_substs(&[]));
 
         output.push(exchange_free_fn_trans_item);
     }
@@ -752,7 +752,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                    .drop_trait()
                                    .unwrap();
 
-        let self_type_substs = Substs::new_trait(scx.tcx(), ty, &[]);
+        let self_type_substs = scx.tcx().mk_substs_trait(ty, &[]);
 
         let trait_ref = ty::TraitRef {
             def_id: drop_trait_def_id,
@@ -768,7 +768,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             let trans_item = create_fn_trans_item(scx,
                                                   destructor_did,
                                                   substs,
-                                                  Substs::empty(scx.tcx()));
+                                                  scx.tcx().intern_substs(&[]));
             output.push(trans_item);
         }
 
@@ -1035,7 +1035,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
 
     if let ty::TyTrait(ref trait_ty) = trait_ty.sty {
         let poly_trait_ref = trait_ty.principal.with_self_ty(scx.tcx(), impl_ty);
-        let param_substs = Substs::empty(scx.tcx());
+        let param_substs = scx.tcx().intern_substs(&[]);
 
         // Walk all methods of the trait, including those of its supertraits
         let methods = traits::get_vtable_methods(scx.tcx(), poly_trait_ref);

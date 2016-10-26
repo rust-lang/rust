@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use ty::subst::{self, Subst, Substs};
+use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
@@ -886,7 +886,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     // by looking up the projections associated with the def_id.
                     let item_predicates = tcx.lookup_predicates(def_id);
                     let substs = tcx.lift(&substs).unwrap_or_else(|| {
-                        Substs::empty(tcx)
+                        tcx.intern_substs(&[])
                     });
                     let bounds = item_predicates.instantiate(tcx, substs);
 

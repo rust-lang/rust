@@ -2596,7 +2596,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         k
                     }
                 });
-                let substs = Substs::new(tcx, params);
+                let substs = tcx.mk_substs(params);
                 for &ty in fields.split_last().unwrap().1 {
                     if ty.subst(tcx, substs).references_error() {
                         return Err(Unimplemented);
@@ -2616,7 +2616,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         k
                     }
                 });
-                let new_struct = tcx.mk_adt(def, Substs::new(tcx, params));
+                let new_struct = tcx.mk_adt(def, tcx.mk_substs(params));
                 let origin = TypeOrigin::Misc(obligation.cause.span);
                 let InferOk { obligations, .. } =
                     self.infcx.sub_types(false, origin, new_struct, target)

@@ -2388,7 +2388,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
-                TupleArguments => vec![self.tcx.mk_tup(&err_inputs)],
+                TupleArguments => vec![self.tcx.intern_tup(&err_inputs[..])],
             };
 
             self.check_argument_types(sp, &err_inputs[..], &[], args_no_rcvr,
@@ -3726,9 +3726,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     _ => None
                 }
             });
-            let mut err_field = false;
 
-            let elt_ts = elts.iter().enumerate().map(|(i, e)| {
+            let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| {
                 let t = match flds {
                     Some(ref fs) if i < fs.len() => {
                         let ety = fs[i];
@@ -3739,13 +3738,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.check_expr_with_expectation(&e, NoExpectation)
                     }
                 };
-                err_field = err_field || t.references_error();
                 t
-            }).collect::<Vec<_>>();
-            if err_field {
+            });
+            let tuple = tcx.mk_tup(elt_ts_iter);
+            if tuple.references_error() {
                 tcx.types.err
             } else {
-                tcx.mk_tup(&elt_ts)
+                tuple
             }
           }
           hir::ExprStruct(ref path, ref fields, ref base_expr) => {
@@ -4201,7 +4200,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(node_id, ty);
                 self.write_substs(node_id, ty::ItemSubsts {
-                    substs: Substs::empty(self.tcx)
+                    substs: self.tcx.intern_substs(&[])
                 });
                 return ty;
             }

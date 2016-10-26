@@ -380,7 +380,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             Ok(def_id) => {
                 Ok(ty::TraitRef {
                     def_id: def_id,
-                    substs: Substs::new_trait(self, param_ty, &[])
+                    substs: self.mk_substs_trait(param_ty, &[])
                 })
             }
             Err(e) => {
@@ -400,7 +400,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         let trait_ref = ty::TraitRef {
             def_id: trait_def_id,
-            substs: Substs::new_trait(self, param_ty, ty_params)
+            substs: self.mk_substs_trait(param_ty, ty_params)
         };
         predicate_for_trait_ref(cause, trait_ref, recursion_depth)
     }
@@ -486,11 +486,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         let arguments_tuple = match tuple_arguments {
             TupleArgumentsFlag::No => sig.0.inputs[0],
-            TupleArgumentsFlag::Yes => self.mk_tup(&sig.0.inputs),
+            TupleArgumentsFlag::Yes => self.intern_tup(&sig.0.inputs[..]),
         };
         let trait_ref = ty::TraitRef {
             def_id: fn_trait_def_id,
-            substs: Substs::new_trait(self, self_ty, &[arguments_tuple]),
+            substs: self.mk_substs_trait(self_ty, &[arguments_tuple]),
         };
         ty::Binder((trait_ref, sig.0.output))
     }

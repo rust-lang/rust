@@ -1008,6 +1008,11 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
                     None => None,
                 }
             }
+
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                let (_min, max) = self.iter.size_hint();
+                (0, max)
+            }
         }
 
         let mut adapter = Adapter { iter: iter.into_iter(), err: None };
