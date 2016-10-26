@@ -9,14 +9,14 @@ error: `y` does not live long enough
    = note: values in a scope are dropped in the opposite order they are created
 
 error: `y` does not live long enough
-  --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:27:9
+  --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:28:5
    |
 27 |         y.borrow().clone() //~ ERROR `y` does not live long enough
-   |         ^ does not live long enough
+   |         - borrow occurs here
 28 |     };
-   |     -- borrowed value needs to live until here
+   |     ^- borrowed value needs to live until here
    |     |
-   |     borrowed value only lives until here
+   |     `y` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 
