@@ -83,13 +83,14 @@ use hir::def_id::DefId;
 use infer;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
-use ty::{self, ImplOrTraitItem, Ty, TyCtxt, TypeFoldable};
+use ty::{self, TyCtxt, TypeFoldable};
 use ty::{Region, ReFree};
 use ty::error::TypeError;
 
 use std::cell::{Cell, RefCell};
 use std::char::from_u32;
 use std::fmt;
+//use std::rc::Rc;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -232,6 +233,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 }
+
+/*struct MethodInfo<'tcx> {
+    ast: Option<ast::Attribute>,
+    id: DefId,
+    item: Rc<ImplOrTraitItem<'tcx>>,
+}
+
+impl<'tcx> MethodInfo<'tcx> {
+    fn new(ast: Option<ast::Attribute>, id: DefId, item: Rc<ImplOrTraitItem<'tcx>>) -> MethodInfo {
+        MethodInfo {
+            ast: ast,
+            id: id,
+            item: item,
+        }
+    }
+}*/
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_region_errors(&self,
@@ -583,36 +600,53 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            if let Some((found, (expected_ty, _))) = self.get_ids(values) {
+            //if let Some((found, (expected_ty, expected))) = self.get_ids(values) {
                 // look for expected with found id
-                self.tcx.populate_inherent_implementations_for_type_if_necessary(found);
+                /*self.tcx.populate_inherent_implementations_for_type_if_necessary(found);
                 if let Some(impl_infos) = self.tcx.inherent_impls.borrow().get(&found) {
-                    let mut methods: Vec<(Option<ast::Attribute>, DefId, ImplOrTraitItem<'tcx>)> = Vec::new();
+                    let mut methods: Vec<MethodInfo> = Vec::new();
                     for impl_ in impl_infos {
                         methods.append(&mut self.tcx
                                                 .impl_or_trait_items(*impl_)
                                                 .iter()
-                                                .map(|&did| (None, did, self.tcx.impl_or_trait_item(did)))
-                                                .filter(|&(_, _, ref x)| {
-                                                    self.matches_return_type(x, &expected_ty)
+                                                .map(|&did| MethodInfo::new(None, did, Rc::new(self.tcx.impl_or_trait_item(did))))
+                                                .filter(|ref x| {
+                                                    self.matches_return_type(&*x.item, &expected_ty)
                                                 })
                                                 .collect());
                     }
-                    let safe_suggestions: Vec<_> = methods.iter()
-                                                  .map(|&(_, ref id, ref x)| (self.find_attr(*id, "safe_suggestion"), id, x))
-                                                  .filter(|&(ref res, _, _)| res.is_some())
-                                                  .collect();
-                    if safe_suggestions.len() > 0 {
-                        for (_, _, method) in safe_suggestions {
-                            println!("safe ==> {:?}", method.name());
-                        }
-                    } else {
-                        for &(_, _, ref method) in methods.iter() {
-                            println!("not safe ==> {:?}", method.name());
+                    for did in self.tcx.sess.cstore.implementations_of_trait(None) {
+                        if did == found {
+                            methods.append(
+                                self.tcx.sess.cstore.impl_or_trait_items(did)
+                                                    .iter()
+                                                    .map(|&did| MethodInfo::new(None, did, Rc::new(self.tcx.impl_or_trait_item(did))))
+                                                    .filter(|ref x| {
+                                                        self.matches_return_type(&*x.item, &expected_ty)
+                                                    })
+                                                    .collect());
+                            ;
                         }
                     }
-                }
-            }
+                    let safe_suggestions: Vec<_> =
+                        methods.iter()
+                               .map(|ref x| MethodInfo::new(self.find_attr(x.id, "safe_suggestion"), x.id, x.item.clone()))
+                               .filter(|ref x| x.ast.is_some())
+                               .collect();
+                    if safe_suggestions.len() > 0 {
+                        println!("safe");
+                        self.get_best_match(&safe_suggestions);
+                    } else {
+                        println!("not safe");
+                        self.get_best_match(&methods);
+                    }*/
+                    /*let mode = probe::Mode::MethodCall;
+                    if let Ok(ret) = self.probe_return(DUMMY_SP, mode, expected, found,                               DUMMY_NODE_ID) {
+                        println!("got it");
+                    } else {
+                        println!("sad...");
+                    }*/
+            //}
         }
 
         diag.span_label(span, &terr);
@@ -625,6 +659,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.note_and_explain_type_err(diag, terr, span);
     }
 
+    /*fn get_best_match(&self, methods: &[MethodInfo<'tcx>]) -> String {
+        let no_argument_methods: Vec<&MethodInfo> =
+            methods.iter()
+                   .filter(|ref x| self.has_not_input_arg(&*x.item))
+                   .collect();
+        if no_argument_methods.len() > 0 {
+            for ref method in no_argument_methods {
+                println!("best match ==> {:?}", method.item.name());
+            }
+        } else {
+            for ref method in methods.iter() {
+                println!("not best ==> {:?}", method.item.name());
+            }
+        }
+        String::new()
+    }
+
     fn find_attr(&self, def_id: DefId, attr_name: &str) -> Option<ast::Attribute> {
         for item in self.tcx.get_attrs(def_id).iter() {
             if item.check_name(attr_name) {
@@ -632,7 +683,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
         None
-    }
+    }*/
 
     pub fn report_and_explain_type_error(&self,
                                          trace: TypeTrace<'tcx>,
@@ -659,6 +710,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             infer::Types(ref exp_found) => self.expected_found_str(exp_found),
             infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found),
             infer::PolyTraitRefs(ref exp_found) => self.expected_found_str(exp_found),
+        }
+    }
+
+    /*fn has_not_input_arg(&self, method: &ImplOrTraitItem<'tcx>) -> bool {
+        match *method {
+            ImplOrTraitItem::MethodTraitItem(ref x) => {
+                x.fty.sig.skip_binder().inputs.len() == 1
+            }
+            _ => false,
         }
     }
 
@@ -714,7 +774,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             _ => None,
         }
-    }
+    }*/
 
     fn expected_found_str<T: fmt::Display + TypeFoldable<'tcx>>(
         &self,
