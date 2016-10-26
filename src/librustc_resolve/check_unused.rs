@@ -25,13 +25,16 @@ use Resolver;
 use Namespace::{TypeNS, ValueNS};
 
 use rustc::lint;
+use rustc::util::nodemap::NodeMap;
 use syntax::ast::{self, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::visit::{self, Visitor};
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 
 
 struct UnusedImportCheckVisitor<'a, 'b: 'a> {
     resolver: &'a mut Resolver<'b>,
+    /// All the (so far) unused imports, grouped path list
+    unused_imports: NodeMap<NodeMap<Span>>,
 }
 
 // Deref and DerefMut impls allow treating UnusedImportCheckVisitor as Resolver.
@@ -52,23 +55,21 @@ impl<'a, 'b> DerefMut for UnusedImportCheckVisitor<'a, 'b> {
 impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     // We have information about whether `use` (import) directives are actually
     // used now. If an import is not used at all, we signal a lint error.
-    fn check_import(&mut self, id: ast::NodeId, span: Span) {
+    fn check_import(&mut self, item_id: ast::NodeId, id: ast::NodeId, span: Span) {
         if !self.used_imports.contains(&(id, TypeNS)) &&
            !self.used_imports.contains(&(id, ValueNS)) {
             if self.maybe_unused_trait_imports.contains(&id) {
                 // Check later.
                 return;
             }
-            let msg = if let Ok(snippet) = self.session.codemap().span_to_snippet(span) {
-                format!("unused import: `{}`", snippet)
-            } else {
-                "unused import".to_string()
-            };
-            self.session.add_lint(lint::builtin::UNUSED_IMPORTS, id, span, msg);
+            self.unused_imports.entry(item_id).or_insert_with(NodeMap).insert(id, span);
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
             self.maybe_unused_trait_imports.remove(&id);
+            if let Some(i) = self.unused_imports.get_mut(&item_id) {
+                i.remove(&id);
+            }
         }
     }
 }
@@ -98,16 +99,16 @@ impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
             ast::ItemKind::Use(ref p) => {
                 match p.node {
                     ViewPathSimple(..) => {
-                        self.check_import(item.id, p.span)
+                        self.check_import(item.id, item.id, p.span)
                     }
 
                     ViewPathList(_, ref list) => {
                         for i in list {
-                            self.check_import(i.node.id, i.span);
+                            self.check_import(item.id, i.node.id, i.span);
                         }
                     }
                     ViewPathGlob(_) => {
-                        self.check_import(item.id, p.span)
+                        self.check_import(item.id, item.id, p.span);
                     }
                 }
             }
@@ -117,6 +118,35 @@ impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
 }
 
 pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
-    let mut visitor = UnusedImportCheckVisitor { resolver: resolver };
+    let mut visitor = UnusedImportCheckVisitor {
+        resolver: resolver,
+        unused_imports: NodeMap(),
+    };
     visit::walk_crate(&mut visitor, krate);
+
+    for (id, spans) in &visitor.unused_imports {
+        let len = spans.len();
+        let mut spans = spans.values().map(|s| *s).collect::<Vec<Span>>();
+        spans.sort();
+        let ms = MultiSpan::from_spans(spans.clone());
+        let mut span_snippets = spans.iter()
+            .filter_map(|s| {
+                match visitor.session.codemap().span_to_snippet(*s) {
+                    Ok(s) => Some(format!("`{}`", s)),
+                    _ => None,
+                }
+            }).collect::<Vec<String>>();
+        span_snippets.sort();
+        let msg = format!("unused import{}{}",
+                          if len > 1 { "s" } else { "" },
+                          if span_snippets.len() > 0 {
+                              format!(": {}", span_snippets.join(", "))
+                          } else {
+                              String::new()
+                          });
+        visitor.session.add_lint(lint::builtin::UNUSED_IMPORTS,
+                                 *id,
+                                 ms,
+                                 msg);
+    }
 }
