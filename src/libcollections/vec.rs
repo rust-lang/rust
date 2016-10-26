@@ -76,7 +76,6 @@ use core::ptr;
 use core::ptr::Shared;
 use core::slice;
 
-use super::SpecExtend;
 use super::range::RangeArgument;
 
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector.'
@@ -1554,19 +1553,7 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        <Self as SpecExtend<I>>::spec_extend(self, iter);
-    }
-}
-
-impl<I: IntoIterator> SpecExtend<I> for Vec<I::Item> {
-    default fn spec_extend(&mut self, iter: I) {
         self.extend_desugared(iter.into_iter())
-    }
-}
-
-impl<T> SpecExtend<Vec<T>> for Vec<T> {
-    fn spec_extend(&mut self, ref mut other: Vec<T>) {
-        self.append(other);
     }
 }
 
