@@ -221,17 +221,13 @@ impl<'b> Resolver<'b> {
                     legacy_imports.import_all.is_some() || !legacy_imports.imports.is_empty() ||
                     !legacy_imports.reexports.is_empty()
                 } {
-                    if self.current_module.parent.is_some() {
-                        span_err!(self.session, item.span, E0468,
-                                  "an `extern crate` loading macros must be at the crate root");
-                    }
+                    span_err!(self.session, item.span, E0468,
+                              "an `extern crate` loading macros must be at the crate root");
                 }
 
-                let loaded_macros = if legacy_imports != LegacyMacroImports::default() {
-                    self.crate_loader.process_item(item, &self.definitions, true)
-                } else {
-                    self.crate_loader.process_item(item, &self.definitions, false)
-                };
+                let load_macros = legacy_imports != LegacyMacroImports::default();
+                let loaded_macros =
+                    self.crate_loader.process_item(item, &self.definitions, load_macros);
 
                 // n.b. we don't need to look at the path option here, because cstore already did
                 let crate_id = self.session.cstore.extern_mod_stmt_cnum(item.id);
