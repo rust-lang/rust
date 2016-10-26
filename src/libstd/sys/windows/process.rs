@@ -504,7 +504,7 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
 }
 
 fn env_lookup(env: Option<&collections::HashMap<OsString, OsString>>,
-              var: &OsStr) -> Option<OsString> {
+              var: &str) -> Option<OsString> {
     if let Some(env) = env {
         if let Some(value) = env.get(var) {
             return Some(value.to_os_string())
@@ -516,7 +516,7 @@ fn env_lookup(env: Option<&collections::HashMap<OsString, OsString>>,
 #[cfg(test)]
 mod tests {
     use ffi::{OsStr, OsString};
-    use super::make_command_line;
+    use super::{make_command_line, env_lookup};
 
     #[test]
     fn test_make_command_line() {
@@ -554,5 +554,41 @@ mod tests {
             test_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[]),
             "\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}"
         );
+    }
+
+    fn gen_env() -> Option<HashMap<OsString, OsString>> {
+        let env: HashMap<OsString, OsString> = HashMap::new();
+        env.insert(OsString::new("HOMEDRIVE"), OsString::new("C:"));
+        env.insert(OsString::new("PATH"),
+            OsString::new("C:\\awesome\\rust\\blah;C:\\binaries"));
+        env.insert(OsString::new("USERNAME"), OsString::new("rust"));
+        Some(env)
+    }
+
+    #[test]
+    fn test_env_lookup_when_variable_exists() {
+        let env = gen_env();
+        assert_eq!(
+            Some(OsString::new("C:")),
+            env_lookup(env.as_ref(), "HOMEDRIVE")
+        );
+        assert_eq!(
+            Some(OsString::new("rust")),
+            env_lookup(env.as_ref(), "USERNAME")
+        );
+    }
+
+    #[test]
+    fn test_env_lookup_when_variable_does_not_exists() {
+        let env = gen_env();
+        assert_eq!(None, env_lookup(env.as_ref(), "CRAZY_VAR"));
+        assert_eq!(None, env_lookup(env.as_ref(), "THIS_DOESNT_EXIST"));
+    }
+
+    #[test]
+    fn test_env_lookup_when_none_env() {
+        let env = None;
+        assert_eq!(None, env_lookup(env.as_ref(), "HOMEDRIVE"));
+        assert_eq!(None, env_lookup(env.as_ref(), "THIS_DOESNT_EXIST"));
     }
 }
