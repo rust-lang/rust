@@ -130,14 +130,27 @@ impl<'b> Resolver<'b> {
 
                 match view_path.node {
                     ViewPathSimple(binding, ref full_path) => {
-                        let source_name = full_path.segments.last().unwrap().identifier.name;
-                        if source_name.as_str() == "mod" || source_name.as_str() == "self" {
+                        let mut source = full_path.segments.last().unwrap().identifier;
+                        let source_name = source.name.as_str();
+                        if source_name == "mod" || source_name == "self" {
                             resolve_error(self,
                                           view_path.span,
                                           ResolutionError::SelfImportsOnlyAllowedWithin);
+                        } else if source_name == "$crate" && full_path.segments.len() == 1 {
+                            let crate_root = self.resolve_crate_var(source.ctxt);
+                            let crate_name = match crate_root.kind {
+                                ModuleKind::Def(_, name) => name,
+                                ModuleKind::Block(..) => unreachable!(),
+                            };
+                            source.name = crate_name;
+
+                            self.session.struct_span_warn(item.span, "`$crate` may not be imported")
+                                .note("`use $crate;` was erroneously allowed and \
+                                       will become a hard error in a future release")
+                                .emit();
                         }
 
-                        let subclass = ImportDirectiveSubclass::single(binding.name, source_name);
+                        let subclass = ImportDirectiveSubclass::single(binding.name, source.name);
                         let span = view_path.span;
                         self.add_import_directive(module_path, subclass, span, item.id, vis);
                     }
@@ -500,6 +513,7 @@ impl<'b> Resolver<'b> {
                                   legacy_imports: LegacyMacroImports,
                                   allow_shadowing: bool) {
         let import_macro = |this: &mut Self, name, ext: Rc<_>, span| {
+            this.used_crates.insert(module.def_id().unwrap().krate);
             if let SyntaxExtension::NormalTT(..) = *ext {
                 this.macro_names.insert(name);
             }

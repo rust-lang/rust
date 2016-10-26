@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,21 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unused_qualifications)]
-
-mod foo {
-    pub fn bar() {}
-}
-
-fn main() {
-    use foo::bar;
-    foo::bar(); //~ ERROR: unnecessary qualification
-    bar();
-
-    let _ = || -> Result<(), ()> { try!(Ok(())); Ok(()) }; // issue #37345
-
-    macro_rules! m {
-        () => { $crate::foo::bar(); }
-    }
-    m!(); // issue #37357
-}
+#[macro_export]
+macro_rules! m { () => { use $crate; } }
