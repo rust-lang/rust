@@ -138,19 +138,19 @@ impl Command {
                                    .with_extension(env::consts::EXE_EXTENSION);
                     if fs::metadata(&path).is_ok() {
                         return Some(path.into_os_string())
-                    } else {
-                        // Windows relies on path extensions to resolve commands.
-                        // Path extensions are found in the PATHEXT environment variable.
-                        if let Some(exts) = env_pathext {
-                            for ext in split_paths(&exts) {
-                                let ext_str = ext.to_string_lossy();
-                                let path = path.with_extension(
-                                                ext_str.trim_matches('.')
-                                );
-                                if fs::metadata(&path).is_ok() {
-                                    return Some(path.into_os_string())
-                                }
-                            }
+                    }
+
+                    // Windows relies on path extensions to resolve commands.
+                    // Path extensions are found in the PATHEXT environment variable.
+                    let exts = match env_pathext {
+                        Some(e) => e,
+                        None => continue,
+                    };
+
+                    for ext in split_paths(&exts).filter_map(|e| e.to_str()) {
+                        let path = path.with_extension(ext.trim_matches('.'));
+                        if fs::metadata(&path).is_ok() {
+                            return Some(path.into_os_string())
                         }
                     }
                 }
