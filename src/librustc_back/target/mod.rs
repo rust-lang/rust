@@ -48,13 +48,14 @@ use serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
 use std::default::Default;
 use std::io::prelude::*;
-use syntax::abi::Abi;
+use syntax::abi::{Abi, lookup as lookup_abi};
 
 use PanicStrategy;
 
 mod android_base;
 mod apple_base;
 mod apple_ios_base;
+mod arm_base;
 mod bitrig_base;
 mod dragonfly_base;
 mod freebsd_base;
@@ -361,6 +362,10 @@ pub struct TargetOptions {
 
     /// Panic strategy: "unwind" or "abort"
     pub panic_strategy: PanicStrategy,
+
+    /// A blacklist of ABIs unsupported by the current target. Note that generic
+    /// ABIs are considered to be supported on all platforms and cannot be blacklisted.
+    pub abi_blacklist: Vec<Abi>,
 }
 
 impl Default for TargetOptions {
@@ -411,6 +416,7 @@ impl Default for TargetOptions {
             obj_is_bitcode: false,
             max_atomic_width: None,
             panic_strategy: PanicStrategy::Unwind,
+            abi_blacklist: vec![],
         }
     }
 }
@@ -434,6 +440,10 @@ impl Target {
     /// operations on.
     pub fn max_atomic_width(&self) -> u64 {
         self.options.max_atomic_width.unwrap_or(self.target_pointer_width.parse().unwrap())
+    }
+
+    pub fn is_abi_supported(&self, abi: Abi) -> bool {
+        abi.generic() || !self.options.abi_blacklist.contains(&abi)
     }
 
     /// Load a target descriptor from a JSON object.
@@ -566,6 +576,22 @@ impl Target {
         key!(obj_is_bitcode, bool);
         key!(max_atomic_width, Option<u64>);
         try!(key!(panic_strategy, PanicStrategy));
+
+        if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
+            for name in array.iter().filter_map(|abi| abi.as_string()) {
+                match lookup_abi(name) {
+                    Some(abi) => {
+                        if abi.generic() {
+                            return Err(format!("The ABI \"{}\" is considered to be supported on \
+                                                all targets and cannot be blacklisted", abi))
+                        }
+
+                        base.options.abi_blacklist.push(abi)
+                    }
+                    None => return Err(format!("Unknown ABI \"{}\" in target specification", name))
+                }
+            }
+        }
 
         Ok(base)
     }
@@ -709,6 +735,12 @@ impl ToJson for Target {
         target_option_val!(obj_is_bitcode);
         target_option_val!(max_atomic_width);
         target_option_val!(panic_strategy);
+
+        if default.abi_blacklist != self.options.abi_blacklist {
+            d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()
+                .map(Abi::name).map(|name| name.to_json())
+                .collect::<Vec<_>>().to_json());
+        }
 
         Json::Object(d)
     }

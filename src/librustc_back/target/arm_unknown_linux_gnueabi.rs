@@ -25,6 +25,7 @@ pub fn target() -> TargetResult {
 
         options: TargetOptions {
             features: "+v6".to_string(),
+            abi_blacklist: super::arm_base::abi_blacklist(),
             .. base
         },
     })
