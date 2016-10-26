@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![allow(dead_assignment)]
-
 use std::mem::*;
 
 pub fn main() {
@@ -19,4 +16,13 @@ pub fn main() {
     swap(&mut x, &mut y);
     assert_eq!(x, 2);
     assert_eq!(y, 1);
+}
+
+#[allow(unused)]
+fn f() {
+    mod foo { pub use *; }
+    mod bar { pub use ::*; }
+
+    foo::main();
+    bar::main();
 }
