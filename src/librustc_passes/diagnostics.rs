@@ -228,4 +228,5 @@ pub impl Foo for Bar {
 register_diagnostics! {
     E0472, // asm! is unsupported on this target
     E0561, // patterns aren't allowed in function pointer types
+    E0570, // patterns aren't allowed in methods without bodies
 }
