@@ -30,10 +30,13 @@ impl<'a, 'tcx> UnusedTraitImportVisitor<'a, 'tcx> {
         if self.tcx.used_trait_imports.borrow().contains(&id) {
             return;
         }
-        self.tcx.sess.add_lint(lint::builtin::UNUSED_IMPORTS,
-                               id,
-                               span,
-                               "unused import".to_string());
+
+        let msg = if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+            format!("unused import: `{}`", snippet)
+        } else {
+            "unused import".to_string()
+        };
+        self.tcx.sess.add_lint(lint::builtin::UNUSED_IMPORTS, id, span, msg);
     }
 }
 

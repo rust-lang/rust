@@ -854,9 +854,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         let path_data = match path_data {
             Some(pd) => pd,
             None => {
-                span_bug!(path.span,
-                          "Unexpected def kind while looking up path in `{}`",
-                          self.span.snippet(path.span))
+                return;
             }
         };
 

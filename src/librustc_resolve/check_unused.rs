@@ -59,10 +59,12 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
                 // Check later.
                 return;
             }
-            self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
-                                  id,
-                                  span,
-                                  "unused import".to_string());
+            let msg = if let Ok(snippet) = self.session.codemap().span_to_snippet(span) {
+                format!("unused import: `{}`", snippet)
+            } else {
+                "unused import".to_string()
+            };
+            self.session.add_lint(lint::builtin::UNUSED_IMPORTS, id, span, msg);
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
