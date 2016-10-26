@@ -30,6 +30,9 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
+#![feature(untagged_unions)]
+#![feature(associated_consts)]
+#![feature(unsize)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
@@ -41,6 +44,8 @@ extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
 
+pub mod array_vec;
+pub mod accumulate_vec;
 pub mod bitslice;
 pub mod blake2b;
 pub mod bitvec;

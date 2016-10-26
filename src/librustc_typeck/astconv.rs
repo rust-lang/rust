@@ -635,9 +635,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     {
         let anon_scope = rscope.anon_type_scope();
         let binding_rscope = MaybeWithAnonTypes::new(BindingRscope::new(), anon_scope);
-        let inputs: Vec<_> = data.inputs.iter().map(|a_t| {
+        let inputs = self.tcx().mk_type_list(data.inputs.iter().map(|a_t| {
             self.ast_ty_arg_to_ty(&binding_rscope, None, region_substs, a_t)
-        }).collect();
+        }));
         let inputs_len = inputs.len();
         let input_params = || vec![String::new(); inputs_len];
         let implied_output_region = self.find_implied_output_region(&inputs, input_params);
@@ -660,7 +660,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             span: output_span
         };
 
-        (self.tcx().mk_tup(&inputs), output_binding)
+        (self.tcx().mk_ty(ty::TyTuple(inputs)), output_binding)
     }
 
     pub fn instantiate_poly_trait_ref(&self,
@@ -1660,10 +1660,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.types.never
             },
             hir::TyTup(ref fields) => {
-                let flds = fields.iter()
-                                 .map(|t| self.ast_ty_to_ty(rscope, &t))
-                                 .collect::<Vec<_>>();
-                tcx.mk_tup(&flds)
+                tcx.mk_tup(fields.iter().map(|t| self.ast_ty_to_ty(rscope, &t)))
             }
             hir::TyBareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);

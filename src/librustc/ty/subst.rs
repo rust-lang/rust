@@ -16,6 +16,7 @@ use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
+use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 use core::nonzero::NonZero;
 use std::fmt;
@@ -164,31 +165,6 @@ impl<'tcx> Decodable for Kind<'tcx> {
 pub type Substs<'tcx> = Slice<Kind<'tcx>>;
 
 impl<'a, 'gcx, 'tcx> Substs<'tcx> {
-    pub fn new<I>(tcx: TyCtxt<'a, 'gcx, 'tcx>, params: I)
-                  -> &'tcx Substs<'tcx>
-    where I: IntoIterator<Item=Kind<'tcx>> {
-        tcx.mk_substs(&params.into_iter().collect::<Vec<_>>())
-    }
-
-    pub fn maybe_new<I, E>(tcx: TyCtxt<'a, 'gcx, 'tcx>, params: I)
-                           -> Result<&'tcx Substs<'tcx>, E>
-    where I: IntoIterator<Item=Result<Kind<'tcx>, E>> {
-        Ok(Substs::new(tcx, params.into_iter().collect::<Result<Vec<_>, _>>()?))
-    }
-
-    pub fn new_trait(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                     s: Ty<'tcx>,
-                     t: &[Ty<'tcx>])
-                    -> &'tcx Substs<'tcx>
-    {
-        let t = iter::once(s).chain(t.iter().cloned());
-        Substs::new(tcx, t.map(Kind::from))
-    }
-
-    pub fn empty(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx Substs<'tcx> {
-        Substs::new(tcx, iter::empty())
-    }
-
     /// Creates a Substs for generic parameter definitions,
     /// by calling closures to obtain each region and type.
     /// The closures get to observe the Substs as they're
@@ -203,10 +179,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
           FT: FnMut(&ty::TypeParameterDef<'tcx>, &[Kind<'tcx>]) -> Ty<'tcx> {
         let defs = tcx.lookup_generics(def_id);
         let mut substs = Vec::with_capacity(defs.count());
-
         Substs::fill_item(&mut substs, tcx, defs, &mut mk_region, &mut mk_type);
-
-        Substs::new(tcx, substs)
+        tcx.intern_substs(&substs)
     }
 
     fn fill_item<FR, FT>(substs: &mut Vec<Kind<'tcx>>,
@@ -298,20 +272,20 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                        target_substs: &Substs<'tcx>)
                        -> &'tcx Substs<'tcx> {
         let defs = tcx.lookup_generics(source_ancestor);
-        Substs::new(tcx, target_substs.iter().chain(&self[defs.own_count()..]).cloned())
+        tcx.mk_substs(target_substs.iter().chain(&self[defs.own_count()..]).cloned())
     }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let params: Vec<_> = self.iter().map(|k| k.fold_with(folder)).collect();
+        let params: AccumulateVec<[_; 8]> = self.iter().map(|k| k.fold_with(folder)).collect();
 
         // If folding doesn't change the substs, it's faster to avoid
         // calling `mk_substs` and instead reuse the existing substs.
         if params[..] == self[..] {
             self
         } else {
-            folder.tcx().mk_substs(&params)
+            folder.tcx().intern_substs(&params)
         }
     }
 
@@ -547,10 +521,9 @@ impl<'a, 'gcx, 'tcx> ty::TraitRef<'tcx> {
                        -> ty::TraitRef<'tcx> {
         let defs = tcx.lookup_generics(trait_id);
 
-        let params = substs[..defs.own_count()].iter().cloned();
         ty::TraitRef {
             def_id: trait_id,
-            substs: Substs::new(tcx, params)
+            substs: tcx.intern_substs(&substs[..defs.own_count()])
         }
     }
 }
@@ -562,10 +535,9 @@ impl<'a, 'gcx, 'tcx> ty::ExistentialTraitRef<'tcx> {
         // Assert there is a Self.
         trait_ref.substs.type_at(0);
 
-        let params = trait_ref.substs[1..].iter().cloned();
         ty::ExistentialTraitRef {
             def_id: trait_ref.def_id,
-            substs: Substs::new(tcx, params)
+            substs: tcx.intern_substs(&trait_ref.substs[1..])
         }
     }
 }
@@ -582,11 +554,10 @@ impl<'a, 'gcx, 'tcx> ty::PolyExistentialTraitRef<'tcx> {
         assert!(!self_ty.has_escaping_regions());
 
         self.map_bound(|trait_ref| {
-            let params = trait_ref.substs.iter().cloned();
-            let params = iter::once(Kind::from(self_ty)).chain(params);
             ty::TraitRef {
                 def_id: trait_ref.def_id,
-                substs: Substs::new(tcx, params)
+                substs: tcx.mk_substs(
+                    iter::once(Kind::from(self_ty)).chain(trait_ref.substs.iter().cloned()))
             }
         })
     }

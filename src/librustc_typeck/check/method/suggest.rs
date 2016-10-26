@@ -19,7 +19,6 @@ use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use hir::def::Def;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::lang_items::FnOnceTraitLangItem;
-use rustc::ty::subst::Substs;
 use rustc::traits::{Obligation, SelectionContext};
 use util::nodemap::FnvHashSet;
 
@@ -55,7 +54,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 self.autoderef(span, ty).any(|(ty, _)| {
                     self.probe(|_| {
-                        let fn_once_substs = Substs::new_trait(tcx, ty, &[self.next_ty_var()]);
+                        let fn_once_substs = tcx.mk_substs_trait(ty, &[self.next_ty_var()]);
                         let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                         let poly_trait_ref = trait_ref.to_poly_trait_ref();
                         let obligation =

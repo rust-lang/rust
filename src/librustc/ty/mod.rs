@@ -41,6 +41,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::slice;
 use std::vec::IntoIter;
+use std::mem;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::parse::token::{self, InternedString};
@@ -560,6 +561,14 @@ impl<'a, T> IntoIterator for &'a Slice<T> {
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Slice<Ty<'tcx>> {}
+
+impl<T> Slice<T> {
+    pub fn empty<'a>() -> &'a Slice<T> {
+        unsafe {
+            mem::transmute(slice::from_raw_parts(0x1 as *const T, 0))
+        }
+    }
+}
 
 /// Upvars do not get their own node-id. Instead, we use the pair of
 /// the original var id (that is, the root variable that is referenced
@@ -1798,7 +1807,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
             _ if tys.references_error() => tcx.types.err,
             0 => tcx.types.bool,
             1 => tys[0],
-            _ => tcx.mk_tup(&tys)
+            _ => tcx.intern_tup(&tys[..])
         };
 
         match self.sized_constraint.get(dep_node()) {
@@ -1874,7 +1883,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
                 };
                 let sized_predicate = Binder(TraitRef {
                     def_id: sized_trait,
-                    substs: Substs::new_trait(tcx, ty, &[])
+                    substs: tcx.mk_substs_trait(ty, &[])
                 }).to_predicate();
                 let predicates = tcx.lookup_predicates(self.did).predicates;
                 if predicates.into_iter().any(|p| p == sized_predicate) {
@@ -2125,7 +2134,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn node_id_item_substs(self, id: NodeId) -> ItemSubsts<'gcx> {
         match self.tables.borrow().item_substs.get(&id) {
             None => ItemSubsts {
-                substs: Substs::empty(self.global_tcx())
+                substs: self.global_tcx().intern_substs(&[])
             },
             Some(ts) => ts.clone(),
         }
@@ -2797,7 +2806,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // regions, so it shouldn't matter what we use for the free id
         let free_id_outlive = self.region_maps.node_extent(ast::DUMMY_NODE_ID);
         ty::ParameterEnvironment {
-            free_substs: Substs::empty(self),
+            free_substs: self.intern_substs(&[]),
             caller_bounds: Vec::new(),
             implicit_region_bound: self.mk_region(ty::ReEmpty),
             free_id_outlive: free_id_outlive,
