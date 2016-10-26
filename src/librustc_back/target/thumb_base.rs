@@ -52,6 +52,7 @@ pub fn opts() -> TargetOptions {
         // Similarly, one almost always never wants to use relocatable code because of the extra
         // costs it involves.
         relocation_model: "static".to_string(),
+        abi_blacklist: super::arm_base::abi_blacklist(),
         .. Default::default()
     }
 }

@@ -8,20 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-arm
-// ignore-aarch64
+use syntax::abi::Abi;
 
-// compile-flags: -C no-prepopulate-passes
-
-struct Foo;
-
-impl Foo {
-// CHECK: define internal x86_stdcallcc void @{{.*}}foo{{.*}}()
-    #[inline(never)]
-    pub extern "stdcall" fn foo<T>() {
-    }
-}
-
-fn main() {
-    Foo::foo::<Foo>();
+// All the calling conventions trigger an assertion(Unsupported calling convention) in llvm on arm
+pub fn abi_blacklist() -> Vec<Abi> {
+    vec![Abi::Stdcall, Abi::Fastcall, Abi::Vectorcall, Abi::Win64, Abi::SysV64]
 }

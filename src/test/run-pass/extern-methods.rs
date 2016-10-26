@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-arm
+// ignore-aarch64
+
 trait A {
     extern "fastcall" fn test1(i: i32);
     extern fn test2(i: i32);
