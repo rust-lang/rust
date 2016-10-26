@@ -1,0 +1,36 @@
+error: `x` does not live long enough
+  --> $DIR/send-is-not-static-std-sync-2.rs:22:5
+   |
+21 |         Mutex::new(&x) //~ ERROR does not live long enough
+   |                     - borrow occurs here
+22 |     };
+   |     ^ `x` dropped here while still borrowed
+...
+25 | }
+   | - borrowed value needs to live until here
+
+error: `x` does not live long enough
+  --> $DIR/send-is-not-static-std-sync-2.rs:31:5
+   |
+30 |         RwLock::new(&x) //~ ERROR does not live long enough
+   |                      - borrow occurs here
+31 |     };
+   |     ^ `x` dropped here while still borrowed
+32 |     let _dangling = *lock.read().unwrap();
+33 | }
+   | - borrowed value needs to live until here
+
+error: `x` does not live long enough
+  --> $DIR/send-is-not-static-std-sync-2.rs:41:5
+   |
+39 |         let _ = tx.send(&x); //~ ERROR does not live long enough
+   |                          - borrow occurs here
+40 |         (tx, rx)
+41 |     };
+   |     ^ `x` dropped here while still borrowed
+...
+44 | }
+   | - borrowed value needs to live until here
+
+error: aborting due to 3 previous errors
+

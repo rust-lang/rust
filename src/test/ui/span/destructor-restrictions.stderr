@@ -1,0 +1,12 @@
+error: `*a` does not live long enough
+  --> $DIR/destructor-restrictions.rs:19:5
+   |
+18 |         *a.borrow() + 1    //~ ERROR `*a` does not live long enough
+   |          - borrow occurs here
+19 |     };
+   |     ^- borrowed value needs to live until here
+   |     |
+   |     `*a` dropped here while still borrowed
+
+error: aborting due to previous error
+
