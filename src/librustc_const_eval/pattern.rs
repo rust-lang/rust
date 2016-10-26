@@ -117,6 +117,7 @@ impl<'a, 'gcx, 'tcx> Pattern<'tcx> {
         if !pcx.errors.is_empty() {
             span_bug!(pat.span, "encountered errors lowering pattern: {:?}", pcx.errors)
         }
+        debug!("Pattern::from_hir({:?}) = {:?}", pat, result);
         result
     }
 }
@@ -346,6 +347,40 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         pat.as_ref().map(|p| self.lower_pattern(p))
     }
 
+    fn flatten_nested_slice_patterns(
+        &mut self,
+        prefix: Vec<Pattern<'tcx>>,
+        slice: Option<Pattern<'tcx>>,
+        suffix: Vec<Pattern<'tcx>>)
+        -> (Vec<Pattern<'tcx>>, Option<Pattern<'tcx>>, Vec<Pattern<'tcx>>)
+    {
+        let orig_slice = match slice {
+            Some(orig_slice) => orig_slice,
+            None => return (prefix, slice, suffix)
+        };
+        let orig_prefix = prefix;
+        let orig_suffix = suffix;
+
+        // dance because of intentional borrow-checker stupidity.
+        let kind = *orig_slice.kind;
+        match kind {
+            PatternKind::Slice { prefix, slice, mut suffix } |
+            PatternKind::Array { prefix, slice, mut suffix } => {
+                let mut orig_prefix = orig_prefix;
+
+                orig_prefix.extend(prefix);
+                suffix.extend(orig_suffix);
+
+                (orig_prefix, slice, suffix)
+            }
+            _ => {
+                (orig_prefix, Some(Pattern {
+                    kind: box kind, ..orig_slice
+                }), orig_suffix)
+            }
+        }
+    }
+
     fn slice_or_array_pattern(
         &mut self,
         span: Span,
@@ -355,24 +390,22 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         suffix: &[P<hir::Pat>])
         -> PatternKind<'tcx>
     {
+        let prefix = self.lower_patterns(prefix);
+        let slice = self.lower_opt_pattern(slice);
+        let suffix = self.lower_patterns(suffix);
+        let (prefix, slice, suffix) =
+            self.flatten_nested_slice_patterns(prefix, slice, suffix);
+
         match ty.sty {
             ty::TySlice(..) => {
                 // matching a slice or fixed-length array
-                PatternKind::Slice {
-                    prefix: self.lower_patterns(prefix),
-                    slice: self.lower_opt_pattern(slice),
-                    suffix: self.lower_patterns(suffix),
-                }
+                PatternKind::Slice { prefix: prefix, slice: slice, suffix: suffix }
             }
 
             ty::TyArray(_, len) => {
                 // fixed-length array
                 assert!(len >= prefix.len() + suffix.len());
-                PatternKind::Array {
-                    prefix: self.lower_patterns(prefix),
-                    slice: self.lower_opt_pattern(slice),
-                    suffix: self.lower_patterns(suffix),
-                }
+                PatternKind::Array { prefix: prefix, slice: slice, suffix: suffix }
             }
 
             _ => {
