@@ -51,7 +51,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.register_predicates(obligations);
             },
             Err(e) => {
+<<<<<<< HEAD
                 self.report_mismatched_types(&cause, expected, actual, e);
+=======
+                self.report_mismatched_types(origin, expected, actual, e).emit();
+>>>>>>> Return DiagnosticBuilder to add help suggestions
             }
         }
     }
@@ -70,7 +74,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.register_predicates(obligations);
             },
             Err(e) => {
-                self.report_mismatched_types(cause, expected, actual, e);
+                self.report_mismatched_types(cause, expected, actual, e).emit();
             }
         }
     }
@@ -82,7 +86,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let cause = self.misc(expr.span);
             let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
             let mode = probe::Mode::MethodCall;
-            if let Ok(methods) = self.probe_return(syntax_pos::DUMMY_SP, mode, expected,
+            let suggestions = 
+                if let Ok(methods) = self.probe_return(syntax_pos::DUMMY_SP, mode, expected,
                                                    checked_ty, ast::DUMMY_NODE_ID) {
                 let suggestions: Vec<_> =
                     methods.iter()
@@ -93,43 +98,59 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 None
                             }})
                            .collect();
-                let safe_suggestions: Vec<_> =
-                    suggestions.iter()
-                               .map(|ref x| MethodInfo::new(
-                                                self.find_attr(x.id, "safe_suggestion"),
-                                                               x.id,
-                                                               x.item.clone()))
-                               .filter(|ref x| x.ast.is_some())
-                               .collect();
-                if safe_suggestions.len() > 0 {
-                    self.get_best_match(&safe_suggestions);
+                if suggestions.len() > 0 {
+                    let safe_suggestions: Vec<_> =
+                        suggestions.iter()
+                                   .map(|ref x| MethodInfo::new(
+                                                    self.find_attr(x.id, "safe_suggestion"),
+                                                                   x.id,
+                                                                   x.item.clone()))
+                                   .filter(|ref x| x.ast.is_some())
+                                   .collect();
+                    Some(if safe_suggestions.len() > 0 {
+                        self.get_best_match(&safe_suggestions)
+                    } else {
+                        format!("no safe suggestion found, here are functions which match your \
+                                 needs but be careful:\n - {}",
+                                self.get_best_match(&suggestions))
+                    })
                 } else {
-                    self.get_best_match(&suggestions);
+                    None
                 }
+            } else {
+                None
+            };
+            let mut err = self.report_mismatched_types(origin, expected, expr_ty, e);
+            if let Some(suggestions) = suggestions {
+                err.help(&suggestions);
             }
+<<<<<<< HEAD
             self.report_mismatched_types(&cause, expected, expr_ty, e);
+=======
+            err.emit();
+>>>>>>> Return DiagnosticBuilder to add help suggestions
         }
     }
 
     fn get_best_match(&self, methods: &[MethodInfo<'tcx>]) -> String {
         if methods.len() == 1 {
-            println!("unique match ==> {:?}", methods[0].item.name());
-            return String::new();
+            return format!(" - {}", methods[0].item.name());
         }
         let no_argument_methods: Vec<&MethodInfo> =
             methods.iter()
                    .filter(|ref x| self.has_not_input_arg(&*x.item))
                    .collect();
         if no_argument_methods.len() > 0 {
-            for ref method in no_argument_methods {
-                println!("best match ==> {:?}", method.item.name());
-            }
+            no_argument_methods.iter()
+                               .map(|method| format!("{}", method.item.name()))
+                               .collect::<Vec<String>>()
+                               .join("\n - ")
         } else {
-            for ref method in methods.iter() {
-                println!("not best ==> {:?}", method.item.name());
-            }
+            methods.iter()
+                   .map(|method| format!("{}", method.item.name()))
+                   .collect::<Vec<String>>()
+                   .join("\n - ")
         }
-        String::new()
     }
 
     fn get_impl_id(&self, impl_: &ImplOrTraitItem<'tcx>) -> Option<DefId> {
