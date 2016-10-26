@@ -30,7 +30,7 @@ pub use self::CandidateSource::*;
 pub use self::suggest::AllTraitsVec;
 
 mod confirm;
-mod probe;
+pub mod probe;
 mod suggest;
 
 pub enum MethodError<'tcx> {
@@ -130,7 +130,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let mode = probe::Mode::MethodCall;
         let self_ty = self.resolve_type_vars_if_possible(&self_ty);
-        let pick = self.probe_method(span, mode, method_name, self_ty, call_expr.id)?;
+        let pick = self.probe_method(span, mode, method_name, self_ty, call_expr.id)?.remove(0);
 
         if let Some(import_id) = pick.import_id {
             self.tcx.used_trait_imports.borrow_mut().insert(import_id);
@@ -328,7 +328,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         expr_id: ast::NodeId)
                         -> Result<Def, MethodError<'tcx>> {
         let mode = probe::Mode::Path;
-        let pick = self.probe_method(span, mode, method_name, self_ty, expr_id)?;
+        let picks = self.probe_method(span, mode, method_name, self_ty, expr_id)?;
+        let pick = &picks[0];
 
         if let Some(import_id) = pick.import_id {
             self.tcx.used_trait_imports.borrow_mut().insert(import_id);
@@ -352,5 +353,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn associated_item(&self, def_id: DefId, item_name: ast::Name)
                            -> Option<ty::AssociatedItem> {
         self.tcx.associated_items(def_id).find(|item| item.name == item_name)
+    }
+
+    fn matches_return_type(&self, method: &ty::ImplOrTraitItem<'tcx>,
+                           expected: ty::Ty<'tcx>) -> bool {
+        match *method {
+            ty::ImplOrTraitItem::MethodTraitItem(ref x) => {
+                self.can_sub_types(x.fty.sig.skip_binder().output, expected).is_ok()
+            }
+            _ => false,
+        }
+    }
+
+    pub fn impl_or_return_item(&self,
+                               def_id: DefId,
+                               return_type: ty::Ty<'tcx>)
+                               -> Option<ty::ImplOrTraitItem<'tcx>> {
+        self.tcx
+            .impl_or_trait_items(def_id)
+            .iter()
+            .map(|&did| self.tcx.impl_or_trait_item(did))
+            .find(|m| self.matches_return_type(m, return_type))
     }
 }
