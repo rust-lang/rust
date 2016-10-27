@@ -823,8 +823,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "The output of `-Z time-llvm-passes` will only reflect timings of \
          re-translated modules when used with incremental compilation" )],
         "measure time of each LLVM pass"),
-    input_stats: bool = (false, parse_bool, [UNTRACKED],
-        "gather statistics about the input"),
     trans_stats: bool = (false, parse_bool, [UNTRACKED_WITH_WARNING(true,
         "The output of `-Z trans-stats` might not be accurate when incremental \
          compilation is enabled")],
@@ -2334,8 +2332,6 @@ mod tests {
         opts.debugging_opts.count_llvm_insns = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.time_llvm_passes = true;
-        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.input_stats = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.trans_stats = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
