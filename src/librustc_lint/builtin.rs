@@ -39,12 +39,13 @@ use rustc::traits::{self, Reveal};
 use rustc::hir::map as hir_map;
 use util::nodemap::NodeSet;
 use lint::{Level, LateContext, LintContext, LintArray, Lint};
-use lint::{LintPass, LateLintPass};
+use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
 
 use std::collections::HashSet;
 
 use syntax::ast;
 use syntax::attr;
+use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
 use syntax_pos::Span;
 
 use rustc::hir::{self, PatKind};
@@ -738,6 +739,54 @@ impl LateLintPass for Deprecated {
 
     fn check_foreign_item_post(&mut self, cx: &LateContext, item: &hir::ForeignItem) {
         self.item_post(cx, item.id);
+    }
+}
+
+declare_lint! {
+    DEPRECATED_ATTR,
+    Warn,
+    "detects use of deprecated attributes"
+}
+
+/// Checks for use of attributes which have been deprecated.
+#[derive(Clone)]
+pub struct DeprecatedAttr {
+    // This is not free to compute, so we want to keep it around, rather than
+    // compute it for every attribute.
+    depr_attrs: Vec<&'static (&'static str, AttributeType, AttributeGate)>,
+}
+
+impl DeprecatedAttr {
+    pub fn new() -> DeprecatedAttr {
+        DeprecatedAttr {
+            depr_attrs: deprecated_attributes(),
+        }
+    }
+}
+
+impl LintPass for DeprecatedAttr {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(DEPRECATED_ATTR)
+    }
+}
+
+impl EarlyLintPass for DeprecatedAttr {
+    fn check_attribute(&mut self, cx: &EarlyContext, attr: &ast::Attribute) {
+        let name = &*attr.name();
+        for &&(n, _, ref g) in &self.depr_attrs {
+            if n == name {
+                if let &AttributeGate::Gated(Stability::Deprecated(link),
+                                             ref name,
+                                             ref reason,
+                                             _) = g {
+                    cx.span_lint(DEPRECATED,
+                                 attr.span,
+                                 &format!("use of deprecated attribute `{}`: {}. See {}",
+                                          name, reason, link));
+                }
+                return;
+            }
+        }
     }
 }
 
