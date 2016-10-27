@@ -99,7 +99,8 @@
 
 use common::SharedCrateContext;
 use monomorphize::Instance;
-use util::sha2::{Digest, Sha256};
+use rustc_data_structures::fmt_wrap::FmtWrap;
+use rustc_data_structures::blake2b::Blake2bHasher;
 
 use rustc::middle::weak_lang_items;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -113,21 +114,6 @@ use rustc::util::common::record_time;
 
 use syntax::attr;
 use syntax::parse::token::{self, InternedString};
-use serialize::hex::ToHex;
-
-use std::hash::Hasher;
-
-struct Sha256Hasher<'a>(&'a mut Sha256);
-
-impl<'a> Hasher for Sha256Hasher<'a> {
-    fn write(&mut self, msg: &[u8]) {
-        self.0.input(msg)
-    }
-
-    fn finish(&self) -> u64 {
-        bug!("Sha256Hasher::finish should not be called");
-    }
-}
 
 fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
@@ -149,12 +135,9 @@ fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
     let tcx = scx.tcx();
 
-    let mut hash_state = scx.symbol_hasher().borrow_mut();
-    record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
-        hash_state.reset();
-        let hasher = Sha256Hasher(&mut hash_state);
-        let mut hasher = ty::util::TypeIdHasher::new(tcx, hasher);
+    let mut hasher = ty::util::TypeIdHasher::new(tcx, Blake2bHasher::new(8, &[]));
 
+    record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
         // the main symbol name is not necessarily unique; hash in the
         // compiler's internal def-path, guaranteeing each symbol has a
         // truly unique path
@@ -175,8 +158,9 @@ fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     });
 
     // 64 bits should be enough to avoid collisions.
-    let output = hash_state.result_bytes();
-    format!("h{}", output[..8].to_hex())
+    let mut hasher = hasher.into_inner();
+    let hash_bytes = hasher.finalize();
+    format!("h{:x}", FmtWrap(hash_bytes))
 }
 
 impl<'a, 'tcx> Instance<'tcx> {

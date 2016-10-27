@@ -49,6 +49,7 @@ pub mod accumulate_vec;
 pub mod bitslice;
 pub mod blake2b;
 pub mod bitvec;
+pub mod fmt_wrap;
 pub mod graph;
 pub mod ivar;
 pub mod indexed_set;
