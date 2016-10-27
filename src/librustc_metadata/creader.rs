@@ -37,7 +37,7 @@ use syntax::parse;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::parse::token::{InternedString, intern};
-use syntax_pos::{self, Span, mk_sp};
+use syntax_pos::{Span, DUMMY_SP, mk_sp};
 use log;
 
 pub struct Library {
@@ -56,16 +56,14 @@ pub struct CrateLoader<'a> {
 
 fn dump_crates(cstore: &CStore) {
     info!("resolved crates:");
-    cstore.iter_crate_data_origins(|_, data, opt_source| {
+    cstore.iter_crate_data(|_, data| {
         info!("  name: {}", data.name());
         info!("  cnum: {}", data.cnum);
         info!("  hash: {}", data.hash());
         info!("  reqd: {}", data.explicitly_linked.get());
-        opt_source.map(|cs| {
-            let CrateSource { dylib, rlib, cnum: _ } = cs;
-            dylib.map(|dl| info!("  dylib: {}", dl.0.display()));
-            rlib.map(|rl|  info!("   rlib: {}", rl.0.display()));
-        });
+        let CrateSource { dylib, rlib } = data.source.clone();
+        dylib.map(|dl| info!("  dylib: {}", dl.0.display()));
+        rlib.map(|rl|  info!("   rlib: {}", rl.0.display()));
     })
 }
 
@@ -261,8 +259,7 @@ impl<'a> CrateLoader<'a> {
                       span: Span,
                       lib: Library,
                       explicitly_linked: bool)
-                      -> (CrateNum, Rc<cstore::CrateMetadata>,
-                          cstore::CrateSource) {
+                      -> (CrateNum, Rc<cstore::CrateMetadata>) {
         info!("register crate `extern crate {} as {}`", name, ident);
         let crate_root = lib.metadata.get_root();
         self.verify_no_symbol_conflicts(span, &crate_root);
@@ -303,17 +300,14 @@ impl<'a> CrateLoader<'a> {
             cnum: cnum,
             codemap_import_info: RefCell::new(vec![]),
             explicitly_linked: Cell::new(explicitly_linked),
+            source: cstore::CrateSource {
+                dylib: dylib,
+                rlib: rlib,
+            },
         });
 
-        let source = cstore::CrateSource {
-            dylib: dylib,
-            rlib: rlib,
-            cnum: cnum,
-        };
-
         self.cstore.set_crate_data(cnum, cmeta.clone());
-        self.cstore.add_used_crate_source(source.clone());
-        (cnum, cmeta, source)
+        (cnum, cmeta)
     }
 
     fn resolve_crate(&mut self,
@@ -324,7 +318,7 @@ impl<'a> CrateLoader<'a> {
                      span: Span,
                      kind: PathKind,
                      explicitly_linked: bool)
-                     -> (CrateNum, Rc<cstore::CrateMetadata>, cstore::CrateSource) {
+                     -> (CrateNum, Rc<cstore::CrateMetadata>) {
         info!("resolving crate `extern crate {} as {}`", name, ident);
         let result = match self.existing_match(name, hash, kind) {
             Some(cnum) => LoadResult::Previous(cnum),
@@ -356,10 +350,8 @@ impl<'a> CrateLoader<'a> {
         match result {
             LoadResult::Previous(cnum) => {
                 let data = self.cstore.get_crate_data(cnum);
-                if explicitly_linked && !data.explicitly_linked.get() {
-                    data.explicitly_linked.set(explicitly_linked);
-                }
-                (cnum, data, self.cstore.used_crate_source(cnum))
+                data.explicitly_linked.set(explicitly_linked || data.explicitly_linked.get());
+                (cnum, data)
             }
             LoadResult::Loaded(library) => {
                 self.register_crate(root, ident, name, span, library,
@@ -508,9 +500,8 @@ impl<'a> CrateLoader<'a> {
 
         let (dylib, metadata) = match library {
             LoadResult::Previous(cnum) => {
-                let dylib = self.cstore.opt_used_crate_source(cnum).unwrap().dylib;
                 let data = self.cstore.get_crate_data(cnum);
-                (dylib, PMDSource::Registered(data))
+                (data.source.dylib.clone(), PMDSource::Registered(data))
             }
             LoadResult::Loaded(library) => {
                 let dylib = library.dylib.clone();
@@ -754,9 +745,8 @@ impl<'a> CrateLoader<'a> {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        let (cnum, data, _) = self.resolve_crate(&None, name, name, None,
-                                                 syntax_pos::DUMMY_SP,
-                                                 PathKind::Crate, false);
+        let (cnum, data) =
+            self.resolve_crate(&None, name, name, None, DUMMY_SP, PathKind::Crate, false);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
@@ -836,9 +826,8 @@ impl<'a> CrateLoader<'a> {
         } else {
             &self.sess.target.target.options.exe_allocation_crate
         };
-        let (cnum, data, _) = self.resolve_crate(&None, name, name, None,
-                                                 syntax_pos::DUMMY_SP,
-                                                 PathKind::Crate, false);
+        let (cnum, data) =
+            self.resolve_crate(&None, name, name, None, DUMMY_SP, PathKind::Crate, false);
 
         // Sanity check the crate we loaded to ensure that it is indeed an
         // allocator.

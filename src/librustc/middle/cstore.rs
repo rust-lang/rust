@@ -61,7 +61,6 @@ pub struct LinkMeta {
 pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
-    pub cnum: CrateNum,
 }
 
 #[derive(Copy, Debug, PartialEq, Clone, RustcEncodable, RustcDecodable)]

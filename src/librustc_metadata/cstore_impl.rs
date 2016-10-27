@@ -507,7 +507,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource
     {
-        self.opt_used_crate_source(cnum).unwrap()
+        self.get_crate_data(cnum).source.clone()
     }
 
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>
