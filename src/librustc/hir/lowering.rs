@@ -543,6 +543,7 @@ impl<'a> LoweringContext<'a> {
             name: respan(f.ident.span, f.ident.node.name),
             expr: self.lower_expr(&f.expr),
             span: f.span,
+            is_shorthand: f.is_shorthand,
         }
     }
 
@@ -1682,6 +1683,7 @@ impl<'a> LoweringContext<'a> {
             },
             span: span,
             expr: expr,
+            is_shorthand: false,
         }
     }
 

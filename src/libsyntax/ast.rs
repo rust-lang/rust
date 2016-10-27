@@ -900,6 +900,7 @@ pub struct Field {
     pub ident: SpannedIdent,
     pub expr: P<Expr>,
     pub span: Span,
+    pub is_shorthand: bool,
 }
 
 pub type SpannedIdent = Spanned<Ident>;
