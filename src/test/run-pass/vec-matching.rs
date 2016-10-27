@@ -144,6 +144,20 @@ fn e() {
     assert_eq!(c, 1);
 }
 
+fn f() {
+    let x = &[1, 2, 3, 4, 5];
+    let [a, [b, [c, ..].., d].., e] = *x;
+    assert_eq!((a, b, c, d, e), (1, 2, 3, 4, 5));
+
+    let x: &[isize] = x;
+    let (a, b, c, d, e) = match *x {
+        [a, [b, [c, ..].., d].., e] => (a, b, c, d, e),
+        _ => unimplemented!()
+    };
+
+    assert_eq!((a, b, c, d, e), (1, 2, 3, 4, 5));
+}
+
 pub fn main() {
     a();
     b();
@@ -151,4 +165,5 @@ pub fn main() {
     c();
     d();
     e();
+    f();
 }

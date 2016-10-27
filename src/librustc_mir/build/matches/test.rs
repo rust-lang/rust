@@ -73,8 +73,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Range {
-                        lo: lo.clone(),
-                        hi: hi.clone(),
+                        lo: Literal::Value { value: lo.clone() },
+                        hi: Literal::Value { value: hi.clone() },
                         ty: match_pair.pattern.ty.clone(),
                     },
                 }

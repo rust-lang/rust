@@ -196,5 +196,4 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
 mod block;
 mod expr;
-mod pattern;
 mod to_ref;
