@@ -131,7 +131,7 @@ pub enum Constructor {
     SliceWithSubslice(usize, usize)
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 enum Usefulness {
     Useful,
     UsefulWithWitness(Vec<P<Pat>>),
@@ -577,18 +577,31 @@ impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
 /// left_ty: struct X { a: (bool, &'static str), b: usize}
 /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
 fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
-                              pats: Vec<&Pat>, left_ty: Ty<'tcx>) -> P<Pat> {
+                              pats: Vec<&Pat>, left_ty: Ty<'tcx>) -> Option<P<Pat>> {
+    let tcx = cx.tcx;
     let pats_len = pats.len();
-    let mut pats = pats.into_iter().map(|p| P((*p).clone()));
+    let mut pats_owned = pats.iter().map(|p| P((**p).clone()));
     let pat = match left_ty.sty {
-        ty::TyTuple(..) => PatKind::Tuple(pats.collect(), None),
-
-        ty::TyAdt(adt, _) => {
+        ty::TyTuple(ref inner_tys) => {
+            if pats.iter().zip(inner_tys.iter()).any(|(p, t)| {
+                *p == DUMMY_WILD_PAT && t.is_uninhabited(tcx)
+            }) {
+                return None;
+            }
+            PatKind::Tuple(pats_owned.collect(), None)
+        },
+        ty::TyAdt(adt, substs) => {
             let v = ctor.variant_for_adt(adt);
+            if pats.iter().zip(v.fields.iter()).any(|(p, f)| {
+                *p == DUMMY_WILD_PAT &&
+                f.ty(tcx, substs).is_uninhabited(tcx)
+            }) {
+                return None;
+            };
             match v.ctor_kind {
                 CtorKind::Fictive => {
                     let field_pats: hir::HirVec<_> = v.fields.iter()
-                        .zip(pats)
+                        .zip(pats_owned)
                         .filter(|&(_, ref pat)| pat.node != PatKind::Wild)
                         .map(|(field, pat)| Spanned {
                             span: DUMMY_SP,
@@ -602,7 +615,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                     PatKind::Struct(def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
                 }
                 CtorKind::Fn => {
-                    PatKind::TupleStruct(def_to_path(cx.tcx, v.did), pats.collect(), None)
+                    PatKind::TupleStruct(def_to_path(cx.tcx, v.did), pats_owned.collect(), None)
                 }
                 CtorKind::Const => {
                     PatKind::Path(None, def_to_path(cx.tcx, v.did))
@@ -610,22 +623,32 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
             }
         }
 
-        ty::TyRef(_, ty::TypeAndMut { mutbl, .. }) => {
+        ty::TyRef(_, ty::TypeAndMut { mutbl, ty: inner_ty }) => {
             assert_eq!(pats_len, 1);
-            PatKind::Ref(pats.nth(0).unwrap(), mutbl)
+            let pat = pats_owned.nth(0).unwrap();
+            if *pat == *DUMMY_WILD_PAT && inner_ty.is_uninhabited(tcx) {
+                return None;
+            }
+            PatKind::Ref(pat, mutbl)
         }
 
-        ty::TySlice(_) => match ctor {
+        ty::TySlice(ref inner_ty) => match ctor {
             &Slice(n) => {
                 assert_eq!(pats_len, n);
-                PatKind::Slice(pats.collect(), None, hir::HirVec::new())
+                if inner_ty.is_uninhabited(tcx) && pats.iter().any(|p| *p == DUMMY_WILD_PAT) {
+                    return None;
+                }
+                PatKind::Slice(pats_owned.collect(), None, hir::HirVec::new())
             },
             _ => unreachable!()
         },
 
-        ty::TyArray(_, len) => {
+        ty::TyArray(ref inner_ty, len) => {
             assert_eq!(pats_len, len);
-            PatKind::Slice(pats.collect(), None, hir::HirVec::new())
+            if inner_ty.is_uninhabited(tcx) && pats.iter().any(|p| *p == DUMMY_WILD_PAT) {
+                return None;
+            }
+            PatKind::Slice(pats_owned.collect(), None, hir::HirVec::new())
         }
 
         _ => {
@@ -636,11 +659,11 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
         }
     };
 
-    P(hir::Pat {
+    Some(P(hir::Pat {
         id: DUMMY_NODE_ID,
         node: pat,
         span: DUMMY_SP
-    })
+    }))
 }
 
 impl Constructor {
@@ -732,20 +755,26 @@ fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
         let constructors = missing_constructors(cx, matrix, left_ty, max_slice_length);
         debug!("is_useful - missing_constructors = {:?}", constructors);
         if constructors.is_empty() {
-            all_constructors(cx, left_ty, max_slice_length).into_iter().map(|c| {
-                match is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness) {
-                    UsefulWithWitness(pats) => UsefulWithWitness({
+            let all_cons = all_constructors(cx, left_ty, max_slice_length);
+            all_cons.into_iter().map(|c| {
+                let spec = is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness);
+                match spec {
+                    UsefulWithWitness(pats) => {
                         let arity = constructor_arity(cx, &c, left_ty);
-                        let mut result = {
+                        let mut result: Vec<_> = {
                             let pat_slice = &pats[..];
                             let subpats: Vec<_> = (0..arity).map(|i| {
                                 pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
                             }).collect();
-                            vec![construct_witness(cx, &c, subpats, left_ty)]
+                            construct_witness(cx, &c, subpats, left_ty).into_iter().collect()
                         };
                         result.extend(pats.into_iter().skip(arity));
-                        result
-                    }),
+                        if result.is_empty() {
+                            NotUseful
+                        } else {
+                            UsefulWithWitness(result)
+                        }
+                    },
                     result => result
                 }
             }).find(|result| result != &NotUseful).unwrap_or(NotUseful)
@@ -758,13 +787,17 @@ fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
             }).collect();
             match is_useful(cx, &matrix, &v[1..], witness) {
                 UsefulWithWitness(pats) => {
-                    let mut new_pats: Vec<_> = constructors.into_iter().map(|constructor| {
+                    let mut new_pats: Vec<_> = constructors.into_iter().filter_map(|constructor| {
                         let arity = constructor_arity(cx, &constructor, left_ty);
                         let wild_pats = vec![DUMMY_WILD_PAT; arity];
                         construct_witness(cx, &constructor, wild_pats, left_ty)
                     }).collect();
                     new_pats.extend(pats);
-                    UsefulWithWitness(new_pats)
+                    if new_pats.is_empty() {
+                        NotUseful
+                    } else {
+                        UsefulWithWitness(new_pats)
+                    }
                 },
                 result => result
             }
@@ -788,7 +821,8 @@ fn is_useful_specialized<'a, 'tcx>(
     let matrix = Matrix(m.iter().filter_map(|r| {
         specialize(cx, &r[..], &ctor, 0, arity)
     }).collect());
-    match specialize(cx, v, &ctor, 0, arity) {
+    let spec = specialize(cx, v, &ctor, 0, arity);
+    match spec {
         Some(v) => is_useful(cx, &matrix, &v[..], witness),
         None => NotUseful
     }
