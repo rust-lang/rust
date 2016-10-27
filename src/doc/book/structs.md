@@ -61,7 +61,7 @@ write something like this:
 
 ```rust,ignore
 struct Point {
-    mut x: i32,
+    mut x: i32, // This causes an error.
     y: i32,
 }
 ```
