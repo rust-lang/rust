@@ -183,6 +183,13 @@ impl<'a> FmtVisitor<'a> {
                     if last_wspace.is_none() {
                         last_wspace = Some(i);
                     }
+                } else if c == ';' {
+                    if last_wspace.is_some() {
+                        line_start = i;
+                    }
+
+                    rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
+                    last_wspace = None;
                 } else {
                     rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
                     last_wspace = None;
