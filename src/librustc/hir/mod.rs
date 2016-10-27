@@ -33,6 +33,7 @@ pub use self::PathParameters::*;
 use hir::def::Def;
 use hir::def_id::DefId;
 use util::nodemap::{NodeMap, FxHashSet};
+use rustc_data_structures::fnv::FnvHashMap;
 
 use syntax_pos::{mk_sp, Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, respan, Spanned};
@@ -428,6 +429,7 @@ pub struct Crate {
     pub items: BTreeMap<NodeId, Item>,
 
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
+    pub exprs: FnvHashMap<ExprId, Expr>,
 }
 
 impl Crate {
@@ -844,6 +846,15 @@ pub enum BlockCheckMode {
 pub enum UnsafeSource {
     CompilerGenerated,
     UserProvided,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct ExprId(NodeId);
+
+impl ExprId {
+    pub fn node_id(self) -> NodeId {
+        self.0
+    }
 }
 
 /// An expression
