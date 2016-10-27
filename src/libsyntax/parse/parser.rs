@@ -5145,7 +5145,11 @@ impl<'a> Parser<'a> {
         let mut fields = Vec::new();
         if self.eat(&token::OpenDelim(token::Brace)) {
             while self.token != token::CloseDelim(token::Brace) {
-                fields.push(self.parse_struct_decl_field()?);
+                fields.push(self.parse_struct_decl_field().map_err(|e| {
+                    self.recover_stmt();
+                    self.eat(&token::CloseDelim(token::Brace));
+                    e
+                })?);
             }
 
             self.bump();
@@ -5673,7 +5677,11 @@ impl<'a> Parser<'a> {
         generics.where_clause = self.parse_where_clause()?;
         self.expect(&token::OpenDelim(token::Brace))?;
 
-        let enum_definition = self.parse_enum_def(&generics)?;
+        let enum_definition = self.parse_enum_def(&generics).map_err(|e| {
+            self.recover_stmt();
+            self.eat(&token::CloseDelim(token::Brace));
+            e
+        })?;
         Ok((id, ItemKind::Enum(enum_definition, generics), None))
     }
 
