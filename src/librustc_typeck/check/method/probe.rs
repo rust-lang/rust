@@ -21,7 +21,8 @@ use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::infer::type_variable::TypeVariableOrigin;
-use rustc::util::nodemap::FxHashSet;
+use rustc::util::nodemap::{FnvHashSet, FxHashSet};
+use rustc::infer::{self, InferOk, TypeOrigin};
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
@@ -626,27 +627,27 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
+    pub fn matches_return_type(&self, method: &ty::ImplOrTraitItem<'tcx>,
+                           expected: ty::Ty<'tcx>) -> bool {
+        match *method {
+            ty::ImplOrTraitItem::MethodTraitItem(ref x) => {
+                self.probe(|_| {
+                    let output = self.replace_late_bound_regions_with_fresh_var(
+                        self.span, infer::FnCall, &x.fty.sig.output());
+                    self.can_sub_types(output.0, expected).is_ok()
+                })
+            }
+            _ => false,
+        }
+    }
+
     fn assemble_extension_candidates_for_trait(&mut self,
                                                trait_def_id: DefId)
                                                -> Result<(), MethodError<'tcx>> {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})",
                trait_def_id);
 
-        // Check whether `trait_def_id` defines a method with suitable name:
-        let trait_items = self.tcx.associated_items(trait_def_id);
-        let maybe_item = match self.looking_for {
-            LookingFor::MethodName(item_name) => {
-                trait_items.iter()
-                           .find(|item| item.name == item_name)
-            }
-            LookingFor::ReturnType(item_ty) => {
-                trait_items.iter()
-                           .find(|item| {
-                                self.fcx.matches_return_type(item, &item_ty)
-                            })
-            }
-        };
-        let item = match maybe_item {
+        let item = match self.impl_or_trait_item(trait_def_id) {
             Some(i) => i,
             None => {
                 return Ok(());
@@ -1351,7 +1352,11 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 self.fcx.impl_or_trait_item(def_id, name)
             }
             LookingFor::ReturnType(return_ty) => {
-                self.fcx.impl_or_return_item(def_id, return_ty)
+                self.tcx
+                    .impl_or_trait_items(def_id)
+                    .iter()
+                    .map(|&did| self.tcx.impl_or_trait_item(did))
+                    .find(|m| self.matches_return_type(m, return_ty))
             }
         }
     }
