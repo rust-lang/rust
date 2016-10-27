@@ -25,10 +25,7 @@ pub fn string_to_tts(source_str: String) -> Vec<tokenstream::TokenTree> {
 
 /// Map string to parser (via tts)
 pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a> {
-    new_parser_from_source_str(ps,
-                               Vec::new(),
-                               "bogofile".to_string(),
-                               source_str)
+    new_parser_from_source_str(ps, "bogofile".to_string(), source_str)
 }
 
 fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T where

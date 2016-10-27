@@ -47,7 +47,7 @@ pub fn modify(sess: &ParseSess,
               handler: &errors::Handler,
               features: &Features) -> ast::Crate {
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
-    let mut cx = ExtCtxt::new(sess, Vec::new(), ecfg, resolver);
+    let mut cx = ExtCtxt::new(sess, ecfg, resolver);
 
     let mut collect = CollectCustomDerives {
         derives: Vec::new(),

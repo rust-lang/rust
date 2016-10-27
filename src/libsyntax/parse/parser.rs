@@ -15,7 +15,7 @@ use ast::Unsafety;
 use ast::{Mod, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
 use ast::{BlockCheckMode, CaptureBy};
-use ast::{Constness, Crate, CrateConfig};
+use ast::{Constness, Crate};
 use ast::Defaultness;
 use ast::EnumDef;
 use ast::{Expr, ExprKind, RangeLimits};
@@ -271,7 +271,6 @@ pub struct Parser<'a> {
     pub span: Span,
     /// the span of the previous token:
     pub prev_span: Span,
-    pub cfg: CrateConfig,
     /// the previous token kind
     prev_token_kind: PrevTokenKind,
     lookahead_buffer: LookaheadBuffer,
@@ -358,11 +357,7 @@ impl From<P<Expr>> for LhsExpr {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(sess: &'a ParseSess,
-               cfg: ast::CrateConfig,
-               mut rdr: Box<Reader+'a>)
-               -> Parser<'a>
-    {
+    pub fn new(sess: &'a ParseSess, mut rdr: Box<Reader+'a>) -> Self {
         let tok0 = rdr.real_token();
         let span = tok0.sp;
         let mut directory = match span {
@@ -374,7 +369,6 @@ impl<'a> Parser<'a> {
         Parser {
             reader: rdr,
             sess: sess,
-            cfg: cfg,
             token: tok0.tok,
             span: span,
             prev_span: span,
@@ -5328,7 +5322,6 @@ impl<'a> Parser<'a> {
     fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
         let (in_cfg, outer_attrs) = {
             let mut strip_unconfigured = ::config::StripUnconfigured {
-                config: &self.cfg,
                 sess: self.sess,
                 should_test: false, // irrelevant
                 features: None, // don't perform gated feature checking
@@ -5496,12 +5489,7 @@ impl<'a> Parser<'a> {
         included_mod_stack.push(path.clone());
         drop(included_mod_stack);
 
-        let mut p0 = new_sub_parser_from_file(self.sess,
-                                              self.cfg.clone(),
-                                              &path,
-                                              owns_directory,
-                                              Some(name),
-                                              id_sp);
+        let mut p0 = new_sub_parser_from_file(self.sess, &path, owns_directory, Some(name), id_sp);
         let mod_inner_lo = p0.span.lo;
         let mod_attrs = p0.parse_inner_attributes()?;
         let m0 = p0.parse_mod_items(&token::Eof, mod_inner_lo)?;
@@ -6195,7 +6183,6 @@ impl<'a> Parser<'a> {
         Ok(ast::Crate {
             attrs: self.parse_inner_attributes()?,
             module: self.parse_mod_items(&token::Eof, lo)?,
-            config: self.cfg.clone(),
             span: mk_sp(lo, self.span.lo),
             exported_macros: Vec::new(),
         })

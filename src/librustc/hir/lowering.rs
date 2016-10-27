@@ -124,7 +124,6 @@ impl<'a> LoweringContext<'a> {
         hir::Crate {
             module: self.lower_mod(&c.module),
             attrs: self.lower_attrs(&c.attrs),
-            config: c.config.clone().into(),
             span: c.span,
             exported_macros: c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect(),
             items: items,
