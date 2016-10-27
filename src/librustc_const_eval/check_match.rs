@@ -46,7 +46,7 @@ use syntax::ptr::P;
 use syntax::util::move_map::MoveMap;
 use rustc::util::common::ErrorReported;
 
-pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
+const DUMMY_WILD_PAT: &'static Pat = &Pat {
     id: DUMMY_NODE_ID,
     node: PatKind::Wild,
     span: DUMMY_SP
@@ -109,13 +109,13 @@ impl<'a, 'tcx> FromIterator<Vec<(&'a Pat, Option<Ty<'tcx>>)>> for Matrix<'a, 'tc
 }
 
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
-pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub param_env: ty::ParameterEnvironment<'tcx>,
+struct MatchCheckCtxt<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    param_env: ty::ParameterEnvironment<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Constructor {
+enum Constructor {
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g. struct patterns and fixed-length arrays.
     Single,
@@ -126,15 +126,13 @@ pub enum Constructor {
     /// Ranges of literal values (2..5).
     ConstantRange(ConstVal, ConstVal),
     /// Array patterns of length n.
-    Slice(usize),
-    /// Array patterns with a subslice.
-    SliceWithSubslice(usize, usize)
+    Slice(usize)
 }
 
 #[derive(Clone, PartialEq)]
 enum Usefulness {
     Useful,
-    UsefulWithWitness(Vec<P<Pat>>),
+    UsefulWithWitness(Vec<Pat>),
     NotUseful
 }
 
@@ -171,78 +169,75 @@ fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> Diagn
 
 fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
     intravisit::walk_expr(cx, ex);
-    match ex.node {
-        hir::ExprMatch(ref scrut, ref arms, source) => {
-            for arm in arms {
-                // First, check legality of move bindings.
-                check_legality_of_move_bindings(cx,
-                                                arm.guard.is_some(),
-                                                &arm.pats);
+    if let hir::ExprMatch(ref scrut, ref arms, source) = ex.node {
+        for arm in arms {
+            // First, check legality of move bindings.
+            check_legality_of_move_bindings(cx,
+                                            arm.guard.is_some(),
+                                            &arm.pats);
 
-                // Second, if there is a guard on each arm, make sure it isn't
-                // assigning or borrowing anything mutably.
-                if let Some(ref guard) = arm.guard {
-                    check_for_mutation_in_guard(cx, &guard);
-                }
+            // Second, if there is a guard on each arm, make sure it isn't
+            // assigning or borrowing anything mutably.
+            if let Some(ref guard) = arm.guard {
+                check_for_mutation_in_guard(cx, &guard);
             }
+        }
 
-            let mut static_inliner = StaticInliner::new(cx.tcx);
-            let inlined_arms = arms.iter().map(|arm| {
-                (arm.pats.iter().map(|pat| {
-                    static_inliner.fold_pat((*pat).clone())
-                }).collect(), arm.guard.as_ref().map(|e| &**e))
-            }).collect::<Vec<(Vec<P<Pat>>, Option<&hir::Expr>)>>();
+        let mut static_inliner = StaticInliner::new(cx.tcx);
+        let inlined_arms = arms.iter().map(|arm| {
+            (arm.pats.iter().map(|pat| {
+                static_inliner.fold_pat((*pat).clone())
+            }).collect(), arm.guard.as_ref().map(|e| &**e))
+        }).collect::<Vec<(Vec<P<Pat>>, Option<&hir::Expr>)>>();
 
-            // Bail out early if inlining failed.
-            if static_inliner.failed {
-                return;
+        // Bail out early if inlining failed.
+        if static_inliner.failed {
+            return;
+        }
+
+        for pat in inlined_arms
+            .iter()
+            .flat_map(|&(ref pats, _)| pats) {
+            // Third, check legality of move bindings.
+            check_legality_of_bindings_in_at_patterns(cx, &pat);
+
+            // Fourth, check if there are any references to NaN that we should warn about.
+            check_for_static_nan(cx, &pat);
+
+            // Fifth, check if for any of the patterns that match an enumerated type
+            // are bindings with the same name as one of the variants of said type.
+            check_for_bindings_named_the_same_as_variants(cx, &pat);
+        }
+
+        // Fourth, check for unreachable arms.
+        check_arms(cx, &inlined_arms[..], source);
+
+        // Finally, check if the whole match expression is exhaustive.
+        // Check for empty enum, because is_useful only works on inhabited types.
+        let pat_ty = cx.tcx.node_id_to_type(scrut.id);
+        if inlined_arms.is_empty() {
+            if !pat_ty.is_uninhabited(cx.tcx) {
+                // We know the type is inhabited, so this must be wrong
+                let mut err = create_e0004(cx.tcx.sess, ex.span,
+                                           format!("non-exhaustive patterns: type {} \
+                                                    is non-empty",
+                                                   pat_ty));
+                span_help!(&mut err, ex.span,
+                    "Please ensure that all possible cases are being handled; \
+                     possibly adding wildcards or more match arms.");
+                err.emit();
             }
+            // If the type *is* uninhabited, it's vacuously exhaustive
+            return;
+        }
 
-            for pat in inlined_arms
-                .iter()
-                .flat_map(|&(ref pats, _)| pats) {
-                // Third, check legality of move bindings.
-                check_legality_of_bindings_in_at_patterns(cx, &pat);
-
-                // Fourth, check if there are any references to NaN that we should warn about.
-                check_for_static_nan(cx, &pat);
-
-                // Fifth, check if for any of the patterns that match an enumerated type
-                // are bindings with the same name as one of the variants of said type.
-                check_for_bindings_named_the_same_as_variants(cx, &pat);
-            }
-
-            // Fourth, check for unreachable arms.
-            check_arms(cx, &inlined_arms[..], source);
-
-            // Finally, check if the whole match expression is exhaustive.
-            // Check for empty enum, because is_useful only works on inhabited types.
-            let pat_ty = cx.tcx.node_id_to_type(scrut.id);
-            if inlined_arms.is_empty() {
-                if !pat_ty.is_uninhabited(cx.tcx) {
-                    // We know the type is inhabited, so this must be wrong
-                    let mut err = create_e0004(cx.tcx.sess, ex.span,
-                                               format!("non-exhaustive patterns: type {} \
-                                                        is non-empty",
-                                                       pat_ty));
-                    span_help!(&mut err, ex.span,
-                        "Please ensure that all possible cases are being handled; \
-                         possibly adding wildcards or more match arms.");
-                    err.emit();
-                }
-                // If the type *is* uninhabited, it's vacuously exhaustive
-                return;
-            }
-
-            let matrix: Matrix = inlined_arms
-                .iter()
-                .filter(|&&(_, guard)| guard.is_none())
-                .flat_map(|arm| &arm.0)
-                .map(|pat| vec![wrap_pat(cx, &pat)])
-                .collect();
-            check_exhaustive(cx, scrut.span, &matrix, source);
-        },
-        _ => ()
+        let matrix: Matrix = inlined_arms
+            .iter()
+            .filter(|&&(_, guard)| guard.is_none())
+            .flat_map(|arm| &arm.0)
+            .map(|pat| vec![wrap_pat(cx, &pat)])
+            .collect();
+        check_exhaustive(cx, scrut.span, &matrix, source);
     }
 }
 
@@ -403,7 +398,7 @@ fn check_exhaustive<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
             let witnesses = if pats.is_empty() {
                 vec![DUMMY_WILD_PAT]
             } else {
-                pats.iter().map(|w| &**w).collect()
+                pats.iter().collect()
             };
             match source {
                 hir::MatchSource::ForLoopDesugar => {
@@ -479,7 +474,7 @@ struct StaticInliner<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    pub fn new<'b>(tcx: TyCtxt<'b, 'tcx, 'tcx>) -> StaticInliner<'b, 'tcx> {
+    fn new<'b>(tcx: TyCtxt<'b, 'tcx, 'tcx>) -> StaticInliner<'b, 'tcx> {
         StaticInliner {
             tcx: tcx,
             failed: false
@@ -489,33 +484,30 @@ impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
-        match pat.node {
-            PatKind::Path(..) => {
-                match self.tcx.expect_def(pat.id) {
-                    Def::AssociatedConst(did) | Def::Const(did) => {
-                        let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
-                        if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, did, substs) {
-                            match const_expr_to_pat(self.tcx, const_expr, pat.id, pat.span) {
-                                Ok(new_pat) => return new_pat,
-                                Err(def_id) => {
-                                    self.failed = true;
-                                    self.tcx.sess.span_err(
-                                        pat.span,
-                                        &format!("constants of the type `{}` \
-                                                  cannot be used in patterns",
-                                                 self.tcx.item_path_str(def_id)));
-                                }
+        if let PatKind::Path(..) = pat.node {
+            match self.tcx.expect_def(pat.id) {
+                Def::AssociatedConst(did) | Def::Const(did) => {
+                    let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
+                    if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, did, substs) {
+                        match const_expr_to_pat(self.tcx, const_expr, pat.id, pat.span) {
+                            Ok(new_pat) => return new_pat,
+                            Err(def_id) => {
+                                self.failed = true;
+                                self.tcx.sess.span_err(
+                                    pat.span,
+                                    &format!("constants of the type `{}` \
+                                              cannot be used in patterns",
+                                             self.tcx.item_path_str(def_id)));
                             }
-                        } else {
-                            self.failed = true;
-                            span_err!(self.tcx.sess, pat.span, E0158,
-                                "statics cannot be referenced in patterns");
                         }
+                    } else {
+                        self.failed = true;
+                        span_err!(self.tcx.sess, pat.span, E0158,
+                            "statics cannot be referenced in patterns");
                     }
-                    _ => {}
                 }
+                _ => {}
             }
-            _ => {}
         }
 
         pat.map(|Pat { id, node, span }| {
@@ -577,7 +569,7 @@ impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
 /// left_ty: struct X { a: (bool, &'static str), b: usize}
 /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
 fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
-                              pats: Vec<&Pat>, left_ty: Ty<'tcx>) -> P<Pat> {
+                              pats: Vec<&Pat>, left_ty: Ty<'tcx>) -> Pat {
     let pats_len = pats.len();
     let mut pats = pats.into_iter().map(|p| P((*p).clone()));
     let pat = match left_ty.sty {
@@ -636,11 +628,11 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
         }
     };
 
-    P(hir::Pat {
+    hir::Pat {
         id: DUMMY_NODE_ID,
         node: pat,
         span: DUMMY_SP
-    })
+    }
 }
 
 impl Constructor {
@@ -737,9 +729,8 @@ fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
                     UsefulWithWitness(pats) => UsefulWithWitness({
                         let arity = constructor_arity(cx, &c, left_ty);
                         let mut result = {
-                            let pat_slice = &pats[..];
                             let subpats: Vec<_> = (0..arity).map(|i| {
-                                pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
+                                pats.get(i).map_or(DUMMY_WILD_PAT, |p| &*p)
                             }).collect();
                             vec![construct_witness(cx, &c, subpats, left_ty)]
                         };
@@ -844,7 +835,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 ///
 /// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
-pub fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
+fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
     debug!("constructor_arity({:?}, {:?})", ctor, ty);
     match ty.sty {
         ty::TyTuple(ref fs) => fs.len(),
@@ -899,7 +890,7 @@ fn wrap_pat<'a, 'b, 'tcx>(cx: &MatchCheckCtxt<'b, 'tcx>,
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-pub fn specialize<'a, 'b, 'tcx>(
+fn specialize<'a, 'b, 'tcx>(
     cx: &MatchCheckCtxt<'b, 'tcx>,
     r: &[(&'a Pat, Option<Ty<'tcx>>)],
     constructor: &Constructor, col: usize, arity: usize)
@@ -1033,16 +1024,6 @@ pub fn specialize<'a, 'b, 'tcx>(
                         before.iter().map(|p| wpat(p)).chain(
                         after.iter().map(|p| wpat(p))
                     ).collect())
-                }
-                SliceWithSubslice(prefix, suffix)
-                    if before.len() == prefix
-                        && after.len() == suffix
-                        && slice.is_some() => {
-                    // this is used by trans::_match only
-                    let mut pats: Vec<_> = before.iter()
-                        .map(|p| (&**p, None)).collect();
-                    pats.extend(after.iter().map(|p| (&**p, None)));
-                    Some(pats)
                 }
                 _ => None
             }
