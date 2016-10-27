@@ -42,29 +42,29 @@ fn test_ordering_order() {
 }
 
 #[test]
-fn test_ordering_or() {
-    assert_eq!(Equal.or(Less), Less);
-    assert_eq!(Equal.or(Equal), Equal);
-    assert_eq!(Equal.or(Greater), Greater);
-    assert_eq!(Less.or(Less), Less);
-    assert_eq!(Less.or(Equal), Less);
-    assert_eq!(Less.or(Greater), Less);
-    assert_eq!(Greater.or(Less), Greater);
-    assert_eq!(Greater.or(Equal), Greater);
-    assert_eq!(Greater.or(Greater), Greater);
+fn test_ordering_then() {
+    assert_eq!(Equal.then(Less), Less);
+    assert_eq!(Equal.then(Equal), Equal);
+    assert_eq!(Equal.then(Greater), Greater);
+    assert_eq!(Less.then(Less), Less);
+    assert_eq!(Less.then(Equal), Less);
+    assert_eq!(Less.then(Greater), Less);
+    assert_eq!(Greater.then(Less), Greater);
+    assert_eq!(Greater.then(Equal), Greater);
+    assert_eq!(Greater.then(Greater), Greater);
 }
 
 #[test]
-fn test_ordering_or_else() {
-    assert_eq!(Equal.or_else(|| Less), Less);
-    assert_eq!(Equal.or_else(|| Equal), Equal);
-    assert_eq!(Equal.or_else(|| Greater), Greater);
-    assert_eq!(Less.or_else(|| Less), Less);
-    assert_eq!(Less.or_else(|| Equal), Less);
-    assert_eq!(Less.or_else(|| Greater), Less);
-    assert_eq!(Greater.or_else(|| Less), Greater);
-    assert_eq!(Greater.or_else(|| Equal), Greater);
-    assert_eq!(Greater.or_else(|| Greater), Greater);
+fn test_ordering_then_with() {
+    assert_eq!(Equal.then_with(|| Less), Less);
+    assert_eq!(Equal.then_with(|| Equal), Equal);
+    assert_eq!(Equal.then_with(|| Greater), Greater);
+    assert_eq!(Less.then_with(|| Less), Less);
+    assert_eq!(Less.then_with(|| Equal), Less);
+    assert_eq!(Less.then_with(|| Greater), Less);
+    assert_eq!(Greater.then_with(|| Less), Greater);
+    assert_eq!(Greater.then_with(|| Equal), Greater);
+    assert_eq!(Greater.then_with(|| Greater), Greater);
 }
 
 #[test]

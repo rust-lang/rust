@@ -256,26 +256,26 @@ impl Ordering {
     ///
     /// use std::cmp::Ordering;
     ///
-    /// let result = Ordering::Equal.or(Ordering::Less);
+    /// let result = Ordering::Equal.then(Ordering::Less);
     /// assert_eq!(result, Ordering::Less);
     ///
-    /// let result = Ordering::Less.or(Ordering::Equal);
+    /// let result = Ordering::Less.then(Ordering::Equal);
     /// assert_eq!(result, Ordering::Less);
     ///
-    /// let result = Ordering::Less.or(Ordering::Greater);
+    /// let result = Ordering::Less.then(Ordering::Greater);
     /// assert_eq!(result, Ordering::Less);
     ///
-    /// let result = Ordering::Equal.or(Ordering::Equal);
+    /// let result = Ordering::Equal.then(Ordering::Equal);
     /// assert_eq!(result, Ordering::Equal);
     ///
     /// let x: (i64, i64, i64) = (1, 2, 7);
     /// let y: (i64, i64, i64) = (1, 5, 3);
-    /// let result = x.0.cmp(&y.0).or(x.1.cmp(&y.1)).or(x.2.cmp(&y.2));
+    /// let result = x.0.cmp(&y.0).then(x.1.cmp(&y.1)).then(x.2.cmp(&y.2));
     ///
     /// assert_eq!(result, Ordering::Less);
     /// ```
     #[unstable(feature = "ordering_chaining", issue = "37053")]
-    pub fn or(self, other: Ordering) -> Ordering {
+    pub fn then(self, other: Ordering) -> Ordering {
         match self {
             Equal => other,
             _ => self,
@@ -294,26 +294,26 @@ impl Ordering {
     ///
     /// use std::cmp::Ordering;
     ///
-    /// let result = Ordering::Equal.or_else(|| Ordering::Less);
+    /// let result = Ordering::Equal.then_with(|| Ordering::Less);
     /// assert_eq!(result, Ordering::Less);
     ///
-    /// let result = Ordering::Less.or_else(|| Ordering::Equal);
+    /// let result = Ordering::Less.then_with(|| Ordering::Equal);
     /// assert_eq!(result, Ordering::Less);
     ///
-    /// let result = Ordering::Less.or_else(|| Ordering::Greater);
+    /// let result = Ordering::Less.then_with(|| Ordering::Greater);
     /// assert_eq!(result, Ordering::Less);
     ///
-    /// let result = Ordering::Equal.or_else(|| Ordering::Equal);
+    /// let result = Ordering::Equal.then_with(|| Ordering::Equal);
     /// assert_eq!(result, Ordering::Equal);
     ///
     /// let x: (i64, i64, i64) = (1, 2, 7);
     /// let y: (i64, i64, i64)  = (1, 5, 3);
-    /// let result = x.0.cmp(&y.0).or_else(|| x.1.cmp(&y.1)).or_else(|| x.2.cmp(&y.2));
+    /// let result = x.0.cmp(&y.0).then_with(|| x.1.cmp(&y.1)).then_with(|| x.2.cmp(&y.2));
     ///
     /// assert_eq!(result, Ordering::Less);
     /// ```
     #[unstable(feature = "ordering_chaining", issue = "37053")]
-    pub fn or_else<F: FnOnce() -> Ordering>(self, f: F) -> Ordering {
+    pub fn then_with<F: FnOnce() -> Ordering>(self, f: F) -> Ordering {
         match self {
             Equal => f(),
             _ => self,
