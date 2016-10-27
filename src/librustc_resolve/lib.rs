@@ -108,7 +108,7 @@ enum ResolutionError<'a> {
     /// error E0403: the name is already used for a type parameter in this type parameter list
     NameAlreadyUsedInTypeParameterList(Name, &'a Span),
     /// error E0404: is not a trait
-    IsNotATrait(&'a str),
+    IsNotATrait(&'a str, &'a str),
     /// error E0405: use of undeclared trait name
     UndeclaredTraitName(&'a str, SuggestedCandidates),
     /// error E0407: method is not a member of trait
@@ -225,13 +225,13 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
              err
 
         }
-        ResolutionError::IsNotATrait(name) => {
+        ResolutionError::IsNotATrait(name, kind_name) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0404,
                                            "`{}` is not a trait",
                                            name);
-            err.span_label(span, &format!("not a trait"));
+            err.span_label(span, &format!("expected trait, found {}", kind_name));
             err
         }
         ResolutionError::UndeclaredTraitName(name, candidates) => {
@@ -566,7 +566,7 @@ impl<'a> Visitor for Resolver<'a> {
         self.resolve_type(ty);
     }
     fn visit_poly_trait_ref(&mut self, tref: &ast::PolyTraitRef, m: &ast::TraitBoundModifier) {
-        match self.resolve_trait_reference(tref.trait_ref.ref_id, &tref.trait_ref.path, 0) {
+        match self.resolve_trait_reference(tref.trait_ref.ref_id, &tref.trait_ref.path, 0, None) {
             Ok(def) => self.record_def(tref.trait_ref.ref_id, def),
             Err(_) => {
                 // error already reported
@@ -1703,7 +1703,7 @@ impl<'a> Resolver<'a> {
             }
 
             ItemKind::DefaultImpl(_, ref trait_ref) => {
-                self.with_optional_trait_ref(Some(trait_ref), |_, _| {});
+                self.with_optional_trait_ref(Some(trait_ref), |_, _| {}, None);
             }
             ItemKind::Impl(.., ref generics, ref opt_trait_ref, ref self_type, ref impl_items) =>
                 self.resolve_implementation(generics,
@@ -1893,7 +1893,8 @@ impl<'a> Resolver<'a> {
     fn resolve_trait_reference(&mut self,
                                id: NodeId,
                                trait_path: &Path,
-                               path_depth: usize)
+                               path_depth: usize,
+                               generics: Option<&Generics>)
                                -> Result<PathResolution, ()> {
         self.resolve_path(id, trait_path, path_depth, TypeNS).and_then(|path_res| {
             match path_res.base_def {
@@ -1906,8 +1907,16 @@ impl<'a> Resolver<'a> {
             }
 
             let mut err = resolve_struct_error(self, trait_path.span, {
-                ResolutionError::IsNotATrait(&path_names_to_string(trait_path, path_depth))
+                ResolutionError::IsNotATrait(&path_names_to_string(trait_path, path_depth),
+                                             path_res.base_def.kind_name())
             });
+            if let Some(generics) = generics {
+                if let Some(span) = generics.span_for_name(
+                    &path_names_to_string(trait_path, path_depth)) {
+
+                    err.span_label(span, &"type parameter defined here");
+                }
+            }
 
             // If it's a typedef, give a note
             if let Def::TyAlias(..) = path_res.base_def {
@@ -1952,7 +1961,11 @@ impl<'a> Resolver<'a> {
         result
     }
 
-    fn with_optional_trait_ref<T, F>(&mut self, opt_trait_ref: Option<&TraitRef>, f: F) -> T
+    fn with_optional_trait_ref<T, F>(&mut self,
+                                     opt_trait_ref: Option<&TraitRef>,
+                                     f: F,
+                                     generics: Option<&Generics>)
+        -> T
         where F: FnOnce(&mut Resolver, Option<DefId>) -> T
     {
         let mut new_val = None;
@@ -1960,7 +1973,8 @@ impl<'a> Resolver<'a> {
         if let Some(trait_ref) = opt_trait_ref {
             if let Ok(path_res) = self.resolve_trait_reference(trait_ref.ref_id,
                                                                &trait_ref.path,
-                                                               0) {
+                                                               0,
+                                                               generics) {
                 assert!(path_res.depth == 0);
                 self.record_def(trait_ref.ref_id, path_res);
                 new_val = Some((path_res.base_def.def_id(), trait_ref.clone()));
@@ -2048,7 +2062,7 @@ impl<'a> Resolver<'a> {
                         }
                     });
                 });
-            });
+            }, Some(&generics));
         });
     }
 
@@ -2492,7 +2506,7 @@ impl<'a> Resolver<'a> {
                 }
                 max_assoc_types = path.segments.len() - qself.position;
                 // Make sure the trait is valid.
-                let _ = self.resolve_trait_reference(id, path, max_assoc_types);
+                let _ = self.resolve_trait_reference(id, path, max_assoc_types, None);
             }
             None => {
                 max_assoc_types = path.segments.len();
