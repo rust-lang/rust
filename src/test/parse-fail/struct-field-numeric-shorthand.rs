@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,13 +10,10 @@
 
 // compile-flags: -Z parse-only
 
-fn removed_with() {
-    struct S {
-        foo: (),
-        bar: (),
-    }
+#![feature(field_init_shorthand)]
 
-    let a = S { foo: (), bar: () };
-    let b = S { foo: (), with a };
-    //~^ ERROR expected one of `,` or `}`, found `a`
+struct Rgb(u8, u8, u8);
+
+fn main() {
+    let _ = Rgb { 0, 1, 2 }; //~ ERROR expected identifier, found `0`
 }

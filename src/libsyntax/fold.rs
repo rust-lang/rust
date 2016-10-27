@@ -823,11 +823,12 @@ pub fn noop_fold_struct_field<T: Folder>(f: StructField, fld: &mut T) -> StructF
     }
 }
 
-pub fn noop_fold_field<T: Folder>(Field {ident, expr, span}: Field, folder: &mut T) -> Field {
+pub fn noop_fold_field<T: Folder>(f: Field, folder: &mut T) -> Field {
     Field {
-        ident: respan(ident.span, folder.fold_ident(ident.node)),
-        expr: folder.fold_expr(expr),
-        span: folder.new_span(span)
+        ident: respan(f.ident.span, folder.fold_ident(f.ident.node)),
+        expr: folder.fold_expr(f.expr),
+        span: folder.new_span(f.span),
+        is_shorthand: f.is_shorthand,
     }
 }
 
