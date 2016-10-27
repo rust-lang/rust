@@ -10,7 +10,19 @@
 
 #![deny(unconditional_recursion)]
 //~^ NOTE lint level defined here
-
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
+//~| NOTE lint level defined here
 #![allow(dead_code)]
 fn foo() { //~ ERROR function cannot return without recurring
     foo(); //~ NOTE recursive call site

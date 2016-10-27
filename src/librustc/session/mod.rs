@@ -294,7 +294,8 @@ impl Session {
     }
 
     /// Analogous to calling `.span_note` on the given DiagnosticBuilder, but
-    /// deduplicates on span and message for this `Session`.
+    /// deduplicates on span and message for this `Session` if we're not
+    /// outputting in JSON mode.
     //
     // FIXME: if the need arises for one-time diagnostics other than
     // `span_note`, we almost certainly want to generalize this
@@ -303,10 +304,19 @@ impl Session {
     pub fn diag_span_note_once<'a, 'b>(&'a self,
                                        diag_builder: &'b mut DiagnosticBuilder<'a>,
                                        span: Span, message: &str) {
-        let span_message = (span, message.to_owned());
-        let fresh = self.one_time_diagnostics.borrow_mut().insert(span_message);
-        if fresh {
-            diag_builder.span_note(span, &message);
+        match self.opts.error_format {
+            // when outputting JSON for tool consumption, the tool might want
+            // the duplicates
+            config::ErrorOutputType::Json => {
+                diag_builder.span_note(span, &message);
+            },
+            _ => {
+                let span_message = (span, message.to_owned());
+                let fresh = self.one_time_diagnostics.borrow_mut().insert(span_message);
+                if fresh {
+                    diag_builder.span_note(span, &message);
+                }
+            }
         }
     }
 
