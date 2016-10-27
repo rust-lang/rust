@@ -67,6 +67,9 @@ impl UdpSocket {
     ///
     /// Address type can be any implementor of `ToSocketAddrs` trait. See its
     /// documentation for concrete examples.
+    /// This will return an error when the IP version of the local socket
+    /// does not match that returned from `ToSocketAddrs`
+    /// See https://github.com/rust-lang/rust/issues/34202 for more details.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A)
                                      -> io::Result<usize> {
