@@ -452,7 +452,7 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
     }
 
     if let Some(span) = def {
-        sess.diag_span_note_once(&mut err, span, "lint level defined here");
+        sess.diag_span_note_once(&mut err, lint, span, "lint level defined here");
     }
 
     err
