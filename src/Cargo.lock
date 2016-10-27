@@ -330,11 +330,13 @@ dependencies = [
 name = "rustc_const_eval"
 version = "0.0.0"
 dependencies = [
+ "arena 0.0.0",
  "graphviz 0.0.0",
  "log 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_const_math 0.0.0",
+ "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",

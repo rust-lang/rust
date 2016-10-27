@@ -11,26 +11,24 @@
 #![feature(rustc_attrs)]
 #![feature(slice_patterns)]
 #![allow(dead_code)]
+#![deny(illegal_floating_point_constant_pattern)]
 
 // Matching against NaN should result in a warning
 
 use std::f64::NAN;
 
 #[rustc_error]
-fn main() { //~ ERROR compilation successful
+fn main() {
     let x = NAN;
     match x {
-        NAN => {},
+        NAN => {}, //~ ERROR floating point constants cannot be used
+                   //~| WARNING hard error
         _ => {},
     };
-    //~^^^ WARNING unmatchable NaN in pattern, use the is_nan method in a guard instead
-    //~| WARNING floating point constants cannot be used
-    //~| WARNING this was previously accepted
+
     match [x, 1.0] {
-        [NAN, _] => {},
+        [NAN, _] => {}, //~ ERROR floating point constants cannot be used
+                        //~| WARNING hard error
         _ => {},
     };
-    //~^^^ WARNING unmatchable NaN in pattern, use the is_nan method in a guard instead
-    //~| WARNING floating point constants cannot be used
-    //~| WARNING this was previously accepted
 }

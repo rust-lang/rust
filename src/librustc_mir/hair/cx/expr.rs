@@ -657,7 +657,7 @@ fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
 fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                arm: &'tcx hir::Arm) -> Arm<'tcx> {
     Arm {
-        patterns: arm.pats.iter().map(|p| cx.refutable_pat(p)).collect(),
+        patterns: arm.pats.iter().map(|p| Pattern::from_hir(cx.tcx, p)).collect(),
         guard: arm.guard.to_ref(),
         body: arm.body.to_ref(),
     }
