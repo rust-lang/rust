@@ -626,16 +626,6 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    fn matches_return_type(&self, method: &ty::ImplOrTraitItem<'tcx>,
-                           expected: &ty::Ty<'tcx>) -> bool {
-        match *method {
-            ty::ImplOrTraitItem::MethodTraitItem(ref x) => {
-                self.can_sub_types(x.fty.sig.skip_binder().output, expected).is_ok()
-            }
-            _ => false,
-        }
-    }
-
     fn assemble_extension_candidates_for_trait(&mut self,
                                                trait_def_id: DefId)
                                                -> Result<(), MethodError<'tcx>> {
@@ -652,7 +642,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             LookingFor::ReturnType(item_ty) => {
                 trait_items.iter()
                            .find(|item| {
-                                self.matches_return_type(item, &item_ty)
+                                self.fcx.matches_return_type(item, &item_ty)
                             })
             }
         };
