@@ -652,7 +652,8 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                                    "internal implementation detail",
                                                    cfg_fn!(rustc_attrs))),
 
-    ("safe_suggestion", Whitelisted, Gated("safe_suggestion",
+    ("safe_suggestion", Whitelisted, Gated(Stability::Unstable,
+                                           "safe_suggestion",
                                            "the `#[safe_suggestion]` attribute \
                                             is an experimental feature",
                                            cfg_fn!(safe_suggestion))),
