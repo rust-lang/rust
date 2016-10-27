@@ -306,6 +306,9 @@ declare_features! (
 
     // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
     (active, generic_param_attrs, "1.11.0", Some(34761)),
+
+    // Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
+    (active, field_init_shorthand, "1.14.0", Some(37340)),
 );
 
 declare_features! (
@@ -1086,6 +1089,14 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::InPlace(..) => {
                 gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
+            }
+            ast::ExprKind::Struct(_, ref fields, _) => {
+                for field in fields {
+                    if field.is_shorthand {
+                        gate_feature_post!(&self, field_init_shorthand, field.span,
+                                           "struct field shorthands are unstable");
+                    }
+                }
             }
             _ => {}
         }

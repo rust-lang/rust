@@ -817,6 +817,7 @@ pub struct Field {
     pub name: Spanned<Name>,
     pub expr: P<Expr>,
     pub span: Span,
+    pub is_shorthand: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
