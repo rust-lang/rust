@@ -111,8 +111,6 @@ pub mod traits;
 pub mod ty;
 
 pub mod util {
-    pub use rustc_back::sha2;
-
     pub mod common;
     pub mod ppaux;
     pub mod nodemap;
