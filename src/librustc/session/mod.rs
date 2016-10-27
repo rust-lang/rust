@@ -297,18 +297,16 @@ impl Session {
     /// deduplicates on span and message for this `Session`.
     //
     // FIXME: if the need arises for one-time diagnostics other than
-    // `span_note`, we almost certainly want to generalize this "check the
-    // one-time diagnostics map, then set message if it's not already there"
-    // code to accomodate all of them
+    // `span_note`, we almost certainly want to generalize this
+    // "check/insert-into the one-time diagnostics map, then set message if
+    // it's not already there" code to accomodate all of them
     pub fn diag_span_note_once<'a, 'b>(&'a self,
                                        diag_builder: &'b mut DiagnosticBuilder<'a>,
                                        span: Span, message: &str) {
         let span_message = (span, message.to_owned());
-        let already_noted: bool = self.one_time_diagnostics.borrow()
-            .contains(&span_message);
-        if !already_noted {
+        let fresh = self.one_time_diagnostics.borrow_mut().insert(span_message);
+        if fresh {
             diag_builder.span_note(span, &message);
-            self.one_time_diagnostics.borrow_mut().insert(span_message);
         }
     }
 
