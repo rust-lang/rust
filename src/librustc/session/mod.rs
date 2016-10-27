@@ -75,10 +75,10 @@ pub struct Session {
     pub working_dir: PathBuf,
     pub lint_store: RefCell<lint::LintStore>,
     pub lints: RefCell<NodeMap<Vec<(lint::LintId, Span, String)>>>,
-    /// Set of (span, message) tuples tracking lint (sub)diagnostics that have
-    /// been set once, but should not be set again, in order to avoid
+    /// Set of (LintId, span, message) tuples tracking lint (sub)diagnostics
+    /// that have been set once, but should not be set again, in order to avoid
     /// redundantly verbose output (Issue #24690).
-    pub one_time_diagnostics: RefCell<FnvHashSet<(Span, String)>>,
+    pub one_time_diagnostics: RefCell<FnvHashSet<(lint::LintId, Span, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub mir_passes: RefCell<mir_pass::Passes>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
@@ -294,8 +294,8 @@ impl Session {
     }
 
     /// Analogous to calling `.span_note` on the given DiagnosticBuilder, but
-    /// deduplicates on span and message for this `Session` if we're not
-    /// outputting in JSON mode.
+    /// deduplicates on lint ID, span, and message for this `Session` if we're
+    /// not outputting in JSON mode.
     //
     // FIXME: if the need arises for one-time diagnostics other than
     // `span_note`, we almost certainly want to generalize this
@@ -303,7 +303,7 @@ impl Session {
     // it's not already there" code to accomodate all of them
     pub fn diag_span_note_once<'a, 'b>(&'a self,
                                        diag_builder: &'b mut DiagnosticBuilder<'a>,
-                                       span: Span, message: &str) {
+                                       lint: &'static lint::Lint, span: Span, message: &str) {
         match self.opts.error_format {
             // when outputting JSON for tool consumption, the tool might want
             // the duplicates
@@ -311,8 +311,9 @@ impl Session {
                 diag_builder.span_note(span, &message);
             },
             _ => {
-                let span_message = (span, message.to_owned());
-                let fresh = self.one_time_diagnostics.borrow_mut().insert(span_message);
+                let lint_id = lint::LintId::of(lint);
+                let id_span_message = (lint_id, span, message.to_owned());
+                let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
                 if fresh {
                     diag_builder.span_note(span, &message);
                 }
