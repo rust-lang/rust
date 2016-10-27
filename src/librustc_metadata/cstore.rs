@@ -18,7 +18,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex, DefId};
 use rustc::hir::map::DefKey;
 use rustc::hir::svh::Svh;
-use rustc::middle::cstore::ExternCrate;
+use rustc::middle::cstore::{DepKind, ExternCrate};
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, NodeMap, NodeSet, DefIdMap};
@@ -78,12 +78,7 @@ pub struct CrateMetadata {
     /// compilation support.
     pub key_map: FxHashMap<DefKey, DefIndex>,
 
-    /// Flag if this crate is required by an rlib version of this crate, or in
-    /// other words whether it was explicitly linked to. An example of a crate
-    /// where this is false is when an allocator crate is injected into the
-    /// dependency list, and therefore isn't actually needed to link an rlib.
-    pub explicitly_linked: Cell<bool>,
-
+    pub dep_kind: Cell<DepKind>,
     pub source: CrateSource,
 }
 

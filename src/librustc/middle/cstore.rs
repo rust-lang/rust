@@ -63,6 +63,16 @@ pub struct CrateSource {
     pub rlib: Option<(PathBuf, PathKind)>,
 }
 
+#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
+pub enum DepKind {
+    /// A dependency that is always injected into the dependency list and so
+    /// doesn't need to be linked to an rlib, e.g. the injected allocator.
+    Implicit,
+    /// A dependency that is required by an rlib version of this crate.
+    /// Ordinary `extern crate`s result in `Explicit` dependencies.
+    Explicit,
+}
+
 #[derive(Copy, Debug, PartialEq, Clone, RustcEncodable, RustcDecodable)]
 pub enum LinkagePreference {
     RequireDynamic,
@@ -169,10 +179,10 @@ pub trait CrateStore<'tcx> {
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
                                     -> Vec<(CrateNum, LinkagePreference)>;
+    fn dep_kind(&self, cnum: CrateNum) -> DepKind;
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
     fn is_staged_api(&self, cnum: CrateNum) -> bool;
-    fn is_explicitly_linked(&self, cnum: CrateNum) -> bool;
     fn is_allocator(&self, cnum: CrateNum) -> bool;
     fn is_panic_runtime(&self, cnum: CrateNum) -> bool;
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
@@ -341,7 +351,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>
         { bug!("missing_lang_items") }
     fn is_staged_api(&self, cnum: CrateNum) -> bool { bug!("is_staged_api") }
-    fn is_explicitly_linked(&self, cnum: CrateNum) -> bool { bug!("is_explicitly_linked") }
+    fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
     fn is_allocator(&self, cnum: CrateNum) -> bool { bug!("is_allocator") }
     fn is_panic_runtime(&self, cnum: CrateNum) -> bool { bug!("is_panic_runtime") }
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool { bug!("is_compiler_builtins") }
