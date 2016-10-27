@@ -718,6 +718,12 @@ impl LateLintPass for Deprecated {
                              &mut |id, sp, stab, depr| self.lint(cx, id, sp, &stab, &depr));
     }
 
+    fn check_ty(&mut self, cx: &LateContext, ty: &hir::Ty) {
+        stability::check_ty(cx.tcx, ty,
+                            &mut |id, sp, stab, depr|
+                               self.lint(cx, id, sp, &stab, &depr));
+    }
+
     fn check_impl_item(&mut self, _: &LateContext, item: &hir::ImplItem) {
         self.push_item(item.id);
     }
@@ -1204,7 +1210,7 @@ impl LateLintPass for MutableTransmutes {
              expr: &hir::Expr)
              -> Option<(&'tcx ty::TypeVariants<'tcx>, &'tcx ty::TypeVariants<'tcx>)> {
             match expr.node {
-                hir::ExprPath(..) => (),
+                hir::ExprPath(_) => (),
                 _ => return None,
             }
             if let Def::Fn(did) = cx.tcx.expect_def(expr.id) {

@@ -374,7 +374,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         self.walk_adjustment(expr);
 
         match expr.node {
-            hir::ExprPath(..) => { }
+            hir::ExprPath(_) => { }
 
             hir::ExprType(ref subexpr, _) => {
                 self.walk_expr(&subexpr)

@@ -286,9 +286,11 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if let Vacant(entry) = tcx.def_map.borrow_mut().entry(expr.id) {
                entry.insert(PathResolution::new(def));
             }
-            let path = match def {
+            let qpath = match def {
                 Def::StructCtor(def_id, CtorKind::Fn) |
-                Def::VariantCtor(def_id, CtorKind::Fn) => def_to_path(tcx, def_id),
+                Def::VariantCtor(def_id, CtorKind::Fn) => {
+                    hir::QPath::Resolved(None, P(def_to_path(tcx, def_id)))
+                }
                 Def::Fn(..) | Def::Method(..) => return Ok(P(hir::Pat {
                     id: expr.id,
                     node: PatKind::Lit(P(expr.clone())),
@@ -299,10 +301,10 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let pats = args.iter()
                            .map(|expr| const_expr_to_pat(tcx, &*expr, pat_id, span))
                            .collect::<Result<_, _>>()?;
-            PatKind::TupleStruct(path, pats, None)
+            PatKind::TupleStruct(qpath, pats, None)
         }
 
-        hir::ExprStruct(ref path, ref fields, None) => {
+        hir::ExprStruct(ref qpath, ref fields, None) => {
             let field_pats =
                 fields.iter()
                       .map(|field| Ok(codemap::Spanned {
@@ -314,7 +316,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           },
                       }))
                       .collect::<Result<_, _>>()?;
-            PatKind::Struct((**path).clone(), field_pats, false)
+            PatKind::Struct(qpath.clone(), field_pats, false)
         }
 
         hir::ExprArray(ref exprs) => {
@@ -324,10 +326,17 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             PatKind::Slice(pats, None, hir::HirVec::new())
         }
 
-        hir::ExprPath(_, ref path) => {
+        hir::ExprPath(_) => {
             match tcx.expect_def(expr.id) {
                 Def::StructCtor(_, CtorKind::Const) |
-                Def::VariantCtor(_, CtorKind::Const) => PatKind::Path(None, path.clone()),
+                Def::VariantCtor(_, CtorKind::Const) => {
+                    match expr.node {
+                        hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
+                            PatKind::Path(hir::QPath::Resolved(None, path.clone()))
+                        }
+                        _ => bug!()
+                    }
+                }
                 Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                     let substs = Some(tcx.tables().node_id_item_substs(expr.id)
                         .unwrap_or_else(|| tcx.intern_substs(&[])));
@@ -788,14 +797,14 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Err(kind) => return Err(ConstEvalErr { span: e.span, kind: kind }),
         }
       }
-      hir::ExprPath(..) => {
+      hir::ExprPath(_) => {
           // This function can be used before type checking when not all paths are fully resolved.
           // FIXME: There's probably a better way to make sure we don't panic here.
-          let resolution = tcx.expect_resolution(e.id);
-          if resolution.depth != 0 {
-              signal!(e, UnresolvedPath);
-          }
-          match resolution.base_def {
+          let def = match tcx.expect_def_or_none(e.id) {
+              Some(def) => def,
+              None => signal!(e, UnresolvedPath)
+          };
+          match def {
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
                   let substs = if let ExprTypeChecked = ty_hint {
@@ -1358,17 +1367,12 @@ pub fn eval_length<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let mut diag = report_const_eval_err(
                 tcx, &err, count_expr.span, reason);
 
-            match count_expr.node {
-                hir::ExprPath(None, hir::Path {
-                    global: false,
-                    ref segments,
-                    ..
-                }) if segments.len() == 1 => {
+            if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = count_expr.node {
+                if !path.global && path.segments.len() == 1 {
                     if let Some(Def::Local(..)) = tcx.expect_def_or_none(count_expr.id) {
-                        diag.note(&format!("`{}` is a variable", segments[0].name));
+                        diag.note(&format!("`{}` is a variable", path.segments[0].name));
                     }
                 }
-                _ => {}
             }
 
             diag.emit();

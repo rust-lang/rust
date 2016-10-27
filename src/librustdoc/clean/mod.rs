@@ -1727,7 +1727,7 @@ impl Clean<Type> for hir::Ty {
                 FixedVector(box ty.clean(cx), n)
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
-            TyPath(None, ref path) => {
+            TyPath(hir::QPath::Resolved(None, ref path)) => {
                 let def = cx.tcx.expect_def(self.id);
                 if let Some(new_ty) = cx.ty_substs.borrow().get(&def).cloned() {
                     return new_ty;
@@ -1766,7 +1766,7 @@ impl Clean<Type> for hir::Ty {
                 }
                 resolve_type(cx, path.clean(cx), self.id)
             }
-            TyPath(Some(ref qself), ref p) => {
+            TyPath(hir::QPath::Resolved(Some(ref qself), ref p)) => {
                 let mut segments: Vec<_> = p.segments.clone().into();
                 segments.pop();
                 let trait_path = hir::Path {
@@ -1776,7 +1776,19 @@ impl Clean<Type> for hir::Ty {
                 };
                 Type::QPath {
                     name: p.segments.last().unwrap().name.clean(cx),
-                    self_type: box qself.ty.clean(cx),
+                    self_type: box qself.clean(cx),
+                    trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
+                }
+            }
+            TyPath(hir::QPath::TypeRelative(ref qself, ref segment)) => {
+                let trait_path = hir::Path {
+                    span: self.span,
+                    global: false,
+                    segments: vec![].into(),
+                };
+                Type::QPath {
+                    name: segment.name.clean(cx),
+                    self_type: box qself.clean(cx),
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
             }
@@ -2263,11 +2275,20 @@ impl Clean<PathSegment> for hir::PathSegment {
     }
 }
 
-fn path_to_string(p: &hir::Path) -> String {
+fn qpath_to_string(p: &hir::QPath) -> String {
+    let (segments, global) = match *p {
+        hir::QPath::Resolved(_, ref path) => {
+            (&path.segments, path.global)
+        }
+        hir::QPath::TypeRelative(_, ref segment) => {
+            return segment.name.to_string()
+        }
+    };
+
     let mut s = String::new();
     let mut first = true;
-    for i in p.segments.iter().map(|x| x.name.as_str()) {
-        if !first || p.global {
+    for i in segments.iter().map(|x| x.name.as_str()) {
+        if !first || global {
             s.push_str("::");
         } else {
             first = false;
@@ -2725,17 +2746,15 @@ fn name_from_pat(p: &hir::Pat) -> String {
     match p.node {
         PatKind::Wild => "_".to_string(),
         PatKind::Binding(_, ref p, _) => p.node.to_string(),
-        PatKind::TupleStruct(ref p, ..) | PatKind::Path(None, ref p) => path_to_string(p),
-        PatKind::Path(..) => panic!("tried to get argument name from qualified PatKind::Path, \
-                                     which is not allowed in function arguments"),
+        PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
         PatKind::Struct(ref name, ref fields, etc) => {
-            format!("{} {{ {}{} }}", path_to_string(name),
+            format!("{} {{ {}{} }}", qpath_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
                                   format!("{}: {}", fp.name, name_from_pat(&*fp.pat)))
                              .collect::<Vec<String>>().join(", "),
                 if etc { ", ..." } else { "" }
             )
-        },
+        }
         PatKind::Tuple(ref elts, _) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
                                             .collect::<Vec<String>>().join(", ")),
         PatKind::Box(ref p) => name_from_pat(&**p),

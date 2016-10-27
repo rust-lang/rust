@@ -324,6 +324,7 @@ impl Witness {
 
                 ty::TyAdt(adt, _) => {
                     let v = ctor.variant_for_adt(adt);
+                    let qpath = hir::QPath::Resolved(None, P(def_to_path(cx.tcx, v.did)));
                     match v.ctor_kind {
                         CtorKind::Fictive => {
                             let field_pats: hir::HirVec<_> = v.fields.iter()
@@ -338,16 +339,12 @@ impl Witness {
                                     }
                                 }).collect();
                             let has_more_fields = field_pats.len() < arity;
-                            PatKind::Struct(
-                                def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
+                            PatKind::Struct(qpath, field_pats, has_more_fields)
                         }
                         CtorKind::Fn => {
-                            PatKind::TupleStruct(
-                                def_to_path(cx.tcx, v.did), pats.collect(), None)
+                            PatKind::TupleStruct(qpath, pats.collect(), None)
                         }
-                        CtorKind::Const => {
-                            PatKind::Path(None, def_to_path(cx.tcx, v.did))
-                        }
+                        CtorKind::Const => PatKind::Path(qpath)
                     }
                 }
 

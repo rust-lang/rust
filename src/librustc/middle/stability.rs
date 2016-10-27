@@ -486,6 +486,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         intravisit::walk_pat(self, pat)
     }
 
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+        check_ty(self.tcx, ty,
+                 &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
+        intravisit::walk_ty(self, ty)
+    }
+
     fn visit_block(&mut self, b: &'tcx hir::Block) {
         let old_skip_count = self.in_skip_block;
         match b.rules {
@@ -552,6 +558,10 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
             span = i.span;
             let method_call = ty::MethodCall::expr(e.id);
             tcx.tables().method_map[&method_call].def_id
+        }
+        hir::ExprPath(hir::QPath::TypeRelative(..)) => {
+            span = e.span;
+            tcx.expect_def(e.id).def_id()
         }
         hir::ExprField(ref base_e, ref field) => {
             span = field.span;
@@ -633,6 +643,11 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
+    if let PatKind::Path(hir::QPath::TypeRelative(..)) = pat.node {
+        let def_id = tcx.expect_def(pat.id).def_id();
+        maybe_do_stability_check(tcx, def_id, pat.span, cb)
+    }
+
     let v = match tcx.tables().pat_ty_opt(pat).map(|ty| &ty.sty) {
         Some(&ty::TyAdt(adt, _)) if !adt.is_enum() => adt.struct_variant(),
         _ => return,
@@ -653,6 +668,19 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
         }
         // everything else is fine.
         _ => {}
+    }
+}
+
+pub fn check_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: &hir::Ty,
+                          cb: &mut FnMut(DefId, Span,
+                                         &Option<&Stability>,
+                                         &Option<DeprecationEntry>)) {
+    debug!("check_ty(ty = {:?})", ty);
+    if is_internal(tcx, ty.span) { return; }
+
+    if let hir::TyPath(hir::QPath::TypeRelative(..)) = ty.node {
+        let def_id = tcx.expect_def(ty.id).def_id();
+        maybe_do_stability_check(tcx, def_id, ty.span, cb);
     }
 }
 

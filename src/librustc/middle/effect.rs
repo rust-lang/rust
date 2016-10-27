@@ -186,7 +186,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
             hir::ExprInlineAsm(..) => {
                 self.require_unsafe(expr.span, "use of inline assembly");
             }
-            hir::ExprPath(..) => {
+            hir::ExprPath(hir::QPath::Resolved(..)) => {
                 if let Def::Static(def_id, mutbl) = self.tcx.expect_def(expr.id) {
                     if mutbl {
                         self.require_unsafe(expr.span, "use of mutable static");
