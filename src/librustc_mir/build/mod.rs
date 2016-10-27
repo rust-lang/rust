@@ -191,7 +191,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     assert_eq!(block, builder.return_block());
 
     let mut spread_arg = None;
-    match tcx.node_id_to_type(fn_id).sty {
+    match tcx.tables().node_id_to_type(fn_id).sty {
         ty::TyFnDef(_, _, f) if f.abi == Abi::RustCall => {
             // RustCall pseudo-ABI untuples the last argument.
             spread_arg = Some(Local::new(arguments.len()));
@@ -203,7 +203,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
         freevars.iter().map(|fv| {
             let var_id = tcx.map.as_local_node_id(fv.def.def_id()).unwrap();
-            let by_ref = tcx.upvar_capture(ty::UpvarId {
+            let by_ref = tcx.tables().upvar_capture(ty::UpvarId {
                 var_id: var_id,
                 closure_expr_id: fn_id
             }).map_or(false, |capture| match capture {

@@ -430,11 +430,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
         match expr.node {
             hir::ExprMethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
-                let method = self.tcx.tables.borrow().method_map[&method_call];
+                let method = self.tcx.tables().method_map[&method_call];
                 self.check_method(expr.span, method.def_id);
             }
             hir::ExprStruct(_, ref expr_fields, _) => {
-                let adt = self.tcx.expr_ty(expr).ty_adt_def().unwrap();
+                let adt = self.tcx.tables().expr_ty(expr).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(self.tcx.expect_def(expr.id));
                 // RFC 736: ensure all unmentioned fields are visible.
                 // Rather than computing the set of unmentioned fields
@@ -495,14 +495,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
         match pattern.node {
             PatKind::Struct(_, ref fields, _) => {
-                let adt = self.tcx.pat_ty(pattern).ty_adt_def().unwrap();
+                let adt = self.tcx.tables().pat_ty(pattern).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(self.tcx.expect_def(pattern.id));
                 for field in fields {
                     self.check_field(field.span, adt, variant.field_named(field.node.name));
                 }
             }
             PatKind::TupleStruct(_, ref fields, ddpos) => {
-                match self.tcx.pat_ty(pattern).sty {
+                match self.tcx.tables().pat_ty(pattern).sty {
                     // enum fields have no privacy at this time
                     ty::TyAdt(def, _) if !def.is_enum() => {
                         let expected_len = def.struct_variant().fields.len();

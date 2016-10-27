@@ -229,7 +229,7 @@ impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
         debug!("Type for pattern binding {} (id {}) resolved to {:?}",
                pat_to_string(p),
                p.id,
-               self.tcx().node_id_to_type(p.id));
+               self.tcx().tables().node_id_to_type(p.id));
 
         intravisit::walk_pat(self, p);
     }

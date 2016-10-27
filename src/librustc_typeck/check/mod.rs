@@ -773,7 +773,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         check_union(ccx, it.id, it.span);
       }
       hir::ItemTy(_, ref generics) => {
-        let pty_ty = ccx.tcx.node_id_to_type(it.id);
+        let pty_ty = ccx.tcx.tables().node_id_to_type(it.id);
         check_bounds_are_used(ccx, generics, pty_ty);
       }
       hir::ItemForeignMod(ref m) => {
@@ -1188,7 +1188,7 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  sp: Span,
                                  item_id: ast::NodeId)
                                  -> bool {
-    let rty = tcx.node_id_to_type(item_id);
+    let rty = tcx.tables().node_id_to_type(item_id);
 
     // Check that it is possible to represent this type. This call identifies
     // (1) types that contain themselves and (2) types that contain a different
@@ -1207,7 +1207,7 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, id: ast::NodeId) {
-    let t = tcx.node_id_to_type(id);
+    let t = tcx.tables().node_id_to_type(id);
     match t.sty {
         ty::TyAdt(def, substs) if def.is_struct() => {
             let fields = &def.struct_variant().fields;

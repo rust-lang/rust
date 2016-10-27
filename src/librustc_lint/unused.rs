@@ -140,7 +140,7 @@ impl LateLintPass for UnusedResults {
             return;
         }
 
-        let t = cx.tcx.expr_ty(&expr);
+        let t = cx.tcx.tables().expr_ty(&expr);
         let warned = match t.sty {
             ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyNever => return,
@@ -441,7 +441,7 @@ impl LateLintPass for UnusedAllocation {
             _ => return,
         }
 
-        if let Some(adjustment) = cx.tcx.tables.borrow().adjustments.get(&e.id) {
+        if let Some(adjustment) = cx.tcx.tables().adjustments.get(&e.id) {
             if let adjustment::AdjustDerefRef(adjustment::AutoDerefRef { ref autoref, .. }) =
                 *adjustment {
                 match autoref {

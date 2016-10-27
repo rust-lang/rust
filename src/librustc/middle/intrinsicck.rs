@@ -163,7 +163,7 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for ExprVisitor<'a, 'gcx, 'tcx> {
         if let hir::ExprPath(..) = expr.node {
             match self.infcx.tcx.expect_def(expr.id) {
                 Def::Fn(did) if self.def_id_is_transmute(did) => {
-                    let typ = self.infcx.tcx.node_id_to_type(expr.id);
+                    let typ = self.infcx.tcx.tables().node_id_to_type(expr.id);
                     match typ.sty {
                         ty::TyFnDef(.., ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
                             let from = bare_fn_ty.sig.0.inputs[0];

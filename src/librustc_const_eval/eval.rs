@@ -246,7 +246,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    pat_id: ast::NodeId,
                                    span: Span)
                                    -> Result<P<hir::Pat>, DefId> {
-    let pat_ty = tcx.expr_ty(expr);
+    let pat_ty = tcx.tables().expr_ty(expr);
     debug!("expr={:?} pat_ty={:?} pat_id={}", expr, pat_ty, pat_id);
     match pat_ty.sty {
         ty::TyFloat(_) => {
@@ -329,7 +329,8 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Def::StructCtor(_, CtorKind::Const) |
                 Def::VariantCtor(_, CtorKind::Const) => PatKind::Path(None, path.clone()),
                 Def::Const(def_id) | Def::AssociatedConst(def_id) => {
-                    let substs = Some(tcx.node_id_item_substs(expr.id).substs);
+                    let substs = Some(tcx.tables().node_id_item_substs(expr.id)
+                        .unwrap_or_else(|| tcx.intern_substs(&[])));
                     let (expr, _ty) = lookup_const_by_id(tcx, def_id, substs).unwrap();
                     return const_expr_to_pat(tcx, expr, pat_id, span);
                 },
@@ -606,7 +607,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ety = match ty_hint {
         ExprTypeChecked => {
             // After type-checking, expr_ty is guaranteed to succeed.
-            Some(tcx.expr_ty(e))
+            Some(tcx.tables().expr_ty(e))
         }
         UncheckedExprHint(ty) => {
             // Use the type hint; it's not guaranteed to be right, but it's
@@ -617,7 +618,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // This expression might not be type-checked, and we have no hint.
             // Try to query the context for a type anyway; we might get lucky
             // (for example, if the expression was imported from another crate).
-            tcx.expr_ty_opt(e)
+            tcx.tables().expr_ty_opt(e)
         }
     };
     let result = match e.node {
@@ -759,7 +760,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let base_hint = if let ExprTypeChecked = ty_hint {
             ExprTypeChecked
         } else {
-            match tcx.expr_ty_opt(&base) {
+            match tcx.tables().expr_ty_opt(&base) {
                 Some(t) => UncheckedExprHint(t),
                 None => ty_hint
             }
@@ -798,7 +799,8 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
                   let substs = if let ExprTypeChecked = ty_hint {
-                      Some(tcx.node_id_item_substs(e.id).substs)
+                      Some(tcx.tables().node_id_item_substs(e.id)
+                        .unwrap_or_else(|| tcx.intern_substs(&[])))
                   } else {
                       None
                   };
