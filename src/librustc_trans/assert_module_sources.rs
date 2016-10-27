@@ -134,7 +134,7 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
     /// Scan for a `cfg="foo"` attribute and check whether we have a
     /// cfg flag called `foo`.
     fn check_config(&self, attr: &ast::Attribute) -> bool {
-        let config = &self.tcx.map.krate().config;
+        let config = &self.tcx.sess.parse_sess.config;
         let value = self.field(attr, CFG);
         debug!("check_config(config={:?}, value={:?})", config, value);
         if config.iter().any(|c| c.check_name(&value[..])) {

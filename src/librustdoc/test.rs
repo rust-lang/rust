@@ -73,24 +73,20 @@ pub fn run(input: &str,
     };
 
     let codemap = Rc::new(CodeMap::new());
-    let diagnostic_handler = errors::Handler::with_tty_emitter(ColorConfig::Auto,
-                                                               true,
-                                                               false,
-                                                               Some(codemap.clone()));
+    let handler =
+        errors::Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
     let cstore = Rc::new(CStore::new(&dep_graph));
-    let sess = session::build_session_(sessopts,
-                                       &dep_graph,
-                                       Some(input_path.clone()),
-                                       diagnostic_handler,
-                                       codemap,
-                                       cstore.clone());
+    let mut sess = session::build_session_(
+        sessopts, &dep_graph, Some(input_path.clone()), handler, codemap, cstore.clone(),
+    );
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+    sess.parse_sess.config =
+        config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
 
-    let cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
-    let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
+    let krate = panictry!(driver::phase_1_parse_input(&sess, &input));
     let driver::ExpansionResult { defs, mut hir_forest, .. } = {
         phase_2_configure_and_expand(
             &sess, &cstore, krate, None, "rustdoc-test", None, MakeGlobMap::No, |_| Ok(())
@@ -236,18 +232,16 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
 
     let dep_graph = DepGraph::new(false);
     let cstore = Rc::new(CStore::new(&dep_graph));
-    let sess = session::build_session_(sessopts,
-                                       &dep_graph,
-                                       None,
-                                       diagnostic_handler,
-                                       codemap,
-                                       cstore.clone());
+    let mut sess = session::build_session_(
+        sessopts, &dep_graph, None, diagnostic_handler, codemap, cstore.clone(),
+    );
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));
     let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
     let mut control = driver::CompileController::basic();
-    let cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
+    sess.parse_sess.config =
+        config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
     let out = Some(outdir.lock().unwrap().path().to_path_buf());
 
     if no_run {
@@ -255,9 +249,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     }
 
     let res = panic::catch_unwind(AssertUnwindSafe(|| {
-        driver::compile_input(&sess, &cstore, cfg.clone(),
-                              &input, &out,
-                              &None, None, &control)
+        driver::compile_input(&sess, &cstore, &input, &out, &None, None, &control)
     }));
 
     match res {

@@ -47,7 +47,6 @@ impl<'a> CompilerCalls<'a> for TestCalls {
     fn late_callback(&mut self,
                      _: &getopts::Matches,
                      _: &Session,
-                     _: &ast::CrateConfig,
                      _: &Input,
                      _: &Option<PathBuf>,
                      _: &Option<PathBuf>)
