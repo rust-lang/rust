@@ -2007,17 +2007,30 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse ident COLON expr
+    /// Parse ident (COLON expr)?
     pub fn parse_field(&mut self) -> PResult<'a, Field> {
         let lo = self.span.lo;
-        let i = self.parse_field_name()?;
-        let hi = self.prev_span.hi;
-        self.expect(&token::Colon)?;
-        let e = self.parse_expr()?;
+        let hi;
+
+        // Check if a colon exists one ahead. This means we're parsing a fieldname.
+        let (fieldname, expr, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
+            let fieldname = self.parse_field_name()?;
+            self.bump();
+            hi = self.prev_span.hi;
+            (fieldname, self.parse_expr()?, false)
+        } else {
+            let fieldname = self.parse_ident()?;
+            hi = self.prev_span.hi;
+
+            // Mimic `x: x` for the `x` field shorthand.
+            let path = ast::Path::from_ident(mk_sp(lo, hi), fieldname);
+            (fieldname, self.mk_expr(lo, hi, ExprKind::Path(None, path), ThinVec::new()), true)
+        };
         Ok(ast::Field {
-            ident: spanned(lo, hi, i),
-            span: mk_sp(lo, e.span.hi),
-            expr: e,
+            ident: spanned(lo, hi, fieldname),
+            span: mk_sp(lo, expr.span.hi),
+            expr: expr,
+            is_shorthand: is_shorthand,
         })
     }
 

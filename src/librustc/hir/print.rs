@@ -1229,8 +1229,10 @@ impl<'a> State<'a> {
                            &fields[..],
                            |s, field| {
                                s.ibox(indent_unit)?;
-                               s.print_name(field.name.node)?;
-                               s.word_space(":")?;
+                               if !field.is_shorthand {
+                                    s.print_name(field.name.node)?;
+                                    s.word_space(":")?;
+                               }
                                s.print_expr(&field.expr)?;
                                s.end()
                            },

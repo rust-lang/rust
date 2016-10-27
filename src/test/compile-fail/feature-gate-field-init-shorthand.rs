@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+struct Foo {
+    x: i32,
+    y: bool,
+    z: i32
+}
 
-fn removed_with() {
-    struct S {
-        foo: (),
-        bar: (),
-    }
-
-    let a = S { foo: (), bar: () };
-    let b = S { foo: (), with a };
-    //~^ ERROR expected one of `,` or `}`, found `a`
+fn main() {
+    let (x, y, z) = (1, true, 2);
+    let _ = Foo {
+        x, //~ ERROR struct field shorthands are unstable
+        y: y,
+        z //~ ERROR struct field shorthands are unstable
+    };
 }
