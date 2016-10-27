@@ -20,6 +20,7 @@ mod test {
 
     #[forbid(bad_style)]
     //~^ NOTE lint level defined here
+    //~^^ NOTE lint level defined here
     mod bad {
         fn CamelCase() {} //~ ERROR function `CamelCase` should have a snake case name
 
@@ -29,6 +30,7 @@ mod test {
     mod warn {
         #![warn(bad_style)]
         //~^ NOTE lint level defined here
+        //~| NOTE lint level defined here
 
         fn CamelCase() {} //~ WARN function `CamelCase` should have a snake case name
 
