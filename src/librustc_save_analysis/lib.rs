@@ -286,7 +286,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                           scope: NodeId) -> Option<VariableData> {
         if let Some(ident) = field.ident {
             let qualname = format!("::{}::{}", self.tcx.node_path_str(scope), ident);
-            let typ = self.tcx.node_types().get(&field.id).unwrap().to_string();
+            let typ = self.tcx.tables().node_types.get(&field.id).unwrap().to_string();
             let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
             filter!(self.span_utils, sub_span, field.span, None);
             Some(VariableData {
@@ -472,7 +472,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             ast::ExprKind::MethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
-                let method_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
+                let method_id = self.tcx.tables().method_map[&method_call].def_id;
                 let (def_id, decl_id) = match self.tcx.impl_or_trait_item(method_id).container() {
                     ty::ImplContainer(_) => (Some(method_id), None),
                     ty::TraitContainer(_) => (None, Some(method_id)),

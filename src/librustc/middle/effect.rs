@@ -159,7 +159,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
         match expr.node {
             hir::ExprMethodCall(..) => {
                 let method_call = MethodCall::expr(expr.id);
-                let base_type = self.tcx.tables.borrow().method_map[&method_call].ty;
+                let base_type = self.tcx.tables().method_map[&method_call].ty;
                 debug!("effect: method call case, base type is {:?}",
                         base_type);
                 if type_is_unsafe_function(base_type) {
@@ -214,7 +214,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
 
     fn visit_pat(&mut self, pat: &hir::Pat) {
         if let PatKind::Struct(_, ref fields, _) = pat.node {
-            if let ty::TyAdt(adt, ..) = self.tcx.pat_ty(pat).sty {
+            if let ty::TyAdt(adt, ..) = self.tcx.tables().pat_ty(pat).sty {
                 if adt.is_union() {
                     for field in fields {
                         self.require_unsafe(field.span, "matching on union field");

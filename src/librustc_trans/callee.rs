@@ -74,7 +74,7 @@ impl<'tcx> Callee<'tcx> {
     pub fn method_call<'blk>(bcx: Block<'blk, 'tcx>,
                              method_call: ty::MethodCall)
                              -> Callee<'tcx> {
-        let method = bcx.tcx().tables.borrow().method_map[&method_call];
+        let method = bcx.tcx().tables().method_map[&method_call];
         Callee::method(bcx, method)
     }
 
