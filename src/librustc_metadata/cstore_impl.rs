@@ -13,7 +13,7 @@ use encoder;
 use locator;
 use schema;
 
-use rustc::middle::cstore::{InlinedItem, CrateStore, CrateSource, ExternCrate};
+use rustc::middle::cstore::{InlinedItem, CrateStore, CrateSource, DepKind, ExternCrate};
 use rustc::middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
 use rustc::hir::def::{self, Def};
 use rustc::middle::lang_items;
@@ -221,6 +221,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(cnum).get_dylib_dependency_formats()
     }
 
+    fn dep_kind(&self, cnum: CrateNum) -> DepKind
+    {
+        self.get_crate_data(cnum).dep_kind.get()
+    }
+
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
     {
         self.get_crate_data(cnum).get_lang_items()
@@ -235,11 +240,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn is_staged_api(&self, cnum: CrateNum) -> bool
     {
         self.get_crate_data(cnum).is_staged_api()
-    }
-
-    fn is_explicitly_linked(&self, cnum: CrateNum) -> bool
-    {
-        self.get_crate_data(cnum).explicitly_linked.get()
     }
 
     fn is_allocator(&self, cnum: CrateNum) -> bool

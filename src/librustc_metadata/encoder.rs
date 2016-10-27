@@ -1080,7 +1080,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             CrateDep {
                 name: syntax::parse::token::intern(dep.name()),
                 hash: dep.hash(),
-                explicitly_linked: dep.explicitly_linked.get(),
+                kind: dep.dep_kind.get(),
             }
         }))
     }

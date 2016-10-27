@@ -14,7 +14,7 @@ use index;
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
 use rustc::hir::def_id::{DefIndex, DefId};
-use rustc::middle::cstore::{LinkagePreference, NativeLibraryKind};
+use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibraryKind};
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::ty::{self, Ty};
@@ -187,7 +187,7 @@ pub struct CrateRoot {
 pub struct CrateDep {
     pub name: ast::Name,
     pub hash: hir::svh::Svh,
-    pub explicitly_linked: bool,
+    pub kind: DepKind,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

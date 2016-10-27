@@ -65,6 +65,7 @@ use hir::def_id::CrateNum;
 
 use session;
 use session::config;
+use middle::cstore::DepKind;
 use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use util::nodemap::FxHashMap;
 use rustc_back::PanicStrategy;
@@ -188,7 +189,7 @@ fn calculate_type(sess: &session::Session,
         let src = sess.cstore.used_crate_source(cnum);
         if src.dylib.is_none() &&
            !formats.contains_key(&cnum) &&
-           sess.cstore.is_explicitly_linked(cnum) {
+           sess.cstore.dep_kind(cnum) == DepKind::Explicit {
             assert!(src.rlib.is_some());
             info!("adding staticlib: {}", sess.cstore.crate_name(cnum));
             add_library(sess, cnum, RequireStatic, &mut formats);
@@ -272,7 +273,7 @@ fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
     // everything in explicitly so long as it's actually required.
     let last_crate = sess.cstore.crates().len();
     let mut ret = (1..last_crate+1).map(|cnum| {
-        if sess.cstore.is_explicitly_linked(CrateNum::new(cnum)) {
+        if sess.cstore.dep_kind(CrateNum::new(cnum)) == DepKind::Explicit {
             Linkage::Static
         } else {
             Linkage::NotLinked

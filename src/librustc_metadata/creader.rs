@@ -16,7 +16,7 @@ use schema::CrateRoot;
 
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
-use rustc::middle::cstore::LoadedMacros;
+use rustc::middle::cstore::{DepKind, LoadedMacros};
 use rustc::session::{config, Session};
 use rustc_back::PanicStrategy;
 use rustc::session::search_paths::PathKind;
@@ -29,7 +29,7 @@ use std::cell::{RefCell, Cell};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::fs;
+use std::{cmp, fs};
 
 use syntax::ast;
 use syntax::abi::Abi;
@@ -60,7 +60,7 @@ fn dump_crates(cstore: &CStore) {
         info!("  name: {}", data.name());
         info!("  cnum: {}", data.cnum);
         info!("  hash: {}", data.hash());
-        info!("  reqd: {}", data.explicitly_linked.get());
+        info!("  reqd: {:?}", data.dep_kind.get());
         let CrateSource { dylib, rlib } = data.source.clone();
         dylib.map(|dl| info!("  dylib: {}", dl.0.display()));
         rlib.map(|rl|  info!("   rlib: {}", rl.0.display()));
@@ -258,7 +258,7 @@ impl<'a> CrateLoader<'a> {
                       name: &str,
                       span: Span,
                       lib: Library,
-                      explicitly_linked: bool)
+                      dep_kind: DepKind)
                       -> (CrateNum, Rc<cstore::CrateMetadata>) {
         info!("register crate `extern crate {} as {}`", name, ident);
         let crate_root = lib.metadata.get_root();
@@ -299,7 +299,7 @@ impl<'a> CrateLoader<'a> {
             cnum_map: RefCell::new(cnum_map),
             cnum: cnum,
             codemap_import_info: RefCell::new(vec![]),
-            explicitly_linked: Cell::new(explicitly_linked),
+            dep_kind: Cell::new(dep_kind),
             source: cstore::CrateSource {
                 dylib: dylib,
                 rlib: rlib,
@@ -317,7 +317,7 @@ impl<'a> CrateLoader<'a> {
                      hash: Option<&Svh>,
                      span: Span,
                      kind: PathKind,
-                     explicitly_linked: bool)
+                     dep_kind: DepKind)
                      -> (CrateNum, Rc<cstore::CrateMetadata>) {
         info!("resolving crate `extern crate {} as {}`", name, ident);
         let result = match self.existing_match(name, hash, kind) {
@@ -350,12 +350,11 @@ impl<'a> CrateLoader<'a> {
         match result {
             LoadResult::Previous(cnum) => {
                 let data = self.cstore.get_crate_data(cnum);
-                data.explicitly_linked.set(explicitly_linked || data.explicitly_linked.get());
+                data.dep_kind.set(cmp::max(data.dep_kind.get(), dep_kind));
                 (cnum, data)
             }
             LoadResult::Loaded(library) => {
-                self.register_crate(root, ident, name, span, library,
-                                    explicitly_linked)
+                self.register_crate(root, ident, name, span, library, dep_kind)
             }
         }
     }
@@ -442,7 +441,7 @@ impl<'a> CrateLoader<'a> {
                                                         Some(&dep.hash),
                                                         span,
                                                         PathKind::Dependency,
-                                                        dep.explicitly_linked);
+                                                        dep.kind);
             (CrateNum::new(crate_num + 1), local_cnum)
         }).collect();
 
@@ -716,7 +715,7 @@ impl<'a> CrateLoader<'a> {
                 // #![panic_runtime] crate.
                 self.inject_dependency_if(cnum, "a panic runtime",
                                           &|data| data.needs_panic_runtime());
-                runtime_found = runtime_found || data.explicitly_linked.get();
+                runtime_found = runtime_found || data.dep_kind.get() == DepKind::Explicit;
             }
         });
 
@@ -745,8 +744,9 @@ impl<'a> CrateLoader<'a> {
         };
         info!("panic runtime not found -- loading {}", name);
 
+        let dep_kind = DepKind::Implicit;
         let (cnum, data) =
-            self.resolve_crate(&None, name, name, None, DUMMY_SP, PathKind::Crate, false);
+            self.resolve_crate(&None, name, name, None, DUMMY_SP, PathKind::Crate, dep_kind);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
@@ -780,7 +780,7 @@ impl<'a> CrateLoader<'a> {
                 self.inject_dependency_if(cnum, "an allocator",
                                           &|data| data.needs_allocator());
                 found_required_allocator = found_required_allocator ||
-                    data.explicitly_linked.get();
+                    data.dep_kind.get() == DepKind::Explicit;
             }
         });
         if !needs_allocator || found_required_allocator { return }
@@ -826,8 +826,9 @@ impl<'a> CrateLoader<'a> {
         } else {
             &self.sess.target.target.options.exe_allocation_crate
         };
+        let dep_kind = DepKind::Implicit;
         let (cnum, data) =
-            self.resolve_crate(&None, name, name, None, DUMMY_SP, PathKind::Crate, false);
+            self.resolve_crate(&None, name, name, None, DUMMY_SP, PathKind::Crate, dep_kind);
 
         // Sanity check the crate we loaded to ensure that it is indeed an
         // allocator.
@@ -993,7 +994,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
             if let PMDSource::Owned(lib) = ekrate.metadata {
                 if ekrate.target_only || config::host_triple() == self.sess.opts.target_triple {
                     let ExternCrateInfo { ref ident, ref name, .. } = info;
-                    self.register_crate(&None, ident, name, item.span, lib, true);
+                    self.register_crate(&None, ident, name, item.span, lib, DepKind::Explicit);
                 }
             }
 
@@ -1006,7 +1007,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         };
 
         let (cnum, ..) = self.resolve_crate(
-            &None, &info.ident, &info.name, None, item.span, PathKind::Crate, true,
+            &None, &info.ident, &info.name, None, item.span, PathKind::Crate, DepKind::Explicit,
         );
 
         let def_id = definitions.opt_local_def_id(item.id).unwrap();
