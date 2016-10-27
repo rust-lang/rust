@@ -354,25 +354,4 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                            -> Option<ty::AssociatedItem> {
         self.tcx.associated_items(def_id).find(|item| item.name == item_name)
     }
-
-    pub fn matches_return_type(&self, method: &ty::ImplOrTraitItem<'tcx>,
-                           expected: ty::Ty<'tcx>) -> bool {
-        match *method {
-            ty::ImplOrTraitItem::MethodTraitItem(ref x) => {
-                self.can_sub_types(x.fty.sig.skip_binder().output, expected).is_ok()
-            }
-            _ => false,
-        }
-    }
-
-    pub fn impl_or_return_item(&self,
-                               def_id: DefId,
-                               return_type: ty::Ty<'tcx>)
-                               -> Option<ty::ImplOrTraitItem<'tcx>> {
-        self.tcx
-            .impl_or_trait_items(def_id)
-            .iter()
-            .map(|&did| self.tcx.impl_or_trait_item(did))
-            .find(|m| self.matches_return_type(m, return_type))
-    }
 }
