@@ -166,6 +166,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                        loc.file.name,
                        loc.line);
             }
+            error!("    master span: {:?}: `{}`", path.span, self.span.snippet(path.span));
             return vec!();
         }
 
