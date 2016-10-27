@@ -383,7 +383,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .find(|m| m.name() == item_name)
     }
 
-    fn matches_return_type(&self, method: &ty::ImplOrTraitItem<'tcx>,
+    pub fn matches_return_type(&self, method: &ty::ImplOrTraitItem<'tcx>,
                            expected: ty::Ty<'tcx>) -> bool {
         match *method {
             ty::ImplOrTraitItem::MethodTraitItem(ref x) => {
