@@ -8,16 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-#![feature(slice_patterns)]
-#![allow(dead_code)]
-#![deny(illegal_floating_point_constant_pattern)]
-
 // Matching against NaN should result in a warning
+
+#![feature(slice_patterns)]
+#![allow(unused)]
 
 use std::f64::NAN;
 
-#[rustc_error]
 fn main() {
     let x = NAN;
     match x {
