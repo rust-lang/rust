@@ -488,7 +488,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
           }
 
-          hir::ExprPath(..) => {
+          hir::ExprPath(_) => {
             self.cat_def(expr.id, expr.span, expr_ty, self.tcx().expect_def(expr.id))
           }
 
@@ -1157,7 +1157,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
           }
 
-          PatKind::Path(..) | PatKind::Binding(.., None) |
+          PatKind::Path(_) | PatKind::Binding(.., None) |
           PatKind::Lit(..) | PatKind::Range(..) | PatKind::Wild => {
             // always ok
           }

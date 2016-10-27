@@ -67,7 +67,7 @@ struct ReachEverythingInTheInterfaceVisitor<'b, 'a: 'b, 'tcx: 'a> {
 
 impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn ty_level(&self, ty: &hir::Ty) -> Option<AccessLevel> {
-        if let hir::TyPath(..) = ty.node {
+        if let hir::TyPath(_) = ty.node {
             match self.tcx.expect_def(ty.id) {
                 Def::PrimTy(..) | Def::SelfTy(..) | Def::TyParam(..) => {
                     Some(AccessLevel::Public)
@@ -306,11 +306,11 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
 
 impl<'b, 'a, 'tcx: 'a> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
     // Make the type hidden under a type alias reachable
-    fn reach_aliased_type(&mut self, item: &'tcx hir::Item, path: &'tcx hir::Path) {
+    fn reach_aliased_type(&mut self, item: &'tcx hir::Item, segment: &'tcx hir::PathSegment) {
         if let hir::ItemTy(ref ty, ref generics) = item.node {
             // See `fn is_public_type_alias` for details
             self.visit_ty(ty);
-            let provided_params = path.segments.last().unwrap().parameters.types().len();
+            let provided_params = segment.parameters.types().len();
             for ty_param in &generics.ty_params[provided_params..] {
                 if let Some(ref default_ty) = ty_param.default {
                     self.visit_ty(default_ty);
@@ -328,7 +328,12 @@ impl<'b, 'a, 'tcx: 'a> Visitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyPath(_, ref path) = ty.node {
+        let path_segment = match ty.node {
+            hir::TyPath(hir::QPath::Resolved(_, ref path)) => path.segments.last(),
+            hir::TyPath(hir::QPath::TypeRelative(_, ref segment)) => Some(&**segment),
+            _ => None
+        };
+        if let Some(segment) = path_segment {
             let def = self.ev.tcx.expect_def(ty.id);
             match def {
                 Def::Struct(def_id) | Def::Union(def_id) | Def::Enum(def_id) |
@@ -344,7 +349,7 @@ impl<'b, 'a, 'tcx: 'a> Visitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
                             // Type aliases are substituted. Associated type aliases are not
                             // substituted yet, but ideally they should be.
                             if self.ev.get(item.id).is_none() {
-                                self.reach_aliased_type(item, path);
+                                self.reach_aliased_type(item, segment);
                             }
                         } else {
                             self.ev.update(item.id, Some(AccessLevel::Reachable));
@@ -461,7 +466,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivacyVisitor<'a, 'tcx> {
                     }
                 }
             }
-            hir::ExprPath(..) => {
+            hir::ExprPath(hir::QPath::Resolved(..)) => {
                 if let def @ Def::StructCtor(_, CtorKind::Fn) = self.tcx.expect_def(expr.id) {
                     let adt_def = self.tcx.expect_variant_def(def);
                     let private_indexes = adt_def.fields.iter().enumerate().filter(|&(_, field)| {
@@ -606,7 +611,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     fn visit_ty(&mut self, ty: &hir::Ty) {
-        if let hir::TyPath(..) = ty.node {
+        if let hir::TyPath(_) = ty.node {
             if self.inner.path_is_private_type(ty.id) {
                 self.contains_private = true;
                 // found what we're looking for so let's stop
@@ -844,7 +849,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, t: &'tcx hir::Ty) {
-        if let hir::TyPath(..) = t.node {
+        if let hir::TyPath(_) = t.node {
             if self.path_is_private_type(t.id) {
                 self.old_error_set.insert(t.id);
             }
@@ -906,7 +911,7 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     // Return the visibility of the type alias's least visible component type when substituted
-    fn substituted_alias_visibility(&self, item: &hir::Item, path: &hir::Path)
+    fn substituted_alias_visibility(&self, item: &hir::Item, segment: &hir::PathSegment)
                                     -> Option<ty::Visibility> {
         // Type alias is considered public if the aliased type is
         // public, even if the type alias itself is private. So, something
@@ -921,7 +926,7 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
             // type Alias<T = Private> = T;
             // pub fn f() -> Alias {...} // `Private` is implicitly used here, so it must be public
             // ```
-            let provided_params = path.segments.last().unwrap().parameters.types().len();
+            let provided_params = segment.parameters.types().len();
             for ty_param in &generics.ty_params[provided_params..] {
                 if let Some(ref default_ty) = ty_param.default {
                     check.visit_ty(default_ty);
@@ -936,7 +941,12 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &hir::Ty) {
-        if let hir::TyPath(_, ref path) = ty.node {
+        let path_segment = match ty.node {
+            hir::TyPath(hir::QPath::Resolved(_, ref path)) => path.segments.last(),
+            hir::TyPath(hir::QPath::TypeRelative(_, ref segment)) => Some(&**segment),
+            _ => None
+        };
+        if let Some(segment) = path_segment {
             match self.tcx.expect_def(ty.id) {
                 Def::PrimTy(..) | Def::SelfTy(..) | Def::TyParam(..) => {
                     // Public
@@ -961,7 +971,7 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                         }
 
                         let item = self.tcx.map.expect_item(node_id);
-                        let vis = match self.substituted_alias_visibility(item, path) {
+                        let vis = match self.substituted_alias_visibility(item, segment) {
                             Some(vis) => vis,
                             None => ty::Visibility::from_hir(&item.vis, node_id, self.tcx),
                         };

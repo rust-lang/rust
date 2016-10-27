@@ -100,7 +100,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn pat(&mut self, pat: &hir::Pat, pred: CFGIndex) -> CFGIndex {
         match pat.node {
             PatKind::Binding(.., None) |
-            PatKind::Path(..) |
+            PatKind::Path(_) |
             PatKind::Lit(..) |
             PatKind::Range(..) |
             PatKind::Wild => {
@@ -361,7 +361,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             hir::ExprClosure(..) |
             hir::ExprLit(..) |
-            hir::ExprPath(..) => {
+            hir::ExprPath(_) => {
                 self.straightline(expr, pred, None::<hir::Expr>.iter())
             }
         }

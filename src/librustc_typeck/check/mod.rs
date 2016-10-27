@@ -3301,10 +3301,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_struct_path(&self,
-                             path: &hir::Path,
+                             qpath: &hir::QPath,
                              node_id: ast::NodeId)
                              -> Option<(ty::VariantDef<'tcx>,  Ty<'tcx>)> {
-        let (def, ty) = self.finish_resolving_struct_path(path, node_id);
+        let path_span = match *qpath {
+            hir::QPath::Resolved(_, ref path) => path.span,
+            hir::QPath::TypeRelative(ref qself, _) => qself.span
+        };
+        let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, node_id);
         let variant = match def {
             Def::Err => {
                 self.set_tainted_by_errors();
@@ -3324,7 +3328,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Def::AssociatedTy(..) | Def::SelfTy(..)
                             if !self.tcx.sess.features.borrow().more_struct_aliases => {
                         emit_feature_err(&self.tcx.sess.parse_sess,
-                                         "more_struct_aliases", path.span, GateIssue::Language,
+                                         "more_struct_aliases", path_span, GateIssue::Language,
                                          "`Self` and associated types in struct \
                                           expressions and patterns are unstable");
                     }
@@ -3342,17 +3346,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some((variant, did, substs)) = variant {
             // Check bounds on type arguments used in the path.
-            let bounds = self.instantiate_bounds(path.span, did, substs);
-            let cause = traits::ObligationCause::new(path.span, self.body_id,
+            let bounds = self.instantiate_bounds(path_span, did, substs);
+            let cause = traits::ObligationCause::new(path_span, self.body_id,
                                                      traits::ItemObligation(did));
             self.add_obligations_for_parameters(cause, &bounds);
 
             Some((variant, ty))
         } else {
-            struct_span_err!(self.tcx.sess, path.span, E0071,
+            struct_span_err!(self.tcx.sess, path_span, E0071,
                              "expected struct, variant or union type, found {}",
                              ty.sort_string(self.tcx))
-                .span_label(path.span, &format!("not a struct"))
+                .span_label(path_span, &format!("not a struct"))
                 .emit();
             None
         }
@@ -3360,19 +3364,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_expr_struct(&self,
                          expr: &hir::Expr,
-                         path: &hir::Path,
+                         qpath: &hir::QPath,
                          fields: &'gcx [hir::Field],
                          base_expr: &'gcx Option<P<hir::Expr>>) -> Ty<'tcx>
     {
         // Find the relevant variant
-        let (variant, struct_ty) = if let Some(variant_ty) = self.check_struct_path(path, expr.id) {
+        let (variant, struct_ty) =
+        if let Some(variant_ty) = self.check_struct_path(qpath, expr.id) {
             variant_ty
         } else {
             self.check_struct_fields_on_error(fields, base_expr);
             return self.tcx.types.err;
         };
 
-        self.check_expr_struct_fields(struct_ty, path.span, variant, fields,
+        let path_span = match *qpath {
+            hir::QPath::Resolved(_, ref path) => path.span,
+            hir::QPath::TypeRelative(ref qself, _) => qself.span
+        };
+
+        self.check_expr_struct_fields(struct_ty, path_span, variant, fields,
                                       base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
             self.check_expr_has_type(base_expr, struct_ty);
@@ -3590,9 +3600,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tcx.mk_ref(region, tm)
             }
           }
-          hir::ExprPath(ref opt_qself, ref path) => {
-              let opt_self_ty = opt_qself.as_ref().map(|qself| self.to_ty(&qself.ty));
-              let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(opt_self_ty, path,
+          hir::ExprPath(ref qpath) => {
+              let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath,
                                                                          expr.id, expr.span);
               let ty = if def != Def::Err {
                   self.instantiate_value_path(segments, opt_ty, def, expr.span, id)
@@ -3930,8 +3939,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tuple
             }
           }
-          hir::ExprStruct(ref path, ref fields, ref base_expr) => {
-            self.check_expr_struct(expr, path, fields, base_expr)
+          hir::ExprStruct(ref qpath, ref fields, ref base_expr) => {
+            self.check_expr_struct(expr, qpath, fields, base_expr)
           }
           hir::ExprField(ref base, ref field) => {
             self.check_field(expr, lvalue_pref, &base, field)
@@ -3999,72 +4008,75 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Finish resolving a path in a struct expression or pattern `S::A { .. }` if necessary.
     // The newly resolved definition is written into `def_map`.
     fn finish_resolving_struct_path(&self,
-                                    path: &hir::Path,
+                                    qpath: &hir::QPath,
+                                    path_span: Span,
                                     node_id: ast::NodeId)
                                     -> (Def, Ty<'tcx>)
     {
-        let path_res = self.tcx.expect_resolution(node_id);
-        let base_ty_end = path.segments.len() - path_res.depth;
-        let (ty, def) = AstConv::finish_resolving_def_to_ty(self, self, path.span,
-                                                            path_res.base_def,
-                                                            None,
-                                                            node_id,
-                                                            &path.segments[..base_ty_end],
-                                                            &path.segments[base_ty_end..],
-                                                            true);
-        // Write back the new resolution.
-        if path_res.depth != 0 {
-            self.tcx.def_map.borrow_mut().insert(node_id, PathResolution::new(def));
+        match *qpath {
+            hir::QPath::Resolved(ref maybe_qself, ref path) => {
+                let opt_self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
+                let def = self.tcx.expect_def(node_id);
+                let ty = AstConv::def_to_ty(self, self,
+                                            path.span,
+                                            def,
+                                            opt_self_ty,
+                                            node_id,
+                                            &path.segments,
+                                            true);
+                (def, ty)
+            }
+            hir::QPath::TypeRelative(ref qself, ref segment) => {
+                let ty = self.to_ty(qself);
+
+                let def = self.tcx.expect_def_or_none(qself.id).unwrap_or(Def::Err);
+                let (ty, def) = AstConv::associated_path_def_to_ty(self, path_span,
+                                                                   ty, def, segment);
+
+                // Write back the new resolution.
+                self.tcx.def_map.borrow_mut().insert(node_id, PathResolution::new(def));
+
+                (def, ty)
+            }
         }
-        (def, ty)
     }
 
     // Resolve associated value path into a base type and associated constant or method definition.
     // The newly resolved definition is written into `def_map`.
     pub fn resolve_ty_and_def_ufcs<'b>(&self,
-                                       opt_self_ty: Option<Ty<'tcx>>,
-                                       path: &'b hir::Path,
+                                       qpath: &'b hir::QPath,
                                        node_id: ast::NodeId,
                                        span: Span)
                                        -> (Def, Option<Ty<'tcx>>, &'b [hir::PathSegment])
     {
-        let path_res = self.tcx.expect_resolution(node_id);
-        if path_res.depth == 0 {
-            // If fully resolved already, we don't have to do anything.
-            (path_res.base_def, opt_self_ty, &path.segments)
-        } else {
-            // Try to resolve everything except for the last segment as a type.
-            let ty_segments = path.segments.split_last().unwrap().1;
-            let base_ty_end = path.segments.len() - path_res.depth;
-            let (ty, _def) = AstConv::finish_resolving_def_to_ty(self, self, span,
-                                                                 path_res.base_def,
-                                                                 opt_self_ty,
-                                                                 node_id,
-                                                                 &ty_segments[..base_ty_end],
-                                                                 &ty_segments[base_ty_end..],
-                                                                 false);
-
-            // Resolve an associated constant or method on the previously resolved type.
-            let item_segment = path.segments.last().unwrap();
-            let item_name = item_segment.name;
-            let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
-                Ok(def) => def,
-                Err(error) => {
-                    let def = match error {
-                        method::MethodError::PrivateMatch(def) => def,
-                        _ => Def::Err,
-                    };
-                    if item_name != keywords::Invalid.name() {
-                        self.report_method_error(span, ty, item_name, None, error);
-                    }
-                    def
+        let (ty, item_segment) = match *qpath {
+            hir::QPath::Resolved(ref opt_qself, ref path) => {
+                return (self.tcx.expect_def(node_id),
+                        opt_qself.as_ref().map(|qself| self.to_ty(qself)),
+                        &path.segments[..]);
+            }
+            hir::QPath::TypeRelative(ref qself, ref segment) => {
+                (self.to_ty(qself), segment)
+            }
+        };
+        let item_name = item_segment.name;
+        let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
+            Ok(def) => def,
+            Err(error) => {
+                let def = match error {
+                    method::MethodError::PrivateMatch(def) => def,
+                    _ => Def::Err,
+                };
+                if item_name != keywords::Invalid.name() {
+                    self.report_method_error(span, ty, item_name, None, error);
                 }
-            };
+                def
+            }
+        };
 
-            // Write back the new resolution.
-            self.tcx.def_map.borrow_mut().insert(node_id, PathResolution::new(def));
-            (def, Some(ty), slice::ref_slice(item_segment))
-        }
+        // Write back the new resolution.
+        self.tcx.def_map.borrow_mut().insert(node_id, PathResolution::new(def));
+        (def, Some(ty), slice::ref_slice(&**item_segment))
     }
 
     pub fn check_decl_initializer(&self,

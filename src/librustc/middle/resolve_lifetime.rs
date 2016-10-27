@@ -244,7 +244,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     intravisit::walk_ty(this, ty);
                 });
             }
-            hir::TyPath(None, ref path) => {
+            hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
                 // if this path references a trait, then this will resolve to
                 // a trait ref, which introduces a binding scope.
                 match self.def_map.get(&ty.id).map(|d| (d.base_def, d.depth)) {
@@ -944,13 +944,14 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     impl<'v> Visitor<'v> for ConstrainedCollector {
         fn visit_ty(&mut self, ty: &'v hir::Ty) {
             match ty.node {
-                hir::TyPath(Some(_), _) => {
+                hir::TyPath(hir::QPath::Resolved(Some(_), _)) |
+                hir::TyPath(hir::QPath::TypeRelative(..)) => {
                     // ignore lifetimes appearing in associated type
                     // projections, as they are not *constrained*
                     // (defined above)
                 }
 
-                hir::TyPath(None, ref path) => {
+                hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
                     // consider only the lifetimes on the final
                     // segment; I am not sure it's even currently
                     // valid to have them elsewhere, but even if it

@@ -148,15 +148,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 typ
             }
-            PatKind::TupleStruct(ref path, ref subpats, ddpos) => {
-                self.check_pat_tuple_struct(pat, path, &subpats, ddpos, expected)
+            PatKind::TupleStruct(ref qpath, ref subpats, ddpos) => {
+                self.check_pat_tuple_struct(pat, qpath, &subpats, ddpos, expected)
             }
-            PatKind::Path(ref opt_qself, ref path) => {
-                let opt_qself_ty = opt_qself.as_ref().map(|qself| self.to_ty(&qself.ty));
-                self.check_pat_path(pat, opt_qself_ty, path, expected)
+            PatKind::Path(ref qpath) => {
+                self.check_pat_path(pat, qpath, expected)
             }
-            PatKind::Struct(ref path, ref fields, etc) => {
-                self.check_pat_struct(pat, path, fields, etc, expected)
+            PatKind::Struct(ref qpath, ref fields, etc) => {
+                self.check_pat_struct(pat, qpath, fields, etc, expected)
             }
             PatKind::Tuple(ref elements, ddpos) => {
                 let mut expected_len = elements.len();
@@ -496,13 +495,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_pat_struct(&self,
                         pat: &'gcx hir::Pat,
-                        path: &hir::Path,
+                        qpath: &hir::QPath,
                         fields: &'gcx [Spanned<hir::FieldPat>],
                         etc: bool,
                         expected: Ty<'tcx>) -> Ty<'tcx>
     {
         // Resolve the path and check the definition for errors.
-        let (variant, pat_ty) = if let Some(variant_ty) = self.check_struct_path(path, pat.id) {
+        let (variant, pat_ty) = if let Some(variant_ty) = self.check_struct_path(qpath, pat.id) {
             variant_ty
         } else {
             for field in fields {
@@ -521,20 +520,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_pat_path(&self,
                       pat: &hir::Pat,
-                      opt_self_ty: Option<Ty<'tcx>>,
-                      path: &hir::Path,
+                      qpath: &hir::QPath,
                       expected: Ty<'tcx>) -> Ty<'tcx>
     {
         let tcx = self.tcx;
         let report_unexpected_def = |def: Def| {
             span_err!(tcx.sess, pat.span, E0533,
                       "expected unit struct/variant or constant, found {} `{}`",
-                      def.kind_name(), path);
+                      def.kind_name(), qpath);
         };
 
         // Resolve the path and check the definition for errors.
-        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(opt_self_ty, path,
-                                                                   pat.id, pat.span);
+        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.id, pat.span);
         match def {
             Def::Err => {
                 self.set_tainted_by_errors();
@@ -558,7 +555,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_pat_tuple_struct(&self,
                               pat: &hir::Pat,
-                              path: &hir::Path,
+                              qpath: &hir::QPath,
                               subpats: &'gcx [P<hir::Pat>],
                               ddpos: Option<usize>,
                               expected: Ty<'tcx>) -> Ty<'tcx>
@@ -571,14 +568,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
         let report_unexpected_def = |def: Def| {
             let msg = format!("expected tuple struct/variant, found {} `{}`",
-                              def.kind_name(), path);
+                              def.kind_name(), qpath);
             struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
                 .span_label(pat.span, &format!("not a tuple variant or struct")).emit();
             on_error();
         };
 
         // Resolve the path and check the definition for errors.
-        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(None, path, pat.id, pat.span);
+        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.id, pat.span);
         let variant = match def {
             Def::Err => {
                 self.set_tainted_by_errors();

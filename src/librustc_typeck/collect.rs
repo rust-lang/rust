@@ -542,7 +542,7 @@ fn is_param<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       param_id: ast::NodeId)
                       -> bool
 {
-    if let hir::TyPath(None, _) = ast_ty.node {
+    if let hir::TyPath(hir::QPath::Resolved(None, _)) = ast_ty.node {
         let path_res = tcx.expect_resolution(ast_ty.id);
         match path_res.base_def {
             Def::SelfTy(Some(def_id), None) |

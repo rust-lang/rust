@@ -185,6 +185,7 @@ enum SawAbiComponent<'a> {
     SawImplItem(SawTraitOrImplItemComponent),
     SawStructField,
     SawVariant,
+    SawQPath,
     SawPath(bool),
     SawPathSegment,
     SawPathParameters,
@@ -259,7 +260,7 @@ enum SawExprComponent<'a> {
     SawExprAssign,
     SawExprAssignOp(hir::BinOp_),
     SawExprIndex,
-    SawExprPath(Option<usize>),
+    SawExprPath,
     SawExprAddrOf(hir::Mutability),
     SawExprRet,
     SawExprInlineAsm(&'a hir::InlineAsm),
@@ -333,7 +334,7 @@ fn saw_expr<'a>(node: &'a Expr_,
         ExprField(_, name)       => (SawExprField(name.node.as_str()), false),
         ExprTupField(_, id)      => (SawExprTupField(id.node), false),
         ExprIndex(..)            => (SawExprIndex, true),
-        ExprPath(ref qself, _)   => (SawExprPath(qself.as_ref().map(|q| q.position)), false),
+        ExprPath(_)              => (SawExprPath, false),
         ExprAddrOf(m, _)         => (SawExprAddrOf(m), false),
         ExprBreak(id, _)         => (SawExprBreak(id.map(|id| id.node.as_str())), false),
         ExprAgain(id)            => (SawExprAgain(id.map(|id| id.node.as_str())), false),
@@ -411,7 +412,7 @@ fn saw_pat(node: &PatKind) -> SawPatComponent {
         PatKind::Binding(bindingmode, ..) => SawPatBinding(bindingmode),
         PatKind::Struct(..) => SawPatStruct,
         PatKind::TupleStruct(..) => SawPatTupleStruct,
-        PatKind::Path(..) => SawPatPath,
+        PatKind::Path(_) => SawPatPath,
         PatKind::Tuple(..) => SawPatTuple,
         PatKind::Box(..) => SawPatBox,
         PatKind::Ref(_, mutability) => SawPatRef(mutability),
@@ -447,7 +448,7 @@ fn saw_ty(node: &Ty_) -> SawTyComponent {
       TyBareFn(ref barefnty) => SawTyBareFn(barefnty.unsafety, barefnty.abi),
       TyNever => SawTyNever,
       TyTup(..) => SawTyTup,
-      TyPath(..) => SawTyPath,
+      TyPath(_) => SawTyPath,
       TyObjectSum(..) => SawTyObjectSum,
       TyPolyTraitRef(..) => SawTyPolyTraitRef,
       TyImplTrait(..) => SawTyImplTrait,
@@ -653,6 +654,13 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         hash_span!(self, s.span);
         hash_attrs!(self, &s.attrs);
         visit::walk_struct_field(self, s)
+    }
+
+    fn visit_qpath(&mut self, qpath: &'tcx QPath, id: NodeId, span: Span) {
+        debug!("visit_qpath: st={:?}", self.st);
+        SawQPath.hash(self.st);
+        self.hash_discriminant(qpath);
+        visit::walk_qpath(self, qpath, id, span)
     }
 
     fn visit_path(&mut self, path: &'tcx Path, _: ast::NodeId) {

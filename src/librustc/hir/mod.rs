@@ -533,7 +533,7 @@ impl Pat {
             PatKind::Lit(_) |
             PatKind::Range(..) |
             PatKind::Binding(..) |
-            PatKind::Path(..) => {
+            PatKind::Path(_) => {
                 true
             }
         }
@@ -576,16 +576,15 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Path, HirVec<Spanned<FieldPat>>, bool),
+    Struct(QPath, HirVec<Spanned<FieldPat>>, bool),
 
     /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
     /// 0 <= position <= subpats.len()
-    TupleStruct(Path, HirVec<P<Pat>>, Option<usize>),
+    TupleStruct(QPath, HirVec<P<Pat>>, Option<usize>),
 
-    /// A possibly qualified path pattern.
-    /// Such pattern can be resolved to a unit struct/variant or a constant.
-    Path(Option<QSelf>, Path),
+    /// A path pattern for an unit struct/variant or a (maybe-associated) constant.
+    Path(QPath),
 
     /// A tuple pattern `(a, b)`.
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
@@ -940,12 +939,8 @@ pub enum Expr_ {
     /// An indexing operation (`foo[2]`)
     ExprIndex(P<Expr>, P<Expr>),
 
-    /// Variable reference, possibly containing `::` and/or type
-    /// parameters, e.g. foo::bar::<baz>.
-    ///
-    /// Optionally "qualified",
-    /// e.g. `<HirVec<T> as SomeTrait>::SomeType`.
-    ExprPath(Option<QSelf>, Path),
+    /// Path to a definition, possibly containing lifetime or type parameters.
+    ExprPath(QPath),
 
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
@@ -963,7 +958,7 @@ pub enum Expr_ {
     ///
     /// For example, `Foo {x: 1, y: 2}`, or
     /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
-    ExprStruct(P<Path>, HirVec<Field>, Option<P<Expr>>),
+    ExprStruct(QPath, HirVec<Field>, Option<P<Expr>>),
 
     /// An array literal constructed from one repeated element.
     ///
@@ -972,22 +967,30 @@ pub enum Expr_ {
     ExprRepeat(P<Expr>, P<Expr>),
 }
 
-/// The explicit Self type in a "qualified path". The actual
-/// path, including the trait and the associated item, is stored
-/// separately. `position` represents the index of the associated
-/// item qualified with this Self type.
-///
-///     <HirVec<T> as a::b::Trait>::AssociatedItem
-///      ^~~~~     ~~~~~~~~~~~~~~^
-///      ty        position = 3
-///
-///     <HirVec<T>>::AssociatedItem
-///      ^~~~~    ^
-///      ty       position = 0
+/// Optionally `Self`-qualified value/type path or associated extension.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct QSelf {
-    pub ty: P<Ty>,
-    pub position: usize,
+pub enum QPath {
+    /// Path to a definition, optionally "fully-qualified" with a `Self`
+    /// type, if the path points to an associated item in a trait.
+    ///
+    /// E.g. an unqualified path like `Clone::clone` has `None` for `Self`,
+    /// while `<Vec<T> as Clone>::clone` has `Some(Vec<T>)` for `Self`,
+    /// even though they both have the same two-segment `Clone::clone` `Path`.
+    Resolved(Option<P<Ty>>, P<Path>),
+
+    /// Type-related paths, e.g. `<T>::default` or `<T>::Output`.
+    /// Will be resolved by type-checking to an associated item.
+    ///
+    /// UFCS source paths can desugar into this, with `Vec::new` turning into
+    /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
+    /// the `X` and `Y` nodes being each a `TyPath(QPath::TypeRelative(..))`.
+    TypeRelative(P<Ty>, P<PathSegment>)
+}
+
+impl fmt::Display for QPath {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", print::qpath_to_string(self))
+    }
 }
 
 /// Hints at the original code for a `match _ { .. }`
@@ -1161,11 +1164,12 @@ pub enum Ty_ {
     TyNever,
     /// A tuple (`(A, B, C, D,...)`)
     TyTup(HirVec<P<Ty>>),
-    /// A path (`module::module::...::Type`), optionally
-    /// "qualified", e.g. `<HirVec<T> as SomeTrait>::SomeType`.
+    /// A path to a type definition (`module::module::...::Type`), or an
+    /// associated type, e.g. `<Vec<T> as Trait>::Type` or `<T>::Target`.
     ///
-    /// Type parameters are stored in the Path itself
-    TyPath(Option<QSelf>, Path),
+    /// Type parameters may be stored in each `PathSegment`.
+    TyPath(QPath),
+
     /// Something like `A+B`. Note that `B` must always be a path.
     TyObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`

@@ -91,7 +91,7 @@ struct ReachableContext<'a, 'tcx: 'a> {
 impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
-            hir::ExprPath(..) => {
+            hir::ExprPath(_) => {
                 let def = self.tcx.expect_def(expr.id);
                 let def_id = def.def_id();
                 if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {

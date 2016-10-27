@@ -265,7 +265,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     args: vec![fun.to_ref(), tupled_args.to_ref()]
                 }
             } else {
-                let adt_data = if let hir::ExprPath(..) = fun.node {
+                let adt_data = if let hir::ExprPath(hir::QPath::Resolved(..)) = fun.node {
                     // Tuple-like ADTs are represented as ExprCall. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def|{
                         match cx.tcx.expect_def(fun.id) {
@@ -531,7 +531,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprPath(..) => {
+        hir::ExprPath(_) => {
             convert_path_expr(cx, expr)
         }
 

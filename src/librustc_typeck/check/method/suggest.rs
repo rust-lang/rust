@@ -28,7 +28,6 @@ use syntax_pos::Span;
 
 use rustc::hir::print as pprust;
 use rustc::hir;
-use rustc::hir::Expr_;
 
 use std::cell;
 use std::cmp::Ordering;
@@ -210,7 +209,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(expr) = rcvr_expr {
                         if let Ok(expr_string) = tcx.sess.codemap().span_to_snippet(expr.span) {
                             report_function!(expr.span, expr_string);
-                        } else if let Expr_::ExprPath(_, path) = expr.node.clone() {
+                        } else if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = expr.node {
                             if let Some(segment) = path.segments.last() {
                                 report_function!(expr.span, segment.name);
                             }

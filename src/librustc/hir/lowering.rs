@@ -188,13 +188,13 @@ impl<'a> LoweringContext<'a> {
             node: match view_path.node {
                 ViewPathSimple(ident, ref path) => {
                     hir::ViewPathSimple(ident.name,
-                                        self.lower_path(path, None, ParamMode::Explicit))
+                                        self.lower_path(path, ParamMode::Explicit))
                 }
                 ViewPathGlob(ref path) => {
-                    hir::ViewPathGlob(self.lower_path(path, None, ParamMode::Explicit))
+                    hir::ViewPathGlob(self.lower_path(path, ParamMode::Explicit))
                 }
                 ViewPathList(ref path, ref path_list_idents) => {
-                    hir::ViewPathList(self.lower_path(path, None, ParamMode::Explicit),
+                    hir::ViewPathList(self.lower_path(path, ParamMode::Explicit),
                                       path_list_idents.iter()
                                                       .map(|item| self.lower_path_list_item(item))
                                                       .collect())
@@ -259,14 +259,7 @@ impl<'a> LoweringContext<'a> {
                     return self.lower_ty(ty);
                 }
                 TyKind::Path(ref qself, ref path) => {
-                    let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
-                        hir::QSelf {
-                            ty: self.lower_ty(ty),
-                            position: position,
-                        }
-                    });
-                    let path = self.lower_path(path, qself.as_ref(), ParamMode::Explicit);
-                    hir::TyPath(qself, path)
+                    hir::TyPath(self.lower_qpath(t.id, qself, path, ParamMode::Explicit))
                 }
                 TyKind::ObjectSum(ref ty, ref bounds) => {
                     hir::TyObjectSum(self.lower_ty(ty), self.lower_bounds(bounds))
@@ -308,17 +301,24 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_path(&mut self,
-                  p: &Path,
-                  qself: Option<&hir::QSelf>,
-                  param_mode: ParamMode)
-                  -> hir::Path {
-        hir::Path {
+    fn lower_qpath(&mut self,
+                   id: NodeId,
+                   qself: &Option<QSelf>,
+                   p: &Path,
+                   param_mode: ParamMode)
+                   -> hir::QPath {
+        let qself_position = qself.as_ref().map(|q| q.position);
+        let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty));
+
+        let resolution = self.resolver.get_resolution(id)
+                                      .unwrap_or(PathResolution::new(Def::Err));
+
+        let proj_start = p.segments.len() - resolution.depth;
+        let path = P(hir::Path {
             global: p.global,
-            segments: p.segments.iter().enumerate().map(|(i, segment)| {
-                let PathSegment { identifier, ref parameters } = *segment;
-                let param_mode = match (qself, param_mode) {
-                    (Some(qself), ParamMode::Optional) if i < qself.position => {
+            segments: p.segments[..proj_start].iter().enumerate().map(|(i, segment)| {
+                let param_mode = match (qself_position, param_mode) {
+                    (Some(j), ParamMode::Optional) if i < j => {
                         // This segment is part of the trait path in a
                         // qualified path - one of `a`, `b` or `Trait`
                         // in `<X as a::b::Trait>::T::U::method`.
@@ -326,26 +326,91 @@ impl<'a> LoweringContext<'a> {
                     }
                     _ => param_mode
                 };
-                hir::PathSegment {
-                    name: identifier.name,
-                    parameters: self.lower_path_parameters(parameters, param_mode),
-                }
+                self.lower_path_segment(segment, param_mode)
+            }).collect(),
+            span: p.span,
+        });
+
+        // Simple case, either no projections, or only fully-qualified.
+        // E.g. `std::mem::size_of` or `<I as Iterator>::Item`.
+        if resolution.depth == 0 {
+            return hir::QPath::Resolved(qself, path);
+        }
+
+        // Create the innermost type that we're projecting from.
+        let mut ty = if path.segments.is_empty() {
+            // If the base path is empty that means there exists a
+            // syntactical `Self`, e.g. `&i32` in `<&i32>::clone`.
+            qself.expect("missing QSelf for <T>::...")
+        } else {
+            // Otherwise, the base path is an implicit `Self` type path,
+            // e.g. `Vec` in `Vec::new` or `<I as Iterator>::Item` in
+            // `<I as Iterator>::Item::default`.
+            let ty = self.ty(p.span, hir::TyPath(hir::QPath::Resolved(qself, path)));
+
+            // Associate that innermost path type with the base Def.
+            self.resolver.record_resolution(ty.id, resolution.base_def);
+
+            ty
+        };
+
+        // Anything after the base path are associated "extensions",
+        // out of which all but the last one are associated types,
+        // e.g. for `std::vec::Vec::<T>::IntoIter::Item::clone`:
+        // * base path is `std::vec::Vec<T>`
+        // * "extensions" are `IntoIter`, `Item` and `clone`
+        // * type nodes are:
+        //   1. `std::vec::Vec<T>` (created above)
+        //   2. `<std::vec::Vec<T>>::IntoIter`
+        //   3. `<<std::vec::Vec<T>>::IntoIter>::Item`
+        // * final path is `<<<std::vec::Vec<T>>::IntoIter>::Item>::clone`
+        for (i, segment) in p.segments.iter().enumerate().skip(proj_start) {
+            let segment = P(self.lower_path_segment(segment, param_mode));
+            let qpath = hir::QPath::TypeRelative(ty, segment);
+
+            // It's finished, return the extension of the right node type.
+            if i == p.segments.len() - 1 {
+                return qpath;
+            }
+
+            // Wrap the associated extension in another type node.
+            ty = self.ty(p.span, hir::TyPath(qpath));
+        }
+
+        // Should've returned in the for loop above.
+        span_bug!(p.span, "lower_qpath: no final extension segment in {}..{}",
+                  proj_start, p.segments.len())
+    }
+
+    fn lower_path(&mut self,
+                  p: &Path,
+                  param_mode: ParamMode)
+                  -> hir::Path {
+        hir::Path {
+            global: p.global,
+            segments: p.segments.iter().map(|segment| {
+                self.lower_path_segment(segment, param_mode)
             }).collect(),
             span: p.span,
         }
     }
 
-    fn lower_path_parameters(&mut self,
-                             path_parameters: &PathParameters,
-                             param_mode: ParamMode)
-                             -> hir::PathParameters {
-        match *path_parameters {
+    fn lower_path_segment(&mut self,
+                          segment: &PathSegment,
+                          param_mode: ParamMode)
+                          -> hir::PathSegment {
+        let parameters = match segment.parameters {
             PathParameters::AngleBracketed(ref data) => {
                 let data = self.lower_angle_bracketed_parameter_data(data, param_mode);
                 hir::AngleBracketedParameters(data)
             }
             PathParameters::Parenthesized(ref data) =>
                 hir::ParenthesizedParameters(self.lower_parenthesized_parameter_data(data)),
+        };
+
+        hir::PathSegment {
+            name: segment.identifier.name,
+            parameters: parameters,
         }
     }
 
@@ -521,7 +586,7 @@ impl<'a> LoweringContext<'a> {
                                                           span}) => {
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
                     id: id,
-                    path: self.lower_path(path, None, ParamMode::Explicit),
+                    path: self.lower_path(path, ParamMode::Explicit),
                     ty: self.lower_ty(ty),
                     span: span,
                 })
@@ -551,7 +616,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_trait_ref(&mut self, p: &TraitRef) -> hir::TraitRef {
         hir::TraitRef {
-            path: self.lower_path(&p.path, None, ParamMode::Explicit),
+            path: self.lower_path(&p.path, ParamMode::Explicit),
             ref_id: p.ref_id,
         }
     }
@@ -908,26 +973,26 @@ impl<'a> LoweringContext<'a> {
                                                       respan(pth1.span, pth1.node.name),
                                                       sub.as_ref().map(|x| this.lower_pat(x)))
                             }
-                            _ => hir::PatKind::Path(None, hir::Path::from_name(pth1.span,
-                                                                               pth1.node.name))
+                            _ => {
+                                let path = hir::Path::from_name(pth1.span, pth1.node.name);
+                                hir::PatKind::Path(hir::QPath::Resolved(None, P(path)))
+                            }
                         }
                     })
                 }
                 PatKind::Lit(ref e) => hir::PatKind::Lit(P(self.lower_expr(e))),
                 PatKind::TupleStruct(ref path, ref pats, ddpos) => {
-                    hir::PatKind::TupleStruct(self.lower_path(path, None, ParamMode::Optional),
+                    let qpath = self.lower_qpath(p.id, &None, path, ParamMode::Optional);
+                    hir::PatKind::TupleStruct(qpath,
                                               pats.iter().map(|x| self.lower_pat(x)).collect(),
                                               ddpos)
                 }
                 PatKind::Path(ref qself, ref path) => {
-                    let qself = qself.as_ref().map(|qself| {
-                        hir::QSelf { ty: self.lower_ty(&qself.ty), position: qself.position }
-                    });
-                    let path = self.lower_path(path, qself.as_ref(), ParamMode::Optional);
-                    hir::PatKind::Path(qself, path)
+                    hir::PatKind::Path(self.lower_qpath(p.id, qself, path, ParamMode::Optional))
                 }
-                PatKind::Struct(ref pth, ref fields, etc) => {
-                    let pth = self.lower_path(pth, None, ParamMode::Optional);
+                PatKind::Struct(ref path, ref fields, etc) => {
+                    let qpath = self.lower_qpath(p.id, &None, path, ParamMode::Optional);
+
                     let fs = fields.iter()
                                    .map(|f| {
                                        Spanned {
@@ -940,7 +1005,7 @@ impl<'a> LoweringContext<'a> {
                                        }
                                    })
                                    .collect();
-                    hir::PatKind::Struct(pth, fs, etc)
+                    hir::PatKind::Struct(qpath, fs, etc)
                 }
                 PatKind::Tuple(ref elts, ddpos) => {
                     hir::PatKind::Tuple(elts.iter().map(|x| self.lower_pat(x)).collect(), ddpos)
@@ -1266,14 +1331,7 @@ impl<'a> LoweringContext<'a> {
                     };
                 }
                 ExprKind::Path(ref qself, ref path) => {
-                    let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
-                        hir::QSelf {
-                            ty: self.lower_ty(ty),
-                            position: position,
-                        }
-                    });
-                    let path = self.lower_path(path, qself.as_ref(), ParamMode::Optional);
-                    hir::ExprPath(qself, path)
+                    hir::ExprPath(self.lower_qpath(e.id, qself, path, ParamMode::Optional))
                 }
                 ExprKind::Break(opt_ident, ref opt_expr) => {
                     hir::ExprBreak(self.lower_opt_sp_ident(opt_ident),
@@ -1306,7 +1364,7 @@ impl<'a> LoweringContext<'a> {
                     hir::ExprInlineAsm(P(hir_asm), outputs, inputs)
                 }
                 ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
-                    hir::ExprStruct(P(self.lower_path(path, None, ParamMode::Optional)),
+                    hir::ExprStruct(self.lower_qpath(e.id, &None, path, ParamMode::Optional),
                                     fields.iter().map(|x| self.lower_field(x)).collect(),
                                     maybe_expr.as_ref().map(|x| P(self.lower_expr(x))))
                 }
@@ -1688,7 +1746,7 @@ impl<'a> LoweringContext<'a> {
             Visibility::Crate(_) => hir::Visibility::Crate,
             Visibility::Restricted { ref path, id } => {
                 hir::Visibility::Restricted {
-                    path: P(self.lower_path(path, None, ParamMode::Explicit)),
+                    path: P(self.lower_path(path, ParamMode::Explicit)),
                     id: id
                 }
             }
@@ -1774,7 +1832,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn expr_ident(&mut self, span: Span, id: Name, binding: NodeId) -> hir::Expr {
-        let expr_path = hir::ExprPath(None, self.path_ident(span, id));
+        let path = self.path_ident(span, id);
+        let expr_path = hir::ExprPath(hir::QPath::Resolved(None, P(path)));
         let expr = self.expr(span, expr_path, ThinVec::new());
 
         let def = {
@@ -1792,9 +1851,9 @@ impl<'a> LoweringContext<'a> {
 
     fn expr_path(&mut self, path: hir::Path, attrs: ThinVec<Attribute>) -> P<hir::Expr> {
         let def = self.resolver.resolve_generated_global_path(&path, true);
-        let expr = P(self.expr(path.span, hir::ExprPath(None, path), attrs));
+        let expr = self.expr(path.span, hir::ExprPath(hir::QPath::Resolved(None, P(path))), attrs);
         self.resolver.record_resolution(expr.id, def);
-        expr
+        P(expr)
     }
 
     fn expr_match(&mut self,
@@ -1821,9 +1880,10 @@ impl<'a> LoweringContext<'a> {
                    e: Option<P<hir::Expr>>,
                    attrs: ThinVec<Attribute>) -> P<hir::Expr> {
         let def = self.resolver.resolve_generated_global_path(&path, false);
-        let expr = P(self.expr(sp, hir::ExprStruct(P(path), fields, e), attrs));
+        let qpath = hir::QPath::Resolved(None, P(path));
+        let expr = self.expr(sp, hir::ExprStruct(qpath, fields, e), attrs);
         self.resolver.record_resolution(expr.id, def);
-        expr
+        P(expr)
     }
 
     fn expr(&mut self, span: Span, node: hir::Expr_, attrs: ThinVec<Attribute>) -> hir::Expr {
@@ -1902,10 +1962,11 @@ impl<'a> LoweringContext<'a> {
     fn pat_enum(&mut self, span: Span, path: hir::Path, subpats: hir::HirVec<P<hir::Pat>>)
                 -> P<hir::Pat> {
         let def = self.resolver.resolve_generated_global_path(&path, true);
+        let qpath = hir::QPath::Resolved(None, P(path));
         let pt = if subpats.is_empty() {
-            hir::PatKind::Path(None, path)
+            hir::PatKind::Path(qpath)
         } else {
-            hir::PatKind::TupleStruct(path, subpats, None)
+            hir::PatKind::TupleStruct(qpath, subpats, None)
         };
         let pat = self.pat(span, pt);
         self.resolver.record_resolution(pat.id, def);
@@ -2044,5 +2105,13 @@ impl<'a> LoweringContext<'a> {
             expr: None,
         });
         self.expr_block(block, attrs)
+    }
+
+    fn ty(&mut self, span: Span, node: hir::Ty_) -> P<hir::Ty> {
+        P(hir::Ty {
+            id: self.next_id(),
+            node: node,
+            span: span,
+        })
     }
 }

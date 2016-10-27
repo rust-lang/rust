@@ -487,7 +487,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                 _ => {}
             }
         }
-        hir::ExprPath(..) => {
+        hir::ExprPath(_) => {
             match v.tcx.expect_def(e.id) {
                 Def::VariantCtor(_, CtorKind::Const) => {
                     // Size is determined by the whole enum, may be non-zero.
