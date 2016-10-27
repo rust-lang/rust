@@ -37,6 +37,7 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
+#![feature(dotdot_in_tuple_patterns)]
 
 #[macro_use]
 extern crate syntax;
@@ -95,6 +96,14 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             )
     }
 
+    macro_rules! add_early_builtin_with_new {
+        ($sess:ident, $($name:ident),*,) => (
+            {$(
+                store.register_early_pass($sess, false, box $name::new());
+                )*}
+            )
+    }
+
     macro_rules! add_lint_group {
         ($sess:ident, $name:expr, $($lint:ident),*) => (
             store.register_group($sess, false, $name, vec![$(LintId::of($lint)),*]);
@@ -104,6 +113,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     add_early_builtin!(sess,
                        UnusedParens,
                        );
+
+    add_early_builtin_with_new!(sess,
+                                DeprecatedAttr,
+                                );
 
     add_builtin!(sess,
                  HardwiredLints,
