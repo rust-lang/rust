@@ -1256,7 +1256,7 @@ impl Convention {
     fn check(&self, other: &str) -> bool {
         match *self {
             Convention::Eq(this) => this == other,
-            Convention::StartsWith(this) => other.starts_with(this),
+            Convention::StartsWith(this) => other.starts_with(this) && this != other,
         }
     }
 }

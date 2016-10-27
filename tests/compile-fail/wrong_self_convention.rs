@@ -45,4 +45,10 @@ impl Bar {
     pub fn to_i64(self) {} //~ERROR: methods called `to_*` usually take self by reference
     pub fn from_i64(self) {} //~ERROR: methods called `from_*` usually take no self
 
+    // test for false positives
+    fn as_(self) {}
+    fn into_(&self) {}
+    fn is_(self) {}
+    fn to_(self) {}
+    fn from_(self) {}
 }
