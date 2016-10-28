@@ -14,6 +14,7 @@
 //! any imports resolved.
 
 use macros::{InvocationData, LegacyScope};
+use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport};
 use {Module, ModuleS, ModuleKind};
 use Namespace::{self, TypeNS, ValueNS};
@@ -237,11 +238,22 @@ impl<'b> Resolver<'b> {
                         index: CRATE_DEF_INDEX,
                     };
                     let module = self.arenas.alloc_module(ModuleS {
-                        extern_crate_id: Some(item.id),
                         populated: Cell::new(false),
                         ..ModuleS::new(Some(parent), ModuleKind::Def(Def::Mod(def_id), name))
                     });
-                    self.define(parent, name, TypeNS, (module, sp, vis));
+                    let binding = (module, sp, ty::Visibility::Public).to_name_binding();
+                    let binding = self.arenas.alloc_name_binding(binding);
+                    let directive = self.arenas.alloc_import_directive(ImportDirective {
+                        id: item.id,
+                        parent: parent,
+                        imported_module: Cell::new(Some(module)),
+                        subclass: ImportDirectiveSubclass::ExternCrate,
+                        span: item.span,
+                        module_path: Vec::new(),
+                        vis: Cell::new(vis),
+                    });
+                    let imported_binding = self.import(binding, directive);
+                    self.define(parent, name, TypeNS, imported_binding);
                     self.populate_module_if_necessary(module);
                     module
                 } else {
