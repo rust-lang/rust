@@ -1081,6 +1081,9 @@ pub struct Resolver<'a> {
 
     // Maps the `Mark` of an expansion to its containing module or block.
     invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
+
+    // Avoid duplicated errors for "name already defined".
+    name_already_seen: FxHashMap<Name, Span>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1270,6 +1273,7 @@ impl<'a> Resolver<'a> {
             builtin_macros: FxHashMap(),
             lexical_macro_resolutions: Vec::new(),
             invocations: invocations,
+            name_already_seen: FxHashMap(),
         }
     }
 
@@ -3396,7 +3400,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn report_conflict(&self,
+    fn report_conflict(&mut self,
                        parent: Module,
                        name: Name,
                        ns: Namespace,
@@ -3420,6 +3424,13 @@ impl<'a> Resolver<'a> {
         };
 
         let span = binding.span;
+
+        if let Some(s) = self.name_already_seen.get(&name) {
+            if s == &span {
+                return;
+            }
+        }
+
         let msg = {
             let kind = match (ns, old_binding.module()) {
                 (ValueNS, _) => "a value",
@@ -3471,6 +3482,7 @@ impl<'a> Resolver<'a> {
             err.span_label(old_binding.span, &format!("previous {} of `{}` here", noun, name));
         }
         err.emit();
+        self.name_already_seen.insert(name, span);
     }
 }
 

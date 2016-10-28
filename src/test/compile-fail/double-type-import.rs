@@ -12,7 +12,6 @@ mod foo {
     pub use self::bar::X;
     use self::bar::X;
     //~^ ERROR a value named `X` has already been imported in this module
-    //~| ERROR a type named `X` has already been imported in this module
 
     mod bar {
         pub struct X;
