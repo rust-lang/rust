@@ -28,7 +28,6 @@
 
 #![cfg_attr(test, allow(deprecated))] // rand
 #![cfg_attr(not(stage0), deny(warnings))]
-#![cfg_attr(not(stage0), feature(safe_suggestion))]
 
 #![feature(alloc)]
 #![feature(allow_internal_unstable)]
