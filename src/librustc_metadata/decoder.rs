@@ -21,7 +21,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
-use rustc::middle::cstore::{InlinedItem, LinkagePreference};
+use rustc::middle::cstore::{DepKind, InlinedItem, LinkagePreference};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc::middle::lang_items;
@@ -690,6 +690,10 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F)
         where F: FnMut(def::Export)
     {
+        if self.dep_kind.get() == DepKind::MacrosOnly {
+            return
+        }
+
         // Find the item.
         let item = match self.maybe_entry(id) {
             None => return,
