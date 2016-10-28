@@ -30,7 +30,7 @@ use util::nodemap::{DefIdMap, FxHashSet, FxHashMap};
 
 use hir;
 use hir::{Item, Generics, StructField, Variant};
-use hir::intravisit::{self, Visitor};
+use hir::intravisit::{self, Visitor, NestedVisitMode};
 use hir::itemlikevisit::DeepVisitor;
 
 use std::mem::replace;
@@ -234,8 +234,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     /// Because stability levels are scoped lexically, we want to walk
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.tcx.map)
+    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
+        Some((&self.tcx.map, NestedVisitMode::All))
     }
 
     fn visit_item(&mut self, i: &'tcx Item) {
@@ -534,6 +534,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
+        Some((&self.tcx.map, NestedVisitMode::OnlyBodies))
+    }
+
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
             hir::ItemExternCrate(_) => {

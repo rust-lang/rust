@@ -44,7 +44,7 @@ enum TableEntry<'tcx> {
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     pub fn encode_inlined_item(&mut self, ii: InlinedItemRef) -> Lazy<Ast<'tcx>> {
-        let mut id_visitor = IdRangeComputingVisitor::new();
+        let mut id_visitor = IdRangeComputingVisitor::new(&self.tcx.map);
         match ii {
             InlinedItemRef::Item(_, i) => id_visitor.visit_item(i),
             InlinedItemRef::TraitItem(_, ti) => id_visitor.visit_trait_item(ti),
