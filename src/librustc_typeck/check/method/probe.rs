@@ -194,7 +194,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // think cause spurious errors. Really though this part should
         // take place in the `self.probe` below.
         let steps = if mode == Mode::MethodCall {
-            match self.create_steps(span, self_ty) {
+            match self.create_steps(span, self_ty, &looking_for) {
                 Some(steps) => steps,
                 None => {
                     return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(),
@@ -247,7 +247,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn create_steps(&self,
                     span: Span,
-                    self_ty: Ty<'tcx>)
+                    self_ty: Ty<'tcx>,
+                    looking_for: &LookingFor<'tcx>)
                     -> Option<Vec<CandidateStep<'tcx>>> {
         // FIXME: we don't need to create the entire steps in one pass
 
@@ -262,7 +263,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             })
             .collect();
 
-        let final_ty = autoderef.unambiguous_final_ty();
+        let final_ty = match looking_for {
+            &LookingFor::MethodName(_) => autoderef.unambiguous_final_ty(),
+            &LookingFor::ReturnType(_) => self_ty,
+        };
         match final_ty.sty {
             ty::TyArray(elem_ty, _) => {
                 let dereferences = steps.len() - 1;
@@ -628,13 +632,15 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     pub fn matches_return_type(&self, method: &ty::ImplOrTraitItem<'tcx>,
-                           expected: ty::Ty<'tcx>) -> bool {
+                               expected: ty::Ty<'tcx>) -> bool {
         match *method {
             ty::ImplOrTraitItem::MethodTraitItem(ref x) => {
                 self.probe(|_| {
                     let output = self.replace_late_bound_regions_with_fresh_var(
                         self.span, infer::FnCall, &x.fty.sig.output());
-                    self.can_sub_types(output.0, expected).is_ok()
+                    let substs = self.fresh_substs_for_item(self.span, method.def_id());
+                    let output = output.0.subst(self.tcx, substs);
+                    self.can_sub_types(output, expected).is_ok()
                 })
             }
             _ => false,

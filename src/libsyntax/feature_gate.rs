@@ -652,12 +652,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                    "internal implementation detail",
                                                    cfg_fn!(rustc_attrs))),
 
-    ("safe_suggestion", Whitelisted, Gated(Stability::Unstable,
-                                           "safe_suggestion",
-                                           "the `#[safe_suggestion]` attribute \
-                                            is an experimental feature",
-                                           cfg_fn!(safe_suggestion))),
-
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted, Ungated),
 
