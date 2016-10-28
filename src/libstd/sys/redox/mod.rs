@@ -41,9 +41,7 @@ pub fn init() {
         use intrinsics;
         let msg = "fatal runtime error: out of memory\n";
         unsafe {
-            libc::write(libc::STDERR_FILENO,
-                        msg.as_ptr() as *const libc::c_void,
-                        msg.len());
+            let _ = libc::write(libc::STDERR_FILENO, msg.as_bytes());
             intrinsics::abort();
         }
     }
@@ -75,37 +73,6 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
-#[doc(hidden)]
-pub trait IsMinusOne {
-    fn is_minus_one(&self) -> bool;
-}
-
-macro_rules! impl_is_minus_one {
-    ($($t:ident)*) => ($(impl IsMinusOne for $t {
-        fn is_minus_one(&self) -> bool {
-            *self == -1
-        }
-    })*)
-}
-
-impl_is_minus_one! { i8 i16 i32 i64 isize }
-
-pub fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
-    if t.is_minus_one() {
-        Err(io::Error::last_os_error())
-    } else {
-        Ok(t)
-    }
-}
-
-pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
-    where T: IsMinusOne,
-          F: FnMut() -> T
-{
-    loop {
-        match cvt(f()) {
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-            other => return other,
-        }
-    }
+pub fn cvt(result: Result<usize, libc::Error>) -> io::Result<usize> {
+    result.map_err(|err| io::Error::from_raw_os_error(err.errno as i32))
 }

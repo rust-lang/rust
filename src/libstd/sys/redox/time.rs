@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use cmp::Ordering;
+use fmt;
 use libc;
+use sys::cvt;
 use time::Duration;
-
-pub use self::inner::{Instant, SystemTime, UNIX_EPOCH};
 
 const NSEC_PER_SEC: u64 = 1_000_000_000;
 
@@ -103,249 +103,97 @@ impl Ord for Timespec {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
-mod inner {
-    use fmt;
-    use libc;
-    use sync::Once;
-    use sys::cvt;
-    use sys_common::mul_div_u64;
-    use time::Duration;
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Instant {
+    t: Timespec,
+}
 
-    use super::NSEC_PER_SEC;
-    use super::Timespec;
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct SystemTime {
+    t: Timespec,
+}
 
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-    pub struct Instant {
-        t: u64
-    }
-
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct SystemTime {
-        t: Timespec,
-    }
-
-    pub const UNIX_EPOCH: SystemTime = SystemTime {
-        t: Timespec {
-            t: libc::timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            },
+pub const UNIX_EPOCH: SystemTime = SystemTime {
+    t: Timespec {
+        t: libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
         },
-    };
+    },
+};
 
-    impl Instant {
-        pub fn now() -> Instant {
-            Instant { t: unsafe { libc::mach_absolute_time() } }
-        }
-
-        pub fn sub_instant(&self, other: &Instant) -> Duration {
-            let info = info();
-            let diff = self.t.checked_sub(other.t)
-                           .expect("second instant is later than self");
-            let nanos = mul_div_u64(diff, info.numer as u64, info.denom as u64);
-            Duration::new(nanos / NSEC_PER_SEC, (nanos % NSEC_PER_SEC) as u32)
-        }
-
-        pub fn add_duration(&self, other: &Duration) -> Instant {
-            Instant {
-                t: self.t.checked_add(dur2intervals(other))
-                       .expect("overflow when adding duration to instant"),
-            }
-        }
-
-        pub fn sub_duration(&self, other: &Duration) -> Instant {
-            Instant {
-                t: self.t.checked_sub(dur2intervals(other))
-                       .expect("overflow when adding duration to instant"),
-            }
-        }
+impl Instant {
+    pub fn now() -> Instant {
+        Instant { t: now(libc::CLOCK_MONOTONIC) }
     }
 
-    impl SystemTime {
-        pub fn now() -> SystemTime {
-            use ptr;
-
-            let mut s = libc::timeval {
-                tv_sec: 0,
-                tv_usec: 0,
-            };
-            cvt(unsafe {
-                libc::gettimeofday(&mut s, ptr::null_mut())
-            }).unwrap();
-            return SystemTime::from(s)
-        }
-
-        pub fn sub_time(&self, other: &SystemTime)
-                        -> Result<Duration, Duration> {
-            self.t.sub_timespec(&other.t)
-        }
-
-        pub fn add_duration(&self, other: &Duration) -> SystemTime {
-            SystemTime { t: self.t.add_duration(other) }
-        }
-
-        pub fn sub_duration(&self, other: &Duration) -> SystemTime {
-            SystemTime { t: self.t.sub_duration(other) }
-        }
+    pub fn sub_instant(&self, other: &Instant) -> Duration {
+        self.t.sub_timespec(&other.t).unwrap_or_else(|_| {
+            panic!("other was less than the current instant")
+        })
     }
 
-    impl From<libc::timeval> for SystemTime {
-        fn from(t: libc::timeval) -> SystemTime {
-            SystemTime::from(libc::timespec {
-                tv_sec: t.tv_sec,
-                tv_nsec: (t.tv_usec * 1000) as libc::c_long,
-            })
-        }
+    pub fn add_duration(&self, other: &Duration) -> Instant {
+        Instant { t: self.t.add_duration(other) }
     }
 
-    impl From<libc::timespec> for SystemTime {
-        fn from(t: libc::timespec) -> SystemTime {
-            SystemTime { t: Timespec { t: t } }
-        }
-    }
-
-    impl fmt::Debug for SystemTime {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("SystemTime")
-             .field("tv_sec", &self.t.t.tv_sec)
-             .field("tv_nsec", &self.t.t.tv_nsec)
-             .finish()
-        }
-    }
-
-    fn dur2intervals(dur: &Duration) -> u64 {
-        let info = info();
-        let nanos = dur.as_secs().checked_mul(NSEC_PER_SEC).and_then(|nanos| {
-            nanos.checked_add(dur.subsec_nanos() as u64)
-        }).expect("overflow converting duration to nanoseconds");
-        mul_div_u64(nanos, info.denom as u64, info.numer as u64)
-    }
-
-    fn info() -> &'static libc::mach_timebase_info {
-        static mut INFO: libc::mach_timebase_info = libc::mach_timebase_info {
-            numer: 0,
-            denom: 0,
-        };
-        static ONCE: Once = Once::new();
-
-        unsafe {
-            ONCE.call_once(|| {
-                libc::mach_timebase_info(&mut INFO);
-            });
-            &INFO
-        }
+    pub fn sub_duration(&self, other: &Duration) -> Instant {
+        Instant { t: self.t.sub_duration(other) }
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
-mod inner {
-    use fmt;
-    use libc;
-    use sys::cvt;
-    use time::Duration;
+impl fmt::Debug for Instant {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Instant")
+         .field("tv_sec", &self.t.t.tv_sec)
+         .field("tv_nsec", &self.t.t.tv_nsec)
+         .finish()
+    }
+}
 
-    use super::Timespec;
-
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct Instant {
-        t: Timespec,
+impl SystemTime {
+    pub fn now() -> SystemTime {
+        SystemTime { t: now(libc::CLOCK_REALTIME) }
     }
 
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct SystemTime {
-        t: Timespec,
+    pub fn sub_time(&self, other: &SystemTime)
+                    -> Result<Duration, Duration> {
+        self.t.sub_timespec(&other.t)
     }
 
-    pub const UNIX_EPOCH: SystemTime = SystemTime {
-        t: Timespec {
-            t: libc::timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            },
-        },
+    pub fn add_duration(&self, other: &Duration) -> SystemTime {
+        SystemTime { t: self.t.add_duration(other) }
+    }
+
+    pub fn sub_duration(&self, other: &Duration) -> SystemTime {
+        SystemTime { t: self.t.sub_duration(other) }
+    }
+}
+
+impl From<libc::timespec> for SystemTime {
+    fn from(t: libc::timespec) -> SystemTime {
+        SystemTime { t: Timespec { t: t } }
+    }
+}
+
+impl fmt::Debug for SystemTime {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("SystemTime")
+         .field("tv_sec", &self.t.t.tv_sec)
+         .field("tv_nsec", &self.t.t.tv_nsec)
+         .finish()
+    }
+}
+
+pub type clock_t = usize;
+
+fn now(clock: clock_t) -> Timespec {
+    let mut t = Timespec {
+        t: libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        }
     };
-
-    impl Instant {
-        pub fn now() -> Instant {
-            Instant { t: now(libc::CLOCK_MONOTONIC) }
-        }
-
-        pub fn sub_instant(&self, other: &Instant) -> Duration {
-            self.t.sub_timespec(&other.t).unwrap_or_else(|_| {
-                panic!("other was less than the current instant")
-            })
-        }
-
-        pub fn add_duration(&self, other: &Duration) -> Instant {
-            Instant { t: self.t.add_duration(other) }
-        }
-
-        pub fn sub_duration(&self, other: &Duration) -> Instant {
-            Instant { t: self.t.sub_duration(other) }
-        }
-    }
-
-    impl fmt::Debug for Instant {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("Instant")
-             .field("tv_sec", &self.t.t.tv_sec)
-             .field("tv_nsec", &self.t.t.tv_nsec)
-             .finish()
-        }
-    }
-
-    impl SystemTime {
-        pub fn now() -> SystemTime {
-            SystemTime { t: now(libc::CLOCK_REALTIME) }
-        }
-
-        pub fn sub_time(&self, other: &SystemTime)
-                        -> Result<Duration, Duration> {
-            self.t.sub_timespec(&other.t)
-        }
-
-        pub fn add_duration(&self, other: &Duration) -> SystemTime {
-            SystemTime { t: self.t.add_duration(other) }
-        }
-
-        pub fn sub_duration(&self, other: &Duration) -> SystemTime {
-            SystemTime { t: self.t.sub_duration(other) }
-        }
-    }
-
-    impl From<libc::timespec> for SystemTime {
-        fn from(t: libc::timespec) -> SystemTime {
-            SystemTime { t: Timespec { t: t } }
-        }
-    }
-
-    impl fmt::Debug for SystemTime {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("SystemTime")
-             .field("tv_sec", &self.t.t.tv_sec)
-             .field("tv_nsec", &self.t.t.tv_nsec)
-             .finish()
-        }
-    }
-
-    #[cfg(not(any(target_os = "dragonfly", target_os = "redox")))]
-    pub type clock_t = libc::c_int;
-    #[cfg(target_os = "dragonfly")]
-    pub type clock_t = libc::c_ulong;
-    #[cfg(target_os = "redox")]
-    pub type clock_t = usize;
-
-    fn now(clock: clock_t) -> Timespec {
-        let mut t = Timespec {
-            t: libc::timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            }
-        };
-        cvt(unsafe {
-            libc::clock_gettime(clock, &mut t.t)
-        }).unwrap();
-        t
-    }
+    cvt(libc::clock_gettime(clock, &mut t.t)).unwrap();
+    t
 }

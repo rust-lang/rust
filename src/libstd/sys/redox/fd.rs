@@ -11,37 +11,32 @@
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
 use io::{self, Read};
-use libc::{self, c_int, c_void};
+use libc;
 use mem;
 use sys::cvt;
 use sys_common::AsInner;
 use sys_common::io::read_to_end_uninitialized;
 
 pub struct FileDesc {
-    fd: c_int,
+    fd: usize,
 }
 
 impl FileDesc {
-    pub fn new(fd: c_int) -> FileDesc {
+    pub fn new(fd: usize) -> FileDesc {
         FileDesc { fd: fd }
     }
 
-    pub fn raw(&self) -> c_int { self.fd }
+    pub fn raw(&self) -> usize { self.fd }
 
     /// Extracts the actual filedescriptor without closing it.
-    pub fn into_raw(self) -> c_int {
+    pub fn into_raw(self) -> usize {
         let fd = self.fd;
         mem::forget(self);
         fd
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let ret = cvt(unsafe {
-            libc::read(self.fd,
-                       buf.as_mut_ptr() as *mut c_void,
-                       buf.len())
-        })?;
-        Ok(ret as usize)
+        cvt(libc::read(self.fd, buf))
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -50,12 +45,7 @@ impl FileDesc {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let ret = cvt(unsafe {
-            libc::write(self.fd,
-                        buf.as_ptr() as *const c_void,
-                        buf.len())
-        })?;
-        Ok(ret as usize)
+        cvt(libc::write(self.fd, buf))
     }
 
     pub fn set_cloexec(&self) -> io::Result<()> {
@@ -86,7 +76,7 @@ impl FileDesc {
     }
 
     pub fn duplicate(&self) -> io::Result<FileDesc> {
-        let new_fd = cvt(unsafe { libc::dup(self.fd) })?;
+        let new_fd = cvt(libc::dup(self.fd, &[]))?;
         Ok(FileDesc::new(new_fd))
     }
 }
@@ -101,8 +91,8 @@ impl<'a> Read for &'a FileDesc {
     }
 }
 
-impl AsInner<c_int> for FileDesc {
-    fn as_inner(&self) -> &c_int { &self.fd }
+impl AsInner<usize> for FileDesc {
+    fn as_inner(&self) -> &usize { &self.fd }
 }
 
 impl Drop for FileDesc {
@@ -112,6 +102,6 @@ impl Drop for FileDesc {
         // the file descriptor was closed or not, and if we retried (for
         // something like EINTR), we might close another valid file descriptor
         // (opened after we closed ours.
-        let _ = unsafe { libc::close(self.fd) };
+        let _ = libc::close(self.fd);
     }
 }

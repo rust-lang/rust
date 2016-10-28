@@ -14,7 +14,6 @@ use ffi::CStr;
 use io;
 use libc;
 use mem;
-use sys::os;
 use sys_common::thread::start_thread;
 use time::Duration;
 
@@ -42,7 +41,7 @@ impl Thread {
     }
 
     pub fn set_name(_name: &CStr) {
-
+        unimplemented!();
     }
 
     pub fn sleep(dur: Duration) {
@@ -51,20 +50,18 @@ impl Thread {
 
         // If we're awoken with a signal then the return value will be -1 and
         // nanosleep will fill in `ts` with the remaining time.
-        unsafe {
-            while secs > 0 || nsecs > 0 {
-                let mut ts = libc::timespec {
-                    tv_sec: cmp::min(libc::time_t::max_value() as u64, secs) as libc::time_t,
-                    tv_nsec: nsecs,
-                };
-                secs -= ts.tv_sec as u64;
-                if libc::nanosleep(&ts, &mut ts) == -1 {
-                    assert_eq!(os::errno(), libc::EINTR);
-                    secs += ts.tv_sec as u64;
-                    nsecs = ts.tv_nsec;
-                } else {
-                    nsecs = 0;
-                }
+        while secs > 0 || nsecs > 0 {
+            let req = libc::timespec {
+                tv_sec: cmp::min(libc::time_t::max_value() as u64, secs) as libc::time_t,
+                tv_nsec: nsecs,
+            };
+            secs -= req.tv_sec as u64;
+            let mut rem = libc::timespec::default();
+            if libc::nanosleep(&req, &mut rem).is_err() {
+                secs += rem.tv_sec as u64;
+                nsecs = rem.tv_nsec;
+            } else {
+                nsecs = 0;
             }
         }
     }
