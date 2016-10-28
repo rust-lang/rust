@@ -24,6 +24,7 @@ use hir::def::{Def, CtorKind, PathResolution, ExportMap};
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
+use mir::Mir;
 use traits;
 use ty;
 use ty::subst::{Subst, Substs};
@@ -34,7 +35,7 @@ use util::nodemap::FnvHashMap;
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, Ref};
 use std::hash::{Hash, Hasher};
 use std::iter;
 use std::ops::Deref;
@@ -2517,6 +2518,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         lookup_locally_or_in_crate_store(
             "super_predicates", did, &self.super_predicates,
             || self.sess.cstore.item_super_predicates(self.global_tcx(), did))
+    }
+
+    /// Given the did of an item, returns its MIR, borrowed immutably.
+    pub fn item_mir(self, did: DefId) -> Ref<'gcx, Mir<'gcx>> {
+        lookup_locally_or_in_crate_store("mir_map", did, &self.mir_map, || {
+            let mir = self.sess.cstore.get_item_mir(self.global_tcx(), did);
+            let mir = self.alloc_mir(mir);
+
+            // Perma-borrow MIR from extern crates to prevent mutation.
+            mem::forget(mir.borrow());
+
+            mir
+        }).borrow()
     }
 
     /// If `type_needs_drop` returns true, then `ty` is definitely

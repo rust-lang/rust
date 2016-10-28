@@ -45,7 +45,7 @@ impl MirDebugScope {
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
 pub fn create_mir_scopes(fcx: &FunctionContext) -> IndexVec<VisibilityScope, MirDebugScope> {
-    let mir = fcx.mir.clone().expect("create_mir_scopes: missing MIR for fn");
+    let mir = fcx.mir();
     let null_scope = MirDebugScope {
         scope_metadata: ptr::null_mut(),
         file_start_pos: BytePos(0),
