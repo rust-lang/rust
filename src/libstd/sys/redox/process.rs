@@ -12,14 +12,15 @@ use os::unix::prelude::*;
 
 use collections::hash_map::HashMap;
 use env;
-use ffi::{OsStr, CString, CStr};
+use ffi::{OsStr, CString};
 use fmt;
 use io::{self, Error, ErrorKind};
 use libc::{self, pid_t, c_int, gid_t, uid_t};
+use path::Path;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
 use sys::pipe::{self, AnonPipe};
-use sys::{self, cvt, cvt_r};
+use sys::{self, cvt};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -47,7 +48,7 @@ pub struct Command {
     args: Vec<String>,
     env: HashMap<String, String>,
 
-    cwd: Option<CString>,
+    cwd: Option<String>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
     saw_nul: bool,
@@ -75,7 +76,7 @@ struct ChildPipes {
 
 enum ChildStdio {
     Inherit,
-    Explicit(c_int),
+    Explicit(usize),
     Owned(FileDesc),
 }
 
@@ -120,7 +121,7 @@ impl Command {
     }
 
     pub fn cwd(&mut self, dir: &OsStr) {
-        self.cwd = Some(os2c(dir, &mut self.saw_nul));
+        self.cwd = Some(dir.to_str().unwrap().to_owned());
     }
     pub fn uid(&mut self, id: uid_t) {
         self.uid = Some(id);
@@ -157,7 +158,7 @@ impl Command {
         let (input, output) = sys::pipe::anon_pipe()?;
 
         let pid = unsafe {
-            match cvt(libc::fork() as isize)? {
+            match cvt(libc::clone(0))? {
                 0 => {
                     drop(input);
                     let err = self.do_exec(theirs);
@@ -174,7 +175,8 @@ impl Command {
                     // we want to be sure we *don't* run at_exit destructors as
                     // we're being torn down regardless
                     assert!(output.write(&bytes).is_ok());
-                    libc::_exit(1)
+                    let _ = libc::exit(1);
+                    unreachable!();
                 }
                 n => n as pid_t,
             }
@@ -271,29 +273,29 @@ impl Command {
         }
 
         if let Some(fd) = stdio.stderr.fd() {
-            libc::close(libc::STDERR_FILENO);
-            t!(cvt(libc::dup(fd)));
-            libc::close(fd);
+            let _ = libc::close(libc::STDERR_FILENO);
+            t!(cvt(libc::dup(fd, &[])));
+            let _ = libc::close(fd);
         }
         if let Some(fd) = stdio.stdout.fd() {
-            libc::close(libc::STDOUT_FILENO);
-            t!(cvt(libc::dup(fd)));
-            libc::close(fd);
+            let _ = libc::close(libc::STDOUT_FILENO);
+            t!(cvt(libc::dup(fd, &[])));
+            let _ = libc::close(fd);
         }
         if let Some(fd) = stdio.stdin.fd() {
-            libc::close(libc::STDIN_FILENO);
-            t!(cvt(libc::dup(fd)));
-            libc::close(fd);
+            let _ = libc::close(libc::STDIN_FILENO);
+            t!(cvt(libc::dup(fd, &[])));
+            let _ = libc::close(fd);
         }
 
-        if let Some(u) = self.gid {
-            t!(cvt(libc::setgid(u as gid_t)));
+        if let Some(g) = self.gid {
+            t!(cvt(libc::setgid(g)));
         }
         if let Some(u) = self.uid {
-            t!(cvt(libc::setuid(u as uid_t)));
+            t!(cvt(libc::setuid(u)));
         }
         if let Some(ref cwd) = self.cwd {
-            t!(cvt(libc::chdir(cwd.as_ptr())));
+            t!(cvt(libc::chdir(cwd)));
         }
 
         for callback in self.closures.iter_mut() {
@@ -363,7 +365,7 @@ impl Stdio {
             // stderr. No matter which we dup first, the second will get
             // overwritten prematurely.
             Stdio::Fd(ref fd) => {
-                if fd.raw() >= 0 && fd.raw() <= libc::STDERR_FILENO {
+                if fd.raw() <= libc::STDERR_FILENO {
                     Ok((ChildStdio::Owned(fd.duplicate()?), None))
                 } else {
                     Ok((ChildStdio::Explicit(fd.raw()), None))
@@ -384,10 +386,7 @@ impl Stdio {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
                 opts.write(!readable);
-                let path = unsafe {
-                    CStr::from_ptr("/dev/null\0".as_ptr() as *const _)
-                };
-                let fd = File::open_c(&path, &opts)?;
+                let fd = File::open(&Path::new("null:"), &opts)?;
                 Ok((ChildStdio::Owned(fd.into_fd()), None))
             }
         }
@@ -395,7 +394,7 @@ impl Stdio {
 }
 
 impl ChildStdio {
-    fn fd(&self) -> Option<c_int> {
+    fn fd(&self) -> Option<usize> {
         match *self {
             ChildStdio::Inherit => None,
             ChildStdio::Explicit(fd) => Some(fd),
@@ -496,7 +495,8 @@ impl Process {
             Err(Error::new(ErrorKind::InvalidInput,
                            "invalid argument: can't kill an exited process"))
         } else {
-            cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(|_| ())
+            cvt(libc::kill(self.pid, libc::SIGKILL))?;
+            Ok(())
         }
     }
 
@@ -505,89 +505,8 @@ impl Process {
             return Ok(status)
         }
         let mut status = 0;
-        cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) })?;
+        cvt(libc::waitpid(self.pid, &mut status, 0))?;
         self.status = Some(ExitStatus(status as i32));
         Ok(ExitStatus(status as i32))
-    }
-}
-
-#[cfg(all(test, not(target_os = "emscripten")))]
-mod tests {
-    use super::*;
-
-    use ffi::OsStr;
-    use mem;
-    use ptr;
-    use libc;
-    use sys::cvt;
-
-    macro_rules! t {
-        ($e:expr) => {
-            match $e {
-                Ok(t) => t,
-                Err(e) => panic!("received error for `{}`: {}", stringify!($e), e),
-            }
-        }
-    }
-
-    #[cfg(not(target_os = "android"))]
-    extern {
-        #[cfg_attr(target_os = "netbsd", link_name = "__sigaddset14")]
-        fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int;
-    }
-
-    #[cfg(target_os = "android")]
-    unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
-        use slice;
-
-        let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<libc::sigset_t>());
-        let bit = (signum - 1) as usize;
-        raw[bit / 8] |= 1 << (bit % 8);
-        return 0;
-    }
-
-    // See #14232 for more information, but it appears that signal delivery to a
-    // newly spawned process may just be raced in the OSX, so to prevent this
-    // test from being flaky we ignore it on OSX.
-    #[test]
-    #[cfg_attr(target_os = "macos", ignore)]
-    #[cfg_attr(target_os = "nacl", ignore)] // no signals on NaCl.
-    fn test_process_mask() {
-        unsafe {
-            // Test to make sure that a signal mask does not get inherited.
-            let mut cmd = Command::new(OsStr::new("cat"));
-
-            let mut set: libc::sigset_t = mem::uninitialized();
-            let mut old_set: libc::sigset_t = mem::uninitialized();
-            t!(cvt(libc::sigemptyset(&mut set)));
-            t!(cvt(sigaddset(&mut set, libc::SIGINT)));
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set, &mut old_set)));
-
-            cmd.stdin(Stdio::MakePipe);
-            cmd.stdout(Stdio::MakePipe);
-
-            let (mut cat, mut pipes) = t!(cmd.spawn(Stdio::Null, true));
-            let stdin_write = pipes.stdin.take().unwrap();
-            let stdout_read = pipes.stdout.take().unwrap();
-
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &old_set,
-                                         ptr::null_mut())));
-
-            t!(cvt(libc::kill(cat.id() as libc::pid_t, libc::SIGINT)));
-            // We need to wait until SIGINT is definitely delivered. The
-            // easiest way is to write something to cat, and try to read it
-            // back: if SIGINT is unmasked, it'll get delivered when cat is
-            // next scheduled.
-            let _ = stdin_write.write(b"Hello");
-            drop(stdin_write);
-
-            // Either EOF or failure (EPIPE) is okay.
-            let mut buf = [0; 5];
-            if let Ok(ret) = stdout_read.read(&mut buf) {
-                assert!(ret == 0);
-            }
-
-            t!(cat.wait());
-        }
     }
 }

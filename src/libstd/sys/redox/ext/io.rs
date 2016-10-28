@@ -13,13 +13,12 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use fs;
-use os::raw;
 use sys;
 use sys_common::{AsInner, FromInner, IntoInner};
 
 /// Raw file descriptors.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type RawFd = raw::c_int;
+pub type RawFd = usize;
 
 /// A trait to extract the raw unix file descriptor from an underlying
 /// object.

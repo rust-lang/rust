@@ -10,26 +10,24 @@
 
 use os::unix::prelude::*;
 
-use ffi::{CString, CStr, OsString, OsStr};
+use ffi::{OsString, OsStr};
 use fmt;
 use io::{self, Error, ErrorKind, SeekFrom};
 use libc::{self, c_int, mode_t};
-use mem;
 use path::{Path, PathBuf};
 use sync::Arc;
 use sys::fd::FileDesc;
 use sys::time::SystemTime;
-use sys::{cvt, cvt_r};
+use sys::cvt;
 use sys_common::{AsInner, FromInner};
 
-use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off_t as off64_t,
-           ftruncate as ftruncate64, lseek as lseek64, open as open64};
+use libc::{stat, fstat, fsync, ftruncate, lseek, open};
 
 pub struct File(FileDesc);
 
 #[derive(Clone)]
 pub struct FileAttr {
-    stat: stat64,
+    stat: stat,
 }
 
 pub struct ReadDir {
@@ -104,8 +102,8 @@ impl FileAttr {
     }
 }
 
-impl AsInner<stat64> for FileAttr {
-    fn as_inner(&self) -> &stat64 { &self.stat }
+impl AsInner<stat> for FileAttr {
+    fn as_inner(&self) -> &stat { &self.stat }
 }
 
 impl FilePermissions {
@@ -254,60 +252,32 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let path = cstr(path)?;
-        File::open_c(&path, opts)
-    }
-
-    pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
-        let flags = libc::O_CLOEXEC as i32 |
-                    opts.get_access_mode()? |
-                    opts.get_creation_mode()? |
-                    (opts.custom_flags as usize & !libc::O_ACCMODE) as i32;
-        let fd = cvt_r(|| unsafe {
-            open64(path.as_ptr(), flags, opts.mode as mode_t)
-        })?;
-        let fd = FileDesc::new(fd);
-
-        Ok(File(fd))
+        let flags = libc::O_CLOEXEC |
+                    opts.get_access_mode()? as usize |
+                    opts.get_creation_mode()? as usize |
+                    (opts.custom_flags as usize & !libc::O_ACCMODE);
+        let fd = cvt(open(path.to_str().unwrap(), flags | opts.mode as usize))?;
+        Ok(File(FileDesc::new(fd)))
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        let mut stat: stat64 = unsafe { mem::zeroed() };
-        cvt(unsafe {
-            fstat64(self.0.raw(), &mut stat)
-        })?;
+        let mut stat: stat = stat::default();
+        cvt(fstat(self.0.raw(), &mut stat))?;
         Ok(FileAttr { stat: stat })
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        cvt_r(|| unsafe { libc::fsync(self.0.raw()) })?;
+        cvt(fsync(self.0.raw()))?;
         Ok(())
     }
 
     pub fn datasync(&self) -> io::Result<()> {
-        cvt_r(|| unsafe { os_datasync(self.0.raw()) })?;
-        return Ok(());
-
-        #[cfg(any(target_os = "macos", target_os = "ios"))]
-        unsafe fn os_datasync(fd: c_int) -> c_int {
-            libc::fcntl(fd, libc::F_FULLFSYNC)
-        }
-        #[cfg(target_os = "linux")]
-        unsafe fn os_datasync(fd: c_int) -> c_int { libc::fdatasync(fd) }
-        #[cfg(not(any(target_os = "macos",
-                      target_os = "ios",
-                      target_os = "linux")))]
-        unsafe fn os_datasync(fd: c_int) -> c_int { libc::fsync(fd) }
+        self.fsync()
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
-        #[cfg(target_os = "android")]
-        return ::sys::android::ftruncate64(self.0.raw(), size);
-
-        #[cfg(not(target_os = "android"))]
-        return cvt_r(|| unsafe {
-            ftruncate64(self.0.raw(), size as off64_t)
-        }).map(|_| ());
+        cvt(ftruncate(self.0.raw(), size as usize))?;
+        Ok(())
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -332,7 +302,7 @@ impl File {
             SeekFrom::End(off) => (libc::SEEK_END, off),
             SeekFrom::Current(off) => (libc::SEEK_CUR, off),
         };
-        let n = cvt(unsafe { lseek64(self.0.raw(), pos as usize, whence) } as isize)?;
+        let n = cvt(lseek(self.0.raw(), pos as isize, whence))?;
         Ok(n as u64)
     }
 
@@ -341,9 +311,8 @@ impl File {
     }
 
     pub fn dup(&self, buf: &[u8]) -> io::Result<File> {
-        libc::dup_extra(*self.fd().as_inner() as usize, buf)
-            .map(|fd| File(FileDesc::new(fd as i32)))
-            .map_err(|err| Error::from_raw_os_error(err.errno))
+        let fd = cvt(libc::dup(*self.fd().as_inner() as usize, buf))?;
+        Ok(File(FileDesc::new(fd)))
     }
 
     pub fn path(&self) -> io::Result<PathBuf> {
@@ -365,8 +334,7 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let p = cstr(p)?;
-        cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) })?;
+        cvt(libc::mkdir(p.to_str().unwrap(), self.mode))?;
         Ok(())
     }
 
@@ -375,96 +343,39 @@ impl DirBuilder {
     }
 }
 
-fn cstr(path: &Path) -> io::Result<CString> {
-    Ok(CString::new(path.as_os_str().as_bytes())?)
-}
-
-impl FromInner<c_int> for File {
-    fn from_inner(fd: c_int) -> File {
+impl FromInner<usize> for File {
+    fn from_inner(fd: usize) -> File {
         File(FileDesc::new(fd))
     }
 }
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        #[cfg(target_os = "linux")]
-        fn get_path(fd: c_int) -> Option<PathBuf> {
-            let mut p = PathBuf::from("/proc/self/fd");
-            p.push(&fd.to_string());
-            readlink(&p).ok()
-        }
-
-        #[cfg(target_os = "macos")]
-        fn get_path(fd: c_int) -> Option<PathBuf> {
-            // FIXME: The use of PATH_MAX is generally not encouraged, but it
-            // is inevitable in this case because OS X defines `fcntl` with
-            // `F_GETPATH` in terms of `MAXPATHLEN`, and there are no
-            // alternatives. If a better method is invented, it should be used
-            // instead.
-            let mut buf = vec![0;libc::PATH_MAX as usize];
-            let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_ptr()) };
-            if n == -1 {
-                return None;
-            }
-            let l = buf.iter().position(|&c| c == 0).unwrap();
-            buf.truncate(l as usize);
-            buf.shrink_to_fit();
-            Some(PathBuf::from(OsString::from_vec(buf)))
-        }
-
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-        fn get_path(_fd: c_int) -> Option<PathBuf> {
-            // FIXME(#24570): implement this for other Unix platforms
-            None
-        }
-
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
-        fn get_mode(fd: c_int) -> Option<(bool, bool)> {
-            let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
-            if mode == -1 {
-                return None;
-            }
-            match mode & libc::O_ACCMODE {
-                libc::O_RDONLY => Some((true, false)),
-                libc::O_RDWR => Some((true, true)),
-                libc::O_WRONLY => Some((false, true)),
-                _ => None
-            }
-        }
-
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-        fn get_mode(_fd: c_int) -> Option<(bool, bool)> {
-            // FIXME(#24570): implement this for other Unix platforms
-            None
-        }
-
-        let fd = self.0.raw();
         let mut b = f.debug_struct("File");
-        b.field("fd", &fd);
-        if let Some(path) = get_path(fd) {
+        b.field("fd", &self.0.raw());
+        if let Ok(path) = self.path() {
             b.field("path", &path);
         }
+        /*
         if let Some((read, write)) = get_mode(fd) {
             b.field("read", &read).field("write", &write);
         }
+        */
         b.finish()
     }
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = Arc::new(p.to_path_buf());
-    let p = cstr(p)?;
-    unsafe {
-        let fd = FileDesc::new(cvt(libc::open(p.as_ptr(), 0, 0))?);
-        let mut data = Vec::new();
-        fd.read_to_end(&mut data)?;
-        Ok(ReadDir { data: data, i: 0, root: root })
-    }
+    let options = OpenOptions::new();
+    let fd = File::open(p, &options)?;
+    let mut data = Vec::new();
+    fd.read_to_end(&mut data)?;
+    Ok(ReadDir { data: data, i: 0, root: root })
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let p = cstr(p)?;
-    cvt(unsafe { libc::unlink(p.as_ptr()) })?;
+    cvt(libc::unlink(p.to_str().unwrap()))?;
     Ok(())
 }
 
@@ -477,8 +388,7 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let p = cstr(p)?;
-    cvt(unsafe { libc::rmdir(p.as_ptr()) })?;
+    cvt(libc::rmdir(p.to_str().unwrap()))?;
     Ok(())
 }
 
@@ -503,8 +413,8 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     rmdir(path)
 }
 
-pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
-    unimplemented!();
+pub fn readlink(p: &Path) -> io::Result<PathBuf> {
+    canonicalize(p)
 }
 
 pub fn symlink(_src: &Path, _dst: &Path) -> io::Result<()> {
@@ -516,25 +426,21 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let p = cstr(p)?;
-    let mut stat: stat64 = unsafe { mem::zeroed() };
-    cvt(unsafe {
-        stat64(p.as_ptr(), &mut stat as *mut _ as *mut _)
-    })?;
+    let mut stat: stat = stat::default();
+    let options = OpenOptions::new();
+    let file = File::open(p, &options)?;
+    cvt(fstat(file.0.raw(), &mut stat))?;
     Ok(FileAttr { stat: stat })
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let p = cstr(p)?;
-    let mut stat: stat64 = unsafe { mem::zeroed() };
-    cvt(unsafe {
-        lstat64(p.as_ptr(), &mut stat as *mut _ as *mut _)
-    })?;
-    Ok(FileAttr { stat: stat })
+    stat(p)
 }
 
-pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
-    unimplemented!();
+pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
+    let options = OpenOptions::new();
+    let file = File::open(p, &options)?;
+    file.path()
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {

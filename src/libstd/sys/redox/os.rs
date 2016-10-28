@@ -35,109 +35,28 @@ use vec;
 const TMPBUF_SZ: usize = 128;
 static ENV_LOCK: Mutex = Mutex::new();
 
-
-extern {
-    #[cfg(not(target_os = "dragonfly"))]
-    #[cfg_attr(any(target_os = "linux", target_os = "emscripten", target_os = "fuchsia"),
-               link_name = "__errno_location")]
-    #[cfg_attr(any(target_os = "bitrig",
-                   target_os = "netbsd",
-                   target_os = "openbsd",
-                   target_os = "android",
-                   target_env = "newlib"),
-               link_name = "__errno")]
-    #[cfg_attr(target_os = "solaris", link_name = "___errno")]
-    #[cfg_attr(any(target_os = "macos",
-                   target_os = "ios",
-                   target_os = "freebsd"),
-               link_name = "__error")]
-    #[cfg_attr(target_os = "haiku", link_name = "_errnop")]
-    fn errno_location() -> *mut c_int;
-}
-
 /// Returns the platform-specific value of errno
-#[cfg(not(target_os = "dragonfly"))]
 pub fn errno() -> i32 {
-    unsafe {
-        (*errno_location()) as i32
-    }
-}
-
-/// Sets the platform-specific value of errno
-#[cfg(target_os = "solaris")] // only needed for readdir so far
-pub fn set_errno(e: i32) {
-    unsafe {
-        *errno_location() = e as c_int
-    }
-}
-
-#[cfg(target_os = "dragonfly")]
-pub fn errno() -> i32 {
-    extern {
-        #[thread_local]
-        static errno: c_int;
-    }
-
-    errno as i32
+    0
 }
 
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
-    extern {
-        #[cfg_attr(any(target_os = "linux", target_env = "newlib"),
-                   link_name = "__xpg_strerror_r")]
-        fn strerror_r(errnum: c_int, buf: *mut c_char,
-                      buflen: libc::size_t) -> c_int;
-    }
-
-    let mut buf = [0 as c_char; TMPBUF_SZ];
-
-    let p = buf.as_mut_ptr();
-    unsafe {
-        if strerror_r(errno as c_int, p, buf.len()) < 0 {
-            panic!("strerror_r failure");
-        }
-
-        let p = p as *const _;
-        str::from_utf8(CStr::from_ptr(p).to_bytes()).unwrap().to_owned()
+    if let Some(string) = libc::STR_ERROR.get(errno as usize) {
+        string.to_string()
+    } else {
+        "unknown error".to_string()
     }
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
-    let mut buf = Vec::with_capacity(512);
-    loop {
-        unsafe {
-            let ptr = buf.as_mut_ptr() as *mut libc::c_char;
-            if !libc::getcwd(ptr, buf.capacity()).is_null() {
-                let len = CStr::from_ptr(buf.as_ptr() as *const libc::c_char).to_bytes().len();
-                buf.set_len(len);
-                buf.shrink_to_fit();
-                return Ok(PathBuf::from(OsString::from_vec(buf)));
-            } else {
-                let error = io::Error::last_os_error();
-                if error.raw_os_error() != Some(libc::ERANGE) {
-                    return Err(error);
-                }
-            }
-
-            // Trigger the internal buffer resizing logic of `Vec` by requiring
-            // more space than the current capacity.
-            let cap = buf.capacity();
-            buf.set_len(cap);
-            buf.reserve(1);
-        }
-    }
+    let mut buf = [0; 4096];
+    let count = cvt(libc::getcwd(&mut buf))?;
+    Ok(PathBuf::from(OsString::from_vec(buf[.. count].to_vec())))
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
-    let p: &OsStr = p.as_ref();
-    let p = CString::new(p.as_bytes())?;
-    unsafe {
-        match libc::chdir(p.as_ptr()) == (0 as c_int) {
-            true => Ok(()),
-            false => Err(io::Error::last_os_error()),
-        }
-    }
+    cvt(libc::chdir(p.to_str().unwrap())).and(Ok(()))
 }
 
 pub struct SplitPaths<'a> {
@@ -242,5 +161,6 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    unsafe { libc::exit(code as c_int) }
+    let _ = libc::exit(code as usize);
+    unreachable!();
 }

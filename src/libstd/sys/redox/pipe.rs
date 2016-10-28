@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use io;
-use libc::{self, c_int};
+use libc;
 use sys::fd::FileDesc;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -23,8 +23,8 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
 
     libc::pipe2(&mut fds, libc::O_CLOEXEC).map_err(|err| io::Error::from_raw_os_error(err.errno))?;
 
-    let fd0 = FileDesc::new(fds[0] as c_int);
-    let fd1 = FileDesc::new(fds[1] as c_int);
+    let fd0 = FileDesc::new(fds[0]);
+    let fd1 = FileDesc::new(fds[1]);
     Ok((AnonPipe::from_fd(fd0)?, AnonPipe::from_fd(fd1)?))
 }
 
