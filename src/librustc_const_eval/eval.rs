@@ -868,11 +868,12 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               Struct(_) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
               callee => signal!(e, CallOn(callee)),
           };
-          let (decl, result) = if let Some(fn_like) = lookup_const_fn_by_id(tcx, did) {
+          let (decl, body_id) = if let Some(fn_like) = lookup_const_fn_by_id(tcx, did) {
               (fn_like.decl(), fn_like.body())
           } else {
               signal!(e, NonConstPath)
           };
+          let result = tcx.map.expr(body_id);
           assert_eq!(decl.inputs.len(), args.len());
 
           let mut call_args = DefIdMap();
