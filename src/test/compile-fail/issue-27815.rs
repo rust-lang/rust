@@ -11,12 +11,12 @@
 mod A {}
 
 fn main() {
-    let u = A { x: 1 }; //~ ERROR `A` does not name a struct or a struct variant
-    let v = u32 { x: 1 }; //~ ERROR `u32` does not name a struct or a struct variant
+    let u = A { x: 1 }; //~ ERROR expected struct, variant or union type, found module `A`
+    let v = u32 { x: 1 }; //~ ERROR expected struct, variant or union type, found builtin type `u32`
     match () {
         A { x: 1 } => {}
-        //~^ ERROR expected variant, struct or type alias, found module `A`
+        //~^ ERROR expected struct, variant or union type, found module `A`
         u32 { x: 1 } => {}
-        //~^ ERROR expected variant, struct or type alias, found builtin type `u32`
+        //~^ ERROR expected struct, variant or union type, found builtin type `u32`
     }
 }

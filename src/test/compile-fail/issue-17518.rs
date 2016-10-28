@@ -13,5 +13,5 @@ enum SomeEnum {
 }
 
 fn main() {
-    E { name: "foobar" }; //~ ERROR `E` does not name a structure
+    E { name: "foobar" }; //~ ERROR unresolved struct, variant or union type `E`
 }

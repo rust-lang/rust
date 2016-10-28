@@ -1493,7 +1493,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                 Def::StructCtor(..) | Def::VariantCtor(..) |
                 Def::Const(..) | Def::AssociatedConst(..) |
                 Def::Struct(..) | Def::Variant(..) |
-                Def::TyAlias(..) | Def::AssociatedTy(..) => {
+                Def::TyAlias(..) | Def::AssociatedTy(..) |
+                Def::SelfTy(..) => {
                     paths_to_process.push((id, p.clone(), Some(ref_kind)))
                 }
                 def => error!("unexpected definition kind when processing collected paths: {:?}",
