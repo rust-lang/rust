@@ -16,7 +16,7 @@ use schema::CrateRoot;
 
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
-use rustc::middle::cstore::{DepKind, LoadedMacros};
+use rustc::middle::cstore::DepKind;
 use rustc::session::{config, Session};
 use rustc_back::PanicStrategy;
 use rustc::session::search_paths::PathKind;
@@ -33,11 +33,11 @@ use std::{cmp, fs};
 
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::parse;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
+use syntax::feature_gate::{self, emit_feature_err};
 use syntax::parse::token::{InternedString, intern};
-use syntax_pos::{Span, DUMMY_SP, mk_sp};
+use syntax_pos::{Span, DUMMY_SP};
 use log;
 
 pub struct Library {
@@ -518,68 +518,6 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn read_macros(&mut self, item: &ast::Item, ekrate: &ExtensionCrate) -> LoadedMacros {
-        let root = ekrate.metadata.get_root();
-        let source_name = format!("<{} macros>", item.ident);
-        let mut macro_rules = Vec::new();
-
-        for def in root.macro_defs.decode(&*ekrate.metadata) {
-            // NB: Don't use parse::parse_tts_from_source_str because it parses with
-            // quote_depth > 0.
-            let mut p = parse::new_parser_from_source_str(&self.sess.parse_sess,
-                                                          source_name.clone(),
-                                                          def.body);
-            let lo = p.span.lo;
-            let body = match p.parse_all_token_trees() {
-                Ok(body) => body,
-                Err(mut err) => {
-                    err.emit();
-                    self.sess.abort_if_errors();
-                    unreachable!();
-                }
-            };
-            let local_span = mk_sp(lo, p.prev_span.hi);
-
-            // Mark the attrs as used
-            for attr in &def.attrs {
-                attr::mark_used(attr);
-            }
-
-            macro_rules.push(ast::MacroDef {
-                ident: ast::Ident::with_empty_ctxt(def.name),
-                id: ast::DUMMY_NODE_ID,
-                span: local_span,
-                imported_from: Some(item.ident),
-                allow_internal_unstable: attr::contains_name(&def.attrs, "allow_internal_unstable"),
-                attrs: def.attrs,
-                body: body,
-            });
-            self.sess.imported_macro_spans.borrow_mut()
-                .insert(local_span, (def.name.as_str().to_string(), def.span));
-        }
-
-        if let Some(id) = root.macro_derive_registrar {
-            let dylib = match ekrate.dylib.clone() {
-                Some(dylib) => dylib,
-                None => span_bug!(item.span, "proc-macro crate not dylib"),
-            };
-            if ekrate.target_only {
-                let message = format!("proc-macro crate is not available for \
-                                       triple `{}` (only found {})",
-                                      config::host_triple(),
-                                      self.sess.opts.target_triple);
-                self.sess.span_fatal(item.span, &message);
-            }
-
-            // custom derive crates currently should not have any macro_rules!
-            // exported macros, enforced elsewhere
-            assert_eq!(macro_rules.len(), 0);
-            LoadedMacros::ProcMacros(self.load_derive_macros(item, id, root.hash, dylib))
-        } else {
-            LoadedMacros::MacroRules(macro_rules)
-        }
-    }
-
     /// Load custom derive macros.
     ///
     /// Note that this is intentionally similar to how we load plugins today,
@@ -587,14 +525,34 @@ impl<'a> CrateLoader<'a> {
     /// implemented as dynamic libraries, but we have a possible future where
     /// custom derive (and other macro-1.1 style features) are implemented via
     /// executables and custom IPC.
-    fn load_derive_macros(&mut self, item: &ast::Item, index: DefIndex, svh: Svh, path: PathBuf)
-                          -> Vec<(ast::Name, SyntaxExtension)> {
+    fn load_derive_macros(&mut self, item: &ast::Item, ekrate: &ExtensionCrate)
+                          -> Option<Vec<(ast::Name, SyntaxExtension)>> {
         use std::{env, mem};
         use proc_macro::TokenStream;
         use proc_macro::__internal::Registry;
         use rustc_back::dynamic_lib::DynamicLibrary;
         use syntax_ext::deriving::custom::CustomDerive;
 
+        let root = ekrate.metadata.get_root();
+        let index = match root.macro_derive_registrar {
+            Some(index) => index,
+            None => return None,
+        };
+        if !self.sess.features.borrow().proc_macro {
+            let issue = feature_gate::GateIssue::Language;
+            let msg = "loading custom derive macro crates is experimentally supported";
+            emit_feature_err(&self.sess.parse_sess, "proc_macro", item.span, issue, msg);
+        }
+
+        if ekrate.target_only {
+            let msg = format!("proc-macro crate is not available for triple `{}` (only found {})",
+                               config::host_triple(), self.sess.opts.target_triple);
+            self.sess.span_fatal(item.span, &msg);
+        }
+        let path = match ekrate.dylib.clone() {
+            Some(dylib) => dylib,
+            None => span_bug!(item.span, "proc-macro crate not dylib"),
+        };
         // Make sure the path contains a / or the linker will search for it.
         let path = env::current_dir().unwrap().join(path);
         let lib = match DynamicLibrary::open(Some(&path)) {
@@ -602,7 +560,7 @@ impl<'a> CrateLoader<'a> {
             Err(err) => self.sess.span_fatal(item.span, &err),
         };
 
-        let sym = self.sess.generate_derive_registrar_symbol(&svh, index);
+        let sym = self.sess.generate_derive_registrar_symbol(&root.hash, index);
         let registrar = unsafe {
             let sym = match lib.symbol(&sym) {
                 Ok(f) => f,
@@ -632,7 +590,7 @@ impl<'a> CrateLoader<'a> {
         // Intentionally leak the dynamic library. We can't ever unload it
         // since the library can make things that will live arbitrarily long.
         mem::forget(lib);
-        my_registrar.0
+        Some(my_registrar.0)
     }
 
     /// Look for a plugin registrar. Returns library path, crate
@@ -971,24 +929,23 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
     }
 
     fn process_item(&mut self, item: &ast::Item, definitions: &Definitions, load_macros: bool)
-                    -> Option<LoadedMacros> {
+                    -> Vec<(ast::Name, SyntaxExtension)> {
         match item.node {
             ast::ItemKind::ExternCrate(_) => {}
             ast::ItemKind::ForeignMod(ref fm) => {
                 self.process_foreign_mod(item, fm);
-                return None;
+                return Vec::new();
             }
-            _ => return None,
+            _ => return Vec::new(),
         }
 
         let info = self.extract_crate_info(item).unwrap();
-        let loaded_macros = if load_macros {
+        if load_macros {
             let ekrate = self.read_extension_crate(item.span, &info);
-            let loaded_macros = self.read_macros(item, &ekrate);
 
             // If this is a proc-macro crate, return here to avoid registering.
-            if loaded_macros.is_proc_macros() {
-                return Some(loaded_macros);
+            if let Some(custom_derives) = self.load_derive_macros(item, &ekrate) {
+                return custom_derives;
             }
 
             // Register crate now to avoid double-reading metadata
@@ -998,11 +955,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
                     self.register_crate(&None, ident, name, item.span, lib, dep_kind);
                 }
             }
-
-            Some(loaded_macros)
-        } else {
-            None
-        };
+        }
 
         let (cnum, ..) = self.resolve_crate(
             &None, &info.ident, &info.name, None, item.span, PathKind::Crate, info.dep_kind,
@@ -1016,6 +969,6 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         self.update_extern_crate(cnum, extern_crate, &mut FxHashSet());
         self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
 
-        loaded_macros
+        Vec::new()
     }
 }

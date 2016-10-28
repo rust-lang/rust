@@ -468,6 +468,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Variant(_) => Def::Variant(did),
             EntryKind::Trait(_) => Def::Trait(did),
             EntryKind::Enum => Def::Enum(did),
+            EntryKind::MacroDef(_) => Def::Macro(did),
 
             EntryKind::ForeignMod |
             EntryKind::Impl(_) |
@@ -1002,6 +1003,14 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn get_reachable_ids(&self) -> Vec<DefId> {
         self.root.reachable_ids.decode(self).map(|index| self.local_def_id(index)).collect()
+    }
+
+    pub fn get_macro(&self, id: DefIndex) -> (ast::Name, MacroDef) {
+        let entry = self.entry(id);
+        match entry.kind {
+            EntryKind::MacroDef(macro_def) => (self.item_name(&entry), macro_def.decode(self)),
+            _ => bug!(),
+        }
     }
 
     pub fn is_const_fn(&self, id: DefIndex) -> bool {

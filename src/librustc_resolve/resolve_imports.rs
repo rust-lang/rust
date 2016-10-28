@@ -30,6 +30,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 
 use std::cell::{Cell, RefCell};
+use std::mem;
 
 impl<'a> Resolver<'a> {
     pub fn resolve_imports(&mut self) {
@@ -772,6 +773,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         *module.globs.borrow_mut() = Vec::new();
 
         let mut reexports = Vec::new();
+        if module as *const _ == self.graph_root as *const _ {
+            reexports = mem::replace(&mut self.macro_exports, Vec::new());
+        }
+
         for (&(name, ns), resolution) in module.resolutions.borrow().iter() {
             let resolution = resolution.borrow();
             let binding = match resolution.binding {

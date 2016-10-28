@@ -211,6 +211,7 @@ pub trait CrateStore<'tcx> {
     fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath>;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
+    fn load_macro(&self, did: DefId, sess: &Session) -> ast::MacroDef;
 
     // misc. metadata
     fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
@@ -382,6 +383,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
     fn item_children(&self, did: DefId) -> Vec<def::Export> { bug!("item_children") }
+    fn load_macro(&self, did: DefId, sess: &Session) -> ast::MacroDef { bug!("load_macro") }
 
     // misc. metadata
     fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
@@ -421,22 +423,8 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 
-pub enum LoadedMacros {
-    MacroRules(Vec<ast::MacroDef>),
-    ProcMacros(Vec<(ast::Name, SyntaxExtension)>),
-}
-
-impl LoadedMacros {
-    pub fn is_proc_macros(&self) -> bool {
-        match *self {
-            LoadedMacros::ProcMacros(_) => true,
-            _ => false,
-        }
-    }
-}
-
 pub trait CrateLoader {
     fn process_item(&mut self, item: &ast::Item, defs: &Definitions, load_macros: bool)
-                    -> Option<LoadedMacros>;
+                    -> Vec<(ast::Name, SyntaxExtension)>;
     fn postprocess(&mut self, krate: &ast::Crate);
 }
