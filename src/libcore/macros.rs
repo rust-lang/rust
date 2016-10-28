@@ -553,7 +553,7 @@ pub mod builtin {
     /// For more information, see the documentation for [`std::concat_idents!`].
     ///
     /// [`std::concat_idents!`]: ../std/macro.concat_idents.html
-    #[unstable(feature = "concat_idents", issue = "29599")]
+    #[unstable(feature = "concat_idents_macro", issue = "29599")]
     #[macro_export]
     macro_rules! concat_idents {
         ($($e:ident),*) => ({ /* compiler built-in */ })
