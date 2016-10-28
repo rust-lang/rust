@@ -4078,6 +4078,12 @@ be ignored in favor of only building the artifacts specified by command line.
   Rust code into an existing non-Rust application because it will not have
   dynamic dependencies on other Rust code.
 
+* `--crate-type=cdylib`, `#[crate_type = "cdylib"]` - A dynamic system
+  library will be produced.  This is used when compiling Rust code as
+  a dynamic library to be loaded from another language.  This output type will
+  create `*.so` files on Linux, `*.dylib` files on OSX, and `*.dll` files on
+  Windows.
+
 * `--crate-type=rlib`, `#[crate_type = "rlib"]` - A "Rust library" file will be
   produced. This is used as an intermediate artifact and can be thought of as a
   "static Rust library". These `rlib` files, unlike `staticlib` files, are
