@@ -613,11 +613,11 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
             hir::ExprCall(ref callee, ref args) => {
                 if has_method_map {
                     self.constrain_call(expr, Some(&callee),
-                                        args.iter().map(|e| &**e), false);
+                                        args.iter().map(|e| &*e), false);
                 } else {
                     self.constrain_callee(callee.id, expr, &callee);
                     self.constrain_call(expr, None,
-                                        args.iter().map(|e| &**e), false);
+                                        args.iter().map(|e| &*e), false);
                 }
 
                 intravisit::walk_expr(self, expr);
@@ -625,7 +625,7 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
 
             hir::ExprMethodCall(.., ref args) => {
                 self.constrain_call(expr, Some(&args[0]),
-                                    args[1..].iter().map(|e| &**e), false);
+                                    args[1..].iter().map(|e| &*e), false);
 
                 intravisit::walk_expr(self, expr);
             }
