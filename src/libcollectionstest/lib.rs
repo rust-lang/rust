@@ -36,7 +36,9 @@ extern crate rustc_unicode;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
-#[cfg(test)] #[macro_use] mod bench;
+#[cfg(test)]
+#[macro_use]
+mod bench;
 
 mod binary_heap;
 mod btree;
