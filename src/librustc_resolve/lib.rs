@@ -1401,7 +1401,7 @@ impl<'a> Resolver<'a> {
 
                                 format!("Did you mean `{}{}`?", prefix, path_str)
                             }
-                            None => format!("Maybe a missing `extern crate {}`?", segment_name),
+                            None => format!("Maybe a missing `extern crate {};`?", segment_name),
                         }
                     } else {
                         format!("Could not find `{}` in `{}`", segment_name, module_name)
