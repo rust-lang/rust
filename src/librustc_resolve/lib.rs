@@ -1083,6 +1083,7 @@ pub struct Resolver<'a> {
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
     module_map: NodeMap<Module<'a>>,
+    extern_crate_roots: FxHashMap<CrateNum, Module<'a>>,
 
     // Whether or not to print error messages. Can be set to true
     // when getting additional info for error message suggestions,
@@ -1276,6 +1277,7 @@ impl<'a> Resolver<'a> {
             export_map: NodeMap(),
             trait_map: NodeMap(),
             module_map: module_map,
+            extern_crate_roots: FxHashMap(),
 
             emit_errors: true,
             make_glob_map: make_glob_map == MakeGlobMap::Yes,

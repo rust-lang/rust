@@ -24,7 +24,7 @@ use {resolve_error, resolve_struct_error, ResolutionError};
 
 use rustc::middle::cstore::LoadedMacros;
 use rustc::hir::def::*;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::ty;
 use rustc::util::nodemap::FxHashMap;
 
@@ -233,14 +233,7 @@ impl<'b> Resolver<'b> {
                 // n.b. we don't need to look at the path option here, because cstore already did
                 let crate_id = self.session.cstore.extern_mod_stmt_cnum(item.id);
                 let module = if let Some(crate_id) = crate_id {
-                    let def_id = DefId {
-                        krate: crate_id,
-                        index: CRATE_DEF_INDEX,
-                    };
-                    let module = self.arenas.alloc_module(ModuleS {
-                        populated: Cell::new(false),
-                        ..ModuleS::new(Some(parent), ModuleKind::Def(Def::Mod(def_id), name))
-                    });
+                    let module = self.get_extern_crate_root(crate_id);
                     let binding = (module, sp, ty::Visibility::Public).to_name_binding();
                     let binding = self.arenas.alloc_name_binding(binding);
                     let directive = self.arenas.alloc_import_directive(ImportDirective {
@@ -502,6 +495,17 @@ impl<'b> Resolver<'b> {
                 bug!("unexpected definition: {:?}", def);
             }
         }
+    }
+
+    fn get_extern_crate_root(&mut self, cnum: CrateNum) -> Module<'b> {
+        let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+        let arenas = self.arenas;
+        *self.extern_crate_roots.entry(cnum).or_insert_with(|| {
+            arenas.alloc_module(ModuleS {
+                populated: Cell::new(false),
+                ..ModuleS::new(None, ModuleKind::Def(Def::Mod(def_id), keywords::Invalid.name()))
+            })
+        })
     }
 
     /// Ensures that the reduced graph rooted at the given external module
