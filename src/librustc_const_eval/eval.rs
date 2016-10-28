@@ -297,7 +297,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => bug!()
             };
             let pats = args.iter()
-                           .map(|expr| const_expr_to_pat(tcx, &**expr, pat_id, span))
+                           .map(|expr| const_expr_to_pat(tcx, &*expr, pat_id, span))
                            .collect::<Result<_, _>>()?;
             PatKind::TupleStruct(path, pats, None)
         }

@@ -17,7 +17,6 @@ use hir::print;
 use rustc::{infer, traits};
 use rustc::ty::{self, LvaluePreference, Ty};
 use syntax::symbol::Symbol;
-use syntax::ptr::P;
 use syntax_pos::Span;
 
 use rustc::hir;
@@ -46,7 +45,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_call(&self,
                       call_expr: &'gcx hir::Expr,
                       callee_expr: &'gcx hir::Expr,
-                      arg_exprs: &'gcx [P<hir::Expr>],
+                      arg_exprs: &'gcx [hir::Expr],
                       expected: Expectation<'tcx>)
                       -> Ty<'tcx> {
         let original_callee_ty = self.check_expr(callee_expr);
@@ -189,7 +188,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn confirm_builtin_call(&self,
                             call_expr: &hir::Expr,
                             callee_ty: Ty<'tcx>,
-                            arg_exprs: &'gcx [P<hir::Expr>],
+                            arg_exprs: &'gcx [hir::Expr],
                             expected: Expectation<'tcx>)
                             -> Ty<'tcx> {
         let error_fn_sig;
@@ -272,7 +271,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn confirm_deferred_closure_call(&self,
                                      call_expr: &hir::Expr,
-                                     arg_exprs: &'gcx [P<hir::Expr>],
+                                     arg_exprs: &'gcx [hir::Expr],
                                      expected: Expectation<'tcx>,
                                      fn_sig: ty::FnSig<'tcx>)
                                      -> Ty<'tcx> {
@@ -299,7 +298,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn confirm_overloaded_call(&self,
                                call_expr: &hir::Expr,
                                callee_expr: &'gcx hir::Expr,
-                               arg_exprs: &'gcx [P<hir::Expr>],
+                               arg_exprs: &'gcx [hir::Expr],
                                expected: Expectation<'tcx>,
                                method_callee: ty::MethodCallee<'tcx>)
                                -> Ty<'tcx> {

@@ -299,15 +299,15 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprArray(ref elems) => {
-                self.straightline(expr, pred, elems.iter().map(|e| &**e))
+                self.straightline(expr, pred, elems.iter().map(|e| &*e))
             }
 
             hir::ExprCall(ref func, ref args) => {
-                self.call(expr, pred, &func, args.iter().map(|e| &**e))
+                self.call(expr, pred, &func, args.iter().map(|e| &*e))
             }
 
             hir::ExprMethodCall(.., ref args) => {
-                self.call(expr, pred, &args[0], args[1..].iter().map(|e| &**e))
+                self.call(expr, pred, &args[0], args[1..].iter().map(|e| &*e))
             }
 
             hir::ExprIndex(ref l, ref r) |
@@ -320,7 +320,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprTup(ref exprs) => {
-                self.straightline(expr, pred, exprs.iter().map(|e| &**e))
+                self.straightline(expr, pred, exprs.iter().map(|e| &*e))
             }
 
             hir::ExprStruct(_, ref fields, ref base) => {
@@ -353,8 +353,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
-                let post_outputs = self.exprs(outputs.iter().map(|e| &**e), pred);
-                let post_inputs = self.exprs(inputs.iter().map(|e| &**e), post_outputs);
+                let post_outputs = self.exprs(outputs.iter().map(|e| &*e), pred);
+                let post_inputs = self.exprs(inputs.iter().map(|e| &*e), post_outputs);
                 self.add_ast_node(expr.id, &[post_inputs])
             }
 
