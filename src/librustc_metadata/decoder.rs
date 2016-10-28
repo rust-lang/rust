@@ -1207,6 +1207,10 @@ impl<'a, 'tcx> CrateMetadata {
 }
 
 fn are_equal_modulo_startpos(fm1: &syntax_pos::FileMap, fm2: &syntax_pos::FileMap) -> bool {
+    if fm1.byte_length() != fm2.byte_length() {
+        return false;
+    }
+
     if fm1.name != fm2.name {
         return false;
     }
