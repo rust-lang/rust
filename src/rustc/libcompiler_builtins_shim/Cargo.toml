@@ -1,0 +1,25 @@
+# This is a shim Cargo.toml over the "real Cargo.toml" found in the compiler-builtins
+# repository itself. See ../libc_shim/Cargo.toml for details
+
+[package]
+name = "compiler_builtins"
+version = "0.0.0"
+authors = ["The Rust Project Developers"]
+build = "../../libcompiler_builtins/build.rs"
+
+[lib]
+name = "compiler_builtins"
+path = "../../libcompiler_builtins/src/lib.rs"
+test = false
+
+[build-dependencies]
+gcc = "0.3.27"
+rustc-cfg = "0.2.0"
+
+[dependencies]
+core = { path = "../../libcore" }
+
+[features]
+default = ["c", "rustbuild"]
+c = []
+rustbuild = []
