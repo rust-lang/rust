@@ -938,21 +938,13 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let ancestors = trait_def.ancestors(impl_id);
 
-    let parent = match impl_item.node {
-        hir::ImplItemKind::Const(..) => {
-            ancestors.const_defs(tcx, impl_item.name).skip(1).next()
-                .map(|node_item| node_item.map(|parent| parent.defaultness))
-        }
-        hir::ImplItemKind::Method(..) => {
-            ancestors.fn_defs(tcx, impl_item.name).skip(1).next()
-                .map(|node_item| node_item.map(|parent| parent.defaultness))
-
-        }
-        hir::ImplItemKind::Type(_) => {
-            ancestors.type_defs(tcx, impl_item.name).skip(1).next()
-                .map(|node_item| node_item.map(|parent| parent.defaultness))
-        }
+    let kind = match impl_item.node {
+        hir::ImplItemKind::Const(..) => ty::AssociatedKind::Const,
+        hir::ImplItemKind::Method(..) => ty::AssociatedKind::Method,
+        hir::ImplItemKind::Type(_) => ty::AssociatedKind::Type
     };
+    let parent = ancestors.defs(tcx, impl_item.name, kind).skip(1).next()
+        .map(|node_item| node_item.map(|parent| parent.defaultness));
 
     if let Some(parent) = parent {
         if parent.item.is_final() {
@@ -975,93 +967,77 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Locate trait definition and items
     let tcx = ccx.tcx;
     let trait_def = tcx.lookup_trait_def(impl_trait_ref.def_id);
-    let trait_items = tcx.trait_items(impl_trait_ref.def_id);
     let mut overridden_associated_type = None;
 
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items {
-        let ty_impl_item = tcx.impl_or_trait_item(tcx.map.local_def_id(impl_item.id));
-        let ty_trait_item = trait_items.iter()
-            .find(|ac| ac.name() == ty_impl_item.name());
+        let ty_impl_item = tcx.associated_item(tcx.map.local_def_id(impl_item.id));
+        let ty_trait_item = tcx.associated_items(impl_trait_ref.def_id)
+            .find(|ac| ac.name == ty_impl_item.name);
 
         // Check that impl definition matches trait definition
         if let Some(ty_trait_item) = ty_trait_item {
             match impl_item.node {
                 hir::ImplItemKind::Const(..) => {
-                    let impl_const = match ty_impl_item {
-                        ty::ConstTraitItem(ref cti) => cti,
-                        _ => span_bug!(impl_item.span, "non-const impl-item for const")
-                    };
-
                     // Find associated const definition.
-                    if let &ty::ConstTraitItem(ref trait_const) = ty_trait_item {
+                    if ty_trait_item.kind == ty::AssociatedKind::Const {
                         compare_const_impl(ccx,
-                                           &impl_const,
+                                           &ty_impl_item,
                                            impl_item.span,
-                                           trait_const,
+                                           &ty_trait_item,
                                            &impl_trait_ref);
                     } else {
                          let mut err = struct_span_err!(tcx.sess, impl_item.span, E0323,
                                   "item `{}` is an associated const, \
                                   which doesn't match its trait `{:?}`",
-                                  impl_const.name,
+                                  ty_impl_item.name,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
                          // We can only get the spans from local trait definition
                          // Same for E0324 and E0325
-                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
+                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id) {
                             err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
                     }
                 }
                 hir::ImplItemKind::Method(_, ref body) => {
-                    let impl_method = match ty_impl_item {
-                        ty::MethodTraitItem(ref mti) => mti,
-                        _ => span_bug!(impl_item.span, "non-method impl-item for method")
-                    };
-
-                    let trait_span = tcx.map.span_if_local(ty_trait_item.def_id());
-                    if let &ty::MethodTraitItem(ref trait_method) = ty_trait_item {
+                    let trait_span = tcx.map.span_if_local(ty_trait_item.def_id);
+                    if ty_trait_item.kind == ty::AssociatedKind::Method {
                         compare_impl_method(ccx,
-                                            &impl_method,
+                                            &ty_impl_item,
                                             impl_item.span,
                                             body.id,
-                                            &trait_method,
+                                            &ty_trait_item,
                                             &impl_trait_ref,
                                             trait_span);
                     } else {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0324,
                                   "item `{}` is an associated method, \
                                   which doesn't match its trait `{:?}`",
-                                  impl_method.name,
+                                  ty_impl_item.name,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
-                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
+                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id) {
                             err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
                     }
                 }
                 hir::ImplItemKind::Type(_) => {
-                    let impl_type = match ty_impl_item {
-                        ty::TypeTraitItem(ref tti) => tti,
-                        _ => span_bug!(impl_item.span, "non-type impl-item for type")
-                    };
-
-                    if let &ty::TypeTraitItem(ref at) = ty_trait_item {
-                        if let Some(_) = at.ty {
+                    if ty_trait_item.kind == ty::AssociatedKind::Type {
+                        if ty_trait_item.has_value {
                             overridden_associated_type = Some(impl_item);
                         }
                     } else {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0325,
                                   "item `{}` is an associated type, \
                                   which doesn't match its trait `{:?}`",
-                                  impl_type.name,
+                                  ty_impl_item.name,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
-                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
+                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id) {
                             err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
@@ -1074,49 +1050,21 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 
     // Check for missing items from trait
-    let provided_methods = tcx.provided_trait_methods(impl_trait_ref.def_id);
     let mut missing_items = Vec::new();
     let mut invalidated_items = Vec::new();
     let associated_type_overridden = overridden_associated_type.is_some();
-    for trait_item in trait_items.iter() {
-        let is_implemented;
-        let is_provided;
-
-        match *trait_item {
-            ty::ConstTraitItem(ref associated_const) => {
-                is_provided = associated_const.has_value;
-                is_implemented = impl_items.iter().any(|ii| {
-                    match ii.node {
-                        hir::ImplItemKind::Const(..) => {
-                            ii.name == associated_const.name
-                        }
-                        _ => false,
-                    }
-                });
-            }
-            ty::MethodTraitItem(ref trait_method) => {
-                is_provided = provided_methods.iter().any(|m| m.name == trait_method.name);
-                is_implemented = trait_def.ancestors(impl_id)
-                    .fn_defs(tcx, trait_method.name)
-                    .next()
-                    .map(|node_item| !node_item.node.is_from_trait())
-                    .unwrap_or(false);
-            }
-            ty::TypeTraitItem(ref trait_assoc_ty) => {
-                is_provided = trait_assoc_ty.ty.is_some();
-                is_implemented = trait_def.ancestors(impl_id)
-                    .type_defs(tcx, trait_assoc_ty.name)
-                    .next()
-                    .map(|node_item| !node_item.node.is_from_trait())
-                    .unwrap_or(false);
-            }
-        }
+    for trait_item in tcx.associated_items(impl_trait_ref.def_id) {
+        let is_implemented = trait_def.ancestors(impl_id)
+            .defs(tcx, trait_item.name, trait_item.kind)
+            .next()
+            .map(|node_item| !node_item.node.is_from_trait())
+            .unwrap_or(false);
 
         if !is_implemented {
-            if !is_provided {
-                missing_items.push(trait_item.name());
+            if !trait_item.has_value {
+                missing_items.push(trait_item.name);
             } else if associated_type_overridden {
-                invalidated_items.push(trait_item.name());
+                invalidated_items.push(trait_item.name);
             }
         }
     }
@@ -1349,19 +1297,6 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                                   })
                                   .collect();
         Ok(r)
-    }
-
-    fn trait_defines_associated_type_named(&self,
-                                           trait_def_id: DefId,
-                                           assoc_name: ast::Name)
-                                           -> bool
-    {
-        self.tcx().impl_or_trait_items(trait_def_id).iter().any(|&def_id| {
-            match self.tcx().impl_or_trait_item(def_id) {
-                ty::TypeTraitItem(ref item) => item.name == assoc_name,
-                _ => false
-            }
-        })
     }
 
     fn ty_infer(&self, _span: Span) -> Ty<'tcx> {
@@ -1608,12 +1543,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// As `instantiate_type_scheme`, but for the bounds found in a
     /// generic type scheme.
-    fn instantiate_bounds(&self,
-                          span: Span,
-                          substs: &Substs<'tcx>,
-                          bounds: &ty::GenericPredicates<'tcx>)
-                          -> ty::InstantiatedPredicates<'tcx>
-    {
+    fn instantiate_bounds(&self, span: Span, def_id: DefId, substs: &Substs<'tcx>)
+                          -> ty::InstantiatedPredicates<'tcx> {
+        let bounds = self.tcx.lookup_predicates(def_id);
         let result = bounds.instantiate(self.tcx, substs);
         let result = self.normalize_associated_types_in(span, &result.predicates);
         debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}",
@@ -3254,8 +3186,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
 
             // Check bounds on type arguments used in the path.
-            let type_predicates = self.tcx.lookup_predicates(did);
-            let bounds = self.instantiate_bounds(path.span, substs, &type_predicates);
+            let bounds = self.instantiate_bounds(path.span, did, substs);
             let cause = traits::ObligationCause::new(path.span, self.body_id,
                                                      traits::ItemObligation(did));
             self.add_obligations_for_parameters(cause, &bounds);
@@ -4122,7 +4053,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Case 3. Reference to a method or associated const.
             Def::Method(def_id) |
             Def::AssociatedConst(def_id) => {
-                let container = self.tcx.impl_or_trait_item(def_id).container();
+                let container = self.tcx.associated_item(def_id).container;
                 match container {
                     ty::TraitContainer(trait_did) => {
                         callee::check_legal_trait_for_method_call(self.ccx, span, trait_did)
@@ -4263,13 +4194,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
         let scheme = self.tcx.lookup_item_type(def.def_id());
-        let type_predicates = self.tcx.lookup_predicates(def.def_id());
         assert!(!substs.has_escaping_regions());
         assert!(!scheme.ty.has_escaping_regions());
 
         // Add all the obligations that are required, substituting and
         // normalized appropriately.
-        let bounds = self.instantiate_bounds(span, &substs, &type_predicates);
+        let bounds = self.instantiate_bounds(span, def.def_id(), &substs);
         self.add_obligations_for_parameters(
             traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def.def_id())),
             &bounds);
