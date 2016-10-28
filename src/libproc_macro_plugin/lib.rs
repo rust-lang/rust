@@ -13,42 +13,13 @@
 //! A library for procedural macro writers.
 //!
 //! ## Usage
-//! This package provides the `qquote!` macro for syntax creation, and the prelude
-//! (at libproc_macro::prelude) provides a number of operations:
-//! - `concat`, for concatenating two TokenStreams.
-//! - `ident_eq`, for checking if two identifiers are equal regardless of syntax context.
-//! - `str_to_token_ident`, for converting an `&str` into a Token.
-//! - `keyword_to_token_delim`, for converting a `parse::token::keywords::Keyword` into a
-//!    Token.
-//! - `build_delimited`, for creating a new TokenStream from an existing one and a delimiter
-//!    by wrapping the TokenStream in the delimiter.
-//! - `build_bracket_delimited`, `build_brace_delimited`, and `build_paren_delimited`, for
-//!    easing the above.
-//! - `build_empty_args`, which returns a TokenStream containing `()`.
-//! - `lex`, which takes an `&str` and returns the TokenStream it represents.
+//! This crate provides the `qquote!` macro for syntax creation.
 //!
-//! The `qquote!` macro also imports `syntax::ext::proc_macro_shim::prelude::*`, so you
+//! The `qquote!` macro imports `syntax::ext::proc_macro_shim::prelude::*`, so you
 //! will need to `extern crate syntax` for usage. (This is a temporary solution until more
-//! of the external API in libproc_macro is stabilized to support the token construction
+//! of the external API in libproc_macro_tokens is stabilized to support the token construction
 //! operations that the qausiquoter relies on.) The shim file also provides additional
 //! operations, such as `build_block_emitter` (as used in the `cond` example below).
-//!
-//! ## TokenStreams
-//!
-//! TokenStreams serve as the basis of the macro system. They are, in essence, vectors of
-//! TokenTrees, where indexing treats delimited values as a single term. That is, the term
-//! `even(a+c) && even(b)` will be indexibly encoded as `even | (a+c) | even | (b)` where,
-//! in reality, `(a+c)` is actually a decorated pointer to `a | + | c`.
-//!
-//! If a user has a TokenStream that is a single, delimited value, they can use
-//! `maybe_delimited` to destruct it and receive the internal vector as a new TokenStream
-//! as:
-//! ```
-//! `(a+c)`.maybe_delimited() ~> Some(a | + | c)`
-//! ```
-//!
-//! Check the TokenStream documentation for more information; the structure also provides
-//! cheap concatenation and slicing.
 //!
 //! ## Quasiquotation
 //!
@@ -118,12 +89,11 @@
 extern crate rustc_plugin;
 extern crate syntax;
 extern crate syntax_pos;
+extern crate proc_macro_tokens;
 #[macro_use] extern crate log;
 
 mod qquote;
-pub mod build;
-pub mod parse;
-pub mod prelude;
+
 use qquote::qquote;
 
 use rustc_plugin::Registry;
