@@ -192,12 +192,13 @@ impl CStore {
         let mut libs = self.metas
             .borrow()
             .iter()
-            .map(|(&cnum, data)| {
-                (cnum,
-                 match prefer {
-                     LinkagePreference::RequireDynamic => data.source.dylib.clone().map(|p| p.0),
-                     LinkagePreference::RequireStatic => data.source.rlib.clone().map(|p| p.0),
-                 })
+            .filter_map(|(&cnum, data)| {
+                if data.dep_kind.get() == DepKind::MacrosOnly { return None; }
+                let path = match prefer {
+                    LinkagePreference::RequireDynamic => data.source.dylib.clone().map(|p| p.0),
+                    LinkagePreference::RequireStatic => data.source.rlib.clone().map(|p| p.0),
+                };
+                Some((cnum, path))
             })
             .collect::<Vec<_>>();
         libs.sort_by(|&(a, _), &(b, _)| {

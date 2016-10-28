@@ -22,7 +22,7 @@ use {NameBinding, NameBindingKind, ToNameBinding};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
-use rustc::middle::cstore::LoadedMacros;
+use rustc::middle::cstore::{DepKind, LoadedMacros};
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::ty;
@@ -499,8 +499,9 @@ impl<'b> Resolver<'b> {
 
     fn get_extern_crate_root(&mut self, cnum: CrateNum) -> Module<'b> {
         let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+        let macros_only = self.session.cstore.dep_kind(cnum) == DepKind::MacrosOnly;
         let arenas = self.arenas;
-        *self.extern_crate_roots.entry(cnum).or_insert_with(|| {
+        *self.extern_crate_roots.entry((cnum, macros_only)).or_insert_with(|| {
             arenas.alloc_module(ModuleS {
                 populated: Cell::new(false),
                 ..ModuleS::new(None, ModuleKind::Def(Def::Mod(def_id), keywords::Invalid.name()))

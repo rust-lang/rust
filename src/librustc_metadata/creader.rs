@@ -67,16 +67,12 @@ fn dump_crates(cstore: &CStore) {
     })
 }
 
-fn should_link(i: &ast::Item) -> bool {
-    !attr::contains_name(&i.attrs, "no_link")
-}
-
 #[derive(Debug)]
 struct ExternCrateInfo {
     ident: String,
     name: String,
     id: ast::NodeId,
-    should_link: bool,
+    dep_kind: DepKind,
 }
 
 fn register_native_lib(sess: &Session,
@@ -168,7 +164,11 @@ impl<'a> CrateLoader<'a> {
                     ident: i.ident.to_string(),
                     name: name,
                     id: i.id,
-                    should_link: should_link(i),
+                    dep_kind: if attr::contains_name(&i.attrs, "no_link") {
+                        DepKind::MacrosOnly
+                    } else {
+                        DepKind::Explicit
+                    },
                 })
             }
             _ => None
@@ -283,7 +283,7 @@ impl<'a> CrateLoader<'a> {
 
         let Library { dylib, rlib, metadata } = lib;
 
-        let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span);
+        let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
         if crate_root.macro_derive_registrar.is_some() {
             self.sess.span_err(span, "crates of the `proc-macro` crate type \
@@ -427,7 +427,8 @@ impl<'a> CrateLoader<'a> {
                           crate_root: &CrateRoot,
                           metadata: &MetadataBlob,
                           krate: CrateNum,
-                          span: Span)
+                          span: Span,
+                          dep_kind: DepKind)
                           -> cstore::CrateNumMap {
         debug!("resolving deps of external crate");
         // The map from crate numbers in the crate we're resolving to local crate
@@ -435,13 +436,14 @@ impl<'a> CrateLoader<'a> {
         let deps = crate_root.crate_deps.decode(metadata);
         let map: FxHashMap<_, _> = deps.enumerate().map(|(crate_num, dep)| {
             debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
-            let (local_cnum, ..) = self.resolve_crate(root,
-                                                        &dep.name.as_str(),
-                                                        &dep.name.as_str(),
-                                                        Some(&dep.hash),
-                                                        span,
-                                                        PathKind::Dependency,
-                                                        dep.kind);
+            let dep_name = &dep.name.as_str();
+            let dep_kind = match dep_kind {
+                DepKind::MacrosOnly => DepKind::MacrosOnly,
+                _ => dep.kind,
+            };
+            let (local_cnum, ..) = self.resolve_crate(
+                root, dep_name, dep_name, Some(&dep.hash), span, PathKind::Dependency, dep_kind,
+            );
             (CrateNum::new(crate_num + 1), local_cnum)
         }).collect();
 
@@ -455,8 +457,8 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn read_extension_crate(&mut self, span: Span, info: &ExternCrateInfo) -> ExtensionCrate {
-        info!("read extension crate {} `extern crate {} as {}` linked={}",
-              info.id, info.name, info.ident, info.should_link);
+        info!("read extension crate {} `extern crate {} as {}` dep_kind={:?}",
+              info.id, info.name, info.ident, info.dep_kind);
         let target_triple = &self.sess.opts.target_triple[..];
         let is_cross = target_triple != config::host_triple();
         let mut target_only = false;
@@ -641,7 +643,7 @@ impl<'a> CrateLoader<'a> {
              name: name.to_string(),
              ident: name.to_string(),
              id: ast::DUMMY_NODE_ID,
-             should_link: false,
+             dep_kind: DepKind::MacrosOnly,
         });
 
         if ekrate.target_only {
@@ -984,30 +986,26 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
             let ekrate = self.read_extension_crate(item.span, &info);
             let loaded_macros = self.read_macros(item, &ekrate);
 
-            // If this is a proc-macro crate or `#[no_link]` crate, it is only used at compile time,
-            // so we return here to avoid registering the crate.
-            if loaded_macros.is_proc_macros() || !info.should_link {
+            // If this is a proc-macro crate, return here to avoid registering.
+            if loaded_macros.is_proc_macros() {
                 return Some(loaded_macros);
             }
 
             // Register crate now to avoid double-reading metadata
             if let PMDSource::Owned(lib) = ekrate.metadata {
                 if ekrate.target_only || config::host_triple() == self.sess.opts.target_triple {
-                    let ExternCrateInfo { ref ident, ref name, .. } = info;
-                    self.register_crate(&None, ident, name, item.span, lib, DepKind::Explicit);
+                    let ExternCrateInfo { ref ident, ref name, dep_kind, .. } = info;
+                    self.register_crate(&None, ident, name, item.span, lib, dep_kind);
                 }
             }
 
             Some(loaded_macros)
         } else {
-            if !info.should_link {
-                return None;
-            }
             None
         };
 
         let (cnum, ..) = self.resolve_crate(
-            &None, &info.ident, &info.name, None, item.span, PathKind::Crate, DepKind::Explicit,
+            &None, &info.ident, &info.name, None, item.span, PathKind::Crate, info.dep_kind,
         );
 
         let def_id = definitions.opt_local_def_id(item.id).unwrap();
