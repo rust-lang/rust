@@ -55,15 +55,13 @@ pub struct MoveDataParamEnv<'tcx> {
     param_env: ty::ParameterEnvironment<'tcx>,
 }
 
-pub fn borrowck_mir<'a, 'tcx: 'a>(
-    bcx: &mut BorrowckCtxt<'a, 'tcx>,
-    fk: FnKind,
-    _decl: &hir::FnDecl,
-    mir: &'a Mir<'tcx>,
-    body: &hir::Block,
-    _sp: Span,
-    id: ast::NodeId,
-    attributes: &[ast::Attribute]) {
+pub fn borrowck_mir(bcx: &mut BorrowckCtxt,
+                    fk: FnKind,
+                    _decl: &hir::FnDecl,
+                    body: &hir::Block,
+                    _sp: Span,
+                    id: ast::NodeId,
+                    attributes: &[ast::Attribute]) {
     match fk {
         FnKind::ItemFn(name, ..) |
         FnKind::Method(name, ..) => {
@@ -75,8 +73,10 @@ pub fn borrowck_mir<'a, 'tcx: 'a>(
     }
 
     let tcx = bcx.tcx;
-
     let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+
+    let mir = &tcx.item_mir(tcx.map.local_def_id(id));
+
     let move_data = MoveData::gather_moves(mir, tcx, &param_env);
     let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
     let flow_inits =
@@ -170,8 +170,8 @@ pub struct MirBorrowckCtxt<'b, 'a: 'b, 'tcx: 'a> {
     mir: &'b Mir<'tcx>,
     node_id: ast::NodeId,
     move_data: MoveData<'tcx>,
-    flow_inits: DataflowResults<MaybeInitializedLvals<'a, 'tcx>>,
-    flow_uninits: DataflowResults<MaybeUninitializedLvals<'a, 'tcx>>
+    flow_inits: DataflowResults<MaybeInitializedLvals<'b, 'tcx>>,
+    flow_uninits: DataflowResults<MaybeUninitializedLvals<'b, 'tcx>>
 }
 
 impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {

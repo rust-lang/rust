@@ -44,7 +44,6 @@ use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::dep_graph::{DepNode, WorkProduct};
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
-use rustc::mir::mir_map::MirMap;
 use session::config::{self, NoDebugInfo};
 use rustc_incremental::IncrementalHashesMap;
 use session::Session;
@@ -866,7 +865,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             false
         };
 
-        let mir = def_id.and_then(|id| ccx.get_mir(id));
+        let mir = def_id.map(|id| ccx.tcx().item_mir(id));
 
         let debug_context = if let (false, Some((instance, sig, abi)), &Some(ref mir)) =
                 (no_debug, definition, &mir) {
@@ -1278,8 +1277,7 @@ fn write_metadata(cx: &SharedCrateContext,
     let metadata = cstore.encode_metadata(cx.tcx(),
                                           cx.export_map(),
                                           cx.link_meta(),
-                                          reachable_ids,
-                                          cx.mir_map());
+                                          reachable_ids);
     if kind == MetadataKind::Uncompressed {
         return metadata;
     }
@@ -1527,7 +1525,6 @@ pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
 }
 
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             mir_map: &MirMap<'tcx>,
                              analysis: ty::CrateAnalysis,
                              incremental_hashes_map: &IncrementalHashesMap)
                              -> CrateTranslation {
@@ -1551,7 +1548,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let link_meta = link::build_link_meta(incremental_hashes_map, name);
 
     let shared_ccx = SharedCrateContext::new(tcx,
-                                             &mir_map,
                                              export_map,
                                              Sha256::new(),
                                              link_meta.clone(),

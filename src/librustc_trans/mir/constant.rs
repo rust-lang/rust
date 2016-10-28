@@ -261,9 +261,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             }
         }
 
-        let mir = ccx.get_mir(instance.def).unwrap_or_else(|| {
-            bug!("missing constant MIR for {}", instance)
-        });
+        let mir = ccx.tcx().item_mir(instance.def);
         MirConstContext::new(ccx, &mir, instance.substs, args).trans()
     }
 
