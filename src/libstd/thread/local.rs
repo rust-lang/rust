@@ -358,7 +358,7 @@ pub mod elf {
         }
     }
 
-    #[cfg(any(target_os = "linux", target_os = "fuchsia"))]
+    #[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "redox"))]
     unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
         // The fallback implementation uses a vanilla OS-based TLS key to track
         // the list of destructors that need to be run for this thread. The key
@@ -437,7 +437,7 @@ pub mod elf {
 
     // Just use the thread_local fallback implementation, at least until there's
     // a more direct implementation.
-    #[cfg(target_os = "fuchsia")]
+    #[cfg(any(target_os = "fuchsia", target_os = "redox"))]
     unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
         register_dtor_fallback(t, dtor);
     }

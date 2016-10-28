@@ -316,13 +316,13 @@ extern crate rustc_unicode;
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
-extern crate unwind;
+//REDOX TODO extern crate unwind;
 
 #[cfg(stage0)]
 extern crate alloc_system;
 
 // compiler-rt intrinsics
-extern crate compiler_builtins;
+//REDOX TODO extern crate compiler_builtins;
 
 // Make std testable by not duplicating lang items and other globals. See #2912
 #[cfg(test)] extern crate std as realstd;
@@ -456,6 +456,8 @@ mod memchr;
 #[macro_use]
 #[path = "sys/common/mod.rs"] mod sys_common;
 
+#[cfg(redox)]
+#[path = "sys/redox/mod.rs"] mod sys;
 #[cfg(unix)]
 #[path = "sys/unix/mod.rs"] mod sys;
 #[cfg(windows)]
