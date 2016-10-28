@@ -175,8 +175,7 @@ impl Command {
         si.dwFlags = c::STARTF_USESTDHANDLES;
 
         let program = program.as_ref().unwrap_or(&self.program);
-        let mut cmd_str = make_command_line(program, &self.args)?;
-        cmd_str.push(0); // add null terminator
+        let (app_name, cmd_str) = make_command_line(program, &self.args, &self.env)?;
 
         // stolen from the libuv code.
         let mut flags = c::CREATE_UNICODE_ENVIRONMENT;
@@ -220,7 +219,7 @@ impl Command {
         si.hStdError = stderr.raw();
 
         unsafe {
-            cvt(c::CreateProcessW(ptr::null(),
+            cvt(c::CreateProcessW(app_name.unwrap_or(ptr::null()),
                                   cmd_str.as_mut_ptr(),
                                   ptr::null_mut(),
                                   ptr::null_mut(),
@@ -424,7 +423,31 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
 
 // Produces a wide string *without terminating null*; returns an error if
 // `prog` or any of the `args` contain a nul.
-fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
+fn make_command_line(prog: &OsStr, args: &[OsString],
+                     env: Option<&collections::HashMap<OsString, OsString>>)
+                     -> io::Result<(Option<Vec<u16>>, Vec<u16>)> {
+    // If the program is a BATCH file we must start the command interpreter; set
+    // ApplicationName to cmd.exe and set CommandLine to the following arguments:
+    // `/c` plus the name of the batch file.
+    let mut app: Option<Vec<u16>> = None;
+    let ext = Path::new(prog).extension();
+    let batch = env::consts::BATCH_EXTENSIONS.iter().find(|&&x| x == ext);
+    if batch.is_some() {
+        if let Some(e) = env {
+            if let Some(cmd_exe) = e.get("COMSPEC") {
+                app = Some(ensure_no_nuls(cmd_exe)?.encode_wide().collect());
+            }
+        }
+        // If we were unable to find COMSPEC, default to `cmd.exe`
+        if !app.is_some() {
+            app = Some(OsStr::new("cmd.exe").encode_wide().collect());
+        }
+        // Prepend the argument to the program
+        let mut cmd_prog = OsString::from("cmd /c ");
+        cmd_prog.push(prog);
+        let prog = cmd_prog.as_os_str();
+    }
+
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
@@ -433,7 +456,9 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
         cmd.push(' ' as u16);
         append_arg(&mut cmd, arg)?;
     }
-    return Ok(cmd);
+
+    cmd.push(0); // add null terminator
+    return Ok((app, cmd));
 
     fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr) -> io::Result<()> {
         // If an argument has 0 characters then we need to quote it to ensure
@@ -498,7 +523,6 @@ fn make_envp(env: Option<&collections::HashMap<OsString, OsString>>)
 }
 
 fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
-
     match d {
         Some(dir) => {
             let mut dir_str: Vec<u16> = ensure_no_nuls(dir)?.encode_wide().collect();
@@ -515,12 +539,13 @@ mod tests {
     use super::make_command_line;
 
     #[test]
-    fn test_make_command_line() {
+    fn test_make_command_line_with_out_env() {
         fn test_wrapper(prog: &str, args: &[&str]) -> String {
             let command_line = &make_command_line(OsStr::new(prog),
                                                   &args.iter()
                                                        .map(|a| OsString::from(a))
-                                                       .collect::<Vec<OsString>>())
+                                                       .collect::<Vec<OsString>>(),
+                                                  None)
                                     .unwrap();
             String::from_utf16(command_line).unwrap()
         }
