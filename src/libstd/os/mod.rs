@@ -13,6 +13,9 @@
 #![stable(feature = "os", since = "1.0.0")]
 #![allow(missing_docs, bad_style)]
 
+#[cfg(redox)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use sys::ext as unix;
 #[cfg(unix)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use sys::ext as unix;

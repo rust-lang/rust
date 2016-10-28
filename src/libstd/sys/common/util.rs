@@ -33,6 +33,12 @@ pub fn dumb_print(args: fmt::Arguments) {
     let _ = Stderr::new().map(|mut stderr| stderr.write_fmt(args));
 }
 
+// On Redox, use an illegal instruction
+#[cfg(redox)]
+unsafe fn abort_internal() -> ! {
+    ::intrinsics::abort()
+}
+
 // On Unix-like platforms, libc::abort will unregister signal handlers
 // including the SIGABRT handler, preventing the abort from being blocked, and
 // fclose streams, with the side effect of flushing them so libc bufferred
