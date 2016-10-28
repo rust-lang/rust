@@ -1111,8 +1111,10 @@ pub struct Resolver<'a> {
     pub exported_macros: Vec<ast::MacroDef>,
     crate_loader: &'a mut CrateLoader,
     macro_names: FxHashSet<Name>,
-    builtin_macros: FxHashMap<Name, Rc<SyntaxExtension>>,
+    builtin_macros: FxHashMap<Name, DefId>,
     lexical_macro_resolutions: Vec<(Name, LegacyScope<'a>)>,
+    macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
+    macro_exports: Vec<Export>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
     invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
@@ -1305,6 +1307,8 @@ impl<'a> Resolver<'a> {
             macro_names: FxHashSet(),
             builtin_macros: FxHashMap(),
             lexical_macro_resolutions: Vec::new(),
+            macro_map: FxHashMap(),
+            macro_exports: Vec::new(),
             invocations: invocations,
         }
     }
@@ -1323,13 +1327,6 @@ impl<'a> Resolver<'a> {
 
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
-        // Collect `DefId`s for exported macro defs.
-        for def in &krate.exported_macros {
-            DefCollector::new(&mut self.definitions).with_parent(CRATE_DEF_INDEX, |collector| {
-                collector.visit_macro_def(def)
-            })
-        }
-
         self.current_module = self.graph_root;
         visit::walk_crate(self, krate);
 

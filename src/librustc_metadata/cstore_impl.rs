@@ -17,6 +17,7 @@ use rustc::middle::cstore::{InlinedItem, CrateStore, CrateSource, DepKind, Exter
 use rustc::middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
 use rustc::hir::def::{self, Def};
 use rustc::middle::lang_items;
+use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 
@@ -30,7 +31,8 @@ use rustc_back::PanicStrategy;
 use std::path::PathBuf;
 use syntax::ast;
 use syntax::attr;
-use syntax::parse::token;
+use syntax::parse::{token, new_parser_from_source_str};
+use syntax_pos::mk_sp;
 use rustc::hir::svh::Svh;
 use rustc_back::target::Target;
 use rustc::hir;
@@ -349,6 +351,43 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(def_id.krate)
             .each_child_of_item(def_id.index, |child| result.push(child));
         result
+    }
+
+    fn load_macro(&self, id: DefId, sess: &Session) -> ast::MacroDef {
+        let (name, def) = self.get_crate_data(id.krate).get_macro(id.index);
+        let source_name = format!("<{} macros>", name);
+
+        // NB: Don't use parse_tts_from_source_str because it parses with quote_depth > 0.
+        let mut parser = new_parser_from_source_str(&sess.parse_sess, source_name, def.body);
+
+        let lo = parser.span.lo;
+        let body = match parser.parse_all_token_trees() {
+            Ok(body) => body,
+            Err(mut err) => {
+                err.emit();
+                sess.abort_if_errors();
+                unreachable!();
+            }
+        };
+        let local_span = mk_sp(lo, parser.prev_span.hi);
+
+        // Mark the attrs as used
+        for attr in &def.attrs {
+            attr::mark_used(attr);
+        }
+
+        sess.imported_macro_spans.borrow_mut()
+            .insert(local_span, (def.name.as_str().to_string(), def.span));
+
+        ast::MacroDef {
+            ident: ast::Ident::with_empty_ctxt(def.name),
+            id: ast::DUMMY_NODE_ID,
+            span: local_span,
+            imported_from: None, // FIXME
+            allow_internal_unstable: attr::contains_name(&def.attrs, "allow_internal_unstable"),
+            attrs: def.attrs,
+            body: body,
+        }
     }
 
     fn maybe_get_item_ast<'a>(&'tcx self,
