@@ -644,6 +644,15 @@ impl<'a> State<'a> {
         }
     }
 
+    pub fn print_expr_id(&mut self, expr_id: &hir::ExprId) -> io::Result<()> {
+        if let Some(krate) = self.krate {
+            let expr = &krate.exprs[expr_id];
+            self.print_expr(expr)
+        } else {
+            Ok(())
+        }
+    }
+
     /// Pretty-print an item
     pub fn print_item(&mut self, item: &hir::Item) -> io::Result<()> {
         self.hardbreak_if_not_bol()?;
@@ -729,7 +738,7 @@ impl<'a> State<'a> {
                 word(&mut self.s, " ")?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
-                self.print_expr(&body)?;
+                self.print_expr_id(body)?;
             }
             hir::ItemMod(ref _mod) => {
                 self.head(&visibility_qualified(&item.vis, "mod"))?;
@@ -1020,7 +1029,7 @@ impl<'a> State<'a> {
                     self.nbsp()?;
                     self.end()?; // need to close a box
                     self.end()?; // need to close a box
-                    self.print_expr(body)?;
+                    self.print_expr_id(body)?;
                 } else {
                     word(&mut self.s, ";")?;
                 }
@@ -1065,7 +1074,7 @@ impl<'a> State<'a> {
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
-                self.print_expr(body)?;
+                self.print_expr_id(body)?;
             }
             hir::ImplItemKind::Type(ref ty) => {
                 self.print_associated_type(ii.name, None, Some(ty))?;
@@ -1432,7 +1441,7 @@ impl<'a> State<'a> {
                 space(&mut self.s)?;
 
                 // this is a bare expression
-                self.print_expr(body)?;
+                self.print_expr_id(body)?;
                 self.end()?; // need to close a box
 
                 // a box will be closed by print_expr, but we didn't want an overall

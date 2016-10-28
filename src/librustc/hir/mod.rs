@@ -460,6 +460,10 @@ impl Crate {
             visitor.visit_impl_item(impl_item);
         }
     }
+
+    pub fn expr(&self, id: ExprId) -> &Expr {
+        &self.exprs[&id]
+    }
 }
 
 /// A macro definition, in this crate or imported from another.
@@ -925,7 +929,7 @@ pub enum Expr_ {
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
-    ExprClosure(CaptureClause, P<FnDecl>, P<Expr>, Span),
+    ExprClosure(CaptureClause, P<FnDecl>, ExprId, Span),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
@@ -1079,7 +1083,7 @@ pub enum TraitItem_ {
     /// must contain a value)
     ConstTraitItem(P<Ty>, Option<P<Expr>>),
     /// A method with an optional body
-    MethodTraitItem(MethodSig, Option<P<Expr>>),
+    MethodTraitItem(MethodSig, Option<ExprId>),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type
     TypeTraitItem(TyParamBounds, Option<P<Ty>>),
@@ -1112,7 +1116,7 @@ pub enum ImplItemKind {
     /// of the expression
     Const(P<Ty>, P<Expr>),
     /// A method implementation with the given signature and body
-    Method(MethodSig, P<Expr>),
+    Method(MethodSig, ExprId),
     /// An associated type
     Type(P<Ty>),
 }
@@ -1557,7 +1561,7 @@ pub enum Item_ {
     /// A `const` item
     ItemConst(P<Ty>, P<Expr>),
     /// A function declaration
-    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Expr>),
+    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, ExprId),
     /// A module
     ItemMod(Mod),
     /// An external module
