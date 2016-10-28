@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
+use hir::map::definitions::DefPathData;
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyAdt};
@@ -56,17 +57,9 @@ fn fn_sig(f: &mut fmt::Formatter,
     Ok(())
 }
 
-/// Namespace of the path given to parameterized to print.
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum Ns {
-    Type,
-    Value
-}
-
 pub fn parameterized(f: &mut fmt::Formatter,
                      substs: &subst::Substs,
                      did: DefId,
-                     ns: Ns,
                      projections: &[ty::ProjectionPredicate])
                      -> fmt::Result {
     let mut verbose = false;
@@ -75,8 +68,34 @@ pub fn parameterized(f: &mut fmt::Formatter,
     let mut num_regions = 0;
     let mut num_types = 0;
     let mut item_name = None;
+    let mut is_value_path = false;
     let fn_trait_kind = ty::tls::with(|tcx| {
-        let mut generics = tcx.lookup_generics(did);
+        // Unfortunately, some kinds of items (e.g., closures) don't have
+        // generics. So walk back up the find the closest parent that DOES
+        // have them.
+        let mut item_def_id = did;
+        loop {
+            let key = tcx.def_key(item_def_id);
+            match key.disambiguated_data.data {
+                DefPathData::TypeNs(_) => {
+                    break;
+                }
+                DefPathData::ValueNs(_) | DefPathData::EnumVariant(_) => {
+                    is_value_path = true;
+                    break;
+                }
+                _ => {
+                    // if we're making a symbol for something, there ought
+                    // to be a value or type-def or something in there
+                    // *somewhere*
+                    item_def_id.index = key.parent.unwrap_or_else(|| {
+                        bug!("finding type for {:?}, encountered def-id {:?} with no \
+                             parent", did, item_def_id);
+                    });
+                }
+            }
+        }
+        let mut generics = tcx.lookup_generics(item_def_id);
         let mut path_def_id = did;
         verbose = tcx.sess.verbose();
         has_self = generics.has_self;
@@ -84,7 +103,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
         let mut child_types = 0;
         if let Some(def_id) = generics.parent {
             // Methods.
-            assert_eq!(ns, Ns::Value);
+            assert!(is_value_path);
             child_types = generics.types.len();
             generics = tcx.lookup_generics(def_id);
             num_regions = generics.regions.len();
@@ -97,7 +116,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
             item_name = Some(tcx.item_name(did));
             path_def_id = def_id;
         } else {
-            if ns == Ns::Value {
+            if is_value_path {
                 // Functions.
                 assert_eq!(has_self, false);
             } else {
@@ -192,7 +211,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
     start_or_continue(f, "", ">")?;
 
     // For values, also print their name and type parameters.
-    if ns == Ns::Value {
+    if is_value_path {
         empty.set(true);
 
         if has_self {
@@ -298,7 +317,6 @@ impl<'tcx> fmt::Display for TraitAndProjections<'tcx> {
         let TraitAndProjections(ref trait_ref, ref projection_bounds) = *self;
         parameterized(f, trait_ref.substs,
                       trait_ref.def_id,
-                      Ns::Type,
                       projection_bounds)
     }
 }
@@ -398,7 +416,7 @@ impl<'tcx> fmt::Debug for ty::ExistentialTraitRef<'tcx> {
             let trait_ref = tcx.lift(&ty::Binder(*self))
                                .expect("could not lift TraitRef for printing")
                                .with_self_ty(tcx, dummy_self).0;
-            parameterized(f, trait_ref.substs, trait_ref.def_id, Ns::Type, &[])
+            parameterized(f, trait_ref.substs, trait_ref.def_id, &[])
         })
     }
 }
@@ -798,7 +816,7 @@ impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<&'tcx ty::Region,
 
 impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        parameterized(f, self.substs, self.def_id, Ns::Type, &[])
+        parameterized(f, self.substs, self.def_id, &[])
     }
 }
 
@@ -851,7 +869,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 }
 
                 write!(f, "{} {{", bare_fn.sig.0)?;
-                parameterized(f, substs, def_id, Ns::Value, &[])?;
+                parameterized(f, substs, def_id, &[])?;
                 write!(f, "}}")
             }
             TyFnPtr(ref bare_fn) => {
@@ -874,7 +892,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                           !tcx.tcache.borrow().contains_key(&def.did) {
                         write!(f, "{}<..>", tcx.item_path_str(def.did))
                     } else {
-                        parameterized(f, substs, def.did, Ns::Type, &[])
+                        parameterized(f, substs, def.did, &[])
                     }
                 })
             }
