@@ -766,8 +766,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         // don't perform `after_expand` until after import resolution.
         after_expand(&krate)?;
 
-        resolver.resolve_crate(&krate);
-        Ok(())
+        sess.track_errors(|| resolver.resolve_crate(&krate))
     })?;
 
     // Lower ast -> hir.
