@@ -533,9 +533,7 @@ create_append_test!(test_append_1700, 1700);
 
 fn rand_data(len: usize) -> Vec<(u32, u32)> {
     let mut rng = DeterministicRng::new();
-    Vec::from_iter(
-        (0..len).map(|_| (rng.next(), rng.next()))
-    )
+    Vec::from_iter((0..len).map(|_| (rng.next(), rng.next())))
 }
 
 #[test]

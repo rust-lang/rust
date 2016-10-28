@@ -15,45 +15,51 @@ use super::DeterministicRng;
 
 #[test]
 fn test_clone_eq() {
-  let mut m = BTreeSet::new();
+    let mut m = BTreeSet::new();
 
-  m.insert(1);
-  m.insert(2);
+    m.insert(1);
+    m.insert(2);
 
-  assert!(m.clone() == m);
+    assert!(m.clone() == m);
 }
 
 #[test]
 fn test_hash() {
-  let mut x = BTreeSet::new();
-  let mut y = BTreeSet::new();
+    let mut x = BTreeSet::new();
+    let mut y = BTreeSet::new();
 
-  x.insert(1);
-  x.insert(2);
-  x.insert(3);
+    x.insert(1);
+    x.insert(2);
+    x.insert(3);
 
-  y.insert(3);
-  y.insert(2);
-  y.insert(1);
+    y.insert(3);
+    y.insert(2);
+    y.insert(1);
 
-  assert!(::hash(&x) == ::hash(&y));
+    assert!(::hash(&x) == ::hash(&y));
 }
 
-fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F) where
-    F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut FnMut(&i32) -> bool) -> bool,
+fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)
+    where F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut FnMut(&i32) -> bool) -> bool
 {
     let mut set_a = BTreeSet::new();
     let mut set_b = BTreeSet::new();
 
-    for x in a { assert!(set_a.insert(*x)) }
-    for y in b { assert!(set_b.insert(*y)) }
+    for x in a {
+        assert!(set_a.insert(*x))
+    }
+    for y in b {
+        assert!(set_b.insert(*y))
+    }
 
     let mut i = 0;
-    f(&set_a, &set_b, &mut |&x| {
-        assert_eq!(x, expected[i]);
-        i += 1;
-        true
-    });
+    f(&set_a,
+      &set_b,
+      &mut |&x| {
+          assert_eq!(x, expected[i]);
+          i += 1;
+          true
+      });
     assert_eq!(i, expected.len());
 }
 
@@ -82,9 +88,7 @@ fn test_difference() {
     check_difference(&[], &[], &[]);
     check_difference(&[1, 12], &[], &[1, 12]);
     check_difference(&[], &[1, 2, 3, 9], &[]);
-    check_difference(&[1, 3, 5, 9, 11],
-                     &[3, 9],
-                     &[1, 5, 11]);
+    check_difference(&[1, 3, 5, 9, 11], &[3, 9], &[1, 5, 11]);
     check_difference(&[-5, 11, 22, 33, 40, 42],
                      &[-12, -5, 14, 23, 34, 38, 39, 50],
                      &[11, 22, 33, 40, 42]);
@@ -245,10 +249,18 @@ fn test_recovery() {
 fn test_variance() {
     use std::collections::btree_set::{IntoIter, Iter, Range};
 
-    fn set<'new>(v: BTreeSet<&'static str>) -> BTreeSet<&'new str> { v }
-    fn iter<'a, 'new>(v: Iter<'a, &'static str>) -> Iter<'a, &'new str> { v }
-    fn into_iter<'new>(v: IntoIter<&'static str>) -> IntoIter<&'new str> { v }
-    fn range<'a, 'new>(v: Range<'a, &'static str>) -> Range<'a, &'new str> { v }
+    fn set<'new>(v: BTreeSet<&'static str>) -> BTreeSet<&'new str> {
+        v
+    }
+    fn iter<'a, 'new>(v: Iter<'a, &'static str>) -> Iter<'a, &'new str> {
+        v
+    }
+    fn into_iter<'new>(v: IntoIter<&'static str>) -> IntoIter<&'new str> {
+        v
+    }
+    fn range<'a, 'new>(v: Range<'a, &'static str>) -> Range<'a, &'new str> {
+        v
+    }
 }
 
 #[test]
@@ -277,9 +289,7 @@ fn test_append() {
 
 fn rand_data(len: usize) -> Vec<u32> {
     let mut rng = DeterministicRng::new();
-    Vec::from_iter(
-        (0..len).map(|_| rng.next())
-    )
+    Vec::from_iter((0..len).map(|_| rng.next()))
 }
 
 #[test]
