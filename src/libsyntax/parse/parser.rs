@@ -6145,15 +6145,20 @@ impl<'a> Parser<'a> {
     /// MOD_SEP? LBRACE item_seq RBRACE
     fn parse_view_path(&mut self) -> PResult<'a, P<ViewPath>> {
         let lo = self.span.lo;
-        if self.check(&token::OpenDelim(token::Brace)) || self.is_import_coupler() {
-            // `{foo, bar}` or `::{foo, bar}`
+        if self.check(&token::OpenDelim(token::Brace)) || self.check(&token::BinOp(token::Star)) ||
+           self.is_import_coupler() {
+            // `{foo, bar}`, `::{foo, bar}`, `*`, or `::*`.
             let prefix = ast::Path {
                 global: self.eat(&token::ModSep),
                 segments: Vec::new(),
                 span: mk_sp(lo, self.span.hi),
             };
-            let items = self.parse_path_list_items()?;
-            Ok(P(spanned(lo, self.span.hi, ViewPathList(prefix, items))))
+            let view_path_kind = if self.eat(&token::BinOp(token::Star)) {
+                ViewPathGlob(prefix)
+            } else {
+                ViewPathList(prefix, self.parse_path_list_items()?)
+            };
+            Ok(P(spanned(lo, self.span.hi, view_path_kind)))
         } else {
             let prefix = self.parse_path(PathStyle::Mod)?;
             if self.is_import_coupler() {
