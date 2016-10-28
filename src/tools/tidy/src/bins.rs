@@ -44,28 +44,27 @@ pub fn check(path: &Path, bad: &mut bool) {
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".py", ".sh"];
         if extensions.iter().any(|e| filename.ends_with(e)) {
-            return
+            return;
         }
 
         let metadata = t!(fs::symlink_metadata(&file), &file);
         if metadata.mode() & 0o111 != 0 {
             let rel_path = file.strip_prefix(path).unwrap();
             let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");
-            let ret_code = Command::new("git")
-                                        .arg("ls-files")
-                                        .arg(&git_friendly_path)
-                                        .current_dir(path)
-                                        .stdout(Stdio::null())
-                                        .stderr(Stdio::null())
-                                        .status()
-                                        .unwrap_or_else(|e| {
-                                            panic!("could not run git ls-files: {}", e);
-                                        });
-            if ret_code.success() {
+            let output = Command::new("git")
+                .arg("ls-files")
+                .arg(&git_friendly_path)
+                .current_dir(path)
+                .stderr(Stdio::null())
+                .output()
+                .unwrap_or_else(|e| {
+                    panic!("could not run git ls-files: {}", e);
+                });
+            let path_bytes = rel_path.as_os_str().as_bytes();
+            if output.status.success() && output.stdout.starts_with(path_bytes) {
                 println!("binary checked into source: {}", file.display());
                 *bad = true;
             }
         }
     })
 }
-
