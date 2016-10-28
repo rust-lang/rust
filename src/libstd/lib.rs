@@ -316,7 +316,7 @@ extern crate rustc_unicode;
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
-//REDOX TODO extern crate unwind;
+extern crate unwind;
 
 #[cfg(stage0)]
 extern crate alloc_system;
