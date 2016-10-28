@@ -19,18 +19,29 @@ impl Tr for S {
 }
 
 fn f<T: Tr>() {
+    let s = T::A {};
+    //~^ ERROR expected struct, variant or union type, found associated type
+    let z = T::A::<u8> {};
+    //~^ ERROR expected struct, variant or union type, found associated type
+    //~| ERROR type parameters are not allowed on this type
     match S {
-        T::A {} => {} //~ ERROR `T::A` does not name a struct or a struct variant
+        T::A {} => {}
+        //~^ ERROR expected struct, variant or union type, found associated type
     }
 }
 
 fn g<T: Tr<A = S>>() {
+    let s = T::A {}; // OK
+    let z = T::A::<u8> {}; //~ ERROR type parameters are not allowed on this type
     match S {
-        T::A {} => {} //~ ERROR `T::A` does not name a struct or a struct variant
+        T::A {} => {} // OK
     }
 }
 
 fn main() {
+    let s = S::A {}; //~ ERROR ambiguous associated type
+    let z = S::A::<u8> {}; //~ ERROR ambiguous associated type
+    //~^ ERROR type parameters are not allowed on this type
     match S {
         S::A {} => {} //~ ERROR ambiguous associated type
     }

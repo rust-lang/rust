@@ -129,8 +129,6 @@ enum ResolutionError<'a> {
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
     /// error E0416: identifier is bound more than once in the same pattern
     IdentifierBoundMoreThanOnceInSamePattern(&'a str),
-    /// error E0422: does not name a struct
-    DoesNotNameAStruct(&'a str),
     /// error E0423: is a struct variant name, but this expression uses it like a function name
     StructVariantUsedAsFunction(&'a str),
     /// error E0424: `self` is not available in a static method
@@ -334,15 +332,6 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "identifier `{}` is bound more than once in the same pattern",
                              identifier);
             err.span_label(span, &format!("used in a pattern more than once"));
-            err
-        }
-        ResolutionError::DoesNotNameAStruct(name) => {
-            let mut err = struct_span_err!(resolver.session,
-                             span,
-                             E0422,
-                             "`{}` does not name a structure",
-                             name);
-            err.span_label(span, &format!("not a structure"));
             err
         }
         ResolutionError::StructVariantUsedAsFunction(path_name) => {
@@ -2383,6 +2372,18 @@ impl<'a> Resolver<'a> {
         self.record_def(pat_id, resolution);
     }
 
+    fn resolve_struct_path(&mut self, node_id: NodeId, path: &Path) {
+        // Resolution logic is equivalent for expressions and patterns,
+        // reuse `resolve_pattern_path` for both.
+        self.resolve_pattern_path(node_id, None, path, TypeNS, |def| {
+            match def {
+                Def::Struct(..) | Def::Union(..) | Def::Variant(..) |
+                Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) => true,
+                _ => false,
+            }
+        }, "struct, variant or union type");
+    }
+
     fn resolve_pattern(&mut self,
                        pat: &Pat,
                        pat_src: PatternSource,
@@ -2460,13 +2461,7 @@ impl<'a> Resolver<'a> {
                 }
 
                 PatKind::Struct(ref path, ..) => {
-                    self.resolve_pattern_path(pat.id, None, path, TypeNS, |def| {
-                        match def {
-                            Def::Struct(..) | Def::Union(..) | Def::Variant(..) |
-                            Def::TyAlias(..) | Def::AssociatedTy(..) => true,
-                            _ => false,
-                        }
-                    }, "variant, struct or type alias");
+                    self.resolve_struct_path(pat.id, path);
                 }
 
                 _ => {}
@@ -3024,23 +3019,7 @@ impl<'a> Resolver<'a> {
             }
 
             ExprKind::Struct(ref path, ..) => {
-                // Resolve the path to the structure it goes to. We don't
-                // check to ensure that the path is actually a structure; that
-                // is checked later during typeck.
-                match self.resolve_path(expr.id, path, 0, TypeNS) {
-                    Ok(definition) => self.record_def(expr.id, definition),
-                    Err(true) => self.record_def(expr.id, err_path_resolution()),
-                    Err(false) => {
-                        debug!("(resolving expression) didn't find struct def",);
-
-                        resolve_error(self,
-                                      path.span,
-                                      ResolutionError::DoesNotNameAStruct(
-                                                                &path_names_to_string(path, 0))
-                                     );
-                        self.record_def(expr.id, err_path_resolution());
-                    }
-                }
+                self.resolve_struct_path(expr.id, path);
 
                 visit::walk_expr(self, expr);
             }

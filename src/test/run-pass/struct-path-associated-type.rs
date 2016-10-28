@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:namespaced_enums.rs
-extern crate namespaced_enums;
+struct S<T, U = u16> {
+    a: T,
+    b: U,
+}
+
+trait Tr {
+    type A;
+}
+impl Tr for u8 {
+    type A = S<u8, u16>;
+}
+
+fn f<T: Tr<A = S<u8>>>() {
+    let s = T::A { a: 0, b: 1 };
+    match s {
+        T::A { a, b } => {
+            assert_eq!(a, 0);
+            assert_eq!(b, 1);
+        }
+    }
+}
 
 fn main() {
-    let _ = namespaced_enums::A; //~ ERROR unresolved name
-    let _ = namespaced_enums::B(10); //~ ERROR unresolved name
-    let _ = namespaced_enums::C { a: 10 };
-    //~^ ERROR unresolved struct, variant or union type `namespaced_enums::C`
+    f::<u8>();
 }
