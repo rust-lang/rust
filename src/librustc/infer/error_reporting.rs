@@ -549,7 +549,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         let expected_found = match values {
             None => None,
-            Some(ref values) => match self.values_str(&values) {
+            Some(values) => match self.values_str(&values) {
                 Some((expected, found)) => Some((expected, found)),
                 None => {
                     // Derived error. Cancel the emitter.

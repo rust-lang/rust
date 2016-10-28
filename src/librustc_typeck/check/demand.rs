@@ -19,27 +19,9 @@ use syntax_pos::{self, Span};
 use rustc::hir;
 use rustc::ty::{self, ImplOrTraitItem};
 
-use hir::def_id::DefId;
-
 use std::rc::Rc;
 
 use super::method::probe;
-
-struct MethodInfo<'tcx> {
-    ast: Option<ast::Attribute>,
-    id: DefId,
-    item: Rc<ImplOrTraitItem<'tcx>>,
-}
-
-impl<'tcx> MethodInfo<'tcx> {
-    fn new(ast: Option<ast::Attribute>, id: DefId, item: Rc<ImplOrTraitItem<'tcx>>) -> MethodInfo {
-        MethodInfo {
-            ast: ast,
-            id: id,
-            item: item,
-        }
-    }
-}
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Requires that the two types unify, and prints an error message if
@@ -79,6 +61,46 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn check_ref(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>,
+                 expected: Ty<'tcx>) -> Option<String> {
+        match (&checked_ty.sty, &expected.sty) {
+            (&ty::TyRef(_, x_mutability), &ty::TyRef(_, y_mutability)) => {
+                // check if there is a mutability difference
+                if x_mutability.mutbl == hir::Mutability::MutImmutable &&
+                   x_mutability.mutbl != y_mutability.mutbl &&
+                   self.can_sub_types(&x_mutability.ty, y_mutability.ty).is_ok() {
+                    if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+                        return Some(format!("try with `&mut {}`", &src.replace("&", "")));
+                    }
+                }
+                None
+            }
+            (_, &ty::TyRef(_, mutability)) => {
+                // check if it can work when put into a ref
+                let ref_ty = match mutability.mutbl {
+                    hir::Mutability::MutMutable => self.tcx.mk_mut_ref(
+                                                       self.tcx.mk_region(ty::ReStatic),
+                                                       checked_ty),
+                    hir::Mutability::MutImmutable => self.tcx.mk_imm_ref(
+                                                       self.tcx.mk_region(ty::ReStatic),
+                                                       checked_ty),
+                };
+                if self.try_coerce(expr, ref_ty, expected).is_ok() {
+                    if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+                        return Some(format!("try with `{}{}`",
+                                            match mutability.mutbl {
+                                                hir::Mutability::MutMutable => "&mut ",
+                                                hir::Mutability::MutImmutable => "&",
+                                            },
+                                            &src));
+                    }
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+
     // Checks that the type of `expr` can be coerced to `expected`.
     pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
         let expected = self.resolve_type_vars_with_obligations(expected);
@@ -86,34 +108,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let cause = self.misc(expr.span);
             let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
             let mode = probe::Mode::MethodCall;
-            let suggestions = 
-                if let Ok(methods) = self.probe_return(syntax_pos::DUMMY_SP, mode, expected,
-                                                   checked_ty, ast::DUMMY_NODE_ID) {
+            let suggestions = if let Some(s) = self.check_ref(expr, checked_ty, expected) {
+                Some(s)
+            } else if let Ok(methods) = self.probe_return(syntax_pos::DUMMY_SP,
+                                                          mode,
+                                                          expected,
+                                                          checked_ty,
+                                                          ast::DUMMY_NODE_ID) {
                 let suggestions: Vec<_> =
                     methods.iter()
-                           .filter_map(|ref x| {
-                            if let Some(id) = self.get_impl_id(&x.item) {
-                                Some(MethodInfo::new(None, id, Rc::new(x.item.clone())))
-                            } else {
-                                None
-                            }})
+                           .map(|ref x| {
+                                Rc::new(x.item.clone())
+                            })
                            .collect();
                 if suggestions.len() > 0 {
-                    let safe_suggestions: Vec<_> =
-                        suggestions.iter()
-                                   .map(|ref x| MethodInfo::new(
-                                                    self.find_attr(x.id, "safe_suggestion"),
-                                                                   x.id,
-                                                                   x.item.clone()))
-                                   .filter(|ref x| x.ast.is_some())
-                                   .collect();
-                    Some(if safe_suggestions.len() > 0 {
-                        self.get_best_match(&safe_suggestions)
-                    } else {
-                        format!("no safe suggestion found, here are functions which match your \
-                                 needs but be careful:\n - {}",
-                                self.get_best_match(&suggestions))
-                    })
+                    Some(format!("here are some functions which \
+                                  might fulfill your needs:\n - {}",
+                                 self.get_best_match(&suggestions)))
                 } else {
                     None
                 }
@@ -132,31 +143,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn get_best_match(&self, methods: &[MethodInfo<'tcx>]) -> String {
+    fn get_best_match(&self, methods: &[Rc<ImplOrTraitItem<'tcx>>]) -> String {
         if methods.len() == 1 {
-            return format!(" - {}", methods[0].item.name());
+            return format!(" - {}", methods[0].name());
         }
-        let no_argument_methods: Vec<&MethodInfo> =
+        let no_argument_methods: Vec<&Rc<ImplOrTraitItem<'tcx>>> =
             methods.iter()
-                   .filter(|ref x| self.has_not_input_arg(&*x.item))
+                   .filter(|ref x| self.has_not_input_arg(&*x))
                    .collect();
         if no_argument_methods.len() > 0 {
             no_argument_methods.iter()
-                               .map(|method| format!("{}", method.item.name()))
+                               .take(5)
+                               .map(|method| format!("{}", method.name()))
                                .collect::<Vec<String>>()
                                .join("\n - ")
         } else {
             methods.iter()
-                   .map(|method| format!("{}", method.item.name()))
+                   .take(5)
+                   .map(|method| format!("{}", method.name()))
                    .collect::<Vec<String>>()
                    .join("\n - ")
-        }
-    }
-
-    fn get_impl_id(&self, impl_: &ImplOrTraitItem<'tcx>) -> Option<DefId> {
-        match *impl_ {
-            ty::ImplOrTraitItem::MethodTraitItem(ref m) => Some((*m).def_id),
-            _ => None,
         }
     }
 
