@@ -79,9 +79,9 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                           ret_ty:
                               Literal(Path::new_(pathvec_std!(cx, core::result::Result),
                                                  None,
-                                                 vec!(Box::new(Self_), Box::new(Literal(Path::new_(
+                                                 vec![Box::new(Self_), Box::new(Literal(Path::new_(
                         vec![typaram, "Error"], None, vec![], false
-                    )))),
+                    )))],
                                                  true)),
                           attributes: Vec::new(),
                           is_unsafe: false,

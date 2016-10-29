@@ -225,7 +225,7 @@ impl<'a> SpanUtils<'a> {
     // Nesting = 0: all idents outside of brackets: [Foo]
     // Nesting = 1: idents within one level of brackets: [Bar, Bar]
     pub fn spans_with_brackets(&self, span: Span, nesting: isize, limit: isize) -> Vec<Span> {
-        let mut result: Vec<Span> = vec!();
+        let mut result: Vec<Span> = vec![];
 
         let mut toks = self.retokenise_span(span);
         // We keep track of how many brackets we're nested in
@@ -236,7 +236,7 @@ impl<'a> SpanUtils<'a> {
             if ts.tok == token::Eof {
                 if bracket_count != 0 {
                     if generated_code(span) {
-                        return vec!();
+                        return vec![];
                     }
                     let loc = self.sess.codemap().lookup_char_pos(span.lo);
                     span_bug!(span,

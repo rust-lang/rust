@@ -11,7 +11,7 @@
 
 
 fn swap<F>(f: F) -> Vec<isize> where F: FnOnce(Vec<isize>) -> Vec<isize> {
-    let x = vec!(1, 2, 3);
+    let x = vec![1, 2, 3];
     f(x)
 }
 

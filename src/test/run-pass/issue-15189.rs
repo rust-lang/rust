@@ -13,7 +13,7 @@ macro_rules! third {
 }
 
 fn main() {
-    let x = vec!(10_usize,11_usize,12_usize,13_usize);
+    let x = vec![10_usize,11_usize,12_usize,13_usize];
     let t = third!(x);
     assert_eq!(t,12_usize);
 }

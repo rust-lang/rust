@@ -272,7 +272,7 @@ impl Session {
             }
             return;
         }
-        lints.insert(id, vec!((lint_id, sp, msg)));
+        lints.insert(id, vec![(lint_id, sp, msg)]);
     }
     pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
         let id = self.next_node_id.get();

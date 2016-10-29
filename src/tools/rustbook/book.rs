@@ -94,16 +94,16 @@ pub fn parse_summary(input: &mut Read, src: &Path) -> Result<Book, Vec<String>> 
         }
     }
 
-    let mut top_items = vec!();
-    let mut stack = vec!();
-    let mut errors = vec!();
+    let mut top_items = vec![];
+    let mut stack = vec![];
+    let mut errors = vec![];
 
     // always include the introduction
     top_items.push(BookItem {
         title: "Introduction".to_string(),
         path: PathBuf::from("README.md"),
         path_to_root: PathBuf::from(""),
-        children: vec!(),
+        children: vec![],
     });
 
     for line_result in BufReader::new(input).lines() {
@@ -142,7 +142,7 @@ pub fn parse_summary(input: &mut Read, src: &Path) -> Result<Book, Vec<String>> 
             title: title,
             path: path_from_root,
             path_to_root: path_to_root,
-            children: vec!(),
+            children: vec![],
         };
         let level = indent.chars().map(|c| -> usize {
             match c {

@@ -68,7 +68,7 @@ fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
     let rel_rpaths = get_rpaths_relative_to_output(config, libs);
 
     // And a final backup rpath to the global library location.
-    let fallback_rpaths = vec!(get_install_prefix_rpath(config));
+    let fallback_rpaths = vec![get_install_prefix_rpath(config)];
 
     fn log_rpaths(desc: &str, rpaths: &[String]) {
         debug!("{} rpaths:", desc);

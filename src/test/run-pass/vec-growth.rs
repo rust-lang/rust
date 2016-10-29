@@ -11,7 +11,7 @@
 
 
 pub fn main() {
-    let mut v = vec!(1);
+    let mut v = vec![1];
     v.push(2);
     v.push(3);
     v.push(4);

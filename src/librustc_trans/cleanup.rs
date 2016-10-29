@@ -305,7 +305,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         assert!(orig_scopes_len > 0);
 
         // Remove any scopes that do not have cleanups on panic:
-        let mut popped_scopes = vec!();
+        let mut popped_scopes = vec![];
         while !self.top_scope(|s| s.needs_invoke()) {
             debug!("top scope does not need invoke");
             popped_scopes.push(self.pop_scope());
@@ -402,7 +402,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
         let orig_scopes_len = self.scopes_len();
         let mut prev_llbb;
-        let mut popped_scopes = vec!();
+        let mut popped_scopes = vec![];
         let mut skip = 0;
 
         // First we pop off all the cleanup stacks that are
@@ -585,8 +585,8 @@ impl<'tcx> CleanupScope<'tcx> {
     fn new(debug_loc: DebugLoc) -> CleanupScope<'tcx> {
         CleanupScope {
             debug_loc: debug_loc,
-            cleanups: vec!(),
-            cached_early_exits: vec!(),
+            cleanups: vec![],
+            cached_early_exits: vec![],
             cached_landing_pad: None,
         }
     }

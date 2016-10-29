@@ -22,7 +22,7 @@ fn pairwise_sub<T:DoubleEndedIterator<Item=isize>>(mut t: T) -> isize {
 }
 
 fn main() {
-    let v = vec!(1, 2, 3, 4, 5, 6);
+    let v = vec![1, 2, 3, 4, 5, 6];
     let r = pairwise_sub(v.into_iter());
     assert_eq!(r, 9);
 }

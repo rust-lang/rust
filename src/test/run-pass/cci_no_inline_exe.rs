@@ -21,7 +21,7 @@ pub fn main() {
     // actually working.
     //let bt0 = sys::frame_address();
     //println!("%?", bt0);
-    iter(vec!(1, 2, 3), |i| {
+    iter(vec![1, 2, 3], |i| {
         println!("{}", i);
 
         //let bt1 = sys::frame_address();
