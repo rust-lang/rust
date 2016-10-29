@@ -172,6 +172,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         target: opt_str2(matches.opt_str("target")),
         host: opt_str2(matches.opt_str("host")),
         gdb_version: extract_gdb_version(matches.opt_str("gdb-version")),
+        gdb_native_rust: false,
         lldb_version: extract_lldb_version(matches.opt_str("lldb-version")),
         llvm_version: matches.opt_str("llvm-version"),
         android_cross_path: opt_path(matches, "android-cross-path"),

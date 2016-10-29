@@ -149,6 +149,9 @@ pub struct Config {
     // Version of GDB
     pub gdb_version: Option<String>,
 
+    // Whether GDB has native rust support
+    pub gdb_native_rust: bool,
+
     // Version of LLDB
     pub lldb_version: Option<String>,
 
