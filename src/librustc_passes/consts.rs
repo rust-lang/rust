@@ -48,7 +48,7 @@ use rustc::lint::builtin::CONST_ERR;
 use rustc::hir::{self, PatKind};
 use syntax::ast;
 use syntax_pos::Span;
-use rustc::hir::intravisit::{self, FnKind, Visitor};
+use rustc::hir::intravisit::{self, FnKind, Visitor, NestedVisitMode};
 
 use std::collections::hash_map::Entry;
 use std::cmp::Ordering;
@@ -100,7 +100,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
             .enter(|infcx| f(&mut euv::ExprUseVisitor::new(self, &infcx)))
     }
 
-    fn global_expr(&mut self, mode: Mode, expr: &hir::Expr) -> ConstQualif {
+    fn global_expr(&mut self, mode: Mode, expr: &'gcx hir::Expr) -> ConstQualif {
         assert!(mode != Mode::Var);
         match self.tcx.const_qualif_map.borrow_mut().entry(expr.id) {
             Entry::Occupied(entry) => return *entry.get(),
@@ -132,9 +132,9 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     }
 
     fn fn_like(&mut self,
-               fk: FnKind,
-               fd: &hir::FnDecl,
-               b: &hir::Expr,
+               fk: FnKind<'gcx>,
+               fd: &'gcx hir::FnDecl,
+               b: hir::ExprId,
                s: Span,
                fn_id: ast::NodeId)
                -> ConstQualif {
@@ -160,7 +160,8 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         };
 
         let qualif = self.with_mode(mode, |this| {
-            this.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, b));
+            let body = this.tcx.map.expr(b);
+            this.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, body));
             intravisit::walk_fn(this, fk, fd, b, s, fn_id);
             this.qualif
         });
@@ -213,8 +214,12 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &hir::Item) {
+impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
+        Some((&self.tcx.map, NestedVisitMode::OnlyBodies))
+    }
+
+    fn visit_item(&mut self, i: &'tcx hir::Item) {
         debug!("visit_item(item={})", self.tcx.map.node_to_string(i.id));
         assert_eq!(self.mode, Mode::Var);
         match i.node {
@@ -240,7 +245,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, t: &'v hir::TraitItem) {
+    fn visit_trait_item(&mut self, t: &'tcx hir::TraitItem) {
         match t.node {
             hir::ConstTraitItem(_, ref default) => {
                 if let Some(ref expr) = *default {
@@ -253,7 +258,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_impl_item(&mut self, i: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, i: &'tcx hir::ImplItem) {
         match i.node {
             hir::ImplItemKind::Const(_, ref expr) => {
                 self.global_expr(Mode::Const, &expr);
@@ -263,15 +268,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self,
-                fk: FnKind<'v>,
-                fd: &'v hir::FnDecl,
-                b: &'v hir::Expr,
+                fk: FnKind<'tcx>,
+                fd: &'tcx hir::FnDecl,
+                b: hir::ExprId,
                 s: Span,
                 fn_id: ast::NodeId) {
         self.fn_like(fk, fd, b, s, fn_id);
     }
 
-    fn visit_pat(&mut self, p: &hir::Pat) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat) {
         match p.node {
             PatKind::Lit(ref lit) => {
                 self.global_expr(Mode::Const, &lit);
@@ -296,7 +301,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_block(&mut self, block: &hir::Block) {
+    fn visit_block(&mut self, block: &'tcx hir::Block) {
         // Check all statements in the block
         for stmt in &block.stmts {
             match stmt.node {
@@ -315,7 +320,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         intravisit::walk_block(self, block);
     }
 
-    fn visit_expr(&mut self, ex: &hir::Expr) {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         let mut outer = self.qualif;
         self.qualif = ConstQualif::empty();
 
