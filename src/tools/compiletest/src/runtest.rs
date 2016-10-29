@@ -430,11 +430,23 @@ actual:\n\
     }
 
     fn run_debuginfo_gdb_test_no_opt(&self) {
+        let prefixes = if self.config.gdb_native_rust {
+            // GDB with Rust
+            static PREFIXES: &'static [&'static str] = &["gdb", "gdbr"];
+            println!("NOTE: compiletest thinks it is using GDB with native rust support");
+            PREFIXES
+        } else {
+            // Generic GDB
+            static PREFIXES: &'static [&'static str] = &["gdb", "gdbg"];
+            println!("NOTE: compiletest thinks it is using GDB without native rust support");
+            PREFIXES
+        };
+
         let DebuggerCommands {
             commands,
             check_lines,
             breakpoint_lines
-        } = self.parse_debugger_commands("gdb");
+        } = self.parse_debugger_commands(prefixes);
         let mut cmds = commands.join("\n");
 
         // compile test file (it should have 'compile-flags:-g' in the header)
@@ -731,7 +743,7 @@ actual:\n\
             check_lines,
             breakpoint_lines,
             ..
-        } = self.parse_debugger_commands("lldb");
+        } = self.parse_debugger_commands(&["lldb"]);
 
         // Write debugger script:
         // We don't want to hang when calling `quit` while the process is still running
@@ -826,9 +838,11 @@ actual:\n\
         }
     }
 
-    fn parse_debugger_commands(&self, debugger_prefix: &str) -> DebuggerCommands {
-        let command_directive = format!("{}-command", debugger_prefix);
-        let check_directive = format!("{}-check", debugger_prefix);
+    fn parse_debugger_commands(&self, debugger_prefixes: &[&str]) -> DebuggerCommands {
+        let directives = debugger_prefixes.iter().map(|prefix| (
+            format!("{}-command", prefix),
+            format!("{}-check", prefix),
+        )).collect::<Vec<_>>();
 
         let mut breakpoint_lines = vec!();
         let mut commands = vec!();
@@ -842,17 +856,19 @@ actual:\n\
                         breakpoint_lines.push(counter);
                     }
 
-                    header::parse_name_value_directive(
-                        &line,
-                        &command_directive).map(|cmd| {
-                            commands.push(cmd)
-                        });
+                    for &(ref command_directive, ref check_directive) in &directives {
+                        header::parse_name_value_directive(
+                            &line,
+                            &command_directive).map(|cmd| {
+                                commands.push(cmd)
+                            });
 
-                    header::parse_name_value_directive(
-                        &line,
-                        &check_directive).map(|cmd| {
-                            check_lines.push(cmd)
-                        });
+                        header::parse_name_value_directive(
+                            &line,
+                            &check_directive).map(|cmd| {
+                                check_lines.push(cmd)
+                            });
+                    }
                 }
                 Err(e) => {
                     self.fatal(&format!("Error while parsing debugger commands: {}", e))
