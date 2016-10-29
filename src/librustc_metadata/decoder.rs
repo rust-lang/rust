@@ -1138,6 +1138,14 @@ impl<'a, 'tcx> CrateMetadata {
 
                 match reusable_filemap {
                     Some(fm) => {
+
+                        debug!("CrateMetaData::imported_filemaps reuse \
+                                filemap {:?} original (start_pos {:?} end_pos {:?}) \
+                                translated (start_pos {:?} end_pos {:?})",
+                               filemap_to_import.name,
+                               filemap_to_import.start_pos, filemap_to_import.end_pos,
+                               fm.start_pos, fm.end_pos);
+
                         cstore::ImportedFileMap {
                             original_start_pos: filemap_to_import.start_pos,
                             original_end_pos: filemap_to_import.end_pos,
@@ -1176,6 +1184,12 @@ impl<'a, 'tcx> CrateMetadata {
                                                                                source_length,
                                                                                lines,
                                                                                multibyte_chars);
+                        debug!("CrateMetaData::imported_filemaps alloc \
+                                filemap {:?} original (start_pos {:?} end_pos {:?}) \
+                                translated (start_pos {:?} end_pos {:?})",
+                               local_version.name, start_pos, end_pos,
+                               local_version.start_pos, local_version.end_pos);
+
                         cstore::ImportedFileMap {
                             original_start_pos: start_pos,
                             original_end_pos: end_pos,
@@ -1193,6 +1207,10 @@ impl<'a, 'tcx> CrateMetadata {
 }
 
 fn are_equal_modulo_startpos(fm1: &syntax_pos::FileMap, fm2: &syntax_pos::FileMap) -> bool {
+    if fm1.byte_length() != fm2.byte_length() {
+        return false;
+    }
+
     if fm1.name != fm2.name {
         return false;
     }

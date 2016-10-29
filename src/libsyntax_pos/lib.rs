@@ -481,6 +481,9 @@ impl FileMap {
         self.src.is_none()
     }
 
+    pub fn byte_length(&self) -> u32 {
+        self.end_pos.0 - self.start_pos.0
+    }
     pub fn count_lines(&self) -> usize {
         self.lines.borrow().len()
     }
