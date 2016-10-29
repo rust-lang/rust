@@ -14,7 +14,7 @@ use rustc_driver::{driver, target_features, abort_on_err};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
 use rustc::hir::def_id::DefId;
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, ExportMap};
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir::map as hir_map;
@@ -74,6 +74,7 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
     /// Table node id of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<ast::NodeId, clean::Lifetime>>,
+    pub export_map: ExportMap,
 }
 
 impl<'b, 'tcx> DocContext<'b, 'tcx> {
@@ -196,7 +197,7 @@ pub fn run_core(search_paths: SearchPaths,
             sess.fatal("Compilation failed, aborting rustdoc");
         }
 
-        let ty::CrateAnalysis { access_levels, .. } = analysis;
+        let ty::CrateAnalysis { access_levels, export_map, .. } = analysis;
 
         // Convert from a NodeId set to a DefId set since we don't always have easy access
         // to the map from defid -> nodeid
@@ -218,6 +219,7 @@ pub fn run_core(search_paths: SearchPaths,
             renderinfo: Default::default(),
             ty_substs: Default::default(),
             lt_substs: Default::default(),
+            export_map: export_map,
         };
         debug!("crate: {:?}", ctxt.map.krate());
 
