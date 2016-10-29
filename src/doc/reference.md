@@ -4023,9 +4023,9 @@ Methods that take either `self` or `Box<Self>` can optionally place them in a
 mutable variable by prefixing them with `mut` (similar to regular arguments):
 
 ```
-trait Changer {
-    fn change(mut self) -> Self;
-    fn modify(mut self: Box<Self>) -> Box<Self>;
+trait Changer: Sized {
+    fn change(mut self) {}
+    fn modify(mut self: Box<Self>) {}
 }
 ```
 

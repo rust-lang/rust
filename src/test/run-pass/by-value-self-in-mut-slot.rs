@@ -14,7 +14,7 @@ struct X {
 }
 
 trait Changer {
-    fn change(mut self) -> Self;
+    fn change(self) -> Self;
 }
 
 impl Changer for X {
