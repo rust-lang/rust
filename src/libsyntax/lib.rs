@@ -36,6 +36,7 @@
 #![feature(specialization)]
 #![feature(dotdot_in_tuple_patterns)]
 
+extern crate core;
 extern crate serialize;
 extern crate term;
 extern crate libc;

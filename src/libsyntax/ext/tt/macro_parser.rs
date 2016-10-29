@@ -92,6 +92,7 @@ use parse::token;
 use print::pprust;
 use ptr::P;
 use tokenstream::{self, TokenTree};
+use util::small_vector::SmallVector;
 
 use std::mem;
 use std::rc::Rc;
@@ -104,7 +105,7 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 #[derive(Clone)]
 enum TokenTreeOrTokenTreeVec {
     Tt(tokenstream::TokenTree),
-    TtSeq(Rc<Vec<tokenstream::TokenTree>>),
+    TtSeq(Vec<tokenstream::TokenTree>),
 }
 
 impl TokenTreeOrTokenTreeVec {
@@ -161,7 +162,7 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
     })
 }
 
-pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: BytePos)
+pub fn initial_matcher_pos(ms: Vec<TokenTree>, sep: Option<Token>, lo: BytePos)
                            -> Box<MatcherPos> {
     let match_idx_hi = count_names(&ms[..]);
     let matches: Vec<_> = (0..match_idx_hi).map(|_| Vec::new()).collect();
@@ -284,12 +285,9 @@ pub fn parse(sess: &ParseSess,
              mut rdr: TtReader,
              ms: &[TokenTree])
              -> NamedParseResult {
-    let mut cur_eis = Vec::new();
-    cur_eis.push(initial_matcher_pos(Rc::new(ms.iter()
-                                                .cloned()
-                                                .collect()),
-                                     None,
-                                     rdr.peek().sp.lo));
+    let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(),
+                                                           None,
+                                                           rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = Vec::new(); // black-box parsed by parser.rs
