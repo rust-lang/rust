@@ -430,7 +430,7 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     let (vi, vis, ident) = if cx.is_test_crate {
         (ast::ItemKind::Use(
             P(nospan(ast::ViewPathSimple(id_test,
-                                         path_node(vec!(id_test)))))),
+                                         path_node(vec![id_test]))))),
          ast::Visibility::Public, keywords::Invalid.ident())
     } else {
         (ast::ItemKind::ExternCrate(None), ast::Visibility::Inherited, id_test)

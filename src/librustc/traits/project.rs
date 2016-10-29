@@ -396,7 +396,7 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                 cause, depth + 1, projection.to_predicate());
             Normalized {
                 value: ty_var,
-                obligations: vec!(obligation)
+                obligations: vec![obligation]
             }
         })
 }
@@ -604,7 +604,7 @@ fn normalize_to_error<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tc
     let new_value = selcx.infcx().next_ty_var();
     Normalized {
         value: new_value,
-        obligations: vec!(trait_obligation)
+        obligations: vec![trait_obligation]
     }
 }
 

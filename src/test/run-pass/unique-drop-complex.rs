@@ -14,5 +14,5 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let _x: Box<_> = box vec!(0,0,0,0,0);
+    let _x: Box<_> = box vec![0,0,0,0,0];
 }

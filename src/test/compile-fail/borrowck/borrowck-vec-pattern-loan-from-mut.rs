@@ -11,7 +11,7 @@
 #![feature(slice_patterns)]
 
 fn a() {
-    let mut v = vec!(1, 2, 3);
+    let mut v = vec![1, 2, 3];
     let vb: &mut [isize] = &mut v;
     match vb {
         &mut [_a, ref tail..] => {

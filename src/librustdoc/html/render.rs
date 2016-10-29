@@ -1260,7 +1260,7 @@ impl Context {
         item.name = Some(krate.name);
 
         // render the crate documentation
-        let mut work = vec!((self, item));
+        let mut work = vec![(self, item)];
 
         while let Some((mut cx, item)) = work.pop() {
             cx.item(item, |cx, item| {

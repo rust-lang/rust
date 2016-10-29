@@ -575,7 +575,7 @@ mod tests {
     #[test]
     fn test_sha256() {
         // Examples from wikipedia
-        let wikipedia_tests = vec!(
+        let wikipedia_tests = vec![
             Test {
                 input: "".to_string(),
                 output_str: "e3b0c44298fc1c149afb\
@@ -592,7 +592,7 @@ mod tests {
                         dog.".to_string(),
                 output_str: "ef537f25c895bfa78252\
             6529a9b63d97aa631564d5d789c2b765448c8635fb6c".to_string()
-            });
+            }];
 
         let tests = wikipedia_tests;
 

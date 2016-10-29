@@ -41,7 +41,7 @@ fn do_it(x: &[usize]) -> Foo {
     panic!()
 }
 
-fn get_bar(x: usize) -> Vec<usize> { vec!(x * 2) }
+fn get_bar(x: usize) -> Vec<usize> { vec![x * 2] }
 
 pub fn fails() {
     let x = 2;

@@ -38,7 +38,7 @@ fn length<A, T: iterable<A>>(x: T) -> usize {
 }
 
 pub fn main() {
-    let x: Vec<isize> = vec!(0,1,2,3);
+    let x: Vec<isize> = vec![0,1,2,3];
     // Call a method
     x.iterate(|y| { assert_eq!(x[*y as usize], *y); true });
     // Call a parameterized function

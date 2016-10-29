@@ -1170,7 +1170,7 @@ impl<T> [T] {
     /// let x = s.into_vec();
     /// // `s` cannot be used anymore because it has been converted into `x`.
     ///
-    /// assert_eq!(x, vec!(10, 40, 30));
+    /// assert_eq!(x, vec![10, 40, 30]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
