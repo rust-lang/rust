@@ -35,6 +35,8 @@ impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
+
+    fn visit_expr_id(&mut self, _: hir::ExprId) { }
 }
 
 /// Find the function marked with `#[plugin_registrar]`, if any.
