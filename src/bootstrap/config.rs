@@ -85,6 +85,7 @@ pub struct Config {
     pub mandir: Option<String>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
+    pub gdb: Option<PathBuf>,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -122,6 +123,7 @@ struct Build {
     compiler_docs: Option<bool>,
     docs: Option<bool>,
     submodules: Option<bool>,
+    gdb: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -226,6 +228,7 @@ impl Config {
         }
         config.rustc = build.rustc.map(PathBuf::from);
         config.cargo = build.cargo.map(PathBuf::from);
+        config.gdb = build.gdb.map(PathBuf::from);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
@@ -391,6 +394,9 @@ impl Config {
                 }
                 "CFG_DEFAULT_LINKER" if value.len() > 0 => {
                     self.rustc_default_linker = Some(value.to_string());
+                }
+                "CFG_GDB" if value.len() > 0 => {
+                    self.gdb = Some(PathBuf::from(value));
                 }
                 "CFG_RELEASE_CHANNEL" => {
                     self.channel = value.to_string();
