@@ -1124,6 +1124,8 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             _ => { /* Nothing to do here */ }
         }
     }
+
+    fn visit_expr_id(&mut self, _: hir::ExprId) { }
 }
 
 fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
