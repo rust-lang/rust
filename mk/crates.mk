@@ -121,7 +121,7 @@ DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_bo
                      rustc_trans rustc_privacy rustc_lint rustc_plugin \
                      rustc_metadata syntax_ext proc_macro_plugin \
                      rustc_passes rustc_save_analysis rustc_const_eval \
-                     rustc_incremental syntax_pos rustc_errors proc_macro
+                     rustc_incremental syntax_pos rustc_errors proc_macro rustc_data_structures
 DEPS_rustc_errors := log libc serialize syntax_pos
 DEPS_rustc_lint := rustc log syntax syntax_pos rustc_const_eval
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
