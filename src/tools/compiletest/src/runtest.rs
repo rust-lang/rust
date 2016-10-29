@@ -32,6 +32,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus};
 use std::str;
 
+use extract_gdb_version;
+
 pub fn run(config: Config, testpaths: &TestPaths) {
     match &*config.target {
 
@@ -42,6 +44,10 @@ pub fn run(config: Config, testpaths: &TestPaths) {
         }
 
         _=> { }
+    }
+
+    if config.mode == DebugInfoGdb && config.gdb.is_none() {
+        panic!("gdb not available but debuginfo gdb debuginfo test requested");
     }
 
     if config.verbose {
@@ -598,19 +604,18 @@ actual:\n\
                 script_str.push_str("show version\n");
 
                 match self.config.gdb_version {
-                    Some(ref version) => {
+                    Some(version) => {
                         println!("NOTE: compiletest thinks it is using GDB version {}",
                                  version);
 
-                        if header::gdb_version_to_int(version) >
-                            header::gdb_version_to_int("7.4") {
-                                // Add the directory containing the pretty printers to
-                                // GDB's script auto loading safe path
-                                script_str.push_str(
-                                    &format!("add-auto-load-safe-path {}\n",
-                                             rust_pp_module_abs_path.replace(r"\", r"\\"))
-                                );
-                            }
+                        if version > extract_gdb_version("7.4").unwrap() {
+                            // Add the directory containing the pretty printers to
+                            // GDB's script auto loading safe path
+                            script_str.push_str(
+                                &format!("add-auto-load-safe-path {}\n",
+                                         rust_pp_module_abs_path.replace(r"\", r"\\"))
+                            );
+                        }
                     }
                     _ => {
                         println!("NOTE: compiletest does not know which version of \
@@ -645,11 +650,6 @@ actual:\n\
                 debug!("script_str = {}", script_str);
                 self.dump_output_file(&script_str, "debugger.script");
 
-                // run debugger script with gdb
-                fn debugger() -> &'static str {
-                    if cfg!(windows) {"gdb.exe"} else {"gdb"}
-                }
-
                 let debugger_script = self.make_out_name("debugger.script");
 
                 // FIXME (#9639): This needs to handle non-utf8 paths
@@ -660,7 +660,7 @@ actual:\n\
                          format!("-command={}", debugger_script.to_str().unwrap()));
 
                 let proc_args = ProcArgs {
-                    prog: debugger().to_owned(),
+                    prog: self.config.gdb.as_ref().unwrap().to_owned(),
                     args: debugger_opts,
                 };
 
