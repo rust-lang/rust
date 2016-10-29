@@ -223,7 +223,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 expr_exit
             }
 
-            hir::ExprLoop(ref body, _) => {
+            hir::ExprLoop(ref body, _, _) => {
                 //
                 //     [pred]
                 //       |
@@ -282,9 +282,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_unreachable_node()
             }
 
-            hir::ExprBreak(label) => {
+            hir::ExprBreak(label, ref opt_expr) => {
+                let v = self.opt_expr(opt_expr, pred);
                 let loop_scope = self.find_scope(expr, label.map(|l| l.node));
-                let b = self.add_ast_node(expr.id, &[pred]);
+                let b = self.add_ast_node(expr.id, &[v]);
                 self.add_exiting_edge(expr, b,
                                       loop_scope, loop_scope.break_index);
                 self.add_unreachable_node()

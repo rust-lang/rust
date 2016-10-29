@@ -1136,7 +1136,9 @@ impl<'a> LoweringContext<'a> {
                                    self.lower_opt_sp_ident(opt_ident))
                 }
                 ExprKind::Loop(ref body, opt_ident) => {
-                    hir::ExprLoop(self.lower_block(body), self.lower_opt_sp_ident(opt_ident))
+                    hir::ExprLoop(self.lower_block(body),
+                                  self.lower_opt_sp_ident(opt_ident),
+                                  hir::LoopSource::Loop)
                 }
                 ExprKind::Match(ref expr, ref arms) => {
                     hir::ExprMatch(P(self.lower_expr(expr)),
@@ -1242,7 +1244,10 @@ impl<'a> LoweringContext<'a> {
                     });
                     hir::ExprPath(hir_qself, self.lower_path(path))
                 }
-                ExprKind::Break(opt_ident) => hir::ExprBreak(self.lower_opt_sp_ident(opt_ident)),
+                ExprKind::Break(opt_ident, ref opt_expr) => {
+                    hir::ExprBreak(self.lower_opt_sp_ident(opt_ident),
+                                   opt_expr.as_ref().map(|x| P(self.lower_expr(x))))
+                }
                 ExprKind::Continue(opt_ident) => hir::ExprAgain(self.lower_opt_sp_ident(opt_ident)),
                 ExprKind::Ret(ref e) => hir::ExprRet(e.as_ref().map(|x| P(self.lower_expr(x)))),
                 ExprKind::InlineAsm(ref asm) => {
@@ -1410,7 +1415,8 @@ impl<'a> LoweringContext<'a> {
 
                     // `[opt_ident]: loop { ... }`
                     let loop_block = P(self.block_expr(P(match_expr)));
-                    let loop_expr = hir::ExprLoop(loop_block, self.lower_opt_sp_ident(opt_ident));
+                    let loop_expr = hir::ExprLoop(loop_block, self.lower_opt_sp_ident(opt_ident),
+                                                  hir::LoopSource::WhileLet);
                     // add attributes to the outer returned expr node
                     let attrs = e.attrs.clone();
                     return hir::Expr { id: e.id, node: loop_expr, span: e.span, attrs: attrs };
@@ -1485,7 +1491,8 @@ impl<'a> LoweringContext<'a> {
 
                     // `[opt_ident]: loop { ... }`
                     let loop_block = P(self.block_expr(match_expr));
-                    let loop_expr = hir::ExprLoop(loop_block, self.lower_opt_sp_ident(opt_ident));
+                    let loop_expr = hir::ExprLoop(loop_block, self.lower_opt_sp_ident(opt_ident),
+                                                  hir::LoopSource::ForLoop);
                     let loop_expr = P(hir::Expr {
                         id: e.id,
                         node: loop_expr,
@@ -1723,7 +1730,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn expr_break(&mut self, span: Span, attrs: ThinVec<Attribute>) -> P<hir::Expr> {
-        P(self.expr(span, hir::ExprBreak(None), attrs))
+        P(self.expr(span, hir::ExprBreak(None, None), attrs))
     }
 
     fn expr_call(&mut self, span: Span, e: P<hir::Expr>, args: hir::HirVec<hir::Expr>)

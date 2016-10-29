@@ -103,7 +103,7 @@ use session::{Session, CompileResult};
 use CrateCtxt;
 use TypeAndSubsts;
 use lint;
-use util::common::{block_query, ErrorReported, indenter, loop_query};
+use util::common::{ErrorReported, indenter};
 use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{Cell, Ref, RefCell};
@@ -408,6 +408,34 @@ impl Diverges {
 }
 
 #[derive(Clone)]
+pub struct LoopCtxt<'gcx, 'tcx> {
+    unified: Ty<'tcx>,
+    coerce_to: Ty<'tcx>,
+    break_exprs: Vec<&'gcx hir::Expr>,
+    may_break: bool,
+}
+
+#[derive(Clone)]
+pub struct EnclosingLoops<'gcx, 'tcx> {
+    stack: Vec<LoopCtxt<'gcx, 'tcx>>,
+    by_id: NodeMap<usize>,
+}
+
+impl<'gcx, 'tcx> EnclosingLoops<'gcx, 'tcx> {
+    fn find_loop(&mut self, id: Option<ast::NodeId>) -> Option<&mut LoopCtxt<'gcx, 'tcx>> {
+        if let Some(id) = id {
+            if let Some(ix) = self.by_id.get(&id).cloned() {
+                Some(&mut self.stack[ix])
+            } else {
+                None
+            }
+        } else {
+            self.stack.last_mut()
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
 
@@ -432,6 +460,8 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     /// Whether any child nodes have any type errors.
     has_errors: Cell<bool>,
+
+    enclosing_loops: RefCell<EnclosingLoops<'gcx, 'tcx>>,
 
     inh: &'a Inherited<'a, 'gcx, 'tcx>,
 }
@@ -1503,6 +1533,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                      ast::CRATE_NODE_ID)),
             diverges: Cell::new(Diverges::Maybe),
             has_errors: Cell::new(false),
+            enclosing_loops: RefCell::new(EnclosingLoops {
+                stack: Vec::new(),
+                by_id: NodeMap(),
+            }),
             inh: inh,
         }
     }
@@ -3584,7 +3618,74 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               }
               tcx.mk_nil()
           }
-          hir::ExprBreak(_) => { tcx.types.never }
+          hir::ExprBreak(ref label_opt, ref expr_opt) => {
+            let loop_id = if label_opt.is_some() {
+                let loop_def = tcx.expect_def(expr.id);
+                if let Def::Label(loop_id) = loop_def {
+                    Some(Some(loop_id))
+                } else if loop_def == Def::Err {
+                    // an error was already printed, so just ignore it
+                    None
+                } else {
+                    span_bug!(expr.span, "break label resolved to a non-label");
+                }
+            } else {
+                Some(None)
+            };
+            if let Some(loop_id) = loop_id {
+                let coerce_to = {
+                    let mut enclosing_loops = self.enclosing_loops.borrow_mut();
+                    enclosing_loops.find_loop(loop_id).map(|ctxt| ctxt.coerce_to)
+                };
+                if let Some(coerce_to) = coerce_to {
+                    let e_ty;
+                    let cause;
+                    if let Some(ref e) = *expr_opt {
+                        // Recurse without `enclosing_loops` borrowed.
+                        e_ty = self.check_expr_with_hint(e, coerce_to);
+                        cause = self.misc(e.span);
+                        // Notably, the recursive call may alter coerce_to - must not keep using it!
+                    } else {
+                        // `break` without argument acts like `break ()`.
+                        e_ty = tcx.mk_nil();
+                        cause = self.misc(expr.span);
+                    }
+                    let mut enclosing_loops = self.enclosing_loops.borrow_mut();
+                    let ctxt = enclosing_loops.find_loop(loop_id).unwrap();
+
+                    let result = if let Some(ref e) = *expr_opt {
+                        // Special-case the first element, as it has no "previous expressions".
+                        let result = if !ctxt.may_break {
+                            self.try_coerce(e, e_ty, ctxt.coerce_to)
+                        } else {
+                            self.try_find_coercion_lub(&cause, || ctxt.break_exprs.iter().cloned(),
+                                                       ctxt.unified, e, e_ty)
+                        };
+
+                        ctxt.break_exprs.push(e);
+                        result
+                    } else {
+                        self.eq_types(true, &cause, e_ty, ctxt.unified)
+                            .map(|InferOk { obligations, .. }| {
+                                // FIXME(#32730) propagate obligations
+                                assert!(obligations.is_empty());
+                                e_ty
+                            })
+                    };
+                    match result {
+                        Ok(ty) => ctxt.unified = ty,
+                        Err(err) => {
+                            self.report_mismatched_types(&cause, ctxt.unified, e_ty, err);
+                        }
+                    }
+
+                    ctxt.may_break = true;
+                }
+                // Otherwise, we failed to find the enclosing loop; this can only happen if the
+                // `break` was not inside a loop at all, which is caught by the loop-checking pass.
+            }
+            tcx.types.never
+          }
           hir::ExprAgain(_) => { tcx.types.never }
           hir::ExprRet(ref expr_opt) => {
             if let Some(ref e) = *expr_opt {
@@ -3635,12 +3736,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  expr.span, expected)
           }
           hir::ExprWhile(ref cond, ref body, _) => {
-            self.check_expr_has_type(&cond, tcx.types.bool);
-            let cond_diverging = self.diverges.get();
-            self.check_block_no_value(&body);
+            let unified = self.tcx.mk_nil();
+            let coerce_to = unified;
+            let ctxt = LoopCtxt {
+                unified: unified,
+                coerce_to: coerce_to,
+                break_exprs: vec![],
+                may_break: true,
+            };
+            self.with_loop_ctxt(expr.id, ctxt, || {
+                self.check_expr_has_type(&cond, tcx.types.bool);
+                let cond_diverging = self.diverges.get();
+                self.check_block_no_value(&body);
 
-            // We may never reach the body so it diverging means nothing.
-            self.diverges.set(cond_diverging);
+                // We may never reach the body so it diverging means nothing.
+                self.diverges.set(cond_diverging);
+            });
 
             if self.has_errors.get() {
                 tcx.types.err
@@ -3648,14 +3759,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tcx.mk_nil()
             }
           }
-          hir::ExprLoop(ref body, _) => {
-            self.check_block_no_value(&body);
-            if may_break(tcx, expr.id, &body) {
+          hir::ExprLoop(ref body, _, _) => {
+            let unified = self.next_ty_var();
+            let coerce_to = expected.only_has_type(self).unwrap_or(unified);
+            let ctxt = LoopCtxt {
+                unified: unified,
+                coerce_to: coerce_to,
+                break_exprs: vec![],
+                may_break: false,
+            };
+
+            let ctxt = self.with_loop_ctxt(expr.id, ctxt, || {
+                self.check_block_no_value(&body);
+            });
+            if ctxt.may_break {
                 // No way to know whether it's diverging because
                 // of a `break` or an outer `break` or `return.
                 self.diverges.set(Diverges::Maybe);
 
-                tcx.mk_nil()
+                ctxt.unified
             } else {
                 tcx.types.never
             }
@@ -4531,27 +4653,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tcx.types.err
         })
     }
-}
 
-// Returns true if b contains a break that can exit from b
-pub fn may_break(tcx: TyCtxt, id: ast::NodeId, b: &hir::Block) -> bool {
-    // First: is there an unlabeled break immediately
-    // inside the loop?
-    (loop_query(&b, |e| {
-        match *e {
-            hir::ExprBreak(None) => true,
-            _ => false
+    fn with_loop_ctxt<F: FnOnce()>(&self, id: ast::NodeId, ctxt: LoopCtxt<'gcx, 'tcx>, f: F)
+                                   -> LoopCtxt<'gcx, 'tcx> {
+        let index;
+        {
+            let mut enclosing_loops = self.enclosing_loops.borrow_mut();
+            index = enclosing_loops.stack.len();
+            enclosing_loops.by_id.insert(id, index);
+            enclosing_loops.stack.push(ctxt);
         }
-    })) ||
-    // Second: is there a labeled break with label
-    // <id> nested anywhere inside the loop?
-    (block_query(b, |e| {
-        if let hir::ExprBreak(Some(_)) = e.node {
-            tcx.expect_def(e.id) == Def::Label(id)
-        } else {
-            false
+        f();
+        {
+            let mut enclosing_loops = self.enclosing_loops.borrow_mut();
+            debug_assert!(enclosing_loops.stack.len() == index + 1);
+            enclosing_loops.by_id.remove(&id).expect("missing loop context");
+            (enclosing_loops.stack.pop().expect("missing loop context"))
         }
-    }))
+    }
 }
 
 pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,

@@ -3074,22 +3074,25 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprKind::Break(Some(label)) | ExprKind::Continue(Some(label)) => {
+            ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
                 match self.search_label(label.node) {
                     None => {
                         self.record_def(expr.id, err_path_resolution());
                         resolve_error(self,
                                       label.span,
-                                      ResolutionError::UndeclaredLabel(&label.node.name.as_str()))
+                                      ResolutionError::UndeclaredLabel(&label.node.name.as_str()));
                     }
                     Some(def @ Def::Label(_)) => {
                         // Since this def is a label, it is never read.
-                        self.record_def(expr.id, PathResolution::new(def))
+                        self.record_def(expr.id, PathResolution::new(def));
                     }
                     Some(_) => {
-                        span_bug!(expr.span, "label wasn't mapped to a label def!")
+                        span_bug!(expr.span, "label wasn't mapped to a label def!");
                     }
                 }
+
+                // visit `break` argument if any
+                visit::walk_expr(self, expr);
             }
 
             ExprKind::IfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {

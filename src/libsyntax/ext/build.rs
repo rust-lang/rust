@@ -777,7 +777,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
 
     fn expr_break(&self, sp: Span) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprKind::Break(None))
+        self.expr(sp, ast::ExprKind::Break(None, None))
     }
 
 
