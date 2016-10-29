@@ -185,6 +185,8 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
+
+    fn visit_expr_id(&mut self, _: hir::ExprId) { }
 }
 
 pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -229,6 +231,8 @@ impl<'a, 'tcx, 'm> ItemLikeVisitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx,
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
+
+    fn visit_expr_id(&mut self, _: hir::ExprId) { }
 }
 
 impl<'a, 'tcx, 'm> DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
