@@ -322,7 +322,7 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span)]) 
 
                         if new_line {
                             let mut lookup_parser = parser.clone();
-                            if let Some(_) = lookup_parser.find(|&(_, c)| c == ']') {
+                            if lookup_parser.any(|(_, c)| c == ']') {
                                 if let Some((_, ':')) = lookup_parser.next() {
                                     lookup_parser.next_line();
                                     parser = lookup_parser;

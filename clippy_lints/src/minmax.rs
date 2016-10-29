@@ -85,7 +85,7 @@ fn fetch_const(args: &[P<Expr>], m: MinMax) -> Option<(MinMax, Constant, &Expr)>
         return None;
     }
     if let Some(c) = constant_simple(&args[0]) {
-        if let None = constant_simple(&args[1]) {
+        if constant_simple(&args[1]).is_none() {
             // otherwise ignore
             Some((m, c, &args[1]))
         } else {
