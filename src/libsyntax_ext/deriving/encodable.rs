@@ -145,7 +145,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                 generics: LifetimeBounds {
                     lifetimes: Vec::new(),
                     bounds: vec![(typaram,
-                                  vec![Path::new_(vec![krate, "Encoder"], None, vec!(), true)])]
+                                  vec![Path::new_(vec![krate, "Encoder"], None, vec![], true)])]
                 },
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(Ptr(Box::new(Literal(Path::new_local(typaram))),

@@ -127,9 +127,9 @@ impl LintStore {
 
     pub fn new() -> LintStore {
         LintStore {
-            lints: vec!(),
-            early_passes: Some(vec!()),
-            late_passes: Some(vec!()),
+            lints: vec![],
+            early_passes: Some(vec![]),
+            late_passes: Some(vec![]),
             by_name: FnvHashMap(),
             levels: FnvHashMap(),
             future_incompatible: FnvHashMap(),
@@ -345,7 +345,7 @@ macro_rules! run_lints { ($cx:expr, $f:ident, $ps:ident, $($args:expr),*) => ({
 // See also the hir version just below.
 pub fn gather_attrs(attrs: &[ast::Attribute])
                     -> Vec<Result<(InternedString, Level, Span), Span>> {
-    let mut out = vec!();
+    let mut out = vec![];
     for attr in attrs {
         let r = gather_attr(attr);
         out.extend(r.into_iter());
@@ -355,7 +355,7 @@ pub fn gather_attrs(attrs: &[ast::Attribute])
 
 pub fn gather_attr(attr: &ast::Attribute)
                    -> Vec<Result<(InternedString, Level, Span), Span>> {
-    let mut out = vec!();
+    let mut out = vec![];
 
     let level = match Level::from_str(&attr.name()) {
         None => return out,

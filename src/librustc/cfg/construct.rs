@@ -536,7 +536,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn add_contained_edge(&mut self,
                           source: CFGIndex,
                           target: CFGIndex) {
-        let data = CFGEdgeData {exiting_scopes: vec!() };
+        let data = CFGEdgeData {exiting_scopes: vec![] };
         self.graph.add_edge(source, target, data);
     }
 
@@ -545,7 +545,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         from_index: CFGIndex,
                         to_loop: LoopScope,
                         to_index: CFGIndex) {
-        let mut data = CFGEdgeData {exiting_scopes: vec!() };
+        let mut data = CFGEdgeData {exiting_scopes: vec![] };
         let mut scope = self.tcx.region_maps.node_extent(from_expr.id);
         let target_scope = self.tcx.region_maps.node_extent(to_loop.loop_id);
         while scope != target_scope {
@@ -559,7 +559,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                           _from_expr: &hir::Expr,
                           from_index: CFGIndex) {
         let mut data = CFGEdgeData {
-            exiting_scopes: vec!(),
+            exiting_scopes: vec![],
         };
         for &LoopScope { loop_id: id, .. } in self.loop_scopes.iter().rev() {
             data.exiting_scopes.push(id);

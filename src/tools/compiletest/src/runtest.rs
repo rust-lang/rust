@@ -830,9 +830,9 @@ actual:\n\
         let command_directive = format!("{}-command", debugger_prefix);
         let check_directive = format!("{}-check", debugger_prefix);
 
-        let mut breakpoint_lines = vec!();
-        let mut commands = vec!();
-        let mut check_lines = vec!();
+        let mut breakpoint_lines = vec![];
+        let mut commands = vec![];
+        let mut check_lines = vec![];
         let mut counter = 1;
         let reader = BufReader::new(File::open(&self.testpaths.file).unwrap());
         for line in reader.lines() {

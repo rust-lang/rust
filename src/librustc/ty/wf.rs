@@ -215,9 +215,9 @@ fn implied_bounds_from_components<'tcx>(sub_region: &'tcx ty::Region,
                     // idea is that the WAY that the caller proves
                     // that may change in the future and we want to
                     // give ourselves room to get smarter here.
-                    vec!(),
+                    vec![],
                 Component::UnresolvedInferenceVariable(..) =>
-                    vec!(),
+                    vec![],
             }
         })
         .collect()
