@@ -81,5 +81,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SymbolNamesTest<'a, 'tcx> {
         self.process_attrs(ii.id);
         intravisit::walk_impl_item(self, ii)
     }
+
+    fn visit_expr_id(&mut self, _: hir::ExprId) { }
 }
 
