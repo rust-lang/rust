@@ -196,6 +196,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 // Function items are coercible to any closure
                 // type; function pointers are not (that would
                 // require double indirection).
+                // Additionally, we permit coercion of function
+                // items to drop the unsafe qualifier.
                 self.coerce_from_fn_item(a, a_f, b)
             }
             ty::TyFnPtr(a_f) => {
@@ -504,6 +506,24 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         Ok((target, AdjustDerefRef(adjustment)))
     }
 
+    fn coerce_from_safe_fn(&self,
+                           a: Ty<'tcx>,
+                           fn_ty_a: &'tcx ty::BareFnTy<'tcx>,
+                           b: Ty<'tcx>)
+                           -> CoerceResult<'tcx> {
+        if let ty::TyFnPtr(fn_ty_b) = b.sty {
+            match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
+                (hir::Unsafety::Normal, hir::Unsafety::Unsafe) => {
+                    let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
+                    return self.unify_and_identity(unsafe_a, b)
+                        .map(|(ty, _)| (ty, AdjustUnsafeFnPointer));
+                }
+                _ => {}
+            }
+        }
+        self.unify_and_identity(a, b)
+    }
+
     fn coerce_from_fn_pointer(&self,
                               a: Ty<'tcx>,
                               fn_ty_a: &'tcx ty::BareFnTy<'tcx>,
@@ -516,17 +536,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         let b = self.shallow_resolve(b);
         debug!("coerce_from_fn_pointer(a={:?}, b={:?})", a, b);
 
-        if let ty::TyFnPtr(fn_ty_b) = b.sty {
-            match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
-                (hir::Unsafety::Normal, hir::Unsafety::Unsafe) => {
-                    let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
-                    return self.unify_and_identity(unsafe_a, b)
-                        .map(|(ty, _)| (ty, AdjustUnsafeFnPointer));
-                }
-                _ => {}
-            }
-        }
-        self.unify_and_identity(a, b)
+        self.coerce_from_safe_fn(a, fn_ty_a, b)
     }
 
     fn coerce_from_fn_item(&self,
@@ -544,7 +554,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         match b.sty {
             ty::TyFnPtr(_) => {
                 let a_fn_pointer = self.tcx.mk_fn_ptr(fn_ty_a);
-                self.unify_and_identity(a_fn_pointer, b).map(|(ty, _)| (ty, AdjustReifyFnPointer))
+                self.coerce_from_safe_fn(a_fn_pointer, fn_ty_a, b)
+                    .map(|(ty, _)| (ty, AdjustReifyFnPointer))
             }
             _ => self.unify_and_identity(a, b),
         }
