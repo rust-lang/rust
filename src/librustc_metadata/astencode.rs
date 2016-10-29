@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir;
 use rustc::hir::map as ast_map;
 
-use rustc::hir::intravisit::{Visitor, IdRangeComputingVisitor, IdRange};
+use rustc::hir::intravisit::{Visitor, IdRangeComputingVisitor, IdRange, NestedVisitMode};
 
 use cstore::CrateMetadata;
 use encoder::EncodeContext;
@@ -43,7 +44,7 @@ enum TableEntry<'tcx> {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    pub fn encode_inlined_item(&mut self, ii: InlinedItemRef) -> Lazy<Ast<'tcx>> {
+    pub fn encode_inlined_item(&mut self, ii: InlinedItemRef<'tcx>) -> Lazy<Ast<'tcx>> {
         let mut id_visitor = IdRangeComputingVisitor::new(&self.tcx.map);
         match ii {
             InlinedItemRef::Item(_, i) => id_visitor.visit_item(i),
@@ -81,7 +82,11 @@ struct SideTableEncodingIdVisitor<'a, 'b: 'a, 'tcx: 'b> {
     count: usize,
 }
 
-impl<'a, 'b, 'tcx, 'v> Visitor<'v> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> Visitor<'tcx> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
+        Some((&self.ecx.tcx.map, NestedVisitMode::OnlyBodies))
+    }
+
     fn visit_id(&mut self, id: ast::NodeId) {
         debug!("Encoding side tables for id {}", id);
 
