@@ -20,7 +20,7 @@ use rustc::util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax_pos::Span;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitMode};
 use rustc::hir;
 
 use std::cell::RefCell;
@@ -200,6 +200,10 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
 }
 
 impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
+    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'ast>, NestedVisitMode)> {
+        Some((&self.ast_map, NestedVisitMode::OnlyBodies))
+    }
+
     fn visit_item(&mut self, it: &'ast hir::Item) {
         self.with_item_id_pushed(it.id, |v| intravisit::walk_item(v, it), it.span);
     }
