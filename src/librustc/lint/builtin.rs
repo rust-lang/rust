@@ -192,6 +192,12 @@ declare_lint! {
     "safe access to extern statics was erroneously allowed"
 }
 
+declare_lint! {
+    pub PATTERNS_IN_FNS_WITHOUT_BODY,
+    Warn,
+    "patterns in functions without body were erroneously allowed"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -228,7 +234,8 @@ impl LintPass for HardwiredLints {
             SUPER_OR_SELF_IN_GLOBAL_PATH,
             HR_LIFETIME_IN_ASSOC_TYPE,
             LIFETIME_UNDERSCORE,
-            SAFE_EXTERN_STATICS
+            SAFE_EXTERN_STATICS,
+            PATTERNS_IN_FNS_WITHOUT_BODY
         )
     }
 }
