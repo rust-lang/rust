@@ -19,6 +19,6 @@ macro_rules! define_vec {
     )
 }
 
-define_vec!();
+define_vec![];
 
 pub fn main() {}

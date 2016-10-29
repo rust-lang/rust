@@ -20,6 +20,6 @@ fn test(a: &Vec<u8>) {
 }
 
 pub fn main() {
-  let data = vec!();
+  let data = vec![];
   test(&data);
 }

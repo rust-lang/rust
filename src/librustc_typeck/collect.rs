@@ -1387,7 +1387,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
             let bounds = match trait_item.node {
                 hir::TypeTraitItem(ref bounds, _) => bounds,
                 _ => {
-                    return vec!().into_iter();
+                    return vec![].into_iter();
                 }
             };
 

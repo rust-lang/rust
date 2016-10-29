@@ -275,7 +275,7 @@ impl<'a, 'b, 'gcx, 'tcx> AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
         AssociatedTypeNormalizer {
             selcx: selcx,
             cause: cause,
-            obligations: vec!(),
+            obligations: vec![],
             depth: depth,
         }
     }
@@ -545,7 +545,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                    projected_ty);
             let result = Normalized {
                 value: projected_ty,
-                obligations: vec!()
+                obligations: vec![]
             };
             infcx.projection_cache.borrow_mut()
                                   .complete(projection_ty, &result, true);

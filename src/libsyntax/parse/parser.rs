@@ -848,7 +848,7 @@ impl<'a> Parser<'a> {
               Fe: FnMut(DiagnosticBuilder)
     {
         let mut first: bool = true;
-        let mut v = vec!();
+        let mut v = vec![];
         while !kets.contains(&&self.token) {
             match sep.sep {
                 Some(ref t) => {
@@ -4224,7 +4224,7 @@ impl<'a> Parser<'a> {
                              mode: BoundParsingMode)
                              -> PResult<'a, TyParamBounds>
     {
-        let mut result = vec!();
+        let mut result = vec![];
         loop {
             let question_span = self.span;
             let ate_question = self.eat(&token::Question);

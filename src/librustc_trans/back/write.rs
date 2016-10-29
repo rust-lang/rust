@@ -665,7 +665,7 @@ pub fn run_passes(sess: &Session,
     // Figure out what we actually need to build.
 
     let mut modules_config = ModuleConfig::new(tm, sess.opts.cg.passes.clone());
-    let mut metadata_config = ModuleConfig::new(tm, vec!());
+    let mut metadata_config = ModuleConfig::new(tm, vec![]);
 
     modules_config.opt_level = Some(get_llvm_opt_level(sess.opts.optimize));
     modules_config.opt_size = Some(get_llvm_opt_size(sess.opts.optimize));
