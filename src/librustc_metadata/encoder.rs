@@ -39,7 +39,7 @@ use syntax_pos;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::intravisit::Visitor;
+use rustc::hir::intravisit::{Visitor, NestedVisitMode};
 use rustc::hir::intravisit;
 
 use super::index_builder::{FromId, IndexBuilder, Untracked};
@@ -630,7 +630,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.tcx.lookup_deprecation(def_id).map(|depr| self.lazy(&depr))
     }
 
-    fn encode_info_for_item(&mut self, (def_id, item): (DefId, &hir::Item)) -> Entry<'tcx> {
+    fn encode_info_for_item(&mut self, (def_id, item): (DefId, &'tcx hir::Item)) -> Entry<'tcx> {
         let tcx = self.tcx;
 
         debug!("encoding info for item at {}",
@@ -973,6 +973,9 @@ struct EncodeVisitor<'a, 'b: 'a, 'tcx: 'b> {
 }
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
+        Some((&self.index.tcx.map, NestedVisitMode::OnlyBodies))
+    }
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         intravisit::walk_expr(self, ex);
         self.index.encode_info_for_expr(ex);
