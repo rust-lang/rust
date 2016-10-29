@@ -340,10 +340,10 @@ impl<'a> CrateLoader<'a> {
                     target: &self.sess.target.target,
                     triple: &self.sess.opts.target_triple,
                     root: root,
-                    rejected_via_hash: vec!(),
-                    rejected_via_triple: vec!(),
-                    rejected_via_kind: vec!(),
-                    rejected_via_version: vec!(),
+                    rejected_via_hash: vec![],
+                    rejected_via_triple: vec![],
+                    rejected_via_kind: vec![],
+                    rejected_via_version: vec![],
                     should_match_name: true,
                 };
                 match self.load(&mut locate_ctxt) {
@@ -481,10 +481,10 @@ impl<'a> CrateLoader<'a> {
             target: &self.sess.host,
             triple: config::host_triple(),
             root: &None,
-            rejected_via_hash: vec!(),
-            rejected_via_triple: vec!(),
-            rejected_via_kind: vec!(),
-            rejected_via_version: vec!(),
+            rejected_via_hash: vec![],
+            rejected_via_triple: vec![],
+            rejected_via_kind: vec![],
+            rejected_via_version: vec![],
             should_match_name: true,
         };
         let library = self.load(&mut locate_ctxt).or_else(|| {

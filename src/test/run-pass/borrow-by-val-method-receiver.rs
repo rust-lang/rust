@@ -17,6 +17,6 @@ impl<'a> Foo for &'a [isize] {
 }
 
 pub fn main() {
-    let items = vec!( 3, 5, 1, 2, 4 );
+    let items = vec![ 3, 5, 1, 2, 4 ];
     items.foo();
 }

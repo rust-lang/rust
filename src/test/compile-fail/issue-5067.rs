@@ -48,7 +48,7 @@ macro_rules! make_vec {
 }
 
 fn main() {
-    let _ = make_vec!(a 1, a 2, a 3);
+    let _ = make_vec![a 1, a 2, a 3];
 }
 
 

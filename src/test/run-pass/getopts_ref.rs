@@ -17,7 +17,7 @@ use getopts::{optopt, getopts};
 
 pub fn main() {
     let args = Vec::new();
-    let opts = vec!(optopt("b", "", "something", "SMTHNG"));
+    let opts = vec![optopt("b", "", "something", "SMTHNG")];
 
     match getopts(&args, &opts) {
         Ok(ref m)  =>

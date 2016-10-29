@@ -14,7 +14,7 @@ struct Point {
 }
 
 fn a() {
-    let mut p = vec!(1);
+    let mut p = vec![1];
 
     // Create an immutable pointer into p's contents:
     let q: &isize = &p[0];
@@ -30,7 +30,7 @@ fn b() {
     // here we alias the mutable vector into an imm slice and try to
     // modify the original:
 
-    let mut p = vec!(1);
+    let mut p = vec![1];
 
     borrow(
         &p,
@@ -40,7 +40,7 @@ fn b() {
 fn c() {
     // Legal because the scope of the borrow does not include the
     // modification:
-    let mut p = vec!(1);
+    let mut p = vec![1];
     borrow(&p, ||{});
     p[0] = 5;
 }

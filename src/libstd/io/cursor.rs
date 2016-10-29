@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn test_mem_reader() {
-        let mut reader = Cursor::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
+        let mut reader = Cursor::new(vec![0, 1, 2, 3, 4, 5, 6, 7]);
         let mut buf = [];
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
         assert_eq!(reader.position(), 0);
@@ -414,7 +414,7 @@ mod tests {
 
     #[test]
     fn test_boxed_slice_reader() {
-        let mut reader = Cursor::new(vec!(0, 1, 2, 3, 4, 5, 6, 7).into_boxed_slice());
+        let mut reader = Cursor::new(vec![0, 1, 2, 3, 4, 5, 6, 7].into_boxed_slice());
         let mut buf = [];
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
         assert_eq!(reader.position(), 0);
@@ -436,7 +436,7 @@ mod tests {
 
     #[test]
     fn read_to_end() {
-        let mut reader = Cursor::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
+        let mut reader = Cursor::new(vec![0, 1, 2, 3, 4, 5, 6, 7]);
         let mut v = Vec::new();
         reader.read_to_end(&mut v).unwrap();
         assert_eq!(v, [0, 1, 2, 3, 4, 5, 6, 7]);
@@ -512,7 +512,7 @@ mod tests {
         assert_eq!(r.seek(SeekFrom::Start(10)).unwrap(), 10);
         assert_eq!(r.read(&mut [0]).unwrap(), 0);
 
-        let mut r = Cursor::new(vec!(10));
+        let mut r = Cursor::new(vec![10]);
         assert_eq!(r.seek(SeekFrom::Start(10)).unwrap(), 10);
         assert_eq!(r.read(&mut [0]).unwrap(), 0);
 
@@ -532,14 +532,14 @@ mod tests {
         let mut r = Cursor::new(&buf[..]);
         assert!(r.seek(SeekFrom::End(-2)).is_err());
 
-        let mut r = Cursor::new(vec!(10));
+        let mut r = Cursor::new(vec![10]);
         assert!(r.seek(SeekFrom::End(-2)).is_err());
 
         let mut buf = [0];
         let mut r = Cursor::new(&mut buf[..]);
         assert!(r.seek(SeekFrom::End(-2)).is_err());
 
-        let mut r = Cursor::new(vec!(10).into_boxed_slice());
+        let mut r = Cursor::new(vec![10].into_boxed_slice());
         assert!(r.seek(SeekFrom::End(-2)).is_err());
     }
 

@@ -977,12 +977,12 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// ```
     /// use std::u32;
     ///
-    /// let v = vec!(1, 2);
+    /// let v = vec![1, 2];
     /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|&x: &u32|
     ///     if x == u32::MAX { Err("Overflow!") }
     ///     else { Ok(x + 1) }
     /// ).collect();
-    /// assert!(res == Ok(vec!(2, 3)));
+    /// assert!(res == Ok(vec![2, 3]));
     /// ```
     #[inline]
     fn from_iter<I: IntoIterator<Item=Result<A, E>>>(iter: I) -> Result<V, E> {

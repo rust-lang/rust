@@ -21,8 +21,8 @@ impl Drop for r {
 
 fn main() {
     // This can't make sense as it would copy the classes
-    let i = vec!(r(0));
-    let j = vec!(r(1));
+    let i = vec![r(0)];
+    let j = vec![r(1)];
     let k = i + j;
     //~^ ERROR binary operation `+` cannot be applied to type
     println!("{:?}", j);
