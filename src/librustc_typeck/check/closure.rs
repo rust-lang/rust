@@ -23,7 +23,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               expr: &hir::Expr,
                               _capture: hir::CaptureClause,
                               decl: &'gcx hir::FnDecl,
-                              body: &'gcx hir::Expr,
+                              body_id: hir::ExprId,
                               expected: Expectation<'tcx>)
                               -> Ty<'tcx> {
         debug!("check_expr_closure(expr={:?},expected={:?})",
@@ -37,6 +37,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Some(ty) => self.deduce_expectations_from_expected_type(ty),
             None => (None, None),
         };
+        let body = self.tcx.map.expr(body_id);
         self.check_closure(expr, expected_kind, decl, body, expected_sig)
     }
 
