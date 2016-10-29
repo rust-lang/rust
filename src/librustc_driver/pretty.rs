@@ -696,13 +696,16 @@ impl fold::Folder for ReplaceBodyWithLoop {
 
 fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
                                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       code: blocks::Code,
+                                       code: blocks::Code<'tcx>,
                                        mode: PpFlowGraphMode,
                                        mut out: W)
                                        -> io::Result<()> {
     let cfg = match code {
         blocks::Code::Expr(expr) => cfg::CFG::new(tcx, expr),
-        blocks::Code::FnLike(fn_like) => cfg::CFG::new(tcx, fn_like.body()),
+        blocks::Code::FnLike(fn_like) => {
+            let body = tcx.map.expr(fn_like.body());
+            cfg::CFG::new(tcx, body)
+        },
     };
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
     let lcfg = LabelledCFG {
