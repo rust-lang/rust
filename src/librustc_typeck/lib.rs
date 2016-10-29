@@ -111,7 +111,7 @@ use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
-use session::{config, CompileResult};
+use session::config;
 use util::common::time;
 
 use syntax::ast;
@@ -314,7 +314,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                             -> CompileResult {
+                             -> Result<NodeMap<Ty<'tcx>>, usize> {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
         ast_ty_to_ty_cache: RefCell::new(NodeMap()),
@@ -358,7 +358,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
     let err_count = tcx.sess.err_count();
     if err_count == 0 {
-        Ok(())
+        Ok(ccx.ast_ty_to_ty_cache.into_inner())
     } else {
         Err(err_count)
     }

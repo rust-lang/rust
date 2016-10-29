@@ -68,7 +68,6 @@ pub struct DumpVisitor<'l, 'tcx: 'l, 'll, D: 'll> {
     save_ctxt: SaveContext<'l, 'tcx>,
     sess: &'l Session,
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
-    analysis: &'l ty::CrateAnalysis<'l>,
     dumper: &'ll mut D,
 
     span: SpanUtils<'l>,
@@ -84,17 +83,14 @@ pub struct DumpVisitor<'l, 'tcx: 'l, 'll, D: 'll> {
 }
 
 impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
-    pub fn new(tcx: TyCtxt<'l, 'tcx, 'tcx>,
-               save_ctxt: SaveContext<'l, 'tcx>,
-               analysis: &'l ty::CrateAnalysis<'l>,
+    pub fn new(save_ctxt: SaveContext<'l, 'tcx>,
                dumper: &'ll mut D)
                -> DumpVisitor<'l, 'tcx, 'll, D> {
-        let span_utils = SpanUtils::new(&tcx.sess);
+        let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
         DumpVisitor {
-            sess: &tcx.sess,
-            tcx: tcx,
+            sess: &save_ctxt.tcx.sess,
+            tcx: save_ctxt.tcx,
             save_ctxt: save_ctxt,
-            analysis: analysis,
             dumper: dumper,
             span: span_utils.clone(),
             cur_scope: CRATE_NODE_ID,
@@ -1207,7 +1203,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                     ast::ViewPathGlob(ref path) => {
                         // Make a comma-separated list of names of imported modules.
                         let mut names = vec![];
-                        let glob_map = &self.analysis.glob_map;
+                        let glob_map = &self.save_ctxt.analysis.glob_map;
                         let glob_map = glob_map.as_ref().unwrap();
                         if glob_map.contains_key(&item.id) {
                             for n in glob_map.get(&item.id).unwrap() {

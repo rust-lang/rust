@@ -29,8 +29,7 @@ use ty;
 use ty::subst::{Subst, Substs};
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
-use util::nodemap::NodeSet;
-use util::nodemap::{FxHashMap, FxHashSet};
+use util::nodemap::{NodeSet, NodeMap, FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
@@ -111,12 +110,13 @@ pub type Disr = ConstInt;
 /// The complete set of all analyses described in this module. This is
 /// produced by the driver and fed to trans and later passes.
 #[derive(Clone)]
-pub struct CrateAnalysis<'a> {
+pub struct CrateAnalysis<'tcx> {
     pub export_map: ExportMap,
     pub access_levels: middle::privacy::AccessLevels,
     pub reachable: NodeSet,
-    pub name: &'a str,
+    pub name: String,
     pub glob_map: Option<hir::GlobMap>,
+    pub hir_ty_to_ty: NodeMap<Ty<'tcx>>,
 }
 
 #[derive(Copy, Clone)]
