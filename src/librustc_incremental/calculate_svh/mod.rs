@@ -226,5 +226,7 @@ impl<'a, 'tcx> Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
         self.calculate_node_id(item.id, |v| v.visit_foreign_item(item));
         visit::walk_foreign_item(self, item);
     }
+
+    fn visit_expr_id(&mut self, _: hir::ExprId) { }
 }
 
