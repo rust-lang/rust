@@ -85,6 +85,7 @@ pub mod recorder {
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
+    analysis: &'l ty::CrateAnalysis<'tcx>,
     span_utils: SpanUtils<'tcx>,
 }
 
@@ -93,16 +94,20 @@ macro_rules! option_try(
 );
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
-    pub fn new(tcx: TyCtxt<'l, 'tcx, 'tcx>) -> SaveContext<'l, 'tcx> {
+    pub fn new(tcx: TyCtxt<'l, 'tcx, 'tcx>,
+               analysis: &'l ty::CrateAnalysis<'tcx>)
+               -> SaveContext<'l, 'tcx> {
         let span_utils = SpanUtils::new(&tcx.sess);
-        SaveContext::from_span_utils(tcx, span_utils)
+        SaveContext::from_span_utils(tcx, analysis, span_utils)
     }
 
     pub fn from_span_utils(tcx: TyCtxt<'l, 'tcx, 'tcx>,
+                           analysis: &'l ty::CrateAnalysis<'tcx>,
                            span_utils: SpanUtils<'tcx>)
                            -> SaveContext<'l, 'tcx> {
         SaveContext {
             tcx: tcx,
+            analysis: analysis,
             span_utils: span_utils,
         }
     }
@@ -520,8 +525,18 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 match *qpath {
                     hir::QPath::Resolved(_, ref path) => path.def,
                     hir::QPath::TypeRelative(..) => {
-                        // FIXME(eddyb) Avoid keeping associated type resolutions.
-                        self.tcx.tables().type_relative_path_defs[&id]
+                        if let Some(ty) = self.analysis.hir_ty_to_ty.get(&id) {
+                            if let ty::TyProjection(proj) = ty.sty {
+                                for item in self.tcx.associated_items(proj.trait_ref.def_id) {
+                                    if item.kind == ty::AssociatedKind::Type {
+                                        if item.name == proj.item_name {
+                                            return Def::AssociatedTy(item.def_id);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Def::Err
                     }
                 }
             }
@@ -799,7 +814,7 @@ impl Format {
 
 pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
                                krate: &ast::Crate,
-                               analysis: &'l ty::CrateAnalysis<'l>,
+                               analysis: &'l ty::CrateAnalysis<'tcx>,
                                cratename: &str,
                                odir: Option<&Path>,
                                format: Format) {
@@ -847,12 +862,12 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
     root_path.pop();
     let output = &mut output_file;
 
-    let save_ctxt = SaveContext::new(tcx);
+    let save_ctxt = SaveContext::new(tcx, analysis);
 
     macro_rules! dump {
         ($new_dumper: expr) => {{
             let mut dumper = $new_dumper;
-            let mut visitor = DumpVisitor::new(tcx, save_ctxt, analysis, &mut dumper);
+            let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
             visitor.dump_crate_info(cratename, krate);
             visit::walk_crate(&mut visitor, krate);

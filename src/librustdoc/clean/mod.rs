@@ -1782,13 +1782,16 @@ impl Clean<Type> for hir::Ty {
                 }
             }
             TyPath(hir::QPath::TypeRelative(ref qself, ref segment)) => {
+                let mut def = Def::Err;
+                if let Some(ty) = cx.hir_ty_to_ty.get(&self.id) {
+                    if let ty::TyProjection(proj) = ty.sty {
+                        def = Def::Trait(proj.trait_ref.def_id);
+                    }
+                }
                 let trait_path = hir::Path {
                     span: self.span,
                     global: false,
-                    def: cx.tcx_opt().map_or(Def::Err, |tcx| {
-                        let def_id = tcx.tables().type_relative_path_defs[&self.id].def_id();
-                        Def::Trait(tcx.associated_item(def_id).container.id())
-                    }),
+                    def: def,
                     segments: vec![].into(),
                 };
                 Type::QPath {
