@@ -509,10 +509,6 @@ macro_rules! hash_span {
 }
 
 impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'hash, 'tcx> {
-    fn visit_expr_id(&mut self, _: hir::ExprId) {
-        // Body exprs are hashed independently
-    }
-
     fn visit_variant_data(&mut self,
                           s: &'tcx VariantData,
                           name: Name,
