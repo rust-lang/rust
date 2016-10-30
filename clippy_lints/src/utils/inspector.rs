@@ -379,12 +379,12 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
             }
         },
         hir::ItemDefaultImpl(_, ref trait_ref) => {
-            let trait_did = cx.tcx.map.local_def_id(trait_ref.ref_id);
-            println!("default impl for `{:?}`", cx.tcx.item_path_str(trait_did));
+            let trait_did = cx.tcx.expect_def(trait_ref.ref_id).def_id();
+            println!("default impl for `{}`", cx.tcx.item_path_str(trait_did));
         },
         hir::ItemImpl(_, _, _, Some(ref trait_ref), _, _) => {
-            let trait_did = cx.tcx.map.local_def_id(trait_ref.ref_id);
-            println!("impl of trait `{:?}`", cx.tcx.item_path_str(trait_did));
+            let trait_did = cx.tcx.expect_def(trait_ref.ref_id).def_id();
+            println!("impl of trait `{}`", cx.tcx.item_path_str(trait_did));
         },
         hir::ItemImpl(_, _, _, None, _, _) => {
             println!("impl");
