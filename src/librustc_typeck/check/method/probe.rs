@@ -285,15 +285,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         Some(steps)
     }
-
-    pub fn find_attr(&self, def_id: DefId, attr_name: &str) -> Option<ast::Attribute> {
-        for item in self.tcx.get_attrs(def_id).iter() {
-            if item.check_name(attr_name) {
-                return Some(item.clone());
-            }
-        }
-        None
-    }
 }
 
 impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
@@ -918,21 +909,21 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             //Some(Ok(p)) => p.iter().map(|p| p.item.container().id()).collect(),
             Some(Err(MethodError::Ambiguity(v))) => {
                 v.into_iter()
-                    .map(|source| {
-                        match source {
-                            TraitSource(id) => id,
-                            ImplSource(impl_id) => {
-                                match tcx.trait_id_of_impl(impl_id) {
-                                    Some(id) => id,
-                                    None => {
-                                        span_bug!(span,
-                                                  "found inherent method when looking at traits")
-                                    }
+                .map(|source| {
+                    match source {
+                        TraitSource(id) => id,
+                        ImplSource(impl_id) => {
+                            match tcx.trait_id_of_impl(impl_id) {
+                                Some(id) => id,
+                                None => {
+                                    span_bug!(span,
+                                              "found inherent method when looking at traits")
                                 }
                             }
                         }
-                    })
-                    .collect()
+                    }
+                })
+                .collect()
             }
             Some(Err(MethodError::NoMatch(NoMatchData { out_of_scope_traits: others, .. }))) => {
                 assert!(others.is_empty());
@@ -957,24 +948,26 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     fn pick_core(&mut self) -> Option<PickResult<'tcx>> {
         let steps = self.steps.clone();
-        let mut ret = Vec::new();
 
-        for step in steps.iter() {
-            match self.pick_step(step) {
-                Some(Ok(mut elems)) => ret.append(&mut elems),
-                Some(Err(elem)) => {
-                    match self.looking_for {
-                        LookingFor::MethodName(_) => return Some(Err(elem)),
-                        LookingFor::ReturnType(_) => {}
+        match self.looking_for {
+            LookingFor::MethodName(_) => steps.iter()
+                                              .filter_map(|step| self.pick_step(step))
+                                              .next(),
+            LookingFor::ReturnType(_) => {
+                let mut ret = Vec::new();
+
+                for step in steps.iter() {
+                    match self.pick_step(step) {
+                        Some(Ok(mut elems)) => ret.append(&mut elems),
+                        _ => {}
                     }
                 }
-                _ => {}
+                if ret.len() < 1 {
+                    None
+                } else {
+                    Some(Ok(ret))
+                }
             }
-        }
-        if ret.len() < 1 {
-            None
-        } else {
-            Some(Ok(ret))
         }
     }
 
@@ -1028,12 +1021,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // In general, during probing we erase regions. See
         // `impl_self_ty()` for an explanation.
         let region = tcx.mk_region(ty::ReErased);
-        let mut res = Vec::new();
 
         // Search through mutabilities in order to find one where pick works:
-        for _ in [hir::MutImmutable, hir::MutMutable]
-            .iter()
-            .filter_map(|&m| {
+        let mut elements = [hir::MutImmutable, hir::MutMutable];
+        let mut it = elements
+            .iter_mut()
+            .filter_map(|&mut m| {
                 let autoref_ty = tcx.mk_ref(region,
                                             ty::TypeAndMut {
                                                 ty: step.self_ty,
@@ -1050,15 +1043,24 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                 None
                             };
                         }
-                        res.append(&mut picks);
+                        picks
                     })
                 })
-            }) {}
+            });
+        match self.looking_for {
+            LookingFor::MethodName(_) => it.nth(0),
+            LookingFor::ReturnType(_) => {
+                let mut ret = Vec::new();
+                it.filter_map(|entry| entry.ok())
+                  .map(|mut v| { ret.append(&mut v); })
+                  .all(|_| true);
 
-        if res.len() < 1 {
-            None
-        } else {
-            Some(Ok(res))
+                if ret.len() < 1 {
+                    None
+                } else {
+                    Some(Ok(ret))
+                }
+            }
         }
     }
 
@@ -1089,7 +1091,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                            probes: &[Candidate<'tcx>],
                            possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>)
                            -> Option<PickResult<'tcx>> {
-        let applicable_candidates: Vec<_> = probes.iter()
+        let mut applicable_candidates: Vec<_> = probes.iter()
             .filter(|&probe| self.consider_probe(self_ty, probe, possibly_unsatisfied_predicates))
             .collect();
 
@@ -1109,14 +1111,21 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             return Some(Err(MethodError::Ambiguity(sources)));
         }
 
-        let ret: Vec<_> = applicable_candidates.iter()
-                                               .map(|probe| probe.to_unadjusted_pick())
-                                               .collect();
+        match self.looking_for {
+            LookingFor::MethodName(_) => applicable_candidates
+                .pop()
+                .map(|probe| Ok(vec![probe.to_unadjusted_pick()])),
+            LookingFor::ReturnType(_) => {
+                let ret: Vec<_> = applicable_candidates.iter()
+                                                       .map(|probe| probe.to_unadjusted_pick())
+                                                       .collect();
 
-        if ret.len() < 1 {
-            None
-        } else {
-            Some(Ok(ret))
+                if ret.len() < 1 {
+                    None
+                } else {
+                    Some(Ok(ret))
+                }
+            }
         }
     }
 
