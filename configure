@@ -508,7 +508,7 @@ case $CFG_CPUTYPE in
         ;;
 
     armv7l)
-        CFG_CPUTYPE=arm
+        CFG_CPUTYPE=armv7
         CFG_OSTYPE="${CFG_OSTYPE}eabihf"
         ;;
 
