@@ -8,33 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use fs::File;
 use io;
+use libc;
 use rand::Rng;
-use rand::reader::ReaderRng;
 
-pub struct OsRng {
-    inner: ReaderRng<File>,
-}
+pub struct OsRng;
 
 impl OsRng {
     /// Create a new `OsRng`.
     pub fn new() -> io::Result<OsRng> {
-        let reader = File::open("rand:")?;
-        let reader_rng = ReaderRng::new(reader);
-
-        Ok(OsRng { inner: reader_rng })
+        Ok(OsRng)
     }
 }
 
 impl Rng for OsRng {
     fn next_u32(&mut self) -> u32 {
-        self.inner.next_u32()
+        self.next_u64() as u32
     }
     fn next_u64(&mut self) -> u64 {
-        self.inner.next_u64()
+        unsafe { libc::random() }
     }
-    fn fill_bytes(&mut self, v: &mut [u8]) {
-        self.inner.fill_bytes(v)
+    fn fill_bytes(&mut self, buf: &mut [u8]) {
+        for chunk in buf.chunks_mut(8) {
+            let mut rand: u64 = self.next_u64();
+            for b in chunk.iter_mut() {
+                *b = rand as u8;
+                rand = rand >> 8;
+            }
+        }
     }
 }

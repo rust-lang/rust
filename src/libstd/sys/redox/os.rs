@@ -15,7 +15,7 @@
 use os::unix::prelude::*;
 
 use error::Error as StdError;
-use ffi::{CString, CStr, OsString, OsStr};
+use ffi::{OsString, OsStr};
 use fmt;
 use io::{self, Read, Write};
 use iter;

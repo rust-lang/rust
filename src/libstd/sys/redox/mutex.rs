@@ -65,22 +65,18 @@ impl Mutex {
     /// Try to lock the mutex
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        ::sys_common::util::dumb_print(format_args!("mutex try lock\n"));
         mutex_try_lock(self.lock.get())
     }
 
     /// Lock the mutex
     #[inline]
     pub unsafe fn lock(&self) {
-        ::sys_common::util::dumb_print(format_args!("mutex lock\n"));
-        mutex_try_lock(self.lock.get());
-        //mutex_lock(self.lock.get());
+        mutex_lock(self.lock.get());
     }
 
     /// Unlock the mutex
     #[inline]
     pub unsafe fn unlock(&self) {
-        ::sys_common::util::dumb_print(format_args!("mutex unlock\n"));
         mutex_unlock(self.lock.get());
     }
 
@@ -119,7 +115,6 @@ impl ReentrantMutex {
     /// Try to lock the mutex
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        ::sys_common::util::dumb_print(format_args!("remutex try_lock\n"));
         let pid = getpid().unwrap();
         if *self.own_count.get() > 0 && *self.owner.get() == pid {
             *self.own_count.get() += 1;
@@ -138,7 +133,6 @@ impl ReentrantMutex {
     /// Lock the mutex
     #[inline]
     pub unsafe fn lock(&self) {
-        ::sys_common::util::dumb_print(format_args!("remutex lock\n"));
         let pid = getpid().unwrap();
         if *self.own_count.get() > 0 && *self.owner.get() == pid {
             *self.own_count.get() += 1;
@@ -152,7 +146,6 @@ impl ReentrantMutex {
     /// Unlock the mutex
     #[inline]
     pub unsafe fn unlock(&self) {
-        ::sys_common::util::dumb_print(format_args!("remutex unlock\n"));
         let pid = getpid().unwrap();
         if *self.own_count.get() > 0 && *self.owner.get() == pid {
             *self.own_count.get() -= 1;

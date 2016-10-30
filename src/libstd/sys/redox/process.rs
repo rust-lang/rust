@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use os::unix::prelude::*;
-
 use collections::hash_map::HashMap;
 use env;
-use ffi::{OsStr, CString};
+use ffi::OsStr;
 use fmt;
 use io::{self, Error, ErrorKind};
 use libc::{self, pid_t, c_int, gid_t, uid_t};
@@ -344,13 +342,6 @@ impl Command {
     }
 }
 
-fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
-    CString::new(s.as_bytes()).unwrap_or_else(|_e| {
-        *saw_nul = true;
-        CString::new("<string-with-nul>").unwrap()
-    })
-}
-
 impl Stdio {
     fn to_child_stdio(&self, readable: bool)
                       -> io::Result<(ChildStdio, Option<AnonPipe>)> {
@@ -401,18 +392,6 @@ impl ChildStdio {
             ChildStdio::Owned(ref fd) => Some(fd.raw()),
         }
     }
-}
-
-fn pair_to_key(key: &OsStr, value: &OsStr, saw_nul: &mut bool) -> CString {
-    let (key, value) = (key.as_bytes(), value.as_bytes());
-    let mut v = Vec::with_capacity(key.len() + value.len() + 1);
-    v.extend(key);
-    v.push(b'=');
-    v.extend(value);
-    CString::new(v).unwrap_or_else(|_e| {
-        *saw_nul = true;
-        CString::new("foo=bar").unwrap()
-    })
 }
 
 impl fmt::Debug for Command {

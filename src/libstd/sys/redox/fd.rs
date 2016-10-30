@@ -49,32 +49,14 @@ impl FileDesc {
     }
 
     pub fn set_cloexec(&self) -> io::Result<()> {
-        ::sys_common::util::dumb_print(format_args!("Set cloexec\n"));
-        unimplemented!();
-        /*
-        unsafe {
-            let previous = cvt(libc::fcntl(self.fd, libc::F_GETFD, 0))?;
-            cvt(libc::fcntl(self.fd, libc::F_SETFD, previous | libc::FD_CLOEXEC))?;
-            Ok(())
-        }
-        */
+        ::sys_common::util::dumb_print(format_args!("{}: set cloexec\n", self.fd));
+        //unimplemented!();
+        Ok(())
     }
 
     pub fn set_nonblocking(&self, _nonblocking: bool) -> io::Result<()> {
-        ::sys_common::util::dumb_print(format_args!("Set nonblocking\n"));
+        ::sys_common::util::dumb_print(format_args!("{}: set nonblocking\n", self.fd));
         unimplemented!();
-        /*
-        unsafe {
-            let previous = cvt(libc::fcntl(self.fd, libc::F_GETFL, 0))?;
-            let new = if nonblocking {
-                previous | libc::O_NONBLOCK
-            } else {
-                previous & !libc::O_NONBLOCK
-            };
-            cvt(libc::fcntl(self.fd, libc::F_SETFL, new))?;
-            Ok(())
-        }
-        */
     }
 
     pub fn duplicate(&self) -> io::Result<FileDesc> {
