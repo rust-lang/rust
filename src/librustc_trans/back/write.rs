@@ -708,7 +708,7 @@ pub fn run_passes(sess: &Session,
                 modules_config.emit_obj = true;
                 metadata_config.emit_obj = true;
             },
-            OutputType::DepInfo => {}
+            OutputType::DepInfo | OutputType::Metadata => {}
         }
     }
 
@@ -845,7 +845,8 @@ pub fn run_passes(sess: &Session,
                 copy_if_one_unit(OutputType::Object, true);
             }
             OutputType::Exe |
-            OutputType::DepInfo => {}
+            OutputType::DepInfo |
+            OutputType::Metadata => {}
         }
     }
     let user_wants_bitcode = user_wants_bitcode;

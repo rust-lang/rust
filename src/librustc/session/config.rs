@@ -76,18 +76,7 @@ pub enum OutputType {
     Object,
     Exe,
     DepInfo,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ErrorOutputType {
-    HumanReadable(ColorConfig),
-    Json,
-}
-
-impl Default for ErrorOutputType {
-    fn default() -> ErrorOutputType {
-        ErrorOutputType::HumanReadable(ColorConfig::Auto)
-    }
+    Metadata
 }
 
 impl OutputType {
@@ -98,7 +87,8 @@ impl OutputType {
             OutputType::Bitcode |
             OutputType::Assembly |
             OutputType::LlvmAssembly |
-            OutputType::Object => false,
+            OutputType::Object |
+            OutputType::Metadata => false,
         }
     }
 
@@ -110,6 +100,7 @@ impl OutputType {
             OutputType::Object => "obj",
             OutputType::Exe => "link",
             OutputType::DepInfo => "dep-info",
+            OutputType::Metadata => "metadata",
         }
     }
 
@@ -121,7 +112,20 @@ impl OutputType {
             OutputType::Object => "o",
             OutputType::DepInfo => "d",
             OutputType::Exe => "",
+            OutputType::Metadata => "",
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ErrorOutputType {
+    HumanReadable(ColorConfig),
+    Json,
+}
+
+impl Default for ErrorOutputType {
+    fn default() -> ErrorOutputType {
+        ErrorOutputType::HumanReadable(ColorConfig::Auto)
     }
 }
 
@@ -1329,6 +1333,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                     "obj" => OutputType::Object,
                     "link" => OutputType::Exe,
                     "dep-info" => OutputType::DepInfo,
+                    "metadata" => OutputType::Metadata,
                     part => {
                         early_error(error_format, &format!("unknown emission type: `{}`",
                                                     part))
