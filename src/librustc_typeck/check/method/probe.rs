@@ -962,6 +962,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         for step in steps.iter() {
             match self.pick_step(step) {
                 Some(Ok(mut elems)) => ret.append(&mut elems),
+                Some(Err(elem)) => {
+                    match self.looking_for {
+                        LookingFor::MethodName(_) => return Some(Err(elem)),
+                        LookingFor::ReturnType(_) => {}
+                    }
+                }
                 _ => {}
             }
         }
