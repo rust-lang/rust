@@ -164,7 +164,6 @@ pub trait CrateStore<'tcx> {
     fn is_const_fn(&self, did: DefId) -> bool;
     fn is_defaulted_trait(&self, did: DefId) -> bool;
     fn is_default_impl(&self, impl_did: DefId) -> bool;
-    fn is_extern_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId) -> bool;
     fn is_foreign_item(&self, did: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool;
 
@@ -331,8 +330,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_const_fn(&self, did: DefId) -> bool { bug!("is_const_fn") }
     fn is_defaulted_trait(&self, did: DefId) -> bool { bug!("is_defaulted_trait") }
     fn is_default_impl(&self, impl_did: DefId) -> bool { bug!("is_default_impl") }
-    fn is_extern_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId) -> bool
-        { bug!("is_extern_item") }
     fn is_foreign_item(&self, did: DefId) -> bool { bug!("is_foreign_item") }
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool { false }
 
