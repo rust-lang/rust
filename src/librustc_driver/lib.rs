@@ -205,24 +205,20 @@ pub fn run_compiler<'a>(args: &[String],
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader));
-    let sess = session::build_session_with_codemap(sopts,
-                                                   &dep_graph,
-                                                   input_file_path,
-                                                   descriptions,
-                                                   cstore.clone(),
-                                                   codemap,
-                                                   emitter_dest);
+    let mut sess = session::build_session_with_codemap(
+        sopts, &dep_graph, input_file_path, descriptions, cstore.clone(), codemap, emitter_dest,
+    );
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+
     let mut cfg = config::build_configuration(&sess, cfg);
     target_features::add_configuration(&mut cfg, &sess);
+    sess.parse_sess.config = cfg;
 
-    do_or_return!(callbacks.late_callback(&matches, &sess, &cfg, &input, &odir, &ofile),
-                  Some(sess));
+    do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile), Some(sess));
 
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess, &matches);
-    (driver::compile_input(&sess, &cstore, cfg, &input, &odir, &ofile,
-                           Some(plugins), &control),
+    (driver::compile_input(&sess, &cstore, &input, &odir, &ofile, Some(plugins), &control),
      Some(sess))
 }
 
@@ -310,7 +306,6 @@ pub trait CompilerCalls<'a> {
     fn late_callback(&mut self,
                      _: &getopts::Matches,
                      _: &Session,
-                     _: &ast::CrateConfig,
                      _: &Input,
                      _: &Option<PathBuf>,
                      _: &Option<PathBuf>)
@@ -439,7 +434,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 }
                 let dep_graph = DepGraph::new(sopts.build_dep_graph());
                 let cstore = Rc::new(CStore::new(&dep_graph));
-                let sess = build_session(sopts.clone(),
+                let mut sess = build_session(sopts.clone(),
                     &dep_graph,
                     None,
                     descriptions.clone(),
@@ -447,11 +442,10 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
                 target_features::add_configuration(&mut cfg, &sess);
-                let should_stop = RustcDefaultCalls::print_crate_info(&sess,
-                                                                      &cfg,
-                                                                      None,
-                                                                      odir,
-                                                                      ofile);
+                sess.parse_sess.config = cfg;
+                let should_stop =
+                    RustcDefaultCalls::print_crate_info(&sess, None, odir, ofile);
+
                 if should_stop == Compilation::Stop {
                     return None;
                 }
@@ -467,12 +461,11 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn late_callback(&mut self,
                      matches: &getopts::Matches,
                      sess: &Session,
-                     cfg: &ast::CrateConfig,
                      input: &Input,
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
                      -> Compilation {
-        RustcDefaultCalls::print_crate_info(sess, cfg, Some(input), odir, ofile)
+        RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile)
             .and_then(|| RustcDefaultCalls::list_metadata(sess, matches, input))
     }
 
@@ -593,7 +586,6 @@ impl RustcDefaultCalls {
 
 
     fn print_crate_info(sess: &Session,
-                        cfg: &ast::CrateConfig,
                         input: Option<&Input>,
                         odir: &Option<PathBuf>,
                         ofile: &Option<PathBuf>)
@@ -649,8 +641,8 @@ impl RustcDefaultCalls {
                     let allow_unstable_cfg = UnstableFeatures::from_environment()
                         .is_nightly_build();
 
-                    for cfg in cfg {
-                        if !allow_unstable_cfg && GatedCfg::gate(&*cfg).is_some() {
+                    for cfg in &sess.parse_sess.config {
+                        if !allow_unstable_cfg && GatedCfg::gate(cfg).is_some() {
                             continue;
                         }
 
@@ -1036,13 +1028,10 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
 fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<ast::Attribute>> {
     match *input {
         Input::File(ref ifile) => {
-            parse::parse_crate_attrs_from_file(ifile, Vec::new(), &sess.parse_sess)
+            parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess)
         }
         Input::Str { ref name, ref input } => {
-            parse::parse_crate_attrs_from_source_str(name.clone(),
-                                                     input.clone(),
-                                                     Vec::new(),
-                                                     &sess.parse_sess)
+            parse::parse_crate_attrs_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
         }
     }
 }

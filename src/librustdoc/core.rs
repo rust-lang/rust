@@ -163,14 +163,16 @@ pub fn run_core(search_paths: SearchPaths,
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
     let cstore = Rc::new(CStore::new(&dep_graph));
-    let sess = session::build_session_(sessopts, &dep_graph, cpath, diagnostic_handler,
-                                       codemap, cstore.clone());
+    let mut sess = session::build_session_(
+        sessopts, &dep_graph, cpath, diagnostic_handler, codemap, cstore.clone()
+    );
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));
     target_features::add_configuration(&mut cfg, &sess);
+    sess.parse_sess.config = cfg;
 
-    let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
+    let krate = panictry!(driver::phase_1_parse_input(&sess, &input));
 
     let name = link::find_crate_name(Some(&sess), &krate.attrs, &input);
 

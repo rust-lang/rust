@@ -293,11 +293,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     fn collect_invocations(&mut self, expansion: Expansion) -> (Expansion, Vec<Invocation>) {
-        let crate_config = mem::replace(&mut self.cx.cfg, Vec::new());
         let result = {
             let mut collector = InvocationCollector {
                 cfg: StripUnconfigured {
-                    config: &crate_config,
                     should_test: self.cx.ecfg.should_test,
                     sess: self.cx.parse_sess,
                     features: self.cx.ecfg.features,
@@ -308,7 +306,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             };
             (expansion.fold_with(&mut collector), collector.invocations)
         };
-        self.cx.cfg = crate_config;
 
         if self.monotonic {
             let err_count = self.cx.parse_sess.span_diagnostic.err_count();
@@ -646,7 +643,7 @@ fn string_to_tts(text: String, parse_sess: &ParseSess) -> Vec<TokenTree> {
                             .new_filemap(String::from("<macro expansion>"), None, text);
 
     let lexer = lexer::StringReader::new(&parse_sess.span_diagnostic, filemap);
-    let mut parser = Parser::new(parse_sess, Vec::new(), Box::new(lexer));
+    let mut parser = Parser::new(parse_sess, Box::new(lexer));
     panictry!(parser.parse_all_token_trees())
 }
 

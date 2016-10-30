@@ -264,7 +264,7 @@ impl<'a, 'tcx, 'm> DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
 /// flag called `foo`.
 fn check_config(tcx: TyCtxt, attr: &ast::Attribute) -> bool {
     debug!("check_config(attr={:?})", attr);
-    let config = &tcx.map.krate().config;
+    let config = &tcx.sess.parse_sess.config;
     debug!("check_config: config={:?}", config);
     for item in attr.meta_item_list().unwrap_or(&[]) {
         if item.check_name(CFG) {
