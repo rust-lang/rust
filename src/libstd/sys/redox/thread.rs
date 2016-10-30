@@ -15,6 +15,7 @@ use io;
 use libc;
 use mem;
 use sys_common::thread::start_thread;
+use sys::cvt;
 use time::Duration;
 
 pub struct Thread {
@@ -30,11 +31,15 @@ impl Thread {
     pub unsafe fn new<'a>(_stack: usize, p: Box<FnBox() + 'a>) -> io::Result<Thread> {
         let p = box p;
 
-        start_thread(&*p as *const _ as *mut _);
-
-        ::sys_common::util::dumb_print(format_args!("thread\n"));
-
-        unimplemented!();
+        let id = cvt(libc::clone(libc::CLONE_VM | libc::CLONE_FS | libc::CLONE_FILES))?;
+        if id == 0 {
+            start_thread(&*p as *const _ as *mut _);
+            let _ = libc::exit(0);
+            panic!("thread failed to exit");
+        } else {
+            mem::forget(p);
+            Ok(Thread { id: id })
+        }
     }
 
     pub fn yield_now() {
@@ -69,8 +74,8 @@ impl Thread {
     }
 
     pub fn join(self) {
-        ::sys_common::util::dumb_print(format_args!("Thread::join"));
-        unimplemented!();
+        let mut status = 0;
+        libc::waitpid(self.id, &mut status, 0).unwrap();
     }
 
     pub fn id(&self) -> libc::pid_t { self.id }
@@ -79,13 +84,6 @@ impl Thread {
         let id = self.id;
         mem::forget(self);
         id
-    }
-}
-
-impl Drop for Thread {
-    fn drop(&mut self) {
-        ::sys_common::util::dumb_print(format_args!("Thread::drop"));
-        unimplemented!();
     }
 }
 
