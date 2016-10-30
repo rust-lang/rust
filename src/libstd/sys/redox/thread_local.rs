@@ -17,10 +17,10 @@ pub type Key = usize;
 
 type Dtor = unsafe extern fn(*mut u8);
 
-//TODO: Implement this properly
-
+#[thread_local]
 static mut NEXT_KEY: Key = 0;
 
+#[thread_local]
 static mut LOCALS: *mut BTreeMap<Key, (*mut u8, Option<Dtor>)> = ptr::null_mut();
 
 unsafe fn locals() -> &'static mut BTreeMap<Key, (*mut u8, Option<Dtor>)> {

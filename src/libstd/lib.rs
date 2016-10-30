@@ -322,7 +322,7 @@ extern crate unwind;
 extern crate alloc_system;
 
 // compiler-rt intrinsics
-//REDOX TODO extern crate compiler_builtins;
+extern crate compiler_builtins;
 
 // Make std testable by not duplicating lang items and other globals. See #2912
 #[cfg(test)] extern crate std as realstd;
