@@ -230,7 +230,7 @@ fn _11() {
     let t = Bar(());
     let _ = #[attr] t.0;
     let _ = (#[attr] t).0;
-    let v = vec![0];
+    let v = vec!(0);
     let _ = #[attr] v[0];
     let _ = (#[attr] v)[0];
     let _ = #[attr] 0..#[attr] 0;
