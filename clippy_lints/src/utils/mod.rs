@@ -14,6 +14,7 @@ use std::env;
 use std::mem;
 use std::str::FromStr;
 use syntax::ast::{self, LitKind};
+use syntax::attr;
 use syntax::codemap::{ExpnFormat, ExpnInfo, MultiSpan, Span, DUMMY_SP};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
@@ -760,4 +761,9 @@ pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
             are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat))
         }
     }
+}
+
+/// Checks for the `#[automatically_derived]` attribute all `#[derive]`d implementations have.
+pub fn is_automatically_derived(attrs: &[ast::Attribute]) -> bool {
+    attr::contains_name(attrs, "automatically_derived")
 }

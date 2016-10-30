@@ -4,7 +4,8 @@
 
 use rustc::lint::*;
 use rustc::hir;
-use syntax::ast::{Attribute, MetaItemKind};
+use syntax::ast::Attribute;
+use syntax::attr;
 
 /// **What it does:** Dumps every ast/hir node which has the `#[clippy_dump]` attribute
 ///
@@ -128,10 +129,7 @@ impl LateLintPass for Pass {
 }
 
 fn has_attr(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| match attr.node.value.node {
-        MetaItemKind::Word(ref word) => word == "clippy_dump",
-        _ => false,
-    })
+    attr::contains_name(attrs, "clippy_dump")
 }
 
 fn print_decl(cx: &LateContext, decl: &hir::Decl) {
