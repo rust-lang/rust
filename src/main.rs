@@ -1,6 +1,7 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
+#![feature(static_in_const)]
 
 #![allow(unknown_lints, missing_docs_in_private_items)]
 
@@ -110,6 +111,36 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
 
 use std::path::Path;
 
+const CARGO_CLIPPY_HELP: &str = r#"Checks a package to catch common mistakes and improve your Rust code.
+
+Usage:
+    cargo clippy [options] [--] [<opts>...]
+
+Common options:
+    -h, --help               Print this message
+    --features               Features to compile for the package
+
+Other options are the same as `cargo rustc`.
+
+To allow or deny a lint from the command line you can use `cargo clippy --`
+with:
+
+    -W --warn OPT       Set lint warnings
+    -A --allow OPT      Set lint allowed
+    -D --deny OPT       Set lint denied
+    -F --forbid OPT     Set lint forbidden
+
+The feature `cargo-clippy` is automatically defined for convenience. You can use
+it to allow or deny lints from the code, eg.:
+
+    #[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
+"#;
+
+#[allow(print_stdout)]
+fn show_help() {
+    println!("{}", CARGO_CLIPPY_HELP);
+}
+
 pub fn main() {
     use std::env;
 
@@ -138,9 +169,16 @@ pub fn main() {
 
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // this arm is executed on the initial call to `cargo clippy`
+
+        if std::env::args().any(|a| a == "--help" || a == "-h") {
+            show_help();
+            return;
+        }
+
         let manifest_path_arg = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
 
         let mut metadata = cargo::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)).expect("could not obtain cargo metadata");
+
         assert_eq!(metadata.version, 1);
 
         let manifest_path = manifest_path_arg.map(|arg| PathBuf::from(Path::new(&arg["--manifest-path=".len()..])));
@@ -181,13 +219,16 @@ pub fn main() {
 
         // this conditional check for the --sysroot flag is there so users can call `cargo-clippy` directly
         // without having to pass --sysroot or anything
-        let args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
+        let mut args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
             env::args().collect()
         } else {
             env::args().chain(Some("--sysroot".to_owned())).chain(Some(sys_root)).collect()
         };
+
         // this check ensures that dependencies are built but not linted and the final crate is
         // linted but not built
+        args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
+
         let mut ccc = ClippyCompilerCalls::new(env::args().any(|s| s == "-Zno-trans"));
         let (result, _) = rustc_driver::run_compiler(&args, &mut ccc, None, None);
 
@@ -219,6 +260,8 @@ fn process<P, I>(old_args: I, dep_path: P, sysroot: &str) -> Result<(), i32>
     args.push(String::from("--sysroot"));
     args.push(sysroot.to_owned());
     args.push("-Zno-trans".to_owned());
+    args.push("--cfg".to_owned());
+    args.push(r#"feature="cargo-clippy""#.to_owned());
 
     let path = std::env::current_exe().expect("current executable path invalid");
     let exit_status = std::process::Command::new("cargo")
