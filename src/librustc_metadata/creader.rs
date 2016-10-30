@@ -52,7 +52,6 @@ pub struct CrateLoader<'a> {
     next_crate_num: CrateNum,
     foreign_item_map: FnvHashMap<String, Vec<ast::NodeId>>,
     local_crate_name: String,
-    local_crate_config: ast::CrateConfig,
 }
 
 fn dump_crates(cstore: &CStore) {
@@ -144,18 +143,13 @@ enum LoadResult {
 }
 
 impl<'a> CrateLoader<'a> {
-    pub fn new(sess: &'a Session,
-               cstore: &'a CStore,
-               local_crate_name: &str,
-               local_crate_config: ast::CrateConfig)
-               -> Self {
+    pub fn new(sess: &'a Session, cstore: &'a CStore, local_crate_name: &str) -> Self {
         CrateLoader {
             sess: sess,
             cstore: cstore,
             next_crate_num: cstore.next_crate_num(),
             foreign_item_map: FnvHashMap(),
             local_crate_name: local_crate_name.to_owned(),
-            local_crate_config: local_crate_config,
         }
     }
 
@@ -541,7 +535,6 @@ impl<'a> CrateLoader<'a> {
             // NB: Don't use parse::parse_tts_from_source_str because it parses with
             // quote_depth > 0.
             let mut p = parse::new_parser_from_source_str(&self.sess.parse_sess,
-                                                          self.local_crate_config.clone(),
                                                           source_name.clone(),
                                                           def.body);
             let lo = p.span.lo;

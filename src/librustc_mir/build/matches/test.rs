@@ -22,7 +22,7 @@ use rustc_data_structures::fnv::FnvHashMap;
 use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use syntax_pos::Span;
 use std::cmp::Ordering;
 

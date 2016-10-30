@@ -14,7 +14,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::{Category, RvalueFunc};
 use hair::*;
 use rustc::ty;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which

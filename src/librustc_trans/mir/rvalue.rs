@@ -12,7 +12,7 @@ use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::Layout;
-use rustc::mir::repr as mir;
+use rustc::mir;
 
 use asm;
 use base;

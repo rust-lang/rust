@@ -198,15 +198,13 @@ use rustc::traits;
 use rustc::ty::subst::{Substs, Subst};
 use rustc::ty::{self, TypeFoldable, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::mir::repr as mir;
+use rustc::mir::{self, Location};
 use rustc::mir::visit as mir_visit;
 use rustc::mir::visit::Visitor as MirVisitor;
-use rustc::mir::repr::Location;
 
 use rustc_const_eval as const_eval;
 
 use syntax::abi::Abi;
-use errors;
 use syntax_pos::DUMMY_SP;
 use base::custom_coerce_unsize_info;
 use context::SharedCrateContext;
@@ -347,8 +345,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
 
             // Scan the MIR in order to find function calls, closures, and
             // drop-glue
-            let mir = errors::expect(scx.sess().diagnostic(), scx.get_mir(def_id),
-                || format!("Could not find MIR for static: {:?}", def_id));
+            let mir = scx.tcx().item_mir(def_id);
 
             let empty_substs = scx.empty_substs_for_def_id(def_id);
             let visitor = MirNeighborCollector {
@@ -368,8 +365,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
 
             // Scan the MIR in order to find function calls, closures, and
             // drop-glue
-            let mir = errors::expect(scx.sess().diagnostic(), scx.get_mir(instance.def),
-                || format!("Could not find MIR for function: {}", instance));
+            let mir = scx.tcx().item_mir(instance.def);
 
             let visitor = MirNeighborCollector {
                 scx: scx,
@@ -452,11 +448,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         match *rvalue {
             mir::Rvalue::Aggregate(mir::AggregateKind::Closure(def_id,
                                                                ref substs), _) => {
-                let mir = errors::expect(self.scx.sess().diagnostic(),
-                                         self.scx.get_mir(def_id),
-                                         || {
-                    format!("Could not find MIR for closure: {:?}", def_id)
-                });
+                let mir = self.scx.tcx().item_mir(def_id);
 
                 let concrete_substs = monomorphize::apply_param_substs(self.scx,
                                                                        self.param_substs,
@@ -1249,8 +1241,7 @@ fn collect_const_item_neighbours<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 {
     // Scan the MIR in order to find function calls, closures, and
     // drop-glue
-    let mir = errors::expect(scx.sess().diagnostic(), scx.get_mir(def_id),
-        || format!("Could not find MIR for const: {:?}", def_id));
+    let mir = scx.tcx().item_mir(def_id);
 
     let visitor = MirNeighborCollector {
         scx: scx,

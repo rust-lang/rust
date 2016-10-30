@@ -221,7 +221,7 @@ pub struct Entry<'tcx> {
     pub predicates: Option<Lazy<ty::GenericPredicates<'tcx>>>,
 
     pub ast: Option<Lazy<astencode::Ast<'tcx>>>,
-    pub mir: Option<Lazy<mir::repr::Mir<'tcx>>>,
+    pub mir: Option<Lazy<mir::Mir<'tcx>>>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]

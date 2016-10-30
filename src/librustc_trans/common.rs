@@ -19,6 +19,7 @@ use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
+use rustc::mir::Mir;
 use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
 use rustc::ty::subst::Substs;
@@ -32,7 +33,6 @@ use consts;
 use debuginfo::{self, DebugLoc};
 use declare;
 use machine;
-use mir::CachedMir;
 use monomorphize;
 use type_::Type;
 use value::Value;
@@ -46,7 +46,7 @@ use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::ops::Deref;
 use std::ffi::CString;
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, Ref};
 
 use syntax::ast;
 use syntax::parse::token::InternedString;
@@ -250,10 +250,8 @@ pub fn validate_substs(substs: &Substs) {
 // Function context.  Every LLVM function we create will have one of
 // these.
 pub struct FunctionContext<'a, 'tcx: 'a> {
-    // The MIR for this function. At present, this is optional because
-    // we only have MIR available for things that are local to the
-    // crate.
-    pub mir: Option<CachedMir<'a, 'tcx>>,
+    // The MIR for this function.
+    pub mir: Option<Ref<'tcx, Mir<'tcx>>>,
 
     // The ValueRef returned from a call to llvm::LLVMAddFunction; the
     // address of the first instruction in the sequence of
@@ -313,8 +311,8 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
-    pub fn mir(&self) -> CachedMir<'a, 'tcx> {
-        self.mir.clone().expect("fcx.mir was empty")
+    pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
+        self.mir.as_ref().map(Ref::clone).expect("fcx.mir was empty")
     }
 
     pub fn cleanup(&self) {
@@ -490,7 +488,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         self.set_lpad_ref(lpad.map(|p| &*self.fcx().lpad_arena.alloc(p)))
     }
 
-    pub fn mir(&self) -> CachedMir<'blk, 'tcx> {
+    pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
         self.fcx.mir()
     }
 
@@ -609,7 +607,7 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         self.bcx.llbb
     }
 
-    pub fn mir(&self) -> CachedMir<'blk, 'tcx> {
+    pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
         self.bcx.mir()
     }
 

@@ -477,7 +477,6 @@ pub type CrateConfig = Vec<P<MetaItem>>;
 pub struct Crate {
     pub module: Mod,
     pub attrs: Vec<Attribute>,
-    pub config: CrateConfig,
     pub span: Span,
     pub exported_macros: Vec<MacroDef>,
 }

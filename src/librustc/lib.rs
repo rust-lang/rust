@@ -105,16 +105,7 @@ pub mod middle {
     pub mod weak_lang_items;
 }
 
-pub mod mir {
-    mod cache;
-    pub mod repr;
-    pub mod tcx;
-    pub mod visit;
-    pub mod transform;
-    pub mod traversal;
-    pub mod mir_map;
-}
-
+pub mod mir;
 pub mod session;
 pub mod traits;
 pub mod ty;

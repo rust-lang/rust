@@ -1237,10 +1237,9 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
     cfgspecs.into_iter().map(|s| {
         let sess = parse::ParseSess::new();
-        let mut parser = parse::new_parser_from_source_str(&sess,
-                                                           Vec::new(),
-                                                           "cfgspec".to_string(),
-                                                           s.to_string());
+        let mut parser =
+            parse::new_parser_from_source_str(&sess, "cfgspec".to_string(), s.to_string());
+
         let meta_item = panictry!(parser.parse_meta_item());
 
         if !parser.reader.is_eof() {

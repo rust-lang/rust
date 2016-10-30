@@ -17,8 +17,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use rustc::hir;
 use rustc::hir::intravisit::{FnKind};
 
-use rustc::mir::repr;
-use rustc::mir::repr::{BasicBlock, BasicBlockData, Mir, Statement, Terminator, Location};
+use rustc::mir::{self, BasicBlock, BasicBlockData, Mir, Statement, Terminator, Location};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 
@@ -56,15 +55,13 @@ pub struct MoveDataParamEnv<'tcx> {
     param_env: ty::ParameterEnvironment<'tcx>,
 }
 
-pub fn borrowck_mir<'a, 'tcx: 'a>(
-    bcx: &mut BorrowckCtxt<'a, 'tcx>,
-    fk: FnKind,
-    _decl: &hir::FnDecl,
-    mir: &'a Mir<'tcx>,
-    body: &hir::Block,
-    _sp: Span,
-    id: ast::NodeId,
-    attributes: &[ast::Attribute]) {
+pub fn borrowck_mir(bcx: &mut BorrowckCtxt,
+                    fk: FnKind,
+                    _decl: &hir::FnDecl,
+                    body: &hir::Block,
+                    _sp: Span,
+                    id: ast::NodeId,
+                    attributes: &[ast::Attribute]) {
     match fk {
         FnKind::ItemFn(name, ..) |
         FnKind::Method(name, ..) => {
@@ -76,8 +73,10 @@ pub fn borrowck_mir<'a, 'tcx: 'a>(
     }
 
     let tcx = bcx.tcx;
-
     let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+
+    let mir = &tcx.item_mir(tcx.map.local_def_id(id));
+
     let move_data = MoveData::gather_moves(mir, tcx, &param_env);
     let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
     let flow_inits =
@@ -171,8 +170,8 @@ pub struct MirBorrowckCtxt<'b, 'a: 'b, 'tcx: 'a> {
     mir: &'b Mir<'tcx>,
     node_id: ast::NodeId,
     move_data: MoveData<'tcx>,
-    flow_inits: DataflowResults<MaybeInitializedLvals<'a, 'tcx>>,
-    flow_uninits: DataflowResults<MaybeUninitializedLvals<'a, 'tcx>>
+    flow_inits: DataflowResults<MaybeInitializedLvals<'b, 'tcx>>,
+    flow_uninits: DataflowResults<MaybeUninitializedLvals<'b, 'tcx>>
 }
 
 impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
@@ -214,12 +213,12 @@ fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
                                         path: MovePathIndex,
                                         mut cond: F)
                                         -> Option<MovePathIndex>
-    where F: FnMut(&repr::LvalueProjection<'tcx>) -> bool
+    where F: FnMut(&mir::LvalueProjection<'tcx>) -> bool
 {
     let mut next_child = move_data.move_paths[path].first_child;
     while let Some(child_index) = next_child {
         match move_data.move_paths[child_index].lvalue {
-            repr::Lvalue::Projection(ref proj) => {
+            mir::Lvalue::Projection(ref proj) => {
                 if cond(proj) {
                     return Some(child_index)
                 }
@@ -252,7 +251,7 @@ fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 /// FIXME: we have to do something for moving slice patterns.
 fn lvalue_contents_drop_state_cannot_differ<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                       mir: &Mir<'tcx>,
-                                                      lv: &repr::Lvalue<'tcx>) -> bool {
+                                                      lv: &mir::Lvalue<'tcx>) -> bool {
     let ty = lv.ty(mir, tcx).to_ty(tcx);
     match ty.sty {
         ty::TyArray(..) | ty::TySlice(..) | ty::TyRef(..) | ty::TyRawPtr(..) => {
@@ -339,7 +338,7 @@ fn drop_flag_effects_for_function_entry<'a, 'tcx, F>(
 {
     let move_data = &ctxt.move_data;
     for arg in mir.args_iter() {
-        let lvalue = repr::Lvalue::Local(arg);
+        let lvalue = mir::Lvalue::Local(arg);
         let lookup_result = move_data.rev_lookup.find(&lvalue);
         on_lookup_result_bits(tcx, mir, move_data,
                               lookup_result,
@@ -379,23 +378,23 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
     let block = &mir[loc.block];
     match block.statements.get(loc.statement_index) {
         Some(stmt) => match stmt.kind {
-            repr::StatementKind::SetDiscriminant{ .. } => {
+            mir::StatementKind::SetDiscriminant{ .. } => {
                 span_bug!(stmt.source_info.span, "SetDiscrimant should not exist during borrowck");
             }
-            repr::StatementKind::Assign(ref lvalue, _) => {
+            mir::StatementKind::Assign(ref lvalue, _) => {
                 debug!("drop_flag_effects: assignment {:?}", stmt);
                  on_lookup_result_bits(tcx, mir, move_data,
                                        move_data.rev_lookup.find(lvalue),
                                        |moi| callback(moi, DropFlagState::Present))
             }
-            repr::StatementKind::StorageLive(_) |
-            repr::StatementKind::StorageDead(_) |
-            repr::StatementKind::Nop => {}
+            mir::StatementKind::StorageLive(_) |
+            mir::StatementKind::StorageDead(_) |
+            mir::StatementKind::Nop => {}
         },
         None => {
             debug!("drop_flag_effects: replace {:?}", block.terminator());
             match block.terminator().kind {
-                repr::TerminatorKind::DropAndReplace { ref location, .. } => {
+                mir::TerminatorKind::DropAndReplace { ref location, .. } => {
                     on_lookup_result_bits(tcx, mir, move_data,
                                           move_data.rev_lookup.find(location),
                                           |moi| callback(moi, DropFlagState::Present))

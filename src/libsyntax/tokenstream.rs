@@ -220,7 +220,7 @@ impl TokenTree {
                                                          None,
                                                          tts.iter().cloned().collect(),
                                                          true);
-        macro_parser::parse(cx.parse_sess(), cx.cfg(), arg_rdr, mtch)
+        macro_parser::parse(cx.parse_sess(), arg_rdr, mtch)
     }
 
     /// Check if this TokenTree is equal to the other, regardless of span information.

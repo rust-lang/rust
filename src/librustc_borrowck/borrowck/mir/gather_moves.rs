@@ -10,7 +10,7 @@
 
 
 use rustc::ty::{self, TyCtxt, ParameterEnvironment};
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::util::nodemap::FnvHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
 

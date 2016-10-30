@@ -30,7 +30,7 @@ use rustc::ty::subst::Substs;
 
 use rustc_const_math::ConstInt;
 
-use rustc::mir::repr::Mir;
+use rustc::mir::Mir;
 
 use std::borrow::Cow;
 use std::cell::Ref;
@@ -1007,30 +1007,6 @@ impl<'a, 'tcx> CrateMetadata {
             _ => hir::Constness::NotConst,
         };
         constness == hir::Constness::Const
-    }
-
-    pub fn is_extern_item(&self, id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
-        let item = match self.maybe_entry(id) {
-            Some(item) => item.decode(self),
-            None => return false,
-        };
-        let applicable = match item.kind {
-            EntryKind::ImmStatic |
-            EntryKind::MutStatic |
-            EntryKind::ForeignImmStatic |
-            EntryKind::ForeignMutStatic => true,
-
-            EntryKind::Fn(_) |
-            EntryKind::ForeignFn(_) => self.get_generics(id, tcx).types.is_empty(),
-
-            _ => false,
-        };
-
-        if applicable {
-            attr::contains_extern_indicator(tcx.sess.diagnostic(), &self.get_attributes(&item))
-        } else {
-            false
-        }
     }
 
     pub fn is_foreign_item(&self, id: DefIndex) -> bool {

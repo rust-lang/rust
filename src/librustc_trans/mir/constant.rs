@@ -16,7 +16,7 @@ use rustc_const_math::ConstFloat::*;
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize, ConstMathErr};
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
-use rustc::mir::repr as mir;
+use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -261,9 +261,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             }
         }
 
-        let mir = ccx.get_mir(instance.def).unwrap_or_else(|| {
-            bug!("missing constant MIR for {}", instance)
-        });
+        let mir = ccx.tcx().item_mir(instance.def);
         MirConstContext::new(ccx, &mir, instance.substs, args).trans()
     }
 

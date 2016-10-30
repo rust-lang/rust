@@ -19,13 +19,12 @@
 use build;
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
-use rustc::mir::repr::Mir;
+use rustc::mir::Mir;
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::MutVisitor;
 use pretty;
 use hair::cx::Cx;
 
-use rustc::mir::mir_map::MirMap;
 use rustc::infer::InferCtxtBuilder;
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -37,16 +36,10 @@ use syntax_pos::Span;
 
 use std::mem;
 
-pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MirMap<'tcx> {
-    let mut map = MirMap::new(tcx.dep_graph.clone());
-    {
-        let mut dump = BuildMir {
-            tcx: tcx,
-            map: &mut map,
-        };
-        tcx.visit_all_items_in_krate(DepNode::Mir, &mut dump);
-    }
-    map
+pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    tcx.visit_all_items_in_krate(DepNode::Mir, &mut BuildMir {
+        tcx: tcx
+    });
 }
 
 /// A pass to lift all the types and substitutions in a Mir
@@ -83,8 +76,7 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
 struct BuildMir<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    map: &'a mut MirMap<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>
 }
 
 /// Helper type of a temporary returned by BuildMir::cx(...).
@@ -93,8 +85,7 @@ struct BuildMir<'a, 'tcx: 'a> {
 struct CxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     src: MirSource,
     def_id: DefId,
-    infcx: InferCtxtBuilder<'a, 'gcx, 'tcx>,
-    map: &'a mut MirMap<'gcx>,
+    infcx: InferCtxtBuilder<'a, 'gcx, 'tcx>
 }
 
 impl<'a, 'gcx, 'tcx> BuildMir<'a, 'gcx> {
@@ -104,8 +95,7 @@ impl<'a, 'gcx, 'tcx> BuildMir<'a, 'gcx> {
         CxBuilder {
             src: src,
             infcx: self.tcx.infer_ctxt(None, Some(param_env), Reveal::NotSpecializable),
-            def_id: def_id,
-            map: self.map
+            def_id: def_id
         }
     }
 }
@@ -114,13 +104,14 @@ impl<'a, 'gcx, 'tcx> CxBuilder<'a, 'gcx, 'tcx> {
     fn build<F>(&'tcx mut self, f: F)
         where F: for<'b> FnOnce(Cx<'b, 'gcx, 'tcx>) -> (Mir<'tcx>, build::ScopeAuxiliaryVec)
     {
-        let src = self.src;
-        let mir = self.infcx.enter(|infcx| {
+        let (src, def_id) = (self.src, self.def_id);
+        self.infcx.enter(|infcx| {
             let (mut mir, scope_auxiliary) = f(Cx::new(&infcx, src));
 
             // Convert the Mir to global types.
+            let tcx = infcx.tcx.global_tcx();
             let mut globalizer = GlobalizeMir {
-                tcx: infcx.tcx.global_tcx(),
+                tcx: tcx,
                 span: mir.span
             };
             globalizer.visit_mir(&mut mir);
@@ -128,13 +119,11 @@ impl<'a, 'gcx, 'tcx> CxBuilder<'a, 'gcx, 'tcx> {
                 mem::transmute::<Mir, Mir<'gcx>>(mir)
             };
 
-            pretty::dump_mir(infcx.tcx.global_tcx(), "mir_map", &0,
-                             src, &mir, Some(&scope_auxiliary));
+            pretty::dump_mir(tcx, "mir_map", &0, src, &mir, Some(&scope_auxiliary));
 
-            mir
+            let mir = tcx.alloc_mir(mir);
+            assert!(tcx.mir_map.borrow_mut().insert(def_id, mir).is_none());
         });
-
-        assert!(self.map.map.insert(self.def_id, mir).is_none())
     }
 }
 

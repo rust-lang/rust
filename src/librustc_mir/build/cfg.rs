@@ -14,7 +14,7 @@
 //! Routines for manipulating the control-flow graph.
 
 use build::CFG;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 
 impl<'tcx> CFG<'tcx> {
     pub fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {

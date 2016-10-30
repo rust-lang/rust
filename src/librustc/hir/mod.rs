@@ -413,7 +413,6 @@ pub type CrateConfig = HirVec<P<MetaItem>>;
 pub struct Crate {
     pub module: Mod,
     pub attrs: HirVec<Attribute>,
-    pub config: CrateConfig,
     pub span: Span,
     pub exported_macros: HirVec<MacroDef>,
 
