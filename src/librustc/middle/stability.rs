@@ -367,7 +367,6 @@ pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
         tcx: tcx,
         active_features: active_features,
         used_features: FxHashMap(),
-        in_skip_block: 0,
     };
     intravisit::walk_crate(&mut checker, tcx.map.krate());
 
@@ -378,8 +377,6 @@ struct Checker<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     active_features: FxHashSet<Symbol>,
     used_features: FxHashMap<Symbol, attr::StabilityLevel>,
-    // Within a block where feature gate checking can be skipped.
-    in_skip_block: u32,
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
@@ -392,11 +389,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         let cross_crate = !id.is_local();
         if !cross_crate {
             return
-        }
-
-        // We don't need to check for stability - presumably compiler generated code.
-        if self.in_skip_block > 0 {
-            return;
         }
 
         match *stab {
@@ -484,21 +476,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         check_ty(self.tcx, ty,
                  &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_ty(self, ty)
-    }
-
-    fn visit_block(&mut self, b: &'tcx hir::Block) {
-        let old_skip_count = self.in_skip_block;
-        match b.rules {
-            hir::BlockCheckMode::PushUnstableBlock => {
-                self.in_skip_block += 1;
-            }
-            hir::BlockCheckMode::PopUnstableBlock => {
-                self.in_skip_block = self.in_skip_block.checked_sub(1).unwrap();
-            }
-            _ => {}
-        }
-        intravisit::walk_block(self, b);
-        self.in_skip_block = old_skip_count;
     }
 }
 

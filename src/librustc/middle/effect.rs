@@ -147,7 +147,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 self.unsafe_context.push_unsafe_count =
                     self.unsafe_context.push_unsafe_count.checked_sub(1).unwrap();
             }
-            hir::DefaultBlock | hir::PushUnstableBlock | hir:: PopUnstableBlock => {}
+            hir::DefaultBlock => {}
         }
 
         intravisit::walk_block(self, block);

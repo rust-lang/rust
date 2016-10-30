@@ -51,6 +51,8 @@ pub enum ExpnFormat {
     MacroAttribute(Name),
     /// e.g. `format!()`
     MacroBang(Name),
+    /// Desugaring done by the compiler during HIR lowering.
+    CompilerDesugaring(Name)
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -105,8 +107,9 @@ pub struct NameAndSpan {
 impl NameAndSpan {
     pub fn name(&self) -> Name {
         match self.format {
-            ExpnFormat::MacroAttribute(s) => s,
-            ExpnFormat::MacroBang(s) => s,
+            ExpnFormat::MacroAttribute(s) |
+            ExpnFormat::MacroBang(s) |
+            ExpnFormat::CompilerDesugaring(s) => s,
         }
     }
 }
@@ -813,6 +816,7 @@ impl CodeMap {
                     let (pre, post) = match ei.callee.format {
                         MacroAttribute(..) => ("#[", "]"),
                         MacroBang(..) => ("", "!"),
+                        CompilerDesugaring(..) => ("desugaring of `", "`"),
                     };
                     let macro_decl_name = format!("{}{}{}",
                                                   pre,
