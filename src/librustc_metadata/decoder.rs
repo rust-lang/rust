@@ -30,7 +30,7 @@ use rustc::ty::subst::Substs;
 
 use rustc_const_math::ConstInt;
 
-use rustc::mir::repr::Mir;
+use rustc::mir::Mir;
 
 use std::borrow::Cow;
 use std::cell::Ref;

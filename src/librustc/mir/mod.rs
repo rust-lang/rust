@@ -32,7 +32,11 @@ use std::vec::IntoIter;
 use syntax::ast::{self, Name};
 use syntax_pos::Span;
 
-use super::cache::Cache;
+mod cache;
+pub mod tcx;
+pub mod visit;
+pub mod transform;
+pub mod traversal;
 
 macro_rules! newtype_index {
     ($name:ident, $debug_name:expr) => (
@@ -106,7 +110,7 @@ pub struct Mir<'tcx> {
     pub span: Span,
 
     /// A cache for various calculations
-    cache: Cache
+    cache: cache::Cache
 }
 
 /// where execution begins
@@ -137,7 +141,7 @@ impl<'tcx> Mir<'tcx> {
             upvar_decls: upvar_decls,
             spread_arg: None,
             span: span,
-            cache: Cache::new()
+            cache: cache::Cache::new()
         }
     }
 

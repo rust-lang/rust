@@ -12,7 +12,7 @@ use middle::const_val::ConstVal;
 use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{ClosureSubsts, Region, Ty};
-use mir::repr::*;
+use mir::*;
 use rustc_const_math::ConstUsize;
 use rustc_data_structures::tuple_slice::TupleSlice;
 use rustc_data_structures::indexed_vec::Idx;

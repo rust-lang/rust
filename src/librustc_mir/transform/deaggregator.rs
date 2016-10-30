@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::TyCtxt;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc_data_structures::indexed_vec::Idx;
 

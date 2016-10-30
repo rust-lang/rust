@@ -52,8 +52,6 @@ use rustc::hir::map::{blocks, NodePrinter};
 use rustc::hir;
 use rustc::hir::print as pprust_hir;
 
-use rustc::mir::mir_map::MirMap;
-
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
     PpmNormal,
@@ -234,7 +232,7 @@ impl PpSourceMode {
                                                                  resolutions.clone(),
                                                                  arenas,
                                                                  id,
-                                                                 |tcx, _, _, _, _| {
+                                                                 |tcx, _, _, _| {
                     let annotation = TypedAnnotation {
                         tcx: tcx,
                     };
@@ -695,7 +693,6 @@ impl fold::Folder for ReplaceBodyWithLoop {
 
 fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
                                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       mir_map: Option<&MirMap<'tcx>>,
                                        code: blocks::Code,
                                        mode: PpFlowGraphMode,
                                        mut out: W)
@@ -725,7 +722,6 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
         blocks::FnLikeCode(fn_like) => {
             let (bccx, analysis_data) =
                 borrowck::build_borrowck_dataflow_data_for_fn(tcx,
-                                                              mir_map,
                                                               fn_like.to_fn_parts(),
                                                               &cfg);
 
@@ -952,32 +948,28 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      resolutions.clone(),
                                                      arenas,
                                                      crate_name,
-                                                     |tcx, mir_map, _, _, _| {
+                                                     |tcx, _, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
-                if let Some(mir_map) = mir_map {
-                    if let Some(nodeid) = nodeid {
-                        let def_id = tcx.map.local_def_id(nodeid);
-                        match ppm {
-                            PpmMir => write_mir_pretty(tcx, iter::once(def_id), &mir_map, &mut out),
-                            PpmMirCFG => {
-                                write_mir_graphviz(tcx, iter::once(def_id), &mir_map, &mut out)
-                            }
-                            _ => unreachable!(),
-                        }?;
-                    } else {
-                        match ppm {
-                            PpmMir => write_mir_pretty(tcx,
-                                                       mir_map.map.keys().into_iter(),
-                                                       &mir_map,
-                                                       &mut out),
-                            PpmMirCFG => write_mir_graphviz(tcx,
-                                                            mir_map.map.keys().into_iter(),
-                                                            &mir_map,
-                                                            &mut out),
-                            _ => unreachable!(),
-                        }?;
-                    }
+                if let Some(nodeid) = nodeid {
+                    let def_id = tcx.map.local_def_id(nodeid);
+                    match ppm {
+                        PpmMir => write_mir_pretty(tcx, iter::once(def_id), &mut out),
+                        PpmMirCFG => {
+                            write_mir_graphviz(tcx, iter::once(def_id), &mut out)
+                        }
+                        _ => unreachable!(),
+                    }?;
+                } else {
+                    match ppm {
+                        PpmMir => write_mir_pretty(tcx,
+                                                   tcx.mir_map.borrow().keys().into_iter(),
+                                                   &mut out),
+                        PpmMirCFG => write_mir_graphviz(tcx,
+                                                        tcx.mir_map.borrow().keys().into_iter(),
+                                                        &mut out),
+                        _ => unreachable!(),
+                    }?;
                 }
                 Ok(())
             }
@@ -995,12 +987,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
 
                         let out: &mut Write = &mut out;
 
-                        print_flowgraph(variants,
-                                        tcx,
-                                        mir_map.as_ref(),
-                                        code,
-                                        mode,
-                                        out)
+                        print_flowgraph(variants, tcx, code, mode, out)
                     }
                     None => {
                         let message = format!("--pretty=flowgraph needs block, fn, or method; got \

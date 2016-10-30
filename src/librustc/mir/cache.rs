@@ -11,7 +11,7 @@
 use std::cell::{Ref, RefCell};
 use rustc_data_structures::indexed_vec::IndexVec;
 
-use mir::repr::{Mir, BasicBlock};
+use mir::{Mir, BasicBlock};
 
 use rustc_serialize as serialize;
 

@@ -29,8 +29,7 @@ use hir::map::definitions::{Definitions, DefKey};
 use hir::svh::Svh;
 use middle::lang_items;
 use ty::{self, Ty, TyCtxt};
-use mir::repr::Mir;
-use mir::mir_map::MirMap;
+use mir::Mir;
 use session::Session;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeSet, DefIdMap};
@@ -209,8 +208,7 @@ pub trait CrateStore<'tcx> {
     fn local_node_for_inlined_defid(&'tcx self, def_id: DefId) -> Option<ast::NodeId>;
     fn defid_for_inlined_node(&'tcx self, node_id: ast::NodeId) -> Option<DefId>;
 
-    fn maybe_get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                              -> Option<Mir<'tcx>>;
+    fn get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> Mir<'tcx>;
     fn is_item_mir_available(&self, def: DefId) -> bool;
 
     // This is basically a 1-based range of ints, which is a little
@@ -228,8 +226,7 @@ pub trait CrateStore<'tcx> {
     fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            reexports: &def::ExportMap,
                            link_meta: &LinkMeta,
-                           reachable: &NodeSet,
-                           mir_map: &MirMap<'tcx>) -> Vec<u8>;
+                           reachable: &NodeSet) -> Vec<u8>;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -390,8 +387,8 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         bug!("defid_for_inlined_node")
     }
 
-    fn maybe_get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                              -> Option<Mir<'tcx>> { bug!("maybe_get_item_mir") }
+    fn get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                        -> Mir<'tcx> { bug!("get_item_mir") }
     fn is_item_mir_available(&self, def: DefId) -> bool {
         bug!("is_item_mir_available")
     }
@@ -412,8 +409,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            reexports: &def::ExportMap,
                            link_meta: &LinkMeta,
-                           reachable: &NodeSet,
-                           mir_map: &MirMap<'tcx>) -> Vec<u8> { vec![] }
+                           reachable: &NodeSet) -> Vec<u8> { vec![] }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 

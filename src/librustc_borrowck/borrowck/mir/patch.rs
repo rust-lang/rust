@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::Ty;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 /// This struct represents a patch to MIR, which can add

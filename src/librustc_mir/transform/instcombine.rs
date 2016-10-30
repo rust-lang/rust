@@ -10,7 +10,7 @@
 
 //! Performs various peephole optimizations.
 
-use rustc::mir::repr::{Location, Lvalue, Mir, Operand, ProjectionElem, Rvalue, Local};
+use rustc::mir::{Location, Lvalue, Mir, Operand, ProjectionElem, Rvalue, Local};
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::TyCtxt;

@@ -12,7 +12,7 @@ use llvm::{self, ValueRef};
 use rustc_const_eval::{ErrKind, ConstEvalErr, note_const_eval_err};
 use rustc::middle::lang_items;
 use rustc::ty;
-use rustc::mir::repr as mir;
+use rustc::mir;
 use abi::{Abi, FnType, ArgType};
 use adt;
 use base;
