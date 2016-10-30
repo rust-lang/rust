@@ -67,7 +67,6 @@ pub struct Resolutions {
 
 pub fn compile_input(sess: &Session,
                      cstore: &CStore,
-                     cfg: ast::CrateConfig,
                      input: &Input,
                      outdir: &Option<PathBuf>,
                      output: &Option<PathBuf>,
@@ -91,7 +90,7 @@ pub fn compile_input(sess: &Session,
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
     let (outputs, trans) = {
-        let krate = match phase_1_parse_input(sess, cfg, input) {
+        let krate = match phase_1_parse_input(sess, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
                 parse_error.emit();
@@ -482,23 +481,17 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
     }
 }
 
-pub fn phase_1_parse_input<'a>(sess: &'a Session,
-                               cfg: ast::CrateConfig,
-                               input: &Input)
-                               -> PResult<'a, ast::Crate> {
+pub fn phase_1_parse_input<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     let continue_after_error = sess.opts.debugging_opts.continue_parse_after_error;
     sess.diagnostic().set_continue_after_error(continue_after_error);
 
     let krate = time(sess.time_passes(), "parsing", || {
         match *input {
             Input::File(ref file) => {
-                parse::parse_crate_from_file(file, cfg.clone(), &sess.parse_sess)
+                parse::parse_crate_from_file(file, &sess.parse_sess)
             }
             Input::Str { ref input, ref name } => {
-                parse::parse_crate_from_source_str(name.clone(),
-                                                   input.clone(),
-                                                   cfg.clone(),
-                                                   &sess.parse_sess)
+                parse::parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
             }
         }
     })?;
@@ -636,7 +629,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
     let _ignore = sess.dep_graph.in_ignore();
-    let mut crate_loader = CrateLoader::new(sess, &cstore, crate_name, krate.config.clone());
+    let mut crate_loader = CrateLoader::new(sess, &cstore, crate_name);
     crate_loader.preprocess(&krate);
     let resolver_arenas = Resolver::arenas();
     let mut resolver =
@@ -677,7 +670,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
             should_test: sess.opts.test,
             ..syntax::ext::expand::ExpansionConfig::default(crate_name.to_string())
         };
-        let mut ecx = ExtCtxt::new(&sess.parse_sess, krate.config.clone(), cfg, &mut resolver);
+        let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver);
         let err_count = ecx.parse_sess.span_diagnostic.err_count();
 
         let krate = ecx.monotonic_expander().expand_crate(krate);

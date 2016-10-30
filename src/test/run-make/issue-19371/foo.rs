@@ -67,12 +67,6 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     let (sess, cstore) = basic_sess(sysroot);
     let cfg = build_configuration(&sess, vec![]);
     let control = CompileController::basic();
-
-    compile_input(&sess, &cstore,
-            cfg,
-            &Input::Str { name: anon_src(), input: code },
-            &None,
-            &Some(output),
-            None,
-            &control);
+    let input = Input::Str { name: anon_src(), input: code };
+    compile_input(&sess, &cstore, &input, &None, &Some(output), None, &control);
 }
