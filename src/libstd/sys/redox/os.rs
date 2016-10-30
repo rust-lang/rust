@@ -17,7 +17,7 @@ use os::unix::prelude::*;
 use error::Error as StdError;
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
-use io;
+use io::{self, Read, Write};
 use iter;
 use libc::{self, c_int, c_char, c_void};
 use marker::PhantomData;
@@ -131,19 +131,48 @@ impl Iterator for Env {
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
-    unimplemented!();
+    let mut variables: Vec<(OsString, OsString)> = Vec::new();
+    if let Ok(mut file) = ::fs::File::open("env:") {
+        let mut string = String::new();
+        if file.read_to_string(&mut string).is_ok() {
+            for line in string.lines() {
+                if let Some(equal_sign) = line.chars().position(|c| c == '=') {
+                    let name = line.chars().take(equal_sign).collect::<String>();
+                    let value = line.chars().skip(equal_sign+1).collect::<String>();
+                    variables.push((OsString::from(name), OsString::from(value)));
+                }
+            }
+        }
+    }
+    Env { iter: variables.into_iter(), _dont_send_or_sync_me: PhantomData }
 }
 
-pub fn getenv(_k: &OsStr) -> io::Result<Option<OsString>> {
-    unimplemented!();
+pub fn getenv(key: &OsStr) -> io::Result<Option<OsString>> {
+    if ! key.is_empty() {
+        if let Ok(mut file) = ::fs::File::open(&("env:".to_owned() + key.to_str().unwrap())) {
+            let mut string = String::new();
+            file.read_to_string(&mut string)?;
+            Ok(Some(OsString::from(string)))
+        } else {
+            Ok(None)
+        }
+    } else {
+        Ok(None)
+    }
 }
 
-pub fn setenv(_k: &OsStr, _v: &OsStr) -> io::Result<()> {
-    unimplemented!();
+pub fn setenv(key: &OsStr, value: &OsStr) -> io::Result<()> {
+    if ! key.is_empty() {
+        let mut file = ::fs::File::open(&("env:".to_owned() + key.to_str().unwrap()))?;
+        file.write_all(value.as_bytes())?;
+        file.set_len(value.len() as u64)?;
+    }
+    Ok(())
 }
 
-pub fn unsetenv(_n: &OsStr) -> io::Result<()> {
-    unimplemented!();
+pub fn unsetenv(key: &OsStr) -> io::Result<()> {
+    ::fs::remove_file(&("env:".to_owned() + key.to_str().unwrap()))?;
+    Ok(())
 }
 
 pub fn page_size() -> usize {

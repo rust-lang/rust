@@ -14,7 +14,7 @@ pub struct Handler;
 
 impl Handler {
     pub unsafe fn new() -> Handler {
-        unimplemented!();
+        Handler
     }
 }
 
@@ -23,5 +23,5 @@ pub unsafe fn init() {
 }
 
 pub unsafe fn cleanup() {
-    unimplemented!();
+    
 }

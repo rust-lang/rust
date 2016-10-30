@@ -54,6 +54,7 @@ pub fn read2(_p1: AnonPipe,
              _v1: &mut Vec<u8>,
              _p2: AnonPipe,
              _v2: &mut Vec<u8>) -> io::Result<()> {
+    ::sys_common::util::dumb_print(format_args!("read2\n"));
     unimplemented!();
     /*
     // Set both pipes into nonblocking mode as we're gonna be reading from both
