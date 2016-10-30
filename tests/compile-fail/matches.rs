@@ -2,7 +2,7 @@
 
 #![plugin(clippy)]
 #![deny(clippy)]
-#![allow(unused)]
+#![allow(unused, if_let_redundant_pattern_matching)]
 #![deny(single_match_else)]
 
 use std::borrow::Cow;

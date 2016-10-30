@@ -82,6 +82,7 @@ pub mod format;
 pub mod formatting;
 pub mod functions;
 pub mod identity_op;
+pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
 pub mod items_after_statements;
 pub mod len_zero;
@@ -257,6 +258,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box eval_order_dependence::EvalOrderDependence);
     reg.register_late_lint_pass(box missing_doc::MissingDoc::new());
     reg.register_late_lint_pass(box ok_if_let::Pass);
+    reg.register_late_lint_pass(box if_let_redundant_pattern_matching::Pass);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -344,6 +346,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         functions::NOT_UNSAFE_PTR_ARG_DEREF,
         functions::TOO_MANY_ARGUMENTS,
         identity_op::IDENTITY_OP,
+        if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
         let_if_seq::USELESS_LET_IF_SEQ,

@@ -532,7 +532,7 @@ impl LateLintPass for Pass {
                     lint_iter_nth(cx, expr, arglists[0], false);
                 } else if let Some(arglists) = method_chain_args(expr, &["iter_mut", "nth"]) {
                     lint_iter_nth(cx, expr, arglists[0], true);
-                } else if let Some(_) = method_chain_args(expr, &["skip", "next"]) {
+                } else if method_chain_args(expr, &["skip", "next"]).is_some() {
                     lint_iter_skip_next(cx, expr);
                 }
 
@@ -796,7 +796,7 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
 // Type of MethodArgs is potentially a Vec
 fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs, is_mut: bool){
     let mut_str = if is_mut { "_mut" } else {""};
-    let caller_type = if let Some(_) = derefs_to_slice(cx, &iter_args[0], cx.tcx.expr_ty(&iter_args[0])) {
+    let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.tcx.expr_ty(&iter_args[0])).is_some() {
         "slice"
     }
     else if match_type(cx, cx.tcx.expr_ty(&iter_args[0]), &paths::VEC) {

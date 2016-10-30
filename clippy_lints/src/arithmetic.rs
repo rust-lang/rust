@@ -49,7 +49,7 @@ impl LintPass for Arithmetic {
 
 impl LateLintPass for Arithmetic {
     fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
-        if let Some(_) = self.span {
+        if self.span.is_some() {
             return;
         }
         match expr.node {
