@@ -1225,7 +1225,14 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
 pub fn compute_crate_disambiguator(session: &Session) -> String {
     use std::hash::Hasher;
 
-    let mut hasher = ArchIndependentHasher::new(Blake2bHasher::new(256 / 8, &[]));
+    // The crate_disambiguator is a 128 bit hash. The disambiguator is fed
+    // into various other hashes quite a bit (symbol hashes, incr. comp. hashes,
+    // debuginfo type IDs, etc), so we don't want it to be too wide. 128 bits
+    // should still be safe enough to avoid collisions in practice.
+    // FIXME(mw): It seems that the crate_disambiguator is used everywhere as
+    //            a hex-string instead of raw bytes. We should really use the
+    //            smaller representation.
+    let mut hasher = ArchIndependentHasher::new(Blake2bHasher::new(128 / 8, &[]));
 
     let mut metadata = session.opts.cg.metadata.clone();
     // We don't want the crate_disambiguator to dependent on the order
