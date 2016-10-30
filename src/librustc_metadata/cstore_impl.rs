@@ -206,11 +206,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(impl_did.krate).is_default_impl(impl_did.index)
     }
 
-    fn is_extern_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId) -> bool {
-        self.dep_graph.read(DepNode::MetaData(did));
-        self.get_crate_data(did.krate).is_extern_item(did.index, tcx)
-    }
-
     fn is_foreign_item(&self, did: DefId) -> bool {
         self.get_crate_data(did.krate).is_foreign_item(did.index)
     }

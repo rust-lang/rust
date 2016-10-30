@@ -35,6 +35,7 @@ use back::link;
 use back::linker::LinkerInfo;
 use llvm::{Linkage, ValueRef, Vector, get_param};
 use llvm;
+use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::ty::subst::Substs;
@@ -1712,8 +1713,21 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // `reachable_symbols` list later on so it should be ok.
     for cnum in sess.cstore.crates() {
         let syms = sess.cstore.reachable_ids(cnum);
-        reachable_symbols.extend(syms.into_iter().filter(|did| {
-            sess.cstore.is_extern_item(shared_ccx.tcx(), *did)
+        reachable_symbols.extend(syms.into_iter().filter(|&def_id| {
+            let applicable = match sess.cstore.describe_def(def_id) {
+                Some(Def::Static(..)) => true,
+                Some(Def::Fn(_)) => {
+                    shared_ccx.tcx().lookup_generics(def_id).types.is_empty()
+                }
+                _ => false
+            };
+
+            if applicable {
+                let attrs = shared_ccx.tcx().get_attrs(def_id);
+                attr::contains_extern_indicator(sess.diagnostic(), &attrs)
+            } else {
+                false
+            }
         }).map(|did| {
             symbol_for_def_id(did, &shared_ccx, &symbol_map)
         }));
