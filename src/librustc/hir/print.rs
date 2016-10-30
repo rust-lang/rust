@@ -845,7 +845,7 @@ impl<'a> State<'a> {
         self.ann.post(self, NodeItem(item))
     }
 
-    fn print_trait_ref(&mut self, t: &hir::TraitRef) -> io::Result<()> {
+    pub fn print_trait_ref(&mut self, t: &hir::TraitRef) -> io::Result<()> {
         self.print_path(&t.path, false)
     }
 

@@ -124,13 +124,6 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                         this.insert(struct_def.id(), NodeStructCtor(struct_def));
                     }
                 }
-                ItemTrait(.., ref bounds, _) => {
-                    for b in bounds.iter() {
-                        if let TraitTyParamBound(ref t, TraitBoundModifier::None) = *b {
-                            this.insert(t.trait_ref.ref_id, NodeItem(i));
-                        }
-                    }
-                }
                 ItemUse(ref view_path) => {
                     match view_path.node {
                         ViewPathList(_, ref paths) => {
@@ -217,6 +210,14 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         });
     }
 
+    fn visit_trait_ref(&mut self, tr: &'ast TraitRef) {
+        self.insert(tr.ref_id, NodeTraitRef(tr));
+
+        self.with_parent(tr.ref_id, |this| {
+            intravisit::walk_trait_ref(this, tr);
+        });
+    }
+
     fn visit_fn(&mut self, fk: intravisit::FnKind<'ast>, fd: &'ast FnDecl,
                 b: &'ast Expr, s: Span, id: NodeId) {
         assert_eq!(self.parent_node, id);
@@ -232,6 +233,20 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
         self.insert(lifetime.id, NodeLifetime(lifetime));
+    }
+
+    fn visit_vis(&mut self, visibility: &'ast Visibility) {
+        match *visibility {
+            Visibility::Public |
+            Visibility::Crate |
+            Visibility::Inherited => {}
+            Visibility::Restricted { id, .. } => {
+                self.insert(id, NodeVisibility(visibility));
+                self.with_parent(id, |this| {
+                    intravisit::walk_vis(this, visibility);
+                });
+            }
+        }
     }
 
     fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
