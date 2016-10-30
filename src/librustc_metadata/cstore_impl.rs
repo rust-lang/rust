@@ -23,8 +23,7 @@ use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::DefKey;
-use rustc::mir::repr::Mir;
-use rustc::mir::mir_map::MirMap;
+use rustc::mir::Mir;
 use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc_back::PanicStrategy;
 
@@ -467,10 +466,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.defid_for_inlined_node.borrow().get(&node_id).map(|x| *x)
     }
 
-    fn maybe_get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                              -> Option<Mir<'tcx>> {
+    fn get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> Mir<'tcx> {
         self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).maybe_get_item_mir(tcx, def.index)
+        self.get_crate_data(def.krate).maybe_get_item_mir(tcx, def.index).unwrap_or_else(|| {
+            bug!("get_item_mir: missing MIR for {}", tcx.item_path_str(def))
+        })
     }
 
     fn is_item_mir_available(&self, def: DefId) -> bool {
@@ -523,10 +523,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            reexports: &def::ExportMap,
                            link_meta: &LinkMeta,
-                           reachable: &NodeSet,
-                           mir_map: &MirMap<'tcx>) -> Vec<u8>
+                           reachable: &NodeSet) -> Vec<u8>
     {
-        encoder::encode_metadata(tcx, self, reexports, link_meta, reachable, mir_map)
+        encoder::encode_metadata(tcx, self, reexports, link_meta, reachable)
     }
 
     fn metadata_encoding_version(&self) -> &[u8]

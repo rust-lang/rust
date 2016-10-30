@@ -10,7 +10,7 @@
 
 //! Def-use analysis.
 
-use rustc::mir::repr::{Local, Location, Lvalue, Mir};
+use rustc::mir::{Local, Location, Lvalue, Mir};
 use rustc::mir::visit::{LvalueContext, MutVisitor, Visitor};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::marker::PhantomData;

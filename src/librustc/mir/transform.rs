@@ -11,8 +11,7 @@
 use dep_graph::DepNode;
 use hir;
 use hir::map::DefPathData;
-use mir::mir_map::MirMap;
-use mir::repr::{Mir, Promoted};
+use mir::{Mir, Promoted};
 use ty::TyCtxt;
 use syntax::ast::NodeId;
 use util::common::time;
@@ -85,12 +84,11 @@ pub trait Pass {
     fn disambiguator<'a>(&'a self) -> Option<Box<fmt::Display+'a>> { None }
 }
 
-/// A pass which inspects the whole MirMap.
+/// A pass which inspects the whole Mir map.
 pub trait MirMapPass<'tcx>: Pass {
     fn run_pass<'a>(
         &mut self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        map: &mut MirMap<'tcx>,
         hooks: &mut [Box<for<'s> MirPassHook<'s>>]);
 }
 
@@ -114,13 +112,18 @@ pub trait MirPass<'tcx>: Pass {
 impl<'tcx, T: MirPass<'tcx>> MirMapPass<'tcx> for T {
     fn run_pass<'a>(&mut self,
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    map: &mut MirMap<'tcx>,
                     hooks: &mut [Box<for<'s> MirPassHook<'s>>])
     {
-        let def_ids = map.map.keys();
+        let def_ids = tcx.mir_map.borrow().keys();
         for def_id in def_ids {
+            if !def_id.is_local() {
+                continue;
+            }
+
             let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            let mir = map.map.get_mut(&def_id).unwrap();
+            let mir = &mut tcx.mir_map.borrow()[&def_id].borrow_mut();
+            tcx.dep_graph.write(DepNode::Mir(def_id));
+
             let id = tcx.map.as_local_node_id(def_id).unwrap();
             let src = MirSource::from_node(tcx, id);
 
@@ -163,11 +166,11 @@ impl<'a, 'tcx> Passes {
         passes
     }
 
-    pub fn run_passes(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, map: &mut MirMap<'tcx>) {
+    pub fn run_passes(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         let Passes { ref mut passes, ref mut plugin_passes, ref mut pass_hooks } = *self;
         for pass in plugin_passes.iter_mut().chain(passes.iter_mut()) {
             time(tcx.sess.time_passes(), &*pass.name(),
-                 || pass.run_pass(tcx, map, pass_hooks));
+                 || pass.run_pass(tcx, pass_hooks));
         }
     }
 

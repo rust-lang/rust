@@ -10,8 +10,7 @@
 
 use dot;
 use rustc::hir::def_id::DefId;
-use rustc::mir::repr::*;
-use rustc::mir::mir_map::MirMap;
+use rustc::mir::*;
 use rustc::ty::TyCtxt;
 use std::fmt::Debug;
 use std::io::{self, Write};
@@ -22,14 +21,13 @@ use rustc_data_structures::indexed_vec::Idx;
 /// Write a graphviz DOT graph of a list of MIRs.
 pub fn write_mir_graphviz<'a, 'b, 'tcx, W, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                                               iter: I,
-                                              mir_map: &MirMap<'tcx>,
                                               w: &mut W)
                                               -> io::Result<()>
     where W: Write, I: Iterator<Item=DefId>
 {
     for def_id in iter {
         let nodeid = tcx.map.as_local_node_id(def_id).unwrap();
-        let mir = &mir_map.map[&def_id];
+        let mir = &tcx.item_mir(def_id);
 
         writeln!(w, "digraph Mir_{} {{", nodeid)?;
 

@@ -15,15 +15,12 @@ use middle::cstore::LinkMeta;
 use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
-use rustc::mir::mir_map::MirMap;
-use rustc::mir::repr as mir;
 use base;
 use builder::Builder;
 use common::BuilderRef_res;
 use debuginfo;
 use declare;
 use glue::DropGlueKind;
-use mir::CachedMir;
 use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
@@ -76,8 +73,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     stats: Stats,
     check_overflow: bool,
-    mir_map: &'a MirMap<'tcx>,
-    mir_cache: RefCell<DepTrackingMap<MirCache<'tcx>>>,
 
     use_dll_storage_attrs: bool,
 
@@ -181,19 +176,6 @@ impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
     type Value = traits::Vtable<'tcx, ()>;
     fn to_dep_node(key: &ty::PolyTraitRef<'tcx>) -> DepNode<DefId> {
         key.to_poly_trait_predicate().dep_node()
-    }
-}
-
-// Cache for mir loaded from metadata
-struct MirCache<'tcx> {
-    data: PhantomData<&'tcx ()>
-}
-
-impl<'tcx> DepTrackingMapConfig for MirCache<'tcx> {
-    type Key = DefId;
-    type Value = Rc<mir::Mir<'tcx>>;
-    fn to_dep_node(key: &DefId) -> DepNode<DefId> {
-        DepNode::Mir(*key)
     }
 }
 
@@ -453,7 +435,6 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
 
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-               mir_map: &'b MirMap<'tcx>,
                export_map: ExportMap,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
@@ -517,8 +498,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             link_meta: link_meta,
             symbol_hasher: RefCell::new(symbol_hasher),
             tcx: tcx,
-            mir_map: mir_map,
-            mir_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
             stats: Stats {
                 n_glues_created: Cell::new(0),
                 n_null_glues: Cell::new(0),
@@ -582,23 +561,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         self.use_dll_storage_attrs
     }
 
-    pub fn get_mir(&self, def_id: DefId) -> Option<CachedMir<'b, 'tcx>> {
-        if def_id.is_local() {
-            self.mir_map.map.get(&def_id).map(CachedMir::Ref)
-        } else {
-            if let Some(mir) = self.mir_cache.borrow().get(&def_id).cloned() {
-                return Some(CachedMir::Owned(mir));
-            }
-
-            let mir = self.sess().cstore.maybe_get_item_mir(self.tcx, def_id);
-            let cached = mir.map(Rc::new);
-            if let Some(ref mir) = cached {
-                self.mir_cache.borrow_mut().insert(def_id, mir.clone());
-            }
-            cached.map(CachedMir::Owned)
-        }
-    }
-
     pub fn translation_items(&self) -> &RefCell<FnvHashSet<TransItem<'tcx>>> {
         &self.translation_items
     }
@@ -615,10 +577,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn symbol_hasher(&self) -> &RefCell<Sha256> {
         &self.symbol_hasher
-    }
-
-    pub fn mir_map(&self) -> &MirMap<'tcx> {
-        &self.mir_map
     }
 
     pub fn metadata_symbol_name(&self) -> String {
@@ -1006,10 +964,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.shared.use_dll_storage_attrs()
-    }
-
-    pub fn get_mir(&self, def_id: DefId) -> Option<CachedMir<'b, 'tcx>> {
-        self.shared.get_mir(def_id)
     }
 
     pub fn symbol_map(&self) -> &SymbolMap<'tcx> {

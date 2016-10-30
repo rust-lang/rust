@@ -11,7 +11,7 @@
 use eval;
 
 use rustc::middle::const_val::ConstVal;
-use rustc::mir::repr::{Field, BorrowKind, Mutability};
+use rustc::mir::{Field, BorrowKind, Mutability};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::Def;
