@@ -49,6 +49,7 @@ impl FileDesc {
     }
 
     pub fn set_cloexec(&self) -> io::Result<()> {
+        ::sys_common::util::dumb_print(format_args!("Set cloexec\n"));
         unimplemented!();
         /*
         unsafe {
@@ -60,6 +61,7 @@ impl FileDesc {
     }
 
     pub fn set_nonblocking(&self, _nonblocking: bool) -> io::Result<()> {
+        ::sys_common::util::dumb_print(format_args!("Set nonblocking\n"));
         unimplemented!();
         /*
         unsafe {

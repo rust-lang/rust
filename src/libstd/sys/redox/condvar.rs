@@ -20,11 +20,15 @@ impl Condvar {
         }
     }
 
+    #[inline]
     pub unsafe fn init(&self) {
-
+        *self.lock.get() = ptr::null_mut();
+        *self.seq.get() = 0;
     }
 
+    #[inline]
     pub fn notify_one(&self) {
+        ::sys_common::util::dumb_print(format_args!("condvar notify_one\n"));
         unsafe {
             let seq = self.seq.get();
 
@@ -34,7 +38,9 @@ impl Condvar {
         }
     }
 
+    #[inline]
     pub fn notify_all(&self) {
+        ::sys_common::util::dumb_print(format_args!("condvar notify_all\n"));
         unsafe {
             let lock = self.lock.get();
             let seq = self.seq.get();
@@ -49,7 +55,9 @@ impl Condvar {
         }
     }
 
+    #[inline]
     pub fn wait(&self, mutex: &Mutex) {
+        ::sys_common::util::dumb_print(format_args!("condvar wait\n"));
         unsafe {
             let lock = self.lock.get();
             let seq = self.seq.get();
@@ -74,12 +82,16 @@ impl Condvar {
         }
     }
 
+    #[inline]
     pub fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
+        ::sys_common::util::dumb_print(format_args!("condvar wait_timeout\n"));
         unimplemented!();
     }
 
+    #[inline]
     pub unsafe fn destroy(&self) {
-
+        *self.lock.get() = ptr::null_mut();
+        *self.seq.get() = 0;
     }
 }
 

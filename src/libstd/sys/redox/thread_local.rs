@@ -10,32 +10,48 @@
 
 #![allow(dead_code)] // not used on all platforms
 
+use collections::BTreeMap;
+use ptr;
+
 pub type Key = usize;
 
-#[inline]
-pub unsafe fn create(_dtor: Option<unsafe extern fn(*mut u8)>) -> Key {
-    panic!("pthread key create not supported");
-    //let mut key = 0;
-    //assert_eq!(libc::pthread_key_create(&mut key, mem::transmute(dtor)), 0);
-    //key
+type Dtor = unsafe extern fn(*mut u8);
+
+//TODO: Implement this properly
+
+static mut NEXT_KEY: Key = 0;
+
+static mut LOCALS: *mut BTreeMap<Key, (*mut u8, Option<Dtor>)> = ptr::null_mut();
+
+unsafe fn locals() -> &'static mut BTreeMap<Key, (*mut u8, Option<Dtor>)> {
+    if LOCALS == ptr::null_mut() {
+        LOCALS = Box::into_raw(Box::new(BTreeMap::new()));
+    }
+    &mut *LOCALS
 }
 
 #[inline]
-pub unsafe fn set(_key: Key, _value: *mut u8) {
-    panic!("pthread key set not supported");
-    //let r = libc::pthread_setspecific(key, value as *mut _);
-    //debug_assert_eq!(r, 0);
+pub unsafe fn create(dtor: Option<Dtor>) -> Key {
+    let key = NEXT_KEY;
+    NEXT_KEY += 1;
+    locals().insert(key, (0 as *mut u8, dtor));
+    key
 }
 
 #[inline]
-pub unsafe fn get(_key: Key) -> *mut u8 {
-    panic!("pthread key get not supported");
-    //libc::pthread_getspecific(key) as *mut u8
+pub unsafe fn set(key: Key, value: *mut u8) {
+    locals().get_mut(&key).unwrap().0 = value;
 }
 
 #[inline]
-pub unsafe fn destroy(_key: Key) {
-    panic!("pthread key destroy not supported");
-    //let r = libc::pthread_key_delete(key);
-    //debug_assert_eq!(r, 0);
+pub unsafe fn get(key: Key) -> *mut u8 {
+    locals()[&key].0
+}
+
+#[inline]
+pub unsafe fn destroy(key: Key) {
+    let (value, dtor) = locals().remove(&key).unwrap();
+    if let Some(dtor_fn) = dtor {
+        dtor_fn(value);
+    }
 }

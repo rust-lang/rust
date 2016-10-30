@@ -32,6 +32,8 @@ impl Thread {
 
         start_thread(&*p as *const _ as *mut _);
 
+        ::sys_common::util::dumb_print(format_args!("thread\n"));
+
         unimplemented!();
     }
 
@@ -41,7 +43,7 @@ impl Thread {
     }
 
     pub fn set_name(_name: &CStr) {
-        unimplemented!();
+
     }
 
     pub fn sleep(dur: Duration) {
@@ -67,7 +69,8 @@ impl Thread {
     }
 
     pub fn join(self) {
-        panic!();
+        ::sys_common::util::dumb_print(format_args!("Thread::join"));
+        unimplemented!();
     }
 
     pub fn id(&self) -> libc::pid_t { self.id }
@@ -81,7 +84,8 @@ impl Thread {
 
 impl Drop for Thread {
     fn drop(&mut self) {
-        panic!();
+        ::sys_common::util::dumb_print(format_args!("Thread::drop"));
+        unimplemented!();
     }
 }
 

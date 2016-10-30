@@ -8,48 +8,54 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct RWLock;
+use super::mutex::Mutex;
+
+pub struct RWLock {
+    mutex: Mutex
+}
 
 unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
 impl RWLock {
     pub const fn new() -> RWLock {
-        RWLock
+        RWLock {
+            mutex: Mutex::new()
+        }
     }
 
     #[inline]
     pub unsafe fn read(&self) {
-        unimplemented!();
+        self.mutex.lock();
     }
 
     #[inline]
     pub unsafe fn try_read(&self) -> bool {
-        unimplemented!();
+        self.mutex.try_lock()
     }
 
     #[inline]
     pub unsafe fn write(&self) {
-        unimplemented!();
+        self.mutex.lock();
     }
 
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
-        unimplemented!();
+        self.mutex.try_lock()
     }
 
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        unimplemented!();
+        self.mutex.unlock();
     }
 
     #[inline]
     pub unsafe fn write_unlock(&self) {
-        unimplemented!();
+        self.mutex.unlock();
     }
 
     #[inline]
     pub unsafe fn destroy(&self) {
-
+        self.mutex.destroy();
     }
 }
