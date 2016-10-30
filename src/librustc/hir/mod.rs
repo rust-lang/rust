@@ -940,7 +940,7 @@ pub enum Expr_ {
     ExprRet(Option<P<Expr>>),
 
     /// Inline assembly (from `asm!`), with its outputs and inputs.
-    ExprInlineAsm(InlineAsm, Vec<P<Expr>>, Vec<P<Expr>>),
+    ExprInlineAsm(P<InlineAsm>, HirVec<P<Expr>>, HirVec<P<Expr>>),
 
     /// A struct or struct-like variant literal expression.
     ///
