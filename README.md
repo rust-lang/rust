@@ -174,7 +174,7 @@ You can check out this great service at [clippy.bashy.io](https://clippy.bashy.i
 
 ## Lints
 
-There are 175 lints included in this crate:
+There are 176 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -293,6 +293,7 @@ name                                                                            
 [out_of_bounds_indexing](https://github.com/Manishearth/rust-clippy/wiki#out_of_bounds_indexing)                       | deny    | out of bounds constant indexing
 [overflow_check_conditional](https://github.com/Manishearth/rust-clippy/wiki#overflow_check_conditional)               | warn    | overflow checks inspired by C which are likely to panic
 [panic_params](https://github.com/Manishearth/rust-clippy/wiki#panic_params)                                           | warn    | missing parameters in `panic!` calls
+[partialeq_ne_impl](https://github.com/Manishearth/rust-clippy/wiki#partialeq_ne_impl)                                 | warn    | re-implementing `PartialEq::ne`
 [precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                                               | warn    | operations where precedence may be unclear
 [print_stdout](https://github.com/Manishearth/rust-clippy/wiki#print_stdout)                                           | allow   | printing on stdout
 [print_with_newline](https://github.com/Manishearth/rust-clippy/wiki#print_with_newline)                               | warn    | using `print!()` with a format string that ends in a newline

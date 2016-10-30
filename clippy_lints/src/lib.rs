@@ -111,6 +111,7 @@ pub mod ok_if_let;
 pub mod open_options;
 pub mod overflow_check_conditional;
 pub mod panic;
+pub mod partialeq_ne_impl;
 pub mod precedence;
 pub mod print;
 pub mod ptr;
@@ -259,6 +260,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box missing_doc::MissingDoc::new());
     reg.register_late_lint_pass(box ok_if_let::Pass);
     reg.register_late_lint_pass(box if_let_redundant_pattern_matching::Pass);
+    reg.register_late_lint_pass(box partialeq_ne_impl::Pass);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -415,6 +417,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         open_options::NONSENSICAL_OPEN_OPTIONS,
         overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
         panic::PANIC_PARAMS,
+        partialeq_ne_impl::PARTIALEQ_NE_IMPL,
         precedence::PRECEDENCE,
         print::PRINT_WITH_NEWLINE,
         ptr::CMP_NULL,
