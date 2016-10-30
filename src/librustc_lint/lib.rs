@@ -229,6 +229,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(PATTERNS_IN_FNS_WITHOUT_BODY),
             reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(PATTERNS_IN_FNS_WITHOUT_BODY),
+            reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
+        },
         ]);
 
     // Register renamed and removed lints
