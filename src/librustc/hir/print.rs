@@ -1128,8 +1128,6 @@ impl<'a> State<'a> {
             hir::UnsafeBlock(..) => self.word_space("unsafe")?,
             hir::PushUnsafeBlock(..) => self.word_space("push_unsafe")?,
             hir::PopUnsafeBlock(..) => self.word_space("pop_unsafe")?,
-            hir::PushUnstableBlock => self.word_space("push_unstable")?,
-            hir::PopUnstableBlock => self.word_space("pop_unstable")?,
             hir::DefaultBlock => (),
         }
         self.maybe_print_comment(blk.span.lo)?;
