@@ -28,7 +28,6 @@ impl Condvar {
 
     #[inline]
     pub fn notify_one(&self) {
-        ::sys_common::util::dumb_print(format_args!("condvar notify_one\n"));
         unsafe {
             let seq = self.seq.get();
 
@@ -40,7 +39,6 @@ impl Condvar {
 
     #[inline]
     pub fn notify_all(&self) {
-        ::sys_common::util::dumb_print(format_args!("condvar notify_all\n"));
         unsafe {
             let lock = self.lock.get();
             let seq = self.seq.get();
@@ -57,7 +55,6 @@ impl Condvar {
 
     #[inline]
     pub fn wait(&self, mutex: &Mutex) {
-        ::sys_common::util::dumb_print(format_args!("condvar wait\n"));
         unsafe {
             let lock = self.lock.get();
             let seq = self.seq.get();
