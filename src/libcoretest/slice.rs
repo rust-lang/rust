@@ -30,6 +30,17 @@ fn test_binary_search() {
     assert!(b.binary_search_by(|v| v.cmp(&9)) == Err(6));
 }
 
+
+#[test]
+fn test_binary_search_zst() {
+    use core::cmp::Ordering;
+    // zero sized type
+    let b = [(); 14];
+    // All greater => find the start, all less => find the end
+    assert_eq!(b.binary_search_by(|_| Ordering::Greater), Err(0));
+    assert_eq!(b.binary_search_by(|_| Ordering::Less), Err(b.len()));
+}
+
 #[test]
 fn test_iterator_nth() {
     let v: &[_] = &[0, 1, 2, 3, 4];

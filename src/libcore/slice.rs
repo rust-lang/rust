@@ -293,26 +293,32 @@ impl<T> SliceExt for [T] {
         self as *const [T] as *const T
     }
 
-    fn binary_search_by<'a, F>(&'a self, mut f: F) -> Result<usize, usize>
+    fn binary_search_by<'a, F>(&'a self, mut compare: F) -> Result<usize, usize>
         where F: FnMut(&'a T) -> Ordering
     {
-        let mut base = 0usize;
         let mut s = self;
+        let base = s.as_ptr();
+        let mut steps = 0; // steps is only used for the ZST case
 
         loop {
-            let (head, tail) = s.split_at(s.len() >> 1);
+            let (head, tail) = s.split_at(s.len() / 2);
             if tail.is_empty() {
-                return Err(base)
+                break;
             }
-            match f(&tail[0]) {
-                Less => {
-                    base += head.len() + 1;
-                    s = &tail[1..];
+            let mid_element = &tail[0];
+            match compare(mid_element) {
+                Equal => {
+                    steps += head.len();
+                    return Ok(ptr_distance_to(base, mid_element).unwrap_or(steps));
                 }
                 Greater => s = head,
-                Equal => return Ok(base + head.len()),
+                Less => {
+                    s = &tail[1..];
+                    steps += head.len() + 1;
+                }
             }
         }
+        Err(ptr_distance_to(base, s.as_ptr()).unwrap_or(steps))
     }
 
     #[inline]
@@ -513,6 +519,18 @@ impl<T> SliceExt for [T] {
         self.binary_search_by(|k| f(k).cmp(b))
     }
 }
+
+/// Return the number of steps in elements from a to b (b must be larger)
+///
+/// If `T` is zero-sized, return None.
+fn ptr_distance_to<T>(a: *const T, b: *const T) -> Option<usize> {
+    if mem::size_of::<T>() == 0 {
+        None
+    } else {
+        Some((b as usize - a as usize) / mem::size_of::<T>())
+    }
+}
+
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "slice indices are of type `usize`"]
