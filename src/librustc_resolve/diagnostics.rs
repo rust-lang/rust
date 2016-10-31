@@ -1461,6 +1461,47 @@ match r {
 ```
 "##,
 
+E0532: r##"
+Pattern arm did not match expected kind.
+
+Erroneous code example:
+
+```compile_fail,E0532
+enum State {
+    Succeeded,
+    Failed(String),
+}
+
+fn print_on_failure(state: &State) {
+    match *state {
+        // error: expected unit struct/variant or constant, found tuple
+        //        variant `State::Failed`
+        State::Failed => println!("Failed"),
+        _ => ()
+    }
+}
+```
+
+To fix this error, ensure the match arm kind is the same as the expression
+matched.
+
+Fixed example:
+
+```
+enum State {
+    Succeeded,
+    Failed(String),
+}
+
+fn print_on_failure(state: &State) {
+    match *state {
+        State::Failed(ref msg) => println!("Failed with {}", msg),
+        _ => ()
+    }
+}
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -1480,6 +1521,5 @@ register_diagnostics! {
 //  E0421, merged into 531
 //  E0422, merged into 531/532
     E0531, // unresolved pattern path kind `name`
-    E0532, // expected pattern path kind, found another pattern path kind
 //  E0427, merged into 530
 }
