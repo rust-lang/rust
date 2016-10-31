@@ -40,6 +40,11 @@ fn main() {
     if llvm_target[0] == "thumbv6m" {
         println!("cargo:rustc-cfg=thumbv6m")
     }
+
+    // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures.
+    if llvm_target[0] == "armv5te" {
+        println!("cargo:rustc-cfg=armv5te")
+    }
 }
 
 #[cfg(feature = "gen-tests")]
