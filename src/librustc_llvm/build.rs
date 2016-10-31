@@ -127,7 +127,7 @@ fn main() {
     // we don't pick up system libs because unfortunately they're for the host
     // of llvm-config, not the target that we're attempting to link.
     let mut cmd = Command::new(&llvm_config);
-    cmd.arg("--libs");
+    cmd.args(&["--libs", "--link-static"]);
     if !is_crossed {
         cmd.arg("--system-libs");
     }
