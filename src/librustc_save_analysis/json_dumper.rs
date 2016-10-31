@@ -129,7 +129,7 @@ impl From<DefId> for Id {
 #[derive(Debug, RustcEncodable)]
 struct Import {
     kind: ImportKind,
-    id: Id,
+    ref_id: Option<Id>,
     span: SpanData,
     name: String,
     value: String,
@@ -146,7 +146,7 @@ impl From<ExternCrateData> for Import {
     fn from(data: ExternCrateData) -> Import {
         Import {
             kind: ImportKind::ExternCrate,
-            id: From::from(data.id),
+            ref_id: None,
             span: data.span,
             name: data.name,
             value: String::new(),
@@ -157,7 +157,7 @@ impl From<UseData> for Import {
     fn from(data: UseData) -> Import {
         Import {
             kind: ImportKind::Use,
-            id: From::from(data.id),
+            ref_id: data.mod_id.map(|id| From::from(id)),
             span: data.span,
             name: data.name,
             value: String::new(),
@@ -168,7 +168,7 @@ impl From<UseGlobData> for Import {
     fn from(data: UseGlobData) -> Import {
         Import {
             kind: ImportKind::GlobUse,
-            id: From::from(data.id),
+            ref_id: None,
             span: data.span,
             name: "*".to_owned(),
             value: data.names.join(", "),

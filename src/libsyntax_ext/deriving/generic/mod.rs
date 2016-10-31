@@ -1460,8 +1460,9 @@ impl<'a> MethodDef<'a> {
             .iter()
             .map(|v| {
                 let ident = v.node.name;
+                let sp = Span { expn_id: trait_.span.expn_id, ..v.span };
                 let summary = trait_.summarise_struct(cx, &v.node.data);
-                (ident, v.span, summary)
+                (ident, sp, summary)
             })
             .collect();
         self.call_substructure_method(cx,

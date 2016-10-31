@@ -25,6 +25,10 @@ pub fn target() -> TargetResult {
             cpu: "mips64r2".to_string(),
             features: "+mips64r2".to_string(),
             max_atomic_width: Some(64),
+
+            // see #36994
+            exe_allocation_crate: "alloc_system".to_string(),
+
             ..super::linux_base::opts()
         },
     })

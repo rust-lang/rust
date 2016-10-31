@@ -124,7 +124,6 @@ impl<'a> LoweringContext<'a> {
         hir::Crate {
             module: self.lower_mod(&c.module),
             attrs: self.lower_attrs(&c.attrs),
-            config: c.config.clone().into(),
             span: c.span,
             exported_macros: c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect(),
             items: items,
@@ -1219,7 +1218,7 @@ impl<'a> LoweringContext<'a> {
                         alignstack,
                         dialect,
                         expn_id,
-                    }) => hir::ExprInlineAsm(hir::InlineAsm {
+                    }) => hir::ExprInlineAsm(P(hir::InlineAsm {
                     inputs: inputs.iter().map(|&(ref c, _)| c.clone()).collect(),
                     outputs: outputs.iter()
                                     .map(|out| {
@@ -1237,7 +1236,7 @@ impl<'a> LoweringContext<'a> {
                     alignstack: alignstack,
                     dialect: dialect,
                     expn_id: expn_id,
-                }, outputs.iter().map(|out| self.lower_expr(&out.expr)).collect(),
+                }), outputs.iter().map(|out| self.lower_expr(&out.expr)).collect(),
                    inputs.iter().map(|&(_, ref input)| self.lower_expr(input)).collect()),
                 ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
                     hir::ExprStruct(self.lower_path(path),

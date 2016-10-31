@@ -1017,7 +1017,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     delegate.matched_pat(pat, downcast_cmt, match_mode);
                 }
                 Some(Def::Struct(..)) | Some(Def::StructCtor(..)) | Some(Def::Union(..)) |
-                Some(Def::TyAlias(..)) | Some(Def::AssociatedTy(..)) => {
+                Some(Def::TyAlias(..)) | Some(Def::AssociatedTy(..)) | Some(Def::SelfTy(..)) => {
                     debug!("struct cmt_pat={:?} pat={:?}", cmt_pat, pat);
                     delegate.matched_pat(pat, cmt_pat, match_mode);
                 }

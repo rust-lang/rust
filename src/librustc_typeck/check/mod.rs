@@ -1686,41 +1686,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                        cause)
     }
 
-    /// Instantiates the type in `did` with the generics in `path` and returns
-    /// it (registering the necessary trait obligations along the way).
-    ///
-    /// Note that this function is only intended to be used with type-paths,
-    /// not with value-paths.
-    pub fn instantiate_type_path(&self,
-                                 did: DefId,
-                                 path: &hir::Path,
-                                 node_id: ast::NodeId)
-                                 -> Ty<'tcx> {
-        debug!("instantiate_type_path(did={:?}, path={:?})", did, path);
-        let mut ty = self.tcx.lookup_item_type(did).ty;
-        if ty.is_fn() {
-            // Tuple variants have fn type even in type namespace, extract true variant type from it
-            ty = self.tcx.no_late_bound_regions(&ty.fn_ret()).unwrap();
-        }
-        let type_predicates = self.tcx.lookup_predicates(did);
-        let substs = AstConv::ast_path_substs_for_ty(self, self,
-                                                     path.span,
-                                                     PathParamMode::Optional,
-                                                     did,
-                                                     path.segments.last().unwrap());
-        debug!("instantiate_type_path: ty={:?} substs={:?}", ty, substs);
-        let bounds = self.instantiate_bounds(path.span, substs, &type_predicates);
-        let cause = traits::ObligationCause::new(path.span, self.body_id,
-                                                 traits::ItemObligation(did));
-        self.add_obligations_for_parameters(cause, &bounds);
-
-        let ty_substituted = self.instantiate_type_scheme(path.span, substs, &ty);
-        self.write_substs(node_id, ty::ItemSubsts {
-            substs: substs
-        });
-        ty_substituted
-    }
-
     pub fn write_nil(&self, node_id: ast::NodeId) {
         self.write_ty(node_id, self.tcx.mk_nil());
     }
@@ -3251,47 +3216,55 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_struct_path(&self,
-                         path: &hir::Path,
-                         node_id: ast::NodeId,
-                         span: Span)
-                         -> Option<(ty::VariantDef<'tcx>,  Ty<'tcx>)> {
-        let def = self.finish_resolving_struct_path(path, node_id, span);
+                             path: &hir::Path,
+                             node_id: ast::NodeId)
+                             -> Option<(ty::VariantDef<'tcx>,  Ty<'tcx>)> {
+        let (def, ty) = self.finish_resolving_struct_path(path, node_id);
         let variant = match def {
             Def::Err => {
                 self.set_tainted_by_errors();
                 return None;
             }
-            Def::Variant(did) => {
-                let type_did = self.tcx.parent_def_id(did).unwrap();
-                Some((type_did, self.tcx.expect_variant_def(def)))
+            Def::Variant(..) => {
+                match ty.sty {
+                    ty::TyAdt(adt, substs) => {
+                        Some((adt.variant_of_def(def), adt.did, substs))
+                    }
+                    _ => bug!("unexpected type: {:?}", ty.sty)
+                }
             }
-            Def::Struct(type_did) | Def::Union(type_did) => {
-                Some((type_did, self.tcx.expect_variant_def(def)))
-            }
-            Def::TyAlias(did) | Def::AssociatedTy(did) => {
-                match self.tcx.opt_lookup_item_type(did).map(|scheme| &scheme.ty.sty) {
-                    Some(&ty::TyAdt(adt, _)) if !adt.is_enum() => {
-                        Some((did, adt.struct_variant()))
+            Def::Struct(..) | Def::Union(..) | Def::TyAlias(..) |
+            Def::AssociatedTy(..) | Def::SelfTy(..) => {
+                match ty.sty {
+                    ty::TyAdt(adt, substs) if !adt.is_enum() => {
+                        Some((adt.struct_variant(), adt.did, substs))
                     }
                     _ => None,
                 }
             }
-            _ => None
+            _ => bug!("unexpected definition: {:?}", def)
         };
 
-        if let Some((def_id, variant)) = variant {
+        if let Some((variant, did, substs)) = variant {
             if variant.ctor_kind == CtorKind::Fn &&
                     !self.tcx.sess.features.borrow().relaxed_adts {
                 emit_feature_err(&self.tcx.sess.parse_sess,
-                                 "relaxed_adts", span, GateIssue::Language,
+                                 "relaxed_adts", path.span, GateIssue::Language,
                                  "tuple structs and variants in struct patterns are unstable");
             }
-            let ty = self.instantiate_type_path(def_id, path, node_id);
+
+            // Check bounds on type arguments used in the path.
+            let type_predicates = self.tcx.lookup_predicates(did);
+            let bounds = self.instantiate_bounds(path.span, substs, &type_predicates);
+            let cause = traits::ObligationCause::new(path.span, self.body_id,
+                                                     traits::ItemObligation(did));
+            self.add_obligations_for_parameters(cause, &bounds);
+
             Some((variant, ty))
         } else {
             struct_span_err!(self.tcx.sess, path.span, E0071,
-                             "`{}` does not name a struct or a struct variant",
-                             pprust::path_to_string(path))
+                             "expected struct, variant or union type, found {}",
+                             ty.sort_string(self.tcx))
                 .span_label(path.span, &format!("not a struct"))
                 .emit();
             None
@@ -3305,12 +3278,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          base_expr: &'gcx Option<P<hir::Expr>>) -> Ty<'tcx>
     {
         // Find the relevant variant
-        let (variant, struct_ty) = if let Some(variant_ty) = self.check_struct_path(path, expr.id,
-                                                                                    expr.span) {
+        let (variant, struct_ty) = if let Some(variant_ty) = self.check_struct_path(path, expr.id) {
             variant_ty
         } else {
             self.check_struct_fields_on_error(fields, base_expr);
-            return self.tcx().types.err;
+            return self.tcx.types.err;
         };
 
         self.check_expr_struct_fields(struct_ty, path.span, variant, fields,
@@ -3805,7 +3777,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               }
                           }
                           err.emit();
-                          self.tcx().types.err
+                          self.tcx.types.err
                       }
                   }
               }
@@ -3815,29 +3787,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     // Finish resolving a path in a struct expression or pattern `S::A { .. }` if necessary.
     // The newly resolved definition is written into `def_map`.
-    pub fn finish_resolving_struct_path(&self,
-                                        path: &hir::Path,
-                                        node_id: ast::NodeId,
-                                        span: Span)
-                                        -> Def
+    fn finish_resolving_struct_path(&self,
+                                    path: &hir::Path,
+                                    node_id: ast::NodeId)
+                                    -> (Def, Ty<'tcx>)
     {
-        let path_res = self.tcx().expect_resolution(node_id);
-        if path_res.depth == 0 {
-            // If fully resolved already, we don't have to do anything.
-            path_res.base_def
-        } else {
-            let base_ty_end = path.segments.len() - path_res.depth;
-            let (_ty, def) = AstConv::finish_resolving_def_to_ty(self, self, span,
-                                                                 PathParamMode::Optional,
-                                                                 path_res.base_def,
-                                                                 None,
-                                                                 node_id,
-                                                                 &path.segments[..base_ty_end],
-                                                                 &path.segments[base_ty_end..]);
-            // Write back the new resolution.
-            self.tcx().def_map.borrow_mut().insert(node_id, PathResolution::new(def));
-            def
+        let path_res = self.tcx.expect_resolution(node_id);
+        let base_ty_end = path.segments.len() - path_res.depth;
+        let (ty, def) = AstConv::finish_resolving_def_to_ty(self, self, path.span,
+                                                            PathParamMode::Optional,
+                                                            path_res.base_def,
+                                                            None,
+                                                            node_id,
+                                                            &path.segments[..base_ty_end],
+                                                            &path.segments[base_ty_end..],
+                                                            true);
+        // Write back the new resolution.
+        if path_res.depth != 0 {
+            self.tcx.def_map.borrow_mut().insert(node_id, PathResolution::new(def));
         }
+        (def, ty)
     }
 
     // Resolve associated value path into a base type and associated constant or method definition.
@@ -3849,7 +3818,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                        span: Span)
                                        -> (Def, Option<Ty<'tcx>>, &'b [hir::PathSegment])
     {
-        let path_res = self.tcx().expect_resolution(node_id);
+        let path_res = self.tcx.expect_resolution(node_id);
         if path_res.depth == 0 {
             // If fully resolved already, we don't have to do anything.
             (path_res.base_def, opt_self_ty, &path.segments)
@@ -3863,7 +3832,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                  opt_self_ty,
                                                                  node_id,
                                                                  &ty_segments[..base_ty_end],
-                                                                 &ty_segments[base_ty_end..]);
+                                                                 &ty_segments[base_ty_end..],
+                                                                 false);
 
             // Resolve an associated constant or method on the previously resolved type.
             let item_segment = path.segments.last().unwrap();
@@ -3883,7 +3853,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             // Write back the new resolution.
-            self.tcx().def_map.borrow_mut().insert(node_id, PathResolution::new(def));
+            self.tcx.def_map.borrow_mut().insert(node_id, PathResolution::new(def));
             (def, Some(ty), slice::ref_slice(item_segment))
         }
     }
@@ -4307,7 +4277,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Substitute the values for the type parameters into the type of
         // the referenced item.
         let ty_substituted = self.instantiate_type_scheme(span, &substs, &scheme.ty);
-
 
         if let Some((ty::ImplContainer(impl_def_id), self_ty)) = ufcs_associated {
             // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`

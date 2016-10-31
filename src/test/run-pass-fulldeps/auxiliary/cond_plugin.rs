@@ -15,10 +15,10 @@
 #![plugin(proc_macro_plugin)]
 
 extern crate rustc_plugin;
-extern crate proc_macro_plugin;
+extern crate proc_macro_tokens;
 extern crate syntax;
 
-use proc_macro_plugin::prelude::*;
+use proc_macro_tokens::prelude::*;
 
 use rustc_plugin::Registry;
 

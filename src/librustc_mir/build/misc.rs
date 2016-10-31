@@ -17,7 +17,7 @@ use rustc_const_math::{ConstInt, ConstUsize, ConstIsize};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use syntax::ast;
 use syntax_pos::Span;
 

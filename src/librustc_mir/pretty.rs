@@ -11,8 +11,7 @@
 use build::{ScopeAuxiliaryVec, ScopeId};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::mir::repr::*;
-use rustc::mir::mir_map::MirMap;
+use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
@@ -90,14 +89,13 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Write out a human-readable textual representation for the given MIR.
 pub fn write_mir_pretty<'a, 'b, 'tcx, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                                          iter: I,
-                                         mir_map: &MirMap<'tcx>,
                                          w: &mut Write)
                                          -> io::Result<()>
     where I: Iterator<Item=DefId>, 'tcx: 'a
 {
     let mut first = true;
     for def_id in iter {
-        let mir = &mir_map.map[&def_id];
+        let mir = &tcx.item_mir(def_id);
 
         if first {
             first = false;

@@ -4023,9 +4023,9 @@ Methods that take either `self` or `Box<Self>` can optionally place them in a
 mutable variable by prefixing them with `mut` (similar to regular arguments):
 
 ```
-trait Changer {
-    fn change(mut self) -> Self;
-    fn modify(mut self: Box<Self>) -> Box<Self>;
+trait Changer: Sized {
+    fn change(mut self) {}
+    fn modify(mut self: Box<Self>) {}
 }
 ```
 
@@ -4077,6 +4077,12 @@ be ignored in favor of only building the artifacts specified by command line.
   windows. This format is recommended for use in situations such as linking
   Rust code into an existing non-Rust application because it will not have
   dynamic dependencies on other Rust code.
+
+* `--crate-type=cdylib`, `#[crate_type = "cdylib"]` - A dynamic system
+  library will be produced.  This is used when compiling Rust code as
+  a dynamic library to be loaded from another language.  This output type will
+  create `*.so` files on Linux, `*.dylib` files on OSX, and `*.dll` files on
+  Windows.
 
 * `--crate-type=rlib`, `#[crate_type = "rlib"]` - A "Rust library" file will be
   produced. This is used as an intermediate artifact and can be thought of as a

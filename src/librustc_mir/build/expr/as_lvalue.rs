@@ -13,7 +13,7 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::Category;
 use hair::*;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 
 use rustc_data_structures::indexed_vec::Idx;
 

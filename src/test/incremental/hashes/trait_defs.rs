@@ -264,8 +264,8 @@ trait TraitChangeModeSelfRefToMut {
 
 
 #[cfg(cfail1)]
-trait TraitChangeModeSelfOwnToMut {
-    fn method(self);
+trait TraitChangeModeSelfOwnToMut: Sized {
+    fn method(self) {}
 }
 
 #[cfg(not(cfail1))]
@@ -273,8 +273,8 @@ trait TraitChangeModeSelfOwnToMut {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitChangeModeSelfOwnToMut {
-    fn method(mut self);
+trait TraitChangeModeSelfOwnToMut: Sized {
+    fn method(mut self) {}
 }
 
 

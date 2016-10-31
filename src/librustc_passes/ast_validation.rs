@@ -190,8 +190,16 @@ impl<'a> Visitor for AstValidator<'a> {
             }
             ItemKind::Trait(.., ref trait_items) => {
                 for trait_item in trait_items {
-                    if let TraitItemKind::Method(ref sig, _) = trait_item.node {
+                    if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
                         self.check_trait_fn_not_const(sig.constness);
+                        if block.is_none() {
+                            self.check_decl_no_pat(&sig.decl, |span, _| {
+                                self.session.add_lint(lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
+                                                      trait_item.id, span,
+                                                      "patterns aren't allowed in methods \
+                                                       without bodies".to_string());
+                            });
+                        }
                     }
                 }
             }

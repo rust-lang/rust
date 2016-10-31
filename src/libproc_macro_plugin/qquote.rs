@@ -24,12 +24,9 @@
 //! TokenStream that resembles the output syntax.
 //!
 
-extern crate rustc_plugin;
-extern crate syntax;
-extern crate syntax_pos;
+use proc_macro_tokens::build::*;
+use proc_macro_tokens::parse::lex;
 
-use build::*;
-use parse::lex;
 use qquote::int_build::*;
 
 use syntax::ast::Ident;
@@ -51,7 +48,7 @@ pub fn qquote<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
     let output = qquoter(cx, TokenStream::from_tts(tts.clone().to_owned()));
     debug!("\nQQ out: {}\n", pprust::tts_to_string(&output.to_tts()[..]));
     let imports = concat(lex("use syntax::ext::proc_macro_shim::prelude::*;"),
-                         lex("use proc_macro_plugin::prelude::*;"));
+                         lex("use proc_macro_tokens::prelude::*;"));
     build_block_emitter(cx, sp, build_brace_delimited(concat(imports, output)))
 }
 
@@ -219,7 +216,7 @@ fn convert_complex_tts<'cx>(cx: &'cx mut ExtCtxt, tts: Vec<QTT>) -> (Bindings, T
 
                 let sep = build_delim_tok(qdl.delim);
 
-                pushes.push(build_mod_call(vec![str_to_ident("proc_macro_plugin"),
+                pushes.push(build_mod_call(vec![str_to_ident("proc_macro_tokens"),
                                                str_to_ident("build"),
                                                str_to_ident("build_delimited")],
                                           concat(from_tokens(vec![Token::Ident(new_id)]),
@@ -264,11 +261,8 @@ fn is_qquote(id: Ident) -> bool {
 }
 
 mod int_build {
-    extern crate syntax;
-    extern crate syntax_pos;
-
-    use parse::*;
-    use build::*;
+    use proc_macro_tokens::build::*;
+    use proc_macro_tokens::parse::*;
 
     use syntax::ast::{self, Ident};
     use syntax::codemap::{DUMMY_SP};

@@ -91,7 +91,7 @@ use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
 use rustc::ty::subst::{Kind, Subst};
 use rustc::ty::{Ty, TyCtxt};
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use syntax_pos::Span;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::fnv::FnvHashMap;

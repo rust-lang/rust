@@ -22,7 +22,7 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::mir::visit::{LvalueContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
 use rustc::ty::TyCtxt;

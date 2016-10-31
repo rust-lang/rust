@@ -11,7 +11,7 @@
 use build::Builder;
 use build::matches::MatchPair;
 use hair::*;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use std::u32;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
