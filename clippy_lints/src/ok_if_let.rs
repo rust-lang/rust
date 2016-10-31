@@ -9,9 +9,18 @@ use utils::{paths, method_chain_args, span_help_and_lint, match_type, snippet};
 /// **Known problems:** None.
 ///
 /// **Example:**
-/// ```rustc
+/// ```rust
 /// for result in iter {
 ///     if let Some(bench) = try!(result).parse().ok() {
+///         vec.push(bench)
+///     }
+/// }
+///```
+/// Could be written:
+///
+/// ```rust
+/// for result in iter {
+///     if let Ok(bench) = try!(result).parse() {
 ///         vec.push(bench)
 ///     }
 /// }
