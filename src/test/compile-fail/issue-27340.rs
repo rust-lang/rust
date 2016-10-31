@@ -10,7 +10,7 @@
 
 struct Foo;
 #[derive(Copy, Clone)]
-//~^ ERROR the trait `Copy` may not be implemented for this type
+//~^ ERROR the trait `Copy` may not be implemented for type `Bar`
 struct Bar(Foo);
 
 fn main() {}

@@ -10,19 +10,21 @@
 
 enum Foo {
     Bar(Vec<u32>),
+    //~^ NOTE this variant doesn't implement `Copy`
     Baz,
 }
 
 impl Copy for Foo { }
-//~^ ERROR the trait `Copy` may not be implemented for this type
-//~| NOTE variant `Bar` does not implement `Copy`
+//~^ ERROR the trait `Copy` may not be implemented for type `Foo`
+//~| NOTE variant `Foo::Bar` doesn't implement `Copy`
 
 #[derive(Copy)]
-//~^ ERROR the trait `Copy` may not be implemented for this type
-//~| NOTE variant `Bar` does not implement `Copy`
+//~^ ERROR the trait `Copy` may not be implemented for type `Foo2<'a>`
+//~| NOTE variant `Foo2::Bar` doesn't implement `Copy`
 //~| NOTE in this expansion of #[derive(Copy)]
 enum Foo2<'a> {
     Bar(&'a mut bool),
+    //~^ NOTE this variant doesn't implement `Copy`
     Baz,
 }
 

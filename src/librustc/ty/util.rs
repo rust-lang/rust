@@ -115,8 +115,8 @@ impl IntTypeExt for attr::IntType {
 
 #[derive(Copy, Clone)]
 pub enum CopyImplementationError {
-    InfrigingField(Name),
-    InfrigingVariant(Name),
+    InfrigingField(DefId, Name),
+    InfrigingVariant(DefId, Name),
     NotAnAdt,
     HasDestructor
 }
@@ -149,7 +149,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                             let field_ty = field.ty(tcx, substs);
                             if infcx.type_moves_by_default(field_ty, span) {
                                 return Err(CopyImplementationError::InfrigingField(
-                                    field.name))
+                                    field.did, field.name))
                             }
                         }
                         adt
@@ -160,7 +160,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                 let field_ty = field.ty(tcx, substs);
                                 if infcx.type_moves_by_default(field_ty, span) {
                                     return Err(CopyImplementationError::InfrigingVariant(
-                                        variant.name))
+                                        variant.did, variant.name))
                                 }
                             }
                         }

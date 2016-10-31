@@ -15,7 +15,7 @@ struct IWantToCopyThis {
 }
 
 impl Copy for IWantToCopyThis {}
-//~^ ERROR the trait `Copy` may not be implemented for this type
+//~^ ERROR the trait `Copy` may not be implemented for type `IWantToCopyThis`
 
 enum CantCopyThisEither {
     A,
@@ -27,6 +27,6 @@ enum IWantToCopyThisToo {
 }
 
 impl Copy for IWantToCopyThisToo {}
-//~^ ERROR the trait `Copy` may not be implemented for this type
+//~^ ERROR the trait `Copy` may not be implemented for type `IWantToCopyThisToo`
 
 fn main() {}
