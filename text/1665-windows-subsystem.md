@@ -1,7 +1,7 @@
 - Feature Name: Windows Subsystem
 - Start Date: 2016-07-03
-- RFC PR: ____
-- Rust Issue: ____
+- RFC PR: [rust-lang/rfcs#1665](https://github.com/rust-lang/rfcs/pull/1665)
+- Rust Issue: [rust-lang/rust#37499](https://github.com/rust-lang/rust/issues/37499)
 
 # Summary
 [summary]: #summary
