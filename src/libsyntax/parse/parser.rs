@@ -2224,13 +2224,13 @@ impl<'a> Parser<'a> {
                             SeqSep::trailing_allowed(token::Comma),
                             |p| Ok(p.parse_expr()?)
                         )?;
-                        let mut exprs = vec!(first_expr);
+                        let mut exprs = vec![first_expr];
                         exprs.extend(remaining_exprs);
                         ex = ExprKind::Vec(exprs);
                     } else {
                         // Vector with one element.
                         self.expect(&token::CloseDelim(token::Bracket))?;
-                        ex = ExprKind::Vec(vec!(first_expr));
+                        ex = ExprKind::Vec(vec![first_expr]);
                     }
                 }
                 hi = self.prev_span.hi;

@@ -111,7 +111,7 @@ fn unstable(g: getopts::OptGroup) -> RustcOptGroup { RustcOptGroup::unstable(g) 
 
 pub fn opts() -> Vec<RustcOptGroup> {
     use getopts::*;
-    vec!(
+    vec![
         stable(optflag("h", "help", "show this help message")),
         stable(optflag("V", "version", "print rustdoc's version")),
         stable(optflag("v", "verbose", "use verbose output")),
@@ -162,7 +162,7 @@ pub fn opts() -> Vec<RustcOptGroup> {
         unstable(optmulti("Z", "",
                           "internal and debugging options (only on nightly build)", "FLAG")),
         stable(optopt("", "sysroot", "Override the system root", "PATH")),
-    )
+    ]
 }
 
 pub fn usage(argv0: &str) {

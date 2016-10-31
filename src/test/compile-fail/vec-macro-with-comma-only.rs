@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    vec!(,); //~ ERROR expected expression, found `,`
+    vec![,]; //~ ERROR expected expression, found `,`
 }

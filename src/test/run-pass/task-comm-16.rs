@@ -27,7 +27,7 @@ fn test_rec() {
 
 fn test_vec() {
     let (tx, rx) = channel();
-    let v0: Vec<isize> = vec!(0, 1, 2);
+    let v0: Vec<isize> = vec![0, 1, 2];
     tx.send(v0).unwrap();
     let v1 = rx.recv().unwrap();
     assert_eq!(v1[0], 0);

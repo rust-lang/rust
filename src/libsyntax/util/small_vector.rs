@@ -105,7 +105,7 @@ impl<T> SmallVector<T> {
             One(..) => {
                 let one = mem::replace(&mut self.repr, Zero);
                 match one {
-                    One(v1) => mem::replace(&mut self.repr, Many(vec!(v1, v))),
+                    One(v1) => mem::replace(&mut self.repr, Many(vec![v1, v])),
                     _ => unreachable!()
                 };
             }
@@ -314,12 +314,12 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_expect_one_many() {
-        SmallVector::many(vec!(1, 2)).expect_one("");
+        SmallVector::many(vec![1, 2]).expect_one("");
     }
 
     #[test]
     fn test_expect_one_one() {
         assert_eq!(1, SmallVector::one(1).expect_one(""));
-        assert_eq!(1, SmallVector::many(vec!(1)).expect_one(""));
+        assert_eq!(1, SmallVector::many(vec![1]).expect_one(""));
     }
 }

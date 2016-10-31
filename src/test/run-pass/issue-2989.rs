@@ -32,8 +32,8 @@ fn to_bools(bitv: Storage) -> Vec<bool> {
 struct Storage { storage: Vec<u64> }
 
 pub fn main() {
-    let bools = vec!(false, false, true, false, false, true, true, false);
-    let bools2 = to_bools(Storage{storage: vec!(0b01100100)});
+    let bools = vec![false, false, true, false, false, true, true, false];
+    let bools2 = to_bools(Storage{storage: vec![0b01100100]});
 
     for i in 0..8 {
         println!("{} => {} vs {}", i, bools[i], bools2[i]);

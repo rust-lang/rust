@@ -29,6 +29,6 @@ fn defer<'r>(x: &'r [&'r str]) -> defer<'r> {
 }
 
 fn main() {
-    let x = defer(&vec!("Goodbye", "world!"));
+    let x = defer(&vec!["Goodbye", "world!"]);
     x.x[0];
 }

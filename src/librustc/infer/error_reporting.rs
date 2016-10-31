@@ -457,7 +457,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             same_regions.push(SameRegions {
                 scope_id: scope_id,
-                regions: vec!(sub_fr.bound_region, sup_fr.bound_region)
+                regions: vec![sub_fr.bound_region, sup_fr.bound_region]
             })
         }
     }
@@ -1359,7 +1359,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                                 region_names: &HashSet<ast::Name>)
                                 -> P<hir::Ty> {
         let mut new_ty = P(ty.clone());
-        let mut ty_queue = vec!(ty);
+        let mut ty_queue = vec![ty];
         while !ty_queue.is_empty() {
             let cur_ty = ty_queue.remove(0);
             match cur_ty.node {

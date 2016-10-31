@@ -54,7 +54,7 @@ impl<T, M: Index<(usize, usize), Output=T>> Index<usize> for Row<M> {
 }
 
 fn main() {
-    let m = Mat::new(vec!(1, 2, 3, 4, 5, 6), 3);
+    let m = Mat::new(vec![1, 2, 3, 4, 5, 6], 3);
     let r = m.row(1);
 
     assert_eq!(r.index(2), &6);

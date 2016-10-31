@@ -18,5 +18,5 @@ pub fn main() {
 }
 
 fn vec() {
-    vec!(0);
+    vec![0];
 }
