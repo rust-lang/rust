@@ -4,7 +4,8 @@
 
 use rustc::lint::*;
 use rustc::hir;
-use syntax::ast::{Attribute, MetaItemKind};
+use syntax::ast::Attribute;
+use syntax::attr;
 
 /// **What it does:** Dumps every ast/hir node which has the `#[clippy_dump]` attribute
 ///
@@ -128,10 +129,7 @@ impl LateLintPass for Pass {
 }
 
 fn has_attr(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| match attr.node.value.node {
-        MetaItemKind::Word(ref word) => word == "clippy_dump",
-        _ => false,
-    })
+    attr::contains_name(attrs, "clippy_dump")
 }
 
 fn print_decl(cx: &LateContext, decl: &hir::Decl) {
@@ -381,12 +379,12 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
             }
         },
         hir::ItemDefaultImpl(_, ref trait_ref) => {
-            let trait_did = cx.tcx.map.local_def_id(trait_ref.ref_id);
-            println!("default impl for `{:?}`", cx.tcx.item_path_str(trait_did));
+            let trait_did = cx.tcx.expect_def(trait_ref.ref_id).def_id();
+            println!("default impl for `{}`", cx.tcx.item_path_str(trait_did));
         },
         hir::ItemImpl(_, _, _, Some(ref trait_ref), _, _) => {
-            let trait_did = cx.tcx.map.local_def_id(trait_ref.ref_id);
-            println!("impl of trait `{:?}`", cx.tcx.item_path_str(trait_did));
+            let trait_did = cx.tcx.expect_def(trait_ref.ref_id).def_id();
+            println!("impl of trait `{}`", cx.tcx.item_path_str(trait_did));
         },
         hir::ItemImpl(_, _, _, None, _, _) => {
             println!("impl");

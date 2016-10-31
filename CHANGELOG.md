@@ -325,6 +325,7 @@ All notable changes to this project will be documented in this file.
 [`out_of_bounds_indexing`]: https://github.com/Manishearth/rust-clippy/wiki#out_of_bounds_indexing
 [`overflow_check_conditional`]: https://github.com/Manishearth/rust-clippy/wiki#overflow_check_conditional
 [`panic_params`]: https://github.com/Manishearth/rust-clippy/wiki#panic_params
+[`partialeq_ne_impl`]: https://github.com/Manishearth/rust-clippy/wiki#partialeq_ne_impl
 [`precedence`]: https://github.com/Manishearth/rust-clippy/wiki#precedence
 [`print_stdout`]: https://github.com/Manishearth/rust-clippy/wiki#print_stdout
 [`print_with_newline`]: https://github.com/Manishearth/rust-clippy/wiki#print_with_newline

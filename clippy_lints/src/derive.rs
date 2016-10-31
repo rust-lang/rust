@@ -3,10 +3,9 @@ use rustc::ty::subst::Subst;
 use rustc::ty::TypeVariants;
 use rustc::ty;
 use rustc::hir::*;
-use syntax::ast::{Attribute, MetaItemKind};
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{match_path, span_lint_and_then};
+use utils::{is_automatically_derived, match_path, span_lint_and_then};
 
 /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
 /// explicitly.
@@ -75,7 +74,7 @@ impl LateLintPass for Derive {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node {
             let ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(item.id)).ty;
-            let is_automatically_derived = item.attrs.iter().any(is_automatically_derived);
+            let is_automatically_derived = is_automatically_derived(&*item.attrs);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
 
@@ -97,7 +96,7 @@ fn check_hash_peq<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, span: Span, trait_re
 
         // Look for the PartialEq implementations for `ty`
         peq_trait_def.for_each_relevant_impl(cx.tcx, ty, |impl_id| {
-            let peq_is_automatically_derived = cx.tcx.get_attrs(impl_id).iter().any(is_automatically_derived);
+            let peq_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
 
             if peq_is_automatically_derived == hash_is_automatically_derived {
                 return;
@@ -172,14 +171,5 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
                            |db| {
                                db.span_note(item.span, "consider deriving `Clone` or removing `Copy`");
                            });
-    }
-}
-
-/// Checks for the `#[automatically_derived]` attribute all `#[derive]`d implementations have.
-fn is_automatically_derived(attr: &Attribute) -> bool {
-    if let MetaItemKind::Word(ref word) = attr.node.value.node {
-        word == &"automatically_derived"
-    } else {
-        false
     }
 }
