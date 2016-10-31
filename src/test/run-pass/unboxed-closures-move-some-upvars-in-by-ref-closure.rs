@@ -16,8 +16,8 @@ fn call<F>(f: F) where F : FnOnce() {
 }
 
 fn main() {
-    let mut x = vec!(format!("Hello"));
-    let y = vec!(format!("World"));
+    let mut x = vec![format!("Hello")];
+    let y = vec![format!("World")];
     call(|| {
         // Here: `x` must be captured with a mutable reference in
         // order for us to append on it, and `y` must be captured by

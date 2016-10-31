@@ -291,10 +291,10 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
-                    inputs: vec!(
+                    inputs: vec![
                         tcx.types.isize,
                         tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
-                    ),
+                    ],
                     output: tcx.types.isize,
                     variadic: false,
                 }),

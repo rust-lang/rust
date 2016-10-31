@@ -29,7 +29,7 @@ fn main() {
         _ => { }
     }
 
-    let x: Vec<char> = vec!('a', 'b', 'c');
+    let x: Vec<char> = vec!['a', 'b', 'c'];
     let x: &[char] = &x;
     match *x {
         ['a', 'b', 'c', ref _tail..] => {}

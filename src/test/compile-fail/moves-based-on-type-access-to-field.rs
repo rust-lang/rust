@@ -16,7 +16,7 @@ fn consume(_s: String) {}
 fn touch<A>(_a: &A) {}
 
 fn f20() {
-    let x = vec!("hi".to_string());
+    let x = vec!["hi".to_string()];
     consume(x.into_iter().next().unwrap());
     touch(&x[0]); //~ ERROR use of moved value: `x`
 }

@@ -22,7 +22,7 @@ pub struct TypeWalker<'tcx> {
 
 impl<'tcx> TypeWalker<'tcx> {
     pub fn new(ty: Ty<'tcx>) -> TypeWalker<'tcx> {
-        TypeWalker { stack: vec!(ty), last_subtree: 1, }
+        TypeWalker { stack: vec![ty], last_subtree: 1, }
     }
 
     /// Skips the subtree of types corresponding to the last type

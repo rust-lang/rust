@@ -65,12 +65,12 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
     macro_rules! md {
         ($name:expr, $f:ident) => { {
             let inline = cx.meta_word(span, InternedString::new("inline"));
-            let attrs = vec!(cx.attribute(span, inline));
+            let attrs = vec![cx.attribute(span, inline)];
             MethodDef {
                 name: $name,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: vec!(borrowed_self()),
+                args: vec![borrowed_self()],
                 ret_ty: Literal(path_local!(bool)),
                 attributes: attrs,
                 is_unsafe: false,

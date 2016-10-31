@@ -161,12 +161,12 @@ impl Path {
         Path {
             span: s,
             global: false,
-            segments: vec!(
+            segments: vec![
                 PathSegment {
                     identifier: identifier,
                     parameters: PathParameters::none()
                 }
-            ),
+            ],
         }
     }
 }
