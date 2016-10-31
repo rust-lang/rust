@@ -69,6 +69,33 @@ impl<T> ToOwned for T where T: Clone {
     }
 }
 
+#[unstable(feature = "entry_into_owned", issue = "1")]
+pub trait AsBorrowOf<T, B: ?Sized>: Sized where T: Borrow<B> {
+    #[unstable(feature = "entry_into_owned", issue = "1")]
+    fn into_owned(self) -> T;
+
+    #[unstable(feature = "entry_into_owned", issue = "1")]
+    fn as_borrow_of(&self) -> &B;
+}
+
+#[unstable(feature = "entry_into_owned", issue = "1")]
+impl<T> AsBorrowOf<T, T> for T {
+    default fn into_owned(self) -> T { self }
+    default fn as_borrow_of(&self) -> &Self { self }
+}
+
+#[unstable(feature = "entry_into_owned", issue = "1")]
+impl<'a, T: Deref> AsBorrowOf<&'a T::Target, T::Target> for &'a T {
+    default fn into_owned(self) -> &'a T::Target { self.deref() }
+    default fn as_borrow_of(&self) -> &T::Target { self.deref() }
+}
+
+#[unstable(feature = "entry_into_owned", issue = "1")]
+impl<'a, B: ToOwned + ?Sized> AsBorrowOf<B::Owned, B> for &'a B {
+    fn into_owned(self) -> B::Owned { self.to_owned() }
+    fn as_borrow_of(&self) -> &B { *self }
+}
+
 /// A clone-on-write smart pointer.
 ///
 /// The type `Cow` is a smart pointer providing clone-on-write functionality: it

@@ -16,7 +16,7 @@ use core::marker::PhantomData;
 use core::ops::Index;
 use core::{fmt, intrinsics, mem, ptr};
 
-use borrow::Borrow;
+use borrow::{Borrow, AsBorrowOf};
 use Bound::{self, Excluded, Included, Unbounded};
 
 use super::node::{self, Handle, NodeRef, marker};
@@ -112,6 +112,7 @@ use self::Entry::*;
 /// // type inference lets us omit an explicit type signature (which
 /// // would be `BTreeMap<&str, u8>` in this example).
 /// let mut player_stats = BTreeMap::new();
+/// # {let __help_inference_out: &BTreeMap<&_, _> = &player_stats;}
 ///
 /// fn random_stat_buff() -> u8 {
 ///     // could actually return some random value here - let's just return
@@ -219,7 +220,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
 }
 
 impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
-    where K: Borrow<Q> + Ord,
+    where K: Borrow<Q> + Borrow<K> + Ord,
           Q: Ord
 {
     type Key = K;
@@ -324,11 +325,11 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 /// [`BTreeMap`]: struct.BTreeMap.html
 /// [`entry`]: struct.BTreeMap.html#method.entry
 #[stable(feature = "rust1", since = "1.0.0")]
-pub enum Entry<'a, K: 'a, V: 'a> {
+pub enum Entry<'a, K: 'a, V: 'a, Q: 'a = K, B: 'a + ?Sized = K> {
     /// A vacant Entry
     #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(#[stable(feature = "rust1", since = "1.0.0")]
-           VacantEntry<'a, K, V>),
+           VacantEntry<'a, K, V, Q, B>),
 
     /// An occupied Entry
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -337,7 +338,12 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_btree_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for Entry<'a, K, V> {
+impl<'a, K, V, Q, B: ?Sized> Debug for Entry<'a, K, V, Q, B>
+    where K: 'a + Debug + Ord,
+          V: 'a + Debug,
+          Q: 'a + Debug,
+          B: 'a
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Vacant(ref v) => f.debug_tuple("Entry")
@@ -354,20 +360,25 @@ impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for Entry<'a, K, V> {
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct VacantEntry<'a, K: 'a, V: 'a> {
-    key: K,
+pub struct VacantEntry<'a, K: 'a, V: 'a, Q: 'a = K, B: 'a + ?Sized = K> {
+    key: Q,
     handle: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
     length: &'a mut usize,
 
     // Be invariant in `K` and `V`
-    _marker: PhantomData<&'a mut (K, V)>,
+    _marker: PhantomData<&'a mut (K, V, B)>,
 }
 
 #[stable(feature= "debug_btree_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug + Ord, V: 'a> Debug for VacantEntry<'a, K, V> {
+impl<'a, K, V, Q, B: ?Sized> Debug for VacantEntry<'a, K, V, Q, B>
+    where K: 'a + Debug + Ord,
+          V: 'a,
+          Q: 'a + Debug,
+          B: 'a
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VacantEntry")
-         .field(self.key())
+         .field(&self.key)
          .finish()
     }
 }
@@ -861,8 +872,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(count["a"], 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn entry(&mut self, key: K) -> Entry<K, V> {
-        match search::search_tree(self.root.as_mut(), &key) {
+    pub fn entry<Q, B: ?Sized>(&mut self, key: Q) -> Entry<K, V, Q, B>
+        where Q: AsBorrowOf<K, B>,
+              K: Borrow<B>,
+              B: Ord,
+    {
+        match search::search_tree(self.root.as_mut(), key.as_borrow_of()) {
             Found(handle) => {
                 Occupied(OccupiedEntry {
                     handle: handle,
@@ -1960,7 +1975,10 @@ impl<K, V> BTreeMap<K, V> {
     }
 }
 
-impl<'a, K: Ord, V> Entry<'a, K, V> {
+impl<'a, K, V, Q, B: ?Sized> Entry<'a, K, V, Q, B>
+    where K: Ord + Borrow<B>,
+          Q: AsBorrowOf<K, B>
+{
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -2004,7 +2022,9 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
             Vacant(entry) => entry.insert(default()),
         }
     }
+}
 
+impl<'a, K: Ord, V, B: ?Sized> Entry<'a, K, V, K, B> {
     /// Returns a reference to this entry's key.
     ///
     /// # Examples
@@ -2024,7 +2044,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     }
 }
 
-impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
+impl<'a, K: Ord, V, B: ?Sized> VacantEntry<'a, K, V, K, B> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the VacantEntry.
     ///
@@ -2059,7 +2079,12 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     pub fn into_key(self) -> K {
         self.key
     }
+}
 
+impl<'a, K, V, Q, B: ?Sized> VacantEntry<'a, K, V, Q, B>
+    where K: Ord + Borrow<B>,
+          Q: AsBorrowOf<K, B>
+{
     /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     ///
@@ -2082,12 +2107,13 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
         *self.length += 1;
 
         let out_ptr;
+        let key = AsBorrowOf::<K, B>::into_owned(self.key);
 
         let mut ins_k;
         let mut ins_v;
         let mut ins_edge;
 
-        let mut cur_parent = match self.handle.insert(self.key, value) {
+        let mut cur_parent = match self.handle.insert(key, value) {
             (Fit(handle), _) => return handle.into_kv_mut().1,
             (Split(left, k, v, right), ptr) => {
                 ins_k = k;

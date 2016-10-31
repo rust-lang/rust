@@ -231,6 +231,7 @@
 #![feature(core_intrinsics)]
 #![feature(dotdot_in_tuple_patterns)]
 #![feature(dropck_parametricity)]
+#![feature(entry_into_owned)]
 #![feature(float_extras)]
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
