@@ -181,7 +181,7 @@ impl Command {
         }
 
         let (envp, _data) = make_envp(self.env.as_ref())?;
-        let (dirp, _data) = make_dirp(self.cwd.as_ref())?;
+        let (dirp, _data) = as_vec_u16(self.cwd.as_ref())?;
         let mut pi = zeroed_process_information();
 
         // Prepare all stdio handles to be inherited by the child. This
@@ -216,7 +216,7 @@ impl Command {
         si.hStdError = stderr.raw();
 
         unsafe {
-            cvt(c::CreateProcessW(app_name.unwrap_or(ptr::null()),
+            cvt(c::CreateProcessW(app_name.unwrap_or(ptr::null_mut()),
                                   cmd_str.as_mut_ptr(),
                                   ptr::null_mut(),
                                   ptr::null_mut(),
@@ -423,6 +423,9 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
 fn make_command_line(prog: &OsStr, args: &[OsString],
                      env: Option<&collections::HashMap<OsString, OsString>>)
                      -> io::Result<(Option<Vec<u16>>, Vec<u16>)> {
+    // Encode the command and arguments in a command line string such
+    // that the spawned process may recover them using CommandLineToArgvW.
+    let mut cmd: Vec<u16> = Vec::new();
     // If the program is a BATCH file we must start the command interpreter; set
     // ApplicationName to cmd.exe and set CommandLine to the following arguments:
     // `/c` plus the name of the batch file.
@@ -432,22 +435,18 @@ fn make_command_line(prog: &OsStr, args: &[OsString],
     if batch.is_some() {
         if let Some(e) = env {
             if let Some(cmd_exe) = e.get("COMSPEC") {
-                app = Some(ensure_no_nuls(cmd_exe)?.encode_wide().collect());
+                app = as_vec_u16(cmd_exe).ok().map(|(vec, _d)| vec);
             }
         }
         // If we were unable to find COMSPEC, default to `cmd.exe`
-        if !app.is_some() {
-            app = Some(OsStr::new("cmd.exe").encode_wide().collect());
+        if app.is_none() {
+            app = as_vec_u16("cmd.exe").ok().map(|(vec, _d)| vec);
         }
-        // Prepend the argument to the program
-        let mut cmd_prog = OsString::from("cmd /c ");
-        cmd_prog.push(prog);
-        let prog = cmd_prog.as_os_str();
+        // Prepend the argument to the CommandLine
+        append_arg(&mut cmd, OsString::from("cmd"))?;
+        append_arg(&mut cmd, OsString::from("/c"))?;
     }
 
-    // Encode the command and arguments in a command line string such
-    // that the spawned process may recover them using CommandLineToArgvW.
-    let mut cmd: Vec<u16> = Vec::new();
     append_arg(&mut cmd, prog)?;
     for arg in args {
         cmd.push(' ' as u16);
@@ -519,12 +518,13 @@ fn make_envp(env: Option<&collections::HashMap<OsString, OsString>>)
     }
 }
 
-fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
-    match d {
-        Some(dir) => {
-            let mut dir_str: Vec<u16> = ensure_no_nuls(dir)?.encode_wide().collect();
-            dir_str.push(0);
-            Ok((dir_str.as_ptr(), dir_str))
+// Convert a OsString to a Vec<u16>
+fn as_vec_u16(str: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
+    match str {
+        Some(s) => {
+            let mut s_str: Vec<u16> = ensure_no_nuls(s)?.encode_wide().collect();
+            s_str.push(0);
+            Ok((s_str.as_ptr(), s_str))
         },
         None => Ok((ptr::null(), Vec::new()))
     }
