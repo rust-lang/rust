@@ -1645,7 +1645,7 @@ rem_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 #[lang = "bitand_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub trait BitAndAssign<Rhs=Self> {
-    /// The method for the `&` operator
+    /// The method for the `&=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn bitand_assign(&mut self, Rhs);
 }
