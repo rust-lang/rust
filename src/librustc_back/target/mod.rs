@@ -373,6 +373,9 @@ pub struct TargetOptions {
     /// A blacklist of ABIs unsupported by the current target. Note that generic
     /// ABIs are considered to be supported on all platforms and cannot be blacklisted.
     pub abi_blacklist: Vec<Abi>,
+
+    /// Whether or not the CRT is statically linked by default.
+    pub crt_static_default: bool,
 }
 
 impl Default for TargetOptions {
@@ -425,6 +428,7 @@ impl Default for TargetOptions {
             max_atomic_width: None,
             panic_strategy: PanicStrategy::Unwind,
             abi_blacklist: vec![],
+            crt_static_default: false,
         }
     }
 }
@@ -585,6 +589,7 @@ impl Target {
         key!(no_integrated_as, bool);
         key!(max_atomic_width, Option<u64>);
         try!(key!(panic_strategy, PanicStrategy));
+        key!(crt_static_default, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -745,6 +750,7 @@ impl ToJson for Target {
         target_option_val!(no_integrated_as);
         target_option_val!(max_atomic_width);
         target_option_val!(panic_strategy);
+        target_option_val!(crt_static_default);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

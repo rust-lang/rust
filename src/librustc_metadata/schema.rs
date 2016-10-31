@@ -14,7 +14,7 @@ use index;
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
 use rustc::hir::def_id::{DefIndex, DefId};
-use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibraryKind};
+use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary};
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::ty::{self, Ty};
@@ -175,7 +175,7 @@ pub struct CrateRoot {
     pub dylib_dependency_formats: LazySeq<Option<LinkagePreference>>,
     pub lang_items: LazySeq<(DefIndex, usize)>,
     pub lang_items_missing: LazySeq<lang_items::LangItem>,
-    pub native_libraries: LazySeq<(NativeLibraryKind, String)>,
+    pub native_libraries: LazySeq<NativeLibrary>,
     pub codemap: LazySeq<syntax_pos::FileMap>,
     pub impls: LazySeq<TraitImpls>,
     pub reachable_ids: LazySeq<DefIndex>,
