@@ -1,0 +1,32 @@
+error: unused variable: `theOtherTwo`
+  --> $DIR/issue-24690.rs:20:9
+   |
+20 |     let theOtherTwo = 2;
+   |         ^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-24690.rs:16:9
+   |
+16 | #![deny(warnings)]
+   |         ^^^^^^^^
+
+error: variable `theTwo` should have a snake case name such as `the_two`
+  --> $DIR/issue-24690.rs:19:9
+   |
+19 |     let theTwo = 2;
+   |         ^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-24690.rs:16:9
+   |
+16 | #![deny(warnings)]
+   |         ^^^^^^^^
+
+error: variable `theOtherTwo` should have a snake case name such as `the_other_two`
+  --> $DIR/issue-24690.rs:20:9
+   |
+20 |     let theOtherTwo = 2;
+   |         ^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
