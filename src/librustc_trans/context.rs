@@ -32,7 +32,6 @@ use session::config::NoDebugInfo;
 use session::Session;
 use session::config;
 use symbol_map::SymbolMap;
-use util::sha2::Sha256;
 use util::nodemap::{NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
 use std::ffi::{CStr, CString};
@@ -69,7 +68,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     export_map: ExportMap,
     reachable: NodeSet,
     link_meta: LinkMeta,
-    symbol_hasher: RefCell<Sha256>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     stats: Stats,
     check_overflow: bool,
@@ -436,7 +434,6 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                export_map: ExportMap,
-               symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: NodeSet,
                check_overflow: bool)
@@ -496,7 +493,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             export_map: export_map,
             reachable: reachable,
             link_meta: link_meta,
-            symbol_hasher: RefCell::new(symbol_hasher),
             tcx: tcx,
             stats: Stats {
                 n_glues_created: Cell::new(0),
@@ -573,10 +569,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
                          |_, _| {
             bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
         })
-    }
-
-    pub fn symbol_hasher(&self) -> &RefCell<Sha256> {
-        &self.symbol_hasher
     }
 
     pub fn metadata_symbol_name(&self) -> String {
@@ -875,10 +867,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn llsizingtypes<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, Type>> {
         &self.local().llsizingtypes
-    }
-
-    pub fn symbol_hasher<'a>(&'a self) -> &'a RefCell<Sha256> {
-        &self.shared.symbol_hasher
     }
 
     pub fn type_hashcodes<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, String>> {

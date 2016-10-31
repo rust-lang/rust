@@ -20,17 +20,25 @@
 // implementation. If you have the luxury of being able to use crates from
 // crates.io, you can go there and find still faster implementations.
 
+use std::mem;
+use std::slice;
+
 pub struct Blake2bCtx {
     b: [u8; 128],
     h: [u64; 8],
     t: [u64; 2],
     c: usize,
-    outlen: usize,
+    outlen: u16,
+    finalized: bool
 }
 
 impl ::std::fmt::Debug for Blake2bCtx {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
-        write!(fmt, "{:?}", self.h)
+        try!(write!(fmt, "hash: "));
+        for v in &self.h[..] {
+            try!(write!(fmt, "{:x}", v));
+        }
+        Ok(())
     }
 }
 
@@ -136,7 +144,7 @@ fn blake2b_compress(ctx: &mut Blake2bCtx, last: bool) {
     }
 }
 
-pub fn blake2b_new(outlen: usize, key: &[u8]) -> Blake2bCtx {
+fn blake2b_new(outlen: usize, key: &[u8]) -> Blake2bCtx {
     assert!(outlen > 0 && outlen <= 64 && key.len() <= 64);
 
     let mut ctx = Blake2bCtx {
@@ -144,7 +152,8 @@ pub fn blake2b_new(outlen: usize, key: &[u8]) -> Blake2bCtx {
         h: BLAKE2B_IV,
         t: [0; 2],
         c: 0,
-        outlen: outlen,
+        outlen: outlen as u16,
+        finalized: false,
     };
 
     ctx.h[0] ^= 0x01010000 ^ ((key.len() << 8) as u64) ^ (outlen as u64);
@@ -157,8 +166,9 @@ pub fn blake2b_new(outlen: usize, key: &[u8]) -> Blake2bCtx {
     ctx
 }
 
-pub fn blake2b_update(ctx: &mut Blake2bCtx, mut data: &[u8])
-{
+fn blake2b_update(ctx: &mut Blake2bCtx, mut data: &[u8]) {
+    assert!(!ctx.finalized, "Blake2bCtx already finalized");
+
     let mut bytes_to_copy = data.len();
     let mut space_in_buffer = ctx.b.len() - ctx.c;
 
@@ -183,8 +193,10 @@ pub fn blake2b_update(ctx: &mut Blake2bCtx, mut data: &[u8])
     }
 }
 
-pub fn blake2b_final(mut ctx: Blake2bCtx, out: &mut [u8])
+fn blake2b_final(ctx: &mut Blake2bCtx)
 {
+    assert!(!ctx.finalized, "Blake2bCtx already finalized");
+
     ctx.t[0] = ctx.t[0].wrapping_add(ctx.c as u64);
     if ctx.t[0] < ctx.c as u64 {
         ctx.t[1] += 1;
@@ -195,7 +207,7 @@ pub fn blake2b_final(mut ctx: Blake2bCtx, out: &mut [u8])
         ctx.c += 1;
     }
 
-    blake2b_compress(&mut ctx, true);
+    blake2b_compress(ctx, true);
 
     if cfg!(target_endian = "big") {
         // Make sure that the data is in memory in little endian format, as is
@@ -205,13 +217,13 @@ pub fn blake2b_final(mut ctx: Blake2bCtx, out: &mut [u8])
         }
     }
 
-    checked_mem_copy(&ctx.h, out, ctx.outlen);
+    ctx.finalized = true;
 }
 
 #[inline(always)]
 fn checked_mem_copy<T1, T2>(from: &[T1], to: &mut [T2], byte_count: usize) {
-    let from_size = from.len() * ::std::mem::size_of::<T1>();
-    let to_size = to.len() * ::std::mem::size_of::<T2>();
+    let from_size = from.len() * mem::size_of::<T1>();
+    let to_size = to.len() * mem::size_of::<T2>();
     assert!(from_size >= byte_count);
     assert!(to_size >= byte_count);
     let from_byte_ptr = from.as_ptr() as * const u8;
@@ -225,7 +237,45 @@ pub fn blake2b(out: &mut [u8], key: &[u8],  data: &[u8])
 {
     let mut ctx = blake2b_new(out.len(), key);
     blake2b_update(&mut ctx, data);
-    blake2b_final(ctx, out);
+    blake2b_final(&mut ctx);
+    checked_mem_copy(&ctx.h, out, ctx.outlen as usize);
+}
+
+pub struct Blake2bHasher(Blake2bCtx);
+
+impl ::std::hash::Hasher for Blake2bHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        blake2b_update(&mut self.0, bytes);
+    }
+
+    fn finish(&self) -> u64 {
+        assert!(self.0.outlen == 8,
+                "Hasher initialized with incompatible output length");
+        u64::from_le(self.0.h[0])
+    }
+}
+
+impl Blake2bHasher {
+    pub fn new(outlen: usize, key: &[u8]) -> Blake2bHasher {
+        Blake2bHasher(blake2b_new(outlen, key))
+    }
+
+    pub fn finalize(&mut self) -> &[u8] {
+        if !self.0.finalized {
+            blake2b_final(&mut self.0);
+        }
+        debug_assert!(mem::size_of_val(&self.0.h) >= self.0.outlen as usize);
+        let raw_ptr = (&self.0.h[..]).as_ptr() as * const u8;
+        unsafe {
+            slice::from_raw_parts(raw_ptr, self.0.outlen as usize)
+        }
+    }
+}
+
+impl ::std::fmt::Debug for Blake2bHasher {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+        write!(fmt, "{:?}", self.0)
+    }
 }
 
 #[cfg(test)]
@@ -245,6 +295,8 @@ fn selftest_seq(out: &mut [u8], seed: u32)
 #[test]
 fn blake2b_selftest()
 {
+    use std::hash::Hasher;
+
     // grand hash of hash results
     const BLAKE2B_RES: [u8; 32] = [
         0xC2, 0x3A, 0x78, 0x00, 0xD9, 0x81, 0x23, 0xBD,
@@ -261,7 +313,7 @@ fn blake2b_selftest()
     let mut md = [0u8; 64];
     let mut key = [0u8; 64];
 
-    let mut ctx = blake2b_new(32, &[]);
+    let mut hasher = Blake2bHasher::new(32, &[]);
 
     for i in 0 .. 4 {
        let outlen = B2B_MD_LEN[i];
@@ -270,16 +322,16 @@ fn blake2b_selftest()
 
             selftest_seq(&mut data[.. inlen], inlen as u32); // unkeyed hash
             blake2b(&mut md[.. outlen], &[], &data[.. inlen]);
-            blake2b_update(&mut ctx, &md[.. outlen]); // hash the hash
+            hasher.write(&md[.. outlen]); // hash the hash
 
             selftest_seq(&mut key[0 .. outlen], outlen as u32); // keyed hash
             blake2b(&mut md[.. outlen], &key[.. outlen], &data[.. inlen]);
-            blake2b_update(&mut ctx, &md[.. outlen]); // hash the hash
+            hasher.write(&md[.. outlen]); // hash the hash
        }
     }
 
     // compute and compare the hash of hashes
-    blake2b_final(ctx, &mut md[..]);
+    let md = hasher.finalize();
     for i in 0 .. 32 {
         assert_eq!(md[i], BLAKE2B_RES[i]);
     }
