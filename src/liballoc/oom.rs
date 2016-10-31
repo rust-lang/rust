@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(target_has_atomic = "ptr")]
 use core::sync::atomic::{AtomicPtr, Ordering};
+#[cfg(target_has_atomic = "ptr")]
 use core::mem;
 use core::intrinsics;
 
+#[cfg(target_has_atomic = "ptr")]
 static OOM_HANDLER: AtomicPtr<()> = AtomicPtr::new(default_oom_handler as *mut ());
 
 fn default_oom_handler() -> ! {
@@ -21,6 +24,7 @@ fn default_oom_handler() -> ! {
 }
 
 /// Common out-of-memory routine
+#[cfg(target_has_atomic = "ptr")]
 #[cold]
 #[inline(never)]
 #[unstable(feature = "oom", reason = "not a scrutinized interface",
@@ -31,10 +35,21 @@ pub fn oom() -> ! {
     handler();
 }
 
+/// Common out-of-memory routine
+#[cfg(not(target_has_atomic = "ptr"))]
+#[cold]
+#[inline(never)]
+#[unstable(feature = "oom", reason = "not a scrutinized interface",
+           issue = "27700")]
+pub fn oom() -> ! {
+    default_oom_handler()
+}
+
 /// Set a custom handler for out-of-memory conditions
 ///
 /// To avoid recursive OOM failures, it is critical that the OOM handler does
 /// not allocate any memory itself.
+#[cfg(target_has_atomic = "ptr")]
 #[unstable(feature = "oom", reason = "not a scrutinized interface",
            issue = "27700")]
 pub fn set_oom_handler(handler: fn() -> !) {
