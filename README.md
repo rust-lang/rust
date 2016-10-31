@@ -42,7 +42,7 @@ cargo run tests/run-pass/vecs.rs # Or whatever test you like.
 
 ## Debugging
 
-You can get detailed, statement-by-statement traces by setting the `MIRI_RUN`
+You can get detailed, statement-by-statement traces by setting the `MIRI_LOG`
 environment variable to `trace`. These traces are indented based on call stack
 depth. You can get a much less verbose set of information with other logging
 levels such as `warn`.
