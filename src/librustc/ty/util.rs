@@ -405,6 +405,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 ///
 /// The same goes for endianess: We always convert multi-byte integers to little
 /// endian before hashing.
+#[derive(Debug)]
 pub struct ArchIndependentHasher<H> {
     inner: H,
 }
@@ -412,6 +413,10 @@ pub struct ArchIndependentHasher<H> {
 impl<H> ArchIndependentHasher<H> {
     pub fn new(inner: H) -> ArchIndependentHasher<H> {
         ArchIndependentHasher { inner: inner }
+    }
+
+    pub fn into_inner(self) -> H {
+        self.inner
     }
 }
 

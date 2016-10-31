@@ -30,7 +30,7 @@ use rustc::ty::fold::TypeVisitor;
 use rustc::ty::subst::Substs;
 use rustc::ty::util::TypeIdHasher;
 use rustc::hir;
-use rustc_data_structures::blake2b;
+use rustc_data_structures::blake2b::Blake2bHasher;
 use {type_of, machine, monomorphize};
 use common::CrateContext;
 use type_::Type;
@@ -149,10 +149,16 @@ impl<'tcx> TypeMap<'tcx> {
             None => { /* generate one */}
         };
 
+        // The hasher we are using to generate the UniqueTypeId. We want
+        // something that provides more than the 64 bits of the DefaultHasher.
+        const TYPE_ID_HASH_LENGTH: usize = 20;
+
         let mut type_id_hasher = TypeIdHasher::new(cx.tcx(),
-                                                   DebugInfoTypeIdHasher::new());
+                                                   Blake2bHasher::new(TYPE_ID_HASH_LENGTH, &[]));
         type_id_hasher.visit_ty(type_);
-        let hash = type_id_hasher.into_inner().into_hash();
+        let mut hash_state = type_id_hasher.into_inner();
+        let hash: &[u8] = hash_state.finalize();
+        debug_assert!(hash.len() == TYPE_ID_HASH_LENGTH);
 
         let mut unique_type_id = String::with_capacity(TYPE_ID_HASH_LENGTH * 2);
 
@@ -164,39 +170,6 @@ impl<'tcx> TypeMap<'tcx> {
         self.type_to_unique_id.insert(type_, UniqueTypeId(key));
 
         return UniqueTypeId(key);
-
-        // The hasher we are using to generate the UniqueTypeId. We want
-        // something that provides more than the 64 bits of the DefaultHasher.
-        const TYPE_ID_HASH_LENGTH: usize = 20;
-
-        struct DebugInfoTypeIdHasher {
-            state: blake2b::Blake2bCtx
-        }
-
-        impl ::std::hash::Hasher for DebugInfoTypeIdHasher {
-            fn finish(&self) -> u64 {
-                unimplemented!()
-            }
-
-            #[inline]
-            fn write(&mut self, bytes: &[u8]) {
-                blake2b::blake2b_update(&mut self.state, bytes);
-            }
-        }
-
-        impl DebugInfoTypeIdHasher {
-            fn new() -> DebugInfoTypeIdHasher {
-                DebugInfoTypeIdHasher {
-                    state: blake2b::blake2b_new(TYPE_ID_HASH_LENGTH, &[])
-                }
-            }
-
-            fn into_hash(self) -> [u8; TYPE_ID_HASH_LENGTH] {
-                let mut hash = [0u8; TYPE_ID_HASH_LENGTH];
-                blake2b::blake2b_final(self.state, &mut hash);
-                hash
-            }
-        }
     }
 
     // Get the UniqueTypeId for an enum variant. Enum variants are not really

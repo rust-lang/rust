@@ -12,6 +12,9 @@ use rustc::hir;
 use rustc::hir::{map as hir_map, FreevarMap, TraitMap};
 use rustc::hir::def::DefMap;
 use rustc::hir::lowering::lower_crate;
+use rustc_data_structures::blake2b::Blake2bHasher;
+use rustc_data_structures::fmt_wrap::FmtWrap;
+use rustc::ty::util::ArchIndependentHasher;
 use rustc_mir as mir;
 use rustc::session::{Session, CompileResult, compile_result_from_err_count};
 use rustc::session::config::{self, Input, OutputFilenames, OutputType,
@@ -23,7 +26,6 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::time;
 use rustc::util::nodemap::NodeSet;
-use rustc_back::sha2::{Sha256, Digest};
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_resolve::{MakeGlobMap, Resolver};
@@ -1221,7 +1223,16 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
 }
 
 pub fn compute_crate_disambiguator(session: &Session) -> String {
-    let mut hasher = Sha256::new();
+    use std::hash::Hasher;
+
+    // The crate_disambiguator is a 128 bit hash. The disambiguator is fed
+    // into various other hashes quite a bit (symbol hashes, incr. comp. hashes,
+    // debuginfo type IDs, etc), so we don't want it to be too wide. 128 bits
+    // should still be safe enough to avoid collisions in practice.
+    // FIXME(mw): It seems that the crate_disambiguator is used everywhere as
+    //            a hex-string instead of raw bytes. We should really use the
+    //            smaller representation.
+    let mut hasher = ArchIndependentHasher::new(Blake2bHasher::new(128 / 8, &[]));
 
     let mut metadata = session.opts.cg.metadata.clone();
     // We don't want the crate_disambiguator to dependent on the order
@@ -1230,24 +1241,23 @@ pub fn compute_crate_disambiguator(session: &Session) -> String {
     // Every distinct -C metadata value is only incorporated once:
     metadata.dedup();
 
-    hasher.input_str("metadata");
+    hasher.write(b"metadata");
     for s in &metadata {
         // Also incorporate the length of a metadata string, so that we generate
         // different values for `-Cmetadata=ab -Cmetadata=c` and
         // `-Cmetadata=a -Cmetadata=bc`
-        hasher.input_str(&format!("{}", s.len())[..]);
-        hasher.input_str(&s[..]);
+        hasher.write_usize(s.len());
+        hasher.write(s.as_bytes());
     }
 
-    let mut hash = hasher.result_str();
+    let mut hash_state = hasher.into_inner();
+    let hash_bytes = hash_state.finalize();
 
     // If this is an executable, add a special suffix, so that we don't get
     // symbol conflicts when linking against a library of the same name.
-    if session.crate_types.borrow().contains(&config::CrateTypeExecutable) {
-       hash.push_str("-exe");
-    }
+    let is_exe = session.crate_types.borrow().contains(&config::CrateTypeExecutable);
 
-    hash
+    format!("{:x}{}", FmtWrap(hash_bytes), if is_exe { "-exe" } else {""})
 }
 
 pub fn build_output_filenames(input: &Input,

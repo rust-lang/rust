@@ -79,7 +79,6 @@ use type_::Type;
 use type_of;
 use value::Value;
 use Disr;
-use util::sha2::Sha256;
 use util::nodemap::{NodeSet, FnvHashMap, FnvHashSet};
 
 use arena::TypedArena;
@@ -1550,7 +1549,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let shared_ccx = SharedCrateContext::new(tcx,
                                              export_map,
-                                             Sha256::new(),
                                              link_meta.clone(),
                                              reachable,
                                              check_overflow);
