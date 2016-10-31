@@ -37,13 +37,14 @@ use super::analyze::CleanupKind;
 use super::constant::Const;
 use super::lvalue::{LvalueRef};
 use super::operand::OperandRef;
-use super::operand::OperandValue::*;
+use super::operand::OperandValue::{Pair, Ref, Immediate};
+
+use std::cell::Ref as CellRef;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
         let mut bcx = self.bcx(bb);
-        let mir = self.mir.clone();
-        let data = &mir[bb];
+        let data = &CellRef::clone(&self.mir)[bb];
 
         debug!("trans_block({:?}={:?})", bb, data);
 
@@ -228,7 +229,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
-                let ty = location.ty(&mir, bcx.tcx()).to_ty(bcx.tcx());
+                let ty = location.ty(&self.mir, bcx.tcx()).to_ty(bcx.tcx());
                 let ty = bcx.monomorphize(&ty);
 
                 // Double check for necessity to drop
