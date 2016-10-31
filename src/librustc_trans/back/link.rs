@@ -636,7 +636,7 @@ fn link_natively(sess: &Session,
     {
         let mut linker = trans.linker_info.to_linker(&mut cmd, &sess);
         link_args(&mut *linker, sess, crate_type, tmpdir,
-                  objects, out_filename, outputs);
+                  objects, out_filename, outputs, trans);
     }
     cmd.args(&sess.target.target.options.late_link_args);
     for obj in &sess.target.target.options.post_link_objects {
@@ -711,7 +711,8 @@ fn link_args(cmd: &mut Linker,
              tmpdir: &Path,
              objects: &[PathBuf],
              out_filename: &Path,
-             outputs: &OutputFilenames) {
+             outputs: &OutputFilenames,
+             trans: &CrateTranslation) {
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
@@ -725,6 +726,13 @@ fn link_args(cmd: &mut Linker,
         cmd.add_object(obj);
     }
     cmd.output_filename(out_filename);
+
+    if crate_type == config::CrateTypeExecutable &&
+       sess.target.target.options.is_like_windows {
+        if let Some(ref s) = trans.windows_subsystem {
+            cmd.subsystem(s);
+        }
+    }
 
     // If we're building a dynamic library then some platforms need to make sure
     // that all symbols are exported correctly from the dynamic library.
