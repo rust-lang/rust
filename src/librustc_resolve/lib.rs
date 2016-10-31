@@ -77,7 +77,7 @@ use std::mem::replace;
 use std::rc::Rc;
 
 use resolve_imports::{ImportDirective, NameResolution};
-use macros::{InvocationData, LegacyBinding, LegacyScope};
+use macros::{InvocationData, LegacyBinding};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -1067,7 +1067,7 @@ pub struct Resolver<'a> {
 
     privacy_errors: Vec<PrivacyError<'a>>,
     ambiguity_errors: Vec<AmbiguityError<'a>>,
-    disallowed_shadowing: Vec<(Name, Span, LegacyScope<'a>)>,
+    disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
@@ -3364,11 +3364,11 @@ impl<'a> Resolver<'a> {
 
     fn report_shadowing_errors(&mut self) {
         let mut reported_errors = FnvHashSet();
-        for (name, span, scope) in replace(&mut self.disallowed_shadowing, Vec::new()) {
-            if self.resolve_macro_name(scope, name, false).is_some() &&
-               reported_errors.insert((name, span)) {
-                let msg = format!("`{}` is already in scope", name);
-                self.session.struct_span_err(span, &msg)
+        for binding in replace(&mut self.disallowed_shadowing, Vec::new()) {
+            if self.resolve_macro_name(binding.parent, binding.name, false).is_some() &&
+               reported_errors.insert((binding.name, binding.span)) {
+                let msg = format!("`{}` is already in scope", binding.name);
+                self.session.struct_span_err(binding.span, &msg)
                     .note("macro-expanded `macro_rules!`s may not shadow \
                            existing macros (see RFC 1560)")
                     .emit();
