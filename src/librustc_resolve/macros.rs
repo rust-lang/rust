@@ -74,10 +74,10 @@ impl<'a> LegacyScope<'a> {
 }
 
 pub struct LegacyBinding<'a> {
-    parent: LegacyScope<'a>,
-    name: ast::Name,
+    pub parent: LegacyScope<'a>,
+    pub name: ast::Name,
     ext: Rc<SyntaxExtension>,
-    span: Span,
+    pub span: Span,
 }
 
 pub type LegacyImports = FnvHashMap<ast::Name, (Rc<SyntaxExtension>, Span)>;
@@ -213,7 +213,7 @@ impl<'a> Resolver<'a> {
                 LegacyScope::Binding(binding) => {
                     if binding.name == name {
                         if record_used && relative_depth > 0 {
-                            self.disallowed_shadowing.push((name, binding.span, binding.parent));
+                            self.disallowed_shadowing.push(binding);
                         }
                         return Some(binding.ext.clone());
                     }
