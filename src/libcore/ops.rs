@@ -1645,7 +1645,7 @@ rem_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 #[lang = "bitand_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub trait BitAndAssign<Rhs=Self> {
-    /// The method for the `&` operator
+    /// The method for the `&=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn bitand_assign(&mut self, Rhs);
 }
@@ -1879,10 +1879,18 @@ shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// The `Index` trait is used to specify the functionality of indexing operations
 /// like `container[index]` when used in an immutable context.
 ///
+/// `container[index]` is actually syntactic sugar for `*container.index(index)`,
+/// but only when used as an immutable value. If a mutable value is requested,
+/// [`IndexMut`] is used instead. This allows nice things such as
+/// `let value = v[index]` if `value` implements [`Copy`].
+///
+/// [`IndexMut`]: ../../std/ops/trait.IndexMut.html
+/// [`Copy`]: ../../std/marker/trait.Copy.html
+///
 /// # Examples
 ///
-/// This example implements `Index` on a read-only `NucleotideCount` container,
-/// enabling individual counts to be retrieved with index syntax.
+/// The following example implements `Index` on a read-only `NucleotideCount`
+/// container, enabling individual counts to be retrieved with index syntax.
 ///
 /// ```
 /// use std::ops::Index;
@@ -1934,37 +1942,78 @@ pub trait Index<Idx: ?Sized> {
 }
 
 /// The `IndexMut` trait is used to specify the functionality of indexing
-/// operations like `container[index]`, when used in a mutable context.
+/// operations like `container[index]` when used in a mutable context.
+///
+/// `container[index]` is actually syntactic sugar for
+/// `*container.index_mut(index)`, but only when used as a mutable value. If
+/// an immutable value is requested, the [`Index`] trait is used instead. This
+/// allows nice things such as `v[index] = value` if `value` implements [`Copy`].
+///
+/// [`Index`]: ../../std/ops/trait.Index.html
+/// [`Copy`]: ../../std/marker/trait.Copy.html
 ///
 /// # Examples
 ///
-/// A trivial implementation of `IndexMut` for a type `Foo`. When `&mut Foo[2]`
-/// happens, it ends up calling `index_mut`, and therefore, `main` prints
-/// `Mutable indexing with 2!`.
+/// A very simple implementation of a `Balance` struct that has two sides, where
+/// each can be indexed mutably and immutably.
 ///
 /// ```
-/// use std::ops::{Index, IndexMut};
+/// use std::ops::{Index,IndexMut};
 ///
-/// #[derive(Copy, Clone)]
-/// struct Foo;
+/// #[derive(Debug)]
+/// enum Side {
+///     Left,
+///     Right,
+/// }
 ///
-/// impl Index<usize> for Foo {
-///     type Output = Foo;
+/// #[derive(Debug, PartialEq)]
+/// enum Weight {
+///     Kilogram(f32),
+///     Pound(f32),
+/// }
 ///
-///     fn index(&self, _index: usize) -> &Foo {
-///         self
+/// struct Balance {
+///     pub left: Weight,
+///     pub right:Weight,
+/// }
+///
+/// impl Index<Side> for Balance {
+///     type Output = Weight;
+///
+///     fn index<'a>(&'a self, index: Side) -> &'a Weight {
+///         println!("Accessing {:?}-side of balance immutably", index);
+///         match index {
+///             Side::Left => &self.left,
+///             Side::Right => &self.right,
+///         }
 ///     }
 /// }
 ///
-/// impl IndexMut<usize> for Foo {
-///     fn index_mut(&mut self, index: usize) -> &mut Foo {
-///         println!("Mutable indexing with {}!", index);
-///         self
+/// impl IndexMut<Side> for Balance {
+///     fn index_mut<'a>(&'a mut self, index: Side) -> &'a mut Weight {
+///         println!("Accessing {:?}-side of balance mutably", index);
+///         match index {
+///             Side::Left => &mut self.left,
+///             Side::Right => &mut self.right,
+///         }
 ///     }
 /// }
 ///
 /// fn main() {
-///     &mut Foo[2];
+///     let mut balance = Balance {
+///         right: Weight::Kilogram(2.5),
+///         left: Weight::Pound(1.5),
+///     };
+///
+///     // In this case balance[Side::Right] is sugar for
+///     // *balance.index(Side::Right), since we are only reading
+///     // balance[Side::Right], not writing it.
+///     assert_eq!(balance[Side::Right],Weight::Kilogram(2.5));
+///
+///     // However in this case balance[Side::Left] is sugar for
+///     // *balance.index_mut(Side::Left), since we are writing
+///     // balance[Side::Left].
+///     balance[Side::Left] = Weight::Kilogram(3.0);
 /// }
 /// ```
 #[lang = "index_mut"]
