@@ -21,6 +21,7 @@ use self::SawTyComponent::*;
 use self::SawTraitOrImplItemComponent::*;
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
+use syntax::attr;
 use syntax::parse::token;
 use syntax_pos::{Span, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
 use rustc::hir;
@@ -53,6 +54,7 @@ pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
     def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
     hash_spans: bool,
     codemap: &'a mut CachingCodemapView<'tcx>,
+    overflow_checks_enabled: bool,
 }
 
 impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
@@ -62,12 +64,16 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                codemap: &'a mut CachingCodemapView<'tcx>,
                hash_spans: bool)
                -> Self {
+        let check_overflow = tcx.sess.opts.debugging_opts.force_overflow_checks
+            .unwrap_or(tcx.sess.opts.debug_assertions);
+
         StrictVersionHashVisitor {
             st: st,
             tcx: tcx,
             def_path_hashes: def_path_hashes,
             hash_spans: hash_spans,
             codemap: codemap,
+            overflow_checks_enabled: check_overflow,
         }
     }
 
@@ -83,7 +89,6 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
     // Also note that we are hashing byte offsets for the column, not unicode
     // codepoint offsets. For the purpose of the hash that's sufficient.
     fn hash_span(&mut self, span: Span) {
-        debug_assert!(self.hash_spans);
         debug!("hash_span: st={:?}", self.st);
 
         // If this is not an empty or invalid span, we want to hash the last
@@ -241,37 +246,80 @@ enum SawExprComponent<'a> {
     SawExprRepeat,
 }
 
-fn saw_expr<'a>(node: &'a Expr_) -> SawExprComponent<'a> {
+// The boolean returned indicates whether the span of this expression is always
+// significant, regardless of debuginfo.
+fn saw_expr<'a>(node: &'a Expr_,
+                overflow_checks_enabled: bool)
+                -> (SawExprComponent<'a>, bool) {
+    let binop_can_panic_at_runtime = |binop| {
+        match binop {
+            BiAdd |
+            BiSub |
+            BiMul => overflow_checks_enabled,
+
+            BiDiv |
+            BiRem => true,
+
+            BiAnd |
+            BiOr |
+            BiBitXor |
+            BiBitAnd |
+            BiBitOr |
+            BiShl |
+            BiShr |
+            BiEq |
+            BiLt |
+            BiLe |
+            BiNe |
+            BiGe |
+            BiGt => false
+        }
+    };
+
+    let unop_can_panic_at_runtime = |unop| {
+        match unop {
+            UnDeref |
+            UnNot => false,
+            UnNeg => overflow_checks_enabled,
+        }
+    };
+
     match *node {
-        ExprBox(..)              => SawExprBox,
-        ExprArray(..)            => SawExprArray,
-        ExprCall(..)             => SawExprCall,
-        ExprMethodCall(..)       => SawExprMethodCall,
-        ExprTup(..)              => SawExprTup,
-        ExprBinary(op, ..)       => SawExprBinary(op.node),
-        ExprUnary(op, _)         => SawExprUnary(op),
-        ExprLit(ref lit)         => SawExprLit(lit.node.clone()),
-        ExprCast(..)             => SawExprCast,
-        ExprType(..)             => SawExprType,
-        ExprIf(..)               => SawExprIf,
-        ExprWhile(..)            => SawExprWhile,
-        ExprLoop(_, id)          => SawExprLoop(id.map(|id| id.node.as_str())),
-        ExprMatch(..)            => SawExprMatch,
-        ExprClosure(cc, _, _, _) => SawExprClosure(cc),
-        ExprBlock(..)            => SawExprBlock,
-        ExprAssign(..)           => SawExprAssign,
-        ExprAssignOp(op, ..)     => SawExprAssignOp(op.node),
-        ExprField(_, name)       => SawExprField(name.node.as_str()),
-        ExprTupField(_, id)      => SawExprTupField(id.node),
-        ExprIndex(..)            => SawExprIndex,
-        ExprPath(ref qself, _)   => SawExprPath(qself.as_ref().map(|q| q.position)),
-        ExprAddrOf(m, _)         => SawExprAddrOf(m),
-        ExprBreak(id)            => SawExprBreak(id.map(|id| id.node.as_str())),
-        ExprAgain(id)            => SawExprAgain(id.map(|id| id.node.as_str())),
-        ExprRet(..)              => SawExprRet,
-        ExprInlineAsm(ref a,..)  => SawExprInlineAsm(a),
-        ExprStruct(..)           => SawExprStruct,
-        ExprRepeat(..)           => SawExprRepeat,
+        ExprBox(..)              => (SawExprBox, false),
+        ExprArray(..)            => (SawExprArray, false),
+        ExprCall(..)             => (SawExprCall, false),
+        ExprMethodCall(..)       => (SawExprMethodCall, false),
+        ExprTup(..)              => (SawExprTup, false),
+        ExprBinary(op, ..)       => {
+            (SawExprBinary(op.node), binop_can_panic_at_runtime(op.node))
+        }
+        ExprUnary(op, _)         => {
+            (SawExprUnary(op), unop_can_panic_at_runtime(op))
+        }
+        ExprLit(ref lit)         => (SawExprLit(lit.node.clone()), false),
+        ExprCast(..)             => (SawExprCast, false),
+        ExprType(..)             => (SawExprType, false),
+        ExprIf(..)               => (SawExprIf, false),
+        ExprWhile(..)            => (SawExprWhile, false),
+        ExprLoop(_, id)          => (SawExprLoop(id.map(|id| id.node.as_str())), false),
+        ExprMatch(..)            => (SawExprMatch, false),
+        ExprClosure(cc, _, _, _) => (SawExprClosure(cc), false),
+        ExprBlock(..)            => (SawExprBlock, false),
+        ExprAssign(..)           => (SawExprAssign, false),
+        ExprAssignOp(op, ..)     => {
+            (SawExprAssignOp(op.node), binop_can_panic_at_runtime(op.node))
+        }
+        ExprField(_, name)       => (SawExprField(name.node.as_str()), false),
+        ExprTupField(_, id)      => (SawExprTupField(id.node), false),
+        ExprIndex(..)            => (SawExprIndex, true),
+        ExprPath(ref qself, _)   => (SawExprPath(qself.as_ref().map(|q| q.position)), false),
+        ExprAddrOf(m, _)         => (SawExprAddrOf(m), false),
+        ExprBreak(id)            => (SawExprBreak(id.map(|id| id.node.as_str())), false),
+        ExprAgain(id)            => (SawExprAgain(id.map(|id| id.node.as_str())), false),
+        ExprRet(..)              => (SawExprRet, false),
+        ExprInlineAsm(ref a,..)  => (SawExprInlineAsm(a), false),
+        ExprStruct(..)           => (SawExprStruct, false),
+        ExprRepeat(..)           => (SawExprRepeat, false),
     }
 }
 
@@ -421,10 +469,13 @@ macro_rules! hash_attrs {
 
 macro_rules! hash_span {
     ($visitor:expr, $span:expr) => ({
-        if $visitor.hash_spans {
+        hash_span!($visitor, $span, false)
+    });
+    ($visitor:expr, $span:expr, $force:expr) => ({
+        if $force || $visitor.hash_spans {
             $visitor.hash_span($span);
         }
-    })
+    });
 }
 
 impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'hash, 'tcx> {
@@ -474,10 +525,12 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_expr(&mut self, ex: &'tcx Expr) {
         debug!("visit_expr: st={:?}", self.st);
-        SawExpr(saw_expr(&ex.node)).hash(self.st);
+        let (saw_expr, force_span) = saw_expr(&ex.node,
+                                              self.overflow_checks_enabled);
+        SawExpr(saw_expr).hash(self.st);
         // No need to explicitly hash the discriminant here, since we are
         // implicitly hashing the discriminant of SawExprComponent.
-        hash_span!(self, ex.span);
+        hash_span!(self, ex.span, force_span);
         hash_attrs!(self, &ex.attrs);
         visit::walk_expr(self, ex)
     }
@@ -519,6 +572,9 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_item(&mut self, i: &'tcx Item) {
         debug!("visit_item: {:?} st={:?}", i, self.st);
+
+        self.maybe_enable_overflow_checks(&i.attrs);
+
         SawItem(saw_item(&i.node)).hash(self.st);
         hash_span!(self, i.span);
         hash_attrs!(self, &i.attrs);
@@ -545,6 +601,9 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_trait_item(&mut self, ti: &'tcx TraitItem) {
         debug!("visit_trait_item: st={:?}", self.st);
+
+        self.maybe_enable_overflow_checks(&ti.attrs);
+
         SawTraitItem(saw_trait_item(&ti.node)).hash(self.st);
         hash_span!(self, ti.span);
         hash_attrs!(self, &ti.attrs);
@@ -553,6 +612,9 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_impl_item(&mut self, ii: &'tcx ImplItem) {
         debug!("visit_impl_item: st={:?}", self.st);
+
+        self.maybe_enable_overflow_checks(&ii.attrs);
+
         SawImplItem(saw_impl_item(&ii.node)).hash(self.st);
         hash_span!(self, ii.span);
         hash_attrs!(self, &ii.attrs);
@@ -841,5 +903,11 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         indices.extend(0 .. items.len());
         indices.sort_by_key(|index| get_key(&items[*index]));
         indices
+    }
+
+    fn maybe_enable_overflow_checks(&mut self, item_attrs: &[ast::Attribute]) {
+        if attr::contains_name(item_attrs, "rustc_inherit_overflow_checks") {
+            self.overflow_checks_enabled = true;
+        }
     }
 }
