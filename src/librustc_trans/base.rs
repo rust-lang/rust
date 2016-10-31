@@ -1611,7 +1611,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             metadata: metadata,
             reachable: vec![],
             no_builtins: no_builtins,
-            linker_info: linker_info
+            linker_info: linker_info,
+            windows_subsystem: None,
         };
     }
 
@@ -1747,6 +1748,17 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let linker_info = LinkerInfo::new(&shared_ccx, &reachable_symbols);
 
+    let subsystem = attr::first_attr_value_str_by_name(&krate.attrs,
+                                                       "windows_subsystem");
+    let windows_subsystem = subsystem.map(|subsystem| {
+        if subsystem != "windows" && subsystem != "console" {
+            tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
+                                     `windows` and `console` are allowed",
+                                    subsystem));
+        }
+        subsystem.to_string()
+    });
+
     CrateTranslation {
         modules: modules,
         metadata_module: metadata_module,
@@ -1754,7 +1766,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         metadata: metadata,
         reachable: reachable_symbols,
         no_builtins: no_builtins,
-        linker_info: linker_info
+        linker_info: linker_info,
+        windows_subsystem: windows_subsystem,
     }
 }
 
