@@ -23,6 +23,7 @@ use std::process;
 use num_cpus;
 use rustc_serialize::Decodable;
 use toml::{Parser, Decoder, Value};
+use util::push_exe_path;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -417,7 +418,7 @@ impl Config {
                     let target = self.target_config.entry(self.build.clone())
                                      .or_insert(Target::default());
                     let root = PathBuf::from(value);
-                    target.llvm_config = Some(root.join("bin/llvm-config"));
+                    target.llvm_config = Some(push_exe_path(root, &["bin", "llvm-config"]));
                 }
                 "CFG_JEMALLOC_ROOT" if value.len() > 0 => {
                     let target = self.target_config.entry(self.build.clone())
@@ -449,8 +450,9 @@ impl Config {
                     target.ndk = Some(PathBuf::from(value));
                 }
                 "CFG_LOCAL_RUST_ROOT" if value.len() > 0 => {
-                    self.rustc = Some(PathBuf::from(value).join("bin/rustc"));
-                    self.cargo = Some(PathBuf::from(value).join("bin/cargo"));
+                    let path = PathBuf::from(value);
+                    self.rustc = Some(push_exe_path(path.clone(), &["bin", "rustc"]));
+                    self.cargo = Some(push_exe_path(path, &["bin", "cargo"]));
                 }
                 _ => {}
             }
