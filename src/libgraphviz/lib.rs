@@ -58,7 +58,7 @@
 //! struct Edges(Vec<Ed>);
 //!
 //! pub fn render_to<W: Write>(output: &mut W) {
-//!     let edges = Edges(vec!((0,1), (0,2), (1,3), (2,3), (3,4), (4,4)));
+//!     let edges = Edges(vec![(0,1), (0,2), (1,3), (2,3), (3,4), (4,4)]);
 //!     dot::render(&edges, output).unwrap()
 //! }
 //!
@@ -164,8 +164,8 @@
 //! struct Graph { nodes: Vec<&'static str>, edges: Vec<(usize,usize)> }
 //!
 //! pub fn render_to<W: Write>(output: &mut W) {
-//!     let nodes = vec!("{x,y}","{x}","{y}","{}");
-//!     let edges = vec!((0,1), (0,2), (1,3), (2,3));
+//!     let nodes = vec!["{x,y}","{x}","{y}","{}"];
+//!     let edges = vec![(0,1), (0,2), (1,3), (2,3)];
 //!     let graph = Graph { nodes: nodes, edges: edges };
 //!
 //!     dot::render(&graph, output).unwrap()
@@ -226,8 +226,8 @@
 //! struct Graph { nodes: Vec<&'static str>, edges: Vec<(usize,usize)> }
 //!
 //! pub fn render_to<W: Write>(output: &mut W) {
-//!     let nodes = vec!("{x,y}","{x}","{y}","{}");
-//!     let edges = vec!((0,1), (0,2), (1,3), (2,3));
+//!     let nodes = vec!["{x,y}","{x}","{y}","{}"];
+//!     let edges = vec![(0,1), (0,2), (1,3), (2,3)];
 //!     let graph = Graph { nodes: nodes, edges: edges };
 //!
 //!     dot::render(&graph, output).unwrap()

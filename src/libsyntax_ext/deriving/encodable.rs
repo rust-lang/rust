@@ -139,23 +139,23 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: false,
-        methods: vec!(
+        methods: vec![
             MethodDef {
                 name: "encode",
                 generics: LifetimeBounds {
                     lifetimes: Vec::new(),
                     bounds: vec![(typaram,
-                                  vec![Path::new_(vec![krate, "Encoder"], None, vec!(), true)])]
+                                  vec![Path::new_(vec![krate, "Encoder"], None, vec![], true)])]
                 },
                 explicit_self: borrowed_explicit_self(),
-                args: vec!(Ptr(Box::new(Literal(Path::new_local(typaram))),
-                           Borrowed(None, Mutability::Mutable))),
+                args: vec![Ptr(Box::new(Literal(Path::new_local(typaram))),
+                           Borrowed(None, Mutability::Mutable))],
                 ret_ty: Literal(Path::new_(
                     pathvec_std!(cx, core::result::Result),
                     None,
-                    vec!(Box::new(Tuple(Vec::new())), Box::new(Literal(Path::new_(
+                    vec![Box::new(Tuple(Vec::new())), Box::new(Literal(Path::new_(
                         vec![typaram, "Error"], None, vec![], false
-                    )))),
+                    )))],
                     true
                 )),
                 attributes: Vec::new(),
@@ -165,7 +165,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                     encodable_substructure(a, b, c, krate)
                 })),
             }
-        ),
+        ],
         associated_types: Vec::new(),
     };
 
