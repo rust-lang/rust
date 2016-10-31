@@ -32,7 +32,11 @@ use std::vec::IntoIter;
 use syntax::ast::{self, Name};
 use syntax_pos::Span;
 
-use super::cache::Cache;
+mod cache;
+pub mod tcx;
+pub mod visit;
+pub mod transform;
+pub mod traversal;
 
 macro_rules! newtype_index {
     ($name:ident, $debug_name:expr) => (
@@ -59,7 +63,8 @@ macro_rules! newtype_index {
 }
 
 /// Lowered representation of a single function.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+// Do not implement clone for Mir, its easy to do so accidently and its kind of expensive.
+#[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
@@ -106,7 +111,7 @@ pub struct Mir<'tcx> {
     pub span: Span,
 
     /// A cache for various calculations
-    cache: Cache
+    cache: cache::Cache
 }
 
 /// where execution begins
@@ -137,7 +142,7 @@ impl<'tcx> Mir<'tcx> {
             upvar_decls: upvar_decls,
             spread_arg: None,
             span: span,
-            cache: Cache::new()
+            cache: cache::Cache::new()
         }
     }
 
@@ -1138,8 +1143,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     AggregateKind::Adt(adt_def, variant, substs, _) => {
                         let variant_def = &adt_def.variants[variant];
 
-                        ppaux::parameterized(fmt, substs, variant_def.did,
-                                             ppaux::Ns::Value, &[])?;
+                        ppaux::parameterized(fmt, substs, variant_def.did, &[])?;
 
                         match variant_def.ctor_kind {
                             CtorKind::Const => Ok(()),
@@ -1234,7 +1238,7 @@ impl<'tcx> Debug for Literal<'tcx> {
         use self::Literal::*;
         match *self {
             Item { def_id, substs } => {
-                ppaux::parameterized(fmt, substs, def_id, ppaux::Ns::Value, &[])
+                ppaux::parameterized(fmt, substs, def_id, &[])
             }
             Value { ref value } => {
                 write!(fmt, "const ")?;

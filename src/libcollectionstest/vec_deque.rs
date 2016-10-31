@@ -686,9 +686,9 @@ fn test_show() {
     assert_eq!(format!("{:?}", ringbuf), "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
     let ringbuf: VecDeque<_> = vec!["just", "one", "test", "more"]
-                                   .iter()
-                                   .cloned()
-                                   .collect();
+        .iter()
+        .cloned()
+        .collect();
     assert_eq!(format!("{:?}", ringbuf),
                "[\"just\", \"one\", \"test\", \"more\"]");
 }
@@ -1003,5 +1003,7 @@ fn test_contains() {
 
 #[allow(dead_code)]
 fn assert_covariance() {
-    fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> { d }
+    fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> {
+        d
+    }
 }

@@ -895,17 +895,14 @@ fn some_func(x: &mut i32) {
 
 E0071: r##"
 You tried to use structure-literal syntax to create an item that is
-not a struct-style structure or enum variant.
+not a structure or enum variant.
 
 Example of erroneous code:
 
 ```compile_fail,E0071
-enum Foo { FirstValue(i32) };
-
-let u = Foo::FirstValue { value: 0 }; // error: Foo::FirstValue
-                                         // isn't a structure!
-// or even simpler, if the name doesn't refer to a structure at all.
-let t = u32 { value: 4 }; // error: `u32` does not name a structure.
+type U32 = u32;
+let t = U32 { value: 4 }; // error: expected struct, variant or union type,
+                          // found builtin type `u32`
 ```
 
 To fix this, ensure that the name was correctly spelled, and that

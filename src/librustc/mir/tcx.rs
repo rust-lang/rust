@@ -13,7 +13,7 @@
  * building is complete.
  */
 
-use mir::repr::*;
+use mir::*;
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};

@@ -8,21 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::hash::Hasher;
 use std::mem;
-use rustc_data_structures::blake2b;
+use rustc_data_structures::blake2b::Blake2bHasher;
+use rustc::ty::util::ArchIndependentHasher;
 use ich::Fingerprint;
 
 #[derive(Debug)]
 pub struct IchHasher {
-    state: blake2b::Blake2bCtx,
+    state: ArchIndependentHasher<Blake2bHasher>,
     bytes_hashed: u64,
 }
 
 impl IchHasher {
     pub fn new() -> IchHasher {
+        let hash_size = mem::size_of::<Fingerprint>();
         IchHasher {
-            state: blake2b::blake2b_new(mem::size_of::<Fingerprint>(), &[]),
+            state: ArchIndependentHasher::new(Blake2bHasher::new(hash_size, &[])),
             bytes_hashed: 0
         }
     }
@@ -33,40 +34,19 @@ impl IchHasher {
 
     pub fn finish(self) -> Fingerprint {
         let mut fingerprint = Fingerprint::zero();
-        blake2b::blake2b_final(self.state, &mut fingerprint.0);
+        fingerprint.0.copy_from_slice(self.state.into_inner().finalize());
         fingerprint
     }
 }
 
-impl Hasher for IchHasher {
+impl ::std::hash::Hasher for IchHasher {
     fn finish(&self) -> u64 {
         bug!("Use other finish() implementation to get the full 128-bit hash.");
     }
 
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
-        blake2b::blake2b_update(&mut self.state, bytes);
+        self.state.write(bytes);
         self.bytes_hashed += bytes.len() as u64;
-    }
-
-    #[inline]
-    fn write_u16(&mut self, i: u16) {
-        self.write(&unsafe { mem::transmute::<_, [u8; 2]>(i.to_le()) })
-    }
-
-    #[inline]
-    fn write_u32(&mut self, i: u32) {
-        self.write(&unsafe { mem::transmute::<_, [u8; 4]>(i.to_le()) })
-    }
-
-    #[inline]
-    fn write_u64(&mut self, i: u64) {
-        self.write(&unsafe { mem::transmute::<_, [u8; 8]>(i.to_le()) })
-    }
-
-    #[inline]
-    fn write_usize(&mut self, i: usize) {
-        // always hash as u64, so we don't depend on the size of `usize`
-        self.write_u64(i as u64);
     }
 }

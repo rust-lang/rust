@@ -27,7 +27,7 @@ fn main() {
     let ps = syntax::parse::ParseSess::new();
     let mut resolver = syntax::ext::base::DummyResolver;
     let mut cx = syntax::ext::base::ExtCtxt::new(
-        &ps, vec![],
+        &ps,
         syntax::ext::expand::ExpansionConfig::default("qquote".to_string()),
         &mut resolver);
     cx.bt_push(syntax::codemap::ExpnInfo {

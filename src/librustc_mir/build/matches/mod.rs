@@ -18,7 +18,7 @@ use rustc_data_structures::fnv::FnvHashMap;
 use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{AdtDef, Ty};
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use hair::*;
 use syntax::ast::{Name, NodeId};
 use syntax_pos::Span;

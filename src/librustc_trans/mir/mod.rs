@@ -11,7 +11,7 @@
 use libc::c_uint;
 use llvm::{self, ValueRef};
 use rustc::ty;
-use rustc::mir::repr as mir;
+use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use session::config::FullDebugInfo;
 use base;
@@ -23,8 +23,7 @@ use type_of;
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
 use syntax::parse::token::keywords;
 
-use std::ops::Deref;
-use std::rc::Rc;
+use std::cell::Ref;
 use std::iter;
 
 use basic_block::BasicBlock;
@@ -39,25 +38,9 @@ use rustc::mir::traversal;
 
 use self::operand::{OperandRef, OperandValue};
 
-#[derive(Clone)]
-pub enum CachedMir<'mir, 'tcx: 'mir> {
-    Ref(&'mir mir::Mir<'tcx>),
-    Owned(Rc<mir::Mir<'tcx>>)
-}
-
-impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
-    type Target = mir::Mir<'tcx>;
-    fn deref(&self) -> &mir::Mir<'tcx> {
-        match *self {
-            CachedMir::Ref(r) => r,
-            CachedMir::Owned(ref rc) => rc
-        }
-    }
-}
-
 /// Master context for translating MIR.
 pub struct MirContext<'bcx, 'tcx:'bcx> {
-    mir: CachedMir<'bcx, 'tcx>,
+    mir: Ref<'tcx, mir::Mir<'tcx>>,
 
     /// Function context
     fcx: &'bcx common::FunctionContext<'bcx, 'tcx>,
@@ -223,7 +206,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let scopes = debuginfo::create_mir_scopes(fcx);
 
     let mut mircx = MirContext {
-        mir: mir.clone(),
+        mir: Ref::clone(&mir),
         fcx: fcx,
         llpersonalityslot: None,
         blocks: block_bcxs,

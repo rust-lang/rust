@@ -78,7 +78,6 @@ pub use self::NamedMatch::*;
 pub use self::ParseResult::*;
 use self::TokenTreeOrTokenTreeVec::*;
 
-use ast;
 use ast::Ident;
 use syntax_pos::{self, BytePos, mk_sp, Span};
 use codemap::Spanned;
@@ -92,6 +91,7 @@ use parse::token;
 use print::pprust;
 use ptr::P;
 use tokenstream::{self, TokenTree};
+use util::small_vector::SmallVector;
 
 use std::mem;
 use std::rc::Rc;
@@ -104,7 +104,7 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 #[derive(Clone)]
 enum TokenTreeOrTokenTreeVec {
     Tt(tokenstream::TokenTree),
-    TtSeq(Rc<Vec<tokenstream::TokenTree>>),
+    TtSeq(Vec<tokenstream::TokenTree>),
 }
 
 impl TokenTreeOrTokenTreeVec {
@@ -161,7 +161,7 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
     })
 }
 
-pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: BytePos)
+pub fn initial_matcher_pos(ms: Vec<TokenTree>, sep: Option<Token>, lo: BytePos)
                            -> Box<MatcherPos> {
     let match_idx_hi = count_names(&ms[..]);
     let matches: Vec<_> = (0..match_idx_hi).map(|_| Vec::new()).collect();
@@ -279,17 +279,10 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     }
 }
 
-pub fn parse(sess: &ParseSess,
-             cfg: &ast::CrateConfig,
-             mut rdr: TtReader,
-             ms: &[TokenTree])
-             -> NamedParseResult {
-    let mut cur_eis = Vec::new();
-    cur_eis.push(initial_matcher_pos(Rc::new(ms.iter()
-                                                .cloned()
-                                                .collect()),
-                                     None,
-                                     rdr.peek().sp.lo));
+pub fn parse(sess: &ParseSess, mut rdr: TtReader, ms: &[TokenTree]) -> NamedParseResult {
+    let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(),
+                                                           None,
+                                                           rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = Vec::new(); // black-box parsed by parser.rs
@@ -484,7 +477,7 @@ pub fn parse(sess: &ParseSess,
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
                 rdr.next_tok = {
-                    let mut rust_parser = Parser::new(sess, cfg.clone(), Box::new(&mut rdr));
+                    let mut rust_parser = Parser::new(sess, Box::new(&mut rdr));
                     let mut ei = bb_eis.pop().unwrap();
                     if let TokenTree::Token(span, MatchNt(_, ident)) = ei.top_elts.get_tt(ei.idx) {
                         let match_cur = ei.match_cur;

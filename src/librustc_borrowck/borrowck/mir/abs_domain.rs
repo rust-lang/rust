@@ -21,8 +21,8 @@
 //! `a[x]` would still overlap them both. But that is not this
 //! representation does today.)
 
-use rustc::mir::repr::{Lvalue, LvalueElem};
-use rustc::mir::repr::{Operand, Projection, ProjectionElem};
+use rustc::mir::{Lvalue, LvalueElem};
+use rustc::mir::{Operand, Projection, ProjectionElem};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct AbstractOperand;

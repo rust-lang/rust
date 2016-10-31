@@ -8,30 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S;
+#![deny(patterns_in_fns_without_body)]
 
 trait Tr {
-    type A;
+    fn f1(mut arg: u8); //~ ERROR patterns aren't allowed in methods without bodies
+                        //~^ WARN was previously accepted
+    fn f2(&arg: u8); //~ ERROR patterns aren't allowed in methods without bodies
+                     //~^ WARN was previously accepted
+    fn g1(arg: u8); // OK
+    fn g2(_: u8); // OK
+    fn g3(u8); // OK
 }
 
-impl Tr for S {
-    type A = S;
-}
-
-fn f<T: Tr>() {
-    match S {
-        T::A {} => {} //~ ERROR `T::A` does not name a struct or a struct variant
-    }
-}
-
-fn g<T: Tr<A = S>>() {
-    match S {
-        T::A {} => {} //~ ERROR `T::A` does not name a struct or a struct variant
-    }
-}
-
-fn main() {
-    match S {
-        S::A {} => {} //~ ERROR ambiguous associated type
-    }
-}
+fn main() {}

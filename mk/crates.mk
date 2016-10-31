@@ -60,8 +60,8 @@ RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_
                 rustc_data_structures rustc_platform_intrinsics rustc_errors \
                 rustc_plugin rustc_metadata rustc_passes rustc_save_analysis \
                 rustc_const_eval rustc_const_math rustc_incremental proc_macro
-HOST_CRATES := syntax syntax_ext proc_macro_plugin syntax_pos $(RUSTC_CRATES) rustdoc fmt_macros \
-		flate arena graphviz log serialize
+HOST_CRATES := syntax syntax_ext proc_macro_tokens proc_macro_plugin syntax_pos $(RUSTC_CRATES) \
+		rustdoc fmt_macros flate arena graphviz log serialize
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
 
 DEPS_core :=
@@ -102,8 +102,9 @@ DEPS_test := std getopts term native:rust_test_helpers
 
 DEPS_syntax := std term serialize log arena libc rustc_bitflags rustc_unicode rustc_errors syntax_pos
 DEPS_syntax_ext := syntax syntax_pos rustc_errors fmt_macros proc_macro
-DEPS_proc_macro_plugin := syntax syntax_pos rustc_plugin log
 DEPS_syntax_pos := serialize
+DEPS_proc_macro_tokens := syntax syntax_pos log
+DEPS_proc_macro_plugin := syntax syntax_pos rustc_plugin log proc_macro_tokens
 
 DEPS_rustc_const_math := std syntax log serialize
 DEPS_rustc_const_eval := rustc_const_math rustc syntax log serialize \
@@ -120,7 +121,7 @@ DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_bo
                      rustc_trans rustc_privacy rustc_lint rustc_plugin \
                      rustc_metadata syntax_ext proc_macro_plugin \
                      rustc_passes rustc_save_analysis rustc_const_eval \
-                     rustc_incremental syntax_pos rustc_errors proc_macro
+                     rustc_incremental syntax_pos rustc_errors proc_macro rustc_data_structures
 DEPS_rustc_errors := log libc serialize syntax_pos
 DEPS_rustc_lint := rustc log syntax syntax_pos rustc_const_eval
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags

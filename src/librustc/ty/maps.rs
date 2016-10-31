@@ -10,7 +10,10 @@
 
 use dep_graph::{DepNode, DepTrackingMapConfig};
 use hir::def_id::DefId;
+use mir;
 use ty::{self, Ty};
+
+use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::rc::Rc;
 use syntax::{attr, ast};
@@ -43,3 +46,4 @@ dep_map_ty! { InherentImpls: InherentImpls(DefId) -> Vec<DefId> }
 dep_map_ty! { TraitItems: TraitItems(DefId) -> Rc<Vec<ty::ImplOrTraitItem<'tcx>>> }
 dep_map_ty! { ReprHints: ReprHints(DefId) -> Rc<Vec<attr::ReprAttr>> }
 dep_map_ty! { InlinedClosures: Hir(DefId) -> ast::NodeId }
+dep_map_ty! { Mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>> }

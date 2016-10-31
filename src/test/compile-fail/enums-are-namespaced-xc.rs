@@ -14,5 +14,6 @@ extern crate namespaced_enums;
 fn main() {
     let _ = namespaced_enums::A; //~ ERROR unresolved name
     let _ = namespaced_enums::B(10); //~ ERROR unresolved name
-    let _ = namespaced_enums::C { a: 10 }; //~ ERROR does not name a structure
+    let _ = namespaced_enums::C { a: 10 };
+    //~^ ERROR unresolved struct, variant or union type `namespaced_enums::C`
 }

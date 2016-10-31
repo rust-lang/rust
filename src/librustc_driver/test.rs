@@ -106,12 +106,11 @@ fn test_env<F>(source_string: &str,
     let sess = session::build_session_(options, &dep_graph, None, diagnostic_handler,
                                        Rc::new(CodeMap::new()), cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    let krate_config = Vec::new();
     let input = config::Input::Str {
         name: driver::anon_src(),
         input: source_string.to_string(),
     };
-    let krate = driver::phase_1_parse_input(&sess, krate_config, &input).unwrap();
+    let krate = driver::phase_1_parse_input(&sess, &input).unwrap();
     let driver::ExpansionResult { defs, resolutions, mut hir_forest, .. } = {
         driver::phase_2_configure_and_expand(
             &sess, &cstore, krate, None, "test", None, MakeGlobMap::No, |_| Ok(()),

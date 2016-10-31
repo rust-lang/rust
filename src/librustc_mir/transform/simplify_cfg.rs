@@ -35,9 +35,8 @@
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
-use rustc::mir::traversal;
 use std::fmt;
 
 pub struct SimplifyCfg<'a> { label: &'a str }

@@ -136,10 +136,8 @@ impl FromStr for TokenStream {
     fn from_str(src: &str) -> Result<TokenStream, LexError> {
         __internal::with_parse_sess(|sess| {
             let src = src.to_string();
-            let cfg = Vec::new();
             let name = "<proc-macro source code>".to_string();
-            let mut parser = parse::new_parser_from_source_str(sess, cfg, name,
-                                                               src);
+            let mut parser = parse::new_parser_from_source_str(sess, name, src);
             let mut ret = TokenStream { inner: Vec::new() };
             loop {
                 match parser.parse_item() {
