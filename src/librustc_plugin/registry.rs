@@ -73,12 +73,12 @@ impl<'a> Registry<'a> {
             sess: sess,
             args_hidden: None,
             krate_span: krate_span,
-            syntax_exts: vec!(),
-            early_lint_passes: vec!(),
-            late_lint_passes: vec!(),
+            syntax_exts: vec![],
+            early_lint_passes: vec![],
+            late_lint_passes: vec![],
             lint_groups: HashMap::new(),
-            llvm_passes: vec!(),
-            attributes: vec!(),
+            llvm_passes: vec![],
+            attributes: vec![],
             mir_passes: Vec::new(),
         }
     }

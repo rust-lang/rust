@@ -312,7 +312,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.path_all(span, false, strs, Vec::new(), Vec::new(), Vec::new())
     }
     fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path {
-        self.path(span, vec!(id))
+        self.path(span, vec![id])
     }
     fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
         self.path_all(span, true, strs, Vec::new(), Vec::new(), Vec::new())
@@ -443,7 +443,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                           true,
                           self.std_path(&["option", "Option"]),
                           Vec::new(),
-                          vec!( ty ),
+                          vec![ ty ],
                           Vec::new()))
     }
 
@@ -477,7 +477,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn ty_vars_global(&self, ty_params: &P<[ast::TyParam]>) -> Vec<P<ast::Ty>> {
         ty_params
             .iter()
-            .map(|p| self.ty_path(self.path_global(DUMMY_SP, vec!(p.ident))))
+            .map(|p| self.ty_path(self.path_global(DUMMY_SP, vec![p.ident])))
             .collect()
     }
 
@@ -770,7 +770,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn expr_some(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
         let some = self.std_path(&["option", "Option", "Some"]);
-        self.expr_call_global(sp, some, vec!(expr))
+        self.expr_call_global(sp, some, vec![expr])
     }
 
     fn expr_none(&self, sp: Span) -> P<ast::Expr> {
@@ -794,14 +794,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let expr_file = self.expr_str(span,
                                       token::intern_and_get_ident(&loc.file.name));
         let expr_line = self.expr_u32(span, loc.line as u32);
-        let expr_file_line_tuple = self.expr_tuple(span, vec!(expr_file, expr_line));
+        let expr_file_line_tuple = self.expr_tuple(span, vec![expr_file, expr_line]);
         let expr_file_line_ptr = self.expr_addr_of(span, expr_file_line_tuple);
         self.expr_call_global(
             span,
             self.std_path(&["rt", "begin_panic"]),
-            vec!(
+            vec![
                 self.expr_str(span, msg),
-                expr_file_line_ptr))
+                expr_file_line_ptr])
     }
 
     fn expr_unreachable(&self, span: Span) -> P<ast::Expr> {
@@ -812,12 +812,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn expr_ok(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
         let ok = self.std_path(&["result", "Result", "Ok"]);
-        self.expr_call_global(sp, ok, vec!(expr))
+        self.expr_call_global(sp, ok, vec![expr])
     }
 
     fn expr_err(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
         let err = self.std_path(&["result", "Result", "Err"]);
-        self.expr_call_global(sp, err, vec!(expr))
+        self.expr_call_global(sp, err, vec![expr])
     }
 
     fn expr_try(&self, sp: Span, head: P<ast::Expr>) -> P<ast::Expr> {
@@ -836,17 +836,17 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         // Err(__try_var)  (pattern and expression resp.)
         let err_pat = self.pat_tuple_struct(sp, err_path.clone(), vec![binding_pat]);
         let err_inner_expr = self.expr_call(sp, self.expr_path(err_path),
-                                            vec!(binding_expr.clone()));
+                                            vec![binding_expr.clone()]);
         // return Err(__try_var)
         let err_expr = self.expr(sp, ast::ExprKind::Ret(Some(err_inner_expr)));
 
         // Ok(__try_var) => __try_var
-        let ok_arm = self.arm(sp, vec!(ok_pat), binding_expr);
+        let ok_arm = self.arm(sp, vec![ok_pat], binding_expr);
         // Err(__try_var) => return Err(__try_var)
-        let err_arm = self.arm(sp, vec!(err_pat), err_expr);
+        let err_arm = self.arm(sp, vec![err_pat], err_expr);
 
         // match head { Ok() => ..., Err() => ... }
-        self.expr_match(sp, head, vec!(ok_arm, err_arm))
+        self.expr_match(sp, head, vec![ok_arm, err_arm])
     }
 
 
@@ -912,7 +912,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn arm(&self, _span: Span, pats: Vec<P<ast::Pat>>, expr: P<ast::Expr>) -> ast::Arm {
         ast::Arm {
-            attrs: vec!(),
+            attrs: vec![],
             pats: pats,
             guard: None,
             body: expr
@@ -920,7 +920,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn arm_unreachable(&self, span: Span) -> ast::Arm {
-        self.arm(span, vec!(self.pat_wild(span)), self.expr_unreachable(span))
+        self.arm(span, vec![self.pat_wild(span)], self.expr_unreachable(span))
     }
 
     fn expr_match(&self, span: Span, arg: P<ast::Expr>, arms: Vec<ast::Arm>) -> P<Expr> {
@@ -970,7 +970,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn lambda1(&self, span: Span, blk: P<ast::Block>, ident: ast::Ident) -> P<ast::Expr> {
-        self.lambda(span, vec!(ident), blk)
+        self.lambda(span, vec![ident], blk)
     }
 
     fn lambda_expr(&self, span: Span, ids: Vec<ast::Ident>,

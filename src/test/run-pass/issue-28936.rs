@@ -23,7 +23,7 @@ pub fn parse_stream<T: Iterator<Item=i32>, U, F>(
     where F: Fn(&mut StreamParser<T>) -> U { panic!(); }
 
 pub fn thing(session: &mut Session) {
-    let mut stream = vec!(1, 2, 3).into_iter();
+    let mut stream = vec![1, 2, 3].into_iter();
 
     let _b = parse_stream(session,
                           stream.by_ref(),

@@ -75,10 +75,10 @@ pub fn main() {
         swim_speed: 998,
         name: "alec_guinness".to_string(),
     };
-    let arc = Arc::new(vec!(box catte  as Box<Pet+Sync+Send>,
+    let arc = Arc::new(vec![box catte  as Box<Pet+Sync+Send>,
                             box dogge1 as Box<Pet+Sync+Send>,
                             box fishe  as Box<Pet+Sync+Send>,
-                            box dogge2 as Box<Pet+Sync+Send>));
+                            box dogge2 as Box<Pet+Sync+Send>]);
     let (tx1, rx1) = channel();
     let arc1 = arc.clone();
     let t1 = thread::spawn(move|| { check_legs(arc1); tx1.send(()); });

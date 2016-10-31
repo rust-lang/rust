@@ -148,7 +148,7 @@ use super::range::RangeArgument;
 /// [`Index`] trait. An example will be more explicit:
 ///
 /// ```
-/// let v = vec!(0, 2, 4, 6);
+/// let v = vec![0, 2, 4, 6];
 /// println!("{}", v[1]); // it will display '2'
 /// ```
 ///
@@ -156,7 +156,7 @@ use super::range::RangeArgument;
 /// your software will panic! You cannot do this:
 ///
 /// ```ignore
-/// let v = vec!(0, 2, 4, 6);
+/// let v = vec![0, 2, 4, 6];
 /// println!("{}", v[6]); // it will panic!
 /// ```
 ///
@@ -173,7 +173,7 @@ use super::range::RangeArgument;
 ///     // ...
 /// }
 ///
-/// let v = vec!(0, 1);
+/// let v = vec![0, 1];
 /// read_slice(&v);
 ///
 /// // ... and that's all!

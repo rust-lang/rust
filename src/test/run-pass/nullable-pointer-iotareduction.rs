@@ -76,7 +76,7 @@ pub fn main() {
     check_type!(&17, &isize);
     check_type!(box 18, Box<isize>);
     check_type!("foo".to_string(), String);
-    check_type!(vec!(20, 22), Vec<isize>);
+    check_type!(vec![20, 22], Vec<isize>);
     check_type!(main, fn(), |pthing| {
         assert_eq!(main as fn(), *pthing as fn())
     });

@@ -331,7 +331,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
     fn existing_base_paths(&self, lp: &Rc<LoanPath<'tcx>>)
                            -> Vec<MovePathIndex> {
-        let mut result = vec!();
+        let mut result = vec![];
         self.add_existing_base_paths(lp, &mut result);
         result
     }

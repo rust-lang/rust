@@ -61,9 +61,9 @@ fn test9() {
 }
 
 fn test10() -> isize {
-    let regs = vec!(0);
+    let regs = vec![0];
     match true { true => { } _ => { } }
     regs[0]
 }
 
-fn test11() -> Vec<isize> { if true { } vec!(1, 2) }
+fn test11() -> Vec<isize> { if true { } vec![1, 2] }

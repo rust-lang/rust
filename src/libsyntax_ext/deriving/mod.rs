@@ -28,7 +28,7 @@ macro_rules! pathvec {
 
 macro_rules! path {
     ($($x:tt)*) => (
-        ::ext::deriving::generic::ty::Path::new( pathvec!( $($x)* ) )
+        ::ext::deriving::generic::ty::Path::new( pathvec![ $($x)* ] )
     )
 }
 
@@ -40,7 +40,7 @@ macro_rules! path_local {
 
 macro_rules! pathvec_std {
     ($cx:expr, $first:ident :: $($rest:ident)::+) => ({
-        let mut v = pathvec!($($rest)::+);
+        let mut v = pathvec![$($rest)::+];
         if let Some(s) = $cx.crate_root {
             v.insert(0, s);
         }

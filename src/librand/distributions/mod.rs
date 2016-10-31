@@ -312,37 +312,37 @@ mod tests {
             }}
         }
 
-        t!(vec!(Weighted { weight: 1, item: 10 }),
+        t!(vec![Weighted { weight: 1, item: 10 }],
            [10]);
 
         // skip some
-        t!(vec!(Weighted { weight: 0, item: 20 },
+        t!(vec![Weighted { weight: 0, item: 20 },
                 Weighted { weight: 2, item: 21 },
                 Weighted { weight: 0, item: 22 },
-                Weighted { weight: 1, item: 23 }),
+                Weighted { weight: 1, item: 23 }],
            [21, 21, 23]);
 
         // different weights
-        t!(vec!(Weighted { weight: 4, item: 30 },
-                Weighted { weight: 3, item: 31 }),
+        t!(vec![Weighted { weight: 4, item: 30 },
+                Weighted { weight: 3, item: 31 }],
            [30, 30, 30, 30, 31, 31, 31]);
 
         // check that we're binary searching
         // correctly with some vectors of odd
         // length.
-        t!(vec!(Weighted { weight: 1, item: 40 },
+        t!(vec![Weighted { weight: 1, item: 40 },
                 Weighted { weight: 1, item: 41 },
                 Weighted { weight: 1, item: 42 },
                 Weighted { weight: 1, item: 43 },
-                Weighted { weight: 1, item: 44 }),
+                Weighted { weight: 1, item: 44 }],
            [40, 41, 42, 43, 44]);
-        t!(vec!(Weighted { weight: 1, item: 50 },
+        t!(vec![Weighted { weight: 1, item: 50 },
                 Weighted { weight: 1, item: 51 },
                 Weighted { weight: 1, item: 52 },
                 Weighted { weight: 1, item: 53 },
                 Weighted { weight: 1, item: 54 },
                 Weighted { weight: 1, item: 55 },
-                Weighted { weight: 1, item: 56 }),
+                Weighted { weight: 1, item: 56 }],
            [50, 51, 52, 53, 54, 55, 56]);
     }
 

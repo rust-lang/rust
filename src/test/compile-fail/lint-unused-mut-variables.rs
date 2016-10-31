@@ -21,7 +21,7 @@ fn main() {
     let mut a = 3; //~ ERROR: variable does not need to be mutable
     let mut a = 2; //~ ERROR: variable does not need to be mutable
     let mut b = 3; //~ ERROR: variable does not need to be mutable
-    let mut a = vec!(3); //~ ERROR: variable does not need to be mutable
+    let mut a = vec![3]; //~ ERROR: variable does not need to be mutable
     let (mut a, b) = (1, 2); //~ ERROR: variable does not need to be mutable
     let mut a; //~ ERROR: variable does not need to be mutable
     a = 3;
@@ -88,5 +88,5 @@ fn callback<F>(f: F) where F: FnOnce() {}
 #[allow(unused_mut)]
 fn foo(mut a: isize) {
     let mut a = 3;
-    let mut b = vec!(2);
+    let mut b = vec![2];
 }

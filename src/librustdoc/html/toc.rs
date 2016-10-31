@@ -247,7 +247,7 @@ mod tests {
         macro_rules! toc {
             ($(($level: expr, $name: expr, $(($sub: tt))* )),*) => {
                 Toc {
-                    entries: vec!(
+                    entries: vec![
                         $(
                             TocEntry {
                                 level: $level,
@@ -257,7 +257,7 @@ mod tests {
                                 children: toc!($($sub),*)
                             }
                             ),*
-                        )
+                        ]
                 }
             }
         }

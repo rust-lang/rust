@@ -23,17 +23,17 @@ impl<'a> sum for &'a [isize] {
 fn call_sum(x: &[isize]) -> isize { x.sum_() }
 
 pub fn main() {
-    let x = vec!(1, 2, 3);
+    let x = vec![1, 2, 3];
     let y = call_sum(&x);
     println!("y=={}", y);
     assert_eq!(y, 6);
 
-    let x = vec!(1, 2, 3);
+    let x = vec![1, 2, 3];
     let y = x.sum_();
     println!("y=={}", y);
     assert_eq!(y, 6);
 
-    let x = vec!(1, 2, 3);
+    let x = vec![1, 2, 3];
     let y = x.sum_();
     println!("y=={}", y);
     assert_eq!(y, 6);

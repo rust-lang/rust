@@ -2277,7 +2277,7 @@ impl<'a> State<'a> {
                     Ok(())
                 }));
 
-                let mut options = vec!();
+                let mut options = vec![];
                 if a.volatile {
                     options.push("volatile");
                 }

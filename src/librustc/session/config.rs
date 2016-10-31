@@ -715,7 +715,7 @@ macro_rules! options {
                     true
                 }
                 v => {
-                    let mut passes = vec!();
+                    let mut passes = vec![];
                     if parse_list(&mut passes, v) {
                         *slot = SomePasses(passes);
                         true
@@ -1293,7 +1293,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
-    let mut lint_opts = vec!();
+    let mut lint_opts = vec![];
     let mut describe_lints = false;
 
     for &level in &[lint::Allow, lint::Warn, lint::Deny, lint::Forbid] {

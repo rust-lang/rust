@@ -275,7 +275,7 @@ impl<'a, 'b, 'gcx, 'tcx> AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
         AssociatedTypeNormalizer {
             selcx: selcx,
             cause: cause,
-            obligations: vec!(),
+            obligations: vec![],
             depth: depth,
         }
     }
@@ -396,7 +396,7 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                 cause, depth + 1, projection.to_predicate());
             Normalized {
                 value: ty_var,
-                obligations: vec!(obligation)
+                obligations: vec![obligation]
             }
         })
 }
@@ -545,7 +545,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                    projected_ty);
             let result = Normalized {
                 value: projected_ty,
-                obligations: vec!()
+                obligations: vec![]
             };
             infcx.projection_cache.borrow_mut()
                                   .complete(projection_ty, &result, true);
@@ -604,7 +604,7 @@ fn normalize_to_error<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tc
     let new_value = selcx.infcx().next_ty_var();
     Normalized {
         value: new_value,
-        obligations: vec!(trait_obligation)
+        obligations: vec![trait_obligation]
     }
 }
 

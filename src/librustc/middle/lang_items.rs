@@ -59,7 +59,7 @@ impl LanguageItems {
         fn foo(_: LangItem) -> Option<DefId> { None }
 
         LanguageItems {
-            items: vec!($(foo($variant)),*),
+            items: vec![$(foo($variant)),*],
             missing: Vec::new(),
         }
     }

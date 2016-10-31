@@ -73,7 +73,7 @@ fn main() {
 pub fn parse_config(args: Vec<String> ) -> Config {
 
     let groups : Vec<getopts::OptGroup> =
-        vec!(reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
+        vec![reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
           reqopt("", "run-lib-path", "path to target shared libraries", "PATH"),
           reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH"),
           reqopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH"),
@@ -111,7 +111,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           reqopt("", "llvm-components", "list of LLVM components built in", "LIST"),
           reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS"),
           optopt("", "nodejs", "the name of nodejs", "PATH"),
-          optflag("h", "help", "show this message"));
+          optflag("h", "help", "show this message")];
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
