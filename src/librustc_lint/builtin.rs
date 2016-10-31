@@ -1189,7 +1189,7 @@ impl LateLintPass for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
         use syntax::abi::Abi::RustIntrinsic;
 
-        let msg = "mutating transmuted &mut T from &T may cause undefined behavior,\
+        let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
                    consider instead using an UnsafeCell";
         match get_transmute_from_to(cx, expr) {
             Some((&ty::TyRef(_, from_mt), &ty::TyRef(_, to_mt))) => {
