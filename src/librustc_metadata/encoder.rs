@@ -13,7 +13,7 @@ use index::Index;
 use schema::*;
 
 use rustc::middle::cstore::{InlinedItemRef, LinkMeta};
-use rustc::middle::cstore::{LinkagePreference, NativeLibraryKind};
+use rustc::middle::cstore::{LinkagePreference, NativeLibrary};
 use rustc::hir::def;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId};
 use rustc::middle::dependency_format::Linkage;
@@ -1134,14 +1134,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
          self.lazy_seq_ref(&tcx.lang_items.missing))
     }
 
-    fn encode_native_libraries(&mut self) -> LazySeq<(NativeLibraryKind, String)> {
+    fn encode_native_libraries(&mut self) -> LazySeq<NativeLibrary> {
         let used_libraries = self.tcx.sess.cstore.used_libraries();
-        self.lazy_seq(used_libraries.into_iter().filter_map(|(lib, kind)| {
-            match kind {
-                cstore::NativeStatic => None, // these libraries are not propagated
-                cstore::NativeFramework | cstore::NativeUnknown => Some((kind, lib)),
-            }
-        }))
+        self.lazy_seq(used_libraries)
     }
 
     fn encode_codemap(&mut self) -> LazySeq<syntax_pos::FileMap> {

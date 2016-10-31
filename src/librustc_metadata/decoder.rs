@@ -11,7 +11,7 @@
 // Decoding metadata from a single crate's metadata
 
 use astencode::decode_inlined_item;
-use cstore::{self, CrateMetadata, MetadataBlob, NativeLibraryKind};
+use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use index::Index;
 use schema::*;
 
@@ -980,7 +980,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
 
-    pub fn get_native_libraries(&self) -> Vec<(NativeLibraryKind, String)> {
+    pub fn get_native_libraries(&self) -> Vec<NativeLibrary> {
         self.root.native_libraries.decode(self).collect()
     }
 
