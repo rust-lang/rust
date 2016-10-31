@@ -12,18 +12,27 @@
 
 use collections::BTreeMap;
 use ptr;
+use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
 pub type Key = usize;
 
 type Dtor = unsafe extern fn(*mut u8);
 
-#[thread_local]
-static mut NEXT_KEY: Key = 0;
+static NEXT_KEY: AtomicUsize = ATOMIC_USIZE_INIT;
+
+static mut KEYS: *mut BTreeMap<Key, Option<Dtor>> = ptr::null_mut();
 
 #[thread_local]
-static mut LOCALS: *mut BTreeMap<Key, (*mut u8, Option<Dtor>)> = ptr::null_mut();
+static mut LOCALS: *mut BTreeMap<Key, *mut u8> = ptr::null_mut();
 
-unsafe fn locals() -> &'static mut BTreeMap<Key, (*mut u8, Option<Dtor>)> {
+unsafe fn keys() -> &'static mut BTreeMap<Key, Option<Dtor>> {
+    if KEYS == ptr::null_mut() {
+        KEYS = Box::into_raw(Box::new(BTreeMap::new()));
+    }
+    &mut *KEYS
+}
+
+unsafe fn locals() -> &'static mut BTreeMap<Key, *mut u8> {
     if LOCALS == ptr::null_mut() {
         LOCALS = Box::into_raw(Box::new(BTreeMap::new()));
     }
@@ -32,26 +41,26 @@ unsafe fn locals() -> &'static mut BTreeMap<Key, (*mut u8, Option<Dtor>)> {
 
 #[inline]
 pub unsafe fn create(dtor: Option<Dtor>) -> Key {
-    let key = NEXT_KEY;
-    NEXT_KEY += 1;
-    locals().insert(key, (0 as *mut u8, dtor));
+    let key = NEXT_KEY.fetch_add(1, Ordering::SeqCst);
+    keys().insert(key, dtor);
     key
 }
 
 #[inline]
-pub unsafe fn set(key: Key, value: *mut u8) {
-    locals().get_mut(&key).unwrap().0 = value;
+pub unsafe fn get(key: Key) -> *mut u8 {
+    if let Some(&entry) = locals().get(&key) {
+        entry
+    } else {
+        ptr::null_mut()
+    }
 }
 
 #[inline]
-pub unsafe fn get(key: Key) -> *mut u8 {
-    locals()[&key].0
+pub unsafe fn set(key: Key, value: *mut u8) {
+    locals().insert(key, value);
 }
 
 #[inline]
 pub unsafe fn destroy(key: Key) {
-    let (value, dtor) = locals().remove(&key).unwrap();
-    if let Some(dtor_fn) = dtor {
-        dtor_fn(value);
-    }
+    keys().remove(&key);
 }
