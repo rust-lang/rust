@@ -17,7 +17,7 @@ use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::DebugInfoLevel;
 use ty::tls;
-use util::nodemap::{NodeMap, FnvHashMap};
+use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
 use util::common::duration_to_secs_str;
 use mir::transform as mir_pass;
 
@@ -75,6 +75,10 @@ pub struct Session {
     pub working_dir: PathBuf,
     pub lint_store: RefCell<lint::LintStore>,
     pub lints: RefCell<NodeMap<Vec<(lint::LintId, Span, String)>>>,
+    /// Set of (LintId, span, message) tuples tracking lint (sub)diagnostics
+    /// that have been set once, but should not be set again, in order to avoid
+    /// redundantly verbose output (Issue #24690).
+    pub one_time_diagnostics: RefCell<FnvHashSet<(lint::LintId, Span, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub mir_passes: RefCell<mir_pass::Passes>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
@@ -288,6 +292,35 @@ impl Session {
     pub fn diagnostic<'a>(&'a self) -> &'a errors::Handler {
         &self.parse_sess.span_diagnostic
     }
+
+    /// Analogous to calling `.span_note` on the given DiagnosticBuilder, but
+    /// deduplicates on lint ID, span, and message for this `Session` if we're
+    /// not outputting in JSON mode.
+    //
+    // FIXME: if the need arises for one-time diagnostics other than
+    // `span_note`, we almost certainly want to generalize this
+    // "check/insert-into the one-time diagnostics map, then set message if
+    // it's not already there" code to accomodate all of them
+    pub fn diag_span_note_once<'a, 'b>(&'a self,
+                                       diag_builder: &'b mut DiagnosticBuilder<'a>,
+                                       lint: &'static lint::Lint, span: Span, message: &str) {
+        match self.opts.error_format {
+            // when outputting JSON for tool consumption, the tool might want
+            // the duplicates
+            config::ErrorOutputType::Json => {
+                diag_builder.span_note(span, &message);
+            },
+            _ => {
+                let lint_id = lint::LintId::of(lint);
+                let id_span_message = (lint_id, span, message.to_owned());
+                let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
+                if fresh {
+                    diag_builder.span_note(span, &message);
+                }
+            }
+        }
+    }
+
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
         self.parse_sess.codemap()
     }
@@ -561,6 +594,7 @@ pub fn build_session_(sopts: config::Options,
         working_dir: env::current_dir().unwrap(),
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(NodeMap()),
+        one_time_diagnostics: RefCell::new(FnvHashSet()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
         mir_passes: RefCell::new(mir_pass::Passes::new()),
         plugin_attributes: RefCell::new(Vec::new()),
