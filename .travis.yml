@@ -15,7 +15,7 @@ before_install:
 script:
   - docker run -v `pwd`:/build rust
     sh -c "
-      ./configure --enable-rustbuild --llvm-root=/usr/lib/llvm-3.7 --enable-quiet-tests &&
+      ./configure --enable-vendor --enable-rustbuild --llvm-root=/usr/lib/llvm-3.7 --enable-quiet-tests &&
       make tidy &&
       make check -j4
     "

@@ -27,10 +27,6 @@ num_cpus = "0.2"
 toml = "0.1"
 getopts = "0.2"
 rustc-serialize = "0.3"
-gcc = "0.3.36"
+gcc = "0.3.38"
 libc = "0.2"
 md5 = "0.1"
-
-[target.'cfg(windows)'.dependencies]
-winapi = "0.2"
-kernel32-sys = "0.2"
