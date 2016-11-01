@@ -114,7 +114,6 @@ mod derive_registrar;
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
 
-#[inline]
 fn abort_msg(err_count: usize) -> Cow<'static, str> {
     match err_count {
         0 => "aborting with no errors (maybe a bug?)".into(),
