@@ -10,21 +10,13 @@
 
 // compile-flags: -Z parse-only -Z continue-parse-after-error
 
-fn equal1<T>(_: &T, _: &T) -> bool where {
-//~^ ERROR a `where` clause must have at least one predicate in it
-    true
-}
+trait T {}
 
-fn equal2<T>(_: &T, _: &T) -> bool where T: {
+type S = for<'a> T+;
 //~^ ERROR at least one type parameter bound must be specified
-    true
-}
 
-fn foo2<'a>() where 'a: {}
-//~^ ERROR each predicate in a `where` clause must have at least one bound
-
-fn foo1<'a>() where 'a {}
-//~^ ERROR expected `:`, found `{`
+fn foo<T:>(x: T) -> T { x }
+//~^ ERROR at least one type parameter bound must be specified
 
 fn main() {
 }
