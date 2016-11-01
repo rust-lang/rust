@@ -154,13 +154,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if no_argument_methods.len() > 0 {
             no_argument_methods.iter()
                                .take(5)
-                               .map(|method| format!("{}", method.name()))
+                               .map(|method| format!(".{}()", method.name()))
                                .collect::<Vec<String>>()
                                .join("\n - ")
         } else {
             methods.iter()
                    .take(5)
-                   .map(|method| format!("{}", method.name()))
+                   .map(|method| format!(".{}()", method.name()))
                    .collect::<Vec<String>>()
                    .join("\n - ")
         }
