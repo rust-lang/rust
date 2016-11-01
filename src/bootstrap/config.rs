@@ -44,6 +44,7 @@ pub struct Config {
     pub submodules: bool,
     pub compiler_docs: bool,
     pub docs: bool,
+    pub vendor: bool,
     pub target_config: HashMap<String, Target>,
 
     // llvm codegen options
@@ -126,6 +127,7 @@ struct Build {
     docs: Option<bool>,
     submodules: Option<bool>,
     gdb: Option<String>,
+    vendor: Option<bool>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -234,6 +236,7 @@ impl Config {
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
+        set(&mut config.vendor, build.vendor);
 
         if let Some(ref llvm) = toml.llvm {
             set(&mut config.ccache, llvm.ccache);
@@ -347,6 +350,7 @@ impl Config {
                 ("LOCAL_REBUILD", self.local_rebuild),
                 ("NINJA", self.ninja),
                 ("CODEGEN_TESTS", self.codegen_tests),
+                ("VENDOR", self.vendor),
             }
 
             match key {
