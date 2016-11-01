@@ -183,3 +183,9 @@ pub fn test_iter_mut() {
     }
     assert_eq!(err, Err("error"));
 }
+
+#[test]
+pub fn test_unwrap_or_default() {
+    assert_eq!(op1().unwrap_or_default(), 666);
+    assert_eq!(op2().unwrap_or_default(), 0);
+}
