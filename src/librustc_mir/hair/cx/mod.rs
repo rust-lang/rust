@@ -23,7 +23,6 @@ use rustc_const_eval as const_eval;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::FnKind;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
@@ -51,11 +50,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             MirSource::Static(..) => hir::Constness::Const,
             MirSource::Fn(id) => {
                 let fn_like = FnLikeNode::from_node(infcx.tcx.map.get(id));
-                match fn_like.map(|f| f.kind()) {
-                    Some(FnKind::ItemFn(_, _, _, c, ..)) => c,
-                    Some(FnKind::Method(_, m, ..)) => m.constness,
-                    _ => hir::Constness::NotConst
-                }
+                fn_like.map_or(hir::Constness::NotConst, |f| f.constness())
             }
             MirSource::Promoted(..) => bug!()
         };

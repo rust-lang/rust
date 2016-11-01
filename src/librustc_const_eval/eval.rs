@@ -17,7 +17,7 @@ use self::EvalHint::*;
 
 use rustc::hir::map as ast_map;
 use rustc::hir::map::blocks::FnLikeNode;
-use rustc::middle::cstore::InlinedItem;
+use rustc::middle::cstore::{InlinedItem, InlinedItemKind};
 use rustc::traits;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -141,33 +141,9 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         let mut used_substs = false;
         let expr_ty = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-            Some((&InlinedItem::Item(_, ref item), _)) => match item.node {
-                hir::ItemConst(ref ty, ref const_expr) => {
-                    Some((&**const_expr, tcx.ast_ty_to_prim_ty(ty)))
-                },
-                _ => None
-            },
-            Some((&InlinedItem::TraitItem(trait_id, ref ti), _)) => match ti.node {
-                hir::ConstTraitItem(..) => {
-                    used_substs = true;
-                    if let Some(substs) = substs {
-                        // As mentioned in the comments above for in-crate
-                        // constants, we only try to find the expression for
-                        // a trait-associated const if the caller gives us
-                        // the substitutions for the reference to it.
-                        resolve_trait_associated_const(tcx, ti, trait_id, substs)
-                    } else {
-                        None
-                    }
-                }
-                _ => None
-            },
-            Some((&InlinedItem::ImplItem(_, ref ii), _)) => match ii.node {
-                hir::ImplItemKind::Const(ref ty, ref expr) => {
-                    Some((&**expr, tcx.ast_ty_to_prim_ty(ty)))
-                },
-                _ => None
-            },
+            Some((&InlinedItem { body: ref const_expr, kind: InlinedItemKind::Const(ref ty), .. }, _)) => {
+                Some((&**const_expr, tcx.ast_ty_to_prim_ty(ty)))
+            }
             _ => None
         };
         // If we used the substitutions, particularly to choose an impl
@@ -197,8 +173,7 @@ fn inline_const_fn_from_external_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let fn_id = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-        Some((&InlinedItem::Item(_, ref item), _)) => Some(item.id),
-        Some((&InlinedItem::ImplItem(_, ref item), _)) => Some(item.id),
+        Some((&InlinedItem { kind: InlinedItemKind::Fn(_), .. }, node_id)) => Some(node_id),
         _ => None
     };
     tcx.extern_const_fns.borrow_mut().insert(def_id,
@@ -224,18 +199,10 @@ pub fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
         None => return None
     };
 
-    match fn_like.kind() {
-        FnKind::ItemFn(_, _, _, hir::Constness::Const, ..) => {
-            Some(fn_like)
-        }
-        FnKind::Method(_, m, ..) => {
-            if m.constness == hir::Constness::Const {
-                Some(fn_like)
-            } else {
-                None
-            }
-        }
-        _ => None
+    if fn_like.constness() == hir::Constness::Const {
+        Some(fn_like)
+    } else {
+        None
     }
 }
 
