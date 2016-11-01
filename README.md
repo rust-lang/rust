@@ -182,7 +182,7 @@ You can check out this great service at [clippy.bashy.io](https://clippy.bashy.i
 
 ## Lints
 
-There are 176 lints included in this crate:
+There are 177 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -238,6 +238,7 @@ name                                                                            
 [for_kv_map](https://github.com/Manishearth/rust-clippy/wiki#for_kv_map)                                               | warn    | looping on a map using `iter` when `keys` or `values` would do
 [for_loop_over_option](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option)                           | warn    | for-looping over an `Option`, which is more clearly expressed as an `if let`
 [for_loop_over_result](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_result)                           | warn    | for-looping over a `Result`, which is more clearly expressed as an `if let`
+[get_unwrap](https://github.com/Manishearth/rust-clippy/wiki#get_unwrap)                                               | warn    | using `.get().unwrap()` or `.get_mut().unwrap()` when using `[]` would work instead
 [identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                                             | warn    | using identity operations, e.g. `x + 0` or `y / 1`
 [if_let_redundant_pattern_matching](https://github.com/Manishearth/rust-clippy/wiki#if_let_redundant_pattern_matching) | warn    | use the proper utility function avoiding an `if let`
 [if_let_some_result](https://github.com/Manishearth/rust-clippy/wiki#if_let_some_result)                               | warn    | usage of `ok()` in `if let Some(pat)` statements is unnecessary, match on `Ok(pat)` instead
