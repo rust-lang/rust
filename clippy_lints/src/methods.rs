@@ -476,7 +476,7 @@ declare_lint! {
 /// ```rust
 /// let some_vec = vec![0, 1, 2, 3];
 /// let last = some_vec.get(3).unwrap();
-/// some_vec.get_mut(0).unwrap() = 1;
+/// *some_vec.get_mut(0).unwrap() = 1;
 /// ```
 /// The correct use would be:
 /// ```rust
@@ -519,6 +519,7 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
+    #[allow(cyclomatic_complexity)]
     fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
         if in_macro(cx, expr.span) {
             return;
@@ -527,7 +528,12 @@ impl LateLintPass for Pass {
         match expr.node {
             hir::ExprMethodCall(name, _, ref args) => {
                 // Chain calls
-                if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
+                // GET_UNWRAP needs to be checked before general `UNWRAP` lints
+                if let Some(arglists) = method_chain_args(expr, &["get", "unwrap"]) {
+                lint_get_unwrap(cx, expr, arglists[0], false);
+                } else if let Some(arglists) = method_chain_args(expr, &["get_mut", "unwrap"]) {
+                    lint_get_unwrap(cx, expr, arglists[0], true);
+                } else if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
                     lint_unwrap(cx, expr, arglists[0]);
                 } else if let Some(arglists) = method_chain_args(expr, &["ok", "expect"]) {
                     lint_ok_expect(cx, expr, arglists[0]);
@@ -559,10 +565,6 @@ impl LateLintPass for Pass {
                     lint_iter_nth(cx, expr, arglists[0], false);
                 } else if let Some(arglists) = method_chain_args(expr, &["iter_mut", "nth"]) {
                     lint_iter_nth(cx, expr, arglists[0], true);
-                } else if let Some(arglists) = method_chain_args(expr, &["get", "unwrap"]) {
-                    lint_get_unwrap(cx, expr, arglists[0], false);
-                } else if let Some(arglists) = method_chain_args(expr, &["get_mut", "unwrap"]) {
-                    lint_get_unwrap(cx, expr, arglists[0], true);
                 } else if method_chain_args(expr, &["skip", "next"]).is_some() {
                     lint_iter_skip_next(cx, expr);
                 }
