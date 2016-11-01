@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
+// ignore-pretty issue #37195
 
 mod mod_dir_simple {
     #[path = "test.rs"]
@@ -17,4 +17,15 @@ mod mod_dir_simple {
 
 pub fn main() {
     assert_eq!(mod_dir_simple::syrup::foo(), 10);
+
+    #[path = "auxiliary"]
+    mod foo {
+        mod two_macros;
+    }
+
+    #[path = "auxiliary"]
+    mod bar {
+        macro_rules! m { () => { mod two_macros; } }
+        m!();
+    }
 }

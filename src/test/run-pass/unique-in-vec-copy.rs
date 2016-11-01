@@ -13,7 +13,7 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let mut a: Vec<Box<_>> = vec!(box 10);
+    let mut a: Vec<Box<_>> = vec![box 10];
     let b = a.clone();
 
     assert_eq!(*a[0], 10);

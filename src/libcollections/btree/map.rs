@@ -136,6 +136,7 @@ pub struct BTreeMap<K, V> {
     length: usize,
 }
 
+#[stable(feature = "btree_drop", since = "1.7.0")]
 impl<K, V> Drop for BTreeMap<K, V> {
     #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
@@ -146,6 +147,7 @@ impl<K, V> Drop for BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
     fn clone(&self) -> BTreeMap<K, V> {
         fn clone_subtree<K: Clone, V: Clone>(node: node::NodeRef<marker::Immut,
@@ -1125,6 +1127,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> IntoIterator for &'a BTreeMap<K, V> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
@@ -1134,6 +1137,7 @@ impl<'a, K: 'a, V: 'a> IntoIterator for &'a BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
@@ -1154,6 +1158,7 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a V)> {
         if self.length == 0 {
@@ -1165,12 +1170,14 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> ExactSizeIterator for Iter<'a, K, V> {
     fn len(&self) -> usize {
         self.length
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Clone for Iter<'a, K, V> {
     fn clone(&self) -> Iter<'a, K, V> {
         Iter {
@@ -1180,6 +1187,7 @@ impl<'a, K, V> Clone for Iter<'a, K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> IntoIterator for &'a mut BTreeMap<K, V> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
@@ -1189,6 +1197,7 @@ impl<'a, K: 'a, V: 'a> IntoIterator for &'a mut BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
@@ -1206,6 +1215,7 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> DoubleEndedIterator for IterMut<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
         if self.length == 0 {
@@ -1217,6 +1227,7 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for IterMut<'a, K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> ExactSizeIterator for IterMut<'a, K, V> {
     fn len(&self) -> usize {
         self.length
@@ -1226,6 +1237,7 @@ impl<'a, K: 'a, V: 'a> ExactSizeIterator for IterMut<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> IntoIterator for BTreeMap<K, V> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
@@ -1244,6 +1256,7 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "btree_drop", since = "1.7.0")]
 impl<K, V> Drop for IntoIter<K, V> {
     fn drop(&mut self) {
         for _ in &mut *self {
@@ -1260,6 +1273,7 @@ impl<K, V> Drop for IntoIter<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Iterator for IntoIter<K, V> {
     type Item = (K, V);
 
@@ -1304,6 +1318,7 @@ impl<K, V> Iterator for IntoIter<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
     fn next_back(&mut self) -> Option<(K, V)> {
         if self.length == 0 {
@@ -1342,6 +1357,7 @@ impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for IntoIter<K, V> {
     fn len(&self) -> usize {
         self.length
@@ -1351,6 +1367,7 @@ impl<K, V> ExactSizeIterator for IntoIter<K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<K, V> FusedIterator for IntoIter<K, V> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Keys<'a, K, V> {
     type Item = &'a K;
 
@@ -1363,12 +1380,14 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> DoubleEndedIterator for Keys<'a, K, V> {
     fn next_back(&mut self) -> Option<&'a K> {
         self.inner.next_back().map(|(k, _)| k)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
     fn len(&self) -> usize {
         self.inner.len()
@@ -1378,12 +1397,14 @@ impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for Keys<'a, K, V> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Clone for Keys<'a, K, V> {
     fn clone(&self) -> Keys<'a, K, V> {
         Keys { inner: self.inner.clone() }
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
@@ -1396,12 +1417,14 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
     fn next_back(&mut self) -> Option<&'a V> {
         self.inner.next_back().map(|(_, v)| v)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
     fn len(&self) -> usize {
         self.inner.len()
@@ -1411,6 +1434,7 @@ impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for Values<'a, K, V> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Clone for Values<'a, K, V> {
     fn clone(&self) -> Values<'a, K, V> {
         Values { inner: self.inner.clone() }
@@ -1635,6 +1659,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> BTreeMap<K, V> {
         let mut map = BTreeMap::new();
@@ -1643,6 +1668,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
@@ -1652,12 +1678,14 @@ impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for BTreeMap<K, V> {
     fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Hash, V: Hash> Hash for BTreeMap<K, V> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for elt in self {
@@ -1666,6 +1694,7 @@ impl<K: Hash, V: Hash> Hash for BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> Default for BTreeMap<K, V> {
     /// Creates an empty `BTreeMap<K, V>`.
     fn default() -> BTreeMap<K, V> {
@@ -1673,14 +1702,17 @@ impl<K: Ord, V> Default for BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K: PartialEq, V: PartialEq> PartialEq for BTreeMap<K, V> {
     fn eq(&self, other: &BTreeMap<K, V>) -> bool {
         self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Eq, V: Eq> Eq for BTreeMap<K, V> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K: PartialOrd, V: PartialOrd> PartialOrd for BTreeMap<K, V> {
     #[inline]
     fn partial_cmp(&self, other: &BTreeMap<K, V>) -> Option<Ordering> {
@@ -1688,6 +1720,7 @@ impl<K: PartialOrd, V: PartialOrd> PartialOrd for BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
     #[inline]
     fn cmp(&self, other: &BTreeMap<K, V>) -> Ordering {
@@ -1695,12 +1728,14 @@ impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for BTreeMap<K, V>
     where K: Borrow<Q>,
           Q: Ord

@@ -13,7 +13,10 @@ use target::{Target, TargetResult};
 pub fn target() -> TargetResult {
     let mut base = super::linux_base::opts();
     base.pre_link_args.push("-m32".to_string());
-    base.max_atomic_width = 32;
+    base.max_atomic_width = Some(32);
+
+    // see #36994
+    base.exe_allocation_crate = "alloc_system".to_string();
 
     Ok(Target {
         llvm_target: "powerpc-unknown-linux-gnu".to_string(),

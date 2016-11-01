@@ -20,24 +20,23 @@ use build_helper::output;
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
 
-    let target = env::var("TARGET").unwrap();
+    let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config = env::var_os("LLVM_CONFIG")
-                          .map(PathBuf::from)
-                          .unwrap_or_else(|| {
-                              if let Some(dir) = env::var_os("CARGO_TARGET_DIR")
-                                      .map(PathBuf::from) {
-                                  let to_test = dir.parent()
-                                                   .unwrap()
-                                                   .parent()
-                                                   .unwrap()
-                                                   .join(&target)
-                                                   .join("llvm/bin/llvm-config");
-                                  if Command::new(&to_test).output().is_ok() {
-                                      return to_test;
-                                  }
-                              }
-                              PathBuf::from("llvm-config")
-                          });
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            if let Some(dir) = env::var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
+                let to_test = dir.parent()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .join(&target)
+                    .join("llvm/bin/llvm-config");
+                if Command::new(&to_test).output().is_ok() {
+                    return to_test;
+                }
+            }
+            PathBuf::from("llvm-config")
+        });
 
     println!("cargo:rerun-if-changed={}", llvm_config.display());
 
@@ -62,11 +61,12 @@ fn main() {
     // can't trust all the output of llvm-config becaues it might be targeted
     // for the host rather than the target. As a result a bunch of blocks below
     // are gated on `if !is_crossed`
-    let target = env::var("TARGET").unwrap();
-    let host = env::var("HOST").unwrap();
+    let target = env::var("TARGET").expect("TARGET was not set");
+    let host = env::var("HOST").expect("HOST was not set");
     let is_crossed = target != host;
 
-    let optional_components = ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl", "systemz"];
+    let optional_components =
+        ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl", "systemz", "jsbackend"];
 
     // FIXME: surely we don't need all these components, right? Stuff like mcjit
     //        or interpreter the compiler itself never uses.
@@ -148,7 +148,7 @@ fn main() {
             // that off
             lib.trim_right_matches(".lib")
         } else {
-            continue
+            continue;
         };
 
         // Don't need or want this library, but LLVM's CMake build system
@@ -157,7 +157,7 @@ fn main() {
         // library and it otherwise may just pull in extra dependencies on
         // libedit which we don't want
         if name == "LLVMLineEditor" {
-            continue
+            continue;
         }
 
         let kind = if name.starts_with("LLVM") {
@@ -178,7 +178,7 @@ fn main() {
     cmd.arg("--ldflags");
     for lib in output(&mut cmd).split_whitespace() {
         if lib.starts_with("-LIBPATH:") {
-                println!("cargo:rustc-link-search=native={}", &lib[9..]);
+            println!("cargo:rustc-link-search=native={}", &lib[9..]);
         } else if is_crossed {
             if lib.starts_with("-L") {
                 println!("cargo:rustc-link-search=native={}",

@@ -26,7 +26,7 @@
 #![feature(staged_api)]
 #![feature(associated_consts)]
 #![feature(nonzero)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
@@ -50,8 +50,6 @@ pub use borrowck::{AnalysisData, BorrowckCtxt, ElaborateDrops};
 pub mod diagnostics;
 
 mod borrowck;
-mod bitslice;
-mod indexed_set;
 
 pub mod graphviz;
 

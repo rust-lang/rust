@@ -26,7 +26,7 @@ multiple-exit (SEME) region in the control-flow graph.
 For now, we keep a mapping from each `CodeExtent` to its
 corresponding SEME region for later reference (see caveat in next
 paragraph). This is because region scopes are tied to
-them. Eventually, when we shift to non-lexical lifetimes, three should
+them. Eventually, when we shift to non-lexical lifetimes, there should
 be no need to remember this mapping.
 
 There is one additional wrinkle, actually, that I wanted to hide from
@@ -67,7 +67,7 @@ There are numerous "normal" ways to early exit a scope: `break`,
 early exit occurs, the method `exit_scope` is called. It is given the
 current point in execution where the early exit occurs, as well as the
 scope you want to branch to (note that all early exits from to some
-other enclosing scope). `exit_scope` will record thid exit point and
+other enclosing scope). `exit_scope` will record this exit point and
 also add all drops.
 
 Panics are handled in a similar fashion, except that a panic always
@@ -89,14 +89,12 @@ should go to.
 use build::{BlockAnd, BlockAndExtension, Builder, CFG, ScopeAuxiliary, ScopeId};
 use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
-use rustc::ty::subst::{Kind, Substs, Subst};
+use rustc::ty::subst::{Kind, Subst};
 use rustc::ty::{Ty, TyCtxt};
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use syntax_pos::Span;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::fnv::FnvHashMap;
-
-use std::iter;
 
 pub struct Scope<'tcx> {
     /// the scope-id within the scope_auxiliary
@@ -322,7 +320,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.diverge_cleanup();
         let scope = self.scopes.pop().unwrap();
         assert_eq!(scope.extent, extent);
-        unpack!(block = build_scope_drops(&mut self.cfg, &scope, &self.scopes, block));
+        unpack!(block = build_scope_drops(&mut self.cfg,
+                                          &scope,
+                                          &self.scopes,
+                                          block,
+                                          self.arg_count));
         self.scope_auxiliary[scope.id]
             .postdoms
             .push(self.cfg.current_location(block));
@@ -362,7 +364,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 scope.cached_exits.insert((target, extent), b);
                 b
             };
-            unpack!(block = build_scope_drops(&mut self.cfg, scope, rest, block));
+            unpack!(block = build_scope_drops(&mut self.cfg,
+                                              scope,
+                                              rest,
+                                              block,
+                                              self.arg_count));
             if let Some(ref free_data) = scope.free {
                 let next = self.cfg.start_new_block();
                 let free = build_free(self.hir.tcx(), &tmp, free_data, next);
@@ -454,7 +460,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         } else {
             // Only temps and vars need their storage dead.
             match *lvalue {
-                Lvalue::Temp(_) | Lvalue::Var(_) => DropKind::Storage,
+                Lvalue::Local(index) if index.index() > self.arg_count => DropKind::Storage,
                 _ => return
             }
         };
@@ -513,8 +519,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if let DropKind::Value { .. } = drop_kind {
                     scope.needs_cleanup = true;
                 }
+                let tcx = self.hir.tcx();
+                let extent_span = extent.span(&tcx.region_maps, &tcx.map).unwrap();
+                // Attribute scope exit drops to scope's closing brace
+                let scope_end = Span { lo: extent_span.hi, .. extent_span};
                 scope.drops.push(DropData {
-                    span: span,
+                    span: scope_end,
                     location: lvalue.clone(),
                     kind: drop_kind
                 });
@@ -671,7 +681,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                            scope: &Scope<'tcx>,
                            earlier_scopes: &[Scope<'tcx>],
-                           mut block: BasicBlock)
+                           mut block: BasicBlock,
+                           arg_count: usize)
                            -> BlockAnd<()> {
     let mut iter = scope.drops.iter().rev().peekable();
     while let Some(drop_data) = iter.next() {
@@ -703,7 +714,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
             DropKind::Storage => {
                 // Only temps and vars need their storage dead.
                 match drop_data.location {
-                    Lvalue::Temp(_) | Lvalue::Var(_) => {}
+                    Lvalue::Local(index) if index.index() > arg_count => {}
                     _ => continue
                 }
 
@@ -791,7 +802,7 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                               -> TerminatorKind<'tcx> {
     let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
                        .unwrap_or_else(|e| tcx.sess.fatal(&e));
-    let substs = Substs::new(tcx, iter::once(Kind::from(data.item_ty)));
+    let substs = tcx.intern_substs(&[Kind::from(data.item_ty)]);
     TerminatorKind::Call {
         func: Operand::Constant(Constant {
             span: data.span,

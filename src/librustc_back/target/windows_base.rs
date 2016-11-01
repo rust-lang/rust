@@ -26,7 +26,7 @@ pub fn opts() -> TargetOptions {
         no_default_libraries: true,
         is_like_windows: true,
         allows_weak_linkage: false,
-        pre_link_args: vec!(
+        pre_link_args: vec![
             // And here, we see obscure linker flags #45. On windows, it has been
             // found to be necessary to have this flag to compile liblibc.
             //
@@ -63,26 +63,26 @@ pub fn opts() -> TargetOptions {
 
             // Do not use the standard system startup files or libraries when linking
             "-nostdlib".to_string(),
-        ),
-        pre_link_objects_exe: vec!(
+        ],
+        pre_link_objects_exe: vec![
             "crt2.o".to_string(),    // mingw C runtime initialization for executables
             "rsbegin.o".to_string(), // Rust compiler runtime initialization, see rsbegin.rs
-        ),
-        pre_link_objects_dll: vec!(
+        ],
+        pre_link_objects_dll: vec![
             "dllcrt2.o".to_string(), // mingw C runtime initialization for dlls
             "rsbegin.o".to_string(),
-        ),
-        late_link_args: vec!(
+        ],
+        late_link_args: vec![
             "-lmingwex".to_string(),
             "-lmingw32".to_string(),
             "-lgcc".to_string(), // alas, mingw* libraries above depend on libgcc
             "-lmsvcrt".to_string(),
             "-luser32".to_string(),
             "-lkernel32".to_string(),
-        ),
-        post_link_objects: vec!(
+        ],
+        post_link_objects: vec![
             "rsend.o".to_string()
-        ),
+        ],
         custom_unwind_resume: true,
 
         .. Default::default()

@@ -21,7 +21,7 @@ impl<T> Pushable<T> for Vec<T> {
 }
 
 pub fn main() {
-    let mut v = vec!(1);
+    let mut v = vec![1];
     v.push_val(2);
     v.push_val(3);
     assert_eq!(v, [1, 2, 3]);

@@ -13,6 +13,8 @@
 use rustc::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use rustc::hir::def_id::DefIndex;
 use std::sync::Arc;
+use rustc_data_structures::fnv::FnvHashMap;
+use ich::Fingerprint;
 
 use super::directory::DefPathIndex;
 
@@ -59,7 +61,7 @@ pub struct SerializedHash {
 
     /// the hash as of previous compilation, computed by code in
     /// `hash` module
-    pub hash: u64,
+    pub hash: Fingerprint,
 }
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
@@ -93,6 +95,18 @@ pub struct SerializedMetadataHashes {
     /// a `DefPathIndex` that gets retracted to the current `DefId`
     /// (matching the one found in this structure).
     pub hashes: Vec<SerializedMetadataHash>,
+
+    /// For each DefIndex (as it occurs in SerializedMetadataHash), this
+    /// map stores the DefPathIndex (as it occurs in DefIdDirectory), so
+    /// that we can find the new DefId for a SerializedMetadataHash in a
+    /// subsequent compilation session.
+    ///
+    /// This map is only needed for running auto-tests using the
+    /// #[rustc_metadata_dirty] and #[rustc_metadata_clean] attributes, and
+    /// is only populated if -Z query-dep-graph is specified. It will be
+    /// empty otherwise. Importing crates are perfectly happy with just having
+    /// the DefIndex.
+    pub index_map: FnvHashMap<DefIndex, DefPathIndex>
 }
 
 /// The hash for some metadata that (when saving) will be exported
@@ -103,5 +117,5 @@ pub struct SerializedMetadataHash {
     pub def_index: DefIndex,
 
     /// the hash itself, computed by `calculate_item_hash`
-    pub hash: u64,
+    pub hash: Fingerprint,
 }

@@ -31,14 +31,15 @@ mod addr;
 mod tcp;
 mod udp;
 mod parser;
-#[cfg(test)] mod test;
+#[cfg(test)]
+mod test;
 
 /// Possible values which can be passed to the [`shutdown`] method of
 /// [`TcpStream`].
 ///
 /// [`shutdown`]: struct.TcpStream.html#method.shutdown
 /// [`TcpStream`]: struct.TcpStream.html
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Shutdown {
     /// Indicates that the reading portion of this stream/socket should be shut

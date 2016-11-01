@@ -39,7 +39,7 @@ fn main() {
     foo::<static_priv_by_default::m>();
     //~^ ERROR: enum `m` is private
     foo::<static_priv_by_default::n>();
-    //~^ ERROR: type `n` is private
+    //~^ ERROR: type alias `n` is private
 
     // public items in a private mod should be inaccessible
     static_priv_by_default::foo::a;

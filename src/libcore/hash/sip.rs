@@ -10,13 +10,21 @@
 
 //! An implementation of SipHash.
 
+#![allow(deprecated)]
+
 use marker::PhantomData;
 use ptr;
+use cmp;
+use mem;
 
 /// An implementation of SipHash 1-3.
 ///
+/// This is currently the default hashing function used by standard library
+/// (eg. `collections::HashMap` uses it by default).
+///
 /// See: https://131002.net/siphash/
 #[unstable(feature = "sip_hash_13", issue = "34767")]
+#[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 pub struct SipHasher13 {
     hasher: Hasher<Sip13Rounds>,
@@ -26,6 +34,7 @@ pub struct SipHasher13 {
 ///
 /// See: https://131002.net/siphash/
 #[unstable(feature = "sip_hash_13", issue = "34767")]
+#[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 pub struct SipHasher24 {
     hasher: Hasher<Sip24Rounds>,
@@ -34,9 +43,6 @@ pub struct SipHasher24 {
 /// An implementation of SipHash 2-4.
 ///
 /// See: https://131002.net/siphash/
-///
-/// This is currently the default hashing function used by standard library
-/// (eg. `collections::HashMap` uses it by default).
 ///
 /// SipHash is a general-purpose hashing function: it runs at a good
 /// speed (competitive with Spooky and City) and permits strong _keyed_
@@ -47,6 +53,7 @@ pub struct SipHasher24 {
 /// it is not intended for cryptographic purposes. As such, all
 /// cryptographic uses of this implementation are _strongly discouraged_.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 pub struct SipHasher(SipHasher24);
 
@@ -73,69 +80,67 @@ struct State {
     v3: u64,
 }
 
-// sadly, these macro definitions can't appear later,
-// because they're needed in the following defs;
-// this design could be improved.
-
-macro_rules! u8to64_le {
-    ($buf:expr, $i:expr) =>
-    ($buf[0+$i] as u64 |
-     ($buf[1+$i] as u64) << 8 |
-     ($buf[2+$i] as u64) << 16 |
-     ($buf[3+$i] as u64) << 24 |
-     ($buf[4+$i] as u64) << 32 |
-     ($buf[5+$i] as u64) << 40 |
-     ($buf[6+$i] as u64) << 48 |
-     ($buf[7+$i] as u64) << 56);
-    ($buf:expr, $i:expr, $len:expr) =>
-    ({
-        let mut t = 0;
-        let mut out = 0;
-        while t < $len {
-            out |= ($buf[t+$i] as u64) << t*8;
-            t += 1;
-        }
-        out
-    });
-}
-
-/// Load a full u64 word from a byte stream, in LE order. Use
-/// `copy_nonoverlapping` to let the compiler generate the most efficient way
-/// to load u64 from a possibly unaligned address.
-///
-/// Unsafe because: unchecked indexing at i..i+8
-#[inline]
-unsafe fn load_u64_le(buf: &[u8], i: usize) -> u64 {
-    debug_assert!(i + 8 <= buf.len());
-    let mut data = 0u64;
-    ptr::copy_nonoverlapping(buf.get_unchecked(i), &mut data as *mut _ as *mut u8, 8);
-    data.to_le()
-}
-
-macro_rules! rotl {
-    ($x:expr, $b:expr) =>
-    (($x << $b) | ($x >> (64_i32.wrapping_sub($b))))
-}
-
 macro_rules! compress {
     ($state:expr) => ({
         compress!($state.v0, $state.v1, $state.v2, $state.v3)
     });
     ($v0:expr, $v1:expr, $v2:expr, $v3:expr) =>
     ({
-        $v0 = $v0.wrapping_add($v1); $v1 = rotl!($v1, 13); $v1 ^= $v0;
-        $v0 = rotl!($v0, 32);
-        $v2 = $v2.wrapping_add($v3); $v3 = rotl!($v3, 16); $v3 ^= $v2;
-        $v0 = $v0.wrapping_add($v3); $v3 = rotl!($v3, 21); $v3 ^= $v0;
-        $v2 = $v2.wrapping_add($v1); $v1 = rotl!($v1, 17); $v1 ^= $v2;
-        $v2 = rotl!($v2, 32);
+        $v0 = $v0.wrapping_add($v1); $v1 = $v1.rotate_left(13); $v1 ^= $v0;
+        $v0 = $v0.rotate_left(32);
+        $v2 = $v2.wrapping_add($v3); $v3 = $v3.rotate_left(16); $v3 ^= $v2;
+        $v0 = $v0.wrapping_add($v3); $v3 = $v3.rotate_left(21); $v3 ^= $v0;
+        $v2 = $v2.wrapping_add($v1); $v1 = $v1.rotate_left(17); $v1 ^= $v2;
+        $v2 = $v2.rotate_left(32);
     });
+}
+
+/// Load an integer of the desired type from a byte stream, in LE order. Uses
+/// `copy_nonoverlapping` to let the compiler generate the most efficient way
+/// to load it from a possibly unaligned address.
+///
+/// Unsafe because: unchecked indexing at i..i+size_of(int_ty)
+macro_rules! load_int_le {
+    ($buf:expr, $i:expr, $int_ty:ident) =>
+    ({
+       debug_assert!($i + mem::size_of::<$int_ty>() <= $buf.len());
+       let mut data = 0 as $int_ty;
+       ptr::copy_nonoverlapping($buf.get_unchecked($i),
+                                &mut data as *mut _ as *mut u8,
+                                mem::size_of::<$int_ty>());
+       data.to_le()
+    });
+}
+
+/// Load an u64 using up to 7 bytes of a byte slice.
+///
+/// Unsafe because: unchecked indexing at start..start+len
+#[inline]
+unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
+    debug_assert!(len < 8);
+    let mut i = 0; // current byte index (from LSB) in the output u64
+    let mut out = 0;
+    if i + 3 < len {
+        out = load_int_le!(buf, start + i, u32) as u64;
+        i += 4;
+    }
+    if i + 1 < len {
+        out |= (load_int_le!(buf, start + i, u16) as u64) << (i * 8);
+        i += 2
+    }
+    if i < len {
+        out |= (*buf.get_unchecked(start + i) as u64) << (i * 8);
+        i += 1;
+    }
+    debug_assert_eq!(i, len);
+    out
 }
 
 impl SipHasher {
     /// Creates a new `SipHasher` with the two initial keys set to 0.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
     pub fn new() -> SipHasher {
         SipHasher::new_with_keys(0, 0)
     }
@@ -143,16 +148,17 @@ impl SipHasher {
     /// Creates a `SipHasher` that is keyed off the provided keys.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
         SipHasher(SipHasher24::new_with_keys(key0, key1))
     }
 }
 
-
 impl SipHasher13 {
     /// Creates a new `SipHasher13` with the two initial keys set to 0.
     #[inline]
     #[unstable(feature = "sip_hash_13", issue = "34767")]
+    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
     pub fn new() -> SipHasher13 {
         SipHasher13::new_with_keys(0, 0)
     }
@@ -160,6 +166,7 @@ impl SipHasher13 {
     /// Creates a `SipHasher13` that is keyed off the provided keys.
     #[inline]
     #[unstable(feature = "sip_hash_13", issue = "34767")]
+    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
         SipHasher13 {
             hasher: Hasher::new_with_keys(key0, key1)
@@ -171,6 +178,7 @@ impl SipHasher24 {
     /// Creates a new `SipHasher24` with the two initial keys set to 0.
     #[inline]
     #[unstable(feature = "sip_hash_13", issue = "34767")]
+    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
     pub fn new() -> SipHasher24 {
         SipHasher24::new_with_keys(0, 0)
     }
@@ -178,6 +186,7 @@ impl SipHasher24 {
     /// Creates a `SipHasher24` that is keyed off the provided keys.
     #[inline]
     #[unstable(feature = "sip_hash_13", issue = "34767")]
+    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher24 {
         SipHasher24 {
             hasher: Hasher::new_with_keys(key0, key1)
@@ -214,6 +223,37 @@ impl<S: Sip> Hasher<S> {
         self.state.v2 = self.k0 ^ 0x6c7967656e657261;
         self.state.v3 = self.k1 ^ 0x7465646279746573;
         self.ntail = 0;
+    }
+
+    // Specialized write function that is only valid for buffers with len <= 8.
+    // It's used to force inlining of write_u8 and write_usize, those would normally be inlined
+    // except for composite types (that includes slices and str hashing because of delimiter).
+    // Without this extra push the compiler is very reluctant to inline delimiter writes,
+    // degrading performance substantially for the most common use cases.
+    #[inline(always)]
+    fn short_write(&mut self, msg: &[u8]) {
+        debug_assert!(msg.len() <= 8);
+        let length = msg.len();
+        self.length += length;
+
+        let needed = 8 - self.ntail;
+        let fill = cmp::min(length, needed);
+        if fill == 8 {
+            self.tail = unsafe { load_int_le!(msg, 0, u64) };
+        } else {
+            self.tail |= unsafe { u8to64_le(msg, 0, fill) } << (8 * self.ntail);
+            if length < needed {
+                self.ntail += length;
+                return;
+            }
+        }
+        self.state.v3 ^= self.tail;
+        S::c_rounds(&mut self.state);
+        self.state.v0 ^= self.tail;
+
+        // Buffered tail is now flushed, process new input.
+        self.ntail = length - needed;
+        self.tail = unsafe { u8to64_le(msg, needed, self.ntail) };
     }
 }
 
@@ -257,6 +297,21 @@ impl super::Hasher for SipHasher24 {
 }
 
 impl<S: Sip> super::Hasher for Hasher<S> {
+    // see short_write comment for explanation
+    #[inline]
+    fn write_usize(&mut self, i: usize) {
+        let bytes = unsafe {
+            ::slice::from_raw_parts(&i as *const usize as *const u8, mem::size_of::<usize>())
+        };
+        self.short_write(bytes);
+    }
+
+    // see short_write comment for explanation
+    #[inline]
+    fn write_u8(&mut self, i: u8) {
+        self.short_write(&[i]);
+    }
+
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         let length = msg.len();
@@ -266,19 +321,16 @@ impl<S: Sip> super::Hasher for Hasher<S> {
 
         if self.ntail != 0 {
             needed = 8 - self.ntail;
+            self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << 8 * self.ntail;
             if length < needed {
-                self.tail |= u8to64_le!(msg, 0, length) << 8 * self.ntail;
                 self.ntail += length;
                 return
+            } else {
+                self.state.v3 ^= self.tail;
+                S::c_rounds(&mut self.state);
+                self.state.v0 ^= self.tail;
+                self.ntail = 0;
             }
-
-            let m = self.tail | u8to64_le!(msg, 0, needed) << 8 * self.ntail;
-
-            self.state.v3 ^= m;
-            S::c_rounds(&mut self.state);
-            self.state.v0 ^= m;
-
-            self.ntail = 0;
         }
 
         // Buffered tail is now flushed, process new input.
@@ -287,7 +339,7 @@ impl<S: Sip> super::Hasher for Hasher<S> {
 
         let mut i = needed;
         while i < len - left {
-            let mi = unsafe { load_u64_le(msg, i) };
+            let mi = unsafe { load_int_le!(msg, i, u64) };
 
             self.state.v3 ^= mi;
             S::c_rounds(&mut self.state);
@@ -296,7 +348,7 @@ impl<S: Sip> super::Hasher for Hasher<S> {
             i += 8;
         }
 
-        self.tail = u8to64_le!(msg, i, left);
+        self.tail = unsafe { u8to64_le(msg, i, left) };
         self.ntail = left;
     }
 

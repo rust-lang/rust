@@ -16,7 +16,7 @@ pub struct GslResult {
 
 impl GslResult {
     pub fn new() -> GslResult {
-        Result { //~ ERROR: `Result` does not name a struct or a struct variant
+        Result { //~ ERROR: expected struct, variant or union type, found enum `Result`
             val: 0f64,
             err: 0f64
         }

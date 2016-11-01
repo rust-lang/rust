@@ -8,7 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo { B { i: u32 } }
+#![feature(associated_consts)]
+
+enum Foo {}
+
+impl Foo {
+    const B: u8 = 0;
+}
 
 fn bar(foo: Foo) -> u32 {
     match foo {

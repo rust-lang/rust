@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::mir::repr as mir;
+use rustc::mir;
 
 use base;
 use common::{self, BlockAndBuilder};
@@ -30,7 +30,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         debug_loc.apply(bcx.fcx());
         match statement.kind {
             mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                if let Some(index) = self.mir.local_index(lvalue) {
+                if let mir::Lvalue::Local(index) = *lvalue {
                     match self.locals[index] {
                         LocalRef::Lvalue(tr_dest) => {
                             self.trans_rvalue(bcx, tr_dest, rvalue, debug_loc)
@@ -62,11 +62,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
             mir::StatementKind::SetDiscriminant{ref lvalue, variant_index} => {
                 let ty = self.monomorphized_lvalue_ty(lvalue);
-                let repr = adt::represent_type(bcx.ccx(), ty);
                 let lvalue_transed = self.trans_lvalue(&bcx, lvalue);
                 bcx.with_block(|bcx|
                     adt::trans_set_discr(bcx,
-                                         &repr,
+                                         ty,
                                         lvalue_transed.llval,
                                         Disr::from(variant_index))
                 );
@@ -78,6 +77,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::StatementKind::StorageDead(ref lvalue) => {
                 self.trans_storage_liveness(bcx, lvalue, base::Lifetime::End)
             }
+            mir::StatementKind::Nop => bcx,
         }
     }
 
@@ -86,7 +86,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                               lvalue: &mir::Lvalue<'tcx>,
                               intrinsic: base::Lifetime)
                               -> BlockAndBuilder<'bcx, 'tcx> {
-        if let Some(index) = self.mir.local_index(lvalue) {
+        if let mir::Lvalue::Local(index) = *lvalue {
             if let LocalRef::Lvalue(tr_lval) = self.locals[index] {
                 intrinsic.call(&bcx, tr_lval.llval);
             }

@@ -26,6 +26,7 @@ use CrateTranslation;
 use util::common::time;
 use util::fs::fix_windows_verbatim_for_gcc;
 use rustc::dep_graph::DepNode;
+use rustc::hir::def_id::CrateNum;
 use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
 use rustc_incremental::IncrementalHashesMap;
@@ -129,7 +130,7 @@ pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap,
                        -> LinkMeta {
     let r = LinkMeta {
         crate_name: name.to_owned(),
-        crate_hash: Svh::new(incremental_hashes_map[&DepNode::Krate]),
+        crate_hash: Svh::new(incremental_hashes_map[&DepNode::Krate].to_smaller_hash()),
     };
     info!("{:?}", r);
     return r;
@@ -238,7 +239,7 @@ pub fn invalid_output_for_target(sess: &Session,
     match (sess.target.target.options.dynamic_linking,
            sess.target.target.options.executables, crate_type) {
         (false, _, config::CrateTypeCdylib) |
-        (false, _, config::CrateTypeRustcMacro) |
+        (false, _, config::CrateTypeProcMacro) |
         (false, _, config::CrateTypeDylib) => true,
         (_, false, config::CrateTypeExecutable) => true,
         _ => false
@@ -262,7 +263,7 @@ pub fn filename_for_input(sess: &Session,
             outputs.out_directory.join(&format!("lib{}.rlib", libname))
         }
         config::CrateTypeCdylib |
-        config::CrateTypeRustcMacro |
+        config::CrateTypeProcMacro |
         config::CrateTypeDylib => {
             let (prefix, suffix) = (&sess.target.target.options.dll_prefix,
                                     &sess.target.target.options.dll_suffix);
@@ -288,18 +289,18 @@ pub fn filename_for_input(sess: &Session,
 }
 
 pub fn each_linked_rlib(sess: &Session,
-                        f: &mut FnMut(ast::CrateNum, &Path)) {
+                        f: &mut FnMut(CrateNum, &Path)) {
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic).into_iter();
     let fmts = sess.dependency_formats.borrow();
     let fmts = fmts.get(&config::CrateTypeExecutable)
                    .or_else(|| fmts.get(&config::CrateTypeStaticlib))
                    .or_else(|| fmts.get(&config::CrateTypeCdylib))
-                   .or_else(|| fmts.get(&config::CrateTypeRustcMacro));
+                   .or_else(|| fmts.get(&config::CrateTypeProcMacro));
     let fmts = fmts.unwrap_or_else(|| {
         bug!("could not find formats for rlibs")
     });
     for (cnum, path) in crates {
-        match fmts[cnum as usize - 1] {
+        match fmts[cnum.as_usize() - 1] {
             Linkage::NotLinked | Linkage::IncludedFromDylib => continue,
             _ => {}
         }
@@ -735,7 +736,7 @@ fn link_args(cmd: &mut Linker,
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.
     if crate_type == config::CrateTypeDylib ||
-       crate_type == config::CrateTypeRustcMacro {
+       crate_type == config::CrateTypeProcMacro {
         cmd.add_object(&outputs.with_extension("metadata.o"));
     }
 
@@ -753,7 +754,8 @@ fn link_args(cmd: &mut Linker,
         let empty_vec = Vec::new();
         let empty_str = String::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
-        let mut args = args.iter().chain(used_link_args.iter());
+        let more_args = &sess.opts.cg.link_arg;
+        let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
         let relocation_model = sess.opts.cg.relocation_model.as_ref()
                                    .unwrap_or(&empty_str);
         if (t.options.relocation_model == "pic" || *relocation_model == "pic")
@@ -843,6 +845,7 @@ fn link_args(cmd: &mut Linker,
     if let Some(ref args) = sess.opts.cg.link_args {
         cmd.args(args);
     }
+    cmd.args(&sess.opts.cg.link_arg);
     cmd.args(&used_link_args);
 }
 
@@ -933,7 +936,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
         let src = sess.cstore.used_crate_source(cnum);
-        match data[cnum as usize - 1] {
+        match data[cnum.as_usize() - 1] {
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
             _ if sess.cstore.is_compiler_builtins(cnum) => {
@@ -1003,7 +1006,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                         sess: &Session,
                         tmpdir: &Path,
                         crate_type: config::CrateType,
-                        cnum: ast::CrateNum) {
+                        cnum: CrateNum) {
         let src = sess.cstore.used_crate_source(cnum);
         let cratepath = &src.rlib.unwrap().0;
         if !sess.lto() && crate_type != config::CrateTypeDylib {

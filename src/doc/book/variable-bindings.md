@@ -161,7 +161,7 @@ Could not compile `hello_world`.
 
 Rust will not let us use a value that has not been initialized.
 
-Let take a minute to talk about this stuff we've added to `println!`.
+Let us take a minute to talk about this stuff we've added to `println!`.
 
 If you include two curly braces (`{}`, some call them moustaches...) in your
 string to print, Rust will interpret this as a request to interpolate some sort

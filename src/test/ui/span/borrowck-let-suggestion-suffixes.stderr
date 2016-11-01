@@ -1,0 +1,52 @@
+error: `young[..]` does not live long enough
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:52:1
+   |
+19 |     v2.push(&young[0]);      // statement 4
+   |              -------- borrow occurs here
+...
+52 | }
+   | ^ `young[..]` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: borrowed value does not live long enough
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:24:14
+   |
+24 |     v3.push(&'x');           // statement 6
+   |              ^^^ - temporary value only lives until here
+   |              |
+   |              temporary value created here
+...
+52 | }
+   | - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error: borrowed value does not live long enough
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:34:18
+   |
+34 |         v4.push(&'y');
+   |                  ^^^ - temporary value only lives until here
+   |                  |
+   |                  temporary value created here
+...
+40 |     }                       // (statement 7)
+   |     - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error: borrowed value does not live long enough
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:45:14
+   |
+45 |     v5.push(&'z');
+   |              ^^^ - temporary value only lives until here
+   |              |
+   |              temporary value created here
+...
+52 | }
+   | - temporary value needs to live until here
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error: aborting due to 4 previous errors
+

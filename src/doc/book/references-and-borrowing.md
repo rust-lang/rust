@@ -86,7 +86,7 @@ fn main() {
         return v.iter().fold(0, |a, &b| a + b);
     }
     // Borrow two vectors and sum them.
-    // This kind of borrowing does not allow mutation to the borrowed.
+    // This kind of borrowing does not allow mutation through the borrowed reference.
     fn foo(v1: &Vec<i32>, v2: &Vec<i32>) -> i32 {
         // do stuff with v1 and v2
         let s1 = sum_vec(v1);
@@ -240,7 +240,7 @@ fn main() {
 
 In other words, the mutable borrow is held through the rest of our example. What
 we want is for the mutable borrow by `y` to end so that the resource can be
-returned to the owner, `x`. `x` can then provide a immutable borrow to `println!`.
+returned to the owner, `x`. `x` can then provide an immutable borrow to `println!`.
 In Rust, borrowing is tied to the scope that the borrow is valid for. And our
 scopes look like this:
 

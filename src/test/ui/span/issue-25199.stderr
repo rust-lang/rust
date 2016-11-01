@@ -1,0 +1,23 @@
+error: `container` does not live long enough
+  --> $DIR/issue-25199.rs:83:1
+   |
+80 |     let test = Test{test: &container};
+   |                            --------- borrow occurs here
+...
+83 | }
+   | ^ `container` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: `container` does not live long enough
+  --> $DIR/issue-25199.rs:83:1
+   |
+82 |     container.store(test);
+   |     --------- borrow occurs here
+83 | }
+   | ^ `container` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to 2 previous errors
+

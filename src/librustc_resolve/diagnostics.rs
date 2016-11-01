@@ -860,31 +860,6 @@ match (A, B, C) {
 ```
 "##,
 
-E0422: r##"
-You are trying to use an identifier that is either undefined or not a struct.
-
-Erroneous code example:
-
-``` compile_fail,E0422
-fn main () {
-    let x = Foo { x: 1, y: 2 };
-}
-```
-
-In this case, `Foo` is undefined, so it inherently isn't anything, and
-definitely not a struct.
-
-```compile_fail,E0422
-fn main () {
-    let foo = 1;
-    let x = foo { x: 1, y: 2 };
-}
-```
-
-In this case, `foo` is defined, but is not a struct, so Rust can't use it as
-one.
-"##,
-
 E0423: r##"
 A `struct` variant name was used like a function name.
 
@@ -1272,6 +1247,185 @@ impl Foo for i32 {}
 ```
 "##,
 
+E0466: r##"
+Macro import declarations were malformed.
+
+Erroneous code examples:
+
+```compile_fail,E0466
+#[macro_use(a_macro(another_macro))] // error: invalid import declaration
+extern crate core as some_crate;
+
+#[macro_use(i_want = "some_macros")] // error: invalid import declaration
+extern crate core as another_crate;
+```
+
+This is a syntax error at the level of attribute declarations. The proper
+syntax for macro imports is the following:
+
+```ignore
+// In some_crate:
+#[macro_export]
+macro_rules! get_tacos {
+    ...
+}
+
+#[macro_export]
+macro_rules! get_pimientos {
+    ...
+}
+
+// In your crate:
+#[macro_use(get_tacos, get_pimientos)] // It imports `get_tacos` and
+extern crate some_crate;               // `get_pimientos` macros from some_crate
+```
+
+If you would like to import all exported macros, write `macro_use` with no
+arguments.
+"##,
+
+E0467: r##"
+Macro reexport declarations were empty or malformed.
+
+Erroneous code examples:
+
+```compile_fail,E0467
+#[macro_reexport]                    // error: no macros listed for export
+extern crate core as macros_for_good;
+
+#[macro_reexport(fun_macro = "foo")] // error: not a macro identifier
+extern crate core as other_macros_for_good;
+```
+
+This is a syntax error at the level of attribute declarations.
+
+Currently, `macro_reexport` requires at least one macro name to be listed.
+Unlike `macro_use`, listing no names does not reexport all macros from the
+given crate.
+
+Decide which macros you would like to export and list them properly.
+
+These are proper reexport declarations:
+
+```ignore
+#[macro_reexport(some_macro, another_macro)]
+extern crate macros_for_good;
+```
+"##,
+
+E0468: r##"
+A non-root module attempts to import macros from another crate.
+
+Example of erroneous code:
+
+```compile_fail,E0468
+mod foo {
+    #[macro_use(helpful_macro)] // error: must be at crate root to import
+    extern crate core;          //        macros from another crate
+    helpful_macro!(...);
+}
+```
+
+Only `extern crate` imports at the crate root level are allowed to import
+macros.
+
+Either move the macro import to crate root or do without the foreign macros.
+This will work:
+
+```ignore
+#[macro_use(helpful_macro)]
+extern crate some_crate;
+
+mod foo {
+    helpful_macro!(...)
+}
+```
+"##,
+
+E0469: r##"
+A macro listed for import was not found.
+
+Erroneous code example:
+
+```compile_fail,E0469
+#[macro_use(drink, be_merry)] // error: imported macro not found
+extern crate collections;
+
+fn main() {
+    // ...
+}
+```
+
+Either the listed macro is not contained in the imported crate, or it is not
+exported from the given crate.
+
+This could be caused by a typo. Did you misspell the macro's name?
+
+Double-check the names of the macros listed for import, and that the crate
+in question exports them.
+
+A working version would be:
+
+```ignore
+// In some_crate crate:
+#[macro_export]
+macro_rules! eat {
+    ...
+}
+
+#[macro_export]
+macro_rules! drink {
+    ...
+}
+
+// In your crate:
+#[macro_use(eat, drink)]
+extern crate some_crate; //ok!
+```
+"##,
+
+E0470: r##"
+A macro listed for reexport was not found.
+
+Erroneous code example:
+
+```compile_fail,E0470
+#[macro_reexport(drink, be_merry)]
+extern crate collections;
+
+fn main() {
+    // ...
+}
+```
+
+Either the listed macro is not contained in the imported crate, or it is not
+exported from the given crate.
+
+This could be caused by a typo. Did you misspell the macro's name?
+
+Double-check the names of the macros listed for reexport, and that the crate
+in question exports them.
+
+A working version:
+
+```ignore
+// In some_crate crate:
+#[macro_export]
+macro_rules! eat {
+    ...
+}
+
+#[macro_export]
+macro_rules! drink {
+    ...
+}
+
+// In your_crate:
+#[macro_reexport(eat, drink)]
+extern crate some_crate;
+```
+"##,
+
 E0530: r##"
 A binding shadowed something it shouldn't.
 
@@ -1307,6 +1461,47 @@ match r {
 ```
 "##,
 
+E0532: r##"
+Pattern arm did not match expected kind.
+
+Erroneous code example:
+
+```compile_fail,E0532
+enum State {
+    Succeeded,
+    Failed(String),
+}
+
+fn print_on_failure(state: &State) {
+    match *state {
+        // error: expected unit struct/variant or constant, found tuple
+        //        variant `State::Failed`
+        State::Failed => println!("Failed"),
+        _ => ()
+    }
+}
+```
+
+To fix this error, ensure the match arm kind is the same as the expression
+matched.
+
+Fixed example:
+
+```
+enum State {
+    Succeeded,
+    Failed(String),
+}
+
+fn print_on_failure(state: &State) {
+    match *state {
+        State::Failed(ref msg) => println!("Failed with {}", msg),
+        _ => ()
+    }
+}
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -1324,7 +1519,7 @@ register_diagnostics! {
 //  E0419, merged into 531
 //  E0420, merged into 532
 //  E0421, merged into 531
+//  E0422, merged into 531/532
     E0531, // unresolved pattern path kind `name`
-    E0532, // expected pattern path kind, found another pattern path kind
 //  E0427, merged into 530
 }

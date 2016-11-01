@@ -10,10 +10,11 @@
 
 //! The main parser interface
 
-use ast;
+use ast::{self, CrateConfig};
 use codemap::CodeMap;
 use syntax_pos::{self, Span, FileMap};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
+use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
 use parse::token::InternedString;
 use ptr::P;
@@ -42,13 +43,15 @@ pub mod obsolete;
 /// Info about a parsing session.
 pub struct ParseSess {
     pub span_diagnostic: Handler, // better be the same as the one in the reader!
+    pub unstable_features: UnstableFeatures,
+    pub config: CrateConfig,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<PathBuf>>,
     code_map: Rc<CodeMap>,
 }
 
 impl ParseSess {
-    pub fn new() -> ParseSess {
+    pub fn new() -> Self {
         let cm = Rc::new(CodeMap::new());
         let handler = Handler::with_tty_emitter(ColorConfig::Auto,
                                                 true,
@@ -60,6 +63,8 @@ impl ParseSess {
     pub fn with_span_handler(handler: Handler, code_map: Rc<CodeMap>) -> ParseSess {
         ParseSess {
             span_diagnostic: handler,
+            unstable_features: UnstableFeatures::from_environment(),
+            config: Vec::new(),
             included_mod_stack: RefCell::new(vec![]),
             code_map: code_map
         }
@@ -75,146 +80,90 @@ impl ParseSess {
 // uses a HOF to parse anything, and <source> includes file and
 // source_str.
 
-pub fn parse_crate_from_file<'a>(input: &Path,
-                                 cfg: ast::CrateConfig,
-                                 sess: &'a ParseSess)
-                                 -> PResult<'a, ast::Crate> {
-    let mut parser = new_parser_from_file(sess, cfg, input);
+pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'a, ast::Crate> {
+    let mut parser = new_parser_from_file(sess, input);
     parser.parse_crate_mod()
 }
 
-pub fn parse_crate_attrs_from_file<'a>(input: &Path,
-                                       cfg: ast::CrateConfig,
-                                       sess: &'a ParseSess)
+pub fn parse_crate_attrs_from_file<'a>(input: &Path, sess: &'a ParseSess)
                                        -> PResult<'a, Vec<ast::Attribute>> {
-    let mut parser = new_parser_from_file(sess, cfg, input);
+    let mut parser = new_parser_from_file(sess, input);
     parser.parse_inner_attributes()
 }
 
-pub fn parse_crate_from_source_str<'a>(name: String,
-                                       source: String,
-                                       cfg: ast::CrateConfig,
-                                       sess: &'a ParseSess)
+pub fn parse_crate_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
                                        -> PResult<'a, ast::Crate> {
-    let mut p = new_parser_from_source_str(sess,
-                                           cfg,
-                                           name,
-                                           source);
-    p.parse_crate_mod()
+    new_parser_from_source_str(sess, name, source).parse_crate_mod()
 }
 
-pub fn parse_crate_attrs_from_source_str<'a>(name: String,
-                                             source: String,
-                                             cfg: ast::CrateConfig,
-                                             sess: &'a ParseSess)
+pub fn parse_crate_attrs_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
                                              -> PResult<'a, Vec<ast::Attribute>> {
-    let mut p = new_parser_from_source_str(sess,
-                                           cfg,
-                                           name,
-                                           source);
-    p.parse_inner_attributes()
+    new_parser_from_source_str(sess, name, source).parse_inner_attributes()
 }
 
-pub fn parse_expr_from_source_str<'a>(name: String,
-                                      source: String,
-                                      cfg: ast::CrateConfig,
-                                      sess: &'a ParseSess)
+pub fn parse_expr_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
                                       -> PResult<'a, P<ast::Expr>> {
-    let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    p.parse_expr()
+    new_parser_from_source_str(sess, name, source).parse_expr()
 }
 
 /// Parses an item.
 ///
 /// Returns `Ok(Some(item))` when successful, `Ok(None)` when no item was found, and`Err`
 /// when a syntax error occurred.
-pub fn parse_item_from_source_str<'a>(name: String,
-                                      source: String,
-                                      cfg: ast::CrateConfig,
-                                      sess: &'a ParseSess)
+pub fn parse_item_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
                                       -> PResult<'a, Option<P<ast::Item>>> {
-    let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    p.parse_item()
+    new_parser_from_source_str(sess, name, source).parse_item()
 }
 
-pub fn parse_meta_from_source_str<'a>(name: String,
-                                      source: String,
-                                      cfg: ast::CrateConfig,
-                                      sess: &'a ParseSess)
+pub fn parse_meta_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
                                       -> PResult<'a, P<ast::MetaItem>> {
-    let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    p.parse_meta_item()
+    new_parser_from_source_str(sess, name, source).parse_meta_item()
 }
 
-pub fn parse_stmt_from_source_str<'a>(name: String,
-                                      source: String,
-                                      cfg: ast::CrateConfig,
-                                      sess: &'a ParseSess)
+pub fn parse_stmt_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
                                       -> PResult<'a, Option<ast::Stmt>> {
-    let mut p = new_parser_from_source_str(
-        sess,
-        cfg,
-        name,
-        source
-    );
-    p.parse_stmt()
+    new_parser_from_source_str(sess, name, source).parse_stmt()
 }
 
 // Warning: This parses with quote_depth > 0, which is not the default.
-pub fn parse_tts_from_source_str<'a>(name: String,
-                                     source: String,
-                                     cfg: ast::CrateConfig,
-                                     sess: &'a ParseSess)
+pub fn parse_tts_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
                                      -> PResult<'a, Vec<tokenstream::TokenTree>> {
-    let mut p = new_parser_from_source_str(
-        sess,
-        cfg,
-        name,
-        source
-    );
+    let mut p = new_parser_from_source_str(sess, name, source);
     p.quote_depth += 1;
     // right now this is re-creating the token trees from ... token trees.
     p.parse_all_token_trees()
 }
 
 // Create a new parser from a source string
-pub fn new_parser_from_source_str<'a>(sess: &'a ParseSess,
-                                      cfg: ast::CrateConfig,
-                                      name: String,
-                                      source: String)
+pub fn new_parser_from_source_str<'a>(sess: &'a ParseSess, name: String, source: String)
                                       -> Parser<'a> {
-    filemap_to_parser(sess, sess.codemap().new_filemap(name, None, source), cfg)
+    filemap_to_parser(sess, sess.codemap().new_filemap(name, None, source))
 }
 
 /// Create a new parser, handling errors as appropriate
 /// if the file doesn't exist
-pub fn new_parser_from_file<'a>(sess: &'a ParseSess,
-                                cfg: ast::CrateConfig,
-                                path: &Path) -> Parser<'a> {
-    filemap_to_parser(sess, file_to_filemap(sess, path, None), cfg)
+pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path) -> Parser<'a> {
+    filemap_to_parser(sess, file_to_filemap(sess, path, None))
 }
 
 /// Given a session, a crate config, a path, and a span, add
 /// the file at the given path to the codemap, and return a parser.
 /// On an error, use the given span as the source of the problem.
 pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
-                                    cfg: ast::CrateConfig,
                                     path: &Path,
                                     owns_directory: bool,
                                     module_name: Option<String>,
                                     sp: Span) -> Parser<'a> {
-    let mut p = filemap_to_parser(sess, file_to_filemap(sess, path, Some(sp)), cfg);
+    let mut p = filemap_to_parser(sess, file_to_filemap(sess, path, Some(sp)));
     p.owns_directory = owns_directory;
     p.root_module_name = module_name;
     p
 }
 
 /// Given a filemap and config, return a parser
-pub fn filemap_to_parser<'a>(sess: &'a ParseSess,
-                             filemap: Rc<FileMap>,
-                             cfg: ast::CrateConfig) -> Parser<'a> {
+pub fn filemap_to_parser<'a>(sess: &'a ParseSess, filemap: Rc<FileMap>, ) -> Parser<'a> {
     let end_pos = filemap.end_pos;
-    let mut parser = tts_to_parser(sess, filemap_to_tts(sess, filemap), cfg);
+    let mut parser = tts_to_parser(sess, filemap_to_tts(sess, filemap));
 
     if parser.token == token::Eof && parser.span == syntax_pos::DUMMY_SP {
         parser.span = syntax_pos::mk_sp(end_pos, end_pos);
@@ -225,18 +174,13 @@ pub fn filemap_to_parser<'a>(sess: &'a ParseSess,
 
 // must preserve old name for now, because quote! from the *existing*
 // compiler expands into it
-pub fn new_parser_from_tts<'a>(sess: &'a ParseSess,
-                               cfg: ast::CrateConfig,
-                               tts: Vec<tokenstream::TokenTree>)
+pub fn new_parser_from_tts<'a>(sess: &'a ParseSess, tts: Vec<tokenstream::TokenTree>)
                                -> Parser<'a> {
-    tts_to_parser(sess, tts, cfg)
+    tts_to_parser(sess, tts)
 }
 
-pub fn new_parser_from_ts<'a>(sess: &'a ParseSess,
-                              cfg: ast::CrateConfig,
-                              ts: tokenstream::TokenStream)
-                              -> Parser<'a> {
-    tts_to_parser(sess, ts.to_tts(), cfg)
+pub fn new_parser_from_ts<'a>(sess: &'a ParseSess, ts: tokenstream::TokenStream) -> Parser<'a> {
+    tts_to_parser(sess, ts.to_tts())
 }
 
 
@@ -263,18 +207,15 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     -> Vec<tokenstream::TokenTree> {
     // it appears to me that the cfg doesn't matter here... indeed,
     // parsing tt's probably shouldn't require a parser at all.
-    let cfg = Vec::new();
     let srdr = lexer::StringReader::new(&sess.span_diagnostic, filemap);
-    let mut p1 = Parser::new(sess, cfg, Box::new(srdr));
+    let mut p1 = Parser::new(sess, Box::new(srdr));
     panictry!(p1.parse_all_token_trees())
 }
 
-/// Given tts and cfg, produce a parser
-pub fn tts_to_parser<'a>(sess: &'a ParseSess,
-                         tts: Vec<tokenstream::TokenTree>,
-                         cfg: ast::CrateConfig) -> Parser<'a> {
-    let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, None, tts);
-    let mut p = Parser::new(sess, cfg, Box::new(trdr));
+/// Given tts and the ParseSess, produce a parser
+pub fn tts_to_parser<'a>(sess: &'a ParseSess, tts: Vec<tokenstream::TokenTree>) -> Parser<'a> {
+    let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, tts);
+    let mut p = Parser::new(sess, Box::new(trdr));
     p.check_unknown_macro_variable();
     p
 }
@@ -286,52 +227,37 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
 pub fn char_lit(lit: &str) -> (char, isize) {
     use std::char;
 
-    let mut chars = lit.chars();
-    match (chars.next(), chars.next()) {
-        (Some(c), None) if c != '\\' => return (c, 1),
-        (Some('\\'), Some(c)) => match c {
-            '"' => return ('"', 2),
-            'n' => return ('\n', 2),
-            'r' => return ('\r', 2),
-            't' => return ('\t', 2),
-            '\\' => return ('\\', 2),
-            '\'' => return ('\'', 2),
-            '0' => return ('\0', 2),
-            _ => {}
-        },
-        _ => panic!("lexer accepted invalid char escape `{}`", lit)
-    };
-
-    fn esc(len: usize, lit: &str) -> Option<(char, isize)> {
-        u32::from_str_radix(&lit[2..len], 16).ok()
-        .and_then(char::from_u32)
-        .map(|x| (x, len as isize))
+    // Handle non-escaped chars first.
+    if lit.as_bytes()[0] != b'\\' {
+        // If the first byte isn't '\\' it might part of a multi-byte char, so
+        // get the char with chars().
+        let c = lit.chars().next().unwrap();
+        return (c, 1);
     }
 
-    let unicode_escape = || -> Option<(char, isize)> {
-        if lit.as_bytes()[2] == b'{' {
-            let idx = lit.find('}').unwrap_or_else(|| {
-                panic!("lexer should have rejected a bad character escape {}", lit)
-            });
-
-            let subslice = &lit[3..idx];
-            u32::from_str_radix(subslice, 16).ok()
-                .and_then(char::from_u32)
-                .map(|x| (x, subslice.chars().count() as isize + 4))
-        } else {
-            esc(6, lit)
+    // Handle escaped chars.
+    match lit.as_bytes()[1] as char {
+        '"' => ('"', 2),
+        'n' => ('\n', 2),
+        'r' => ('\r', 2),
+        't' => ('\t', 2),
+        '\\' => ('\\', 2),
+        '\'' => ('\'', 2),
+        '0' => ('\0', 2),
+        'x' => {
+            let v = u32::from_str_radix(&lit[2..4], 16).unwrap();
+            let c = char::from_u32(v).unwrap();
+            (c, 4)
         }
-    };
-
-    // Unicode escapes
-    return match lit.as_bytes()[1] as char {
-        'x' | 'X' => esc(4, lit),
-        'u' => unicode_escape(),
-        'U' => esc(10, lit),
-        _ => None,
-    }.unwrap_or_else(|| {
-        panic!("lexer should have rejected a bad character escape {}", lit)
-    })
+        'u' => {
+            assert!(lit.as_bytes()[2] == b'{');
+            let idx = lit.find('}').unwrap();
+            let v = u32::from_str_radix(&lit[3..idx], 16).unwrap();
+            let c = char::from_u32(v).unwrap();
+            (c, (idx + 1) as isize)
+        }
+        _ => panic!("lexer should have rejected a bad character escape {}", lit)
+    }
 }
 
 /// Parse a string representing a string literal into its final form. Does
@@ -698,12 +624,12 @@ mod tests {
                     node: ast::ExprKind::Path(None, ast::Path {
                         span: sp(0, 1),
                         global: false,
-                        segments: vec!(
+                        segments: vec![
                             ast::PathSegment {
                                 identifier: str_to_ident("a"),
                                 parameters: ast::PathParameters::none(),
                             }
-                        ),
+                        ],
                     }),
                     span: sp(0, 1),
                     attrs: ThinVec::new(),
@@ -717,7 +643,7 @@ mod tests {
                     node: ast::ExprKind::Path(None, ast::Path {
                             span: sp(0, 6),
                             global: true,
-                            segments: vec!(
+                            segments: vec![
                                 ast::PathSegment {
                                     identifier: str_to_ident("a"),
                                     parameters: ast::PathParameters::none(),
@@ -726,7 +652,7 @@ mod tests {
                                     identifier: str_to_ident("b"),
                                     parameters: ast::PathParameters::none(),
                                 }
-                            )
+                            ]
                         }),
                     span: sp(0, 6),
                     attrs: ThinVec::new(),
@@ -837,12 +763,12 @@ mod tests {
                         node:ast::ExprKind::Path(None, ast::Path{
                             span: sp(7, 8),
                             global: false,
-                            segments: vec!(
+                            segments: vec![
                                 ast::PathSegment {
                                     identifier: str_to_ident("d"),
                                     parameters: ast::PathParameters::none(),
                                 }
-                            ),
+                            ],
                         }),
                         span:sp(7,8),
                         attrs: ThinVec::new(),
@@ -860,12 +786,12 @@ mod tests {
                            node: ast::ExprKind::Path(None, ast::Path {
                                span:sp(0,1),
                                global:false,
-                               segments: vec!(
+                               segments: vec![
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
                                     parameters: ast::PathParameters::none(),
                                 }
-                               ),
+                               ],
                             }),
                            span: sp(0,1),
                            attrs: ThinVec::new()})),
@@ -902,18 +828,18 @@ mod tests {
                             attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
                             node: ast::ItemKind::Fn(P(ast::FnDecl {
-                                inputs: vec!(ast::Arg{
+                                inputs: vec![ast::Arg{
                                     ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
                                                   node: ast::TyKind::Path(None, ast::Path{
                                         span:sp(10,13),
                                         global:false,
-                                        segments: vec!(
+                                        segments: vec![
                                             ast::PathSegment {
                                                 identifier:
                                                     str_to_ident("i32"),
                                                 parameters: ast::PathParameters::none(),
                                             }
-                                        ),
+                                        ],
                                         }),
                                         span:sp(10,13)
                                     }),
@@ -929,7 +855,7 @@ mod tests {
                                             span: sp(6,7)
                                     }),
                                         id: ast::DUMMY_NODE_ID
-                                    }),
+                                    }],
                                 output: ast::FunctionRetTy::Default(sp(15, 15)),
                                 variadic: false
                             }),
@@ -949,14 +875,14 @@ mod tests {
                                         span: syntax_pos::DUMMY_SP,
                                     },
                                     P(ast::Block {
-                                        stmts: vec!(ast::Stmt {
+                                        stmts: vec![ast::Stmt {
                                             node: ast::StmtKind::Semi(P(ast::Expr{
                                                 id: ast::DUMMY_NODE_ID,
                                                 node: ast::ExprKind::Path(None,
                                                       ast::Path{
                                                         span:sp(17,18),
                                                         global:false,
-                                                        segments: vec!(
+                                                        segments: vec![
                                                             ast::PathSegment {
                                                                 identifier:
                                                                 str_to_ident(
@@ -964,12 +890,12 @@ mod tests {
                                                                 parameters:
                                                                 ast::PathParameters::none(),
                                                             }
-                                                        ),
+                                                        ],
                                                       }),
                                                 span: sp(17,18),
                                                 attrs: ThinVec::new()})),
                                             id: ast::DUMMY_NODE_ID,
-                                            span: sp(17,19)}),
+                                            span: sp(17,19)}],
                                         id: ast::DUMMY_NODE_ID,
                                         rules: ast::BlockCheckMode::Default, // no idea
                                         span: sp(15,21),
@@ -1069,13 +995,13 @@ mod tests {
 
         let name = "<source>".to_string();
         let source = "/// doc comment\r\nfn foo() {}".to_string();
-        let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess)
+        let item = parse_item_from_source_str(name.clone(), source, &sess)
             .unwrap().unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
         assert_eq!(&doc[..], "/// doc comment");
 
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
-        let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess)
+        let item = parse_item_from_source_str(name.clone(), source, &sess)
             .unwrap().unwrap();
         let docs = item.attrs.iter().filter(|a| &*a.name() == "doc")
                     .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
@@ -1083,7 +1009,7 @@ mod tests {
         assert_eq!(&docs[..], b);
 
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
-        let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap().unwrap();
+        let item = parse_item_from_source_str(name, source, &sess).unwrap().unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
         assert_eq!(&doc[..], "/** doc comment\n *  with CRLF */");
     }
@@ -1092,7 +1018,7 @@ mod tests {
     fn ttdelim_span() {
         let sess = ParseSess::new();
         let expr = parse::parse_expr_from_source_str("foo".to_string(),
-            "foo!( fn main() { body } )".to_string(), vec![], &sess).unwrap();
+            "foo!( fn main() { body } )".to_string(), &sess).unwrap();
 
         let tts = match expr.node {
             ast::ExprKind::Mac(ref mac) => mac.node.tts.clone(),

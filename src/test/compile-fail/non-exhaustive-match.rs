@@ -37,20 +37,20 @@ fn main() {
       (_, t::a) => {}
       (t::b, t::b) => {}
     }
-    let vec = vec!(Some(42), None, Some(21));
+    let vec = vec![Some(42), None, Some(21)];
     let vec: &[Option<isize>] = &vec;
     match *vec { //~ ERROR non-exhaustive patterns: `[]` not covered
         [Some(..), None, ref tail..] => {}
         [Some(..), Some(..), ref tail..] => {}
         [None] => {}
     }
-    let vec = vec!(1);
+    let vec = vec![1];
     let vec: &[isize] = &vec;
     match *vec {
         [_, ref tail..] => (),
         [] => ()
     }
-    let vec = vec!(0.5f32);
+    let vec = vec![0.5f32];
     let vec: &[f32] = &vec;
     match *vec { //~ ERROR non-exhaustive patterns: `[_, _, _, _]` not covered
         [0.1, 0.2, 0.3] => (),
@@ -58,7 +58,7 @@ fn main() {
         [0.1] => (),
         [] => ()
     }
-    let vec = vec!(Some(42), None, Some(21));
+    let vec = vec![Some(42), None, Some(21)];
     let vec: &[Option<isize>] = &vec;
     match *vec {
         [Some(..), None, ref tail..] => {}

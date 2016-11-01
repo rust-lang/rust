@@ -157,13 +157,13 @@ impl<I> Iterator for Utf16Encoder<I>
             return Some(tmp);
         }
 
+        let mut buf = [0; 2];
         self.chars.next().map(|ch| {
-            let n = CharExt::encode_utf16(ch);
-            let n = n.as_slice();
-            if n.len() == 2 {
-                self.extra = n[1];
+            let n = CharExt::encode_utf16(ch, &mut buf).len();
+            if n == 2 {
+                self.extra = buf[1];
             }
-            n[0]
+            buf[0]
         })
     }
 
@@ -181,6 +181,7 @@ impl<I> Iterator for Utf16Encoder<I>
 impl<I> FusedIterator for Utf16Encoder<I>
     where I: FusedIterator<Item = char> {}
 
+#[stable(feature = "split_whitespace", since = "1.1.0")]
 impl<'a> Iterator for SplitWhitespace<'a> {
     type Item = &'a str;
 
@@ -188,6 +189,8 @@ impl<'a> Iterator for SplitWhitespace<'a> {
         self.inner.next()
     }
 }
+
+#[stable(feature = "split_whitespace", since = "1.1.0")]
 impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
     fn next_back(&mut self) -> Option<&'a str> {
         self.inner.next_back()

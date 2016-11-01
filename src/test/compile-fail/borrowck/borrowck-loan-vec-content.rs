@@ -17,12 +17,12 @@ fn takes_imm_elt<F>(_v: &isize, f: F) where F: FnOnce() {
 }
 
 fn has_mut_vec_and_does_not_try_to_change_it() {
-    let mut v: Vec<isize> = vec!(1, 2, 3);
+    let mut v: Vec<isize> = vec![1, 2, 3];
     takes_imm_elt(&v[0], || {})
 }
 
 fn has_mut_vec_but_tries_to_change_it() {
-    let mut v: Vec<isize> = vec!(1, 2, 3);
+    let mut v: Vec<isize> = vec![1, 2, 3];
     takes_imm_elt(
         &v[0],
         || { //~ ERROR cannot borrow `v` as mutable

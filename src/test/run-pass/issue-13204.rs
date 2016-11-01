@@ -28,6 +28,6 @@ impl Foo for Baz {
 
 fn main() {
     let x = Baz;
-    let y = vec!((), (), ());
+    let y = vec![(), (), ()];
     assert_eq!(x.bar(y.iter()), 3);
 }

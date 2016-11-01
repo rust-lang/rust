@@ -1,3 +1,5 @@
+@import "normalize.css";
+
 /**
  * Copyright 2013 The Rust Project Developers. See the COPYRIGHT
  * file at the top-level directory of this distribution and at
@@ -58,8 +60,6 @@
     font-weight: 600;
     src: local('Source Code Pro Semibold'), url("SourceCodePro-Semibold.woff") format('woff');
 }
-
-@import "normalize.css";
 
 * {
   -webkit-box-sizing: border-box;
@@ -284,7 +284,7 @@ h3.impl > .out-of-band {
     font-size: 21px;
 }
 
-h4 > code, h3 > code, invisible > code {
+h4 > code, h3 > code, .invisible > code {
     position: inherit;
 }
 
@@ -378,6 +378,11 @@ h4 > code, h3 > code, invisible > code {
     font-size: 90%;
 }
 
+/* Shift where in trait listing down a line */
+pre.trait .where::before {
+    content: '\a         ';
+}
+
 nav {
     border-bottom: 1px solid;
     padding-bottom: 10px;
@@ -459,7 +464,8 @@ a {
 .content .search-results td:first-child { padding-right: 0; }
 .content .search-results td:first-child a { padding-right: 10px; }
 
-tr.result span.primitive::after { content: ' (primitive type)'; font-style: italic; color: black}
+tr.result span.primitive::after { content: ' (primitive type)'; font-style: italic; color: black;
+}
 
 body.blur > :not(#help) {
     filter: blur(8px);
@@ -564,8 +570,11 @@ pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
 pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }
+pre.rust .question-mark {
+    color: #ff9011;
+    font-weight: bold;
+}
 
-.rusttest { display: none; }
 pre.rust { position: relative; }
 a.test-arrow {
     background-color: rgba(78, 139, 202, 0.2);
@@ -579,6 +588,7 @@ a.test-arrow {
 }
 a.test-arrow:hover{
     background-color: #4e8bca;
+    text-decoration: none;
 }
 
 .section-header:hover a:after {

@@ -78,7 +78,6 @@ pub use self::NamedMatch::*;
 pub use self::ParseResult::*;
 use self::TokenTreeOrTokenTreeVec::*;
 
-use ast;
 use ast::Ident;
 use syntax_pos::{self, BytePos, mk_sp, Span};
 use codemap::Spanned;
@@ -92,6 +91,7 @@ use parse::token;
 use print::pprust;
 use ptr::P;
 use tokenstream::{self, TokenTree};
+use util::small_vector::SmallVector;
 
 use std::mem;
 use std::rc::Rc;
@@ -104,7 +104,7 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 #[derive(Clone)]
 enum TokenTreeOrTokenTreeVec {
     Tt(tokenstream::TokenTree),
-    TtSeq(Rc<Vec<tokenstream::TokenTree>>),
+    TtSeq(Vec<tokenstream::TokenTree>),
 }
 
 impl TokenTreeOrTokenTreeVec {
@@ -161,7 +161,7 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
     })
 }
 
-pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: BytePos)
+pub fn initial_matcher_pos(ms: Vec<TokenTree>, sep: Option<Token>, lo: BytePos)
                            -> Box<MatcherPos> {
     let match_idx_hi = count_names(&ms[..]);
     let matches: Vec<_> = (0..match_idx_hi).map(|_| Vec::new()).collect();
@@ -251,14 +251,22 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
 
 pub enum ParseResult<T> {
     Success(T),
-    /// Arm failed to match
-    Failure(syntax_pos::Span, String),
+    /// Arm failed to match. If the second parameter is `token::Eof`, it
+    /// indicates an unexpected end of macro invocation. Otherwise, it
+    /// indicates that no rules expected the given token.
+    Failure(syntax_pos::Span, Token),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(syntax_pos::Span, String)
 }
 
+pub fn parse_failure_msg(tok: Token) -> String {
+    match tok {
+        token::Eof => "unexpected end of macro invocation".to_string(),
+        _ => format!("no rules expected the token `{}`", pprust::token_to_string(&tok)),
+    }
+}
+
 pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
-pub type PositionalParseResult = ParseResult<Vec<Rc<NamedMatch>>>;
 
 /// Perform a token equality check, ignoring syntax context (that is, an
 /// unhygienic comparison)
@@ -271,17 +279,10 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     }
 }
 
-pub fn parse(sess: &ParseSess,
-             cfg: ast::CrateConfig,
-             mut rdr: TtReader,
-             ms: &[TokenTree])
-             -> NamedParseResult {
-    let mut cur_eis = Vec::new();
-    cur_eis.push(initial_matcher_pos(Rc::new(ms.iter()
-                                                .cloned()
-                                                .collect()),
-                                     None,
-                                     rdr.peek().sp.lo));
+pub fn parse(sess: &ParseSess, mut rdr: TtReader, ms: &[TokenTree]) -> NamedParseResult {
+    let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(),
+                                                           None,
+                                                           rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = Vec::new(); // black-box parsed by parser.rs
@@ -425,8 +426,8 @@ pub fn parse(sess: &ParseSess,
                         cur_eis.push(ei);
                     }
                     TokenTree::Token(_, ref t) => {
-                        let mut ei_t = ei.clone();
                         if token_name_eq(t,&tok) {
+                            let mut ei_t = ei.clone();
                             ei_t.idx += 1;
                             next_eis.push(ei_t);
                         }
@@ -446,7 +447,7 @@ pub fn parse(sess: &ParseSess,
             } else if eof_eis.len() > 1 {
                 return Error(sp, "ambiguity: multiple successful parses".to_string());
             } else {
-                return Failure(sp, "unexpected end of macro invocation".to_string());
+                return Failure(sp, token::Eof);
             }
         } else {
             if (!bb_eis.is_empty() && !next_eis.is_empty())
@@ -467,8 +468,7 @@ pub fn parse(sess: &ParseSess,
                     }
                 ))
             } else if bb_eis.is_empty() && next_eis.is_empty() {
-                return Failure(sp, format!("no rules expected the token `{}`",
-                            pprust::token_to_string(&tok)));
+                return Failure(sp, tok);
             } else if !next_eis.is_empty() {
                 /* Now process the next token */
                 while !next_eis.is_empty() {
@@ -476,24 +476,21 @@ pub fn parse(sess: &ParseSess,
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let mut rust_parser = Parser::new(sess, cfg.clone(), Box::new(rdr.clone()));
-
-                let mut ei = bb_eis.pop().unwrap();
-                match ei.top_elts.get_tt(ei.idx) {
-                    TokenTree::Token(span, MatchNt(_, ident)) => {
+                rdr.next_tok = {
+                    let mut rust_parser = Parser::new(sess, Box::new(&mut rdr));
+                    let mut ei = bb_eis.pop().unwrap();
+                    if let TokenTree::Token(span, MatchNt(_, ident)) = ei.top_elts.get_tt(ei.idx) {
                         let match_cur = ei.match_cur;
                         (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
                             parse_nt(&mut rust_parser, span, &ident.name.as_str()))));
                         ei.idx += 1;
                         ei.match_cur += 1;
+                    } else {
+                        unreachable!()
                     }
-                    _ => panic!()
-                }
-                cur_eis.push(ei);
-
-                for _ in 0..rust_parser.tokens_consumed {
-                    let _ = rdr.next_token();
-                }
+                    cur_eis.push(ei);
+                    Some(TokenAndSpan { tok: rust_parser.token, sp: rust_parser.span })
+                };
             }
         }
 

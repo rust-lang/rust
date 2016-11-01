@@ -686,21 +686,21 @@ fn test_show() {
     assert_eq!(format!("{:?}", ringbuf), "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
     let ringbuf: VecDeque<_> = vec!["just", "one", "test", "more"]
-                                   .iter()
-                                   .cloned()
-                                   .collect();
+        .iter()
+        .cloned()
+        .collect();
     assert_eq!(format!("{:?}", ringbuf),
                "[\"just\", \"one\", \"test\", \"more\"]");
 }
 
 #[test]
 fn test_drop() {
-    static mut drops: i32 = 0;
+    static mut DROPS: i32 = 0;
     struct Elem;
     impl Drop for Elem {
         fn drop(&mut self) {
             unsafe {
-                drops += 1;
+                DROPS += 1;
             }
         }
     }
@@ -712,17 +712,17 @@ fn test_drop() {
     ring.push_front(Elem);
     drop(ring);
 
-    assert_eq!(unsafe { drops }, 4);
+    assert_eq!(unsafe { DROPS }, 4);
 }
 
 #[test]
 fn test_drop_with_pop() {
-    static mut drops: i32 = 0;
+    static mut DROPS: i32 = 0;
     struct Elem;
     impl Drop for Elem {
         fn drop(&mut self) {
             unsafe {
-                drops += 1;
+                DROPS += 1;
             }
         }
     }
@@ -735,20 +735,20 @@ fn test_drop_with_pop() {
 
     drop(ring.pop_back());
     drop(ring.pop_front());
-    assert_eq!(unsafe { drops }, 2);
+    assert_eq!(unsafe { DROPS }, 2);
 
     drop(ring);
-    assert_eq!(unsafe { drops }, 4);
+    assert_eq!(unsafe { DROPS }, 4);
 }
 
 #[test]
 fn test_drop_clear() {
-    static mut drops: i32 = 0;
+    static mut DROPS: i32 = 0;
     struct Elem;
     impl Drop for Elem {
         fn drop(&mut self) {
             unsafe {
-                drops += 1;
+                DROPS += 1;
             }
         }
     }
@@ -759,10 +759,10 @@ fn test_drop_clear() {
     ring.push_back(Elem);
     ring.push_front(Elem);
     ring.clear();
-    assert_eq!(unsafe { drops }, 4);
+    assert_eq!(unsafe { DROPS }, 4);
 
     drop(ring);
-    assert_eq!(unsafe { drops }, 4);
+    assert_eq!(unsafe { DROPS }, 4);
 }
 
 #[test]
@@ -1003,5 +1003,7 @@ fn test_contains() {
 
 #[allow(dead_code)]
 fn assert_covariance() {
-    fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> { d }
+    fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> {
+        d
+    }
 }

@@ -13,7 +13,7 @@ use std::env;
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
 
-    let target = env::var("TARGET").unwrap();
+    let target = env::var("TARGET").expect("TARGET was not set");
 
     if target.contains("linux") {
         if target.contains("musl") && !target.contains("mips") {
@@ -35,5 +35,7 @@ fn main() {
         println!("cargo:rustc-link-lib=gcc_pic");
     } else if target.contains("windows-gnu") {
         println!("cargo:rustc-link-lib=gcc_eh");
+    } else if target.contains("fuchsia") {
+        println!("cargo:rustc-link-lib=unwind");
     }
 }

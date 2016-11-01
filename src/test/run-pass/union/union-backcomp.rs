@@ -10,6 +10,12 @@
 
 #![feature(untagged_unions)]
 
+macro_rules! union {
+    () => (struct S;)
+}
+
+union!();
+
 fn union() {}
 
 fn main() {

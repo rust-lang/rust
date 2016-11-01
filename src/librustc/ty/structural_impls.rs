@@ -11,10 +11,10 @@
 use infer::type_variable;
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 use std::rc::Rc;
 use syntax::abi;
-use syntax::ptr::P;
 
 use hir;
 
@@ -297,13 +297,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             UnsafetyMismatch(x) => UnsafetyMismatch(x),
             AbiMismatch(x) => AbiMismatch(x),
             Mutability => Mutability,
-            BoxMutability => BoxMutability,
-            PtrMutability => PtrMutability,
-            RefMutability => RefMutability,
-            VecMutability => VecMutability,
             TupleSize(x) => TupleSize(x),
             FixedArraySize(x) => FixedArraySize(x),
-            TyParamSize(x) => TyParamSize(x),
             ArgCount => ArgCount,
             RegionsDoesNotOutlive(a, b) => {
                 return tcx.lift(&(a, b)).map(|(a, b)| RegionsDoesNotOutlive(a, b))
@@ -320,14 +315,12 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             RegionsOverlyPolymorphic(a, b) => {
                 return tcx.lift(&b).map(|b| RegionsOverlyPolymorphic(a, b))
             }
-            IntegerAsChar => IntegerAsChar,
             IntMismatch(x) => IntMismatch(x),
             FloatMismatch(x) => FloatMismatch(x),
             Traits(x) => Traits(x),
             BuiltinBoundsMismatch(x) => BuiltinBoundsMismatch(x),
             VariadicMismatch(x) => VariadicMismatch(x),
             CyclicTy => CyclicTy,
-            ConvergenceMismatch(x) => ConvergenceMismatch(x),
             ProjectionNameMismatched(x) => ProjectionNameMismatched(x),
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
 
@@ -437,16 +430,6 @@ impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for P<[T]> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        self.iter().map(|t| t.fold_with(folder)).collect()
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.iter().any(|t| t.visit_with(visitor))
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for ty::TraitObject<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::TraitObject {
@@ -464,10 +447,10 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitObject<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx [Ty<'tcx>] {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<Ty<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let tys = self.iter().map(|t| t.fold_with(folder)).collect();
-        folder.tcx().mk_type_list(tys)
+        let v = self.iter().map(|t| t.fold_with(folder)).collect::<AccumulateVec<[_; 8]>>();
+        folder.tcx().intern_type_list(&v)
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
@@ -734,6 +717,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeParameterDef<'tcx> {
             default: self.default.fold_with(folder),
             default_def_id: self.default_def_id,
             object_lifetime_default: self.object_lifetime_default.fold_with(folder),
+            pure_wrt_drop: self.pure_wrt_drop,
         }
     }
 
@@ -772,6 +756,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::RegionParameterDef<'tcx> {
             def_id: self.def_id,
             index: self.index,
             bounds: self.bounds.fold_with(folder),
+            pure_wrt_drop: self.pure_wrt_drop,
         }
     }
 
@@ -916,23 +901,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ClosureUpvar<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.ty.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::ParameterEnvironment<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::ParameterEnvironment {
-            free_substs: self.free_substs.fold_with(folder),
-            implicit_region_bound: self.implicit_region_bound.fold_with(folder),
-            caller_bounds: self.caller_bounds.fold_with(folder),
-            free_id_outlive: self.free_id_outlive,
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.free_substs.visit_with(visitor) ||
-            self.implicit_region_bound.visit_with(visitor) ||
-            self.caller_bounds.visit_with(visitor)
     }
 }
 

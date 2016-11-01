@@ -45,9 +45,9 @@ fn bar<U:to_str,T:map<U>>(x: T) -> Vec<String> {
 }
 
 pub fn main() {
-    assert_eq!(foo(vec!(1)), ["hi".to_string()]);
-    assert_eq!(bar::<isize, Vec<isize> >(vec!(4, 5)), ["4".to_string(), "5".to_string()]);
-    assert_eq!(bar::<String, Vec<String> >(vec!("x".to_string(), "y".to_string())),
+    assert_eq!(foo(vec![1]), ["hi".to_string()]);
+    assert_eq!(bar::<isize, Vec<isize> >(vec![4, 5]), ["4".to_string(), "5".to_string()]);
+    assert_eq!(bar::<String, Vec<String> >(vec!["x".to_string(), "y".to_string()]),
                ["x".to_string(), "y".to_string()]);
-    assert_eq!(bar::<(), Vec<()>>(vec!(())), ["()".to_string()]);
+    assert_eq!(bar::<(), Vec<()>>(vec![()]), ["()".to_string()]);
 }

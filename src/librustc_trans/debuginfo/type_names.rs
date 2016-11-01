@@ -94,7 +94,8 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push(']');
         },
         ty::TyTrait(ref trait_data) => {
-            let principal = cx.tcx().erase_late_bound_regions(&trait_data.principal);
+            let principal = cx.tcx().erase_late_bound_regions_and_normalize(
+                &trait_data.principal);
             push_item_name(cx, principal.def_id, false, output);
             push_type_params(cx, principal.substs, output);
         },
@@ -112,8 +113,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             output.push_str("fn(");
 
-            let sig = cx.tcx().erase_late_bound_regions(sig);
-            let sig = cx.tcx().normalize_associated_type(&sig);
+            let sig = cx.tcx().erase_late_bound_regions_and_normalize(sig);
             if !sig.inputs.is_empty() {
                 for &parameter_type in &sig.inputs {
                     push_debuginfo_type_name(cx, parameter_type, true, output);

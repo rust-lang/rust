@@ -16,7 +16,7 @@ use foo::bar;
 
 mod test {
     use bar::foo; //~ ERROR unresolved import `bar::foo` [E0432]
-                  //~^ Maybe a missing `extern crate bar`?
+                  //~^ Maybe a missing `extern crate bar;`?
 }
 
 fn main() {}

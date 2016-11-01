@@ -12,10 +12,10 @@
 
 #![feature(plugin)]
 #![feature(rustc_private)]
-#![plugin(proc_macro)]
+#![plugin(proc_macro_plugin)]
 
-extern crate proc_macro;
-use proc_macro::prelude::*;
+extern crate proc_macro_tokens;
+use proc_macro_tokens::prelude::*;
 
 extern crate syntax;
 use syntax::ast::Ident;

@@ -536,7 +536,7 @@ impl<'a> TraitDef<'a> {
                 bounds.push((*declared_bound).clone());
             }
 
-            cx.typaram(self.span, ty_param.ident, P::from_vec(bounds), None)
+            cx.typaram(self.span, ty_param.ident, vec![], P::from_vec(bounds), None)
         }));
 
         // and similarly for where clauses
@@ -780,17 +780,17 @@ fn find_repr_type_name(diagnostic: &Handler, type_attrs: &[ast::Attribute]) -> &
                 attr::ReprAny | attr::ReprPacked | attr::ReprSimd => continue,
                 attr::ReprExtern => "i32",
 
-                attr::ReprInt(_, attr::SignedInt(ast::IntTy::Is)) => "isize",
-                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I8)) => "i8",
-                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I16)) => "i16",
-                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I32)) => "i32",
-                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I64)) => "i64",
+                attr::ReprInt(attr::SignedInt(ast::IntTy::Is)) => "isize",
+                attr::ReprInt(attr::SignedInt(ast::IntTy::I8)) => "i8",
+                attr::ReprInt(attr::SignedInt(ast::IntTy::I16)) => "i16",
+                attr::ReprInt(attr::SignedInt(ast::IntTy::I32)) => "i32",
+                attr::ReprInt(attr::SignedInt(ast::IntTy::I64)) => "i64",
 
-                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::Us)) => "usize",
-                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U8)) => "u8",
-                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U16)) => "u16",
-                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U32)) => "u32",
-                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U64)) => "u64",
+                attr::ReprInt(attr::UnsignedInt(ast::UintTy::Us)) => "usize",
+                attr::ReprInt(attr::UnsignedInt(ast::UintTy::U8)) => "u8",
+                attr::ReprInt(attr::UnsignedInt(ast::UintTy::U16)) => "u16",
+                attr::ReprInt(attr::UnsignedInt(ast::UintTy::U32)) => "u32",
+                attr::ReprInt(attr::UnsignedInt(ast::UintTy::U64)) => "u64",
             }
         }
     }
@@ -1460,8 +1460,9 @@ impl<'a> MethodDef<'a> {
             .iter()
             .map(|v| {
                 let ident = v.node.name;
+                let sp = Span { expn_id: trait_.span.expn_id, ..v.span };
                 let summary = trait_.summarise_struct(cx, &v.node.data);
-                (ident, v.span, summary)
+                (ident, sp, summary)
             })
             .collect();
         self.call_substructure_method(cx,
@@ -1545,7 +1546,7 @@ impl<'a> TraitDef<'a> {
                             cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
                         }
                         codemap::Spanned {
-                            span: pat.span,
+                            span: Span { expn_id: self.span.expn_id, ..pat.span },
                             node: ast::FieldPat {
                                 ident: ident.unwrap(),
                                 pat: pat,
@@ -1576,7 +1577,8 @@ impl<'a> TraitDef<'a> {
          mutbl: ast::Mutability)
          -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
         let variant_ident = variant.node.name;
-        let variant_path = cx.path(variant.span, vec![enum_ident, variant_ident]);
+        let sp = Span { expn_id: self.span.expn_id, ..variant.span };
+        let variant_path = cx.path(sp, vec![enum_ident, variant_ident]);
         self.create_struct_pattern(cx, variant_path, &variant.node.data, prefix, mutbl)
     }
 }

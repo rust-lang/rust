@@ -130,6 +130,24 @@ impl IpAddr {
             IpAddr::V6(ref a) => a.is_documentation(),
         }
     }
+
+    /// Returns true if this address is a valid IPv4 address, false if it's a valid IPv6 address.
+    #[unstable(feature = "ipaddr_checker", issue = "36949")]
+    pub fn is_ipv4(&self) -> bool {
+        match *self {
+            IpAddr::V4(_) => true,
+            IpAddr::V6(_) => false,
+        }
+    }
+
+    /// Returns true if this address is a valid IPv6 address, false if it's a valid IPv4 address.
+    #[unstable(feature = "ipaddr_checker", issue = "36949")]
+    pub fn is_ipv6(&self) -> bool {
+        match *self {
+            IpAddr::V4(_) => false,
+            IpAddr::V6(_) => true,
+        }
+    }
 }
 
 impl Ipv4Addr {
@@ -277,8 +295,7 @@ impl Ipv4Addr {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
+#[stable(feature = "ip_addr", since = "1.7.0")]
 impl fmt::Display for IpAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -669,7 +686,7 @@ impl From<[u8; 16]> for Ipv6Addr {
 }
 
 // Tests for this module
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use net::*;
     use net::Ipv6MulticastScope::*;
@@ -1022,5 +1039,19 @@ mod tests {
         assert!(Ipv4Addr::new(100, 64, 3, 3) < Ipv4Addr::new(192, 0, 2, 2));
         assert!("2001:db8:f00::1002".parse::<Ipv6Addr>().unwrap() <
                 "2001:db8:f00::2001".parse::<Ipv6Addr>().unwrap());
+    }
+
+    #[test]
+    fn is_v4() {
+        let ip = IpAddr::V4(Ipv4Addr::new(100, 64, 3, 3));
+        assert!(ip.is_ipv4());
+        assert!(!ip.is_ipv6());
+    }
+
+    #[test]
+    fn is_v6() {
+        let ip = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678));
+        assert!(!ip.is_ipv4());
+        assert!(ip.is_ipv6());
     }
 }

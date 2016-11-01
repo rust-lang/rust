@@ -10,8 +10,7 @@
 
 use dot;
 use rustc::hir::def_id::DefId;
-use rustc::mir::repr::*;
-use rustc::mir::mir_map::MirMap;
+use rustc::mir::*;
 use rustc::ty::TyCtxt;
 use std::fmt::Debug;
 use std::io::{self, Write};
@@ -22,14 +21,13 @@ use rustc_data_structures::indexed_vec::Idx;
 /// Write a graphviz DOT graph of a list of MIRs.
 pub fn write_mir_graphviz<'a, 'b, 'tcx, W, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                                               iter: I,
-                                              mir_map: &MirMap<'tcx>,
                                               w: &mut W)
                                               -> io::Result<()>
     where W: Write, I: Iterator<Item=DefId>
 {
     for def_id in iter {
         let nodeid = tcx.map.as_local_node_id(def_id).unwrap();
-        let mir = &mir_map.map[&def_id];
+        let mir = &tcx.item_mir(def_id);
 
         writeln!(w, "digraph Mir_{} {{", nodeid)?;
 
@@ -136,30 +134,31 @@ fn write_graph_label<'a, 'tcx, W: Write>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     write!(w, "    label=<fn {}(", dot::escape_html(&tcx.node_path_str(nid)))?;
 
     // fn argument types.
-    for (i, arg) in mir.arg_decls.iter().enumerate() {
+    for (i, arg) in mir.args_iter().enumerate() {
         if i > 0 {
             write!(w, ", ")?;
         }
-        write!(w, "{:?}: {}", Lvalue::Arg(Arg::new(i)), escape(&arg.ty))?;
+        write!(w, "{:?}: {}", Lvalue::Local(arg), escape(&mir.local_decls[arg].ty))?;
     }
 
     write!(w, ") -&gt; {}", escape(mir.return_ty))?;
     write!(w, r#"<br align="left"/>"#)?;
 
-    // User variable types (including the user's name in a comment).
-    for (i, var) in mir.var_decls.iter().enumerate() {
+    for local in mir.vars_and_temps_iter() {
+        let decl = &mir.local_decls[local];
+
         write!(w, "let ")?;
-        if var.mutability == Mutability::Mut {
+        if decl.mutability == Mutability::Mut {
             write!(w, "mut ")?;
         }
-        write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
-               Lvalue::Var(Var::new(i)), escape(&var.ty), var.name)?;
-    }
 
-    // Compiler-introduced temporary types.
-    for (i, temp) in mir.temp_decls.iter().enumerate() {
-        write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
-               Lvalue::Temp(Temp::new(i)), escape(&temp.ty))?;
+        if let Some(name) = decl.name {
+            write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
+                   Lvalue::Local(local), escape(&decl.ty), name)?;
+        } else {
+            write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
+                   Lvalue::Local(local), escape(&decl.ty))?;
+        }
     }
 
     writeln!(w, ">;")

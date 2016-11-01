@@ -437,6 +437,10 @@ case $CFG_OSTYPE in
         CFG_CPUTYPE=$(isainfo -n)
         ;;
 
+    Haiku)
+        CFG_OSTYPE=unknown-haiku
+        ;;
+
     MINGW*)
         # msys' `uname` does not print gcc configuration, but prints msys
         # configuration. so we cannot believe `uname -m`:
@@ -530,6 +534,10 @@ case $CFG_CPUTYPE in
 
     x86_64 | x86-64 | x64 | amd64)
         CFG_CPUTYPE=x86_64
+        ;;
+
+    BePC)
+        CFG_CPUTYPE=i686
         ;;
 
     *)
@@ -628,6 +636,7 @@ opt_nosave optimize-llvm 1 "build optimized LLVM"
 opt_nosave llvm-assertions 0 "build LLVM with assertions"
 opt_nosave debug-assertions 0 "build with debugging assertions"
 opt_nosave debuginfo 0 "build with debugger metadata"
+opt_nosave debuginfo-lines 0 "build with line number debugger metadata"
 opt_nosave debug-jemalloc 0 "build jemalloc with --enable-debug --enable-fill"
 
 valopt localstatedir "/var/lib" "local state directory"
@@ -637,7 +646,6 @@ valopt datadir "${CFG_PREFIX}/share" "install data"
 valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
 valopt llvm-root "" "set LLVM root"
 valopt python "" "set path to python"
-valopt nodejs "" "set path to nodejs"
 valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
 valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
 valopt android-cross-path "" "Android NDK standalone path (deprecated)"
@@ -646,7 +654,12 @@ valopt arm-linux-androideabi-ndk "" "arm-linux-androideabi NDK standalone path"
 valopt armv7-linux-androideabi-ndk "" "armv7-linux-androideabi NDK standalone path"
 valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
 valopt nacl-cross-path  "" "NaCl SDK path (Pepper Canary is recommended). Must be absolute!"
-valopt musl-root "/usr/local" "MUSL root installation directory"
+valopt musl-root "/usr/local" "MUSL root installation directory (deprecated)"
+valopt musl-root-x86_64 "/usr/local" "x86_64-unknown-linux-musl install directory"
+valopt musl-root-i686 "/usr/local" "i686-unknown-linux-musl install directory"
+valopt musl-root-arm "/usr/local" "arm-unknown-linux-musleabi install directory"
+valopt musl-root-armhf "/usr/local" "arm-unknown-linux-musleabihf install directory"
+valopt musl-root-armv7 "/usr/local" "armv7-unknown-linux-musleabihf install directory"
 valopt extra-filename "" "Additional data that is hashed and passed to the -C extra-filename flag"
 
 if [ -e ${CFG_SRC_DIR}.git ]
@@ -676,7 +689,7 @@ valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
 valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
 valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
-valopt_nosave docdir "${CFG_PREFIX}/share/doc/rust" "install man pages in PATH"
+valopt_nosave docdir "${CFG_PREFIX}/share/doc/rust" "install documentation in PATH"
 
 # On Windows this determines root of the subtree for target libraries.
 # Host runtime libs always go to 'bin'.
@@ -709,8 +722,27 @@ case "$CFG_RELEASE_CHANNEL" in
     nightly )
 	msg "overriding settings for $CFG_RELEASE_CHANNEL"
 	CFG_ENABLE_LLVM_ASSERTIONS=1
+
+        # FIXME(#37364) shouldn't have to disable this on windows-gnu
+        case "$CFG_BUILD" in
+          *-pc-windows-gnu)
+            ;;
+          *)
+	    CFG_ENABLE_DEBUGINFO_LINES=1
+            ;;
+        esac
 	;;
-    dev | beta | stable)
+    beta | stable)
+	msg "overriding settings for $CFG_RELEASE_CHANNEL"
+        case "$CFG_BUILD" in
+          *-pc-windows-gnu)
+            ;;
+          *)
+	    CFG_ENABLE_DEBUGINFO_LINES=1
+            ;;
+        esac
+	;;
+    dev)
 	;;
     *)
         err "release channel must be 'dev', 'nightly', 'beta' or 'stable'"
@@ -740,6 +772,7 @@ if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then putvar CFG_DISABLE_OPTIMIZE_LLVM; f
 if [ -n "$CFG_ENABLE_LLVM_ASSERTIONS" ]; then putvar CFG_ENABLE_LLVM_ASSERTIONS; fi
 if [ -n "$CFG_ENABLE_DEBUG_ASSERTIONS" ]; then putvar CFG_ENABLE_DEBUG_ASSERTIONS; fi
 if [ -n "$CFG_ENABLE_DEBUGINFO" ]; then putvar CFG_ENABLE_DEBUGINFO; fi
+if [ -n "$CFG_ENABLE_DEBUGINFO_LINES" ]; then putvar CFG_ENABLE_DEBUGINFO_LINES; fi
 if [ -n "$CFG_ENABLE_DEBUG_JEMALLOC" ]; then putvar CFG_ENABLE_DEBUG_JEMALLOC; fi
 
 step_msg "looking for build programs"
@@ -753,9 +786,6 @@ python_version=$($CFG_PYTHON -V 2>&1)
 if [ $(echo $python_version | grep -c '^Python 2\.7') -ne 1 ]; then
     err "Found $python_version, but Python 2.7 is required"
 fi
-
-# Checking for node, but not required
-probe CFG_NODEJS nodejs node
 
 # If we have no git directory then we are probably a tarball distribution
 # and shouldn't attempt to load submodules
@@ -1208,14 +1238,6 @@ do
             fi
             ;;
 
-
-        x86_64-*-musl | arm-*-musleabi)
-            if [ ! -f $CFG_MUSL_ROOT/lib/libc.a ]
-            then
-                err "musl libc $CFG_MUSL_ROOT/lib/libc.a not found"
-            fi
-            ;;
-
         *-msvc)
             # There are three builds of cmake on windows: MSVC, MinGW and Cygwin
             # The Cygwin build does not have generators for Visual Studio, so
@@ -1634,8 +1656,8 @@ do
         ("ccache gcc")
             LLVM_CXX_32="ccache"
             LLVM_CC_32="ccache"
-            LLVM_CXX_32_ARG1="clang++"
-            LLVM_CC_32_ARG1="clang"
+            LLVM_CXX_32_ARG1="g++"
+            LLVM_CC_32_ARG1="gcc"
 
             LLVM_CXX_64="ccache"
             LLVM_CC_64="ccache"
@@ -1760,7 +1782,7 @@ do
         CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=ON"
     fi
 
-    CMAKE_ARGS="$CMAKE_ARGS -DLLVM_TARGETS_TO_BUILD='X86;ARM;AArch64;Mips;PowerPC;SystemZ'"
+    CMAKE_ARGS="$CMAKE_ARGS -DLLVM_TARGETS_TO_BUILD='X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend'"
     CMAKE_ARGS="$CMAKE_ARGS -G '$CFG_CMAKE_GENERATOR'"
     CMAKE_ARGS="$CMAKE_ARGS $CFG_LLVM_SRC_DIR"
 

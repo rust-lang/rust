@@ -20,14 +20,13 @@ use rustc::middle::region::{self, CodeExtent};
 use rustc::middle::region::CodeExtentData;
 use rustc::middle::resolve_lifetime;
 use rustc::middle::stability;
-use rustc::ty::subst::{Kind, Subst, Substs};
+use rustc::ty::subst::{Kind, Subst};
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
-use std::iter;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -107,12 +106,11 @@ fn test_env<F>(source_string: &str,
     let sess = session::build_session_(options, &dep_graph, None, diagnostic_handler,
                                        Rc::new(CodeMap::new()), cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    let krate_config = Vec::new();
     let input = config::Input::Str {
         name: driver::anon_src(),
         input: source_string.to_string(),
     };
-    let krate = driver::phase_1_parse_input(&sess, krate_config, &input).unwrap();
+    let krate = driver::phase_1_parse_input(&sess, &input).unwrap();
     let driver::ExpansionResult { defs, resolutions, mut hir_forest, .. } = {
         driver::phase_2_configure_and_expand(
             &sess, &cstore, krate, None, "test", None, MakeGlobMap::No, |_| Ok(()),
@@ -166,16 +164,17 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     pub fn create_simple_region_hierarchy(&self) {
         // creates a region hierarchy where 1 is root, 10 and 11 are
         // children of 1, etc
+
+        let node = ast::NodeId::from_u32;
         let dscope = self.infcx
                          .tcx
                          .region_maps
-                         .intern_code_extent(CodeExtentData::DestructionScope(1),
+                         .intern_code_extent(CodeExtentData::DestructionScope(node(1)),
                                              region::ROOT_CODE_EXTENT);
         self.create_region_hierarchy(&RH {
-                                         id: 1,
-                                         sub: &[RH { id: 10, sub: &[] }, RH { id: 11, sub: &[] }],
-                                     },
-                                     dscope);
+            id: node(1),
+            sub: &[RH { id: node(10), sub: &[] }, RH { id: node(11), sub: &[] }],
+        }, dscope);
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
@@ -274,7 +273,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_pair(&self, ty1: Ty<'tcx>, ty2: Ty<'tcx>) -> Ty<'tcx> {
-        self.infcx.tcx.mk_tup(vec![ty1, ty2])
+        self.infcx.tcx.intern_tup(&[ty1, ty2])
     }
 
     pub fn t_param(&self, index: u32) -> Ty<'tcx> {
@@ -315,8 +314,8 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
-    pub fn t_rptr_scope(&self, id: ast::NodeId) -> Ty<'tcx> {
-        let r = ty::ReScope(self.tcx().region_maps.node_extent(id));
+    pub fn t_rptr_scope(&self, id: u32) -> Ty<'tcx> {
+        let r = ty::ReScope(self.tcx().region_maps.node_extent(ast::NodeId::from_u32(id)));
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 
@@ -327,8 +326,8 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         }))
     }
 
-    pub fn t_rptr_free(&self, nid: ast::NodeId, id: u32) -> Ty<'tcx> {
-        let r = self.re_free(nid, id);
+    pub fn t_rptr_free(&self, nid: u32, id: u32) -> Ty<'tcx> {
+        let r = self.re_free(ast::NodeId::from_u32(nid), id);
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
@@ -678,7 +677,7 @@ fn subst_ty_renumber_bound() {
             env.t_fn(&[t_param], env.t_nil())
         };
 
-        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(t_rptr_bound1)));
+        let substs = env.infcx.tcx.intern_substs(&[Kind::from(t_rptr_bound1)]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
@@ -713,7 +712,7 @@ fn subst_ty_renumber_some_bounds() {
             env.t_pair(t_param, env.t_fn(&[t_param], env.t_nil()))
         };
 
-        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(t_rptr_bound1)));
+        let substs = env.infcx.tcx.intern_substs(&[Kind::from(t_rptr_bound1)]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = (&'a isize, fn(&'a isize))
@@ -775,7 +774,7 @@ fn subst_region_renumber_region() {
             env.t_fn(&[env.t_rptr(re_early)], env.t_nil())
         };
 
-        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(re_bound1)));
+        let substs = env.infcx.tcx.intern_substs(&[Kind::from(re_bound1)]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
@@ -802,8 +801,8 @@ fn walk_ty() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.mk_tup(vec![int_ty, uint_ty, int_ty, uint_ty]);
-        let tup2_ty = tcx.mk_tup(vec![tup1_ty, tup1_ty, uint_ty]);
+        let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty]);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty]);
         let uniq_ty = tcx.mk_box(tup2_ty);
         let walked: Vec<_> = uniq_ty.walk().collect();
         assert_eq!(walked,
@@ -818,8 +817,8 @@ fn walk_ty_skip_subtree() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.mk_tup(vec![int_ty, uint_ty, int_ty, uint_ty]);
-        let tup2_ty = tcx.mk_tup(vec![tup1_ty, tup1_ty, uint_ty]);
+        let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty]);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty]);
         let uniq_ty = tcx.mk_box(tup2_ty);
 
         // types we expect to see (in order), plus a boolean saying

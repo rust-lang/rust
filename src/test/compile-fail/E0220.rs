@@ -13,7 +13,8 @@ trait Trait {
 }
 
 type Foo = Trait<F=i32>; //~ ERROR E0220
-                         //~^ ERROR E0191
-
+                         //~| NOTE associated type `F` not found
+                         //~| ERROR E0191
+                         //~| NOTE missing associated type `Bar` value
 fn main() {
 }

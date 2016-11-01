@@ -25,6 +25,7 @@ use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use syntax::ext::tt::macro_parser::{Success, Failure, Error};
+use syntax::ext::tt::macro_parser::parse_failure_msg;
 use syntax::ptr::P;
 use syntax_pos::Span;
 use rustc_plugin::Registry;
@@ -58,8 +59,11 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
                 _ => unreachable!()
             }
         }
-        Failure(_, s) | Error(_, s) => {
-            panic!("expected Success, but got Error/Failure: {}", s);
+        Failure(_, tok) => {
+            panic!("expected Success, but got Failure: {}", parse_failure_msg(tok));
+        }
+        Error(_, s) => {
+            panic!("expected Success, but got Error: {}", s);
         }
     };
 

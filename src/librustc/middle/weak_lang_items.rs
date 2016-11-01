@@ -10,10 +10,11 @@
 
 //! Validity checking for weak lang items
 
-use session::config::{self, PanicStrategy};
+use session::config;
 use session::Session;
 use middle::lang_items;
 
+use rustc_back::PanicStrategy;
 use syntax::ast;
 use syntax::parse::token::InternedString;
 use syntax_pos::Span;
@@ -70,7 +71,7 @@ fn verify(sess: &Session, items: &lang_items::LanguageItems) {
     let needs_check = sess.crate_types.borrow().iter().any(|kind| {
         match *kind {
             config::CrateTypeDylib |
-            config::CrateTypeRustcMacro |
+            config::CrateTypeProcMacro |
             config::CrateTypeCdylib |
             config::CrateTypeExecutable |
             config::CrateTypeStaticlib => true,
@@ -92,7 +93,7 @@ fn verify(sess: &Session, items: &lang_items::LanguageItems) {
     // symbols. Other panic runtimes ensure that the relevant symbols are
     // available to link things together, but they're never exercised.
     let mut whitelisted = HashSet::new();
-    if sess.opts.cg.panic != PanicStrategy::Unwind {
+    if sess.panic_strategy() != PanicStrategy::Unwind {
         whitelisted.insert(lang_items::EhPersonalityLangItem);
         whitelisted.insert(lang_items::EhUnwindResumeLangItem);
     }

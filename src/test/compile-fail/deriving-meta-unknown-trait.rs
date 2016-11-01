@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 #[derive(Eqr)]
-//~^ ERROR `#[derive]` for custom traits is not stable enough for use and is subject to change
+//~^ ERROR `#[derive]` for custom traits is not stable enough for use. It is deprecated and will be removed in v1.15 (see issue #29644)
 struct Foo;
 
 pub fn main() {}

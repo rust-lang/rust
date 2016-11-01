@@ -26,7 +26,7 @@ pub fn main() {
         i += 1; if i % 2 == 0 { continue; } assert!((i % 2 != 0));
         if i >= 10 { break; }
     }
-    let ys = vec!(1, 2, 3, 4, 5, 6);
+    let ys = vec![1, 2, 3, 4, 5, 6];
     for x in &ys {
         if *x % 2 == 0 { continue; }
         assert!((*x % 2 != 0));

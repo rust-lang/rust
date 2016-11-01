@@ -51,8 +51,6 @@ use rustc::hir::{FnDecl, Block};
 use rustc::hir::intravisit;
 use rustc::hir::intravisit::{Visitor, FnKind};
 
-use rustc::mir::mir_map::MirMap;
-
 pub mod check_loans;
 
 pub mod gather_loans;
@@ -102,10 +100,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
     }
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &MirMap<'tcx>) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
-        mir_map: Some(mir_map),
         free_region_map: FreeRegionMap::new(),
         stats: BorrowStats {
             loaned_paths_same: 0,
@@ -168,12 +165,9 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                attributes: &[ast::Attribute]) {
     debug!("borrowck_fn(id={})", id);
 
-    let def_id = this.tcx.map.local_def_id(id);
-
     if attributes.iter().any(|item| item.check_name("rustc_mir_borrowck")) {
-        let mir = this.mir_map.unwrap().map.get(&def_id).unwrap();
         this.with_temp_region_map(id, |this| {
-            mir::borrowck_mir(this, fk, decl, mir, body, sp, id, attributes)
+            mir::borrowck_mir(this, fk, decl, body, sp, id, attributes)
         });
     }
 
@@ -249,7 +243,6 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir_map: Option<&'a MirMap<'tcx>>,
     fn_parts: FnParts<'a>,
     cfg: &cfg::CFG)
     -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
@@ -257,7 +250,6 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
-        mir_map: mir_map,
         free_region_map: FreeRegionMap::new(),
         stats: BorrowStats {
             loaned_paths_same: 0,
@@ -297,10 +289,7 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     free_region_map: FreeRegionMap,
 
     // Statistics:
-    stats: BorrowStats,
-
-    // NodeId to MIR mapping (for methods that carry the #[rustc_mir] attribute).
-    mir_map: Option<&'a MirMap<'tcx>>,
+    stats: BorrowStats
 }
 
 #[derive(Clone)]
@@ -1024,13 +1013,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
 
             err_out_of_scope(super_scope, sub_scope, cause) => {
-                let (value_kind, value_msg) = match err.cmt.cat {
+                let (value_kind, value_msg, is_temporary) = match err.cmt.cat {
                     mc::Categorization::Rvalue(_) =>
-                        ("temporary value", "temporary value created here"),
+                        ("temporary value", "temporary value created here", true),
                     _ =>
-                        ("borrowed value", "does not live long enough")
+                        ("borrowed value", "does not live long enough", false)
                 };
-                match cause {
+
+                let is_closure = match cause {
                     euv::ClosureCapture(s) => {
                         // The primary span starts out as the closure creation point.
                         // Change the primary span here to highlight the use of the variable
@@ -1041,21 +1031,36 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                 db.span = MultiSpan::from_span(s);
                                 db.span_label(primary, &format!("capture occurs here"));
                                 db.span_label(s, &value_msg);
+                                true
                             }
-                            None => ()
+                            None => false
                         }
                     }
                     _ => {
                         db.span_label(error_span, &value_msg);
+                        false
                     }
-                }
+                };
 
                 let sub_span = self.region_end_span(sub_scope);
                 let super_span = self.region_end_span(super_scope);
 
                 match (sub_span, super_span) {
                     (Some(s1), Some(s2)) if s1 == s2 => {
-                        db.span_label(s1, &format!("{} dropped before borrower", value_kind));
+                        if !is_temporary && !is_closure {
+                            db.span = MultiSpan::from_span(s1);
+                            db.span_label(error_span, &format!("borrow occurs here"));
+                            let msg = match opt_loan_path(&err.cmt) {
+                                None => "borrowed value".to_string(),
+                                Some(lp) => {
+                                    format!("`{}`", self.loan_path_to_string(&lp))
+                                }
+                            };
+                            db.span_label(s1,
+                                          &format!("{} dropped here while still borrowed", msg));
+                        } else {
+                            db.span_label(s1, &format!("{} dropped before borrower", value_kind));
+                        }
                         db.note("values in a scope are dropped in the opposite order \
                                 they are created");
                     }

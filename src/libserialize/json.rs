@@ -199,6 +199,7 @@ use self::DecoderError::*;
 use self::ParserState::*;
 use self::InternalStackElement::*;
 
+use std::borrow::Cow;
 use std::collections::{HashMap, BTreeMap};
 use std::io::prelude::*;
 use std::io;
@@ -433,9 +434,7 @@ fn escape_str(wr: &mut fmt::Write, v: &str) -> EncodeResult {
 }
 
 fn escape_char(writer: &mut fmt::Write, v: char) -> EncodeResult {
-    escape_str(writer, unsafe {
-        str::from_utf8_unchecked(v.encode_utf8().as_slice())
-    })
+    escape_str(writer, v.encode_utf8(&mut [0; 4]))
 }
 
 fn spaces(wr: &mut fmt::Write, mut n: usize) -> EncodeResult {
@@ -2083,9 +2082,7 @@ impl Decoder {
     pub fn new(json: Json) -> Decoder {
         Decoder { stack: vec![json] }
     }
-}
 
-impl Decoder {
     fn pop(&mut self) -> Json {
         self.stack.pop().unwrap()
     }
@@ -2184,8 +2181,8 @@ impl ::Decoder for Decoder {
         Err(ExpectedError("single character string".to_owned(), format!("{}", s)))
     }
 
-    fn read_str(&mut self) -> DecodeResult<string::String> {
-        expect!(self.pop(), String)
+    fn read_str(&mut self) -> DecodeResult<Cow<str>> {
+        expect!(self.pop(), String).map(Cow::Owned)
     }
 
     fn read_enum<T, F>(&mut self, _name: &str, f: F) -> DecodeResult<T> where
@@ -3883,8 +3880,8 @@ mod tests {
         use std::collections::{HashMap,BTreeMap};
         use super::ToJson;
 
-        let array2 = Array(vec!(U64(1), U64(2)));
-        let array3 = Array(vec!(U64(1), U64(2), U64(3)));
+        let array2 = Array(vec![U64(1), U64(2)]);
+        let array3 = Array(vec![U64(1), U64(2), U64(3)]);
         let object = {
             let mut tree_map = BTreeMap::new();
             tree_map.insert("a".to_string(), U64(1));
@@ -3918,7 +3915,7 @@ mod tests {
         assert_eq!([1_usize, 2_usize].to_json(), array2);
         assert_eq!((&[1_usize, 2_usize, 3_usize]).to_json(), array3);
         assert_eq!((vec![1_usize, 2_usize]).to_json(), array2);
-        assert_eq!(vec!(1_usize, 2_usize, 3_usize).to_json(), array3);
+        assert_eq!(vec![1_usize, 2_usize, 3_usize].to_json(), array3);
         let mut tree_map = BTreeMap::new();
         tree_map.insert("a".to_string(), 1 as usize);
         tree_map.insert("b".to_string(), 2);

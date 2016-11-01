@@ -25,7 +25,9 @@ pub fn run_silent(cmd: &mut Command) {
     };
     if !status.success() {
         fail(&format!("command did not execute successfully: {:?}\n\
-                       expected success, got: {}", cmd, status));
+                       expected success, got: {}",
+                      cmd,
+                      status));
     }
 }
 
@@ -65,7 +67,9 @@ pub fn output(cmd: &mut Command) -> String {
     };
     if !output.status.success() {
         panic!("command did not execute successfully: {:?}\n\
-                expected success, got: {}", cmd, output.status);
+                expected success, got: {}",
+               cmd,
+               output.status);
     }
     String::from_utf8(output.stdout).unwrap()
 }

@@ -15,6 +15,7 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 http://dx.doi.org/10.1017/S0956796812000093
 
+use ast::NodeId;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
@@ -44,6 +45,10 @@ impl Mark {
     /// The mark of the theoretical expansion that generates freshly parsed, unexpanded AST.
     pub fn root() -> Self {
         Mark(0)
+    }
+
+    pub fn from_placeholder_id(id: NodeId) -> Self {
+        Mark(id.as_u32())
     }
 
     pub fn as_u32(&self) -> u32 {

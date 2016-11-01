@@ -218,12 +218,14 @@
 #![feature(associated_consts)]
 #![feature(borrow_state)]
 #![feature(box_syntax)]
+#![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfg_target_vendor)]
 #![feature(char_escape_debug)]
 #![feature(char_internals)]
 #![feature(collections)]
 #![feature(collections_bound)]
+#![feature(collections_range)]
 #![feature(compiler_builtins_lib)]
 #![feature(const_fn)]
 #![feature(core_float)]
@@ -239,6 +241,7 @@
 #![feature(heap_api)]
 #![feature(inclusive_range)]
 #![feature(int_error_internals)]
+#![feature(integer_atomics)]
 #![feature(into_cow)]
 #![feature(lang_items)]
 #![feature(libc)]
@@ -255,10 +258,9 @@
 #![feature(panic_unwind)]
 #![feature(placement_in_syntax)]
 #![feature(prelude_import)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 #![feature(rand)]
 #![feature(raw)]
-#![feature(reflect_marker)]
 #![feature(repr_simd)]
 #![feature(rustc_attrs)]
 #![feature(shared)]
@@ -273,12 +275,10 @@
 #![feature(str_utf16)]
 #![feature(test, rustc_private)]
 #![feature(thread_local)]
-#![feature(try_borrow)]
 #![feature(try_from)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
-#![cfg_attr(stage0, feature(unsafe_no_drop_flag))]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(zero_one)]
@@ -304,8 +304,8 @@ use prelude::v1::*;
 // We want to reexport a few macros from core but libcore has already been
 // imported by the compiler (via our #[no_std] attribute) In this case we just
 // add a new crate name so we can attach the reexports to it.
-#[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
-                 unreachable, unimplemented, write, writeln, try)]
+#[macro_reexport(assert, assert_eq, assert_ne, debug_assert, debug_assert_eq,
+                 debug_assert_ne, unreachable, unimplemented, write, writeln, try)]
 extern crate core as __core;
 
 #[macro_use]

@@ -457,7 +457,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             same_regions.push(SameRegions {
                 scope_id: scope_id,
-                regions: vec!(sub_fr.bound_region, sup_fr.bound_region)
+                regions: vec![sub_fr.bound_region, sup_fr.bound_region]
             })
         }
     }
@@ -577,11 +577,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                          terr: &TypeError<'tcx>)
                                          -> DiagnosticBuilder<'tcx>
     {
-        // FIXME: do we want to use a different error code for each origin?
-        let mut diag = struct_span_err!(
-            self.tcx.sess, trace.origin.span(), E0308,
-            "{}", trace.origin.as_failure_str()
-        );
+        let span = trace.origin.span();
+        let failure_str = trace.origin.as_failure_str();
+        let mut diag = match trace.origin {
+            TypeOrigin::IfExpressionWithNoElse(_) => {
+                struct_span_err!(self.tcx.sess, span, E0317, "{}", failure_str)
+            },
+            _ => {
+                struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str)
+            },
+        };
         self.note_type_err(&mut diag, trace.origin, None, Some(trace.values), terr);
         diag
     }
@@ -1226,16 +1231,17 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                          lifetime: hir::Lifetime,
                          region_names: &HashSet<ast::Name>)
                          -> hir::HirVec<hir::TyParam> {
-        ty_params.iter().map(|ty_param| {
-            let bounds = self.rebuild_ty_param_bounds(ty_param.bounds.clone(),
+        ty_params.into_iter().map(|ty_param| {
+            let bounds = self.rebuild_ty_param_bounds(ty_param.bounds,
                                                       lifetime,
                                                       region_names);
             hir::TyParam {
                 name: ty_param.name,
                 id: ty_param.id,
                 bounds: bounds,
-                default: ty_param.default.clone(),
+                default: ty_param.default,
                 span: ty_param.span,
+                pure_wrt_drop: ty_param.pure_wrt_drop,
             }
         }).collect()
     }
@@ -1294,8 +1300,11 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                         -> hir::Generics {
         let mut lifetimes = Vec::new();
         for lt in add {
-            lifetimes.push(hir::LifetimeDef { lifetime: *lt,
-                                              bounds: hir::HirVec::new() });
+            lifetimes.push(hir::LifetimeDef {
+                lifetime: *lt,
+                bounds: hir::HirVec::new(),
+                pure_wrt_drop: false,
+            });
         }
         for lt in &generics.lifetimes {
             if keep.contains(&lt.lifetime.name) ||
@@ -1350,7 +1359,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                                 region_names: &HashSet<ast::Name>)
                                 -> P<hir::Ty> {
         let mut new_ty = P(ty.clone());
-        let mut ty_queue = vec!(ty);
+        let mut ty_queue = vec![ty];
         while !ty_queue.is_empty() {
             let cur_ty = ty_queue.remove(0);
             match cur_ty.node {
@@ -1433,8 +1442,8 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 hir::TyPtr(ref mut_ty) => {
                     ty_queue.push(&mut_ty.ty);
                 }
-                hir::TyVec(ref ty) |
-                hir::TyFixedLengthVec(ref ty, _) => {
+                hir::TySlice(ref ty) |
+                hir::TyArray(ref ty, _) => {
                     ty_queue.push(&ty);
                 }
                 hir::TyTup(ref tys) => ty_queue.extend(tys.iter().map(|ty| &**ty)),
@@ -1469,9 +1478,9 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                             ty: build_to(mut_ty.ty, to),
                         })
                     }
-                    hir::TyVec(ty) => hir::TyVec(build_to(ty, to)),
-                    hir::TyFixedLengthVec(ty, e) => {
-                        hir::TyFixedLengthVec(build_to(ty, to), e)
+                    hir::TySlice(ty) => hir::TySlice(build_to(ty, to)),
+                    hir::TyArray(ty, e) => {
+                        hir::TyArray(build_to(ty, to), e)
                     }
                     hir::TyTup(tys) => {
                         hir::TyTup(tys.into_iter().map(|ty| build_to(ty, to)).collect())

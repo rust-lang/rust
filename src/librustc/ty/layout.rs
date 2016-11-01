@@ -328,6 +328,42 @@ pub enum Integer {
 }
 
 impl Integer {
+    pub fn size(&self) -> Size {
+        match *self {
+            I1 => Size::from_bits(1),
+            I8 => Size::from_bytes(1),
+            I16 => Size::from_bytes(2),
+            I32 => Size::from_bytes(4),
+            I64  => Size::from_bytes(8),
+        }
+    }
+
+    pub fn align(&self, dl: &TargetDataLayout)-> Align {
+        match *self {
+            I1 => dl.i1_align,
+            I8 => dl.i8_align,
+            I16 => dl.i16_align,
+            I32 => dl.i32_align,
+            I64 => dl.i64_align,
+        }
+    }
+
+    pub fn to_ty<'a, 'tcx>(&self, tcx: &ty::TyCtxt<'a, 'tcx, 'tcx>,
+                           signed: bool) -> Ty<'tcx> {
+        match (*self, signed) {
+            (I1, false) => tcx.types.u8,
+            (I8, false) => tcx.types.u8,
+            (I16, false) => tcx.types.u16,
+            (I32, false) => tcx.types.u32,
+            (I64, false) => tcx.types.u64,
+            (I1, true) => tcx.types.i8,
+            (I8, true) => tcx.types.i8,
+            (I16, true) => tcx.types.i16,
+            (I32, true) => tcx.types.i32,
+            (I64, true) => tcx.types.i64,
+        }
+    }
+
     /// Find the smallest Integer type which can represent the signed value.
     pub fn fit_signed(x: i64) -> Integer {
         match x {
@@ -350,6 +386,18 @@ impl Integer {
         }
     }
 
+    /// Find the smallest integer with the given alignment.
+    pub fn for_abi_align(dl: &TargetDataLayout, align: Align) -> Option<Integer> {
+        let wanted = align.abi();
+        for &candidate in &[I8, I16, I32, I64] {
+            let ty = Int(candidate);
+            if wanted == ty.align(dl).abi() && wanted == ty.size(dl).bytes() {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+
     /// Get the Integer type from an attr::IntType.
     pub fn from_attr(dl: &TargetDataLayout, ity: attr::IntType) -> Integer {
         match ity {
@@ -367,7 +415,7 @@ impl Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u64 values above i64::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    pub fn repr_discr(tcx: TyCtxt, hint: attr::ReprAttr, min: i64, max: i64)
+    pub fn repr_discr(tcx: TyCtxt, ty: Ty, hint: attr::ReprAttr, min: i64, max: i64)
                       -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
@@ -377,11 +425,12 @@ impl Integer {
         let signed_fit = cmp::max(Integer::fit_signed(min), Integer::fit_signed(max));
 
         let at_least = match hint {
-            attr::ReprInt(span, ity) => {
+            attr::ReprInt(ity) => {
                 let discr = Integer::from_attr(&tcx.data_layout, ity);
                 let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
                 if discr < fit {
-                    span_bug!(span, "representation hint insufficient for discriminant range")
+                    bug!("Integer::repr_discr: `#[repr]` hint too small for \
+                          discriminant range of enum `{}", ty)
                 }
                 return (discr, ity.is_signed());
             }
@@ -397,10 +446,10 @@ impl Integer {
             }
             attr::ReprAny => I8,
             attr::ReprPacked => {
-                bug!("Integer::repr_discr: found #[repr(packed)] on an enum");
+                bug!("Integer::repr_discr: found #[repr(packed)] on enum `{}", ty);
             }
             attr::ReprSimd => {
-                bug!("Integer::repr_discr: found #[repr(simd)] on an enum");
+                bug!("Integer::repr_discr: found #[repr(simd)] on enum `{}", ty);
             }
         };
 
@@ -462,11 +511,11 @@ pub struct Struct {
     /// If true, the size is exact, otherwise it's only a lower bound.
     pub sized: bool,
 
-    /// Offsets for the first byte after each field.
-    /// That is, field_offset(i) = offset_after_field[i - 1] and the
-    /// whole structure's size is the last offset, excluding padding.
-    // FIXME(eddyb) use small vector optimization for the common case.
-    pub offset_after_field: Vec<Size>
+    /// Offsets for the first byte of each field.
+    /// FIXME(eddyb) use small vector optimization for the common case.
+    pub offsets: Vec<Size>,
+
+    pub min_size: Size,
 }
 
 impl<'a, 'gcx, 'tcx> Struct {
@@ -475,7 +524,8 @@ impl<'a, 'gcx, 'tcx> Struct {
             align: if packed { dl.i8_align } else { dl.aggregate_align },
             packed: packed,
             sized: true,
-            offset_after_field: vec![]
+            offsets: vec![],
+            min_size: Size::from_bytes(0),
         }
     }
 
@@ -485,12 +535,14 @@ impl<'a, 'gcx, 'tcx> Struct {
                      scapegoat: Ty<'gcx>)
                      -> Result<(), LayoutError<'gcx>>
     where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>> {
-        self.offset_after_field.reserve(fields.size_hint().0);
+        self.offsets.reserve(fields.size_hint().0);
+
+        let mut offset = self.min_size;
 
         for field in fields {
             if !self.sized {
                 bug!("Struct::extend: field #{} of `{}` comes after unsized field",
-                     self.offset_after_field.len(), scapegoat);
+                     self.offsets.len(), scapegoat);
             }
 
             let field = field?;
@@ -499,34 +551,29 @@ impl<'a, 'gcx, 'tcx> Struct {
             }
 
             // Invariant: offset < dl.obj_size_bound() <= 1<<61
-            let mut offset = if !self.packed {
+            if !self.packed {
                 let align = field.align(dl);
                 self.align = self.align.max(align);
-                self.offset_after_field.last_mut().map_or(Size::from_bytes(0), |last| {
-                    *last = last.abi_align(align);
-                    *last
-                })
-            } else {
-                self.offset_after_field.last().map_or(Size::from_bytes(0), |&last| last)
-            };
+                offset = offset.abi_align(align);
+            }
+
+            self.offsets.push(offset);
+
 
             offset = offset.checked_add(field.size(dl), dl)
                            .map_or(Err(LayoutError::SizeOverflow(scapegoat)), Ok)?;
-
-            self.offset_after_field.push(offset);
         }
+
+        self.min_size = offset;
 
         Ok(())
     }
 
     /// Get the size without trailing alignment padding.
-    pub fn min_size(&self) -> Size {
-        self.offset_after_field.last().map_or(Size::from_bytes(0), |&last| last)
-    }
 
     /// Get the size with trailing aligment padding.
     pub fn stride(&self) -> Size {
-        self.min_size().abi_align(self.align)
+        self.min_size.abi_align(self.align)
     }
 
     /// Determine whether a structure would be zero-sized, given its fields.
@@ -550,7 +597,8 @@ impl<'a, 'gcx, 'tcx> Struct {
                                   -> Result<Option<FieldPath>, LayoutError<'gcx>> {
         let tcx = infcx.tcx.global_tcx();
         match (ty.layout(infcx)?, &ty.sty) {
-            (&Scalar { non_zero: true, .. }, _) => Ok(Some(vec![])),
+            (&Scalar { non_zero: true, .. }, _) |
+            (&CEnum { non_zero: true, .. }, _) => Ok(Some(vec![])),
             (&FatPointer { non_zero: true, .. }, _) => {
                 Ok(Some(vec![FAT_PTR_ADDR as u32]))
             }
@@ -722,6 +770,7 @@ pub enum Layout {
     CEnum {
         discr: Integer,
         signed: bool,
+        non_zero: bool,
         // Inclusive discriminant range.
         // If min > max, it represents min...u64::MAX followed by 0...max.
         // FIXME(eddyb) always use the shortest range, e.g. by finding
@@ -911,7 +960,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 Univariant { variant: unit, non_zero: false }
             }
 
-            // Tuples.
+            // Tuples and closures.
             ty::TyClosure(_, ty::ClosureSubsts { upvar_tys: tys, .. }) |
             ty::TyTuple(tys) => {
                 let mut st = Struct::new(dl, false);
@@ -955,26 +1004,28 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                 if def.is_enum() && def.variants.iter().all(|v| v.fields.is_empty()) {
                     // All bodies empty -> intlike
-                    let (mut min, mut max) = (i64::MAX, i64::MIN);
+                    let (mut min, mut max, mut non_zero) = (i64::MAX, i64::MIN, true);
                     for v in &def.variants {
                         let x = v.disr_val.to_u64_unchecked() as i64;
+                        if x == 0 { non_zero = false; }
                         if x < min { min = x; }
                         if x > max { max = x; }
                     }
 
-                    let (discr, signed) = Integer::repr_discr(tcx, hint, min, max);
+                    let (discr, signed) = Integer::repr_discr(tcx, ty, hint, min, max);
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
+                        non_zero: non_zero,
                         min: min as u64,
                         max: max as u64
                     });
                 }
 
-                if def.variants.len() == 1 {
+                if !def.is_enum() || def.variants.len() == 1 && hint == attr::ReprAny {
                     // Struct, or union, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
-                    assert!(!def.is_enum() || hint == attr::ReprAny);
+
                     let fields = def.variants[0].fields.iter().map(|field| {
                         field.ty(tcx, substs).layout(infcx)
                     });
@@ -1022,19 +1073,17 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                         // FIXME(eddyb) should take advantage of a newtype.
                         if path == &[0] && variants[discr].len() == 1 {
-                            match *variants[discr][0].layout(infcx)? {
-                                Scalar { value, .. } => {
-                                    return success(RawNullablePointer {
-                                        nndiscr: discr as u64,
-                                        value: value
-                                    });
-                                }
-                                _ => {
-                                    bug!("Layout::compute: `{}`'s non-zero \
-                                        `{}` field not scalar?!",
-                                        ty, variants[discr][0])
-                                }
-                            }
+                            let value = match *variants[discr][0].layout(infcx)? {
+                                Scalar { value, .. } => value,
+                                CEnum { discr, .. } => Int(discr),
+                                _ => bug!("Layout::compute: `{}`'s non-zero \
+                                           `{}` field not scalar?!",
+                                           ty, variants[discr][0])
+                            };
+                            return success(RawNullablePointer {
+                                nndiscr: discr as u64,
+                                value: value,
+                            });
                         }
 
                         path.push(0); // For GEP through a pointer.
@@ -1052,7 +1101,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // The general case.
                 let discr_max = (variants.len() - 1) as i64;
                 assert!(discr_max >= 0);
-                let (min_ity, _) = Integer::repr_discr(tcx, hint, 0, discr_max);
+                let (min_ity, _) = Integer::repr_discr(tcx, ty, hint, 0, discr_max);
 
                 let mut align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
@@ -1080,7 +1129,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                     let mut st = Struct::new(dl, false);
                     st.extend(dl, discr.iter().map(Ok).chain(fields), ty)?;
-                    size = cmp::max(size, st.min_size());
+                    size = cmp::max(size, st.min_size);
                     align = align.max(st.align);
                     Ok(st)
                 }).collect::<Result<Vec<_>, _>>()?;
@@ -1102,20 +1151,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // won't be so conservative.
 
                 // Use the initial field alignment
-                let wanted = start_align.abi();
-                let mut ity = min_ity;
-                for &candidate in &[I16, I32, I64] {
-                    let ty = Int(candidate);
-                    if wanted == ty.align(dl).abi() && wanted == ty.size(dl).bytes() {
-                        ity = candidate;
-                        break;
-                    }
-                }
-
-                // FIXME(eddyb) conservative only to avoid diverging from trans::adt.
-                if align.abi() != start_align.abi() {
-                    ity = min_ity;
-                }
+                let mut ity = Integer::for_abi_align(dl, start_align).unwrap_or(min_ity);
 
                 // If the alignment is not larger than the chosen discriminant size,
                 // don't use the alignment as the final size.
@@ -1126,11 +1162,15 @@ impl<'a, 'gcx, 'tcx> Layout {
                     let old_ity_size = Int(min_ity).size(dl);
                     let new_ity_size = Int(ity).size(dl);
                     for variant in &mut variants {
-                        for offset in &mut variant.offset_after_field {
+                        for offset in &mut variant.offsets[1..] {
                             if *offset > old_ity_size {
                                 break;
                             }
                             *offset = new_ity_size;
+                        }
+                        // We might be making the struct larger.
+                        if variant.min_size <= old_ity_size {
+                            variant.min_size = new_ity_size;
                         }
                     }
                 }

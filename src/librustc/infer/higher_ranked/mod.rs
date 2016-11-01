@@ -749,12 +749,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn plug_leaks<T>(&self,
                          skol_map: SkolemizationMap<'tcx>,
                          snapshot: &CombinedSnapshot,
-                         value: &T) -> T
+                         value: T) -> T
         where T : TypeFoldable<'tcx>
     {
         debug!("plug_leaks(skol_map={:?}, value={:?})",
                skol_map,
                value);
+
+        if skol_map.is_empty() {
+            return value;
+        }
 
         // Compute a mapping from the "taint set" of each skolemized
         // region back to the `ty::BoundRegion` that it originally
@@ -775,7 +779,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         // Remove any instantiated type variables from `value`; those can hide
         // references to regions from the `fold_regions` code below.
-        let value = self.resolve_type_vars_if_possible(value);
+        let value = self.resolve_type_vars_if_possible(&value);
 
         // Map any skolemization byproducts back to a late-bound
         // region. Put that late-bound region at whatever the outermost
@@ -813,9 +817,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         });
 
-        debug!("plug_leaks: result={:?}",
-               result);
-
         self.pop_skolemized(skol_map, snapshot);
 
         debug!("plug_leaks: result={:?}", result);
@@ -838,5 +839,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         debug!("pop_skolemized({:?})", skol_map);
         let skol_regions: FnvHashSet<_> = skol_map.values().cloned().collect();
         self.region_vars.pop_skolemized(&skol_regions, &snapshot.region_vars_snapshot);
+        if !skol_map.is_empty() {
+            self.projection_cache.borrow_mut().rollback_skolemized(
+                &snapshot.projection_cache_snapshot);
+        }
     }
 }

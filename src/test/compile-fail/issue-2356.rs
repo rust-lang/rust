@@ -26,6 +26,7 @@ impl MaybeDog {
     // If this provides a suggestion, it's a bug as MaybeDog doesn't impl Groom
     shave();
     //~^ ERROR: unresolved name `shave`
+    //~| NOTE unresolved name
   }
 }
 
@@ -33,11 +34,14 @@ impl Groom for cat {
   fn shave(other: usize) {
     whiskers -= other;
     //~^ ERROR: unresolved name `whiskers`
+    //~| NOTE unresolved name
     //~| HELP this is an associated function
     shave(4);
-    //~^ ERROR: unresolved name `shave`. Did you mean to call `Groom::shave`?
+    //~^ ERROR: unresolved name `shave`
+    //~| NOTE did you mean to call `Groom::shave`?
     purr();
     //~^ ERROR: unresolved name `purr`
+    //~| NOTE unresolved name
   }
 }
 
@@ -47,12 +51,16 @@ impl cat {
     fn purr_louder() {
         static_method();
         //~^ ERROR: unresolved name `static_method`
+        //~| NOTE unresolved name
         purr();
         //~^ ERROR: unresolved name `purr`
+        //~| NOTE unresolved name
         purr();
         //~^ ERROR: unresolved name `purr`
+        //~| NOTE unresolved name
         purr();
         //~^ ERROR: unresolved name `purr`
+        //~| NOTE unresolved name
     }
 }
 
@@ -69,27 +77,33 @@ impl cat {
   fn purr(&self) {
     grow_older();
     //~^ ERROR: unresolved name `grow_older`
+    //~| NOTE unresolved name
     shave();
     //~^ ERROR: unresolved name `shave`
+    //~| NOTE unresolved name
   }
 
   fn burn_whiskers(&mut self) {
     whiskers = 0;
-    //~^ ERROR: unresolved name `whiskers`. Did you mean `self.whiskers`?
+    //~^ ERROR: unresolved name `whiskers`
+    //~| NOTE did you mean `self.whiskers`?
   }
 
   pub fn grow_older(other:usize) {
     whiskers = 4;
     //~^ ERROR: unresolved name `whiskers`
+    //~| NOTE unresolved name
     //~| HELP this is an associated function
     purr_louder();
     //~^ ERROR: unresolved name `purr_louder`
+    //~| NOTE unresolved name
   }
 }
 
 fn main() {
     self += 1;
     //~^ ERROR: unresolved name `self`
+    //~| NOTE unresolved name
     //~| HELP: module `self`
     // it's a bug if this suggests a missing `self` as we're not in a method
 }

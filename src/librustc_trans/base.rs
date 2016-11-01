@@ -35,6 +35,7 @@ use back::link;
 use back::linker::LinkerInfo;
 use llvm::{Linkage, ValueRef, Vector, get_param};
 use llvm;
+use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::ty::subst::Substs;
@@ -44,7 +45,6 @@ use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::dep_graph::{DepNode, WorkProduct};
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
-use rustc::mir::mir_map::MirMap;
 use session::config::{self, NoDebugInfo};
 use rustc_incremental::IncrementalHashesMap;
 use session::Session;
@@ -79,7 +79,6 @@ use type_::Type;
 use type_of;
 use value::Value;
 use Disr;
-use util::sha2::Sha256;
 use util::nodemap::{NodeSet, FnvHashMap, FnvHashSet};
 
 use arena::TypedArena;
@@ -183,6 +182,14 @@ pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
     StructGEP(bcx, fat_ptr, abi::FAT_PTR_ADDR)
 }
 
+pub fn get_meta_builder(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
+    b.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
+}
+
+pub fn get_dataptr_builder(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
+    b.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
+}
+
 fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, info_ty: Ty<'tcx>, it: LangItem) -> DefId {
     match bcx.tcx().lang_items.require(it) {
         Ok(id) => id,
@@ -206,7 +213,7 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Allocate space:
     let def_id = require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem);
-    let r = Callee::def(bcx.ccx(), def_id, Substs::empty(bcx.tcx()))
+    let r = Callee::def(bcx.ccx(), def_id, bcx.tcx().intern_substs(&[]))
         .call(bcx, debug_loc, &[size, align], None);
 
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
@@ -244,115 +251,6 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOp_) -> llvm::RealPredicate {
                   found {:?}",
                  op);
         }
-    }
-}
-
-pub fn compare_fat_ptrs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    lhs_addr: ValueRef,
-                                    lhs_extra: ValueRef,
-                                    rhs_addr: ValueRef,
-                                    rhs_extra: ValueRef,
-                                    _t: Ty<'tcx>,
-                                    op: hir::BinOp_,
-                                    debug_loc: DebugLoc)
-                                    -> ValueRef {
-    match op {
-        hir::BiEq => {
-            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
-            let extra_eq = ICmp(bcx, llvm::IntEQ, lhs_extra, rhs_extra, debug_loc);
-            And(bcx, addr_eq, extra_eq, debug_loc)
-        }
-        hir::BiNe => {
-            let addr_eq = ICmp(bcx, llvm::IntNE, lhs_addr, rhs_addr, debug_loc);
-            let extra_eq = ICmp(bcx, llvm::IntNE, lhs_extra, rhs_extra, debug_loc);
-            Or(bcx, addr_eq, extra_eq, debug_loc)
-        }
-        hir::BiLe | hir::BiLt | hir::BiGe | hir::BiGt => {
-            // a OP b ~ a.0 STRICT(OP) b.0 | (a.0 == b.0 && a.1 OP a.1)
-            let (op, strict_op) = match op {
-                hir::BiLt => (llvm::IntULT, llvm::IntULT),
-                hir::BiLe => (llvm::IntULE, llvm::IntULT),
-                hir::BiGt => (llvm::IntUGT, llvm::IntUGT),
-                hir::BiGe => (llvm::IntUGE, llvm::IntUGT),
-                _ => bug!(),
-            };
-
-            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
-            let extra_op = ICmp(bcx, op, lhs_extra, rhs_extra, debug_loc);
-            let addr_eq_extra_op = And(bcx, addr_eq, extra_op, debug_loc);
-
-            let addr_strict = ICmp(bcx, strict_op, lhs_addr, rhs_addr, debug_loc);
-            Or(bcx, addr_strict, addr_eq_extra_op, debug_loc)
-        }
-        _ => {
-            bug!("unexpected fat ptr binop");
-        }
-    }
-}
-
-pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                        lhs: ValueRef,
-                                        rhs: ValueRef,
-                                        t: Ty<'tcx>,
-                                        op: hir::BinOp_,
-                                        debug_loc: DebugLoc)
-                                        -> ValueRef {
-    match t.sty {
-        ty::TyTuple(ref tys) if tys.is_empty() => {
-            // We don't need to do actual comparisons for nil.
-            // () == () holds but () < () does not.
-            match op {
-                hir::BiEq | hir::BiLe | hir::BiGe => return C_bool(bcx.ccx(), true),
-                hir::BiNe | hir::BiLt | hir::BiGt => return C_bool(bcx.ccx(), false),
-                // refinements would be nice
-                _ => bug!("compare_scalar_types: must be a comparison operator"),
-            }
-        }
-        ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyBool | ty::TyUint(_) | ty::TyChar => {
-            ICmp(bcx,
-                 bin_op_to_icmp_predicate(op, false),
-                 lhs,
-                 rhs,
-                 debug_loc)
-        }
-        ty::TyRawPtr(mt) if common::type_is_sized(bcx.tcx(), mt.ty) => {
-            ICmp(bcx,
-                 bin_op_to_icmp_predicate(op, false),
-                 lhs,
-                 rhs,
-                 debug_loc)
-        }
-        ty::TyRawPtr(_) => {
-            let lhs_addr = Load(bcx, GEPi(bcx, lhs, &[0, abi::FAT_PTR_ADDR]));
-            let lhs_extra = Load(bcx, GEPi(bcx, lhs, &[0, abi::FAT_PTR_EXTRA]));
-
-            let rhs_addr = Load(bcx, GEPi(bcx, rhs, &[0, abi::FAT_PTR_ADDR]));
-            let rhs_extra = Load(bcx, GEPi(bcx, rhs, &[0, abi::FAT_PTR_EXTRA]));
-            compare_fat_ptrs(bcx,
-                             lhs_addr,
-                             lhs_extra,
-                             rhs_addr,
-                             rhs_extra,
-                             t,
-                             op,
-                             debug_loc)
-        }
-        ty::TyInt(_) => {
-            ICmp(bcx,
-                 bin_op_to_icmp_predicate(op, true),
-                 lhs,
-                 rhs,
-                 debug_loc)
-        }
-        ty::TyFloat(_) => {
-            FCmp(bcx,
-                 bin_op_to_fcmp_predicate(op),
-                 lhs,
-                 rhs,
-                 debug_loc)
-        }
-        // Should never get here, because t is scalar.
-        _ => bug!("non-scalar type passed to compare_scalar_types"),
     }
 }
 
@@ -466,32 +364,27 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             store_fat_ptr(bcx, base, info, dst, dst_ty);
         }
 
-        // This can be extended to enums and tuples in the future.
-        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
+        (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) => {
             assert_eq!(def_a, def_b);
 
-            let src_repr = adt::represent_type(bcx.ccx(), src_ty);
-            let src_fields = match &*src_repr {
-                &adt::Repr::Univariant(ref s) => &s.fields,
-                _ => bug!("struct has non-univariant repr"),
-            };
-            let dst_repr = adt::represent_type(bcx.ccx(), dst_ty);
-            let dst_fields = match &*dst_repr {
-                &adt::Repr::Univariant(ref s) => &s.fields,
-                _ => bug!("struct has non-univariant repr"),
-            };
+            let src_fields = def_a.variants[0].fields.iter().map(|f| {
+                monomorphize::field_ty(bcx.tcx(), substs_a, f)
+            });
+            let dst_fields = def_b.variants[0].fields.iter().map(|f| {
+                monomorphize::field_ty(bcx.tcx(), substs_b, f)
+            });
 
             let src = adt::MaybeSizedValue::sized(src);
             let dst = adt::MaybeSizedValue::sized(dst);
 
-            let iter = src_fields.iter().zip(dst_fields).enumerate();
+            let iter = src_fields.zip(dst_fields).enumerate();
             for (i, (src_fty, dst_fty)) in iter {
                 if type_is_zero_size(bcx.ccx(), dst_fty) {
                     continue;
                 }
 
-                let src_f = adt::trans_field_ptr(bcx, &src_repr, src, Disr(0), i);
-                let dst_f = adt::trans_field_ptr(bcx, &dst_repr, dst, Disr(0), i);
+                let src_f = adt::trans_field_ptr(bcx, src_ty, src, Disr(0), i);
+                let dst_f = adt::trans_field_ptr(bcx, dst_ty, dst, Disr(0), i);
                 if src_fty == dst_fty {
                     memcpy_ty(bcx, dst_f, src_f, src_fty);
                 } else {
@@ -511,7 +404,7 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
                                              -> CustomCoerceUnsized {
     let trait_ref = ty::Binder(ty::TraitRef {
         def_id: scx.tcx().lang_items.coerce_unsized_trait().unwrap(),
-        substs: Substs::new_trait(scx.tcx(), source_ty, &[target_ty])
+        substs: scx.tcx().mk_substs_trait(source_ty, &[target_ty])
     });
 
     match fulfill_obligation(scx, DUMMY_SP, trait_ref) {
@@ -628,6 +521,11 @@ pub fn need_invoke(bcx: Block) -> bool {
     }
 }
 
+pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
+    let assume_intrinsic = b.ccx.get_intrinsic("llvm.assume");
+    b.call(assume_intrinsic, &[val], None);
+}
+
 /// Helper for loading values from memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values. Also handles various special cases where the type
 /// gives us better information about what we are loading.
@@ -681,12 +579,9 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
     debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
     if common::type_is_fat_ptr(cx.tcx(), t) {
-        Store(cx,
-              ExtractValue(cx, v, abi::FAT_PTR_ADDR),
-              get_dataptr(cx, dst));
-        Store(cx,
-              ExtractValue(cx, v, abi::FAT_PTR_EXTRA),
-              get_meta(cx, dst));
+        let lladdr = ExtractValue(cx, v, abi::FAT_PTR_ADDR);
+        let llextra = ExtractValue(cx, v, abi::FAT_PTR_EXTRA);
+        store_fat_ptr(cx, lladdr, llextra, dst, t);
     } else {
         Store(cx, from_immediate(cx, v), dst);
     }
@@ -704,11 +599,36 @@ pub fn store_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
 pub fn load_fat_ptr<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                 src: ValueRef,
-                                _ty: Ty<'tcx>)
-                                -> (ValueRef, ValueRef) {
-    // FIXME: emit metadata
-    (Load(cx, get_dataptr(cx, src)),
-     Load(cx, get_meta(cx, src)))
+                                ty: Ty<'tcx>)
+                                -> (ValueRef, ValueRef)
+{
+    if cx.unreachable.get() {
+        // FIXME: remove me
+        return (Load(cx, get_dataptr(cx, src)),
+                Load(cx, get_meta(cx, src)));
+    }
+
+    load_fat_ptr_builder(&B(cx), src, ty)
+}
+
+pub fn load_fat_ptr_builder<'a, 'tcx>(
+    b: &Builder<'a, 'tcx>,
+    src: ValueRef,
+    t: Ty<'tcx>)
+    -> (ValueRef, ValueRef)
+{
+
+    let ptr = get_dataptr_builder(b, src);
+    let ptr = if t.is_region_ptr() || t.is_unique() {
+        b.load_nonnull(ptr)
+    } else {
+        b.load(ptr)
+    };
+
+    // FIXME: emit metadata on `meta`.
+    let meta = b.load(get_meta_builder(b, src));
+
+    (ptr, meta)
 }
 
 pub fn from_immediate(bcx: Block, val: ValueRef) -> ValueRef {
@@ -927,7 +847,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 common::validate_substs(instance.substs);
                 (instance.substs, Some(instance.def))
             }
-            None => (Substs::empty(ccx.tcx()), None)
+            None => (ccx.tcx().intern_substs(&[]), None)
         };
 
         let local_id = def_id.and_then(|id| ccx.tcx().map.as_local_node_id(id));
@@ -945,7 +865,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             false
         };
 
-        let mir = def_id.and_then(|id| ccx.get_mir(id));
+        let mir = def_id.map(|id| ccx.tcx().item_mir(id));
 
         let debug_context = if let (false, Some((instance, sig, abi)), &Some(ref mir)) =
                 (no_debug, definition, &mir) {
@@ -1129,8 +1049,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     let fn_ty = ccx.tcx().erase_regions(&fn_ty);
     let fn_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &fn_ty);
 
-    let sig = ccx.tcx().erase_late_bound_regions(fn_ty.fn_sig());
-    let sig = ccx.tcx().normalize_associated_type(&sig);
+    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(fn_ty.fn_sig());
     let abi = fn_ty.fn_abi();
 
     let lldecl = match ccx.instances().borrow().get(&instance) {
@@ -1152,8 +1071,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let ctor_ty = ccx.tcx().lookup_item_type(def_id).ty;
     let ctor_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &ctor_ty);
 
-    let sig = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_sig());
-    let sig = ccx.tcx().normalize_associated_type(&sig);
+    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);
@@ -1164,11 +1082,10 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if !fcx.fn_ty.ret.is_ignore() {
         let dest = fcx.llretslotptr.get().unwrap();
         let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
-        let repr = adt::represent_type(ccx, sig.output);
         let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
         for (i, arg_ty) in sig.inputs.into_iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(bcx, &repr, dest_val, Disr::from(disr), i);
+            let lldestptr = adt::trans_field_ptr(bcx, sig.output, dest_val, Disr::from(disr), i);
             let arg = &fcx.fn_ty.args[arg_idx];
             arg_idx += 1;
             let b = &bcx.build();
@@ -1181,7 +1098,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 arg.store_fn_arg(b, &mut llarg_idx, lldestptr);
             }
         }
-        adt::trans_set_discr(bcx, &repr, dest, disr);
+        adt::trans_set_discr(bcx, sig.output, dest, disr);
     }
 
     fcx.finish(bcx, DebugLoc::None);
@@ -1293,7 +1210,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
                     Ok(id) => id,
                     Err(s) => ccx.sess().fatal(&s)
                 };
-                let empty_substs = Substs::empty(ccx.tcx());
+                let empty_substs = ccx.tcx().intern_substs(&[]);
                 let start_fn = Callee::def(ccx, start_def_id, empty_substs).reify(ccx);
                 let args = {
                     let opaque_rust_main =
@@ -1332,12 +1249,27 @@ fn write_metadata(cx: &SharedCrateContext,
                   reachable_ids: &NodeSet) -> Vec<u8> {
     use flate;
 
-    let any_library = cx.sess()
-                        .crate_types
-                        .borrow()
-                        .iter()
-                        .any(|ty| *ty != config::CrateTypeExecutable);
-    if !any_library {
+    #[derive(PartialEq, Eq, PartialOrd, Ord)]
+    enum MetadataKind {
+        None,
+        Uncompressed,
+        Compressed
+    }
+
+    let kind = cx.sess().crate_types.borrow().iter().map(|ty| {
+        match *ty {
+            config::CrateTypeExecutable |
+            config::CrateTypeStaticlib |
+            config::CrateTypeCdylib => MetadataKind::None,
+
+            config::CrateTypeRlib => MetadataKind::Uncompressed,
+
+            config::CrateTypeDylib |
+            config::CrateTypeProcMacro => MetadataKind::Compressed,
+        }
+    }).max().unwrap();
+
+    if kind == MetadataKind::None {
         return Vec::new();
     }
 
@@ -1345,9 +1277,12 @@ fn write_metadata(cx: &SharedCrateContext,
     let metadata = cstore.encode_metadata(cx.tcx(),
                                           cx.export_map(),
                                           cx.link_meta(),
-                                          reachable_ids,
-                                          cx.mir_map(),
-                                          cx.tcx().map.krate());
+                                          reachable_ids);
+    if kind == MetadataKind::Uncompressed {
+        return metadata;
+    }
+
+    assert!(kind == MetadataKind::Compressed);
     let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.extend_from_slice(&flate::deflate_bytes(&metadata));
 
@@ -1421,21 +1356,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
             .iter()
             .cloned()
             .filter(|trans_item|{
-                let def_id = match *trans_item {
-                    TransItem::DropGlue(..) => {
-                        return false
-                    },
-                    TransItem::Fn(ref instance) => {
-                        instance.def
-                    }
-                    TransItem::Static(node_id) => {
-                        tcx.map.local_def_id(node_id)
-                    }
-                };
-
-                trans_item.explicit_linkage(tcx).is_some() ||
-                attr::contains_extern_indicator(tcx.sess.diagnostic(),
-                                                &tcx.get_attrs(def_id))
+                trans_item.explicit_linkage(tcx).is_some()
             })
             .map(|trans_item| symbol_map.get_or_compute(scx, trans_item))
             .collect();
@@ -1591,7 +1512,11 @@ pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
                 node: hir::ImplItemKind::Method(..), .. }) => {
                 let def_id = tcx.map.local_def_id(id);
                 let generics = tcx.lookup_generics(def_id);
-                generics.parent_types == 0 && generics.types.is_empty()
+                let attributes = tcx.get_attrs(def_id);
+                (generics.parent_types == 0 && generics.types.is_empty()) &&
+                // Functions marked with #[inline] are only ever translated
+                // with "internal" linkage and are never exported.
+                !attr::requests_inline(&attributes[..])
             }
 
             _ => false
@@ -1600,7 +1525,6 @@ pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
 }
 
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             mir_map: &MirMap<'tcx>,
                              analysis: ty::CrateAnalysis,
                              incremental_hashes_map: &IncrementalHashesMap)
                              -> CrateTranslation {
@@ -1624,9 +1548,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let link_meta = link::build_link_meta(incremental_hashes_map, name);
 
     let shared_ccx = SharedCrateContext::new(tcx,
-                                             &mir_map,
                                              export_map,
-                                             Sha256::new(),
                                              link_meta.clone(),
                                              reachable,
                                              check_overflow);
@@ -1789,8 +1711,21 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // `reachable_symbols` list later on so it should be ok.
     for cnum in sess.cstore.crates() {
         let syms = sess.cstore.reachable_ids(cnum);
-        reachable_symbols.extend(syms.into_iter().filter(|did| {
-            sess.cstore.is_extern_item(shared_ccx.tcx(), *did)
+        reachable_symbols.extend(syms.into_iter().filter(|&def_id| {
+            let applicable = match sess.cstore.describe_def(def_id) {
+                Some(Def::Static(..)) => true,
+                Some(Def::Fn(_)) => {
+                    shared_ccx.tcx().lookup_generics(def_id).types.is_empty()
+                }
+                _ => false
+            };
+
+            if applicable {
+                let attrs = shared_ccx.tcx().get_attrs(def_id);
+                attr::contains_extern_indicator(sess.diagnostic(), &attrs)
+            } else {
+                false
+            }
         }).map(|did| {
             symbol_for_def_id(did, &shared_ccx, &symbol_map)
         }));
@@ -1896,8 +1831,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         partitioning::partition(scx,
                                 items.iter().cloned(),
                                 strategy,
-                                &inlining_map,
-                                scx.reachable())
+                                &inlining_map)
     });
 
     assert!(scx.tcx().sess.opts.cg.codegen_units == codegen_units.len() ||

@@ -24,8 +24,6 @@
 //! A few whitelisted exceptions are allowed as there's known bugs in rustdoc,
 //! but this should catch the majority of "broken link" cases.
 
-#![feature(question_mark)]
-
 extern crate url;
 
 use std::env;

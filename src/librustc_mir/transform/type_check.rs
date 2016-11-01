@@ -15,11 +15,12 @@ use rustc::infer::{self, InferCtxt, InferOk};
 use rustc::traits::{self, Reveal};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
-use rustc::mir::visit::{self, Visitor};
+use rustc::mir::visit::Visitor;
 use std::fmt;
+use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -89,14 +90,8 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
     fn visit_mir(&mut self, mir: &Mir<'tcx>) {
         self.sanitize_type(&"return type", mir.return_ty);
-        for var_decl in &mir.var_decls {
-            self.sanitize_type(var_decl, var_decl.ty);
-        }
-        for (n, arg_decl) in mir.arg_decls.iter().enumerate() {
-            self.sanitize_type(&(n, arg_decl), arg_decl.ty);
-        }
-        for (n, tmp_decl) in mir.temp_decls.iter().enumerate() {
-            self.sanitize_type(&(n, tmp_decl), tmp_decl.ty);
+        for local_decl in &mir.local_decls {
+            self.sanitize_type(local_decl, local_decl.ty);
         }
         if self.errors_reported {
             return;
@@ -130,14 +125,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn sanitize_lvalue(&mut self, lvalue: &Lvalue<'tcx>, location: Location) -> LvalueTy<'tcx> {
         debug!("sanitize_lvalue: {:?}", lvalue);
         match *lvalue {
-            Lvalue::Var(index) => LvalueTy::Ty { ty: self.mir.var_decls[index].ty },
-            Lvalue::Temp(index) => LvalueTy::Ty { ty: self.mir.temp_decls[index].ty },
-            Lvalue::Arg(index) => LvalueTy::Ty { ty: self.mir.arg_decls[index].ty },
+            Lvalue::Local(index) => LvalueTy::Ty { ty: self.mir.local_decls[index].ty },
             Lvalue::Static(def_id) =>
                 LvalueTy::Ty { ty: self.tcx().lookup_item_type(def_id).ty },
-            Lvalue::ReturnPointer => {
-                LvalueTy::Ty { ty: self.mir.return_ty }
-            }
             Lvalue::Projection(ref proj) => {
                 let base_ty = self.sanitize_lvalue(&proj.base, location);
                 if let LvalueTy::Ty { ty } = base_ty {
@@ -379,12 +369,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             StatementKind::StorageLive(ref lv) |
             StatementKind::StorageDead(ref lv) => {
                 match *lv {
-                    Lvalue::Temp(_) | Lvalue::Var(_) => {}
+                    Lvalue::Local(_) => {}
                     _ => {
-                        span_mirbug!(self, stmt, "bad lvalue: expected temp or var");
+                        span_mirbug!(self, stmt, "bad lvalue: expected local");
                     }
                 }
             }
+            StatementKind::Nop => {}
         }
     }
 
@@ -673,7 +664,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         where T: fmt::Debug + TypeFoldable<'tcx>
     {
         let mut selcx = traits::SelectionContext::new(self.infcx);
-        let cause = traits::ObligationCause::misc(self.last_span, 0);
+        let cause = traits::ObligationCause::misc(self.last_span, ast::CRATE_NODE_ID);
         let traits::Normalized { value, obligations } =
             traits::normalize(&mut selcx, cause, value);
 
@@ -709,6 +700,8 @@ impl TypeckMir {
 impl<'tcx> MirPass<'tcx> for TypeckMir {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     src: MirSource, mir: &mut Mir<'tcx>) {
+        debug!("run_pass: {}", tcx.node_path_str(src.item_id()));
+
         if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.

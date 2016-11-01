@@ -22,12 +22,12 @@ pub const LOG_LEVEL_NAMES: [&'static str; 5] = ["ERROR", "WARN", "INFO", "DEBUG"
 /// Parse an individual log level that is either a number or a symbolic log level
 fn parse_log_level(level: &str) -> Option<u32> {
     level.parse::<u32>()
-         .ok()
-         .or_else(|| {
-             let pos = LOG_LEVEL_NAMES.iter().position(|&name| name.eq_ignore_ascii_case(level));
-             pos.map(|p| p as u32 + 1)
-         })
-         .map(|p| cmp::min(p, ::MAX_LOG_LEVEL))
+        .ok()
+        .or_else(|| {
+            let pos = LOG_LEVEL_NAMES.iter().position(|&name| name.eq_ignore_ascii_case(level));
+            pos.map(|p| p as u32 + 1)
+        })
+        .map(|p| cmp::min(p, ::MAX_LOG_LEVEL))
 }
 
 /// Parse a logging specification string (e.g: "crate1,crate2::mod3,crate3::x=1/foo")
@@ -52,32 +52,31 @@ pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<String>) {
                 continue;
             }
             let mut parts = s.split('=');
-            let (log_level, name) = match (parts.next(),
-                                           parts.next().map(|s| s.trim()),
-                                           parts.next()) {
-                (Some(part0), None, None) => {
-                    // if the single argument is a log-level string or number,
-                    // treat that as a global fallback
-                    match parse_log_level(part0) {
-                        Some(num) => (num, None),
-                        None => (::MAX_LOG_LEVEL, Some(part0)),
-                    }
-                }
-                (Some(part0), Some(""), None) => (::MAX_LOG_LEVEL, Some(part0)),
-                (Some(part0), Some(part1), None) => {
-                    match parse_log_level(part1) {
-                        Some(num) => (num, Some(part0)),
-                        _ => {
-                            println!("warning: invalid logging spec '{}', ignoring it", part1);
-                            continue;
+            let (log_level, name) =
+                match (parts.next(), parts.next().map(|s| s.trim()), parts.next()) {
+                    (Some(part0), None, None) => {
+                        // if the single argument is a log-level string or number,
+                        // treat that as a global fallback
+                        match parse_log_level(part0) {
+                            Some(num) => (num, None),
+                            None => (::MAX_LOG_LEVEL, Some(part0)),
                         }
                     }
-                }
-                _ => {
-                    println!("warning: invalid logging spec '{}', ignoring it", s);
-                    continue;
-                }
-            };
+                    (Some(part0), Some(""), None) => (::MAX_LOG_LEVEL, Some(part0)),
+                    (Some(part0), Some(part1), None) => {
+                        match parse_log_level(part1) {
+                            Some(num) => (num, Some(part0)),
+                            _ => {
+                                println!("warning: invalid logging spec '{}', ignoring it", part1);
+                                continue;
+                            }
+                        }
+                    }
+                    _ => {
+                        println!("warning: invalid logging spec '{}', ignoring it", s);
+                        continue;
+                    }
+                };
             dirs.push(LogDirective {
                 name: name.map(str::to_owned),
                 level: log_level,

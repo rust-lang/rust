@@ -15,9 +15,8 @@
 //! of individual objects while the arena itself is still alive. The benefit
 //! of an arena is very fast allocation; just a pointer bump.
 //!
-//! This crate has two arenas implemented: `TypedArena`, which is a simpler
-//! arena but can only hold objects of a single type, and `Arena`, which is a
-//! more complex, slower arena which can hold objects of any type.
+//! This crate implements `TypedArena`, a simple arena that can only hold
+//! objects of a single type.
 
 #![crate_name = "arena"]
 #![unstable(feature = "rustc_private", issue = "27812")]
@@ -47,11 +46,12 @@ use std::intrinsics;
 use std::marker::{PhantomData, Send};
 use std::mem;
 use std::ptr;
+use std::slice;
 
 use alloc::heap;
 use alloc::raw_vec::RawVec;
 
-/// A faster arena that can hold objects of only one type.
+/// An arena that can hold objects of only one type.
 pub struct TypedArena<T> {
     /// A pointer to the next object to be allocated.
     ptr: Cell<*mut T>,
@@ -60,7 +60,7 @@ pub struct TypedArena<T> {
     /// reached, a new chunk is allocated.
     end: Cell<*mut T>,
 
-    /// A vector arena segments.
+    /// A vector of arena chunks.
     chunks: RefCell<Vec<TypedArenaChunk<T>>>,
 
     /// Marker indicating that dropping the arena causes its owned
@@ -69,7 +69,7 @@ pub struct TypedArena<T> {
 }
 
 struct TypedArenaChunk<T> {
-    /// Pointer to the next arena segment.
+    /// The raw storage for the arena chunk.
     storage: RawVec<T>,
 }
 
@@ -117,26 +117,16 @@ impl<T> TypedArenaChunk<T> {
 const PAGE: usize = 4096;
 
 impl<T> TypedArena<T> {
-    /// Creates a new `TypedArena` with preallocated space for many objects.
+    /// Creates a new `TypedArena`.
     #[inline]
     pub fn new() -> TypedArena<T> {
-        // Reserve at least one page.
-        let elem_size = cmp::max(1, mem::size_of::<T>());
-        TypedArena::with_capacity(PAGE / elem_size)
-    }
-
-    /// Creates a new `TypedArena` with preallocated space for the given number of
-    /// objects.
-    #[inline]
-    pub fn with_capacity(capacity: usize) -> TypedArena<T> {
-        unsafe {
-            let chunk = TypedArenaChunk::<T>::new(cmp::max(1, capacity));
-            TypedArena {
-                ptr: Cell::new(chunk.start()),
-                end: Cell::new(chunk.end()),
-                chunks: RefCell::new(vec![chunk]),
-                _own: PhantomData,
-            }
+        TypedArena {
+            // We set both `ptr` and `end` to 0 so that the first call to
+            // alloc() will trigger a grow().
+            ptr: Cell::new(0 as *mut T),
+            end: Cell::new(0 as *mut T),
+            chunks: RefCell::new(vec![]),
+            _own: PhantomData,
         }
     }
 
@@ -144,7 +134,7 @@ impl<T> TypedArena<T> {
     #[inline]
     pub fn alloc(&self, object: T) -> &mut T {
         if self.ptr == self.end {
-            self.grow()
+            self.grow(1)
         }
 
         unsafe {
@@ -165,35 +155,79 @@ impl<T> TypedArena<T> {
         }
     }
 
+    /// Allocates a slice of objects that are copy into the `TypedArena`, returning a mutable
+    /// reference to it. Will panic if passed a zero-sized types.
+    ///
+    /// Panics:
+    ///  - Zero-sized types
+    ///  - Zero-length slices
+    #[inline]
+    pub fn alloc_slice(&self, slice: &[T]) -> &mut [T]
+        where T: Copy {
+        assert!(mem::size_of::<T>() != 0);
+        assert!(slice.len() != 0);
+
+        let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
+        let at_least_bytes = slice.len() * mem::size_of::<T>();
+        if available_capacity_bytes < at_least_bytes {
+            self.grow(slice.len());
+        }
+
+        unsafe {
+            let start_ptr = self.ptr.get();
+            let arena_slice = slice::from_raw_parts_mut(start_ptr, slice.len());
+            self.ptr.set(start_ptr.offset(arena_slice.len() as isize));
+            arena_slice.copy_from_slice(slice);
+            arena_slice
+        }
+    }
+
     /// Grows the arena.
     #[inline(never)]
     #[cold]
-    fn grow(&self) {
+    fn grow(&self, n: usize) {
         unsafe {
             let mut chunks = self.chunks.borrow_mut();
-            let prev_capacity = chunks.last().unwrap().storage.cap();
-            let new_capacity = prev_capacity.checked_mul(2).unwrap();
-            if chunks.last_mut().unwrap().storage.double_in_place() {
-                self.end.set(chunks.last().unwrap().end());
+            let (chunk, mut new_capacity);
+            if let Some(last_chunk) = chunks.last_mut() {
+                let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
+                let currently_used_cap = used_bytes / mem::size_of::<T>();
+                if last_chunk.storage.reserve_in_place(currently_used_cap, n) {
+                    self.end.set(last_chunk.end());
+                    return;
+                } else {
+                    let prev_capacity = last_chunk.storage.cap();
+                    loop {
+                        new_capacity = prev_capacity.checked_mul(2).unwrap();
+                        if new_capacity >= currently_used_cap + n {
+                            break;
+                        }
+                    }
+                }
             } else {
-                let chunk = TypedArenaChunk::<T>::new(new_capacity);
-                self.ptr.set(chunk.start());
-                self.end.set(chunk.end());
-                chunks.push(chunk);
+                let elem_size = cmp::max(1, mem::size_of::<T>());
+                new_capacity = cmp::max(n, PAGE / elem_size);
             }
+            chunk = TypedArenaChunk::<T>::new(new_capacity);
+            self.ptr.set(chunk.start());
+            self.end.set(chunk.end());
+            chunks.push(chunk);
         }
     }
+
     /// Clears the arena. Deallocates all but the longest chunk which may be reused.
     pub fn clear(&mut self) {
         unsafe {
             // Clear the last chunk, which is partially filled.
             let mut chunks_borrow = self.chunks.borrow_mut();
-            let last_idx = chunks_borrow.len() - 1;
-            self.clear_last_chunk(&mut chunks_borrow[last_idx]);
-            // If `T` is ZST, code below has no effect.
-            for mut chunk in chunks_borrow.drain(..last_idx) {
-                let cap = chunk.storage.cap();
-                chunk.destroy(cap);
+            if let Some(mut last_chunk) = chunks_borrow.pop() {
+                self.clear_last_chunk(&mut last_chunk);
+                // If `T` is ZST, code below has no effect.
+                for mut chunk in chunks_borrow.drain(..) {
+                    let cap = chunk.storage.cap();
+                    chunk.destroy(cap);
+                }
+                chunks_borrow.push(last_chunk);
             }
         }
     }
@@ -230,13 +264,14 @@ impl<T> Drop for TypedArena<T> {
         unsafe {
             // Determine how much was filled.
             let mut chunks_borrow = self.chunks.borrow_mut();
-            let mut last_chunk = chunks_borrow.pop().unwrap();
-            // Drop the contents of the last chunk.
-            self.clear_last_chunk(&mut last_chunk);
-            // The last chunk will be dropped. Destroy all other chunks.
-            for chunk in chunks_borrow.iter_mut() {
-                let cap = chunk.storage.cap();
-                chunk.destroy(cap);
+            if let Some(mut last_chunk) = chunks_borrow.pop() {
+                // Drop the contents of the last chunk.
+                self.clear_last_chunk(&mut last_chunk);
+                // The last chunk will be dropped. Destroy all other chunks.
+                for chunk in chunks_borrow.iter_mut() {
+                    let cap = chunk.storage.cap();
+                    chunk.destroy(cap);
+                }
             }
             // RawVec handles deallocation of `last_chunk` and `self.chunks`.
         }
@@ -258,6 +293,12 @@ mod tests {
         x: i32,
         y: i32,
         z: i32,
+    }
+
+    #[test]
+    pub fn test_unused() {
+        let arena: TypedArena<Point> = TypedArena::new();
+        assert!(arena.chunks.borrow().is_empty());
     }
 
     #[test]
@@ -296,9 +337,8 @@ mod tests {
 
         let arena = Wrap(TypedArena::new());
 
-        let result = arena.alloc_outer(|| {
-            Outer { inner: arena.alloc_inner(|| Inner { value: 10 }) }
-        });
+        let result =
+            arena.alloc_outer(|| Outer { inner: arena.alloc_inner(|| Inner { value: 10 }) });
 
         assert_eq!(result.inner.value, 10);
     }

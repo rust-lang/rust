@@ -12,7 +12,8 @@
 
 struct Foo;
 
-unsafe impl !Clone for Foo { } //~ ERROR E0199
+trait Bar { }
+unsafe impl Bar for Foo { } //~ ERROR implementing the trait `Bar` is not unsafe [E0199]
 
 fn main() {
 }

@@ -8,11 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::{Target, TargetResult};
+use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::linux_base::opts();
-    base.max_atomic_width = 128;
+    base.max_atomic_width = Some(128);
+
+    // see #36994
+    base.exe_allocation_crate = "alloc_system".to_string();
+
     Ok(Target {
         llvm_target: "aarch64-unknown-linux-gnu".to_string(),
         target_endian: "little".to_string(),
@@ -22,6 +26,9 @@ pub fn target() -> TargetResult {
         arch: "aarch64".to_string(),
         target_os: "linux".to_string(),
         target_vendor: "unknown".to_string(),
-        options: base,
+        options: TargetOptions {
+            abi_blacklist: super::arm_base::abi_blacklist(),
+            .. base
+        },
     })
 }

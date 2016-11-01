@@ -428,7 +428,7 @@ impl fmt::Debug for TcpListener {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use io::ErrorKind;
     use io::prelude::*;

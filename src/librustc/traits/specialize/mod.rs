@@ -26,8 +26,10 @@ use infer::{InferCtxt, TypeOrigin};
 use middle::region;
 use ty::subst::{Subst, Substs};
 use traits::{self, Reveal, ObligationCause, Normalized};
-use ty::{self, TyCtxt};
+use ty::{self, TyCtxt, TypeFoldable};
 use syntax_pos::DUMMY_SP;
+
+use syntax::ast;
 
 pub mod specialization_graph;
 
@@ -101,6 +103,41 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 
     // directly inherent the method generics, since those do not vary across impls
     source_substs.rebase_onto(infcx.tcx, source_impl, target_substs)
+}
+
+/// Given a selected impl described by `impl_data`, returns the
+/// definition and substitions for the method with the name `name`,
+/// and trait method substitutions `substs`, in that impl, a less
+/// specialized impl, or the trait default, whichever applies.
+pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             name: ast::Name,
+                             substs: &'tcx Substs<'tcx>,
+                             impl_data: &super::VtableImplData<'tcx, ()>)
+                             -> (DefId, &'tcx Substs<'tcx>)
+{
+    assert!(!substs.needs_infer());
+
+    let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
+    let trait_def = tcx.lookup_trait_def(trait_def_id);
+
+    match trait_def.ancestors(impl_data.impl_def_id).fn_defs(tcx, name).next() {
+        Some(node_item) => {
+            let substs = tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+                let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
+                let substs = translate_substs(&infcx, impl_data.impl_def_id,
+                                              substs, node_item.node);
+                tcx.lift(&substs).unwrap_or_else(|| {
+                    bug!("find_method: translate_substs \
+                          returned {:?} which contains inference types/regions",
+                         substs);
+                })
+            });
+            (node_item.item.def_id, substs)
+        }
+        None => {
+            bug!("method {:?} not found in {:?}", name, impl_data.impl_def_id)
+        }
+    }
 }
 
 /// Is impl1 a specialization of impl2?

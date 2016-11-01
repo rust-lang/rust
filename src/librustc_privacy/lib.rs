@@ -28,7 +28,7 @@ extern crate syntax_pos;
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::{self, PatKind};
-use rustc::hir::def::{self, Def};
+use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -286,7 +286,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         if self.prev_level.is_some() {
             if let Some(exports) = self.export_map.get(&id) {
                 for export in exports {
-                    if let Some(node_id) = self.tcx.map.as_local_node_id(export.def_id) {
+                    if let Some(node_id) = self.tcx.map.as_local_node_id(export.def.def_id()) {
                         self.update(node_id, Some(AccessLevel::Exported));
                     }
                 }
@@ -323,8 +323,13 @@ impl<'b, 'a, 'tcx: 'a, 'v> Visitor<'v> for ReachEverythingInTheInterfaceVisitor<
             let def = self.ev.tcx.expect_def(ty.id);
             match def {
                 Def::Struct(def_id) | Def::Union(def_id) | Def::Enum(def_id) |
-                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
-                    if let Some(node_id) = self.ev.tcx.map.as_local_node_id(def_id) {
+                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id) => {
+                    if let Some(mut node_id) = self.ev.tcx.map.as_local_node_id(def_id) {
+                        // Check the trait for associated types.
+                        if let hir::map::NodeTraitItem(_) = self.ev.tcx.map.get(node_id) {
+                            node_id = self.ev.tcx.map.get_parent(node_id);
+                        }
+
                         let item = self.ev.tcx.map.expect_item(node_id);
                         if let Def::TyAlias(..) = def {
                             // Type aliases are substituted. Associated type aliases are not
@@ -449,36 +454,25 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 }
             }
             hir::ExprPath(..) => {
-                if let Def::Struct(..) = self.tcx.expect_def(expr.id) {
-                    let expr_ty = self.tcx.expr_ty(expr);
-                    let def = match expr_ty.sty {
-                        ty::TyFnDef(.., &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
-                            output: ty, ..
-                        }), ..}) => ty,
-                        _ => expr_ty
-                    }.ty_adt_def().unwrap();
-
-                    let private_indexes : Vec<_> = def.struct_variant().fields.iter().enumerate()
-                        .filter(|&(_,f)| {
-                            !f.vis.is_accessible_from(self.curitem, &self.tcx.map)
-                    }).map(|(n,&_)|n).collect();
+                if let def @ Def::StructCtor(_, CtorKind::Fn) = self.tcx.expect_def(expr.id) {
+                    let adt_def = self.tcx.expect_variant_def(def);
+                    let private_indexes = adt_def.fields.iter().enumerate().filter(|&(_, field)| {
+                        !field.vis.is_accessible_from(self.curitem, &self.tcx.map)
+                    }).map(|(i, _)| i).collect::<Vec<_>>();
 
                     if !private_indexes.is_empty() {
-
                         let mut error = struct_span_err!(self.tcx.sess, expr.span, E0450,
                                                          "cannot invoke tuple struct constructor \
-                                                         with private fields");
+                                                          with private fields");
                         error.span_label(expr.span,
                                          &format!("cannot construct with a private field"));
 
-                        if let Some(def_id) = self.tcx.map.as_local_node_id(def.did) {
-                            if let Some(hir::map::NodeItem(node)) = self.tcx.map.find(def_id) {
-                                if let hir::Item_::ItemStruct(ref tuple_data, _) = node.node {
-
-                                    for i in private_indexes {
-                                        error.span_label(tuple_data.fields()[i].span,
-                                                         &format!("private field declared here"));
-                                    }
+                        if let Some(node_id) = self.tcx.map.as_local_node_id(adt_def.did) {
+                            let node = self.tcx.map.find(node_id);
+                            if let Some(hir::map::NodeStructCtor(vdata)) = node {
+                                for i in private_indexes {
+                                    error.span_label(vdata.fields()[i].span,
+                                                     &format!("private field declared here"));
                                 }
                             }
                         }
@@ -865,9 +859,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
     // expression/block context can't possibly contain exported things.
     // (Making them no-ops stops us from traversing the whole AST without
     // having to be super careful about our `walk_...` calls above.)
-    // FIXME(#29524): Unfortunately this ^^^ is not true, blocks can contain
-    // exported items (e.g. impls) and actual code in rustc itself breaks
-    // if we don't traverse blocks in `EmbargoVisitor`
     fn visit_block(&mut self, _: &hir::Block) {}
     fn visit_expr(&mut self, _: &hir::Expr) {}
 }
@@ -947,9 +938,14 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                     return
                 }
                 Def::Struct(def_id) | Def::Union(def_id) | Def::Enum(def_id) |
-                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
+                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id) => {
                     // Non-local means public (private items can't leave their crate, modulo bugs)
-                    if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
+                    if let Some(mut node_id) = self.tcx.map.as_local_node_id(def_id) {
+                        // Check the trait for associated types.
+                        if let hir::map::NodeTraitItem(_) = self.tcx.map.get(node_id) {
+                            node_id = self.tcx.map.get_parent(node_id);
+                        }
+
                         let item = self.tcx.map.expect_item(node_id);
                         let vis = match self.substituted_alias_visibility(item, path) {
                             Some(vis) => vis,
@@ -962,8 +958,10 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                         if !vis.is_at_least(self.required_visibility, &self.tcx.map) {
                             if self.tcx.sess.features.borrow().pub_restricted ||
                                self.old_error_set.contains(&ty.id) {
-                                span_err!(self.tcx.sess, ty.span, E0446,
+                                let mut err = struct_span_err!(self.tcx.sess, ty.span, E0446,
                                           "private type in public interface");
+                                err.span_label(ty.span, &format!("can't leak private type"));
+                                err.emit();
                             } else {
                                 self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
                                                        node_id,

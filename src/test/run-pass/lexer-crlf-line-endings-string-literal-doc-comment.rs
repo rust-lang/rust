@@ -15,7 +15,7 @@
 // NB: this file needs CRLF line endings. The .gitattributes file in
 // this directory should enforce it.
 
-// ignore-pretty
+// ignore-pretty issue #37195
 
 /// Doc comment that ends in CRLF
 pub fn foo() {}

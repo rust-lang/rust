@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir::def_id::{DefId, DefIndex};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
-use syntax::ast::{CrateNum, NodeId};
+use syntax::ast::NodeId;
 use syntax::codemap::CodeMap;
 use syntax_pos::Span;
 
@@ -23,12 +23,15 @@ pub trait Lower {
     fn lower(self, tcx: TyCtxt) -> Self::Target;
 }
 
-fn make_def_id(id: NodeId, map: &Map) -> DefId {
+pub fn make_def_id(id: NodeId, map: &Map) -> DefId {
     map.opt_local_def_id(id).unwrap_or(null_def_id())
 }
 
 pub fn null_def_id() -> DefId {
-    DefId { krate: u32::max_value(), index: DefIndex::from_u32(u32::max_value()) }
+    DefId {
+        krate: CrateNum::from_u32(u32::max_value()),
+        index: DefIndex::from_u32(u32::max_value())
+    }
 }
 
 #[derive(Clone, Debug, RustcEncodable)]
@@ -188,7 +191,7 @@ impl Lower for data::FunctionData {
             scope: make_def_id(self.scope, &tcx.map),
             value: self.value,
             visibility: self.visibility,
-            parent: self.parent.map(|id| make_def_id(id, &tcx.map)),
+            parent: self.parent,
             docs: self.docs,
         }
     }
@@ -353,7 +356,7 @@ impl Lower for data::MethodData {
             value: self.value,
             decl_id: self.decl_id,
             visibility: self.visibility,
-            parent: Some(make_def_id(self.scope, &tcx.map)),
+            parent: self.parent,
             docs: self.docs,
         }
     }
@@ -471,7 +474,7 @@ impl Lower for data::StructVariantData {
             type_value: self.type_value,
             value: self.value,
             scope: make_def_id(self.scope, &tcx.map),
-            parent: self.parent.map(|id| make_def_id(id, &tcx.map)),
+            parent: self.parent,
             docs: self.docs,
         }
     }
@@ -533,7 +536,7 @@ impl Lower for data::TupleVariantData {
             type_value: self.type_value,
             value: self.value,
             scope: make_def_id(self.scope, &tcx.map),
-            parent: self.parent.map(|id| make_def_id(id, &tcx.map)),
+            parent: self.parent,
             docs: self.docs,
         }
     }
@@ -563,7 +566,7 @@ impl Lower for data::TypeDefData {
             qualname: self.qualname,
             value: self.value,
             visibility: self.visibility,
-            parent: self.parent.map(|id| make_def_id(id, &tcx.map)),
+            parent: self.parent,
             docs: self.docs,
         }
     }
@@ -668,7 +671,7 @@ impl Lower for data::VariableData {
             scope: make_def_id(self.scope, &tcx.map),
             value: self.value,
             type_value: self.type_value,
-            parent: self.parent.map(|id| make_def_id(id, &tcx.map)),
+            parent: self.parent,
             visibility: self.visibility,
             docs: self.docs,
         }

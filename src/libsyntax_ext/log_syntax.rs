@@ -19,7 +19,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
                               tts: &[tokenstream::TokenTree])
                               -> Box<base::MacResult + 'cx> {
     if !cx.ecfg.enable_log_syntax() {
-        feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
+        feature_gate::emit_feature_err(&cx.parse_sess,
                                        "log_syntax",
                                        sp,
                                        feature_gate::GateIssue::Language,

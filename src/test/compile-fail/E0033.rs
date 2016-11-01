@@ -15,6 +15,7 @@ trait SomeTrait {
 fn main() {
     let trait_obj: &SomeTrait = SomeTrait;
     //~^ ERROR E0425
+    //~| NOTE unresolved name
     //~| ERROR E0038
     //~| method `foo` has no receiver
     //~| NOTE the trait `SomeTrait` cannot be made into an object

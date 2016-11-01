@@ -11,6 +11,6 @@
 fn main() {
     match 'a' {
         char{ch} => true
-        //~^ ERROR expected variant, struct or type alias, found builtin type `char`
+        //~^ ERROR expected struct, variant or union type, found builtin type `char`
     };
 }

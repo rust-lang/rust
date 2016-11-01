@@ -53,12 +53,12 @@ fn expand_deriving_partial_eq(cx: &mut ExtCtxt, span: Span, mitem: &MetaItem, it
     }
 
     let inline = cx.meta_word(span, InternedString::new("inline"));
-    let attrs = vec!(cx.attribute(span, inline));
+    let attrs = vec![cx.attribute(span, inline)];
     let methods = vec![MethodDef {
         name: "eq",
         generics: LifetimeBounds::empty(),
         explicit_self: borrowed_explicit_self(),
-        args: vec!(borrowed_self()),
+        args: vec![borrowed_self()],
         ret_ty: Literal(deriving::generic::ty::Path::new_local("bool")),
         attributes: attrs,
         is_unsafe: false,

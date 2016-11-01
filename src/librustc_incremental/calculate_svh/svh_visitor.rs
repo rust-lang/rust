@@ -15,6 +15,11 @@
 
 use self::SawExprComponent::*;
 use self::SawAbiComponent::*;
+use self::SawItemComponent::*;
+use self::SawPatComponent::*;
+use self::SawTyComponent::*;
+use self::SawTraitOrImplItemComponent::*;
+use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::parse::token;
 use syntax_pos::{Span, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
@@ -25,18 +30,25 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit as visit;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv;
-use std::hash::{Hash, SipHasher};
+use std::hash::Hash;
 
 use super::def_path_hash::DefPathHashes;
 use super::caching_codemap_view::CachingCodemapView;
+use super::hasher::IchHasher;
 
-const IGNORED_ATTRIBUTES: &'static [&'static str] = &["cfg",
-                                                      "rustc_clean",
-                                                      "rustc_dirty"];
+const IGNORED_ATTRIBUTES: &'static [&'static str] = &[
+    "cfg",
+    ::ATTR_IF_THIS_CHANGED,
+    ::ATTR_THEN_THIS_WOULD_NEED,
+    ::ATTR_DIRTY,
+    ::ATTR_CLEAN,
+    ::ATTR_DIRTY_METADATA,
+    ::ATTR_CLEAN_METADATA
+];
 
 pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
     pub tcx: TyCtxt<'hash, 'tcx, 'tcx>,
-    pub st: &'a mut SipHasher,
+    pub st: &'a mut IchHasher,
     // collect a deterministic hash of def-ids that we have seen
     def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
     hash_spans: bool,
@@ -44,7 +56,7 @@ pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
 }
 
 impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
-    pub fn new(st: &'a mut SipHasher,
+    pub fn new(st: &'a mut IchHasher,
                tcx: TyCtxt<'hash, 'tcx, 'tcx>,
                def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
                codemap: &'a mut CachingCodemapView<'tcx>,
@@ -148,11 +160,11 @@ enum SawAbiComponent<'a> {
 
     SawMod,
     SawForeignItem,
-    SawItem,
-    SawTy,
+    SawItem(SawItemComponent),
+    SawTy(SawTyComponent),
     SawGenerics,
-    SawTraitItem,
-    SawImplItem,
+    SawTraitItem(SawTraitOrImplItemComponent),
+    SawImplItem(SawTraitOrImplItemComponent),
     SawStructField,
     SawVariant,
     SawPath(bool),
@@ -160,7 +172,7 @@ enum SawAbiComponent<'a> {
     SawPathParameters,
     SawPathListItem,
     SawBlock,
-    SawPat,
+    SawPat(SawPatComponent),
     SawLocal,
     SawArm,
     SawExpr(SawExprComponent<'a>),
@@ -191,6 +203,9 @@ enum SawAbiComponent<'a> {
 /// because the SVH is just a developer convenience; there is no
 /// guarantee of collision-freedom, hash collisions are just
 /// (hopefully) unlikely.)
+///
+/// The xxxComponent enums and saw_xxx functions for Item, Pat,
+/// Ty, TraitItem and ImplItem follow the same methodology.
 #[derive(Hash)]
 enum SawExprComponent<'a> {
 
@@ -201,7 +216,7 @@ enum SawExprComponent<'a> {
     SawExprAgain(Option<token::InternedString>),
 
     SawExprBox,
-    SawExprVec,
+    SawExprArray,
     SawExprCall,
     SawExprMethodCall,
     SawExprTup,
@@ -229,7 +244,7 @@ enum SawExprComponent<'a> {
 fn saw_expr<'a>(node: &'a Expr_) -> SawExprComponent<'a> {
     match *node {
         ExprBox(..)              => SawExprBox,
-        ExprVec(..)              => SawExprVec,
+        ExprArray(..)            => SawExprArray,
         ExprCall(..)             => SawExprCall,
         ExprMethodCall(..)       => SawExprMethodCall,
         ExprTup(..)              => SawExprTup,
@@ -257,6 +272,134 @@ fn saw_expr<'a>(node: &'a Expr_) -> SawExprComponent<'a> {
         ExprInlineAsm(ref a,..)  => SawExprInlineAsm(a),
         ExprStruct(..)           => SawExprStruct,
         ExprRepeat(..)           => SawExprRepeat,
+    }
+}
+
+#[derive(Hash)]
+enum SawItemComponent {
+    SawItemExternCrate,
+    SawItemUse,
+    SawItemStatic(Mutability),
+    SawItemConst,
+    SawItemFn(Unsafety, Constness, Abi),
+    SawItemMod,
+    SawItemForeignMod,
+    SawItemTy,
+    SawItemEnum,
+    SawItemStruct,
+    SawItemUnion,
+    SawItemTrait(Unsafety),
+    SawItemDefaultImpl(Unsafety),
+    SawItemImpl(Unsafety, ImplPolarity)
+}
+
+fn saw_item(node: &Item_) -> SawItemComponent {
+    match *node {
+        ItemExternCrate(..) => SawItemExternCrate,
+        ItemUse(..) => SawItemUse,
+        ItemStatic(_, mutability, _) => SawItemStatic(mutability),
+        ItemConst(..) =>SawItemConst,
+        ItemFn(_, unsafety, constness, abi, _, _) => SawItemFn(unsafety, constness, abi),
+        ItemMod(..) => SawItemMod,
+        ItemForeignMod(..) => SawItemForeignMod,
+        ItemTy(..) => SawItemTy,
+        ItemEnum(..) => SawItemEnum,
+        ItemStruct(..) => SawItemStruct,
+        ItemUnion(..) => SawItemUnion,
+        ItemTrait(unsafety, ..) => SawItemTrait(unsafety),
+        ItemDefaultImpl(unsafety, _) => SawItemDefaultImpl(unsafety),
+        ItemImpl(unsafety, implpolarity, ..) => SawItemImpl(unsafety, implpolarity)
+    }
+}
+
+#[derive(Hash)]
+enum SawPatComponent {
+    SawPatWild,
+    SawPatBinding(BindingMode),
+    SawPatStruct,
+    SawPatTupleStruct,
+    SawPatPath,
+    SawPatTuple,
+    SawPatBox,
+    SawPatRef(Mutability),
+    SawPatLit,
+    SawPatRange,
+    SawPatSlice
+}
+
+fn saw_pat(node: &PatKind) -> SawPatComponent {
+    match *node {
+        PatKind::Wild => SawPatWild,
+        PatKind::Binding(bindingmode, ..) => SawPatBinding(bindingmode),
+        PatKind::Struct(..) => SawPatStruct,
+        PatKind::TupleStruct(..) => SawPatTupleStruct,
+        PatKind::Path(..) => SawPatPath,
+        PatKind::Tuple(..) => SawPatTuple,
+        PatKind::Box(..) => SawPatBox,
+        PatKind::Ref(_, mutability) => SawPatRef(mutability),
+        PatKind::Lit(..) => SawPatLit,
+        PatKind::Range(..) => SawPatRange,
+        PatKind::Slice(..) => SawPatSlice
+    }
+}
+
+#[derive(Hash)]
+enum SawTyComponent {
+    SawTySlice,
+    SawTyArray,
+    SawTyPtr(Mutability),
+    SawTyRptr(Mutability),
+    SawTyBareFn(Unsafety, Abi),
+    SawTyNever,
+    SawTyTup,
+    SawTyPath,
+    SawTyObjectSum,
+    SawTyPolyTraitRef,
+    SawTyImplTrait,
+    SawTyTypeof,
+    SawTyInfer
+}
+
+fn saw_ty(node: &Ty_) -> SawTyComponent {
+    match *node {
+      TySlice(..) => SawTySlice,
+      TyArray(..) => SawTyArray,
+      TyPtr(ref mty) => SawTyPtr(mty.mutbl),
+      TyRptr(_, ref mty) => SawTyRptr(mty.mutbl),
+      TyBareFn(ref barefnty) => SawTyBareFn(barefnty.unsafety, barefnty.abi),
+      TyNever => SawTyNever,
+      TyTup(..) => SawTyTup,
+      TyPath(..) => SawTyPath,
+      TyObjectSum(..) => SawTyObjectSum,
+      TyPolyTraitRef(..) => SawTyPolyTraitRef,
+      TyImplTrait(..) => SawTyImplTrait,
+      TyTypeof(..) => SawTyTypeof,
+      TyInfer => SawTyInfer
+    }
+}
+
+#[derive(Hash)]
+enum SawTraitOrImplItemComponent {
+    SawTraitOrImplItemConst,
+    SawTraitOrImplItemMethod(Unsafety, Constness, Abi),
+    SawTraitOrImplItemType
+}
+
+fn saw_trait_item(ti: &TraitItem_) -> SawTraitOrImplItemComponent {
+    match *ti {
+        ConstTraitItem(..) => SawTraitOrImplItemConst,
+        MethodTraitItem(ref sig, _) =>
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi),
+        TypeTraitItem(..) => SawTraitOrImplItemType
+    }
+}
+
+fn saw_impl_item(ii: &ImplItemKind) -> SawTraitOrImplItemComponent {
+    match *ii {
+        ImplItemKind::Const(..) => SawTraitOrImplItemConst,
+        ImplItemKind::Method(ref sig, _) =>
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi),
+        ImplItemKind::Type(..) => SawTraitOrImplItemType
     }
 }
 
@@ -376,10 +519,7 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_item(&mut self, i: &'tcx Item) {
         debug!("visit_item: {:?} st={:?}", i, self.st);
-
-        SawItem.hash(self.st);
-        // Hash the value of the discriminant of the Item variant.
-        self.hash_discriminant(&i.node);
+        SawItem(saw_item(&i.node)).hash(self.st);
         hash_span!(self, i.span);
         hash_attrs!(self, &i.attrs);
         visit::walk_item(self, i)
@@ -392,7 +532,7 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_ty(&mut self, t: &'tcx Ty) {
         debug!("visit_ty: st={:?}", self.st);
-        SawTy.hash(self.st);
+        SawTy(saw_ty(&t.node)).hash(self.st);
         hash_span!(self, t.span);
         visit::walk_ty(self, t)
     }
@@ -405,8 +545,7 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_trait_item(&mut self, ti: &'tcx TraitItem) {
         debug!("visit_trait_item: st={:?}", self.st);
-        SawTraitItem.hash(self.st);
-        self.hash_discriminant(&ti.node);
+        SawTraitItem(saw_trait_item(&ti.node)).hash(self.st);
         hash_span!(self, ti.span);
         hash_attrs!(self, &ti.attrs);
         visit::walk_trait_item(self, ti)
@@ -414,8 +553,7 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_impl_item(&mut self, ii: &'tcx ImplItem) {
         debug!("visit_impl_item: st={:?}", self.st);
-        SawImplItem.hash(self.st);
-        self.hash_discriminant(&ii.node);
+        SawImplItem(saw_impl_item(&ii.node)).hash(self.st);
         hash_span!(self, ii.span);
         hash_attrs!(self, &ii.attrs);
         visit::walk_impl_item(self, ii)
@@ -445,8 +583,7 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_pat(&mut self, p: &'tcx Pat) {
         debug!("visit_pat: st={:?}", self.st);
-        SawPat.hash(self.st);
-        self.hash_discriminant(&p.node);
+        SawPat(saw_pat(&p.node)).hash(self.st);
         hash_span!(self, p.span);
         visit::walk_pat(self, p)
     }
@@ -538,13 +675,11 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_macro_def(&mut self, macro_def: &'tcx MacroDef) {
         debug!("visit_macro_def: st={:?}", self.st);
-        if macro_def.export {
-            SawMacroDef.hash(self.st);
-            hash_attrs!(self, &macro_def.attrs);
-            visit::walk_macro_def(self, macro_def)
-            // FIXME(mw): We should hash the body of the macro too but we don't
-            //            have a stable way of doing so yet.
-        }
+        SawMacroDef.hash(self.st);
+        hash_attrs!(self, &macro_def.attrs);
+        visit::walk_macro_def(self, macro_def)
+        // FIXME(mw): We should hash the body of the macro too but we don't
+        //            have a stable way of doing so yet.
     }
 }
 
@@ -602,14 +737,15 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             // def-id is the same, so it suffices to hash the def-id
             Def::Fn(..) |
             Def::Mod(..) |
-            Def::ForeignMod(..) |
             Def::Static(..) |
             Def::Variant(..) |
+            Def::VariantCtor(..) |
             Def::Enum(..) |
             Def::TyAlias(..) |
             Def::AssociatedTy(..) |
             Def::TyParam(..) |
             Def::Struct(..) |
+            Def::StructCtor(..) |
             Def::Union(..) |
             Def::Trait(..) |
             Def::Method(..) |

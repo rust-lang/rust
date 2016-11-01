@@ -1,0 +1,23 @@
+error: `foo.data` does not live long enough
+  --> $DIR/issue28498-reject-ex1.rs:46:1
+   |
+44 |     foo.data[0].1.set(Some(&foo.data[1]));
+   |                             -------- borrow occurs here
+45 |     foo.data[1].1.set(Some(&foo.data[0]));
+46 | }
+   | ^ `foo.data` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: `foo.data` does not live long enough
+  --> $DIR/issue28498-reject-ex1.rs:46:1
+   |
+45 |     foo.data[1].1.set(Some(&foo.data[0]));
+   |                             -------- borrow occurs here
+46 | }
+   | ^ `foo.data` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to 2 previous errors
+

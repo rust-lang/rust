@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def::Def;
+use rustc::hir::{self, PatKind};
+use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer::{self, InferOk, TypeOrigin};
-use hir::pat_util::EnumerateAndAdjustIterator;
-use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference, VariantKind};
+use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{FnCtxt, Expectation};
-use lint;
 use util::nodemap::FnvHashMap;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -22,9 +22,6 @@ use syntax::ast;
 use syntax::codemap::Spanned;
 use syntax::ptr::P;
 use syntax_pos::Span;
-
-use rustc::hir::{self, PatKind};
-use rustc::hir::print as pprust;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_pat(&self, pat: &'gcx hir::Pat, expected: Ty<'tcx>) {
@@ -134,7 +131,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // what the type of the binding `x` ought to be
                 match tcx.expect_def(pat.id) {
                     Def::Err => {}
-                    Def::Local(_, var_id) => {
+                    Def::Local(def_id) => {
+                        let var_id = tcx.map.as_local_node_id(def_id).unwrap();
                         if var_id != pat.id {
                             let vt = self.local_ty(pat.span, var_id);
                             self.demand_eqtype(pat.span, vt, typ);
@@ -170,8 +168,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 let max_len = cmp::max(expected_len, elements.len());
 
-                let element_tys: Vec<_> = (0 .. max_len).map(|_| self.next_ty_var()).collect();
-                let pat_ty = tcx.mk_tup(element_tys.clone());
+                let element_tys_iter = (0..max_len).map(|_| self.next_ty_var());
+                let element_tys = tcx.mk_type_list(element_tys_iter);
+                let pat_ty = tcx.mk_ty(ty::TyTuple(element_tys));
                 self.demand_eqtype(pat.span, expected, pat_ty);
                 for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                     self.check_pat(elem, &element_tys[i]);
@@ -226,7 +225,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.types.err
                 }
             }
-            PatKind::Vec(ref before, ref slice, ref after) => {
+            PatKind::Slice(ref before, ref slice, ref after) => {
                 let expected_ty = self.structurally_resolved_type(pat.span, expected);
                 let (inner_ty, slice_ty) = match expected_ty.sty {
                     ty::TyArray(inner_ty, size) => {
@@ -490,8 +489,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         expected: Ty<'tcx>) -> Ty<'tcx>
     {
         // Resolve the path and check the definition for errors.
-        let (variant, pat_ty) = if let Some(variant_ty) = self.check_struct_path(path, pat.id,
-                                                                                 pat.span) {
+        let (variant, pat_ty) = if let Some(variant_ty) = self.check_struct_path(path, pat.id) {
             variant_ty
         } else {
             for field in fields {
@@ -515,10 +513,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       expected: Ty<'tcx>) -> Ty<'tcx>
     {
         let tcx = self.tcx;
-        let report_unexpected_def = || {
+        let report_unexpected_def = |def: Def| {
             span_err!(tcx.sess, pat.span, E0533,
-                      "`{}` does not name a unit variant, unit struct or a constant",
-                      pprust::path_to_string(path));
+                      "expected unit struct/variant or constant, found {} `{}`",
+                      def.kind_name(), path);
         };
 
         // Resolve the path and check the definition for errors.
@@ -530,18 +528,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 return tcx.types.err;
             }
             Def::Method(..) => {
-                report_unexpected_def();
+                report_unexpected_def(def);
                 return tcx.types.err;
             }
-            Def::Variant(..) | Def::Struct(..) => {
-                let variant = tcx.expect_variant_def(def);
-                if variant.kind != VariantKind::Unit {
-                    report_unexpected_def();
-                    return tcx.types.err;
-                }
-            }
+            Def::VariantCtor(_, CtorKind::Const) |
+            Def::StructCtor(_, CtorKind::Const) |
             Def::Const(..) | Def::AssociatedConst(..) => {} // OK
-            _ => bug!("unexpected pattern definition {:?}", def)
+            _ => bug!("unexpected pattern definition: {:?}", def)
         }
 
         // Type check the path.
@@ -563,17 +556,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.check_pat(&pat, tcx.types.err);
             }
         };
-        let report_unexpected_def = |is_lint| {
-            let msg = format!("`{}` does not name a tuple variant or a tuple struct",
-                              pprust::path_to_string(path));
-            if is_lint {
-                tcx.sess.add_lint(lint::builtin::MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
-                                  pat.id, pat.span, msg);
-            } else {
-                struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
-                    .span_label(pat.span, &format!("not a tuple variant or struct")).emit();
-                on_error();
-            }
+        let report_unexpected_def = |def: Def| {
+            let msg = format!("expected tuple struct/variant, found {} `{}`",
+                              def.kind_name(), path);
+            struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
+                .span_label(pat.span, &format!("not a tuple variant or struct")).emit();
+            on_error();
         };
 
         // Resolve the path and check the definition for errors.
@@ -584,33 +572,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 on_error();
                 return tcx.types.err;
             }
-            Def::Const(..) | Def::AssociatedConst(..) | Def::Method(..) => {
-                report_unexpected_def(false);
+            Def::AssociatedConst(..) | Def::Method(..) => {
+                report_unexpected_def(def);
                 return tcx.types.err;
             }
-            Def::Variant(..) | Def::Struct(..) => {
+            Def::VariantCtor(_, CtorKind::Fn) |
+            Def::StructCtor(_, CtorKind::Fn) => {
                 tcx.expect_variant_def(def)
             }
-            _ => bug!("unexpected pattern definition {:?}", def)
+            _ => bug!("unexpected pattern definition: {:?}", def)
         };
-        if variant.kind == VariantKind::Unit && subpats.is_empty() && ddpos.is_some() {
-            // Matching unit structs with tuple variant patterns (`UnitVariant(..)`)
-            // is allowed for backward compatibility.
-            report_unexpected_def(true);
-        } else if variant.kind != VariantKind::Tuple {
-            report_unexpected_def(false);
-            return tcx.types.err;
-        }
 
         // Type check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
-        let pat_ty = if pat_ty.is_fn() {
-            // Replace constructor type with constructed type for tuple struct patterns.
-            tcx.no_late_bound_regions(&pat_ty.fn_ret()).unwrap()
-        } else {
-            // Leave the type as is for unit structs (backward compatibility).
-            pat_ty
-        };
+        // Replace constructor type with constructed type for tuple struct patterns.
+        let pat_ty = tcx.no_late_bound_regions(&pat_ty.fn_ret()).expect("expected fn type");
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.
@@ -625,16 +601,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.check_pat(&subpat, field_ty);
             }
         } else {
-            let subpats_ending = if subpats.len() == 1 {
-                ""
-            } else {
-                "s"
-            };
-            let fields_ending = if variant.fields.len() == 1 {
-                ""
-            } else {
-                "s"
-            };
+            let subpats_ending = if subpats.len() == 1 { "" } else { "s" };
+            let fields_ending = if variant.fields.len() == 1 { "" } else { "s" };
             struct_span_err!(tcx.sess, pat.span, E0023,
                              "this pattern has {} field{}, but the corresponding {} has {} field{}",
                              subpats.len(), subpats_ending, def.kind_name(),
@@ -674,14 +642,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         for &Spanned { node: ref field, span } in fields {
             let field_ty = match used_fields.entry(field.name) {
                 Occupied(occupied) => {
-                    let mut err = struct_span_err!(tcx.sess, span, E0025,
-                                                   "field `{}` bound multiple times \
-                                                    in the pattern",
-                                                   field.name);
-                    span_note!(&mut err, *occupied.get(),
-                               "field `{}` previously bound here",
-                               field.name);
-                    err.emit();
+                    struct_span_err!(tcx.sess, span, E0025,
+                                     "field `{}` bound multiple times \
+                                      in the pattern",
+                                     field.name)
+                        .span_label(span,
+                                    &format!("multiple uses of `{}` in pattern", field.name))
+                        .span_label(*occupied.get(), &format!("first use of `{}`", field.name))
+                        .emit();
                     tcx.types.err
                 }
                 Vacant(vacant) => {

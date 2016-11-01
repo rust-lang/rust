@@ -38,7 +38,7 @@ static ENV_LOCK: Mutex = Mutex::new();
 
 extern {
     #[cfg(not(target_os = "dragonfly"))]
-    #[cfg_attr(any(target_os = "linux", target_os = "emscripten"),
+    #[cfg_attr(any(target_os = "linux", target_os = "emscripten", target_os = "fuchsia"),
                link_name = "__errno_location")]
     #[cfg_attr(any(target_os = "bitrig",
                    target_os = "netbsd",
@@ -51,6 +51,7 @@ extern {
                    target_os = "ios",
                    target_os = "freebsd"),
                link_name = "__error")]
+    #[cfg_attr(target_os = "haiku", link_name = "_errnop")]
     fn errno_location() -> *mut c_int;
 }
 
@@ -93,7 +94,7 @@ pub fn error_string(errno: i32) -> String {
 
     let p = buf.as_mut_ptr();
     unsafe {
-        if strerror_r(errno as c_int, p, buf.len() as libc::size_t) < 0 {
+        if strerror_r(errno as c_int, p, buf.len()) < 0 {
             panic!("strerror_r failure");
         }
 
@@ -107,7 +108,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
     loop {
         unsafe {
             let ptr = buf.as_mut_ptr() as *mut libc::c_char;
-            if !libc::getcwd(ptr, buf.capacity() as libc::size_t).is_null() {
+            if !libc::getcwd(ptr, buf.capacity()).is_null() {
                 let len = CStr::from_ptr(buf.as_ptr() as *const libc::c_char).to_bytes().len();
                 buf.set_len(len);
                 buf.shrink_to_fit();
@@ -199,21 +200,20 @@ pub fn current_exe() -> io::Result<PathBuf> {
                        libc::KERN_PROC as c_int,
                        libc::KERN_PROC_PATHNAME as c_int,
                        -1 as c_int];
-        let mut sz: libc::size_t = 0;
+        let mut sz = 0;
         cvt(libc::sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
-                         ptr::null_mut(), &mut sz, ptr::null_mut(),
-                         0 as libc::size_t))?;
+                         ptr::null_mut(), &mut sz, ptr::null_mut(), 0))?;
         if sz == 0 {
             return Err(io::Error::last_os_error())
         }
-        let mut v: Vec<u8> = Vec::with_capacity(sz as usize);
+        let mut v: Vec<u8> = Vec::with_capacity(sz);
         cvt(libc::sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                          v.as_mut_ptr() as *mut libc::c_void, &mut sz,
-                         ptr::null_mut(), 0 as libc::size_t))?;
+                         ptr::null_mut(), 0))?;
         if sz == 0 {
             return Err(io::Error::last_os_error());
         }
-        v.set_len(sz as usize - 1); // chop off trailing NUL
+        v.set_len(sz - 1); // chop off trailing NUL
         Ok(PathBuf::from(OsString::from_vec(v)))
     }
 }
@@ -303,123 +303,53 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-pub struct Args {
-    iter: vec::IntoIter<OsString>,
-    _dont_send_or_sync_me: PhantomData<*mut ()>,
-}
-
-impl Iterator for Args {
-    type Item = OsString;
-    fn next(&mut self) -> Option<OsString> { self.iter.next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
-}
-
-impl ExactSizeIterator for Args {
-    fn len(&self) -> usize { self.iter.len() }
-}
-
-impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> { self.iter.next_back() }
-}
-
-/// Returns the command line arguments
-///
-/// Returns a list of the command line arguments.
-#[cfg(target_os = "macos")]
-pub fn args() -> Args {
-    extern {
-        // These functions are in crt_externs.h.
-        fn _NSGetArgc() -> *mut c_int;
-        fn _NSGetArgv() -> *mut *mut *mut c_char;
+#[cfg(target_os = "haiku")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    // Use Haiku's image info functions
+    #[repr(C)]
+    struct image_info {
+        id: i32,
+        type_: i32,
+        sequence: i32,
+        init_order: i32,
+        init_routine: *mut libc::c_void,    // function pointer
+        term_routine: *mut libc::c_void,    // function pointer
+        device: libc::dev_t,
+        node: libc::ino_t,
+        name: [libc::c_char; 1024],         // MAXPATHLEN
+        text: *mut libc::c_void,
+        data: *mut libc::c_void,
+        text_size: i32,
+        data_size: i32,
+        api_version: i32,
+        abi: i32,
     }
-
-    let vec = unsafe {
-        let (argc, argv) = (*_NSGetArgc() as isize,
-                            *_NSGetArgv() as *const *const c_char);
-        (0.. argc as isize).map(|i| {
-            let bytes = CStr::from_ptr(*argv.offset(i)).to_bytes().to_vec();
-            OsStringExt::from_vec(bytes)
-        }).collect::<Vec<_>>()
-    };
-    Args {
-        iter: vec.into_iter(),
-        _dont_send_or_sync_me: PhantomData,
-    }
-}
-
-// As _NSGetArgc and _NSGetArgv aren't mentioned in iOS docs
-// and use underscores in their names - they're most probably
-// are considered private and therefore should be avoided
-// Here is another way to get arguments using Objective C
-// runtime
-//
-// In general it looks like:
-// res = Vec::new()
-// let args = [[NSProcessInfo processInfo] arguments]
-// for i in (0..[args count])
-//      res.push([args objectAtIndex:i])
-// res
-#[cfg(target_os = "ios")]
-pub fn args() -> Args {
-    use mem;
-
-    extern {
-        fn sel_registerName(name: *const libc::c_uchar) -> Sel;
-        fn objc_msgSend(obj: NsId, sel: Sel, ...) -> NsId;
-        fn objc_getClass(class_name: *const libc::c_uchar) -> NsId;
-    }
-
-    #[link(name = "Foundation", kind = "framework")]
-    #[link(name = "objc")]
-    #[cfg(not(cargobuild))]
-    extern {}
-
-    type Sel = *const libc::c_void;
-    type NsId = *const libc::c_void;
-
-    let mut res = Vec::new();
 
     unsafe {
-        let process_info_sel = sel_registerName("processInfo\0".as_ptr());
-        let arguments_sel = sel_registerName("arguments\0".as_ptr());
-        let utf8_sel = sel_registerName("UTF8String\0".as_ptr());
-        let count_sel = sel_registerName("count\0".as_ptr());
-        let object_at_sel = sel_registerName("objectAtIndex:\0".as_ptr());
+        extern {
+            fn _get_next_image_info(team_id: i32, cookie: *mut i32,
+                info: *mut image_info, size: i32) -> i32;
+        }
 
-        let klass = objc_getClass("NSProcessInfo\0".as_ptr());
-        let info = objc_msgSend(klass, process_info_sel);
-        let args = objc_msgSend(info, arguments_sel);
-
-        let cnt: usize = mem::transmute(objc_msgSend(args, count_sel));
-        for i in 0..cnt {
-            let tmp = objc_msgSend(args, object_at_sel, i);
-            let utf_c_str: *const libc::c_char =
-                mem::transmute(objc_msgSend(tmp, utf8_sel));
-            let bytes = CStr::from_ptr(utf_c_str).to_bytes();
-            res.push(OsString::from(str::from_utf8(bytes).unwrap()))
+        let mut info: image_info = mem::zeroed();
+        let mut cookie: i32 = 0;
+        // the executable can be found at team id 0
+        let result = _get_next_image_info(0, &mut cookie, &mut info,
+            mem::size_of::<image_info>() as i32);
+        if result != 0 {
+            use io::ErrorKind;
+            Err(io::Error::new(ErrorKind::Other, "Error getting executable path"))
+        } else {
+            let name = CStr::from_ptr(info.name.as_ptr()).to_bytes();
+            Ok(PathBuf::from(OsStr::from_bytes(name)))
         }
     }
-
-    Args { iter: res.into_iter(), _dont_send_or_sync_me: PhantomData }
 }
 
-#[cfg(any(target_os = "linux",
-          target_os = "android",
-          target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "bitrig",
-          target_os = "netbsd",
-          target_os = "openbsd",
-          target_os = "solaris",
-          target_os = "nacl",
-          target_os = "emscripten"))]
-pub fn args() -> Args {
-    use sys_common;
-    let bytes = sys_common::args::clone().unwrap_or(Vec::new());
-    let v: Vec<OsString> = bytes.into_iter().map(|v| {
-        OsStringExt::from_vec(v)
-    }).collect();
-    Args { iter: v.into_iter(), _dont_send_or_sync_me: PhantomData }
+#[cfg(target_os = "fuchsia")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    use io::ErrorKind;
+    Err(io::Error::new(ErrorKind::Other, "Not yet implemented on fuchsia"))
 }
 
 pub struct Env {
@@ -563,7 +493,7 @@ pub fn home_dir() -> Option<PathBuf> {
                               buf: &mut Vec<c_char>) -> Option<()> {
             let mut result = ptr::null_mut();
             match libc::getpwuid_r(me, passwd, buf.as_mut_ptr(),
-                                   buf.capacity() as libc::size_t,
+                                   buf.capacity(),
                                    &mut result) {
                 0 if !result.is_null() => Some(()),
                 _ => None
@@ -576,7 +506,7 @@ pub fn home_dir() -> Option<PathBuf> {
             // getpwuid_r semantics is different on Illumos/Solaris:
             // http://illumos.org/man/3c/getpwuid_r
             let result = libc::getpwuid_r(me, passwd, buf.as_mut_ptr(),
-                                          buf.capacity() as libc::size_t);
+                                          buf.capacity());
             if result.is_null() { None } else { Some(()) }
         }
 

@@ -19,6 +19,7 @@ pub mod raw {
                                                                callback: F)
                                                                -> io::Result<bool> {
         if !is_directory(path.as_ref()) { //~ ERROR: unresolved name `is_directory`
+                                          //~| NOTE unresolved name
             callback(path.as_ref();  //~ NOTE: unclosed delimiter
                      //~^ ERROR: expected one of
             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types

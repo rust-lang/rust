@@ -231,7 +231,7 @@ impl<T> Drop for Queue<T> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use sync::Arc;
     use super::Queue;

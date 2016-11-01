@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use indexed_set::IdxSetBuf;
 use super::gather_moves::{MoveData, MovePathIndex, LookupResult};
 use super::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use super::dataflow::{DataflowResults};
@@ -18,11 +17,12 @@ use super::{DropFlagState, MoveDataParamEnv};
 use super::patch::MirPatch;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Subst, Substs};
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items;
 use rustc::util::nodemap::FnvHashMap;
+use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 
@@ -118,7 +118,7 @@ struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
     env: &'a MoveDataParamEnv<'tcx>,
     flow_inits: DataflowResults<MaybeInitializedLvals<'a, 'tcx>>,
     flow_uninits:  DataflowResults<MaybeUninitializedLvals<'a, 'tcx>>,
-    drop_flags: FnvHashMap<MovePathIndex, Temp>,
+    drop_flags: FnvHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
 }
 
@@ -164,7 +164,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn drop_flag(&mut self, index: MovePathIndex) -> Option<Lvalue<'tcx>> {
-        self.drop_flags.get(&index).map(|t| Lvalue::Temp(*t))
+        self.drop_flags.get(&index).map(|t| Lvalue::Local(*t))
     }
 
     /// create a patch that elaborates all drops in the input
@@ -847,17 +847,17 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             statements.push(Statement {
                 source_info: c.source_info,
                 kind: StatementKind::Assign(
-                    Lvalue::Temp(flag),
+                    Lvalue::Local(flag),
                     self.constant_bool(c.source_info.span, false)
                 )
             });
         }
 
         let tcx = self.tcx;
-        let unit_temp = Lvalue::Temp(self.patch.new_temp(tcx.mk_nil()));
+        let unit_temp = Lvalue::Local(self.patch.new_temp(tcx.mk_nil()));
         let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
             .unwrap_or_else(|e| tcx.sess.fatal(&e));
-        let substs = Substs::new(tcx, iter::once(Kind::from(ty)));
+        let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
         let fty = tcx.lookup_item_type(free_func).ty.subst(tcx, substs);
 
         self.patch.new_block(BasicBlockData {
@@ -917,7 +917,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         if let Some(&flag) = self.drop_flags.get(&path) {
             let span = self.patch.source_info_for_location(self.mir, loc).span;
             let val = self.constant_bool(span, val.value());
-            self.patch.add_assign(loc, Lvalue::Temp(flag), val);
+            self.patch.add_assign(loc, Lvalue::Local(flag), val);
         }
     }
 
@@ -926,7 +926,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let span = self.patch.source_info_for_location(self.mir, loc).span;
         let false_ = self.constant_bool(span, false);
         for flag in self.drop_flags.values() {
-            self.patch.add_assign(loc, Lvalue::Temp(*flag), false_.clone());
+            self.patch.add_assign(loc, Lvalue::Local(*flag), false_.clone());
         }
     }
 

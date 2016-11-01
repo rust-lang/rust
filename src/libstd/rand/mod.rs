@@ -242,9 +242,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_os_rng_tasks() {
 
-        let mut txs = vec!();
+        let mut txs = vec![];
         for _ in 0..20 {
             let (tx, rx) = channel();
             txs.push(tx);

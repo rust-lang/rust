@@ -12,8 +12,9 @@ pub use self::RelationDir::*;
 use self::TypeVariableValue::*;
 use self::UndoEntry::*;
 use hir::def_id::{DefId};
-use ty::{self, Ty};
+use syntax::util::small_vector::SmallVector;
 use syntax_pos::Span;
+use ty::{self, Ty};
 
 use std::cmp::min;
 use std::marker::PhantomData;
@@ -149,7 +150,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         &mut self,
         vid: ty::TyVid,
         ty: Ty<'tcx>,
-        stack: &mut Vec<(Ty<'tcx>, RelationDir, ty::TyVid)>)
+        stack: &mut SmallVector<(Ty<'tcx>, RelationDir, ty::TyVid)>)
     {
         debug_assert!(self.root_var(vid) == vid);
         let old_value = {
