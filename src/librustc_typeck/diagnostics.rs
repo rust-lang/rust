@@ -458,7 +458,7 @@ Rust only supports variadic parameters for interoperability with C code in its
 FFI. As such, variadic parameters can only be used with functions which are
 using the C ABI. Examples of erroneous code:
 
-```compile_fail,E0045
+```compile_fail
 #![feature(unboxed_closures)]
 
 extern "rust-call" { fn foo(x: u8, ...); }
