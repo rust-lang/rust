@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// compile-flags: -Z parse-only -Z continue-parse-after-error
 
 use std::any:: as foo; //~ ERROR expected identifier, found keyword `as`
 //~^ ERROR: expected one of `::`, `;`, or `as`, found `foo`
