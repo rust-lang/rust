@@ -40,7 +40,7 @@ use syntax_pos::DUMMY_SP;
 
 use rustc::hir;
 
-struct Env<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct Env<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a infer::InferCtxt<'a, 'gcx, 'tcx>,
 }
 
@@ -86,8 +86,7 @@ impl Emitter for ExpectErrorEmitter {
 
 fn errors(msgs: &[&str]) -> (Box<Emitter + Send>, usize) {
     let v = msgs.iter().map(|m| m.to_string()).collect();
-    (box ExpectErrorEmitter { messages: v } as Box<Emitter + Send>,
-     msgs.len())
+    (box ExpectErrorEmitter { messages: v } as Box<Emitter + Send>, msgs.len())
 }
 
 fn test_env<F>(source_string: &str,
@@ -103,8 +102,12 @@ fn test_env<F>(source_string: &str,
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
     let cstore = Rc::new(CStore::new(&dep_graph));
-    let sess = session::build_session_(options, &dep_graph, None, diagnostic_handler,
-                                       Rc::new(CodeMap::new()), cstore.clone());
+    let sess = session::build_session_(options,
+                                       &dep_graph,
+                                       None,
+                                       diagnostic_handler,
+                                       Rc::new(CodeMap::new()),
+                                       cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
         name: driver::anon_src(),
@@ -112,9 +115,15 @@ fn test_env<F>(source_string: &str,
     };
     let krate = driver::phase_1_parse_input(&sess, &input).unwrap();
     let driver::ExpansionResult { defs, resolutions, mut hir_forest, .. } = {
-        driver::phase_2_configure_and_expand(
-            &sess, &cstore, krate, None, "test", None, MakeGlobMap::No, |_| Ok(()),
-        ).expect("phase 2 aborted")
+        driver::phase_2_configure_and_expand(&sess,
+                                             &cstore,
+                                             krate,
+                                             None,
+                                             "test",
+                                             None,
+                                             MakeGlobMap::No,
+                                             |_| Ok(()))
+            .expect("phase 2 aborted")
     };
     let _ignore = dep_graph.in_ignore();
 
@@ -167,14 +176,22 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
         let node = ast::NodeId::from_u32;
         let dscope = self.infcx
-                         .tcx
-                         .region_maps
-                         .intern_code_extent(CodeExtentData::DestructionScope(node(1)),
-                                             region::ROOT_CODE_EXTENT);
+            .tcx
+            .region_maps
+            .intern_code_extent(CodeExtentData::DestructionScope(node(1)),
+                                region::ROOT_CODE_EXTENT);
         self.create_region_hierarchy(&RH {
-            id: node(1),
-            sub: &[RH { id: node(10), sub: &[] }, RH { id: node(11), sub: &[] }],
-        }, dscope);
+                                         id: node(1),
+                                         sub: &[RH {
+                                                    id: node(10),
+                                                    sub: &[],
+                                                },
+                                                RH {
+                                                    id: node(11),
+                                                    sub: &[],
+                                                }],
+                                     },
+                                     dscope);
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
@@ -213,22 +230,16 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                 hir::ItemStatic(..) |
                 hir::ItemFn(..) |
                 hir::ItemForeignMod(..) |
-                hir::ItemTy(..) => {
-                    None
-                }
+                hir::ItemTy(..) => None,
 
                 hir::ItemEnum(..) |
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
                 hir::ItemTrait(..) |
                 hir::ItemImpl(..) |
-                hir::ItemDefaultImpl(..) => {
-                    None
-                }
+                hir::ItemDefaultImpl(..) => None,
 
-                hir::ItemMod(ref m) => {
-                    search_mod(this, m, idx, names)
-                }
+                hir::ItemMod(ref m) => search_mod(this, m, idx, names),
             };
         }
     }
@@ -281,10 +292,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx.tcx.mk_param(index, token::intern(&name[..]))
     }
 
-    pub fn re_early_bound(&self,
-                          index: u32,
-                          name: &'static str)
-                          -> &'tcx ty::Region {
+    pub fn re_early_bound(&self, index: u32, name: &'static str) -> &'tcx ty::Region {
         let name = token::intern(name);
         self.infcx.tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
             index: index,
@@ -292,7 +300,9 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         }))
     }
 
-    pub fn re_late_bound_with_debruijn(&self, id: u32, debruijn: ty::DebruijnIndex)
+    pub fn re_late_bound_with_debruijn(&self,
+                                       id: u32,
+                                       debruijn: ty::DebruijnIndex)
                                        -> &'tcx ty::Region {
         self.infcx.tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(id)))
     }
@@ -394,9 +404,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
                 self.assert_eq(t, t_lub);
             }
-            Err(ref e) => {
-                panic!("unexpected error in LUB: {}", e)
-            }
+            Err(ref e) => panic!("unexpected error in LUB: {}", e),
         }
     }
 
@@ -404,9 +412,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     pub fn check_glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_glb: Ty<'tcx>) {
         debug!("check_glb(t1={}, t2={}, t_glb={})", t1, t2, t_glb);
         match self.glb(t1, t2) {
-            Err(e) => {
-                panic!("unexpected error computing LUB: {:?}", e)
-            }
+            Err(e) => panic!("unexpected error computing LUB: {:?}", e),
             Ok(InferOk { obligations, value: t }) => {
                 // FIXME(#32730) once obligations are being propagated, assert the right thing.
                 assert!(obligations.is_empty());
