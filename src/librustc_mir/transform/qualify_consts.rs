@@ -19,7 +19,6 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::FnKind;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::traits::{self, Reveal};
 use rustc::ty::{self, TyCtxt, Ty};
@@ -116,15 +115,10 @@ impl fmt::Display for Mode {
 
 pub fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-        let fn_like = FnLikeNode::from_node(tcx.map.get(node_id));
-        match fn_like.map(|f| f.kind()) {
-            Some(FnKind::ItemFn(_, _, _, c, ..)) => {
-                c == hir::Constness::Const
-            }
-            Some(FnKind::Method(_, m, ..)) => {
-                m.constness == hir::Constness::Const
-            }
-            _ => false
+        if let Some(fn_like) = FnLikeNode::from_node(tcx.map.get(node_id)) {
+            fn_like.constness() == hir::Constness::Const
+        } else {
+            false
         }
     } else {
         tcx.sess.cstore.is_const_fn(def_id)

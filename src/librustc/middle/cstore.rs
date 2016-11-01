@@ -43,7 +43,7 @@ use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_back::target::Target;
 use hir;
-use hir::intravisit::Visitor;
+use hir::intravisit::{self, Visitor};
 use rustc_back::PanicStrategy;
 
 pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};
@@ -137,18 +137,100 @@ pub struct NativeLibrary {
 /// part of the AST that we parse from a file, but it becomes part of the tree
 /// that we trans.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum InlinedItem {
-    Item(DefId /* def-id in source crate */, P<hir::Item>),
-    TraitItem(DefId /* impl id */, P<hir::TraitItem>),
-    ImplItem(DefId /* impl id */, P<hir::ImplItem>)
+pub struct InlinedItem {
+    pub def_id: DefId,
+    pub body: P<hir::Expr>,
+    pub kind: InlinedItemKind,
 }
 
-/// A borrowed version of `hir::InlinedItem`.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum InlinedItemKind {
+    Const(P<hir::Ty>),
+    Fn(P<hir::FnDecl>)
+}
+
+/// A borrowed version of `hir::InlinedItem`. This is what's encoded when saving
+/// a crate; it then gets read as an InlinedItem.
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, Hash, Debug)]
-pub enum InlinedItemRef<'a> {
-    Item(DefId, &'a hir::Item),
-    TraitItem(DefId, &'a hir::TraitItem),
-    ImplItem(DefId, &'a hir::ImplItem)
+pub struct InlinedItemRef<'a> {
+    pub def_id: DefId,
+    pub body: &'a hir::Expr,
+    pub kind: InlinedItemKindRef<'a>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, Hash, Debug)]
+pub enum InlinedItemKindRef<'a> {
+    Const(&'a hir::Ty),
+    Fn(&'a hir::FnDecl)
+}
+
+impl<'a> InlinedItemRef<'a> {
+    pub fn from_item<'ast: 'a>(def_id: DefId, item: &'a hir::Item, map: &hir_map::Map<'ast>) -> InlinedItemRef<'a> {
+        let (body, kind) = match item.node {
+            hir::ItemFn(ref decl, _, _, _, _, body_id) => (map.expr(body_id), InlinedItemKindRef::Fn(&decl)),
+            hir::ItemConst(ref ty, ref body) => (&**body, InlinedItemKindRef::Const(ty)),
+            _ => bug!("InlinedItemRef::from_item wrong kind")
+        };
+        InlinedItemRef {
+            def_id: def_id,
+            body: body,
+            kind: kind
+        }
+    }
+
+    pub fn from_trait_item(def_id: DefId, item: &'a hir::TraitItem, _map: &hir_map::Map) -> InlinedItemRef<'a> {
+        let (body, kind) = match item.node {
+            hir::ConstTraitItem(ref ty, Some(ref body)) => (&**body, InlinedItemKindRef::Const(ty)),
+            _ => bug!("InlinedItemRef::from_trait_item wrong kind")
+        };
+        InlinedItemRef {
+            def_id: def_id,
+            body: body,
+            kind: kind
+        }
+    }
+
+    pub fn from_impl_item<'ast: 'a>(def_id: DefId, item: &'a hir::ImplItem, map: &hir_map::Map<'ast>) -> InlinedItemRef<'a> {
+        let (body, kind) = match item.node {
+            hir::ImplItemKind::Method(ref sig, body_id) => (map.expr(body_id), InlinedItemKindRef::Fn(&sig.decl)),
+            hir::ImplItemKind::Const(ref ty, ref body) => (&**body, InlinedItemKindRef::Const(ty)),
+            _ => bug!("InlinedItemRef::from_impl_item wrong kind")
+        };
+        InlinedItemRef {
+            def_id: def_id,
+            body: body,
+            kind: kind
+        }
+    }
+
+    pub fn visit<V>(&self, visitor: &mut V)
+        where V: Visitor<'a>
+    {
+        visitor.visit_expr(&self.body);
+        match self.kind {
+            InlinedItemKindRef::Const(ty) => visitor.visit_ty(ty),
+            InlinedItemKindRef::Fn(decl) => intravisit::walk_fn_decl(visitor, decl)
+        }
+    }
+}
+
+impl InlinedItem {
+    pub fn visit<'ast,V>(&'ast self, visitor: &mut V)
+        where V: Visitor<'ast>
+    {
+        visitor.visit_expr(&self.body);
+        match self.kind {
+            InlinedItemKind::Const(ref ty) => visitor.visit_ty(ty),
+            InlinedItemKind::Fn(ref decl) => intravisit::walk_fn_decl(visitor, decl)
+        }
+    }
+
+    pub fn is_fn(&self) -> bool {
+        match self.kind {
+            InlinedItemKind::Const(_) => false,
+            InlinedItemKind::Fn(_) => true
+        }
+    }
 }
 
 pub enum LoadedMacro {
@@ -290,18 +372,6 @@ pub trait CrateStore<'tcx> {
                            link_meta: &LinkMeta,
                            reachable: &NodeSet) -> Vec<u8>;
     fn metadata_encoding_version(&self) -> &[u8];
-}
-
-impl InlinedItem {
-    pub fn visit<'ast,V>(&'ast self, visitor: &mut V)
-        where V: Visitor<'ast>
-    {
-        match *self {
-            InlinedItem::Item(_, ref i) => visitor.visit_item(&i),
-            InlinedItem::TraitItem(_, ref ti) => visitor.visit_trait_item(ti),
-            InlinedItem::ImplItem(_, ref ii) => visitor.visit_impl_item(ii),
-        }
-    }
 }
 
 // FIXME: find a better place for this?
