@@ -150,41 +150,41 @@ pub enum Mode {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn probe_return(&self,
-                        span: Span,
-                        mode: Mode,
-                        return_type: Ty<'tcx>,
-                        self_ty: Ty<'tcx>,
-                        scope_expr_id: ast::NodeId)
-                        -> PickResult<'tcx> {
+    pub fn probe_for_return_type(&self,
+                                 span: Span,
+                                 mode: Mode,
+                                 return_type: Ty<'tcx>,
+                                 self_ty: Ty<'tcx>,
+                                 scope_expr_id: ast::NodeId)
+                                 -> PickResult<'tcx> {
         debug!("probe(self_ty={:?}, return_type={}, scope_expr_id={})",
                self_ty,
                return_type,
                scope_expr_id);
-        self._probe(span, mode, LookingFor::ReturnType(return_type), self_ty, scope_expr_id)
+        self.probe_for(span, mode, LookingFor::ReturnType(return_type), self_ty, scope_expr_id)
     }
 
-    pub fn probe_method(&self,
-                        span: Span,
-                        mode: Mode,
-                        item_name: ast::Name,
-                        self_ty: Ty<'tcx>,
-                        scope_expr_id: ast::NodeId)
-                        -> PickResult<'tcx> {
+    pub fn probe_for_name(&self,
+                          span: Span,
+                          mode: Mode,
+                          item_name: ast::Name,
+                          self_ty: Ty<'tcx>,
+                          scope_expr_id: ast::NodeId)
+                          -> PickResult<'tcx> {
         debug!("probe(self_ty={:?}, item_name={}, scope_expr_id={})",
                self_ty,
                item_name,
                scope_expr_id);
-        self._probe(span, mode, LookingFor::MethodName(item_name), self_ty, scope_expr_id)
+        self.probe_for(span, mode, LookingFor::MethodName(item_name), self_ty, scope_expr_id)
     }
 
-    fn _probe(&self,
-              span: Span,
-              mode: Mode,
-              looking_for: LookingFor<'tcx>,
-              self_ty: Ty<'tcx>,
-              scope_expr_id: ast::NodeId)
-              -> PickResult<'tcx> {
+    fn probe_for(&self,
+                 span: Span,
+                 mode: Mode,
+                 looking_for: LookingFor<'tcx>,
+                 self_ty: Ty<'tcx>,
+                 scope_expr_id: ast::NodeId)
+                 -> PickResult<'tcx> {
 
         // FIXME(#18741) -- right now, creating the steps involves evaluating the
         // `*` operator, which registers obligations that then escape into
@@ -265,6 +265,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let final_ty = match looking_for {
             &LookingFor::MethodName(_) => autoderef.unambiguous_final_ty(),
+            // Since ReturnType case tries to coerce the returned type to the
+            // expected one, we need all the information!
             &LookingFor::ReturnType(_) => self_ty,
         };
         match final_ty.sty {
@@ -627,10 +629,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         match *method {
             ty::ImplOrTraitItem::MethodTraitItem(ref x) => {
                 self.probe(|_| {
-                    let output = self.replace_late_bound_regions_with_fresh_var(
-                        self.span, infer::FnCall, &x.fty.sig.output());
                     let substs = self.fresh_substs_for_item(self.span, method.def_id());
-                    let output = output.0.subst(self.tcx, substs);
+                    let output = x.fty.sig.output().subst(self.tcx, substs);
+                    let (output, _) = self.replace_late_bound_regions_with_fresh_var(
+                        self.span, infer::FnCall, &output);
                     self.can_sub_types(output, expected).is_ok()
                 })
             }
@@ -950,10 +952,17 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         let steps = self.steps.clone();
 
         match self.looking_for {
-            LookingFor::MethodName(_) => steps.iter()
-                                              .filter_map(|step| self.pick_step(step))
-                                              .next(),
+            LookingFor::MethodName(_) => {
+                // find the first step that works
+                steps.iter()
+                     .filter_map(|step| self.pick_step(step))
+                     .next()
+            }
             LookingFor::ReturnType(_) => {
+                // Normally, we stop at the first step where we find a positive match.
+                // But when we are scanning for methods with a suitable return type,
+                // these methods have distinct names and hence may not shadow one another
+                // (also, this is just for hints, so precision is less important).
                 let mut ret = Vec::new();
 
                 for step in steps.iter() {
@@ -1050,10 +1059,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         match self.looking_for {
             LookingFor::MethodName(_) => it.nth(0),
             LookingFor::ReturnType(_) => {
-                let mut ret = Vec::new();
-                it.filter_map(|entry| entry.ok())
-                  .map(|mut v| { ret.append(&mut v); })
-                  .all(|_| true);
+                let ret = it.filter_map(|entry| entry.ok())
+                            .flat_map(|v| v)
+                            .collect::<Vec<_>>();
 
                 if ret.len() < 1 {
                     None

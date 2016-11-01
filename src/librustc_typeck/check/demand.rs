@@ -61,22 +61,50 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn check_ref(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>,
-                 expected: Ty<'tcx>) -> Option<String> {
-        match (&checked_ty.sty, &expected.sty) {
-            (&ty::TyRef(_, x_mutability), &ty::TyRef(_, y_mutability)) => {
+    /// This function is used to determine potential "simple" improvements or users' errors and
+    /// provide them useful help. For example:
+    ///
+    /// ```
+    /// fn some_fn(s: &str) {}
+    ///
+    /// let x = "hey!".to_owned();
+    /// some_fn(x); // error
+    /// ```
+    ///
+    /// No need to find every potential function which could make a coercion to transform a
+    /// `String` into a `&str` since a `&` would do the trick!
+    ///
+    /// In addition of this check, it also checks between references mutability state. If the
+    /// expected is mutable but the provided isn't, maybe we could just say "Hey, try with
+    /// `&mut`!".
+    fn check_ref(&self,
+                 expr: &hir::Expr,
+                 checked_ty: Ty<'tcx>,
+                 expected: Ty<'tcx>)
+                 -> Option<String> {
+        match (&expected.sty, &checked_ty.sty) {
+            (&ty::TyRef(_, expected_mutability),
+             &ty::TyRef(_, checked_mutability)) => {
                 // check if there is a mutability difference
-                if x_mutability.mutbl == hir::Mutability::MutImmutable &&
-                   x_mutability.mutbl != y_mutability.mutbl &&
-                   self.can_sub_types(&x_mutability.ty, y_mutability.ty).is_ok() {
+                if checked_mutability.mutbl == hir::Mutability::MutImmutable &&
+                   checked_mutability.mutbl != expected_mutability.mutbl &&
+                   self.can_sub_types(&checked_mutability.ty,
+                                      expected_mutability.ty).is_ok() {
                     if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
                         return Some(format!("try with `&mut {}`", &src.replace("&", "")));
                     }
                 }
                 None
             }
-            (_, &ty::TyRef(_, mutability)) => {
-                // check if it can work when put into a ref
+            (&ty::TyRef(_, mutability), _) => {
+                // Check if it can work when put into a ref. For example:
+                //
+                // ```
+                // fn bar(x: &mut i32) {}
+                //
+                // let x = 0u32;
+                // bar(&x); // error, expected &mut
+                // ```
                 let ref_ty = match mutability.mutbl {
                     hir::Mutability::MutMutable => self.tcx.mk_mut_ref(
                                                        self.tcx.mk_region(ty::ReStatic),
@@ -110,11 +138,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mode = probe::Mode::MethodCall;
             let suggestions = if let Some(s) = self.check_ref(expr, checked_ty, expected) {
                 Some(s)
-            } else if let Ok(methods) = self.probe_return(syntax_pos::DUMMY_SP,
-                                                          mode,
-                                                          expected,
-                                                          checked_ty,
-                                                          ast::DUMMY_NODE_ID) {
+            } else if let Ok(methods) = self.probe_for_return_type(syntax_pos::DUMMY_SP,
+                                                                   mode,
+                                                                   expected,
+                                                                   checked_ty,
+                                                                   ast::DUMMY_NODE_ID) {
                 let suggestions: Vec<_> =
                     methods.iter()
                            .map(|ref x| {
@@ -143,29 +171,38 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn format_method_suggestion(&self, method: &ImplOrTraitItem<'tcx>) -> String {
+        format!(".{}({})",
+                method.name(),
+                if self.has_not_input_arg(method) {
+                    ""
+                } else {
+                    "..."
+                })
+    }
+
+    fn display_suggested_methods(&self, methods: &[Rc<ImplOrTraitItem<'tcx>>]) -> String {
+        methods.iter()
+               .take(5)
+               .map(|method| self.format_method_suggestion(&*method))
+               .collect::<Vec<String>>()
+               .join("\n - ")
+    }
+
     fn get_best_match(&self, methods: &[Rc<ImplOrTraitItem<'tcx>>]) -> String {
-        if methods.len() == 1 {
-            return format!(" - {}", methods[0].name());
-        }
-        let no_argument_methods: Vec<&Rc<ImplOrTraitItem<'tcx>>> =
+        let no_argument_methods: Vec<Rc<ImplOrTraitItem<'tcx>>> =
             methods.iter()
                    .filter(|ref x| self.has_not_input_arg(&*x))
+                   .map(|x| x.clone())
                    .collect();
         if no_argument_methods.len() > 0 {
-            no_argument_methods.iter()
-                               .take(5)
-                               .map(|method| format!(".{}()", method.name()))
-                               .collect::<Vec<String>>()
-                               .join("\n - ")
+            self.display_suggested_methods(&no_argument_methods)
         } else {
-            methods.iter()
-                   .take(5)
-                   .map(|method| format!(".{}()", method.name()))
-                   .collect::<Vec<String>>()
-                   .join("\n - ")
+            self.display_suggested_methods(&methods)
         }
     }
 
+    // This function checks if the method isn't static and takes other arguments than `self`.
     fn has_not_input_arg(&self, method: &ImplOrTraitItem<'tcx>) -> bool {
         match *method {
             ImplOrTraitItem::MethodTraitItem(ref x) => {
