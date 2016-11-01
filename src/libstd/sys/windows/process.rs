@@ -532,45 +532,165 @@ fn as_vec_u16(str: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
 
 #[cfg(test)]
 mod tests {
-    use ffi::{OsStr, OsString};
-    use super::make_command_line;
+    use ffi::OsString;
+    use path::Path;
+    use fs::canonicalize;
+    use env::join_paths;
+
+    fn gen_env() -> HashMap<OsString, OsString> {
+        let mut env: HashMap<OsString, OsString> = HashMap::new();
+        env.insert(OsString::from("HOMEDRIVE"), OsString::from("C:"));
+        let p1 = canonicalize("./src/test/run-pass/process_command/fixtures/bin").unwrap();
+        let p2 = canonicalize("./src/test/run-pass/process_command/fixtures").unwrap();
+        let p3 = canonicalize("./src/test/run-pass/process_command").unwrap();
+        let paths = vec![p1, p2, p3];
+        let path = join_paths(paths).unwrap();
+        env.insert(OsString::from("PATH"), OsString::from(&path));
+        env.insert(OsString::from("USERNAME"), OsString::from("rust"));
+        env.insert(OsString::from("COMSPEC"), OsString::from("C:\\Windows\\system32\\cmd.exe"));
+        return env
+    }
 
     #[test]
-    fn test_make_command_line_with_out_env() {
-        fn test_wrapper(prog: &str, args: &[&str]) -> String {
-            let command_line = &make_command_line(OsStr::new(prog),
+    mod make_command_line_without_env {
+        use ffi::{OsStr, OsString};
+        use super::make_command_line;
+
+        fn fn_wrapper(prog: &str, args: &[&str]) -> (String, String) {
+            let (app_name, command_line) = &make_command_line(OsStr::new(prog),
                                                   &args.iter()
                                                        .map(|a| OsString::from(a))
                                                        .collect::<Vec<OsString>>(),
                                                   None)
-                                    .unwrap();
-            String::from_utf16(command_line).unwrap()
+                                            .unwrap();
+            (
+                String::from_utf16(app_name.unwrap_or(&[]).unwrap(),
+                String::from_utf16(command_line).unwrap()
+            )
         }
+        fn simple_prog_with_args() {
+            let (app, cmd) = fn_wrapper("prog", &["aaa", "bbb", "ccc"]);
+            assert!(app.is_empty());
+            assert_eq!(cmd, "prog aaa bbb ccc");
+        }
+        fn exe_with_args() {
+            let (app, cmd) = fn_wrapper("C:\\Program Files\\blah\\blah.exe", &["aaa"]);
+            assert!(app.is_empty());
+            assert_eq!(cmd, "\"C:\\Program Files\\blah\\blah.exe\" aaa");
+        }
+        fn prog_without_ext() {
+            let (app, cmd) = fn_wrapper("C:\\Program Files\\test", &["aa\"bb"]);
+            assert!(app.is_empty());
+            assert_eq!(cmd, "\"C:\\Program Files\\test\" aa\\\"bb");
+        }
+        fn simple_echo() {
+            let (app, cmd) = fn_wrapper("echo", &["a b c"]);
+            assert!(app.is_empty());
+            assert_eq!(cmd, "echo \"a b c\"");
+        }
+        fn command_line_with_special_chars() {
+            let (app, cmd) = fn_wrapper("echo", &["\" \\\" \\", "\\"]);
+            assert!(app.is_empty());
+            assert_eq!(cmd, "echo \"\\\" \\\\\\\" \\\\\" \\");
 
-        assert_eq!(
-            test_wrapper("prog", &["aaa", "bbb", "ccc"]),
-            "prog aaa bbb ccc"
-        );
+            let (app, cmd) = fn_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[]);
+            assert!(app.is_empty());
+            assert_eq!(cmd, "\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}");
+        }
+        fn batch_file() {
+            let (app, cmd) = fn_wrapper("C:\\Program Files\\blah\\blah.bat", &["bbb"]);
+            assert!(!app.is_empty());
+            assert_eq!(app, "cmd.exe");
+            assert_eq!(cmd, "cmd /c \"C:\\Program Files\\blah\\blah.exe\" bbb");
+        }
+        fn cmd_file() {
+            let (app, cmd) = fn_wrapper("C:\\Program Files\\cmd program\\cool.cmd", &["install"]);
+            assert!(!app.is_empty());
+            assert_eq!(app, "cmd.exe");
+            assert_eq!(cmd, "cmd /c \"C:\\Program Files\\cmd program\\cool.cmd\" install");
+        }
+        fn vbs_file_is_not_a_batch_script() {
+            let (app, cmd) = fn_wrapper(
+                "C:\\Users\\afiune\\automate.vbs",
+                &["all", "the", "things"]
+            );
+            assert!(!app.is_empty());
+            assert_eq!(app, "cmd.exe");
+            assert_eq!(cmd, "cmd /c \"C:\\Users\\afiune\\automate.vbs\" all the things");
+        }
+    }
 
-        assert_eq!(
-            test_wrapper("C:\\Program Files\\blah\\blah.exe", &["aaa"]),
-            "\"C:\\Program Files\\blah\\blah.exe\" aaa"
-        );
-        assert_eq!(
-            test_wrapper("C:\\Program Files\\test", &["aa\"bb"]),
-            "\"C:\\Program Files\\test\" aa\\\"bb"
-        );
-        assert_eq!(
-            test_wrapper("echo", &["a b c"]),
-            "echo \"a b c\""
-        );
-        assert_eq!(
-            test_wrapper("echo", &["\" \\\" \\", "\\"]),
-            "echo \"\\\" \\\\\\\" \\\\\" \\"
-        );
-        assert_eq!(
-            test_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[]),
-            "\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}"
-        );
+    #[test]
+    mod test_make_command_line_with_env() {
+        use super::make_command_line;
+        use ffi::{OsStr, OsString};
+        use super::gen_env;
+
+        fn fn_wrapper(prog: &str, args: &[&str]) -> (String, String) {
+            let env = gen_env();
+            let (app_name, command_line) = &make_command_line(OsStr::new(prog),
+                                                  &args.iter()
+                                                       .map(|a| OsString::from(a))
+                                                       .collect::<Vec<OsString>>(),
+                                                  Some(&env))
+                                            .unwrap();
+            (
+                String::from_utf16(app_name.unwrap_or(&[]).unwrap(),
+                String::from_utf16(command_line).unwrap()
+            )
+        }
+        fn simple_prog_with_args() {
+            let (app, cmd) = fn_wrapper("prog.cmd", &["aaa", "bbb", "ccc"]);
+            assert_eq!(app, "C:\\Windows\\system32\\cmd.exe");
+            assert_eq!(cmd, "cmd /c \"prog.cmd\" aaa bbb ccc");
+        }
+        fn exe_with_args() {
+            let (app, cmd) = fn_wrapper("C:\\Program Files\\blah\\blah.exe", &["aaa"]);
+            assert!(app.is_empty());
+            assert_eq!(cmd, "\"C:\\Program Files\\blah\\blah.exe\" aaa");
+        }
+        fn prog_without_ext() {
+            let (app, cmd) = fn_wrapper("C:\\Program Files\\test", &["aa\"bb"]);
+            assert!(app.is_empty());
+            assert_eq!(cmd, "\"C:\\Program Files\\test\" aa\\\"bb");
+        }
+        fn simple_echo() {
+            let (app, cmd) = fn_wrapper("echo", &["a b c"]);
+            assert!(app.is_empty());
+            assert_eq!(cmd, "echo \"a b c\"");
+        }
+        fn command_line_with_special_chars() {
+            let (app, cmd) = fn_wrapper("echo", &["\" \\\" \\", "\\"]);
+            assert!(app.is_empty());
+            assert_eq!(cmd, "echo \"\\\" \\\\\\\" \\\\\" \\");
+
+            let (app, cmd) = fn_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[]);
+            assert!(app.is_empty());
+            assert_eq!(cmd, "\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}");
+        }
+        fn batch_file() {
+            let (app, cmd) = fn_wrapper("C:\\Program Files\\blah\\blah.bat", &["bbb"]);
+            assert!(!app.is_empty());
+            assert_eq!(app, "C:\\Windows\\system32\\cmd.exe");
+            assert_eq!(cmd, "cmd /c \"C:\\Program Files\\blah\\blah.exe\" bbb");
+        }
+        fn cmd_file() {
+            let (app, cmd) = fn_wrapper(
+                "C:\\Program Files\\cmd program\\cool.cmd",
+                &["install"]
+            );
+            assert!(!app.is_empty());
+            assert_eq!(app, "C:\\Windows\\system32\\cmd.exe");
+            assert_eq!(cmd, "cmd /c \"C:\\Program Files\\cmd program\\cool.cmd\" install");
+        }
+        fn vbs_file_is_not_a_batch_script() {
+            let (app, cmd) = fn_wrapper(
+                "C:\\Users\\afiune\\automate.vbs",
+                &["all", "the", "things"]
+            );
+            assert!(!app.is_empty());
+            assert_eq!(app, "C:\\Windows\\system32\\cmd.exe");
+            assert_eq!(cmd, "cmd /c \"C:\\Users\\afiune\\automate.vbs\" all the things");
+        }
     }
 }
