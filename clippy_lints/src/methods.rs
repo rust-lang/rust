@@ -464,6 +464,32 @@ declare_lint! {
     "using `.skip(x).next()` on an iterator"
 }
 
+/// **What it does:** Checks for use of `.get().unwrap()` (or
+/// `.get_mut().unwrap`) on a standard library type which implements `Index`
+///
+/// **Why is this bad?** Using the Index trait (`[]`) is more clear and more
+/// concise.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let some_vec = vec![0, 1, 2, 3];
+/// let last = some_vec.get(3).unwrap();
+/// some_vec.get_mut(0).unwrap() = 1;
+/// ```
+/// The correct use would be:
+/// ```rust
+/// let some_vec = vec![0, 1, 2, 3];
+/// let last = some_vec[3];
+/// some_vec[0] = 1;
+/// ```
+declare_lint! {
+    pub GET_UNWRAP,
+    Warn,
+    "using `.get().unwrap()` or `.get_mut().unwrap()` when using `[]` would work instead"
+}
+
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
@@ -487,7 +513,8 @@ impl LintPass for Pass {
                     FILTER_NEXT,
                     FILTER_MAP,
                     ITER_NTH,
-                    ITER_SKIP_NEXT)
+                    ITER_SKIP_NEXT,
+                    GET_UNWRAP)
     }
 }
 
@@ -532,6 +559,10 @@ impl LateLintPass for Pass {
                     lint_iter_nth(cx, expr, arglists[0], false);
                 } else if let Some(arglists) = method_chain_args(expr, &["iter_mut", "nth"]) {
                     lint_iter_nth(cx, expr, arglists[0], true);
+                } else if let Some(arglists) = method_chain_args(expr, &["get", "unwrap"]) {
+                    lint_get_unwrap(cx, expr, arglists[0], false);
+                } else if let Some(arglists) = method_chain_args(expr, &["get_mut", "unwrap"]) {
+                    lint_get_unwrap(cx, expr, arglists[0], true);
                 } else if method_chain_args(expr, &["skip", "next"]).is_some() {
                     lint_iter_skip_next(cx, expr);
                 }
@@ -815,6 +846,38 @@ fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs, is_
         expr.span,
         &format!("called `.iter{0}().nth()` on a {1}. Calling `.get{0}()` is both faster and more readable",
                  mut_str, caller_type)
+    );
+}
+
+fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &MethodArgs, is_mut: bool) {
+    let mut_str = if is_mut { "_mut" } else {""};
+    let caller_type = if derefs_to_slice(cx, &get_args[0], cx.tcx.expr_ty(&get_args[0])).is_some() {
+        "slice"
+    } else if match_type(cx, cx.tcx.expr_ty(&get_args[0]), &paths::VEC) {
+        "Vec"
+    } else if match_type(cx, cx.tcx.expr_ty(&get_args[0]), &paths::VEC_DEQUE) {
+        "VecDeque"
+    } else if match_type(cx, cx.tcx.expr_ty(&get_args[0]), &paths::HASHMAP) {
+        "HashMap"
+    } else if match_type(cx, cx.tcx.expr_ty(&get_args[0]), &paths::BTREEMAP) {
+        "BTreeMap"
+    } else {
+        return; // caller is not a type that we want to lint
+    };
+
+    span_lint_and_then(
+        cx,
+        GET_UNWRAP,
+        expr.span,
+        &format!("called `.get{0}().unwrap()` on a {1}. Using `[]` is more clear and more concise",
+                 mut_str, caller_type),
+        |db| {
+            db.span_suggestion(
+                expr.span,
+                "try this",
+                format!("{}[{}]", snippet(cx, get_args[0].span, "_"), snippet(cx, get_args[1].span, "_"))
+            );
+        }
     );
 }
 
