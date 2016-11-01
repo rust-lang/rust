@@ -18,4 +18,11 @@ fn main() {
     use foo::bar;
     foo::bar(); //~ ERROR: unnecessary qualification
     bar();
+
+    let _ = || -> Result<(), ()> { try!(Ok(())); Ok(()) }; // issue #37345
+
+    macro_rules! m {
+        () => { $crate::foo::bar(); }
+    }
+    m!(); // issue #37357
 }

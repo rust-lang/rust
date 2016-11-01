@@ -57,7 +57,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     let remainder_extent =
                         cx.tcx.region_maps.lookup_code_extent(remainder_extent);
 
-                    let pattern = cx.irrefutable_pat(&local.pat);
+                    let pattern = Pattern::from_hir(cx.tcx, &local.pat);
                     result.push(StmtRef::Mirror(Box::new(Stmt {
                         span: stmt.span,
                         kind: StmtKind::Let {

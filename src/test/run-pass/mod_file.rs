@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
+// ignore-pretty issue #37195
 
 // Testing that a plain .rs file can load modules from other source files
 

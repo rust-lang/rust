@@ -146,19 +146,19 @@ pub struct CStr {
 
 /// An error returned from `CString::new` to indicate that a nul byte was found
 /// in the vector provided.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct NulError(usize, Vec<u8>);
 
 /// An error returned from `CStr::from_bytes_with_nul` to indicate that a nul
 /// byte was found too early in the slice provided or one wasn't found at all.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
 pub struct FromBytesWithNulError { _a: () }
 
 /// An error returned from `CString::into_string` to indicate that a UTF-8 error
 /// was encountered during the conversion.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstring_into", since = "1.7.0")]
 pub struct IntoStringError {
     inner: CString,
@@ -228,9 +228,14 @@ impl CString {
 
     /// Retakes ownership of a `CString` that was transferred to C.
     ///
+    /// Additionally, the length of the string will be recalculated from the pointer.
+    ///
+    /// # Safety
+    ///
     /// This should only ever be called with a pointer that was earlier
-    /// obtained by calling `into_raw` on a `CString`. Additionally, the length
-    /// of the string will be recalculated from the pointer.
+    /// obtained by calling `into_raw` on a `CString`. Other usage (e.g. trying to take
+    /// ownership of a string that was allocated by foreign code) is likely to lead
+    /// to undefined behavior or allocator corruption.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
@@ -309,9 +314,11 @@ impl CString {
 }
 
 // Turns this `CString` into an empty string to prevent
-// memory unsafe code from working by accident.
+// memory unsafe code from working by accident. Inline
+// to prevent LLVM from optimizing it away in debug builds.
 #[stable(feature = "cstring_drop", since = "1.13.0")]
 impl Drop for CString {
+    #[inline]
     fn drop(&mut self) {
         unsafe { *self.inner.get_unchecked_mut(0) = 0; }
     }
@@ -719,7 +726,8 @@ mod tests {
     use super::*;
     use os::raw::c_char;
     use borrow::Cow::{Borrowed, Owned};
-    use hash::{SipHasher, Hash, Hasher};
+    use hash::{Hash, Hasher};
+    use collections::hash_map::DefaultHasher;
 
     #[test]
     fn c_to_rust() {
@@ -801,10 +809,10 @@ mod tests {
         let ptr = data.as_ptr() as *const c_char;
         let cstr: &'static CStr = unsafe { CStr::from_ptr(ptr) };
 
-        let mut s = SipHasher::new_with_keys(0, 0);
+        let mut s = DefaultHasher::new();
         cstr.hash(&mut s);
         let cstr_hash = s.finish();
-        let mut s = SipHasher::new_with_keys(0, 0);
+        let mut s = DefaultHasher::new();
         CString::new(&data[..data.len() - 1]).unwrap().hash(&mut s);
         let cstring_hash = s.finish();
 

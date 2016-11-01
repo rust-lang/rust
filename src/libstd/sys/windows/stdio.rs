@@ -205,3 +205,5 @@ impl Output {
 fn invalid_encoding() -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, "text was not valid unicode")
 }
+
+pub const EBADF_ERR: i32 = ::sys::c::ERROR_INVALID_HANDLE as i32;

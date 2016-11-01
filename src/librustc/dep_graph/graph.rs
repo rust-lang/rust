@@ -51,22 +51,15 @@ impl DepGraph {
         }
     }
 
-    /// True if we are actually building a dep-graph. If this returns false,
-    /// then the other methods on this `DepGraph` will have no net effect.
-    #[inline]
-    pub fn enabled(&self) -> bool {
-        self.data.thread.enabled()
-    }
-
     pub fn query(&self) -> DepGraphQuery<DefId> {
         self.data.thread.query()
     }
 
-    pub fn in_ignore<'graph>(&'graph self) -> raii::IgnoreTask<'graph> {
+    pub fn in_ignore<'graph>(&'graph self) -> Option<raii::IgnoreTask<'graph>> {
         raii::IgnoreTask::new(&self.data.thread)
     }
 
-    pub fn in_task<'graph>(&'graph self, key: DepNode<DefId>) -> raii::DepTask<'graph> {
+    pub fn in_task<'graph>(&'graph self, key: DepNode<DefId>) -> Option<raii::DepTask<'graph>> {
         raii::DepTask::new(&self.data.thread, key)
     }
 
@@ -85,11 +78,15 @@ impl DepGraph {
     }
 
     pub fn read(&self, v: DepNode<DefId>) {
-        self.data.thread.enqueue(DepMessage::Read(v));
+        if self.data.thread.is_enqueue_enabled() {
+            self.data.thread.enqueue(DepMessage::Read(v));
+        }
     }
 
     pub fn write(&self, v: DepNode<DefId>) {
-        self.data.thread.enqueue(DepMessage::Write(v));
+        if self.data.thread.is_enqueue_enabled() {
+            self.data.thread.enqueue(DepMessage::Write(v));
+        }
     }
 
     /// Indicates that a previous work product exists for `v`. This is

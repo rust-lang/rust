@@ -1,0 +1,23 @@
+error: `c2` does not live long enough
+   --> $DIR/vec-must-not-hide-type-from-dropck.rs:129:1
+    |
+127 |     c1.v[0].v.set(Some(&c2));
+    |                         -- borrow occurs here
+128 |     c2.v[0].v.set(Some(&c1));
+129 | }
+    | ^ `c2` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
+
+error: `c1` does not live long enough
+   --> $DIR/vec-must-not-hide-type-from-dropck.rs:129:1
+    |
+128 |     c2.v[0].v.set(Some(&c1));
+    |                         -- borrow occurs here
+129 | }
+    | ^ `c1` dropped here while still borrowed
+    |
+    = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to 2 previous errors
+

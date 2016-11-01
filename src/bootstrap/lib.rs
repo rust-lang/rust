@@ -26,7 +26,6 @@ extern crate md5;
 extern crate num_cpus;
 extern crate rustc_serialize;
 extern crate toml;
-extern crate regex;
 
 use std::collections::HashMap;
 use std::env;
@@ -62,6 +61,7 @@ mod config;
 mod dist;
 mod doc;
 mod flags;
+mod install;
 mod native;
 mod sanity;
 mod step;
@@ -220,14 +220,14 @@ impl Build {
         sanity::check(self);
         self.verbose("collecting channel variables");
         channel::collect(self);
-        // If local-rust is the same as the current version, then force a local-rebuild
+        // If local-rust is the same major.minor as the current version, then force a local-rebuild
         let local_version_verbose = output(
             Command::new(&self.rustc).arg("--version").arg("--verbose"));
         let local_release = local_version_verbose
             .lines().filter(|x| x.starts_with("release:"))
             .next().unwrap().trim_left_matches("release:").trim();
-        if local_release == self.release {
-            self.verbose(&format!("auto-detected local-rebuild {}", self.release));
+        if local_release.split('.').take(2).eq(self.release.split('.').take(2)) {
+            self.verbose(&format!("auto-detected local-rebuild {}", local_release));
             self.local_rebuild = true;
         }
         self.verbose("updating submodules");
@@ -243,7 +243,14 @@ impl Build {
         // Almost all of these are simple one-liners that shell out to the
         // corresponding functionality in the extra modules, where more
         // documentation can be found.
-        for target in step::all(self) {
+        let steps = step::all(self);
+
+        self.verbose("bootstrap build plan:");
+        for step in &steps {
+            self.verbose(&format!("{:?}", step));
+        }
+
+        for target in steps {
             let doc_out = self.out.join(&target.target).join("doc");
             match target.src {
                 Llvm { _dummy } => {
@@ -446,6 +453,8 @@ impl Build {
                 DistStd { compiler } => dist::std(self, &compiler, target.target),
                 DistSrc { _dummy } => dist::rust_src(self),
 
+                Install { stage } => install::install(self, stage, target.target),
+
                 DebuggerScripts { stage } => {
                     let compiler = Compiler::new(stage, target.target);
                     dist::debugger_scripts(self,
@@ -550,12 +559,23 @@ impl Build {
                 continue
             }
 
+            // `submodule.path` is the relative path to a submodule (from the repository root)
+            // `submodule_path` is the path to a submodule from the cwd
+
+            // use `submodule.path` when e.g. executing a submodule specific command from the
+            // repository root
+            // use `submodule_path` when e.g. executing a normal git command for the submodule
+            // (set via `current_dir`)
+            let submodule_path = self.src.join(submodule.path);
+
             match submodule.state {
                 State::MaybeDirty => {
                     // drop staged changes
-                    self.run(git().arg("-C").arg(submodule.path).args(&["reset", "--hard"]));
+                    self.run(git().current_dir(&submodule_path)
+                                  .args(&["reset", "--hard"]));
                     // drops unstaged changes
-                    self.run(git().arg("-C").arg(submodule.path).args(&["clean", "-fdx"]));
+                    self.run(git().current_dir(&submodule_path)
+                                  .args(&["clean", "-fdx"]));
                 },
                 State::NotInitialized => {
                     self.run(git_submodule().arg("init").arg(submodule.path));
@@ -564,8 +584,10 @@ impl Build {
                 State::OutOfSync => {
                     // drops submodule commits that weren't reported to the (outer) git repository
                     self.run(git_submodule().arg("update").arg(submodule.path));
-                    self.run(git().arg("-C").arg(submodule.path).args(&["reset", "--hard"]));
-                    self.run(git().arg("-C").arg(submodule.path).args(&["clean", "-fdx"]));
+                    self.run(git().current_dir(&submodule_path)
+                                  .args(&["reset", "--hard"]));
+                    self.run(git().current_dir(&submodule_path)
+                                  .args(&["clean", "-fdx"]));
                 },
             }
         }
@@ -627,6 +649,7 @@ impl Build {
              .env("RUSTC_REAL", self.compiler_path(compiler))
              .env("RUSTC_STAGE", stage.to_string())
              .env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
+             .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
              .env("RUSTC_CODEGEN_UNITS",
                   self.config.rust_codegen_units.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
@@ -640,7 +663,7 @@ impl Build {
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
-        self.add_bootstrap_key(compiler, &mut cargo);
+        self.add_bootstrap_key(&mut cargo);
 
         // Specify some various options for build scripts used throughout
         // the build.
@@ -650,12 +673,6 @@ impl Build {
             cargo.env(format!("CC_{}", target), self.cc(target))
                  .env(format!("AR_{}", target), self.ar(target).unwrap()) // only msvc is None
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
-        }
-
-        // If we're building for OSX, inform the compiler and the linker that
-        // we want to build a compiler runnable on 10.7
-        if target.contains("apple-darwin") {
-            cargo.env("MACOSX_DEPLOYMENT_TARGET", "10.7");
         }
 
         // Environment variables *required* needed throughout the build
@@ -855,16 +872,11 @@ impl Build {
     }
 
     /// Adds the compiler's bootstrap key to the environment of `cmd`.
-    fn add_bootstrap_key(&self, compiler: &Compiler, cmd: &mut Command) {
-        // In stage0 we're using a previously released stable compiler, so we
-        // use the stage0 bootstrap key. Otherwise we use our own build's
-        // bootstrap key.
-        let bootstrap_key = if compiler.is_snapshot(self) && !self.local_rebuild {
-            &self.bootstrap_key_stage0
-        } else {
-            &self.bootstrap_key
-        };
-        cmd.env("RUSTC_BOOTSTRAP_KEY", bootstrap_key);
+    fn add_bootstrap_key(&self, cmd: &mut Command) {
+        cmd.env("RUSTC_BOOTSTRAP", "");
+        // FIXME: Transitionary measure to bootstrap using the old bootstrap logic.
+        // Remove this once the bootstrap compiler uses the new login in Issue #36548.
+        cmd.env("RUSTC_BOOTSTRAP_KEY", "62b3e239");
     }
 
     /// Returns the compiler's libdir where it stores the dynamic libraries that
@@ -926,7 +938,6 @@ impl Build {
         // LLVM/jemalloc/etc are all properly compiled.
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
-            base.push("-mmacosx-version-min=10.7".into());
         }
         // This is a hack, because newer binutils broke things on some vms/distros
         // (i.e., linking against unknown relocs disabled by the following flag)
@@ -950,7 +961,11 @@ impl Build {
     /// Returns the path to the C++ compiler for the target specified, may panic
     /// if no C++ compiler was configured for the target.
     fn cxx(&self, target: &str) -> &Path {
-        self.cxx[target].path()
+        match self.cxx.get(target) {
+            Some(p) => p.path(),
+            None => panic!("\n\ntarget `{}` is not configured as a host,
+                            only as a target\n\n", target),
+        }
     }
 
     /// Returns flags to pass to the compiler to generate code for `target`.
@@ -963,7 +978,8 @@ impl Build {
         // than an entry here.
 
         let mut base = Vec::new();
-        if target != self.config.build && !target.contains("msvc") {
+        if target != self.config.build && !target.contains("msvc") &&
+            !target.contains("emscripten") {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }
         return base
@@ -971,7 +987,8 @@ impl Build {
 
     /// Returns the "musl root" for this `target`, if defined
     fn musl_root(&self, target: &str) -> Option<&Path> {
-        self.config.target_config[target].musl_root.as_ref()
+        self.config.target_config.get(target)
+            .and_then(|t| t.musl_root.as_ref())
             .or(self.config.musl_root.as_ref())
             .map(|p| &**p)
     }

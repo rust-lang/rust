@@ -19,10 +19,10 @@ fn f() {
 #[macro_use(macro_one)] // Check that this macro is usable in the above function
 extern crate two_macros;
 
+fn g() {
+    macro_two!();
+}
 macro_rules! m { () => {
-    fn g() {
-        macro_two!();
-    }
     #[macro_use(macro_two)] // Check that this macro is usable in the above function
     extern crate two_macros as _two_macros;
 } }

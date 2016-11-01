@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
+// ignore-pretty issue #37195
 
 // Testing that the parser for each file tracks its modules
 // and paths independently. The load_another_mod module should

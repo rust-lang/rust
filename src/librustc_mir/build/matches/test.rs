@@ -22,7 +22,7 @@ use rustc_data_structures::fnv::FnvHashMap;
 use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use syntax_pos::Span;
 use std::cmp::Ordering;
 
@@ -73,8 +73,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Range {
-                        lo: lo.clone(),
-                        hi: hi.clone(),
+                        lo: Literal::Value { value: lo.clone() },
+                        hi: Literal::Value { value: hi.clone() },
                         ty: match_pair.pattern.ty.clone(),
                     },
                 }

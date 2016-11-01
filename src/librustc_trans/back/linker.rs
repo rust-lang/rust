@@ -21,10 +21,10 @@ use monomorphize::Instance;
 
 use back::archive;
 use middle::dependency_format::Linkage;
+use rustc::hir::def_id::CrateNum;
 use session::Session;
 use session::config::CrateType;
 use session::config;
-use syntax::ast;
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
@@ -245,7 +245,7 @@ impl<'a> Linker for GnuLinker<'a> {
         // have far more public symbols than we actually want to export, so we
         // hide them all here.
         if crate_type == CrateType::CrateTypeDylib ||
-           crate_type == CrateType::CrateTypeRustcMacro {
+           crate_type == CrateType::CrateTypeProcMacro {
             return
         }
 
@@ -450,7 +450,7 @@ fn exported_symbols(scx: &SharedCrateContext,
     // See explanation in GnuLinker::export_symbols, for
     // why we don't ever need dylib symbols on non-MSVC.
     if crate_type == CrateType::CrateTypeDylib ||
-       crate_type == CrateType::CrateTypeRustcMacro {
+       crate_type == CrateType::CrateTypeProcMacro {
         if !scx.sess().target.target.options.is_like_msvc {
             return vec![];
         }
@@ -473,7 +473,7 @@ fn exported_symbols(scx: &SharedCrateContext,
     let deps = formats[&crate_type].iter();
     symbols.extend(deps.enumerate().filter_map(|(i, f)| {
         if *f == Linkage::Static {
-            Some((i + 1) as ast::CrateNum)
+            Some(CrateNum::new(i + 1))
         } else {
             None
         }

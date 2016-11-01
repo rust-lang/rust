@@ -19,7 +19,7 @@ extern crate rustc_const_math;
 extern crate syntax;
 
 use rustc::mir::transform::{self, MirPass, MirSource};
-use rustc::mir::repr::{Mir, Literal, Location};
+use rustc::mir::{Mir, Literal, Location};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
 use rustc::middle::const_val::ConstVal;

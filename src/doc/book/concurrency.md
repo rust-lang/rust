@@ -4,7 +4,7 @@ Concurrency and parallelism are incredibly important topics in computer
 science, and are also a hot topic in industry today. Computers are gaining more
 and more cores, yet many programmers aren't prepared to fully utilize them.
 
-Rust's memory safety features also apply to its concurrency story too. Even
+Rust's memory safety features also apply to its concurrency story. Even
 concurrent Rust programs must be memory safe, having no data races. Rust's type
 system is up to the task, and gives you powerful ways to reason about
 concurrent code at compile time.
@@ -281,8 +281,8 @@ And... still gives us an error.
 ```
 
 `Arc<T>` by default has immutable contents. It allows the _sharing_ of data
-between threads, but shared mutable data is unsafe and when threads are
-involved can cause data races!
+between threads, but shared mutable data is unsafe—and when threads are
+involved—can cause data races!
 
 
 Usually when we wish to make something in an immutable position mutable, we use

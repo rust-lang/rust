@@ -11,7 +11,7 @@
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
 use io::{self, Read};
-use libc::{self, c_int, size_t, c_void};
+use libc::{self, c_int, c_void};
 use mem;
 use sync::atomic::{AtomicBool, Ordering};
 use sys::cvt;
@@ -40,7 +40,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::read(self.fd,
                        buf.as_mut_ptr() as *mut c_void,
-                       buf.len() as size_t)
+                       buf.len())
         })?;
         Ok(ret as usize)
     }
@@ -50,23 +50,77 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
+    pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        #[cfg(target_os = "android")]
+        use super::android::cvt_pread64;
+
+        #[cfg(not(target_os = "android"))]
+        unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: usize, offset: i64)
+            -> io::Result<isize>
+        {
+            #[cfg(any(target_os = "linux", target_os = "emscripten"))]
+            use libc::pread64;
+            #[cfg(not(any(target_os = "linux", target_os = "emscripten")))]
+            use libc::pread as pread64;
+            cvt(pread64(fd, buf, count, offset))
+        }
+
+        unsafe {
+            cvt_pread64(self.fd,
+                        buf.as_mut_ptr() as *mut c_void,
+                        buf.len(),
+                        offset as i64)
+                .map(|n| n as usize)
+        }
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::write(self.fd,
                         buf.as_ptr() as *const c_void,
-                        buf.len() as size_t)
+                        buf.len())
         })?;
         Ok(ret as usize)
     }
 
-    #[cfg(not(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten")))]
+    pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        #[cfg(target_os = "android")]
+        use super::android::cvt_pwrite64;
+
+        #[cfg(not(target_os = "android"))]
+        unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: usize, offset: i64)
+            -> io::Result<isize>
+        {
+            #[cfg(any(target_os = "linux", target_os = "emscripten"))]
+            use libc::pwrite64;
+            #[cfg(not(any(target_os = "linux", target_os = "emscripten")))]
+            use libc::pwrite as pwrite64;
+            cvt(pwrite64(fd, buf, count, offset))
+        }
+
+        unsafe {
+            cvt_pwrite64(self.fd,
+                         buf.as_ptr() as *const c_void,
+                         buf.len(),
+                         offset as i64)
+                .map(|n| n as usize)
+        }
+    }
+
+    #[cfg(not(any(target_env = "newlib",
+                  target_os = "solaris",
+                  target_os = "emscripten",
+                  target_os = "haiku")))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
             cvt(libc::ioctl(self.fd, libc::FIOCLEX))?;
             Ok(())
         }
     }
-    #[cfg(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten"))]
+    #[cfg(any(target_env = "newlib",
+              target_os = "solaris",
+              target_os = "emscripten",
+              target_os = "haiku"))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
             let previous = cvt(libc::fcntl(self.fd, libc::F_GETFD))?;
@@ -104,9 +158,9 @@ impl FileDesc {
         // resolve so we at least compile this.
         //
         // [1]: http://comments.gmane.org/gmane.linux.lib.musl.general/2963
-        #[cfg(target_os = "android")]
+        #[cfg(any(target_os = "android", target_os = "haiku"))]
         use libc::F_DUPFD as F_DUPFD_CLOEXEC;
-        #[cfg(not(target_os = "android"))]
+        #[cfg(not(any(target_os = "android", target_os="haiku")))]
         use libc::F_DUPFD_CLOEXEC;
 
         let make_filedesc = |fd| {

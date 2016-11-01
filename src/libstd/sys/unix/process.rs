@@ -369,7 +369,7 @@ impl Command {
         }
 
         // NaCl has no signal support.
-        if cfg!(not(target_os = "nacl")) {
+        if cfg!(not(any(target_os = "nacl", target_os = "emscripten"))) {
             // Reset signal handling so the child process starts in a
             // standardized state. libstd ignores SIGPIPE, and signal-handling
             // libraries often set a mask. Child processes inherit ignored
@@ -589,7 +589,7 @@ impl Process {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use super::*;
 

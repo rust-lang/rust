@@ -22,12 +22,12 @@ pub enum E {
     B(f32)
 }
 
-// CHECK: @VAR2 = constant {{.*}} { i32 0, i32 666, {{.*}} }, section ".test_two"
+// CHECK: @VAR2 = constant {{.*}} { i32 0, i32 666 }, section ".test_two"
 #[no_mangle]
 #[link_section = ".test_two"]
 pub static VAR2: E = E::A(666);
 
-// CHECK: @VAR3 = constant {{.*}} { i32 1, float 1.000000e+00, {{.*}} }, section ".test_three"
+// CHECK: @VAR3 = constant {{.*}} { i32 1, float 1.000000e+00 }, section ".test_three"
 #[no_mangle]
 #[link_section = ".test_three"]
 pub static VAR3: E = E::B(1.);

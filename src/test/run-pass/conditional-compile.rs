@@ -148,3 +148,6 @@ mod test_methods {
         fn the(&self);
     }
 }
+
+#[cfg(any())]
+mod nonexistent_file; // Check that unconfigured non-inline modules are not loaded or parsed.

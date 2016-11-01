@@ -501,10 +501,7 @@ pub fn requests_inline(attrs: &[Attribute]) -> bool {
 }
 
 /// Tests if a cfg-pattern matches the cfg set
-pub fn cfg_matches(cfgs: &[P<MetaItem>], cfg: &ast::MetaItem,
-                   sess: &ParseSess,
-                   features: Option<&Features>)
-                   -> bool {
+pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {
     match cfg.node {
         ast::MetaItemKind::List(ref pred, ref mis) => {
             for mi in mis.iter() {
@@ -518,10 +515,10 @@ pub fn cfg_matches(cfgs: &[P<MetaItem>], cfg: &ast::MetaItem,
             // that they won't fail with the loop above.
             match &pred[..] {
                 "any" => mis.iter().any(|mi| {
-                    cfg_matches(cfgs, mi.meta_item().unwrap(), sess, features)
+                    cfg_matches(mi.meta_item().unwrap(), sess, features)
                 }),
                 "all" => mis.iter().all(|mi| {
-                    cfg_matches(cfgs, mi.meta_item().unwrap(), sess, features)
+                    cfg_matches(mi.meta_item().unwrap(), sess, features)
                 }),
                 "not" => {
                     if mis.len() != 1 {
@@ -529,7 +526,7 @@ pub fn cfg_matches(cfgs: &[P<MetaItem>], cfg: &ast::MetaItem,
                         return false;
                     }
 
-                    !cfg_matches(cfgs, mis[0].meta_item().unwrap(), sess, features)
+                    !cfg_matches(mis[0].meta_item().unwrap(), sess, features)
                 },
                 p => {
                     span_err!(sess.span_diagnostic, cfg.span, E0537, "invalid predicate `{}`", p);
@@ -541,7 +538,7 @@ pub fn cfg_matches(cfgs: &[P<MetaItem>], cfg: &ast::MetaItem,
             if let (Some(feats), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
                 gated_cfg.check_and_emit(sess, feats);
             }
-            contains(cfgs, cfg)
+            contains(&sess.config, cfg)
         }
     }
 }
@@ -895,7 +892,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                         "packed" => Some(ReprPacked),
                         "simd" => Some(ReprSimd),
                         _ => match int_type_of_word(word) {
-                            Some(ity) => Some(ReprInt(item.span, ity)),
+                            Some(ity) => Some(ReprInt(ity)),
                             None => {
                                 // Not a word we recognize
                                 span_err!(diagnostic, item.span, E0552,
@@ -939,7 +936,7 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
 #[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub enum ReprAttr {
     ReprAny,
-    ReprInt(Span, IntType),
+    ReprInt(IntType),
     ReprExtern,
     ReprPacked,
     ReprSimd,
@@ -949,7 +946,7 @@ impl ReprAttr {
     pub fn is_ffi_safe(&self) -> bool {
         match *self {
             ReprAny => false,
-            ReprInt(_sp, ity) => ity.is_ffi_safe(),
+            ReprInt(ity) => ity.is_ffi_safe(),
             ReprExtern => true,
             ReprPacked => false,
             ReprSimd => true,

@@ -18,7 +18,7 @@ pub fn target() -> TargetResult {
     // cabi_s390x.rs are for now hard-coded to assume the no-vector ABI.
     // Pass the -vector feature string to LLVM to respect this assumption.
     base.features = "-vector".to_string();
-    base.max_atomic_width = 64;
+    base.max_atomic_width = Some(64);
 
     Ok(Target {
         llvm_target: "s390x-unknown-linux-gnu".to_string(),

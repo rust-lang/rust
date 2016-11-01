@@ -25,7 +25,7 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::region::CodeExtent;
 use mir::tcx::LvalueTy;
-use ty::subst::{Subst, Substs};
+use ty::subst::{Kind, Subst, Substs};
 use ty::adjustment;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
@@ -583,7 +583,8 @@ impl_trans_normalize!('gcx,
     ty::FnSig<'gcx>,
     &'gcx ty::BareFnTy<'gcx>,
     ty::ClosureSubsts<'gcx>,
-    ty::PolyTraitRef<'gcx>
+    ty::PolyTraitRef<'gcx>,
+    ty::ExistentialTraitRef<'gcx>
 );
 
 impl<'gcx> TransNormalize<'gcx> for LvalueTy<'gcx> {
@@ -603,6 +604,18 @@ impl<'gcx> TransNormalize<'gcx> for LvalueTy<'gcx> {
 
 // NOTE: Callable from trans only!
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+    /// Currently, higher-ranked type bounds inhibit normalization. Therefore,
+    /// each time we erase them in translation, we need to normalize
+    /// the contents.
+    pub fn erase_late_bound_regions_and_normalize<T>(self, value: &ty::Binder<T>)
+        -> T
+        where T: TransNormalize<'tcx>
+    {
+        assert!(!value.needs_subst());
+        let value = self.erase_late_bound_regions(value);
+        self.normalize_associated_type(&value)
+    }
+
     pub fn normalize_associated_type<T>(self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
@@ -1208,7 +1221,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn type_var_for_def(&self,
                             span: Span,
                             def: &ty::TypeParameterDef<'tcx>,
-                            substs: &Substs<'tcx>)
+                            substs: &[Kind<'tcx>])
                             -> Ty<'tcx> {
         let default = def.default.map(|default| {
             type_variable::Default {

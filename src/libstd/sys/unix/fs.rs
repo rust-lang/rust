@@ -193,6 +193,14 @@ impl FromInner<u32> for FilePermissions {
     }
 }
 
+impl fmt::Debug for ReadDir {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
+        // Thus the result will be e g 'ReadDir("/home")'
+        fmt::Debug::fmt(&*self.root, f)
+    }
+}
+
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
@@ -279,7 +287,12 @@ impl DirEntry {
         stat(&self.path()).map(|m| m.file_type())
     }
 
-    #[cfg(not(target_os = "solaris"))]
+    #[cfg(target_os = "haiku")]
+    pub fn file_type(&self) -> io::Result<FileType> {
+        lstat(&self.path()).map(|m| m.file_type())
+    }
+
+    #[cfg(not(any(target_os = "solaris", target_os = "haiku")))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
             libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
@@ -298,7 +311,9 @@ impl DirEntry {
               target_os = "linux",
               target_os = "emscripten",
               target_os = "android",
-              target_os = "solaris"))]
+              target_os = "solaris",
+              target_os = "haiku",
+              target_os = "fuchsia"))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
     }
@@ -327,7 +342,9 @@ impl DirEntry {
     }
     #[cfg(any(target_os = "android",
               target_os = "linux",
-              target_os = "emscripten"))]
+              target_os = "emscripten",
+              target_os = "haiku",
+              target_os = "fuchsia"))]
     fn name_bytes(&self) -> &[u8] {
         unsafe {
             CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes()
@@ -476,8 +493,16 @@ impl File {
         self.0.read_to_end(buf)
     }
 
+    pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        self.0.read_at(buf, offset)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
+    }
+
+    pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        self.0.write_at(buf, offset)
     }
 
     pub fn flush(&self) -> io::Result<()> { Ok(()) }
@@ -662,7 +687,7 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
 
     loop {
         let buf_read = cvt(unsafe {
-            libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity() as libc::size_t)
+            libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity())
         })? as usize;
 
         unsafe { buf.set_len(buf_read); }

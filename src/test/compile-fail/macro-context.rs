@@ -14,10 +14,7 @@ macro_rules! m {
                             //~| ERROR macro expansion ignores token `typeof`
                             //~| ERROR macro expansion ignores token `;`
                             //~| ERROR macro expansion ignores token `;`
-                            //~| ERROR macro expansion ignores token `i`
 }
-
-m!();               //~ NOTE the usage of `m!` is likely invalid in item context
 
 fn main() {
     let a: m!();    //~ NOTE the usage of `m!` is likely invalid in type context

@@ -14,7 +14,7 @@
 
 use rustc::ty::subst::Substs;
 use rustc::ty::{Ty, TyCtxt};
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::mir::visit::MutVisitor;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 

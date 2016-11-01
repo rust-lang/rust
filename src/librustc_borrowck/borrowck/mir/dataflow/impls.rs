@@ -9,7 +9,10 @@
 // except according to those terms.
 
 use rustc::ty::TyCtxt;
-use rustc::mir::repr::{self, Mir, Location};
+use rustc::mir::{self, Mir, Location};
+use rustc_data_structures::bitslice::BitSlice; // adds set_bit/get_bit to &[usize] bitvector rep.
+use rustc_data_structures::bitslice::{BitwiseOperator};
+use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::super::gather_moves::{MoveOutIndex, MovePathIndex};
@@ -20,10 +23,6 @@ use super::super::drop_flag_effects_for_location;
 use super::super::on_lookup_result_bits;
 
 use super::{BitDenotation, BlockSets, DataflowOperator};
-
-use bitslice::BitSlice; // adds set_bit/get_bit to &[usize] bitvector rep.
-use bitslice::{BitwiseOperator};
-use indexed_set::{IdxSet};
 
 // Dataflow analyses are built upon some interpretation of the
 // bitvectors attached to each basic block, represented via a
@@ -246,7 +245,7 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
     fn statement_effect(&self,
                         ctxt: &Self::Ctxt,
                         sets: &mut BlockSets<MovePathIndex>,
-                        bb: repr::BasicBlock,
+                        bb: mir::BasicBlock,
                         idx: usize)
     {
         drop_flag_effects_for_location(
@@ -259,7 +258,7 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
     fn terminator_effect(&self,
                          ctxt: &Self::Ctxt,
                          sets: &mut BlockSets<MovePathIndex>,
-                         bb: repr::BasicBlock,
+                         bb: mir::BasicBlock,
                          statements_len: usize)
     {
         drop_flag_effects_for_location(
@@ -272,9 +271,9 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
     fn propagate_call_return(&self,
                              ctxt: &Self::Ctxt,
                              in_out: &mut IdxSet<MovePathIndex>,
-                             _call_bb: repr::BasicBlock,
-                             _dest_bb: repr::BasicBlock,
-                             dest_lval: &repr::Lvalue) {
+                             _call_bb: mir::BasicBlock,
+                             _dest_bb: mir::BasicBlock,
+                             dest_lval: &mir::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 1 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, &ctxt.move_data,
@@ -307,7 +306,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
     fn statement_effect(&self,
                         ctxt: &Self::Ctxt,
                         sets: &mut BlockSets<MovePathIndex>,
-                        bb: repr::BasicBlock,
+                        bb: mir::BasicBlock,
                         idx: usize)
     {
         drop_flag_effects_for_location(
@@ -320,7 +319,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
     fn terminator_effect(&self,
                          ctxt: &Self::Ctxt,
                          sets: &mut BlockSets<MovePathIndex>,
-                         bb: repr::BasicBlock,
+                         bb: mir::BasicBlock,
                          statements_len: usize)
     {
         drop_flag_effects_for_location(
@@ -333,9 +332,9 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
     fn propagate_call_return(&self,
                              ctxt: &Self::Ctxt,
                              in_out: &mut IdxSet<MovePathIndex>,
-                             _call_bb: repr::BasicBlock,
-                             _dest_bb: repr::BasicBlock,
-                             dest_lval: &repr::Lvalue) {
+                             _call_bb: mir::BasicBlock,
+                             _dest_bb: mir::BasicBlock,
+                             dest_lval: &mir::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 0 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, &ctxt.move_data,
@@ -367,7 +366,7 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
     fn statement_effect(&self,
                         ctxt: &Self::Ctxt,
                         sets: &mut BlockSets<MovePathIndex>,
-                        bb: repr::BasicBlock,
+                        bb: mir::BasicBlock,
                         idx: usize)
     {
         drop_flag_effects_for_location(
@@ -380,7 +379,7 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
     fn terminator_effect(&self,
                          ctxt: &Self::Ctxt,
                          sets: &mut BlockSets<MovePathIndex>,
-                         bb: repr::BasicBlock,
+                         bb: mir::BasicBlock,
                          statements_len: usize)
     {
         drop_flag_effects_for_location(
@@ -393,9 +392,9 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
     fn propagate_call_return(&self,
                              ctxt: &Self::Ctxt,
                              in_out: &mut IdxSet<MovePathIndex>,
-                             _call_bb: repr::BasicBlock,
-                             _dest_bb: repr::BasicBlock,
-                             dest_lval: &repr::Lvalue) {
+                             _call_bb: mir::BasicBlock,
+                             _dest_bb: mir::BasicBlock,
+                             dest_lval: &mir::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 1 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, &ctxt.move_data,
@@ -419,7 +418,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
     fn statement_effect(&self,
                         ctxt: &Self::Ctxt,
                         sets: &mut BlockSets<MoveOutIndex>,
-                        bb: repr::BasicBlock,
+                        bb: mir::BasicBlock,
                         idx: usize) {
         let (tcx, mir, move_data) = (self.tcx, self.mir, &ctxt.move_data);
         let stmt = &mir[bb].statements[idx];
@@ -438,10 +437,10 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
         }
         let bits_per_block = self.bits_per_block(ctxt);
         match stmt.kind {
-            repr::StatementKind::SetDiscriminant { .. } => {
+            mir::StatementKind::SetDiscriminant { .. } => {
                 span_bug!(stmt.source_info.span, "SetDiscriminant should not exist in borrowck");
             }
-            repr::StatementKind::Assign(ref lvalue, _) => {
+            mir::StatementKind::Assign(ref lvalue, _) => {
                 // assigning into this `lvalue` kills all
                 // MoveOuts from it, and *also* all MoveOuts
                 // for children and associated fragment sets.
@@ -454,15 +453,16 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                                          sets.kill_set.add(&moi);
                                      });
             }
-            repr::StatementKind::StorageLive(_) |
-            repr::StatementKind::StorageDead(_) => {}
+            mir::StatementKind::StorageLive(_) |
+            mir::StatementKind::StorageDead(_) |
+            mir::StatementKind::Nop => {}
         }
     }
 
     fn terminator_effect(&self,
                          ctxt: &Self::Ctxt,
                          sets: &mut BlockSets<MoveOutIndex>,
-                         bb: repr::BasicBlock,
+                         bb: mir::BasicBlock,
                          statements_len: usize)
     {
         let (mir, move_data) = (self.mir, &ctxt.move_data);
@@ -481,9 +481,9 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
     fn propagate_call_return(&self,
                              ctxt: &Self::Ctxt,
                              in_out: &mut IdxSet<MoveOutIndex>,
-                             _call_bb: repr::BasicBlock,
-                             _dest_bb: repr::BasicBlock,
-                             dest_lval: &repr::Lvalue) {
+                             _call_bb: mir::BasicBlock,
+                             _dest_bb: mir::BasicBlock,
+                             dest_lval: &mir::Lvalue) {
         let move_data = &ctxt.move_data;
         let bits_per_block = self.bits_per_block(ctxt);
 

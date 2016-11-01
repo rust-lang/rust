@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved name `m1::arguments`. Did you mean `arguments`?
+// error-pattern: unresolved name `m1::arguments`
 
 mod m1 {}
 

@@ -13,5 +13,5 @@ const STRUCT: MyStruct = MyStruct { field: 42 };
 
 fn main() {
     let a: [isize; STRUCT.nonexistent_field];
-    //~^ ERROR attempted access of field `nonexistent_field`
+    //~^ no field `nonexistent_field` on type `MyStruct`
 }

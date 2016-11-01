@@ -12,7 +12,6 @@
 
 use io::prelude::*;
 
-use marker::Reflect;
 use cmp;
 use error;
 use fmt;
@@ -21,10 +20,14 @@ use memchr;
 
 /// The `BufReader` struct adds buffering to any reader.
 ///
-/// It can be excessively inefficient to work directly with a `Read` instance.
-/// For example, every call to `read` on `TcpStream` results in a system call.
-/// A `BufReader` performs large, infrequent reads on the underlying `Read`
+/// It can be excessively inefficient to work directly with a [`Read`] instance.
+/// For example, every call to [`read`] on [`TcpStream`] results in a system call.
+/// A `BufReader` performs large, infrequent reads on the underlying [`Read`]
 /// and maintains an in-memory buffer of the results.
+///
+/// [`Read`]: ../../std/io/trait.Read.html
+/// [`read`]: ../../std/net/struct.TcpStream.html#method.read
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 ///
 /// # Examples
 ///
@@ -216,8 +219,8 @@ impl<R: Seek> Seek for BufReader<R> {
     ///
     /// Seeking always discards the internal buffer, even if the seek position
     /// would otherwise fall within it. This guarantees that calling
-    /// `.unwrap()` immediately after a seek yields the underlying reader at
-    /// the same position.
+    /// `.into_inner()` immediately after a seek yields the underlying reader
+    /// at the same position.
     ///
     /// See `std::io::Seek` for more details.
     ///
@@ -231,7 +234,7 @@ impl<R: Seek> Seek for BufReader<R> {
         if let SeekFrom::Current(n) = pos {
             let remainder = (self.cap - self.pos) as i64;
             // it should be safe to assume that remainder fits within an i64 as the alternative
-            // means we managed to allocate 8 ebibytes and that's absurd.
+            // means we managed to allocate 8 exbibytes and that's absurd.
             // But it's not out of the realm of possibility for some weird underlying reader to
             // support seeking by i64::min_value() so we need to handle underflow when subtracting
             // remainder.
@@ -255,7 +258,7 @@ impl<R: Seek> Seek for BufReader<R> {
 /// Wraps a writer and buffers its output.
 ///
 /// It can be excessively inefficient to work directly with something that
-/// implements `Write`. For example, every call to `write` on `TcpStream`
+/// implements [`Write`]. For example, every call to [`write`] on [`TcpStream`]
 /// results in a system call. A `BufWriter` keeps an in-memory buffer of data
 /// and writes it to an underlying writer in large, infrequent batches.
 ///
@@ -263,7 +266,7 @@ impl<R: Seek> Seek for BufReader<R> {
 ///
 /// # Examples
 ///
-/// Let's write the numbers one through ten to a `TcpStream`:
+/// Let's write the numbers one through ten to a [`TcpStream`]:
 ///
 /// ```no_run
 /// use std::io::prelude::*;
@@ -295,6 +298,10 @@ impl<R: Seek> Seek for BufReader<R> {
 /// By wrapping the stream with a `BufWriter`, these ten writes are all grouped
 /// together by the buffer, and will all be written out in one system call when
 /// the `stream` is dropped.
+///
+/// [`Write`]: ../../std/io/trait.Write.html
+/// [`write`]: ../../std/net/struct.TcpStream.html#method.write
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
     inner: Option<W>,
@@ -578,7 +585,7 @@ impl<W> From<IntoInnerError<W>> for Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<W: Reflect + Send + fmt::Debug> error::Error for IntoInnerError<W> {
+impl<W: Send + fmt::Debug> error::Error for IntoInnerError<W> {
     fn description(&self) -> &str {
         error::Error::description(self.error())
     }
@@ -1107,6 +1114,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn panic_in_write_doesnt_flush_in_drop() {
         static WRITES: AtomicUsize = AtomicUsize::new(0);
 

@@ -104,6 +104,23 @@ impl RawHandle {
         }
     }
 
+    pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        let mut read = 0;
+        let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
+        let res = unsafe {
+            let mut overlapped: c::OVERLAPPED = mem::zeroed();
+            overlapped.Offset = offset as u32;
+            overlapped.OffsetHigh = (offset >> 32) as u32;
+            cvt(c::ReadFile(self.0, buf.as_mut_ptr() as c::LPVOID,
+                            len, &mut read, &mut overlapped))
+        };
+        match res {
+            Ok(_) => Ok(read as usize),
+            Err(ref e) if e.raw_os_error() == Some(c::ERROR_HANDLE_EOF as i32) => Ok(0),
+            Err(e) => Err(e),
+        }
+    }
+
     pub unsafe fn read_overlapped(&self,
                                   buf: &mut [u8],
                                   overlapped: *mut c::OVERLAPPED)
@@ -172,6 +189,19 @@ impl RawHandle {
                          len, &mut amt, ptr::null_mut())
         })?;
         Ok(amt as usize)
+    }
+
+    pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        let mut written = 0;
+        let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
+        unsafe {
+            let mut overlapped: c::OVERLAPPED = mem::zeroed();
+            overlapped.Offset = offset as u32;
+            overlapped.OffsetHigh = (offset >> 32) as u32;
+            cvt(c::WriteFile(self.0, buf.as_ptr() as c::LPVOID,
+                             len, &mut written, &mut overlapped))?;
+        }
+        Ok(written as usize)
     }
 
     pub fn duplicate(&self, access: c::DWORD, inherit: bool,

@@ -114,8 +114,8 @@
 //! unsupported file system and emit a warning in that case. This is not yet
 //! implemented.
 
+use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::hir::svh::Svh;
-use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::fs as fs_util;
@@ -129,7 +129,6 @@ use std::mem;
 use std::path::{Path, PathBuf};
 use std::time::{UNIX_EPOCH, SystemTime, Duration};
 use std::__rand::{thread_rng, Rng};
-use syntax::ast;
 
 const LOCK_FILE_EXT: &'static str = ".lock";
 const DEP_GRAPH_FILENAME: &'static str = "dep-graph.bin";
@@ -235,9 +234,20 @@ pub fn prepare_session_directory(tcx: TyCtxt) -> Result<bool, ()> {
         let print_file_copy_stats = tcx.sess.opts.debugging_opts.incremental_info;
 
         // Try copying over all files from the source directory
-        if copy_files(&session_dir, &source_directory, print_file_copy_stats).is_ok() {
+        if let Ok(allows_links) = copy_files(&session_dir, &source_directory,
+                                             print_file_copy_stats) {
             debug!("successfully copied data from: {}",
                    source_directory.display());
+
+            if !allows_links {
+                tcx.sess.warn(&format!("Hard linking files in the incremental \
+                                        compilation cache failed. Copying files \
+                                        instead. Consider moving the cache \
+                                        directory to a file system which supports \
+                                        hard linking in session dir `{}`",
+                                        session_dir.display())
+                    );
+            }
 
             tcx.sess.init_incr_comp_session(session_dir, directory_lock);
             return Ok(true)
@@ -346,10 +356,19 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
     let _ = garbage_collect_session_directories(sess);
 }
 
+pub fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
+    let sess_dir_iterator = sess.incr_comp_session_dir().read_dir()?;
+    for entry in sess_dir_iterator {
+        let entry = entry?;
+        safe_remove_file(&entry.path())?
+    }
+    Ok(())
+}
+
 fn copy_files(target_dir: &Path,
               source_dir: &Path,
               print_stats_on_success: bool)
-              -> Result<(), ()> {
+              -> Result<bool, ()> {
     // We acquire a shared lock on the lock file of the directory, so that
     // nobody deletes it out from under us while we are reading from it.
     let lock_file_path = lock_file_path(source_dir);
@@ -401,7 +420,7 @@ fn copy_files(target_dir: &Path,
         println!("incr. comp. session directory: {} files copied", files_copied);
     }
 
-    Ok(())
+    Ok(files_linked > 0 || files_copied == 0)
 }
 
 /// Generate unique directory path of the form:
@@ -580,7 +599,7 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path_tcx(tcx: TyCtxt, cnum: ast::CrateNum) -> PathBuf {
+fn crate_path_tcx(tcx: TyCtxt, cnum: CrateNum) -> PathBuf {
     crate_path(tcx.sess, &tcx.crate_name(cnum), &tcx.crate_disambiguator(cnum))
 }
 
@@ -592,7 +611,7 @@ fn crate_path_tcx(tcx: TyCtxt, cnum: ast::CrateNum) -> PathBuf {
 /// crate's (name, disambiguator) pair. The metadata hashes are only valid for
 /// the exact version of the binary we are reading from now (i.e. the hashes
 /// are part of the dependency graph of a specific compilation session).
-pub fn find_metadata_hashes_for(tcx: TyCtxt, cnum: ast::CrateNum) -> Option<PathBuf> {
+pub fn find_metadata_hashes_for(tcx: TyCtxt, cnum: CrateNum) -> Option<PathBuf> {
     let crate_directory = crate_path_tcx(tcx, cnum);
 
     if !crate_directory.exists() {
@@ -648,13 +667,14 @@ fn crate_path(sess: &Session,
               crate_name: &str,
               crate_disambiguator: &str)
               -> PathBuf {
-    use std::hash::{SipHasher, Hasher, Hash};
+    use std::hash::{Hasher, Hash};
+    use std::collections::hash_map::DefaultHasher;
 
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
     // The full crate disambiguator is really long. A hash of it should be
     // sufficient.
-    let mut hasher = SipHasher::new();
+    let mut hasher = DefaultHasher::new();
     crate_disambiguator.hash(&mut hasher);
 
     let crate_name = format!("{}-{}", crate_name, encode_base_36(hasher.finish()));

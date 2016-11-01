@@ -23,7 +23,11 @@ pub fn target() -> TargetResult {
         options: TargetOptions {
             cpu: "mips32".to_string(),
             features: "+mips32,+soft-float".to_string(),
-            max_atomic_width: 32,
+            max_atomic_width: Some(32),
+
+            // see #36994
+            exe_allocation_crate: "alloc_system".to_string(),
+
             ..super::linux_base::opts()
         }
     })

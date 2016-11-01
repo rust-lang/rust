@@ -36,8 +36,9 @@ fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
-    let target = args.windows(2).find(|w| &*w[0] == "--target")
-                                .and_then(|w| w[1].to_str());
+    let target = args.windows(2)
+        .find(|w| &*w[0] == "--target")
+        .and_then(|w| w[1].to_str());
     let version = args.iter().find(|w| &**w == "-vV");
 
     // Build scripts always use the snapshot compiler which is guaranteed to be
@@ -55,23 +56,24 @@ fn main() {
     } else {
         ("RUSTC_REAL", "RUSTC_LIBDIR")
     };
-    let stage = env::var("RUSTC_STAGE").unwrap();
+    let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
 
-    let rustc = env::var_os(rustc).unwrap();
-    let libdir = env::var_os(libdir).unwrap();
+    let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
+    let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
     let mut dylib_path = bootstrap::util::dylib_path();
     dylib_path.insert(0, PathBuf::from(libdir));
 
     let mut cmd = Command::new(rustc);
     cmd.args(&args)
-       .arg("--cfg").arg(format!("stage{}", stage))
-       .env(bootstrap::util::dylib_path_var(),
-            env::join_paths(&dylib_path).unwrap());
+        .arg("--cfg")
+        .arg(format!("stage{}", stage))
+        .env(bootstrap::util::dylib_path_var(),
+             env::join_paths(&dylib_path).unwrap());
 
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option.
-        cmd.arg("--sysroot").arg(env::var_os("RUSTC_SYSROOT").unwrap());
+        cmd.arg("--sysroot").arg(env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set"));
 
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
@@ -101,11 +103,9 @@ fn main() {
         // This... is a bit of a hack how we detect this. Ideally this
         // information should be encoded in the crate I guess? Would likely
         // require an RFC amendment to RFC 1513, however.
-        let is_panic_abort = args.windows(2).any(|a| {
-            &*a[0] == "--crate-name" && &*a[1] == "panic_abort"
-        });
-        // FIXME(stage0): remove this `stage != "0"` condition
-        if is_panic_abort && stage != "0" {
+        let is_panic_abort = args.windows(2)
+            .any(|a| &*a[0] == "--crate-name" && &*a[1] == "panic_abort");
+        if is_panic_abort {
             cmd.arg("-C").arg("panic=abort");
         }
 
@@ -113,9 +113,11 @@ fn main() {
         // code.
         if env::var("RUSTC_DEBUGINFO") == Ok("true".to_string()) {
             cmd.arg("-g");
+        } else if env::var("RUSTC_DEBUGINFO_LINES") == Ok("true".to_string()) {
+            cmd.arg("-Cdebuginfo=1");
         }
         let debug_assertions = match env::var("RUSTC_DEBUG_ASSERTIONS") {
-            Ok(s) => if s == "true" {"y"} else {"n"},
+            Ok(s) => if s == "true" { "y" } else { "n" },
             Err(..) => "n",
         };
         cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));

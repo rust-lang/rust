@@ -11,15 +11,18 @@
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::mir::repr as mir;
+use rustc::ty::layout::Layout;
+use rustc::mir;
 
 use asm;
 use base;
 use callee::Callee;
 use common::{self, val_ty, C_bool, C_null, C_uint, BlockAndBuilder, Result};
+use common::{C_integral};
 use debuginfo::DebugLoc;
 use adt;
 use machine;
+use type_::Type;
 use type_of;
 use tvec;
 use value::Value;
@@ -28,7 +31,7 @@ use Disr;
 use super::MirContext;
 use super::constant::const_scalar_checked_binop;
 use super::operand::{OperandRef, OperandValue};
-use super::lvalue::{LvalueRef, get_dataptr};
+use super::lvalue::{LvalueRef};
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_rvalue(&mut self,
@@ -98,7 +101,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let tr_elem = self.trans_operand(&bcx, elem);
                 let size = count.value.as_u64(bcx.tcx().sess.target.uint_type);
                 let size = C_uint(bcx.ccx(), size);
-                let base = get_dataptr(&bcx, dest.llval);
+                let base = base::get_dataptr_builder(&bcx, dest.llval);
                 let bcx = bcx.map_block(|block| {
                     tvec::slice_for_each(block, base, tr_elem.ty, size, |block, llslot| {
                         self.store_operand_direct(block, llslot, tr_elem);
@@ -111,10 +114,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match *kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
-                        let repr = adt::represent_type(bcx.ccx(), dest.ty.to_ty(bcx.tcx()));
                         let disr = Disr::from(adt_def.variants[variant_index].disr_val);
                         bcx.with_block(|bcx| {
-                            adt::trans_set_discr(bcx, &repr, dest.llval, Disr::from(disr));
+                            adt::trans_set_discr(bcx,
+                                dest.ty.to_ty(bcx.tcx()), dest.llval, Disr::from(disr));
                         });
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
@@ -122,8 +125,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             if !common::type_is_zero_size(bcx.ccx(), op.ty) {
                                 let val = adt::MaybeSizedValue::sized(dest.llval);
                                 let field_index = active_field_index.unwrap_or(i);
-                                let lldest_i = adt::trans_field_ptr_builder(&bcx, &repr, val,
-                                                                            disr, field_index);
+                                let lldest_i = adt::trans_field_ptr_builder(&bcx,
+                                    dest.ty.to_ty(bcx.tcx()),
+                                    val, disr, field_index);
                                 self.store_operand(&bcx, lldest_i, op);
                             }
                         }
@@ -270,17 +274,36 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let ll_t_in = type_of::immediate_type_of(bcx.ccx(), operand.ty);
                         let ll_t_out = type_of::immediate_type_of(bcx.ccx(), cast_ty);
                         let (llval, signed) = if let CastTy::Int(IntTy::CEnum) = r_t_in {
-                            let repr = adt::represent_type(bcx.ccx(), operand.ty);
+                            let l = bcx.ccx().layout_of(operand.ty);
                             let discr = match operand.val {
                                 OperandValue::Immediate(llval) => llval,
                                 OperandValue::Ref(llptr) => {
                                     bcx.with_block(|bcx| {
-                                        adt::trans_get_discr(bcx, &repr, llptr, None, true)
+                                        adt::trans_get_discr(bcx, operand.ty, llptr, None, true)
                                     })
                                 }
                                 OperandValue::Pair(..) => bug!("Unexpected Pair operand")
                             };
-                            (discr, adt::is_discr_signed(&repr))
+                            let (signed, min, max) = match l {
+                                &Layout::CEnum { signed, min, max, .. } => {
+                                    (signed, min, max)
+                                }
+                                _ => bug!("CEnum {:?} is not an enum", operand)
+                            };
+
+                            if max > min {
+                                // We want `table[e as usize]` to not
+                                // have bound checks, and this is the most
+                                // convenient place to put the `assume`.
+
+                                base::call_assume(&bcx, bcx.icmp(
+                                    llvm::IntULE,
+                                    discr,
+                                    C_integral(common::val_ty(discr), max, false)
+                                ))
+                            }
+
+                            (discr, signed)
                         } else {
                             (operand.immediate(), operand.ty.is_signed())
                         };
@@ -381,13 +404,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     match (lhs.val, rhs.val) {
                         (OperandValue::Pair(lhs_addr, lhs_extra),
                          OperandValue::Pair(rhs_addr, rhs_extra)) => {
-                            bcx.with_block(|bcx| {
-                                base::compare_fat_ptrs(bcx,
-                                                       lhs_addr, lhs_extra,
-                                                       rhs_addr, rhs_extra,
-                                                       lhs.ty, op.to_hir_binop(),
-                                                       debug_loc)
-                            })
+                            self.trans_fat_ptr_binop(&bcx, op,
+                                                     lhs_addr, lhs_extra,
+                                                     rhs_addr, rhs_extra,
+                                                     lhs.ty)
                         }
                         _ => bug!()
                     }
@@ -410,7 +430,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                              lhs.immediate(), rhs.immediate(),
                                                              lhs.ty);
                 let val_ty = op.ty(bcx.tcx(), lhs.ty, rhs.ty);
-                let operand_ty = bcx.tcx().mk_tup(vec![val_ty, bcx.tcx().types.bool]);
+                let operand_ty = bcx.tcx().intern_tup(&[val_ty, bcx.tcx().types.bool]);
                 let operand = OperandRef {
                     val: result,
                     ty: operand_ty
@@ -484,6 +504,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                               input_ty: Ty<'tcx>) -> ValueRef {
         let is_float = input_ty.is_fp();
         let is_signed = input_ty.is_signed();
+        let is_nil = input_ty.is_nil();
+        let is_bool = input_ty.is_bool();
         match op {
             mir::BinOp::Add => if is_float {
                 bcx.fadd(lhs, rhs)
@@ -534,12 +556,79 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                    DebugLoc::None)
                 })
             }
-            mir::BinOp::Eq | mir::BinOp::Lt | mir::BinOp::Gt |
-            mir::BinOp::Ne | mir::BinOp::Le | mir::BinOp::Ge => {
-                bcx.with_block(|bcx| {
-                    base::compare_scalar_types(bcx, lhs, rhs, input_ty,
-                                               op.to_hir_binop(), DebugLoc::None)
+            mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt |
+            mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_nil {
+                C_bool(bcx.ccx(), match op {
+                    mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt => false,
+                    mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => true,
+                    _ => unreachable!()
                 })
+            } else if is_float {
+                bcx.fcmp(
+                    base::bin_op_to_fcmp_predicate(op.to_hir_binop()),
+                    lhs, rhs
+                )
+            } else {
+                let (lhs, rhs) = if is_bool {
+                    // FIXME(#36856) -- extend the bools into `i8` because
+                    // LLVM's i1 comparisons are broken.
+                    (bcx.zext(lhs, Type::i8(bcx.ccx())),
+                     bcx.zext(rhs, Type::i8(bcx.ccx())))
+                } else {
+                    (lhs, rhs)
+                };
+
+                bcx.icmp(
+                    base::bin_op_to_icmp_predicate(op.to_hir_binop(), is_signed),
+                    lhs, rhs
+                )
+            }
+        }
+    }
+
+    pub fn trans_fat_ptr_binop(&mut self,
+                               bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                               op: mir::BinOp,
+                               lhs_addr: ValueRef,
+                               lhs_extra: ValueRef,
+                               rhs_addr: ValueRef,
+                               rhs_extra: ValueRef,
+                               _input_ty: Ty<'tcx>)
+                               -> ValueRef {
+        match op {
+            mir::BinOp::Eq => {
+                bcx.and(
+                    bcx.icmp(llvm::IntEQ, lhs_addr, rhs_addr),
+                    bcx.icmp(llvm::IntEQ, lhs_extra, rhs_extra)
+                )
+            }
+            mir::BinOp::Ne => {
+                bcx.or(
+                    bcx.icmp(llvm::IntNE, lhs_addr, rhs_addr),
+                    bcx.icmp(llvm::IntNE, lhs_extra, rhs_extra)
+                )
+            }
+            mir::BinOp::Le | mir::BinOp::Lt |
+            mir::BinOp::Ge | mir::BinOp::Gt => {
+                // a OP b ~ a.0 STRICT(OP) b.0 | (a.0 == b.0 && a.1 OP a.1)
+                let (op, strict_op) = match op {
+                    mir::BinOp::Lt => (llvm::IntULT, llvm::IntULT),
+                    mir::BinOp::Le => (llvm::IntULE, llvm::IntULT),
+                    mir::BinOp::Gt => (llvm::IntUGT, llvm::IntUGT),
+                    mir::BinOp::Ge => (llvm::IntUGE, llvm::IntUGT),
+                    _ => bug!(),
+                };
+
+                bcx.or(
+                    bcx.icmp(strict_op, lhs_addr, rhs_addr),
+                    bcx.and(
+                        bcx.icmp(llvm::IntEQ, lhs_addr, rhs_addr),
+                        bcx.icmp(op, lhs_extra, rhs_extra)
+                    )
+                )
+            }
+            _ => {
+                bug!("unexpected fat ptr binop");
             }
         }
     }

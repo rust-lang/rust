@@ -895,17 +895,14 @@ fn some_func(x: &mut i32) {
 
 E0071: r##"
 You tried to use structure-literal syntax to create an item that is
-not a struct-style structure or enum variant.
+not a structure or enum variant.
 
 Example of erroneous code:
 
 ```compile_fail,E0071
-enum Foo { FirstValue(i32) };
-
-let u = Foo::FirstValue { value: 0 }; // error: Foo::FirstValue
-                                         // isn't a structure!
-// or even simpler, if the name doesn't refer to a structure at all.
-let t = u32 { value: 4 }; // error: `u32` does not name a structure.
+type U32 = u32;
+let t = U32 { value: 4 }; // error: expected struct, variant or union type,
+                          // found builtin type `u32`
 ```
 
 To fix this, ensure that the name was correctly spelled, and that
@@ -1915,6 +1912,45 @@ More details can be found in [RFC 438].
 [RFC 438]: https://github.com/rust-lang/rfcs/pull/438
 "##,
 
+E0182: r##"
+You bound an associated type in an expression path which is not
+allowed.
+
+Erroneous code example:
+
+```compile_fail,E0182
+trait Foo {
+    type A;
+    fn bar() -> isize;
+}
+
+impl Foo for isize {
+    type A = usize;
+    fn bar() -> isize { 42 }
+}
+
+// error: unexpected binding of associated item in expression path
+let x: isize = Foo::<A=usize>::bar();
+```
+
+To give a concrete type when using the Universal Function Call Syntax,
+use "Type as Trait". Example:
+
+```
+trait Foo {
+    type A;
+    fn bar() -> isize;
+}
+
+impl Foo for isize {
+    type A = usize;
+    fn bar() -> isize { 42 }
+}
+
+let x: isize = <isize as Foo>::bar(); // ok!
+```
+"##,
+
 E0184: r##"
 Explicitly implementing both Drop and Copy for a type is currently disallowed.
 This feature can make some sense in theory, but the current implementation is
@@ -2752,6 +2788,30 @@ fn main() {
 ```
 "##,
 
+E0230: r##"
+The trait has more type parameters specified than appear in its definition.
+
+Erroneous example code:
+
+```compile_fail,E0230
+#![feature(on_unimplemented)]
+#[rustc_on_unimplemented = "Trait error on `{Self}` with `<{A},{B},{C}>`"]
+// error: there is no type parameter C on trait TraitWithThreeParams
+trait TraitWithThreeParams<A,B>
+{}
+```
+
+Include the correct number of type parameters and the compilation should
+proceed:
+
+```
+#![feature(on_unimplemented)]
+#[rustc_on_unimplemented = "Trait error on `{Self}` with `<{A},{B},{C}>`"]
+trait TraitWithThreeParams<A,B,C> // ok!
+{}
+```
+"##,
+
 E0232: r##"
 The attribute must have a value. Erroneous code example:
 
@@ -2817,6 +2877,26 @@ do_something function. This is not legal: `Foo::Bar` is a value of type `Foo`,
 not a distinct static type. Likewise, it's not legal to attempt to
 `impl Foo::Bar`: instead, you must `impl Foo` and then pattern match to specify
 behavior for specific enum variants.
+"##,
+
+E0569: r##"
+If an impl has a generic parameter with the `#[may_dangle]` attribute, then
+that impl must be declared as an `unsafe impl. For example:
+
+```compile_fail,E0569
+#![feature(generic_param_attrs)]
+#![feature(dropck_eyepatch)]
+
+struct Foo<X>(X);
+impl<#[may_dangle] X> Drop for Foo<X> {
+    fn drop(&mut self) { }
+}
+```
+
+In this example, we are asserting that the destructor for `Foo` will not
+access any data of type `X`, and require this assertion to be true for
+overall safety in our program. The compiler does not currently attempt to
+verify this assertion; therefore we must tag this `impl` as unsafe.
 "##,
 
 E0318: r##"
@@ -3567,6 +3647,44 @@ fn together_we_will_rule_the_galaxy(son: &A<i32>) {} // Ok!
 ```
 "##,
 
+E0399: r##"
+You implemented a trait, overriding one or more of its associated types but did
+not reimplement its default methods.
+
+Example of erroneous code:
+
+```compile_fail,E0399
+#![feature(associated_type_defaults)]
+
+pub trait Foo {
+    type Assoc = u8;
+    fn bar(&self) {}
+}
+
+impl Foo for i32 {
+    // error - the following trait items need to be reimplemented as
+    //         `Assoc` was overridden: `bar`
+    type Assoc = i32;
+}
+```
+
+To fix this, add an implementation for each default method from the trait:
+
+```
+#![feature(associated_type_defaults)]
+
+pub trait Foo {
+    type Assoc = u8;
+    fn bar(&self) {}
+}
+
+impl Foo for i32 {
+    type Assoc = i32;
+    fn bar(&self) {} // ok!
+}
+```
+"##,
+
 E0439: r##"
 The length of the platform-intrinsic function `simd_shuffle`
 wasn't specified. Erroneous code example:
@@ -3762,6 +3880,45 @@ struct f64x2(f64, f64);
 
 extern "platform-intrinsic" {
     fn x86_mm_movemask_pd(x: f64x2) -> i32; // ok!
+}
+```
+"##,
+
+E0513: r##"
+The type of the variable couldn't be found out.
+
+Erroneous code example:
+
+```compile_fail,E0513
+use std::mem;
+
+unsafe {
+    let size = mem::size_of::<u32>();
+    mem::transmute_copy::<u32, [u8; size]>(&8_8);
+    // error: no type for local variable
+}
+```
+
+To fix this error, please use a constant size instead of `size`. To make
+this error more obvious, you could run:
+
+```compile_fail,E0080
+use std::mem;
+
+unsafe {
+    mem::transmute_copy::<u32, [u8; mem::size_of::<u32>()]>(&8_8);
+    // error: constant evaluation error
+}
+```
+
+So now, you can fix your code by setting the size directly:
+
+```
+use std::mem;
+
+unsafe {
+    mem::transmute_copy::<u32, [u8; 4]>(&8_8);
+    // `u32` is 4 bytes so we replace the `mem::size_of` call with its size
 }
 ```
 "##,
@@ -3996,6 +4153,16 @@ let s = Simba { mother: 1, father: 0 }; // ok!
 ```
 "##,
 
+E0570: r##"
+The requested ABI is unsupported by the current target.
+
+The rust compiler maintains for each target a blacklist of ABIs unsupported on
+that target. If an ABI is present in such a list this usually means that the
+target / ABI combination is currently unsupported by llvm.
+
+If necessary, you can circumvent this check using custom target specifications.
+"##,
+
 }
 
 register_diagnostics! {
@@ -4015,7 +4182,6 @@ register_diagnostics! {
 //  E0168,
 //  E0173, // manual implementations of unboxed closure traits are experimental
 //  E0174,
-    E0182,
     E0183,
 //  E0187, // can't infer the kind of the closure
 //  E0188, // can not cast an immutable reference to a mutable pointer
@@ -4039,7 +4205,6 @@ register_diagnostics! {
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
     E0228, // explicit lifetime bound required
-    E0230, // there is no type parameter on trait
     E0231, // only named substitution parameters are allowed
 //  E0233,
 //  E0234,
@@ -4061,10 +4226,7 @@ register_diagnostics! {
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0399, // trait items need to be implemented because the associated
-           // type `{}` was overridden
     E0436, // functional record update requires a struct
-    E0513, // no type for local variable ..
     E0521, // redundant default implementations of trait
     E0533, // `{}` does not name a unit variant, unit struct or a constant
     E0562, // `impl Trait` not allowed outside of function

@@ -15,13 +15,13 @@ use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
 use rustc::hir::map;
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval as const_eval;
 use rustc::middle::region::CodeExtent;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::cast::CastKind as TyCastKind;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::hir;
 use syntax::ptr::P;
 
@@ -271,10 +271,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     // Tuple-like ADTs are represented as ExprCall. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def|{
                         match cx.tcx.expect_def(fun.id) {
-                            Def::Variant(_, variant_id) => {
+                            Def::VariantCtor(variant_id, CtorKind::Fn) => {
                                 Some((adt_def, adt_def.variant_index_with_id(variant_id)))
                             },
-                            Def::Struct(..) => {
+                            Def::StructCtor(_, CtorKind::Fn) => {
                                 Some((adt_def, 0))
                             },
                             _ => None
@@ -480,8 +480,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     }
                     AdtKind::Enum => {
                         match cx.tcx.expect_def(expr.id) {
-                            Def::Variant(enum_id, variant_id) => {
-                                debug_assert!(adt.did == enum_id);
+                            Def::Variant(variant_id) => {
                                 assert!(base.is_none());
 
                                 let index = adt.variant_index_with_id(variant_id);
@@ -601,8 +600,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // Check to see if this cast is a "coercion cast", where the cast is actually done
             // using a coercion (or is a no-op).
             if let Some(&TyCastKind::CoercionCast) = cx.tcx.cast_kinds.borrow().get(&source.id) {
-                // Skip the actual cast itexpr, as it's now a no-op.
-                return source.make_mirror(cx);
+                // Convert the lexpr to a vexpr.
+                ExprKind::Use { source: source.to_ref() }
             } else {
                 ExprKind::Cast { source: source.to_ref() }
             }
@@ -614,7 +613,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 value: value.to_ref(),
                 value_extents: cx.tcx.region_maps.node_extent(value.id)
             },
-        hir::ExprVec(ref fields) =>
+        hir::ExprArray(ref fields) =>
             ExprKind::Vec { fields: fields.to_ref() },
         hir::ExprTup(ref fields) =>
             ExprKind::Tuple { fields: fields.to_ref() },
@@ -658,7 +657,7 @@ fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
 fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                arm: &'tcx hir::Arm) -> Arm<'tcx> {
     Arm {
-        patterns: arm.pats.iter().map(|p| cx.refutable_pat(p)).collect(),
+        patterns: arm.pats.iter().map(|p| Pattern::from_hir(cx.tcx, p)).collect(),
         guard: arm.guard.to_ref(),
         body: arm.body.to_ref(),
     }
@@ -671,43 +670,25 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // Otherwise there may be def_map borrow conflicts
     let def = cx.tcx.expect_def(expr.id);
     let def_id = match def {
-        // A regular function.
-        Def::Fn(def_id) | Def::Method(def_id) => def_id,
-        Def::Struct(def_id) => match cx.tcx.node_id_to_type(expr.id).sty {
-            // A tuple-struct constructor. Should only be reached if not called in the same
-            // expression.
-            ty::TyFnDef(..) => def_id,
-            // A unit struct which is used as a value. We return a completely different ExprKind
-            // here to account for this special case.
+        // A regular function, constructor function or a constant.
+        Def::Fn(def_id) | Def::Method(def_id) |
+        Def::StructCtor(def_id, CtorKind::Fn) |
+        Def::VariantCtor(def_id, CtorKind::Fn) |
+        Def::Const(def_id) | Def::AssociatedConst(def_id) => def_id,
+
+        Def::StructCtor(def_id, CtorKind::Const) |
+        Def::VariantCtor(def_id, CtorKind::Const) => match cx.tcx.node_id_to_type(expr.id).sty {
+            // A unit struct/variant which is used as a value.
+            // We return a completely different ExprKind here to account for this special case.
             ty::TyAdt(adt_def, substs) => return ExprKind::Adt {
                 adt_def: adt_def,
-                variant_index: 0,
+                variant_index: adt_def.variant_index_with_id(def_id),
                 substs: substs,
                 fields: vec![],
-                base: None
+                base: None,
             },
             ref sty => bug!("unexpected sty: {:?}", sty)
         },
-        Def::Variant(enum_id, variant_id) => match cx.tcx.node_id_to_type(expr.id).sty {
-            // A variant constructor. Should only be reached if not called in the same
-            // expression.
-            ty::TyFnDef(..) => variant_id,
-            // A unit variant, similar special case to the struct case above.
-            ty::TyAdt(adt_def, substs) => {
-                debug_assert!(adt_def.did == enum_id);
-                let index = adt_def.variant_index_with_id(variant_id);
-                return ExprKind::Adt {
-                    adt_def: adt_def,
-                    substs: substs,
-                    variant_index: index,
-                    fields: vec![],
-                    base: None
-                };
-            },
-            ref sty => bug!("unexpected sty: {:?}", sty)
-        },
-        Def::Const(def_id) |
-        Def::AssociatedConst(def_id) => def_id,
 
         Def::Static(node_id, _) => return ExprKind::StaticRef {
             id: node_id,
@@ -729,13 +710,15 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
 
     match def {
-        Def::Local(_, node_id) => {
+        Def::Local(def_id) => {
+            let node_id = cx.tcx.map.as_local_node_id(def_id).unwrap();
             ExprKind::VarRef {
                 id: node_id,
             }
         }
 
-        Def::Upvar(_, id_var, index, closure_expr_id) => {
+        Def::Upvar(def_id, index, closure_expr_id) => {
+            let id_var = cx.tcx.map.as_local_node_id(def_id).unwrap();
             debug!("convert_var(upvar({:?}, {:?}, {:?}))", id_var, index, closure_expr_id);
             let var_ty = cx.tcx.node_id_to_type(id_var);
 
@@ -974,7 +957,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    freevar: &hir::Freevar,
                                    freevar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let id_var = freevar.def.var_id();
+    let id_var = cx.tcx.map.as_local_node_id(freevar.def.def_id()).unwrap();
     let upvar_id = ty::UpvarId {
         var_id: id_var,
         closure_expr_id: closure_expr.id,

@@ -138,7 +138,7 @@ mod tests {
         }
     }
     impl Default for Counter {
-    /// Constructs a `Counter` with initial value zero.
+        /// Constructs a `Counter` with initial value zero.
         fn default() -> Counter {
             Counter { i: 0 }
         }
@@ -169,8 +169,8 @@ mod tests {
         let mut ra: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
         let mut rb: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
         assert!(ra.gen_ascii_chars()
-                  .take(100)
-                  .eq(rb.gen_ascii_chars().take(100)));
+            .take(100)
+            .eq(rb.gen_ascii_chars().take(100)));
     }
 
     #[test]

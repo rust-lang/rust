@@ -40,7 +40,7 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 #![cfg_attr(test, feature(test))]
 
 extern crate arena;
@@ -50,7 +50,6 @@ extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
 extern crate libc;
-extern crate rbml;
 extern crate rustc_llvm as llvm;
 extern crate rustc_back;
 extern crate rustc_data_structures;
@@ -106,23 +105,12 @@ pub mod middle {
     pub mod weak_lang_items;
 }
 
-pub mod mir {
-    mod cache;
-    pub mod repr;
-    pub mod tcx;
-    pub mod visit;
-    pub mod transform;
-    pub mod traversal;
-    pub mod mir_map;
-}
-
+pub mod mir;
 pub mod session;
 pub mod traits;
 pub mod ty;
 
 pub mod util {
-    pub use rustc_back::sha2;
-
     pub mod common;
     pub mod ppaux;
     pub mod nodemap;

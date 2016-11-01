@@ -25,24 +25,24 @@ use super::xform::*;
 
 struct SolveContext<'a, 'tcx: 'a> {
     terms_cx: TermsContext<'a, 'tcx>,
-    constraints: Vec<Constraint<'a>> ,
+    constraints: Vec<Constraint<'a>>,
 
     // Maps from an InferredIndex to the inferred value for that variable.
-    solutions: Vec<ty::Variance>
+    solutions: Vec<ty::Variance>,
 }
 
 pub fn solve_constraints(constraints_cx: ConstraintContext) {
     let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
 
-    let solutions =
-        terms_cx.inferred_infos.iter()
-                               .map(|ii| ii.initial_variance)
-                               .collect();
+    let solutions = terms_cx.inferred_infos
+        .iter()
+        .map(|ii| ii.initial_variance)
+        .collect();
 
     let mut solutions_cx = SolveContext {
         terms_cx: terms_cx,
         constraints: constraints,
-        solutions: solutions
+        solutions: solutions,
     };
     solutions_cx.solve();
     solutions_cx.write();
@@ -68,13 +68,13 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 if old_value != new_value {
                     debug!("Updating inferred {} (node {}) \
                             from {:?} to {:?} due to {:?}",
-                            inferred,
-                            self.terms_cx
-                                .inferred_infos[inferred]
-                                .param_id,
-                            old_value,
-                            new_value,
-                            term);
+                           inferred,
+                           self.terms_cx
+                                   .inferred_infos[inferred]
+                               .param_id,
+                           old_value,
+                           new_value,
+                           term);
 
                     self.solutions[inferred] = new_value;
                     changed = true;
@@ -114,36 +114,40 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 let info = &inferred_infos[index];
                 let variance = solutions[index];
                 debug!("Index {} Info {} Variance {:?}",
-                       index, info.index, variance);
+                       index,
+                       info.index,
+                       variance);
 
                 assert_eq!(item_variances.len(), info.index);
                 item_variances.push(variance);
                 index += 1;
             }
 
-            debug!("item_id={} item_variances={:?}",
-                    item_id,
-                    item_variances);
+            debug!("item_id={} item_variances={:?}", item_id, item_variances);
 
             let item_def_id = tcx.map.local_def_id(item_id);
 
             // For unit testing: check for a special "rustc_variance"
             // attribute and report an error with various results if found.
             if tcx.has_attr(item_def_id, "rustc_variance") {
-                span_err!(tcx.sess, tcx.map.span(item_id), E0208, "{:?}", item_variances);
+                span_err!(tcx.sess,
+                          tcx.map.span(item_id),
+                          E0208,
+                          "{:?}",
+                          item_variances);
             }
 
-            let newly_added = tcx.item_variance_map.borrow_mut()
-                                 .insert(item_def_id, Rc::new(item_variances)).is_none();
+            let newly_added = tcx.item_variance_map
+                .borrow_mut()
+                .insert(item_def_id, Rc::new(item_variances))
+                .is_none();
             assert!(newly_added);
         }
     }
 
     fn evaluate(&self, term: VarianceTermPtr<'a>) -> ty::Variance {
         match *term {
-            ConstantTerm(v) => {
-                v
-            }
+            ConstantTerm(v) => v,
 
             TransformTerm(t1, t2) => {
                 let v1 = self.evaluate(t1);
@@ -151,9 +155,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 v1.xform(v2)
             }
 
-            InferredTerm(InferredIndex(index)) => {
-                self.solutions[index]
-            }
+            InferredTerm(InferredIndex(index)) => self.solutions[index],
         }
     }
 }

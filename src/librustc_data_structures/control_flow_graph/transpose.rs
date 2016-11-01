@@ -22,7 +22,10 @@ impl<G: ControlFlowGraph> TransposedGraph<G> {
     }
 
     pub fn with_start(base_graph: G, start_node: G::Node) -> Self {
-        TransposedGraph { base_graph: base_graph, start_node: start_node }
+        TransposedGraph {
+            base_graph: base_graph,
+            start_node: start_node,
+        }
     }
 }
 
@@ -37,12 +40,14 @@ impl<G: ControlFlowGraph> ControlFlowGraph for TransposedGraph<G> {
         self.start_node
     }
 
-    fn predecessors<'graph>(&'graph self, node: Self::Node)
+    fn predecessors<'graph>(&'graph self,
+                            node: Self::Node)
                             -> <Self as GraphPredecessors<'graph>>::Iter {
         self.base_graph.successors(node)
     }
 
-    fn successors<'graph>(&'graph self, node: Self::Node)
+    fn successors<'graph>(&'graph self,
+                          node: Self::Node)
                           -> <Self as GraphSuccessors<'graph>>::Iter {
         self.base_graph.predecessors(node)
     }

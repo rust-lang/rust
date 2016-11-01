@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use hir::map::DefPathData;
-use middle::cstore::LOCAL_CRATE;
-use hir::def_id::{DefId, CRATE_DEF_INDEX};
+use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use syntax::parse::token;
@@ -67,7 +66,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns the "path" to a particular crate. This can proceed in
     /// various ways, depending on the `root_mode` of the `buffer`.
     /// (See `RootMode` enum for more details.)
-    pub fn push_krate_path<T>(self, buffer: &mut T, cnum: ast::CrateNum)
+    pub fn push_krate_path<T>(self, buffer: &mut T, cnum: CrateNum)
         where T: ItemPathBuffer
     {
         match *buffer.root_mode() {
@@ -102,11 +101,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             RootMode::Absolute => {
                 // In absolute mode, just write the crate name
                 // unconditionally.
-                if cnum == LOCAL_CRATE {
-                    buffer.push(&self.crate_name(cnum));
-                } else {
-                    buffer.push(&self.sess.cstore.original_crate_name(cnum));
-                }
+                buffer.push(&self.original_crate_name(cnum));
             }
         }
     }
@@ -139,7 +134,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            cur_path.push(self.sess.cstore.opt_item_name(cur_def).unwrap_or_else(||
+            cur_path.push(self.sess.cstore.def_key(cur_def)
+                              .disambiguated_data.data.get_opt_name().unwrap_or_else(||
                 token::intern("<unnamed>")));
             match visible_parent_map.get(&cur_def) {
                 Some(&def) => cur_def = def,
@@ -304,7 +300,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns the def-id of `def_id`'s parent in the def tree. If
     /// this returns `None`, then `def_id` represents a crate root or
     /// inlined root.
-    fn parent_def_id(&self, def_id: DefId) -> Option<DefId> {
+    pub fn parent_def_id(self, def_id: DefId) -> Option<DefId> {
         let key = self.def_key(def_id);
         key.parent.map(|index| DefId { krate: def_id.krate, index: index })
     }

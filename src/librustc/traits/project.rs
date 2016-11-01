@@ -167,18 +167,20 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
             infcx.skolemize_late_bound_regions(&obligation.predicate, snapshot);
 
         let skol_obligation = obligation.with(skol_predicate);
-        match project_and_unify_type(selcx, &skol_obligation) {
+        let r = match project_and_unify_type(selcx, &skol_obligation) {
             Ok(result) => {
                 let span = obligation.cause.span;
                 match infcx.leak_check(false, span, &skol_map, snapshot) {
-                    Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, &result)),
+                    Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, result)),
                     Err(e) => Err(MismatchedProjectionTypes { err: e }),
                 }
             }
             Err(e) => {
                 Err(e)
             }
-        }
+        };
+
+        r
     })
 }
 
@@ -273,7 +275,7 @@ impl<'a, 'b, 'gcx, 'tcx> AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
         AssociatedTypeNormalizer {
             selcx: selcx,
             cause: cause,
-            obligations: vec!(),
+            obligations: vec![],
             depth: depth,
         }
     }
@@ -394,7 +396,7 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                 cause, depth + 1, projection.to_predicate());
             Normalized {
                 value: ty_var,
-                obligations: vec!(obligation)
+                obligations: vec![obligation]
             }
         })
 }
@@ -543,7 +545,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                    projected_ty);
             let result = Normalized {
                 value: projected_ty,
-                obligations: vec!()
+                obligations: vec![]
             };
             infcx.projection_cache.borrow_mut()
                                   .complete(projection_ty, &result, true);
@@ -602,7 +604,7 @@ fn normalize_to_error<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tc
     let new_value = selcx.infcx().next_ty_var();
     Normalized {
         value: new_value,
-        obligations: vec!(trait_obligation)
+        obligations: vec![trait_obligation]
     }
 }
 
@@ -1396,6 +1398,10 @@ impl<'tcx> ProjectionCache<'tcx> {
         self.map.rollback_to(snapshot.snapshot);
     }
 
+    pub fn rollback_skolemized(&mut self, snapshot: &ProjectionCacheSnapshot) {
+        self.map.partial_rollback(&snapshot.snapshot, &|k| k.has_re_skol());
+    }
+
     pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
         self.map.commit(snapshot.snapshot);
     }
@@ -1405,9 +1411,8 @@ impl<'tcx> ProjectionCache<'tcx> {
     /// cache hit, so it's actually a good thing).
     fn try_start(&mut self, key: ty::ProjectionTy<'tcx>)
                  -> Result<(), ProjectionCacheEntry<'tcx>> {
-        match self.map.get(&key) {
-            Some(entry) => return Err(entry.clone()),
-            None => { }
+        if let Some(entry) = self.map.get(&key) {
+            return Err(entry.clone());
         }
 
         self.map.insert(key, ProjectionCacheEntry::InProgress);

@@ -18,6 +18,6 @@ fn both<'r>(v: &'r [usize]) -> &'r [usize] {
 }
 
 pub fn main() {
-    let v = vec!(1,2,3);
+    let v = vec![1,2,3];
     both(&v);
 }

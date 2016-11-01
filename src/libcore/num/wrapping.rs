@@ -28,7 +28,7 @@ macro_rules! sh_impl_signed {
             }
         }
 
-        #[stable(feature = "wrapping_impls", since = "1.7.0")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shl_assign(&mut self, other: $f) {
@@ -50,7 +50,7 @@ macro_rules! sh_impl_signed {
             }
         }
 
-        #[stable(feature = "wrapping_impls", since = "1.7.0")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shr_assign(&mut self, other: $f) {
@@ -72,7 +72,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
 
-        #[stable(feature = "wrapping_impls", since = "1.7.0")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shl_assign(&mut self, other: $f) {
@@ -90,7 +90,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
 
-        #[stable(feature = "wrapping_impls", since = "1.7.0")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shr_assign(&mut self, other: $f) {
@@ -310,13 +310,13 @@ mod shift_max {
         pub const isize: u32 = super::i64;
     }
 
-    pub const  i8: u32 = (1 << 3) - 1;
+    pub const i8: u32 = (1 << 3) - 1;
     pub const i16: u32 = (1 << 4) - 1;
     pub const i32: u32 = (1 << 5) - 1;
     pub const i64: u32 = (1 << 6) - 1;
     pub use self::platform::isize;
 
-    pub const  u8: u32 = i8;
+    pub const u8: u32 = i8;
     pub const u16: u32 = i16;
     pub const u32: u32 = i32;
     pub const u64: u32 = i64;

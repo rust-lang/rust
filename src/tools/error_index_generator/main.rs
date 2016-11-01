@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(rustc_private, rustdoc)]
-#![feature(question_mark)]
 
 extern crate syntax;
 extern crate rustdoc;
@@ -25,7 +24,7 @@ use std::path::PathBuf;
 
 use syntax::diagnostics::metadata::{get_metadata_dir, ErrorMetadataMap, ErrorMetadata};
 
-use rustdoc::html::markdown::Markdown;
+use rustdoc::html::markdown::{Markdown, PLAYGROUND};
 use rustc_serialize::json;
 
 enum OutputFormat {
@@ -202,6 +201,9 @@ fn parse_args() -> (OutputFormat, PathBuf) {
 }
 
 fn main() {
+    PLAYGROUND.with(|slot| {
+        *slot.borrow_mut() = Some((None, String::from("https://play.rust-lang.org/")));
+    });
     let (format, dst) = parse_args();
     if let Err(e) = main_with_result(format, &dst) {
         panic!("{}", e.description());

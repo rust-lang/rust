@@ -28,7 +28,7 @@ impl TestGraph {
             num_nodes: start_node + 1,
             start_node: start_node,
             successors: HashMap::new(),
-            predecessors: HashMap::new()
+            predecessors: HashMap::new(),
         };
         for &(source, target) in edges {
             graph.num_nodes = max(graph.num_nodes, source + 1);
@@ -55,13 +55,13 @@ impl ControlFlowGraph for TestGraph {
         self.num_nodes
     }
 
-    fn predecessors<'graph>(&'graph self, node: usize)
+    fn predecessors<'graph>(&'graph self,
+                            node: usize)
                             -> <Self as GraphPredecessors<'graph>>::Iter {
-       self.predecessors[&node].iter().cloned()
+        self.predecessors[&node].iter().cloned()
     }
 
-    fn successors<'graph>(&'graph self, node: usize)
-                            -> <Self as GraphSuccessors<'graph>>::Iter {
+    fn successors<'graph>(&'graph self, node: usize) -> <Self as GraphSuccessors<'graph>>::Iter {
         self.successors[&node].iter().cloned()
     }
 }
@@ -75,4 +75,3 @@ impl<'graph> GraphSuccessors<'graph> for TestGraph {
     type Item = usize;
     type Iter = iter::Cloned<slice::Iter<'graph, usize>>;
 }
-

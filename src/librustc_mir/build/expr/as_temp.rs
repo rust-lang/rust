@@ -13,7 +13,7 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::Category;
 use hair::*;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building

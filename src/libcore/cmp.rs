@@ -10,10 +10,13 @@
 
 //! Functionality for ordering and comparison.
 //!
-//! This module defines both `PartialOrd` and `PartialEq` traits which are used
+//! This module defines both [`PartialOrd`] and [`PartialEq`] traits which are used
 //! by the compiler to implement comparison operators. Rust programs may
-//! implement `PartialOrd` to overload the `<`, `<=`, `>`, and `>=` operators,
-//! and may implement `PartialEq` to overload the `==` and `!=` operators.
+//! implement [`PartialOrd`] to overload the `<`, `<=`, `>`, and `>=` operators,
+//! and may implement [`PartialEq`] to overload the `==` and `!=` operators.
+//!
+//! [`PartialOrd`]: trait.PartialOrd.html
+//! [`PartialEq`]: trait.PartialEq.html
 //!
 //! # Examples
 //!
@@ -777,24 +780,24 @@ mod impls {
 
     ord_impl! { char usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[unstable(feature = "never_type_impls", issue = "35121")]
     impl PartialEq for ! {
         fn eq(&self, _: &!) -> bool {
             *self
         }
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[unstable(feature = "never_type_impls", issue = "35121")]
     impl Eq for ! {}
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[unstable(feature = "never_type_impls", issue = "35121")]
     impl PartialOrd for ! {
         fn partial_cmp(&self, _: &!) -> Option<Ordering> {
             *self
         }
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[unstable(feature = "never_type_impls", issue = "35121")]
     impl Ord for ! {
         fn cmp(&self, _: &!) -> Ordering {
             *self

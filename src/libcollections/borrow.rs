@@ -14,7 +14,7 @@
 
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use core::ops::Deref;
+use core::ops::{Add, AddAssign, Deref};
 
 use fmt;
 
@@ -86,16 +86,29 @@ impl<T> ToOwned for T where T: Clone {
 /// ```
 /// use std::borrow::Cow;
 ///
-/// # #[allow(dead_code)]
 /// fn abs_all(input: &mut Cow<[i32]>) {
 ///     for i in 0..input.len() {
 ///         let v = input[i];
 ///         if v < 0 {
-///             // clones into a vector the first time (if not already owned)
+///             // Clones into a vector if not already owned.
 ///             input.to_mut()[i] = -v;
 ///         }
 ///     }
 /// }
+///
+/// // No clone occurs because `input` doesn't need to be mutated.
+/// let slice = [0, 1, 2];
+/// let mut input = Cow::from(&slice[..]);
+/// abs_all(&mut input);
+///
+/// // Clone occurs because `input` needs to be mutated.
+/// let slice = [-1, 0, 1];
+/// let mut input = Cow::from(&slice[..]);
+/// abs_all(&mut input);
+///
+/// // No clone occurs because `input` is already owned.
+/// let mut input = Cow::from(vec![-1, 0, 1]);
+/// abs_all(&mut input);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Cow<'a, B: ?Sized + 'a>
@@ -268,5 +281,51 @@ impl<'a, B: ?Sized> Hash for Cow<'a, B> where B: Hash + ToOwned {
 impl<'a, T: ?Sized + ToOwned> AsRef<T> for Cow<'a, T> {
     fn as_ref(&self) -> &T {
         self
+    }
+}
+
+#[stable(feature = "cow_add", since = "1.13.0")]
+impl<'a> Add<&'a str> for Cow<'a, str> {
+    type Output = Cow<'a, str>;
+
+    fn add(self, rhs: &'a str) -> Self {
+        if self == "" {
+            Cow::Borrowed(rhs)
+        } else if rhs == "" {
+            self
+        } else {
+            Cow::Owned(self.into_owned() + rhs)
+        }
+    }
+}
+
+#[stable(feature = "cow_add", since = "1.13.0")]
+impl<'a> Add<Cow<'a, str>> for Cow<'a, str> {
+    type Output = Cow<'a, str>;
+
+    fn add(self, rhs: Cow<'a, str>) -> Self {
+        if self == "" {
+            rhs
+        } else if rhs == "" {
+            self
+        } else {
+            Cow::Owned(self.into_owned() + rhs.borrow())
+        }
+    }
+}
+
+#[stable(feature = "cow_add", since = "1.13.0")]
+impl<'a> AddAssign<&'a str> for Cow<'a, str> {
+    fn add_assign(&mut self, rhs: &'a str) {
+        if rhs == "" { return; }
+        self.to_mut().push_str(rhs);
+    }
+}
+
+#[stable(feature = "cow_add", since = "1.13.0")]
+impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
+    fn add_assign(&mut self, rhs: Cow<'a, str>) {
+        if rhs == "" { return; }
+        self.to_mut().push_str(rhs.borrow());
     }
 }

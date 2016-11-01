@@ -135,15 +135,12 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                borrow_id, cmt, loan_region,
                bk, loan_cause);
 
-        match opt_loan_path(&cmt) {
-            Some(lp) => {
-                let moved_value_use_kind = match loan_cause {
-                    euv::ClosureCapture(_) => MovedInCapture,
-                    _ => MovedInUse,
-                };
-                self.check_if_path_is_moved(borrow_id, borrow_span, moved_value_use_kind, &lp);
-            }
-            None => { }
+        if let Some(lp) = opt_loan_path(&cmt) {
+            let moved_value_use_kind = match loan_cause {
+                euv::ClosureCapture(_) => MovedInCapture,
+                _ => MovedInUse,
+            };
+            self.check_if_path_is_moved(borrow_id, borrow_span, moved_value_use_kind, &lp);
         }
 
         self.check_for_conflicting_loans(borrow_id);
@@ -158,33 +155,29 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
         debug!("mutate(assignment_id={}, assignee_cmt={:?})",
                assignment_id, assignee_cmt);
 
-        match opt_loan_path(&assignee_cmt) {
-            Some(lp) => {
-                match mode {
-                    MutateMode::Init | MutateMode::JustWrite => {
-                        // In a case like `path = 1`, then path does not
-                        // have to be *FULLY* initialized, but we still
-                        // must be careful lest it contains derefs of
-                        // pointers.
-                        self.check_if_assigned_path_is_moved(assignee_cmt.id,
-                                                             assignment_span,
-                                                             MovedInUse,
-                                                             &lp);
-                    }
-                    MutateMode::WriteAndRead => {
-                        // In a case like `path += 1`, then path must be
-                        // fully initialized, since we will read it before
-                        // we write it.
-                        self.check_if_path_is_moved(assignee_cmt.id,
-                                                    assignment_span,
-                                                    MovedInUse,
-                                                    &lp);
-                    }
+        if let Some(lp) = opt_loan_path(&assignee_cmt) {
+            match mode {
+                MutateMode::Init | MutateMode::JustWrite => {
+                    // In a case like `path = 1`, then path does not
+                    // have to be *FULLY* initialized, but we still
+                    // must be careful lest it contains derefs of
+                    // pointers.
+                    self.check_if_assigned_path_is_moved(assignee_cmt.id,
+                                                         assignment_span,
+                                                         MovedInUse,
+                                                         &lp);
+                }
+                MutateMode::WriteAndRead => {
+                    // In a case like `path += 1`, then path must be
+                    // fully initialized, since we will read it before
+                    // we write it.
+                    self.check_if_path_is_moved(assignee_cmt.id,
+                                                assignment_span,
+                                                MovedInUse,
+                                                &lp);
                 }
             }
-            None => { }
         }
-
         self.check_assignment(assignment_id, assignment_span, assignee_cmt);
     }
 
@@ -601,39 +594,36 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                       span: Span,
                       cmt: mc::cmt<'tcx>,
                       mode: euv::ConsumeMode) {
-        match opt_loan_path(&cmt) {
-            Some(lp) => {
-                let moved_value_use_kind = match mode {
-                    euv::Copy => {
-                        self.check_for_copy_of_frozen_path(id, span, &lp);
-                        MovedInUse
-                    }
-                    euv::Move(_) => {
-                        match self.move_data.kind_of_move_of_path(id, &lp) {
-                            None => {
-                                // Sometimes moves don't have a move kind;
-                                // this either means that the original move
-                                // was from something illegal to move,
-                                // or was moved from referent of an unsafe
-                                // pointer or something like that.
+        if let Some(lp) = opt_loan_path(&cmt) {
+            let moved_value_use_kind = match mode {
+                euv::Copy => {
+                    self.check_for_copy_of_frozen_path(id, span, &lp);
+                    MovedInUse
+                }
+                euv::Move(_) => {
+                    match self.move_data.kind_of_move_of_path(id, &lp) {
+                        None => {
+                            // Sometimes moves don't have a move kind;
+                            // this either means that the original move
+                            // was from something illegal to move,
+                            // or was moved from referent of an unsafe
+                            // pointer or something like that.
+                            MovedInUse
+                        }
+                        Some(move_kind) => {
+                            self.check_for_move_of_borrowed_path(id, span,
+                                                                 &lp, move_kind);
+                            if move_kind == move_data::Captured {
+                                MovedInCapture
+                            } else {
                                 MovedInUse
-                            }
-                            Some(move_kind) => {
-                                self.check_for_move_of_borrowed_path(id, span,
-                                                                     &lp, move_kind);
-                                if move_kind == move_data::Captured {
-                                    MovedInCapture
-                                } else {
-                                    MovedInUse
-                                }
                             }
                         }
                     }
-                };
+                }
+            };
 
-                self.check_if_path_is_moved(id, span, moved_value_use_kind, &lp);
-            }
-            None => { }
+            self.check_if_path_is_moved(id, span, moved_value_use_kind, &lp);
         }
     }
 

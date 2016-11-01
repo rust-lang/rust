@@ -49,7 +49,12 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
         match *self {
             ConstantTerm(c1) => write!(f, "{:?}", c1),
             TransformTerm(v1, v2) => write!(f, "({:?} \u{00D7} {:?})", v1, v2),
-            InferredTerm(id) => write!(f, "[{}]", { let InferredIndex(i) = id; i })
+            InferredTerm(id) => {
+                write!(f, "[{}]", {
+                    let InferredIndex(i) = id;
+                    i
+                })
+            }
         }
     }
 }
@@ -72,7 +77,7 @@ pub struct TermsContext<'a, 'tcx: 'a> {
     pub inferred_map: NodeMap<InferredIndex>,
 
     // Maps from an InferredIndex to the info for that variable.
-    pub inferred_infos: Vec<InferredInfo<'a>> ,
+    pub inferred_infos: Vec<InferredInfo<'a>>,
 }
 
 pub struct InferredInfo<'a> {
@@ -87,11 +92,9 @@ pub struct InferredInfo<'a> {
     pub initial_variance: ty::Variance,
 }
 
-pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    arena: &'a mut TypedArena<VarianceTerm<'a>>)
-    -> TermsContext<'a, 'tcx>
-{
+pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                     arena: &'a mut TypedArena<VarianceTerm<'a>>)
+                                                     -> TermsContext<'a, 'tcx> {
     let mut terms_cx = TermsContext {
         tcx: tcx,
         arena: arena,
@@ -102,17 +105,16 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
 
         // cache and share the variance struct used for items with
         // no type/region parameters
-        empty_variances: Rc::new(vec![])
+        empty_variances: Rc::new(vec![]),
     };
 
     // See README.md for a discussion on dep-graph management.
-    tcx.visit_all_items_in_krate(|def_id| ItemVariances::to_dep_node(&def_id),
-                                 &mut terms_cx);
+    tcx.visit_all_items_in_krate(|def_id| ItemVariances::to_dep_node(&def_id), &mut terms_cx);
 
     terms_cx
 }
 
-fn lang_items(tcx: TyCtxt) -> Vec<(ast::NodeId,Vec<ty::Variance>)> {
+fn lang_items(tcx: TyCtxt) -> Vec<(ast::NodeId, Vec<ty::Variance>)> {
     let all = vec![
         (tcx.lang_items.phantom_data(), vec![ty::Covariant]),
         (tcx.lang_items.unsafe_cell_type(), vec![ty::Invariant]),
@@ -138,15 +140,13 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     fn add_inferreds_for_item(&mut self,
                               item_id: ast::NodeId,
                               has_self: bool,
-                              generics: &hir::Generics)
-    {
-        /*!
-         * Add "inferreds" for the generic parameters declared on this
-         * item. This has a lot of annoying parameters because we are
-         * trying to drive this from the AST, rather than the
-         * ty::Generics, so that we can get span info -- but this
-         * means we must accommodate syntactic distinctions.
-         */
+                              generics: &hir::Generics) {
+        //! Add "inferreds" for the generic parameters declared on this
+        //! item. This has a lot of annoying parameters because we are
+        //! trying to drive this from the AST, rather than the
+        //! ty::Generics, so that we can get span info -- but this
+        //! means we must accommodate syntactic distinctions.
+        //!
 
         // NB: In the code below for writing the results back into the
         // tcx, we rely on the fact that all inferreds for a particular
@@ -178,26 +178,26 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         // parameters".
         if self.num_inferred() == inferreds_on_entry {
             let item_def_id = self.tcx.map.local_def_id(item_id);
-            let newly_added =
-                self.tcx.item_variance_map.borrow_mut().insert(
-                    item_def_id,
-                    self.empty_variances.clone()).is_none();
+            let newly_added = self.tcx
+                .item_variance_map
+                .borrow_mut()
+                .insert(item_def_id, self.empty_variances.clone())
+                .is_none();
             assert!(newly_added);
         }
     }
 
-    fn add_inferred(&mut self,
-                    item_id: ast::NodeId,
-                    index: usize,
-                    param_id: ast::NodeId) {
+    fn add_inferred(&mut self, item_id: ast::NodeId, index: usize, param_id: ast::NodeId) {
         let inf_index = InferredIndex(self.inferred_infos.len());
         let term = self.arena.alloc(InferredTerm(inf_index));
         let initial_variance = self.pick_initial_variance(item_id, index);
-        self.inferred_infos.push(InferredInfo { item_id: item_id,
-                                                index: index,
-                                                param_id: param_id,
-                                                term: term,
-                                                initial_variance: initial_variance });
+        self.inferred_infos.push(InferredInfo {
+            item_id: item_id,
+            index: index,
+            param_id: param_id,
+            term: term,
+            initial_variance: initial_variance,
+        });
         let newly_added = self.inferred_map.insert(param_id, inf_index).is_none();
         assert!(newly_added);
 
@@ -208,18 +208,17 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
                 inf_index={:?}, \
                 initial_variance={:?})",
                self.tcx.item_path_str(self.tcx.map.local_def_id(item_id)),
-               item_id, index, param_id, inf_index,
+               item_id,
+               index,
+               param_id,
+               inf_index,
                initial_variance);
     }
 
-    fn pick_initial_variance(&self,
-                             item_id: ast::NodeId,
-                             index: usize)
-                             -> ty::Variance
-    {
+    fn pick_initial_variance(&self, item_id: ast::NodeId, index: usize) -> ty::Variance {
         match self.lang_items.iter().find(|&&(n, _)| n == item_id) {
             Some(&(_, ref variances)) => variances[index],
-            None => ty::Bivariant
+            None => ty::Bivariant,
         }
     }
 
@@ -230,7 +229,8 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        debug!("add_inferreds for item {}", self.tcx.map.node_to_string(item.id));
+        debug!("add_inferreds for item {}",
+               self.tcx.map.node_to_string(item.id));
 
         match item.node {
             hir::ItemEnum(_, ref generics) |
@@ -254,9 +254,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
             hir::ItemFn(..) |
             hir::ItemMod(..) |
             hir::ItemForeignMod(..) |
-            hir::ItemTy(..) => {
-            }
+            hir::ItemTy(..) => {}
         }
     }
 }
-

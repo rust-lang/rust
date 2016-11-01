@@ -19,7 +19,7 @@ use syntax_pos::Span;
 
 use hir;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum AutoAdjustment<'tcx> {
     AdjustNeverToAny(Ty<'tcx>), // go from ! to any type
     AdjustReifyFnPointer,       // go from a fn-item type to a fn-pointer type
@@ -90,7 +90,7 @@ pub enum AutoAdjustment<'tcx> {
 ///     unsize: Some(Box<[i32]>),
 /// }
 /// ```
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct AutoDerefRef<'tcx> {
     /// Step 1. Apply a number of dereferences, producing an lvalue.
     pub autoderefs: usize,
@@ -122,7 +122,7 @@ impl<'tcx> AutoDerefRef<'tcx> {
 }
 
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum AutoRef<'tcx> {
     /// Convert from T to &T.
     AutoPtr(&'tcx ty::Region, hir::Mutability),

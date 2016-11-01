@@ -12,8 +12,8 @@
 
 #![feature(libc)]
 
-#[crate_id = "check_static_recursion_foreign_helper"]
-#[crate_type = "lib"]
+#![crate_name = "check_static_recursion_foreign_helper"]
+#![crate_type = "lib"]
 
 extern crate libc;
 

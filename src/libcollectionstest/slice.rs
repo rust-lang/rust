@@ -316,47 +316,6 @@ fn test_clear() {
 }
 
 #[test]
-fn test_dedup() {
-    fn case(a: Vec<i32>, b: Vec<i32>) {
-        let mut v = a;
-        v.dedup();
-        assert_eq!(v, b);
-    }
-    case(vec![], vec![]);
-    case(vec![1], vec![1]);
-    case(vec![1, 1], vec![1]);
-    case(vec![1, 2, 3], vec![1, 2, 3]);
-    case(vec![1, 1, 2, 3], vec![1, 2, 3]);
-    case(vec![1, 2, 2, 3], vec![1, 2, 3]);
-    case(vec![1, 2, 3, 3], vec![1, 2, 3]);
-    case(vec![1, 1, 2, 2, 2, 3, 3], vec![1, 2, 3]);
-}
-
-#[test]
-fn test_dedup_unique() {
-    let mut v0: Vec<Box<_>> = vec![box 1, box 1, box 2, box 3];
-    v0.dedup();
-    let mut v1: Vec<Box<_>> = vec![box 1, box 2, box 2, box 3];
-    v1.dedup();
-    let mut v2: Vec<Box<_>> = vec![box 1, box 2, box 3, box 3];
-    v2.dedup();
-    // If the boxed pointers were leaked or otherwise misused, valgrind
-    // and/or rt should raise errors.
-}
-
-#[test]
-fn test_dedup_shared() {
-    let mut v0: Vec<Box<_>> = vec![box 1, box 1, box 2, box 3];
-    v0.dedup();
-    let mut v1: Vec<Box<_>> = vec![box 1, box 2, box 2, box 3];
-    v1.dedup();
-    let mut v2: Vec<Box<_>> = vec![box 1, box 2, box 3, box 3];
-    v2.dedup();
-    // If the pointers were leaked or otherwise misused, valgrind and/or
-    // rt should raise errors.
-}
-
-#[test]
 fn test_retain() {
     let mut v = vec![1, 2, 3, 4, 5];
     v.retain(is_odd);
@@ -461,12 +420,12 @@ fn test_sort_stability() {
             // number this element is, i.e. the second elements
             // will occur in sorted order.
             let mut v: Vec<_> = (0..len)
-                                    .map(|_| {
-                                        let n = thread_rng().gen::<usize>() % 10;
-                                        counts[n] += 1;
-                                        (n, counts[n])
-                                    })
-                                    .collect();
+                .map(|_| {
+                    let n = thread_rng().gen::<usize>() % 10;
+                    counts[n] += 1;
+                    (n, counts[n])
+                })
+                .collect();
 
             // only sort on the first element, so an unstable sort
             // may mix up the counts.
@@ -1116,6 +1075,7 @@ fn test_box_slice_clone() {
 }
 
 #[test]
+#[cfg_attr(target_os = "emscripten", ignore)]
 fn test_box_slice_clone_panics() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1156,13 +1116,13 @@ fn test_box_slice_clone_panics() {
     };
 
     spawn(move || {
-        // When xs is dropped, +5.
-        let xs = vec![canary.clone(), canary.clone(), canary.clone(), panic, canary]
-                     .into_boxed_slice();
+            // When xs is dropped, +5.
+            let xs = vec![canary.clone(), canary.clone(), canary.clone(), panic, canary]
+                .into_boxed_slice();
 
-        // When panic is cloned, +3.
-        xs.clone();
-    })
+            // When panic is cloned, +3.
+            xs.clone();
+        })
         .join()
         .unwrap_err();
 
@@ -1414,8 +1374,8 @@ mod bench {
         let mut rng = thread_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>()
-                           .take(5)
-                           .collect::<Vec<BigSortable>>();
+                .take(5)
+                .collect::<Vec<BigSortable>>();
             v.sort();
         });
         b.bytes = 5 * mem::size_of::<BigSortable>() as u64;
@@ -1426,8 +1386,8 @@ mod bench {
         let mut rng = thread_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>()
-                           .take(100)
-                           .collect::<Vec<BigSortable>>();
+                .take(100)
+                .collect::<Vec<BigSortable>>();
             v.sort();
         });
         b.bytes = 100 * mem::size_of::<BigSortable>() as u64;
@@ -1438,8 +1398,8 @@ mod bench {
         let mut rng = thread_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>()
-                           .take(10000)
-                           .collect::<Vec<BigSortable>>();
+                .take(10000)
+                .collect::<Vec<BigSortable>>();
             v.sort();
         });
         b.bytes = 10000 * mem::size_of::<BigSortable>() as u64;

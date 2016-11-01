@@ -25,6 +25,7 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(cell_extras)]
 #![feature(const_fn)]
 #![feature(custom_attribute)]
 #![feature(dotdot_in_tuple_patterns)]
@@ -36,7 +37,7 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(unicode)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 
 use rustc::dep_graph::WorkProduct;
 
@@ -69,7 +70,6 @@ pub use base::trans_crate;
 pub use disr::Disr;
 
 pub mod back {
-    pub use rustc_back::rpath;
     pub use rustc::hir::svh;
 
     pub mod archive;
@@ -79,6 +79,7 @@ pub mod back {
     pub mod symbol_names;
     pub mod write;
     pub mod msvc;
+    pub mod rpath;
 }
 
 pub mod diagnostics;

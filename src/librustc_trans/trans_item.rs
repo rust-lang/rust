@@ -28,7 +28,6 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::Substs;
 use rustc_const_eval::fatal_const_eval_err;
-use std::hash::{Hash, Hasher};
 use syntax::ast::{self, NodeId};
 use syntax::attr;
 use type_of;
@@ -36,31 +35,11 @@ use glue;
 use abi::{Abi, FnType};
 use back::symbol_names;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum TransItem<'tcx> {
     DropGlue(DropGlueKind<'tcx>),
     Fn(Instance<'tcx>),
     Static(NodeId)
-}
-
-impl<'tcx> Hash for TransItem<'tcx> {
-    fn hash<H: Hasher>(&self, s: &mut H) {
-        match *self {
-            TransItem::DropGlue(t) => {
-                0u8.hash(s);
-                t.hash(s);
-            },
-            TransItem::Fn(instance) => {
-                1u8.hash(s);
-                instance.def.hash(s);
-                (instance.substs as *const _ as usize).hash(s);
-            }
-            TransItem::Static(node_id) => {
-                2u8.hash(s);
-                node_id.hash(s);
-            }
-        };
-    }
 }
 
 impl<'a, 'tcx> TransItem<'tcx> {
@@ -241,19 +220,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn requests_inline(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
-        match *self {
-            TransItem::Fn(ref instance) => {
-                instance.substs.types().next().is_some() || {
-                    let attributes = tcx.get_attrs(instance.def);
-                    attr::requests_inline(&attributes[..])
-                }
-            }
-            TransItem::DropGlue(..) => true,
-            TransItem::Static(..)   => false,
-        }
-    }
-
     pub fn is_from_extern_crate(&self) -> bool {
         match *self {
             TransItem::Fn(ref instance) => !instance.def.is_local(),
@@ -262,10 +228,18 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn is_instantiated_only_on_demand(&self) -> bool {
+    /// True if the translation item should only be translated to LLVM IR if
+    /// it is referenced somewhere (like inline functions, for example).
+    pub fn is_instantiated_only_on_demand(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+        if self.explicit_linkage(tcx).is_some() {
+            return false;
+        }
+
         match *self {
             TransItem::Fn(ref instance) => {
-                !instance.def.is_local() || instance.substs.types().next().is_some()
+                !instance.def.is_local() ||
+                instance.substs.types().next().is_some() ||
+                attr::requests_inline(&tcx.get_attrs(instance.def)[..])
             }
             TransItem::DropGlue(..) => true,
             TransItem::Static(..)   => false,
@@ -280,6 +254,18 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::DropGlue(..) |
             TransItem::Static(..)   => false,
         }
+    }
+
+    /// Returns true if there has to be a local copy of this TransItem in every
+    /// codegen unit that references it (as with inlined functions, for example)
+    pub fn needs_local_copy(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+        // Currently everything that is instantiated only on demand is done so
+        // with "internal" linkage, so we need a copy to be present in every
+        // codegen unit.
+        // This is coincidental: We could also instantiate something only if it
+        // is referenced (e.g. a regular, private function) but place it in its
+        // own codegen unit with "external" linkage.
+        self.is_instantiated_only_on_demand(tcx)
     }
 
     pub fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
@@ -324,7 +310,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
             },
             TransItem::Static(node_id) => {
                 let def_id = hir_map.local_def_id(node_id);
-                let instance = Instance::new(def_id, Substs::empty(tcx));
+                let instance = Instance::new(def_id, tcx.intern_substs(&[]));
                 to_string_internal(tcx, "static ", instance)
             },
         };
@@ -352,7 +338,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::Fn(instance) => {
                 format!("Fn({:?}, {})",
                          instance.def,
-                         instance.substs as *const _ as usize)
+                         instance.substs.as_ptr() as usize)
             }
             TransItem::Static(id) => {
                 format!("Static({:?})", id)
@@ -466,7 +452,7 @@ pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             output.push_str("fn(");
 
-            let sig = tcx.erase_late_bound_regions(sig);
+            let sig = tcx.erase_late_bound_regions_and_normalize(sig);
             if !sig.inputs.is_empty() {
                 for &parameter_type in &sig.inputs {
                     push_unique_type_name(tcx, parameter_type, output);

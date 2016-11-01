@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ascii::AsciiExt;
 use std::borrow::Cow;
 use std::iter::{FromIterator, repeat};
 use std::mem::size_of;
@@ -214,6 +215,60 @@ fn test_retain() {
 }
 
 #[test]
+fn test_dedup() {
+    fn case(a: Vec<i32>, b: Vec<i32>) {
+        let mut v = a;
+        v.dedup();
+        assert_eq!(v, b);
+    }
+    case(vec![], vec![]);
+    case(vec![1], vec![1]);
+    case(vec![1, 1], vec![1]);
+    case(vec![1, 2, 3], vec![1, 2, 3]);
+    case(vec![1, 1, 2, 3], vec![1, 2, 3]);
+    case(vec![1, 2, 2, 3], vec![1, 2, 3]);
+    case(vec![1, 2, 3, 3], vec![1, 2, 3]);
+    case(vec![1, 1, 2, 2, 2, 3, 3], vec![1, 2, 3]);
+}
+
+#[test]
+fn test_dedup_by_key() {
+    fn case(a: Vec<i32>, b: Vec<i32>) {
+        let mut v = a;
+        v.dedup_by_key(|i| *i / 10);
+        assert_eq!(v, b);
+    }
+    case(vec![], vec![]);
+    case(vec![10], vec![10]);
+    case(vec![10, 11], vec![10]);
+    case(vec![10, 20, 30], vec![10, 20, 30]);
+    case(vec![10, 11, 20, 30], vec![10, 20, 30]);
+    case(vec![10, 20, 21, 30], vec![10, 20, 30]);
+    case(vec![10, 20, 30, 31], vec![10, 20, 30]);
+    case(vec![10, 11, 20, 21, 22, 30, 31], vec![10, 20, 30]);
+}
+
+#[test]
+fn test_dedup_by() {
+    let mut vec = vec!["foo", "bar", "Bar", "baz", "bar"];
+    vec.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+
+    assert_eq!(vec, ["foo", "bar", "baz", "bar"]);
+}
+
+#[test]
+fn test_dedup_unique() {
+    let mut v0: Vec<Box<_>> = vec![box 1, box 1, box 2, box 3];
+    v0.dedup();
+    let mut v1: Vec<Box<_>> = vec![box 1, box 2, box 2, box 3];
+    v1.dedup();
+    let mut v2: Vec<Box<_>> = vec![box 1, box 2, box 3, box 3];
+    v2.dedup();
+    // If the boxed pointers were leaked or otherwise misused, valgrind
+    // and/or rt should raise errors.
+}
+
+#[test]
 fn zero_sized_values() {
     let mut v = Vec::new();
     assert_eq!(v.len(), 0);
@@ -271,22 +326,22 @@ fn test_zip_unzip() {
 
 #[test]
 fn test_vec_truncate_drop() {
-    static mut drops: u32 = 0;
+    static mut DROPS: u32 = 0;
     struct Elem(i32);
     impl Drop for Elem {
         fn drop(&mut self) {
             unsafe {
-                drops += 1;
+                DROPS += 1;
             }
         }
     }
 
     let mut v = vec![Elem(1), Elem(2), Elem(3), Elem(4), Elem(5)];
-    assert_eq!(unsafe { drops }, 0);
+    assert_eq!(unsafe { DROPS }, 0);
     v.truncate(3);
-    assert_eq!(unsafe { drops }, 2);
+    assert_eq!(unsafe { DROPS }, 2);
     v.truncate(0);
-    assert_eq!(unsafe { drops }, 5);
+    assert_eq!(unsafe { DROPS }, 5);
 }
 
 #[test]
@@ -542,10 +597,22 @@ fn test_cow_from() {
     }
 }
 
+#[test]
+fn test_from_cow() {
+    let borrowed: &[_] = &["borrowed", "(slice)"];
+    let owned = vec!["owned", "(vec)"];
+    assert_eq!(Vec::from(Cow::Borrowed(borrowed)), vec!["borrowed", "(slice)"]);
+    assert_eq!(Vec::from(Cow::Owned(owned)), vec!["owned", "(vec)"]);
+}
+
 #[allow(dead_code)]
 fn assert_covariance() {
-    fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> { d }
-    fn into_iter<'new>(i: IntoIter<&'static str>) -> IntoIter<&'new str> { i }
+    fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> {
+        d
+    }
+    fn into_iter<'new>(i: IntoIter<&'static str>) -> IntoIter<&'new str> {
+        i
+    }
 }
 
 #[bench]

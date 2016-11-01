@@ -27,7 +27,7 @@ TEST_TARGET_CRATES = $(filter-out core rustc_unicode alloc_system libc \
 				  panic_abort,$(TARGET_CRATES)) \
 			collectionstest coretest
 TEST_DOC_CRATES = $(DOC_CRATES) arena flate fmt_macros getopts graphviz \
-                log rand rbml serialize syntax term test
+                log rand serialize syntax term test
 TEST_HOST_CRATES = $(filter-out rustc_typeck rustc_borrowck rustc_resolve \
 		   		rustc_trans rustc_lint,\
                      $(HOST_CRATES))
@@ -632,6 +632,7 @@ endif
 # is a separate choice from whether to pass `-g` when building the
 # compiler and standard library themselves.
 CTEST_RUSTC_FLAGS := $$(subst -g,,$$(CTEST_RUSTC_FLAGS))
+CTEST_RUSTC_FLAGS := $$(subst -Cdebuginfo=1,,$$(CTEST_RUSTC_FLAGS))
 ifdef CFG_ENABLE_DEBUGINFO_TESTS
 CTEST_RUSTC_FLAGS += -g
 endif

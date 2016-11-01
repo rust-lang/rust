@@ -87,4 +87,8 @@ pub fn main() {
     assert_eq!(other1::id_u32_iterator(), other2::id_u32_iterator());
     assert!(other1::id_i32_iterator() != other1::id_u32_iterator());
     assert!(TypeId::of::<other1::I32Iterator>() != TypeId::of::<other1::U32Iterator>());
+
+    // Check fn pointer against collisions
+    assert!(TypeId::of::<fn(fn(A) -> A) -> A>() !=
+            TypeId::of::<fn(fn() -> A, A) -> A>());
 }

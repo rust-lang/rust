@@ -24,7 +24,7 @@ macro_rules! demo {
             let mut x: isize = 0;
             let y: isize = 1;
 
-            let mut history: History = vec!();
+            let mut history: History = vec![];
             unsafe {
                 asm!("mov ($1), $0"
                      : $output_constraint (*wrap(&mut x, "out", &mut history))

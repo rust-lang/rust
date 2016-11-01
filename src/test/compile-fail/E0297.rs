@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let xs : Vec<Option<i32>> = vec!(Some(1), None);
+    let xs : Vec<Option<i32>> = vec![Some(1), None];
 
     for Some(x) in xs {}
     //~^ ERROR E0297

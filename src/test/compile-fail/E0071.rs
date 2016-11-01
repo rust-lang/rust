@@ -9,13 +9,10 @@
 // except according to those terms.
 
 enum Foo {}
+type FooAlias = Foo;
 
 fn main() {
-    let u = Foo { value: 0 };
-    //~^ ERROR `Foo` does not name a struct or a struct variant [E0071]
-    //~| NOTE not a struct
-
-    let t = u32 { value: 4 };
-    //~^ ERROR `u32` does not name a struct or a struct variant [E0071]
+    let u = FooAlias { value: 0 };
+    //~^ ERROR expected struct, variant or union type, found enum `Foo` [E0071]
     //~| NOTE not a struct
 }

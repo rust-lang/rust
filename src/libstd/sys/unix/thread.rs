@@ -29,6 +29,20 @@ pub struct Thread {
 unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
+// The pthread_attr_setstacksize symbol doesn't exist in the emscripten libc,
+// so we have to not link to it to satisfy emcc's ERROR_ON_UNDEFINED_SYMBOLS.
+#[cfg(not(target_os = "emscripten"))]
+unsafe fn pthread_attr_setstacksize(attr: *mut libc::pthread_attr_t,
+                                    stack_size: libc::size_t) -> libc::c_int {
+    libc::pthread_attr_setstacksize(attr, stack_size)
+}
+
+#[cfg(target_os = "emscripten")]
+unsafe fn pthread_attr_setstacksize(_attr: *mut libc::pthread_attr_t,
+                                    _stack_size: libc::size_t) -> libc::c_int {
+    panic!()
+}
+
 impl Thread {
     pub unsafe fn new<'a>(stack: usize, p: Box<FnBox() + 'a>)
                           -> io::Result<Thread> {
@@ -38,8 +52,8 @@ impl Thread {
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
 
         let stack_size = cmp::max(stack, min_stack_size(&attr));
-        match libc::pthread_attr_setstacksize(&mut attr,
-                                              stack_size as libc::size_t) {
+        match pthread_attr_setstacksize(&mut attr,
+                                        stack_size) {
             0 => {}
             n => {
                 assert_eq!(n, libc::EINVAL);
@@ -50,7 +64,6 @@ impl Thread {
                 let page_size = os::page_size();
                 let stack_size = (stack_size + page_size - 1) &
                                  (-(page_size as isize - 1) as usize - 1);
-                let stack_size = stack_size as libc::size_t;
                 assert_eq!(libc::pthread_attr_setstacksize(&mut attr,
                                                            stack_size), 0);
             }
@@ -115,9 +128,16 @@ impl Thread {
                                      name.as_ptr() as *mut libc::c_void);
         }
     }
-    #[cfg(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten"))]
+    #[cfg(any(target_env = "newlib",
+              target_os = "solaris",
+              target_os = "haiku",
+              target_os = "emscripten"))]
     pub fn set_name(_name: &CStr) {
-        // Newlib, Illumos and Emscripten have no way to set a thread name.
+        // Newlib, Illumos, Haiku, and Emscripten have no way to set a thread name.
+    }
+    #[cfg(target_os = "fuchsia")]
+    pub fn set_name(_name: &CStr) {
+        // FIXME: determine whether Fuchsia has a way to set a thread name.
     }
 
     pub fn sleep(dur: Duration) {
@@ -247,12 +267,8 @@ pub mod guard {
         // Rellocate the last page of the stack.
         // This ensures SIGBUS will be raised on
         // stack overflow.
-        let result = mmap(stackaddr,
-                          psize as libc::size_t,
-                          PROT_NONE,
-                          MAP_PRIVATE | MAP_ANON | MAP_FIXED,
-                          -1,
-                          0);
+        let result = mmap(stackaddr, psize, PROT_NONE,
+                          MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
 
         if result != stackaddr || result == MAP_FAILED {
             panic!("failed to allocate a guard page");
@@ -276,8 +292,8 @@ pub mod guard {
 
     #[cfg(target_os = "macos")]
     pub unsafe fn current() -> Option<usize> {
-        Some((libc::pthread_get_stackaddr_np(libc::pthread_self()) as libc::size_t -
-              libc::pthread_get_stacksize_np(libc::pthread_self())) as usize)
+        Some((libc::pthread_get_stackaddr_np(libc::pthread_self()) as usize -
+              libc::pthread_get_stacksize_np(libc::pthread_self())))
     }
 
     #[cfg(any(target_os = "openbsd", target_os = "bitrig"))]
@@ -289,10 +305,10 @@ pub mod guard {
         let extra = if cfg!(target_os = "bitrig") {3} else {1} * os::page_size();
         Some(if libc::pthread_main_np() == 1 {
             // main thread
-            current_stack.ss_sp as usize - current_stack.ss_size as usize + extra
+            current_stack.ss_sp as usize - current_stack.ss_size + extra
         } else {
             // new thread
-            current_stack.ss_sp as usize - current_stack.ss_size as usize
+            current_stack.ss_sp as usize - current_stack.ss_size
         })
     }
 
@@ -318,11 +334,11 @@ pub mod guard {
                                                    &mut size), 0);
 
             ret = if cfg!(target_os = "freebsd") {
-                Some(stackaddr as usize - guardsize as usize)
+                Some(stackaddr as usize - guardsize)
             } else if cfg!(target_os = "netbsd") {
                 Some(stackaddr as usize)
             } else {
-                Some(stackaddr as usize + guardsize as usize)
+                Some(stackaddr as usize + guardsize)
             };
         }
         assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
@@ -341,8 +357,8 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     weak!(fn __pthread_get_minstack(*const libc::pthread_attr_t) -> libc::size_t);
 
     match __pthread_get_minstack.get() {
-        None => libc::PTHREAD_STACK_MIN as usize,
-        Some(f) => unsafe { f(attr) as usize },
+        None => libc::PTHREAD_STACK_MIN,
+        Some(f) => unsafe { f(attr) },
     }
 }
 
@@ -351,7 +367,7 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
 #[cfg(all(not(target_os = "linux"),
           not(target_os = "netbsd")))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
-    libc::PTHREAD_STACK_MIN as usize
+    libc::PTHREAD_STACK_MIN
 }
 
 #[cfg(target_os = "netbsd")]

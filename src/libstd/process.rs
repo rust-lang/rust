@@ -8,7 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Working with processes.
+//! A module for working with processes.
+//!
+//! # Examples
+//!
+//! Basic usage where we try to execute the `cat` shell command:
+//!
+//! ```should_panic
+//! use std::process::Command;
+//!
+//! let mut child = Command::new("/bin/cat")
+//!                         .arg("file.txt")
+//!                         .spawn()
+//!                         .expect("failed to execute child");
+//!
+//! let ecode = child.wait()
+//!                  .expect("failed to wait on child");
+//!
+//! assert!(ecode.success());
+//! ```
 
 #![stable(feature = "process", since = "1.0.0")]
 
@@ -807,7 +825,7 @@ pub fn exit(code: i32) -> ! {
     ::sys::os::exit(code)
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use io::prelude::*;
 

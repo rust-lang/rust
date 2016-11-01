@@ -44,7 +44,7 @@ pub mod eh_frames {
 
     // Scratch space for unwinder's internal book-keeping.
     // This is defined as `struct object` in $GCC/libgcc/unwind-dw2-fde.h.
-    static mut obj: [isize; 6] = [0; 6];
+    static mut OBJ: [isize; 6] = [0; 6];
 
     // Unwind info registration/deregistration routines.
     // See the docs of `unwind` module in libstd.
@@ -56,13 +56,13 @@ pub mod eh_frames {
     unsafe fn init() {
         // register unwind info on module startup
         rust_eh_register_frames(&__EH_FRAME_BEGIN__ as *const u8,
-                                &mut obj as *mut _ as *mut u8);
+                                &mut OBJ as *mut _ as *mut u8);
     }
 
     unsafe fn uninit() {
         // unregister on shutdown
         rust_eh_unregister_frames(&__EH_FRAME_BEGIN__ as *const u8,
-                                  &mut obj as *mut _ as *mut u8);
+                                  &mut OBJ as *mut _ as *mut u8);
     }
 
     // MSVC-specific init/uninit routine registration

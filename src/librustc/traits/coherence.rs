@@ -12,8 +12,7 @@
 
 use super::{SelectionContext, Obligation, ObligationCause};
 
-use middle::cstore::LOCAL_CRATE;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
 use infer::{InferCtxt, TypeOrigin};
 use syntax_pos::DUMMY_SP;

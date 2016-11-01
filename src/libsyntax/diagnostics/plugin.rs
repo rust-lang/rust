@@ -215,7 +215,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
 
     let ty = ecx.ty(
         span,
-        ast::TyKind::FixedLengthVec(
+        ast::TyKind::Array(
             ecx.ty(
                 span,
                 ast::TyKind::Tup(vec![ty_str.clone(), ty_str])

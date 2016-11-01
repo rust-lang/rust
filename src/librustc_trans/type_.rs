@@ -18,6 +18,7 @@ use context::CrateContext;
 use util::nodemap::FnvHashMap;
 
 use syntax::ast;
+use rustc::ty::layout;
 
 use std::ffi::CString;
 use std::fmt;
@@ -297,6 +298,26 @@ impl Type {
     pub fn int_width(&self) -> u64 {
         unsafe {
             llvm::LLVMGetIntTypeWidth(self.to_ref()) as u64
+        }
+    }
+
+    pub fn from_integer(cx: &CrateContext, i: layout::Integer) -> Type {
+        use rustc::ty::layout::Integer::*;
+        match i {
+            I1 => Type::i1(cx),
+            I8 => Type::i8(cx),
+            I16 => Type::i16(cx),
+            I32 => Type::i32(cx),
+            I64 => Type::i64(cx),
+        }
+    }
+
+    pub fn from_primitive(ccx: &CrateContext, p: layout::Primitive) -> Type {
+        match p {
+            layout::Int(i) => Type::from_integer(ccx, i),
+            layout::F32 => Type::f32(ccx),
+            layout::F64 => Type::f64(ccx),
+            layout::Pointer => bug!("It is not possible to convert Pointer directly to Type.")
         }
     }
 }

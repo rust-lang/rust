@@ -10,13 +10,11 @@
 
 use llvm::ValueRef;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::mir::repr as mir;
+use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
-use abi;
 use adt;
 use base;
-use builder::Builder;
 use common::{self, BlockAndBuilder, CrateContext, C_uint, C_undef};
 use consts;
 use machine;
@@ -69,18 +67,6 @@ impl<'tcx> LvalueRef<'tcx> {
     }
 }
 
-pub fn get_meta(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
-    b.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
-}
-
-pub fn get_dataptr(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
-    b.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
-}
-
-pub fn load_fat_ptr(b: &Builder, fat_ptr: ValueRef) -> (ValueRef, ValueRef) {
-    (b.load(get_dataptr(b, fat_ptr)), b.load(get_meta(b, fat_ptr)))
-}
-
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_lvalue(&mut self,
                         bcx: &BlockAndBuilder<'bcx, 'tcx>,
@@ -91,7 +77,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let ccx = bcx.ccx();
         let tcx = bcx.tcx();
 
-        if let Some(index) = self.mir.local_index(lvalue) {
+        if let mir::Lvalue::Local(index) = *lvalue {
             match self.locals[index] {
                 LocalRef::Lvalue(lvalue) => {
                     return lvalue;
@@ -103,10 +89,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
 
         let result = match *lvalue {
-            mir::Lvalue::Var(_) |
-            mir::Lvalue::Temp(_) |
-            mir::Lvalue::Arg(_) |
-            mir::Lvalue::ReturnPointer => bug!(), // handled above
+            mir::Lvalue::Local(_) => bug!(), // handled above
             mir::Lvalue::Static(def_id) => {
                 let const_ty = self.monomorphized_lvalue_ty(lvalue);
                 LvalueRef::new_sized(consts::get_static(ccx, def_id),
@@ -152,7 +135,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     mir::ProjectionElem::Deref => bug!(),
                     mir::ProjectionElem::Field(ref field, _) => {
                         let base_ty = tr_base.ty.to_ty(tcx);
-                        let base_repr = adt::represent_type(ccx, base_ty);
                         let discr = match tr_base.ty {
                             LvalueTy::Ty { .. } => 0,
                             LvalueTy::Downcast { adt_def: _, substs: _, variant_index: v } => v,
@@ -164,7 +146,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         } else {
                             adt::MaybeSizedValue::unsized_(tr_base.llval, tr_base.llextra)
                         };
-                        let llprojected = adt::trans_field_ptr_builder(bcx, &base_repr, base,
+                        let llprojected = adt::trans_field_ptr_builder(bcx, base_ty, base,
                                                                        Disr(discr), field.index());
                         let llextra = if is_sized {
                             ptr::null_mut()
@@ -236,7 +218,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                  lvalue: &mir::Lvalue<'tcx>, f: F) -> U
     where F: FnOnce(&mut Self, LvalueRef<'tcx>) -> U
     {
-        if let Some(index) = self.mir.local_index(lvalue) {
+        if let mir::Lvalue::Local(index) = *lvalue {
             match self.locals[index] {
                 LocalRef::Lvalue(lvalue) => f(self, lvalue),
                 LocalRef::Operand(None) => {

@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+macro_rules! one_arg_macro {
+    ($fmt:expr) => (print!(concat!($fmt, "\n")));
+}
+
 fn main() {
-    println!();
+    one_arg_macro!();
     //~^ ERROR unexpected end of macro invocation
 }

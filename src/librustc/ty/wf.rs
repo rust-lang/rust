@@ -201,11 +201,11 @@ fn implied_bounds_from_components<'tcx>(sub_region: &'tcx ty::Region,
         .flat_map(|component| {
             match component {
                 Component::Region(r) =>
-                    vec!(ImpliedBound::RegionSubRegion(sub_region, r)),
+                    vec![ImpliedBound::RegionSubRegion(sub_region, r)],
                 Component::Param(p) =>
-                    vec!(ImpliedBound::RegionSubParam(sub_region, p)),
+                    vec![ImpliedBound::RegionSubParam(sub_region, p)],
                 Component::Projection(p) =>
-                    vec!(ImpliedBound::RegionSubProjection(sub_region, p)),
+                    vec![ImpliedBound::RegionSubProjection(sub_region, p)],
                 Component::EscapingProjection(_) =>
                     // If the projection has escaping regions, don't
                     // try to infer any implied bounds even for its
@@ -215,9 +215,9 @@ fn implied_bounds_from_components<'tcx>(sub_region: &'tcx ty::Region,
                     // idea is that the WAY that the caller proves
                     // that may change in the future and we want to
                     // give ourselves room to get smarter here.
-                    vec!(),
+                    vec![],
                 Component::UnresolvedInferenceVariable(..) =>
-                    vec!(),
+                    vec![],
             }
         })
         .collect()

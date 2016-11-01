@@ -445,8 +445,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 let mut err = struct_span_err!(self.tcx.sess, span, E0277,
                                     "the trait bound `{}` is not satisfied",
                                     trait_ref.to_predicate());
-                                err.span_label(span, &format!("trait `{}` not satisfied",
-                                                              trait_ref.to_predicate()));
+                                err.span_label(span, &format!("the trait `{}` is not implemented \
+                                                               for `{}`",
+                                                              trait_ref,
+                                                              trait_ref.self_ty()));
 
                                 // Try to report a help message
 
@@ -856,8 +858,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                              trait_name));
             }
             ObligationCauseCode::FieldSized => {
-                err.note("only the last field of a struct or enum variant \
-                          may have a dynamically sized type");
+                err.note("only the last field of a struct may have a dynamically sized type");
             }
             ObligationCauseCode::ConstSized => {
                 err.note("constant expressions must have a statically known size");

@@ -726,33 +726,25 @@ impl<T> VecDeque<T> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut vector: VecDeque<u32> = VecDeque::new();
+    /// let mut vector = VecDeque::new();
     ///
     /// vector.push_back(0);
     /// vector.push_back(1);
     /// vector.push_back(2);
     ///
-    /// assert_eq!(vector.as_slices(), (&[0u32, 1, 2] as &[u32], &[] as &[u32]));
+    /// assert_eq!(vector.as_slices(), (&[0, 1, 2][..], &[][..]));
     ///
     /// vector.push_front(10);
     /// vector.push_front(9);
     ///
-    /// assert_eq!(vector.as_slices(), (&[9u32, 10] as &[u32], &[0u32, 1, 2] as &[u32]));
+    /// assert_eq!(vector.as_slices(), (&[9, 10][..], &[0, 1, 2][..]));
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_slices(&self) -> (&[T], &[T]) {
         unsafe {
-            let contiguous = self.is_contiguous();
             let buf = self.buffer_as_slice();
-            if contiguous {
-                let (empty, buf) = buf.split_at(0);
-                (&buf[self.tail..self.head], empty)
-            } else {
-                let (mid, right) = buf.split_at(self.tail);
-                let (left, _) = mid.split_at(self.head);
-                (right, left)
-            }
+            RingSlices::ring_slices(buf, self.head, self.tail)
         }
     }
 
@@ -764,7 +756,7 @@ impl<T> VecDeque<T> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut vector: VecDeque<u32> = VecDeque::new();
+    /// let mut vector = VecDeque::new();
     ///
     /// vector.push_back(0);
     /// vector.push_back(1);
@@ -774,26 +766,16 @@ impl<T> VecDeque<T> {
     ///
     /// vector.as_mut_slices().0[0] = 42;
     /// vector.as_mut_slices().1[0] = 24;
-    /// assert_eq!(vector.as_slices(), (&[42u32, 10] as &[u32], &[24u32, 1] as &[u32]));
+    /// assert_eq!(vector.as_slices(), (&[42, 10][..], &[24, 1][..]));
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
         unsafe {
-            let contiguous = self.is_contiguous();
             let head = self.head;
             let tail = self.tail;
             let buf = self.buffer_as_mut_slice();
-
-            if contiguous {
-                let (empty, buf) = buf.split_at_mut(0);
-                (&mut buf[tail..head], empty)
-            } else {
-                let (mid, right) = buf.split_at_mut(tail);
-                let (left, _) = mid.split_at_mut(head);
-
-                (right, left)
-            }
+            RingSlices::ring_slices(buf, head, tail)
         }
     }
 
@@ -1829,6 +1811,42 @@ fn wrap_index(index: usize, size: usize) -> usize {
     index & (size - 1)
 }
 
+/// Returns the two slices that cover the VecDeque's valid range
+trait RingSlices : Sized {
+    fn slice(self, from: usize, to: usize) -> Self;
+    fn split_at(self, i: usize) -> (Self, Self);
+
+    fn ring_slices(buf: Self, head: usize, tail: usize) -> (Self, Self) {
+        let contiguous = tail <= head;
+        if contiguous {
+            let (empty, buf) = buf.split_at(0);
+            (buf.slice(tail, head), empty)
+        } else {
+            let (mid, right) = buf.split_at(tail);
+            let (left, _) = mid.split_at(head);
+            (right, left)
+        }
+    }
+}
+
+impl<'a, T> RingSlices for &'a [T] {
+    fn slice(self, from: usize, to: usize) -> Self {
+        &self[from..to]
+    }
+    fn split_at(self, i: usize) -> (Self, Self) {
+        (*self).split_at(i)
+    }
+}
+
+impl<'a, T> RingSlices for &'a mut [T] {
+    fn slice(self, from: usize, to: usize) -> Self {
+        &mut self[from..to]
+    }
+    fn split_at(self, i: usize) -> (Self, Self) {
+        (*self).split_at_mut(i)
+    }
+}
+
 /// Calculate the number of elements left to be read in the buffer
 #[inline]
 fn count(tail: usize, head: usize, size: usize) -> usize {
@@ -1874,6 +1892,14 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = count(self.tail, self.head, self.ring.len());
         (len, Some(len))
+    }
+
+    fn fold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
+        where F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
+        accum = front.iter().fold(accum, &mut f);
+        back.iter().fold(accum, &mut f)
     }
 }
 
@@ -1926,6 +1952,14 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = count(self.tail, self.head, self.ring.len());
         (len, Some(len))
+    }
+
+    fn fold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
+        where F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
+        accum = front.iter_mut().fold(accum, &mut f);
+        back.iter_mut().fold(accum, &mut f)
     }
 }
 
@@ -2002,7 +2036,7 @@ unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
 #[stable(feature = "drain", since = "1.6.0")]
 unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         for _ in self.by_ref() {}
@@ -2051,7 +2085,7 @@ impl<'a, T: 'a> Drop for Drain<'a, T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T: 'a> Iterator for Drain<'a, T> {
     type Item = T;
 
@@ -2066,7 +2100,7 @@ impl<'a, T: 'a> Iterator for Drain<'a, T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -2074,7 +2108,7 @@ impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 
 #[unstable(feature = "fused", issue = "35602")]

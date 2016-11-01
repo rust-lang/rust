@@ -17,7 +17,7 @@
 //! the `render_inner_with_highlighting` or `render_with_highlighting`
 //! functions. For more advanced use cases (if you want to supply your own css
 //! classes or control how the HTML is generated, or even generate something
-//! other then HTML), then you should implement the the `Writer` trait and use a
+//! other then HTML), then you should implement the `Writer` trait and use a
 //! `Classifier`.
 
 use html::escape::Escape;
@@ -104,6 +104,7 @@ pub enum Class {
     Lifetime,
     PreludeTy,
     PreludeVal,
+    QuestionMark,
 }
 
 /// Trait that controls writing the output of syntax highlighting. Users should
@@ -237,8 +238,10 @@ impl<'a> Classifier<'a> {
             token::Dot | token::DotDot | token::DotDotDot | token::Comma | token::Semi |
                 token::Colon | token::ModSep | token::LArrow | token::OpenDelim(_) |
                 token::CloseDelim(token::Brace) | token::CloseDelim(token::Paren) |
-                token::CloseDelim(token::NoDelim) |
-                token::Question => Class::None,
+                token::CloseDelim(token::NoDelim) => Class::None,
+
+            token::Question => Class::QuestionMark,
+
             token::Dollar => {
                 if self.lexer.peek().tok.is_ident() {
                     self.in_macro_nonterminal = true;
@@ -292,7 +295,9 @@ impl<'a> Classifier<'a> {
                     "Option" | "Result" => Class::PreludeTy,
                     "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
 
+                    "$crate" => Class::KeyWord,
                     _ if tas.tok.is_any_keyword() => Class::KeyWord,
+
                     _ => {
                         if self.in_macro_nonterminal {
                             self.in_macro_nonterminal = false;
@@ -306,9 +311,6 @@ impl<'a> Classifier<'a> {
                     }
                 }
             }
-
-            // Special macro vars are like keywords.
-            token::SpecialVarNt(_) => Class::KeyWord,
 
             token::Lifetime(..) => Class::Lifetime,
 
@@ -348,6 +350,7 @@ impl Class {
             Class::Lifetime => "lifetime",
             Class::PreludeTy => "prelude-ty",
             Class::PreludeVal => "prelude-val",
+            Class::QuestionMark => "question-mark"
         }
     }
 }

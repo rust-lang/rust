@@ -792,6 +792,44 @@ impl<T: fmt::Debug, E> Result<T, E> {
     }
 }
 
+impl<T: Default, E> Result<T, E> {
+    /// Returns the contained value or a default
+    ///
+    /// Consumes the `self` argument then, if `Ok`, returns the contained
+    /// value, otherwise if `Err`, returns the default value for that
+    /// type.
+    ///
+    /// # Examples
+    ///
+    /// Convert a string to an integer, turning poorly-formed strings
+    /// into 0 (the default value for integers). [`parse`] converts
+    /// a string to any other type that implements [`FromStr`], returning an
+    /// `Err` on error.
+    ///
+    /// ```
+    /// #![feature(result_unwrap_or_default)]
+    ///
+    /// let good_year_from_input = "1909";
+    /// let bad_year_from_input = "190blarg";
+    /// let good_year = good_year_from_input.parse().unwrap_or_default();
+    /// let bad_year = bad_year_from_input.parse().unwrap_or_default();
+    ///
+    /// assert_eq!(1909, good_year);
+    /// assert_eq!(0, bad_year);
+    ///
+    /// [`parse`]: ../../std/primitive.str.html#method.parse
+    /// [`FromStr`]: ../../std/str/trait.FromStr.html
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_unwrap_or_default", issue = "0")]
+    pub fn unwrap_or_default(self) -> T {
+        match self {
+            Ok(x) => x,
+            Err(_) => Default::default(),
+        }
+    }
+}
+
 // This is a separate function to reduce the code size of the methods
 #[inline(never)]
 #[cold]
@@ -977,12 +1015,12 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// ```
     /// use std::u32;
     ///
-    /// let v = vec!(1, 2);
+    /// let v = vec![1, 2];
     /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|&x: &u32|
     ///     if x == u32::MAX { Err("Overflow!") }
     ///     else { Ok(x + 1) }
     /// ).collect();
-    /// assert!(res == Ok(vec!(2, 3)));
+    /// assert!(res == Ok(vec![2, 3]));
     /// ```
     #[inline]
     fn from_iter<I: IntoIterator<Item=Result<A, E>>>(iter: I) -> Result<V, E> {
@@ -1007,6 +1045,11 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
                     }
                     None => None,
                 }
+            }
+
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                let (_min, max) = self.iter.size_hint();
+                (0, max)
             }
         }
 

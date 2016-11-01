@@ -1,0 +1,13 @@
+error: `short` does not live long enough
+  --> $DIR/loan-extend.rs:21:1
+   |
+19 |     long = borrow(&mut short);
+   |                        ----- borrow occurs here
+20 |     //~^ NOTE borrow occurs here
+21 | }
+   | ^ `short` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to previous error
+

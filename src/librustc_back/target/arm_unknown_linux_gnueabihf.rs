@@ -12,7 +12,7 @@ use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::linux_base::opts();
-    base.max_atomic_width = 64;
+    base.max_atomic_width = Some(64);
     Ok(Target {
         llvm_target: "arm-unknown-linux-gnueabihf".to_string(),
         target_endian: "little".to_string(),
@@ -25,6 +25,7 @@ pub fn target() -> TargetResult {
 
         options: TargetOptions {
             features: "+v6,+vfp2".to_string(),
+            abi_blacklist: super::arm_base::abi_blacklist(),
             .. base
         }
     })

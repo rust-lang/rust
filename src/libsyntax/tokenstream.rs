@@ -33,6 +33,7 @@ use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::lexer;
 use parse;
 use parse::token::{self, Token, Lit, Nonterminal};
+use print::pprust;
 
 use std::fmt;
 use std::iter::*;
@@ -133,7 +134,6 @@ impl TokenTree {
                     AttrStyle::Inner => 3,
                 }
             }
-            TokenTree::Token(_, token::SpecialVarNt(..)) => 2,
             TokenTree::Token(_, token::MatchNt(..)) => 3,
             TokenTree::Token(_, token::Interpolated(Nonterminal::NtTT(..))) => 1,
             TokenTree::Delimited(_, ref delimed) => delimed.tts.len() + 2,
@@ -187,11 +187,6 @@ impl TokenTree {
                 }
                 delimed.tts[index - 1].clone()
             }
-            (&TokenTree::Token(sp, token::SpecialVarNt(var)), _) => {
-                let v = [TokenTree::Token(sp, token::Dollar),
-                         TokenTree::Token(sp, token::Ident(token::str_to_ident(var.as_str())))];
-                v[index].clone()
-            }
             (&TokenTree::Token(sp, token::MatchNt(name, kind)), _) => {
                 let v = [TokenTree::Token(sp, token::SubstNt(name)),
                          TokenTree::Token(sp, token::Colon),
@@ -223,10 +218,9 @@ impl TokenTree {
         // `None` is because we're not interpolating
         let arg_rdr = lexer::new_tt_reader_with_doc_flag(&cx.parse_sess().span_diagnostic,
                                                          None,
-                                                         None,
                                                          tts.iter().cloned().collect(),
                                                          true);
-        macro_parser::parse(cx.parse_sess(), cx.cfg(), arg_rdr, mtch)
+        macro_parser::parse(cx.parse_sess(), arg_rdr, mtch)
     }
 
     /// Check if this TokenTree is equal to the other, regardless of span information.
@@ -778,6 +772,12 @@ impl TokenStream {
         });
 
         TokenStream::from_tts(vec![TokenTree::Delimited(new_sp, new_delim)])
+    }
+}
+
+impl fmt::Display for TokenStream {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&pprust::tts_to_string(&self.to_tts()))
     }
 }
 

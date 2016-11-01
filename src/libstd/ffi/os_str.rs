@@ -53,17 +53,6 @@ impl OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
 
-    #[cfg(unix)]
-    fn _from_bytes(vec: Vec<u8>) -> Option<OsString> {
-        use os::unix::ffi::OsStringExt;
-        Some(OsString::from_vec(vec))
-    }
-
-    #[cfg(windows)]
-    fn _from_bytes(vec: Vec<u8>) -> Option<OsString> {
-        String::from_utf8(vec).ok().map(OsString::from)
-    }
-
     /// Converts to an `OsStr` slice.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(&self) -> &OsStr {

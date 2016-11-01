@@ -22,10 +22,24 @@ fn main() {
     println!("cargo:rustc-cfg=cargobuild");
     println!("cargo:rerun-if-changed=build.rs");
 
-    let target = env::var("TARGET").unwrap();
-    let host = env::var("HOST").unwrap();
+    let target = env::var("TARGET").expect("TARGET was not set");
+    let host = env::var("HOST").expect("HOST was not set");
     let build_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let src_dir = env::current_dir().unwrap();
+
+    // FIXME: This is a hack to support building targets that don't
+    // support jemalloc alongside hosts that do. The jemalloc build is
+    // controlled by a feature of the std crate, and if that feature
+    // changes between targets, it invalidates the fingerprint of
+    // std's build script (this is a cargo bug); so we must ensure
+    // that the feature set used by std is the same across all
+    // targets, which means we have to build the alloc_jemalloc crate
+    // for targets like emscripten, even if we don't use it.
+    if target.contains("rumprun") || target.contains("bitrig") || target.contains("openbsd") ||
+       target.contains("msvc") || target.contains("emscripten") || target.contains("fuchsia") {
+        println!("cargo:rustc-cfg=dummy_jemalloc");
+        return;
+    }
 
     if let Some(jemalloc) = env::var_os("JEMALLOC_OVERRIDE") {
         let jemalloc = PathBuf::from(jemalloc);
@@ -46,16 +60,16 @@ fn main() {
     // only msvc returns None for ar so unwrap is okay
     let ar = build_helper::cc2ar(compiler.path(), &target).unwrap();
     let cflags = compiler.args()
-                         .iter()
-                         .map(|s| s.to_str().unwrap())
-                         .collect::<Vec<_>>()
-                         .join(" ");
+        .iter()
+        .map(|s| s.to_str().unwrap())
+        .collect::<Vec<_>>()
+        .join(" ");
 
     let mut stack = src_dir.join("../jemalloc")
-                           .read_dir()
-                           .unwrap()
-                           .map(|e| e.unwrap())
-                           .collect::<Vec<_>>();
+        .read_dir()
+        .unwrap()
+        .map(|e| e.unwrap())
+        .collect::<Vec<_>>();
     while let Some(entry) = stack.pop() {
         let path = entry.path();
         if entry.file_type().unwrap().is_dir() {
@@ -137,10 +151,10 @@ fn main() {
 
     run(&mut cmd);
     run(Command::new("make")
-            .current_dir(&build_dir)
-            .arg("build_lib_static")
-            .arg("-j")
-            .arg(env::var("NUM_JOBS").unwrap()));
+        .current_dir(&build_dir)
+        .arg("build_lib_static")
+        .arg("-j")
+        .arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
 
     if target.contains("windows") {
         println!("cargo:rustc-link-lib=static=jemalloc");

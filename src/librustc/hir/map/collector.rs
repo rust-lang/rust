@@ -27,6 +27,10 @@ pub struct NodeCollector<'ast> {
     pub map: Vec<MapEntry<'ast>>,
     /// The parent of this node
     pub parent_node: NodeId,
+    /// If true, completely ignore nested items. We set this when loading
+    /// HIR from metadata, since in that case we only want the HIR for
+    /// one specific item (and not the ones nested inside of it).
+    pub ignore_nested_items: bool
 }
 
 impl<'ast> NodeCollector<'ast> {
@@ -35,6 +39,7 @@ impl<'ast> NodeCollector<'ast> {
             krate: krate,
             map: vec![],
             parent_node: CRATE_NODE_ID,
+            ignore_nested_items: false
         };
         collector.insert_entry(CRATE_NODE_ID, RootCrate);
 
@@ -52,6 +57,7 @@ impl<'ast> NodeCollector<'ast> {
             krate: krate,
             map: map,
             parent_node: parent_node,
+            ignore_nested_items: true
         };
 
         assert_eq!(parent_def_path.krate, parent_def_id.krate);
@@ -63,10 +69,10 @@ impl<'ast> NodeCollector<'ast> {
     fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'ast>) {
         debug!("ast_map: {:?} => {:?}", id, entry);
         let len = self.map.len();
-        if id as usize >= len {
-            self.map.extend(repeat(NotPresent).take(id as usize - len + 1));
+        if id.as_usize() >= len {
+            self.map.extend(repeat(NotPresent).take(id.as_usize() - len + 1));
         }
-        self.map[id as usize] = entry;
+        self.map[id.as_usize()] = entry;
     }
 
     fn insert(&mut self, id: NodeId, node: Node<'ast>) {
@@ -88,7 +94,9 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     /// their outer items.
     fn visit_nested_item(&mut self, item: ItemId) {
         debug!("visit_nested_item: {:?}", item);
-        self.visit_item(self.krate.item(item.id))
+        if !self.ignore_nested_items {
+            self.visit_item(self.krate.item(item.id))
+        }
     }
 
     fn visit_item(&mut self, i: &'ast Item) {

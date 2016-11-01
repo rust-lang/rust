@@ -27,7 +27,7 @@ impl SpaceLlama for i32 {
     default fn fly(&self) {}
     //~^ ERROR E0520
     //~| NOTE cannot specialize default item `fly`
-    //~| NOTE either the parent `impl` or `fly` in the parent `impl` must be marked `default`
+    //~| NOTE `fly` in the parent `impl` must be marked `default`
 }
 
 fn main() {

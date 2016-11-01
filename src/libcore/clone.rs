@@ -129,13 +129,6 @@ pub struct AssertParamIsClone<T: Clone + ?Sized> { _field: ::marker::PhantomData
            reason = "deriving hack, should not be public",
            issue = "0")]
 pub struct AssertParamIsCopy<T: Copy + ?Sized> { _field: ::marker::PhantomData<T> }
-#[cfg(stage0)]
-#[doc(hidden)]
-#[inline(always)]
-#[unstable(feature = "derive_clone_copy",
-           reason = "deriving hack, should not be public",
-           issue = "0")]
-pub fn assert_receiver_is_clone<T: Clone + ?Sized>(_: &T) {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> Clone for &'a T {

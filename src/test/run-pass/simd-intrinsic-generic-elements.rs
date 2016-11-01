@@ -10,8 +10,6 @@
 
 #![feature(repr_simd, platform_intrinsics)]
 
-// ignore-pretty : (#23623) problems when  ending with // comments
-
 #[repr(simd)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[allow(non_camel_case_types)]

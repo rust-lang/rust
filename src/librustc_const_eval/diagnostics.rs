@@ -40,7 +40,7 @@ Ensure the ordering of the match arm is correct and remove any superfluous
 arms.
 "##,
 
-E0002: r##"
+/*E0002: r##"
 This error indicates that an empty match expression is invalid because the type
 it is matching on is non-empty (there exist values of this type). In safe code
 it is impossible to create an instance of an empty type, so empty match
@@ -68,16 +68,14 @@ fn foo(x: Option<String>) {
     }
 }
 ```
-"##,
+"##,*/
 
 
-E0003: r##"
+/*E0003: r##"
 Not-a-Number (NaN) values cannot be compared for equality and hence can never
 match the input to a match expression. So, the following will not compile:
 
 ```compile_fail
-#![deny(illegal_floating_point_constant_pattern)]
-
 const NAN: f32 = 0.0 / 0.0;
 
 let number = 0.1f32;
@@ -100,7 +98,7 @@ match number {
 }
 ```
 "##,
-
+*/
 
 E0004: r##"
 This error indicates that the compiler cannot guarantee a matching pattern for
@@ -456,7 +454,7 @@ loop variable, consider using a `match` or `if let` inside the loop body. For
 instance:
 
 ```compile_fail,E0297
-let xs : Vec<Option<i32>> = vec!(Some(1), None);
+let xs : Vec<Option<i32>> = vec![Some(1), None];
 
 // This fails because `None` is not covered.
 for Some(x) in xs {
@@ -467,7 +465,7 @@ for Some(x) in xs {
 Match inside the loop instead:
 
 ```
-let xs : Vec<Option<i32>> = vec!(Some(1), None);
+let xs : Vec<Option<i32>> = vec![Some(1), None];
 
 for item in xs {
     match item {
@@ -480,7 +478,7 @@ for item in xs {
 Or use `if let`:
 
 ```
-let xs : Vec<Option<i32>> = vec!(Some(1), None);
+let xs : Vec<Option<i32>> = vec![Some(1), None];
 
 for item in xs {
     if let Some(x) = item {

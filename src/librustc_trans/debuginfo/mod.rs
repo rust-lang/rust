@@ -32,7 +32,7 @@ use abi::Abi;
 use common::{CrateContext, FunctionContext, Block, BlockAndBuilder};
 use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
-use rustc::mir::repr as mir;
+use rustc::mir;
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, FnvHashMap, FnvHashSet};
 
@@ -43,7 +43,7 @@ use std::ptr;
 
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
-use syntax::attr::IntType;
+use rustc::ty::layout;
 
 pub mod gdb;
 mod utils;
@@ -69,7 +69,7 @@ pub struct CrateDebugContext<'tcx> {
     builder: DIBuilderRef,
     current_debug_location: Cell<InternalDebugLocation>,
     created_files: RefCell<FnvHashMap<String, DIFile>>,
-    created_enum_disr_types: RefCell<FnvHashMap<(DefId, IntType), DIType>>,
+    created_enum_disr_types: RefCell<FnvHashMap<(DefId, layout::Integer), DIType>>,
 
     type_map: RefCell<TypeMap<'tcx>>,
     namespace_map: RefCell<DefIdMap<DIScope>>,
@@ -482,8 +482,6 @@ pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     type_metadata,
                     cx.sess().opts.optimize != config::OptLevel::No,
                     0,
-                    address_operations.as_ptr(),
-                    address_operations.len() as c_uint,
                     argument_index)
             };
             source_loc::set_debug_location(cx, None,

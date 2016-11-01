@@ -44,7 +44,6 @@ use core::cmp;
 /// `shrink_to_fit`, and `from_box` will actually set RawVec's private capacity
 /// field. This allows zero-sized types to not be special-cased by consumers of
 /// this type.
-#[cfg_attr(stage0, unsafe_no_drop_flag)]
 pub struct RawVec<T> {
     ptr: Unique<T>,
     cap: usize,
@@ -58,11 +57,7 @@ impl<T> RawVec<T> {
     pub fn new() -> Self {
         unsafe {
             // !0 is usize::MAX. This branch should be stripped at compile time.
-            let cap = if mem::size_of::<T>() == 0 {
-                !0
-            } else {
-                0
-            };
+            let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
             // heap::EMPTY doubles as "unallocated" and "zero-sized allocation"
             RawVec {
@@ -210,11 +205,7 @@ impl<T> RawVec<T> {
 
             let (new_cap, ptr) = if self.cap == 0 {
                 // skip to 4 because tiny Vec's are dumb; but not if that would cause overflow
-                let new_cap = if elem_size > (!0) / 8 {
-                    1
-                } else {
-                    4
-                };
+                let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
                 let ptr = heap::allocate(new_cap * elem_size, align);
                 (new_cap, ptr)
             } else {
@@ -348,7 +339,7 @@ impl<T> RawVec<T> {
         let elem_size = mem::size_of::<T>();
         // Nothing we can really do about these checks :(
         let required_cap = used_cap.checked_add(needed_extra_cap)
-                                   .expect("capacity overflow");
+            .expect("capacity overflow");
         // Cannot overflow, because `cap <= isize::MAX`, and type of `cap` is `usize`.
         let double_cap = self.cap * 2;
         // `double_cap` guarantees exponential growth.

@@ -97,9 +97,7 @@ pub trait Write {
     /// This function will return an instance of `Error` on error.
     #[stable(feature = "fmt_write_char", since = "1.1.0")]
     fn write_char(&mut self, c: char) -> Result {
-        self.write_str(unsafe {
-            str::from_utf8_unchecked(c.encode_utf8().as_slice())
-        })
+        self.write_str(c.encode_utf8(&mut [0; 4]))
     }
 
     /// Glue for usage of the `write!` macro with implementors of this trait.
@@ -272,10 +270,14 @@ impl<'a> Arguments<'a> {
 /// safely be done so, so no constructors are given and the fields are private
 /// to prevent modification.
 ///
-/// The `format_args!` macro will safely create an instance of this structure
+/// The [`format_args!`] macro will safely create an instance of this structure
 /// and pass it to a function or closure, passed as the first argument. The
-/// macro validates the format string at compile-time so usage of the `write`
-/// and `format` functions can be safely performed.
+/// macro validates the format string at compile-time so usage of the [`write`]
+/// and [`format`] functions can be safely performed.
+///
+/// [`format_args!`]: ../../std/macro.format_args.html
+/// [`format`]: ../../std/fmt/fn.format.html
+/// [`write`]: ../../std/fmt/fn.write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
@@ -792,7 +794,7 @@ pub trait UpperExp {
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
-/// Please note that using [`write!`][write_macro] might be preferrable. Example:
+/// Please note that using [`write!`] might be preferrable. Example:
 ///
 /// ```
 /// use std::fmt::Write;
@@ -803,7 +805,7 @@ pub trait UpperExp {
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
-/// [write_macro]: ../../std/macro.write!.html
+/// [`write!`]: ../../std/macro.write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut Write, args: Arguments) -> Result {
     let mut formatter = Formatter {
@@ -920,9 +922,7 @@ impl<'a> Formatter<'a> {
         // Writes the sign if it exists, and then the prefix if it was requested
         let write_prefix = |f: &mut Formatter| {
             if let Some(c) = sign {
-                f.buf.write_str(unsafe {
-                    str::from_utf8_unchecked(c.encode_utf8().as_slice())
-                })?;
+                f.buf.write_str(c.encode_utf8(&mut [0; 4]))?;
             }
             if prefixed { f.buf.write_str(prefix) }
             else { Ok(()) }
@@ -1028,10 +1028,8 @@ impl<'a> Formatter<'a> {
             rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
         };
 
-        let fill = self.fill.encode_utf8();
-        let fill = unsafe {
-            str::from_utf8_unchecked(fill.as_slice())
-        };
+        let mut fill = [0; 4];
+        let fill = self.fill.encode_utf8(&mut fill);
 
         for _ in 0..pre_pad {
             self.buf.write_str(fill)?;
@@ -1358,14 +1356,14 @@ macro_rules! fmt_refs {
 
 fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[unstable(feature = "never_type_impls", issue = "35121")]
 impl Debug for ! {
     fn fmt(&self, _: &mut Formatter) -> Result {
         *self
     }
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[unstable(feature = "never_type_impls", issue = "35121")]
 impl Display for ! {
     fn fmt(&self, _: &mut Formatter) -> Result {
         *self
@@ -1431,9 +1429,7 @@ impl Display for char {
         if f.width.is_none() && f.precision.is_none() {
             f.write_char(*self)
         } else {
-            f.pad(unsafe {
-                str::from_utf8_unchecked(self.encode_utf8().as_slice())
-            })
+            f.pad(self.encode_utf8(&mut [0; 4]))
         }
     }
 }
@@ -1570,11 +1566,11 @@ floating! { f64 }
 // Implementation of Display/Debug for various core types
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Debug for *const T {
+impl<T: ?Sized> Debug for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Debug for *mut T {
+impl<T: ?Sized> Debug for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 

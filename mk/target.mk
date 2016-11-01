@@ -42,23 +42,6 @@ $(foreach host,$(CFG_HOST), \
    $(foreach crate,$(CRATES), \
     $(eval $(call RUST_CRATE_FULLDEPS,$(stage),$(target),$(host),$(crate)))))))
 
-# $(1) stage
-# $(2) target
-# $(3) host
-define DEFINE_BOOTSTRAP_KEY
-BOOTSTRAP_KEY$(1)_T_$(2)_H_$(3) := $$(CFG_BOOTSTRAP_KEY)
-ifeq ($(1),0)
-ifeq ($(3),$$(CFG_BUILD))
-BOOTSTRAP_KEY$(1)_T_$(2)_H_$(3) := $$(CFG_BOOTSTRAP_KEY_STAGE0)
-endif
-endif
-endef
-
-$(foreach host,$(CFG_TARGET), \
- $(foreach target,$(CFG_TARGET), \
-  $(foreach stage,$(STAGES), \
-   $(eval $(call DEFINE_BOOTSTRAP_KEY,$(stage),$(target),$(host))))))
-
 # RUST_TARGET_STAGE_N template: This defines how target artifacts are built
 # for all stage/target architecture combinations. This is one giant rule which
 # works as follows:
@@ -83,8 +66,6 @@ $(foreach host,$(CFG_TARGET), \
 define RUST_TARGET_STAGE_N
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): CFG_COMPILER_HOST_TRIPLE = $(2)
-$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
-	export RUSTC_BOOTSTRAP_KEY := $$(BOOTSTRAP_KEY$(1)_T_$(2)_H_$(3))
 $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 		$$(CRATEFILE_$(4)) \
 		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4)) \
@@ -132,8 +113,6 @@ endef
 # $(4) - name of the tool being built
 define TARGET_TOOL
 
-$$(TBIN$(1)_T_$(2)_H_$(3))/$(4)$$(X_$(2)): \
-	export RUSTC_BOOTSTRAP_KEY := $$(BOOTSTRAP_KEY$(1)_T_$(2)_H_$(3))
 $$(TBIN$(1)_T_$(2)_H_$(3))/$(4)$$(X_$(2)): \
 		$$(TOOL_SOURCE_$(4)) \
 		$$(TOOL_INPUTS_$(4)) \

@@ -25,12 +25,12 @@ macro_rules! rtassert {
     })
 }
 
-pub mod args;
 pub mod at_exit_imp;
 #[cfg(any(not(cargobuild), feature = "backtrace"))]
 pub mod backtrace;
 pub mod condvar;
 pub mod io;
+pub mod memchr;
 pub mod mutex;
 pub mod net;
 pub mod poison;
@@ -91,7 +91,7 @@ pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) -> Result<(), ()> {
 pub fn cleanup() {
     static CLEANUP: Once = Once::new();
     CLEANUP.call_once(|| unsafe {
-        args::cleanup();
+        sys::args::cleanup();
         sys::stack_overflow::cleanup();
         at_exit_imp::cleanup();
     });

@@ -17,6 +17,7 @@ use libc;
 #[cfg(target_os = "bitrig")]    pub use os::bitrig as platform;
 #[cfg(target_os = "dragonfly")] pub use os::dragonfly as platform;
 #[cfg(target_os = "freebsd")]   pub use os::freebsd as platform;
+#[cfg(target_os = "haiku")]     pub use os::haiku as platform;
 #[cfg(target_os = "ios")]       pub use os::ios as platform;
 #[cfg(target_os = "linux")]     pub use os::linux as platform;
 #[cfg(target_os = "macos")]     pub use os::macos as platform;
@@ -25,21 +26,26 @@ use libc;
 #[cfg(target_os = "openbsd")]   pub use os::openbsd as platform;
 #[cfg(target_os = "solaris")]   pub use os::solaris as platform;
 #[cfg(target_os = "emscripten")] pub use os::emscripten as platform;
+#[cfg(target_os = "fuchsia")]   pub use os::fuchsia as platform;
 
 #[macro_use]
 pub mod weak;
 
+pub mod args;
 pub mod android;
 #[cfg(any(not(cargobuild), feature = "backtrace"))]
 pub mod backtrace;
 pub mod condvar;
+pub mod env;
 pub mod ext;
 pub mod fd;
 pub mod fs;
+pub mod memchr;
 pub mod mutex;
 pub mod net;
 pub mod os;
 pub mod os_str;
+pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;
@@ -78,16 +84,16 @@ pub fn init() {
         unsafe {
             libc::write(libc::STDERR_FILENO,
                         msg.as_ptr() as *const libc::c_void,
-                        msg.len() as libc::size_t);
+                        msg.len());
             intrinsics::abort();
         }
     }
 
-    #[cfg(not(any(target_os = "nacl", target_os = "emscripten")))]
+    #[cfg(not(any(target_os = "nacl", target_os = "emscripten", target_os="fuchsia")))]
     unsafe fn reset_sigpipe() {
         assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != !0);
     }
-    #[cfg(any(target_os = "nacl", target_os = "emscripten"))]
+    #[cfg(any(target_os = "nacl", target_os = "emscripten", target_os="fuchsia"))]
     unsafe fn reset_sigpipe() {}
 }
 

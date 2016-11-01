@@ -12,7 +12,7 @@ use llvm::{self, ValueRef};
 use rustc_const_eval::{ErrKind, ConstEvalErr, note_const_eval_err};
 use rustc::middle::lang_items;
 use rustc::ty;
-use rustc::mir::repr as mir;
+use rustc::mir;
 use abi::{Abi, FnType, ArgType};
 use adt;
 use base;
@@ -35,15 +35,16 @@ use syntax::parse::token;
 use super::{MirContext, LocalRef};
 use super::analyze::CleanupKind;
 use super::constant::Const;
-use super::lvalue::{LvalueRef, load_fat_ptr};
+use super::lvalue::{LvalueRef};
 use super::operand::OperandRef;
-use super::operand::OperandValue::*;
+use super::operand::OperandValue::{Pair, Ref, Immediate};
+
+use std::cell::Ref as CellRef;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
         let mut bcx = self.bcx(bb);
-        let mir = self.mir.clone();
-        let data = &mir[bb];
+        let data = &CellRef::clone(&self.mir)[bb];
 
         debug!("trans_block({:?}={:?})", bb, data);
 
@@ -139,9 +140,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::TerminatorKind::Switch { ref discr, ref adt_def, ref targets } => {
                 let discr_lvalue = self.trans_lvalue(&bcx, discr);
                 let ty = discr_lvalue.ty.to_ty(bcx.tcx());
-                let repr = adt::represent_type(bcx.ccx(), ty);
                 let discr = bcx.with_block(|bcx|
-                    adt::trans_get_discr(bcx, &repr, discr_lvalue.llval, None, true)
+                    adt::trans_get_discr(bcx, ty, discr_lvalue.llval, None, true)
                 );
 
                 let mut bb_hist = FnvHashMap();
@@ -167,7 +167,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     if default_bb != Some(target) {
                         let llbb = llblock(self, target);
                         let llval = bcx.with_block(|bcx| adt::trans_case(
-                                bcx, &repr, Disr::from(adt_variant.disr_val)));
+                                bcx, ty, Disr::from(adt_variant.disr_val)));
                         build::AddCase(switch, llval, llbb)
                     }
                 }
@@ -193,8 +193,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 }
 
                 let llval = if let Some(cast_ty) = ret.cast {
-                    let index = mir.local_index(&mir::Lvalue::ReturnPointer).unwrap();
-                    let op = match self.locals[index] {
+                    let op = match self.locals[mir::RETURN_POINTER] {
                         LocalRef::Operand(Some(op)) => op,
                         LocalRef::Operand(None) => bug!("use of return before def"),
                         LocalRef::Lvalue(tr_lvalue) => {
@@ -219,7 +218,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                     load
                 } else {
-                    let op = self.trans_consume(&bcx, &mir::Lvalue::ReturnPointer);
+                    let op = self.trans_consume(&bcx, &mir::Lvalue::Local(mir::RETURN_POINTER));
                     op.pack_if_pair(&bcx).immediate()
                 };
                 bcx.ret(llval);
@@ -230,7 +229,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
-                let ty = location.ty(&mir, bcx.tcx()).to_ty(bcx.tcx());
+                let ty = location.ty(&self.mir, bcx.tcx()).to_ty(bcx.tcx());
                 let ty = bcx.monomorphize(&ty);
 
                 // Double check for necessity to drop
@@ -420,7 +419,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     _ => bug!("{} is not callable", callee.ty)
                 };
 
-                let sig = bcx.tcx().erase_late_bound_regions(sig);
+                let sig = bcx.tcx().erase_late_bound_regions_and_normalize(sig);
 
                 // Handle intrinsics old trans wants Expr's for, ourselves.
                 let intrinsic = match (&callee.ty.sty, &callee.data) {
@@ -701,12 +700,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         // Handle both by-ref and immediate tuples.
         match tuple.val {
             Ref(llval) => {
-                let base_repr = adt::represent_type(bcx.ccx(), tuple.ty);
                 let base = adt::MaybeSizedValue::sized(llval);
                 for (n, &ty) in arg_types.iter().enumerate() {
-                    let ptr = adt::trans_field_ptr_builder(bcx, &base_repr, base, Disr(0), n);
+                    let ptr = adt::trans_field_ptr_builder(bcx, tuple.ty, base, Disr(0), n);
                     let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
-                        let (lldata, llextra) = load_fat_ptr(bcx, ptr);
+                        let (lldata, llextra) = base::load_fat_ptr_builder(bcx, ptr, ty);
                         Pair(lldata, llextra)
                     } else {
                         // trans_argument will load this if it needs to
@@ -846,7 +844,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         if fn_ret_ty.is_ignore() {
             return ReturnDest::Nothing;
         }
-        let dest = if let Some(index) = self.mir.local_index(dest) {
+        let dest = if let mir::Lvalue::Local(index) = *dest {
             let ret_ty = self.monomorphized_lvalue_ty(dest);
             match self.locals[index] {
                 LocalRef::Lvalue(dest) => dest,

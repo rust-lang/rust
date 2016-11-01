@@ -10,7 +10,7 @@
 
 use build::{BlockAnd, BlockAndExtension, Builder};
 use hair::*;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::hir;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {

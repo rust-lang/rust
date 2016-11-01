@@ -1,0 +1,22 @@
+error: `x` does not live long enough
+  --> $DIR/issue-29106.rs:27:5
+   |
+26 |         y = Arc::new(Foo(&x));
+   |                           - borrow occurs here
+27 |     } //~ ERROR `x` does not live long enough
+   |     ^ `x` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: `x` does not live long enough
+  --> $DIR/issue-29106.rs:33:5
+   |
+32 |         y = Rc::new(Foo(&x));
+   |                          - borrow occurs here
+33 |     } //~ ERROR `x` does not live long enough
+   |     ^ `x` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to 2 previous errors
+
