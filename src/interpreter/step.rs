@@ -197,7 +197,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
     ) {
         self.super_lvalue(lvalue, context, location);
         if let mir::Lvalue::Static(def_id) = *lvalue {
-            let substs = subst::Substs::empty(self.ecx.tcx);
+            let substs = self.ecx.tcx.intern_substs(&[]);
             let span = self.span;
             if let Some(node_item) = self.ecx.tcx.map.get_if_local(def_id) {
                 if let hir::map::Node::NodeItem(&hir::Item { ref node, .. }) = node_item {

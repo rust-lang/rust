@@ -895,7 +895,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Static(def_id) => {
-                let substs = subst::Substs::empty(self.tcx);
+                let substs = self.tcx.intern_substs(&[]);
                 let cid = GlobalId {
                     def_id: def_id,
                     substs: substs,
@@ -1655,7 +1655,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
         def_id,
         mir.span,
         CachedMir::Ref(mir),
-        subst::Substs::empty(tcx),
+        tcx.intern_substs(&[]),
         Lvalue::from_ptr(Pointer::zst_ptr()),
         StackPopCleanup::None
     ).expect("could not allocate first stack frame");
