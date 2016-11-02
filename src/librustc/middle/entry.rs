@@ -18,7 +18,7 @@ use syntax::attr;
 use syntax::entry::EntryPointType;
 use syntax_pos::Span;
 use hir::{Item, ItemFn};
-use hir::intravisit::Visitor;
+use hir::itemlikevisit::ItemLikeVisitor;
 
 struct EntryContext<'a, 'tcx: 'a> {
     session: &'a Session,
@@ -39,7 +39,7 @@ struct EntryContext<'a, 'tcx: 'a> {
     non_main_fns: Vec<(NodeId, Span)> ,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for EntryContext<'a, 'tcx> {
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx Item) {
         let def_id = self.map.local_def_id(item.id);
         let def_key = self.map.def_key(def_id);
@@ -74,7 +74,7 @@ pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
         non_main_fns: Vec::new(),
     };
 
-    ast_map.krate().visit_all_items(&mut ctxt);
+    ast_map.krate().visit_all_item_likes(&mut ctxt);
 
     configure_main(&mut ctxt);
 }

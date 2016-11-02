@@ -1235,7 +1235,7 @@ pub fn resolve_crate(sess: &Session, map: &ast_map::Map) -> RegionMaps {
             },
             terminating_scopes: NodeSet()
         };
-        krate.visit_all_items(&mut visitor);
+        krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
     }
     return maps;
 }

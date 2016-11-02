@@ -110,7 +110,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         }
     };
 
-    tcx.visit_all_items_in_krate(DepNode::BorrowCheck, &mut bccx);
+    tcx.visit_all_item_likes_in_krate(DepNode::BorrowCheck, &mut bccx.as_deep_visitor());
 
     if tcx.sess.borrowck_stats() {
         println!("--- borrowck stats ---");

@@ -16,6 +16,7 @@ use dep_graph::DepNode;
 use hir::map as ast_map;
 use hir::{self, pat_util, PatKind};
 use hir::intravisit::{self, Visitor};
+use hir::itemlikevisit::ItemLikeVisitor;
 
 use middle::privacy;
 use ty::{self, TyCtxt};
@@ -333,7 +334,7 @@ struct LifeSeeder {
     worklist: Vec<ast::NodeId>
 }
 
-impl<'v> Visitor<'v> for LifeSeeder {
+impl<'v> ItemLikeVisitor<'v> for LifeSeeder {
     fn visit_item(&mut self, item: &hir::Item) {
         let allow_dead_code = has_allow_dead_code_or_lang_attr(&item.attrs);
         if allow_dead_code {
@@ -388,7 +389,7 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut life_seeder = LifeSeeder {
         worklist: worklist
     };
-    krate.visit_all_items(&mut life_seeder);
+    krate.visit_all_item_likes(&mut life_seeder);
 
     return life_seeder.worklist;
 }

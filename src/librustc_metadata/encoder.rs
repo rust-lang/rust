@@ -38,6 +38,7 @@ use syntax;
 use syntax_pos;
 
 use rustc::hir::{self, PatKind};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit::Visitor;
 use rustc::hir::intravisit;
 
@@ -1074,7 +1075,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                      EncodeContext::encode_info_for_mod,
                      FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &hir::Public)));
         let mut visitor = EncodeVisitor { index: index };
-        krate.visit_all_items(&mut visitor);
+        krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
         for macro_def in &krate.exported_macros {
             visitor.visit_macro_def(macro_def);
         }
@@ -1164,7 +1165,7 @@ struct ImplVisitor<'a, 'tcx: 'a> {
     impls: FxHashMap<DefId, Vec<DefIndex>>,
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemImpl(..) = item.node {
             let impl_id = self.tcx.map.local_def_id(item.id);
@@ -1185,7 +1186,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             tcx: self.tcx,
             impls: FxHashMap(),
         };
-        self.tcx.map.krate().visit_all_items(&mut visitor);
+        self.tcx.map.krate().visit_all_item_likes(&mut visitor);
 
         let all_impls: Vec<_> = visitor.impls
             .into_iter()

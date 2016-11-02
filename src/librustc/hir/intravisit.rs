@@ -8,7 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! HIR walker. Each overridden visit method has full control over what
+//! HIR walker for walking the contents of nodes.
+//!
+//! **For an overview of the visitor strategy, see the docs on the
+//! `super::itemlikevisit::ItemLikeVisitor` trait.**
+//!
+//! If you have decided to use this visitor, here are some general
+//! notes on how to do it:
+//!
+//! Each overridden visit method has full control over what
 //! happens with its node, it can do its own traversal of the node's children,
 //! call `intravisit::walk_*` to apply the default traversal algorithm, or prevent
 //! deeper traversal by doing nothing.
@@ -30,6 +38,7 @@ use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
 use syntax::codemap::Spanned;
 use syntax_pos::Span;
 use hir::*;
+use super::itemlikevisit::DeepVisitor;
 
 use std::cmp;
 use std::u32;
@@ -78,10 +87,9 @@ pub trait Visitor<'v> : Sized {
 
     /// Invoked when a nested item is encountered. By default, does
     /// nothing. If you want a deep walk, you need to override to
-    /// fetch the item contents. But most of the time, it is easier
-    /// (and better) to invoke `Crate::visit_all_items`, which visits
-    /// all items in the crate in some order (but doesn't respect
-    /// nesting).
+    /// fetch the item contents. But most of the time, it is easier to
+    /// use either the "shallow" or "deep" visit patterns described on
+    /// `itemlikevisit::ItemLikeVisitor`.
     #[allow(unused_variables)]
     fn visit_nested_item(&mut self, id: ItemId) {
     }
@@ -90,6 +98,16 @@ pub trait Visitor<'v> : Sized {
     /// `visit_nested_item` for details.
     fn visit_item(&mut self, i: &'v Item) {
         walk_item(self, i)
+    }
+
+    /// When invoking `visit_all_item_likes()`, you need to supply an
+    /// item-like visitor.  This method converts a "intra-visit"
+    /// visitor into an item-like visitor that walks the entire tree.
+    /// If you use this, you probably don't want to process the
+    /// contents of nested item-like things, since the outer loop will
+    /// visit them as well.
+    fn as_deep_visitor<'s>(&'s mut self) -> DeepVisitor<'s, Self> {
+        DeepVisitor::new(self)
     }
 
     ///////////////////////////////////////////////////////////////////////////

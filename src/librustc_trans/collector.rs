@@ -189,7 +189,7 @@
 //! regardless of whether it is actually needed or not.
 
 use rustc::hir;
-use rustc::hir::intravisit as hir_visit;
+use rustc::hir::intravisit::{self, Visitor};
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
@@ -306,10 +306,9 @@ fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             scx: scx,
             mode: mode,
             output: &mut roots,
-            enclosing_item: None,
         };
 
-        scx.tcx().map.krate().visit_all_items(&mut visitor);
+        scx.tcx().map.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
     }
 
     roots
@@ -1030,14 +1029,10 @@ struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     scx: &'b SharedCrateContext<'a, 'tcx>,
     mode: TransItemCollectionMode,
     output: &'b mut Vec<TransItem<'tcx>>,
-    enclosing_item: Option<&'tcx hir::Item>,
 }
 
-impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
+impl<'b, 'a, 'v> Visitor<'v> for RootCollector<'b, 'a, 'v> {
     fn visit_item(&mut self, item: &'v hir::Item) {
-        let old_enclosing_item = self.enclosing_item;
-        self.enclosing_item = Some(item);
-
         match item.node {
             hir::ItemExternCrate(..) |
             hir::ItemUse(..)         |
@@ -1095,8 +1090,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
             }
         }
 
-        hir_visit::walk_item(self, item);
-        self.enclosing_item = old_enclosing_item;
+        intravisit::walk_item(self, item)
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
@@ -1132,7 +1126,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
             _ => { /* Nothing to do here */ }
         }
 
-        hir_visit::walk_impl_item(self, ii)
+        intravisit::walk_impl_item(self, ii)
     }
 }
 
