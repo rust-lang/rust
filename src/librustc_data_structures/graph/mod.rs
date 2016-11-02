@@ -231,14 +231,14 @@ impl<N: Debug, E: Debug> Graph<N, E> {
 
     // # Iterating over nodes, edges
 
-    pub fn all_nodes_enumerated(&self) -> Nodes<N> {
-        Nodes {
+    pub fn enumerated_nodes(&self) -> EnumeratedNodes<N> {
+        EnumeratedNodes {
             iter: self.nodes.iter().enumerate()
         }
     }
 
-    pub fn all_edges_enumerated(&self) -> Edges<E> {
-        Edges {
+    pub fn enumerated_edges(&self) -> EnumeratedEdges<E> {
+        EnumeratedEdges {
             iter: self.edges.iter().enumerate()
         }
     }
@@ -247,14 +247,14 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         where F: FnMut(NodeIndex, &'a Node<N>) -> bool
     {
         //! Iterates over all edges defined in the graph.
-        self.all_nodes_enumerated().all(|(node_idx, node)| f(node_idx, node))
+        self.enumerated_nodes().all(|(node_idx, node)| f(node_idx, node))
     }
 
     pub fn each_edge<'a, F>(&'a self, mut f: F) -> bool
         where F: FnMut(EdgeIndex, &'a Edge<E>) -> bool
     {
         //! Iterates over all edges defined in the graph
-        self.all_edges_enumerated().all(|(edge_idx, edge)| f(edge_idx, edge))
+        self.enumerated_edges().all(|(edge_idx, edge)| f(edge_idx, edge))
     }
 
     pub fn outgoing_edges(&self, source: NodeIndex) -> AdjacentEdges<N, E> {
@@ -295,7 +295,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         while changed {
             changed = false;
             iteration += 1;
-            for (edge_index, edge) in self.all_edges_enumerated() {
+            for (edge_index, edge) in self.enumerated_edges() {
                 changed |= op(iteration, edge_index, edge);
             }
         }
@@ -307,17 +307,46 @@ impl<N: Debug, E: Debug> Graph<N, E> {
                               -> DepthFirstTraversal<'a, N, E> {
         DepthFirstTraversal::with_start_node(self, start, direction)
     }
+
+    /// Whether or not a node can be reached from itself.
+    pub fn is_node_cyclic(&self, starting_node_index: NodeIndex) -> bool {
+        // This is similar to depth traversal below, but we
+        // can't use that, because depth traversal doesn't show
+        // the starting node a second time.
+        let mut visited = BitVector::new(self.len_nodes());
+        let mut stack = vec![starting_node_index];
+
+        while let Some(current_node_index) = stack.pop() {
+            visited.insert(current_node_index.0);
+
+            // Directionality doesn't change the answer,
+            // so just use outgoing edges.
+            for (_, edge) in self.outgoing_edges(current_node_index) {
+                let target_node_index = edge.target();
+
+                if target_node_index == starting_node_index {
+                    return true;
+                }
+
+                if !visited.contains(target_node_index.0) {
+                    stack.push(target_node_index);
+                }
+            }
+        }
+
+        false
+    }
 }
 
 // # Iterators
 
-pub struct Nodes<'g, N>
+pub struct EnumeratedNodes<'g, N>
     where N: 'g,
 {
     iter: ::std::iter::Enumerate<::std::slice::Iter<'g, Node<N>>>
 }
 
-impl<'g, N: Debug> Iterator for Nodes<'g, N> {
+impl<'g, N: Debug> Iterator for EnumeratedNodes<'g, N> {
     type Item = (NodeIndex, &'g Node<N>);
 
     fn next(&mut self) -> Option<(NodeIndex, &'g Node<N>)> {
@@ -325,13 +354,13 @@ impl<'g, N: Debug> Iterator for Nodes<'g, N> {
     }
 }
 
-pub struct Edges<'g, E>
+pub struct EnumeratedEdges<'g, E>
     where E: 'g,
 {
     iter: ::std::iter::Enumerate<::std::slice::Iter<'g, Edge<E>>>
 }
 
-impl<'g, E: Debug> Iterator for Edges<'g, E> {
+impl<'g, E: Debug> Iterator for EnumeratedEdges<'g, E> {
     type Item = (EdgeIndex, &'g Edge<E>);
 
     fn next(&mut self) -> Option<(EdgeIndex, &'g Edge<E>)> {
