@@ -821,7 +821,7 @@ impl<T: Default, E> Result<T, E> {
     /// [`FromStr`]: ../../std/str/trait.FromStr.html
     /// ```
     #[inline]
-    #[unstable(feature = "result_unwrap_or_default", issue = "0")]
+    #[unstable(feature = "result_unwrap_or_default", issue = "37516")]
     pub fn unwrap_or_default(self) -> T {
         match self {
             Ok(x) => x,
