@@ -23,7 +23,7 @@ use io::{self, SeekFrom, Error, ErrorKind};
 ///
 /// The standard library implements some I/O traits on various types which
 /// are commonly used as a buffer, like `Cursor<`[`Vec`]`<u8>>` and
-/// `Cursor<`[`&[u8]`]`>`.
+/// `Cursor<`[`&[u8]`][bytes]`>`.
 ///
 /// # Examples
 ///
@@ -35,7 +35,7 @@ use io::{self, SeekFrom, Error, ErrorKind};
 /// [`Read`]: ../../std/io/trait.Read.html
 /// [`Write`]: ../../std/io/trait.Write.html
 /// [`Vec`]: ../../std/vec/struct.Vec.html
-/// [`&[u8]`]: ../../std/primitive.slice.html
+/// [bytes]: ../../std/primitive.slice.html
 /// [`File`]: ../fs/struct.File.html
 ///
 /// ```no_run

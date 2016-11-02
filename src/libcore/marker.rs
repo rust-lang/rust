@@ -241,8 +241,8 @@ pub trait Unsize<T: ?Sized> {
 /// compile-time error. Specifically, with structs you'll get [E0204] and with enums you'll get
 /// [E0205].
 ///
-/// [E0204]: https://doc.rust-lang.org/error-index.html#E0204
-/// [E0205]: https://doc.rust-lang.org/error-index.html#E0205
+/// [E0204]: ../../error-index.html#E0204
+/// [E0205]: ../../error-index.html#E0205
 ///
 /// ## When *should* my type be `Copy`?
 ///
