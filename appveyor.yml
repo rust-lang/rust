@@ -69,7 +69,7 @@ environment:
     MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
     MINGW_DIR: mingw64
 
-clone_depth: 1
+clone_depth: 7
 build: false
 
 install:
