@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::Item;
+use super::{Item, ImplItem};
 use super::intravisit::Visitor;
 
 /// The "item-like visitor" visitor defines only the top-level methods

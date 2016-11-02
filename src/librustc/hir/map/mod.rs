@@ -378,6 +378,15 @@ impl<'ast> Map<'ast> {
         self.forest.krate()
     }
 
+    pub fn impl_item(&self, id: ImplItemId) -> &'ast ImplItem {
+        // TODO right now this triggers a read of the whole impl
+        self.read(id.id);
+
+        // NB: intentionally bypass `self.forest.krate()` so that we
+        // do not trigger a read of the whole krate here
+        self.forest.krate.impl_item(id)
+    }
+
     /// Get the attributes on the krate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.

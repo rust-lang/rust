@@ -424,11 +424,17 @@ pub struct Crate {
     // detected, which in turn can make compile-fail tests yield
     // slightly different results.
     pub items: BTreeMap<NodeId, Item>,
+
+    pub impl_items: BTreeMap<ImplItemId, ImplItem>,
 }
 
 impl Crate {
     pub fn item(&self, id: NodeId) -> &Item {
         &self.items[&id]
+    }
+
+    pub fn impl_item(&self, id: ImplItemId) -> &ImplItem {
+        &self.impl_items[&id]
     }
 
     /// Visits all items in the crate in some determinstic (but
@@ -444,6 +450,10 @@ impl Crate {
     {
         for (_, item) in &self.items {
             visitor.visit_item(item);
+        }
+
+        for (_, impl_item) in &self.impl_items {
+            visitor.visit_impl_item(impl_item);
         }
     }
 }
@@ -1042,6 +1052,14 @@ pub enum TraitItem_ {
     TypeTraitItem(TyParamBounds, Option<P<Ty>>),
 }
 
+// The bodies for items are stored "out of line", in a separate
+// hashmap in the `Crate`. Here we just record the node-id of the item
+// so it can fetched later.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct ImplItemId {
+    pub id: NodeId,
+}
+
 /// Represents anything within an `impl` block
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ImplItem {
@@ -1528,7 +1546,7 @@ pub enum Item_ {
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
-             HirVec<ImplItem>),
+             HirVec<ImplItemId>),
 }
 
 impl Item_ {
