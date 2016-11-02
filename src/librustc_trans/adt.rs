@@ -48,7 +48,6 @@ use std;
 use llvm::{ValueRef, True, IntEQ, IntNE};
 use rustc::ty::layout;
 use rustc::ty::{self, Ty, AdtKind};
-use syntax::attr;
 use build::*;
 use common::*;
 use debuginfo::DebugLoc;
@@ -65,8 +64,6 @@ pub enum BranchKind {
     Switch,
     Single
 }
-
-type Hint = attr::ReprAttr;
 
 #[derive(Copy, Clone)]
 pub struct MaybeSizedValue {
@@ -118,9 +115,6 @@ fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
         _ => bug!("{} is not a type that can have fields.", t)
     }
 }
-
-/// This represents the (GEP) indices to follow to get to the discriminant field
-pub type DiscrField = Vec<usize>;
 
 /// LLVM-level types are a little complicated.
 ///

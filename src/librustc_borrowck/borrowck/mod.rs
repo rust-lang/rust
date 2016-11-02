@@ -300,8 +300,6 @@ struct BorrowStats {
     guaranteed_paths: usize
 }
 
-pub type BckResult<'tcx, T> = Result<T, BckError<'tcx>>;
-
 ///////////////////////////////////////////////////////////////////////////
 // Loans and loan paths
 
@@ -1063,6 +1061,19 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         }
                         db.note("values in a scope are dropped in the opposite order \
                                 they are created");
+                    }
+                    (Some(s1), Some(s2)) if !is_temporary && !is_closure => {
+                        db.span = MultiSpan::from_span(s2);
+                        db.span_label(error_span, &format!("borrow occurs here"));
+                        let msg = match opt_loan_path(&err.cmt) {
+                            None => "borrowed value".to_string(),
+                            Some(lp) => {
+                                format!("`{}`", self.loan_path_to_string(&lp))
+                            }
+                        };
+                        db.span_label(s2,
+                                      &format!("{} dropped here while still borrowed", msg));
+                        db.span_label(s1, &format!("{} needs to live until here", value_kind));
                     }
                     _ => {
                         match sub_span {
