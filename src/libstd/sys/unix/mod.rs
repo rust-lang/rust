@@ -38,6 +38,7 @@ pub mod backtrace;
 pub mod condvar;
 pub mod env;
 pub mod ext;
+pub mod fast_thread_local;
 pub mod fd;
 pub mod fs;
 pub mod memchr;
@@ -161,4 +162,15 @@ pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
             other => return other,
         }
     }
+}
+
+// On Unix-like platforms, libc::abort will unregister signal handlers
+// including the SIGABRT handler, preventing the abort from being blocked, and
+// fclose streams, with the side effect of flushing them so libc bufferred
+// output will be printed.  Additionally the shell will generally print a more
+// understandable error message like "Abort trap" rather than "Illegal
+// instruction" that intrinsics::abort would cause, as intrinsics::abort is
+// implemented as an illegal instruction.
+pub unsafe fn abort_internal() -> ! {
+    ::libc::abort()
 }

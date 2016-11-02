@@ -8,22 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Platform-independent platform abstraction
+//!
+//! This is the platform-independent portion of the standard libraries
+//! platform abstraction layer, whereas `std::sys` is the
+//! platform-specific portion.
+//!
+//! The relationship between `std::sys_common`, `std::sys` and the
+//! rest of `std` is complex, with dependencies going in all
+//! directions: `std` depending on `sys_common`, `sys_common`
+//! depending on `sys`, and `sys` depending on `sys_common` and `std`.
+//! Ideally `sys_common` would be split into two and the dependencies
+//! between them all would form a dag, facilitating the extraction of
+//! `std::sys` from the standard library.
+
 #![allow(missing_docs)]
 
 use sync::Once;
 use sys;
-
-macro_rules! rtabort {
-    ($($t:tt)*) => (::sys_common::util::abort(format_args!($($t)*)))
-}
-
-macro_rules! rtassert {
-    ($e:expr) => ({
-        if !$e {
-            rtabort!(concat!("assertion failed: ", stringify!($e)))
-        }
-    })
-}
 
 pub mod at_exit_imp;
 #[cfg(any(not(cargobuild), feature = "backtrace"))]
@@ -85,6 +87,10 @@ pub trait FromInner<Inner> {
 /// to be run.
 pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) -> Result<(), ()> {
     if at_exit_imp::push(Box::new(f)) {Ok(())} else {Err(())}
+}
+
+macro_rules! rtabort {
+    ($($t:tt)*) => (::sys_common::util::abort(format_args!($($t)*)))
 }
 
 /// One-time runtime cleanup.

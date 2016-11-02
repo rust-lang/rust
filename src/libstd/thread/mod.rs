@@ -181,9 +181,18 @@ use time::Duration;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{LocalKey, LocalKeyState};
 
+// The types used by the thread_local! macro to access TLS keys. Note that there
+// are two types, the "OS" type and the "fast" type. The OS thread local key
+// type is accessed via platform-specific API calls and is slow, while the fast
+// key type is accessed via code generated via LLVM, where TLS keys are set up
+// by the elf linker. Note that the OS TLS type is always available: on macOS
+// the standard library is compiled with support for older platform versions
+// where fast TLS was not available; end-user code is compiled with fast TLS
+// where available, but both are needed.
+
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[cfg(target_thread_local)]
-#[doc(hidden)] pub use self::local::elf::Key as __ElfLocalKeyInner;
+#[doc(hidden)] pub use sys::fast_thread_local::Key as __FastLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[doc(hidden)] pub use self::local::os::Key as __OsLocalKeyInner;
 

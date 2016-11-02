@@ -57,22 +57,18 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     "src/libpanic_abort",
     "src/libpanic_unwind",
     "src/libunwind",
-    "src/libstd/sys/unix", // This is where platform-specific code for std should live
-    "src/libstd/sys/windows", // Ditto
+    "src/libstd/sys/", // Platform-specific code for std lives here.
+                       // This has the trailing slash so that sys_common is not excepted.
     "src/libstd/os", // Platform-specific public interfaces
     "src/rtstartup", // Not sure what to do about this. magic stuff for mingw
 
     // temporary exceptions
-    "src/libstd/lib.rs", // This could probably be done within the sys directory
     "src/libstd/rtdeps.rs", // Until rustbuild replaces make
     "src/libstd/path.rs",
-    "src/libstd/io/stdio.rs",
-    "src/libstd/num/f32.rs",
-    "src/libstd/num/f64.rs",
-    "src/libstd/thread/local.rs",
-    "src/libstd/sys/common/mod.rs",
-    "src/libstd/sys/common/net.rs",
-    "src/libstd/sys/common/util.rs",
+    "src/libstd/f32.rs",
+    "src/libstd/f64.rs",
+    "src/libstd/sys_common/mod.rs",
+    "src/libstd/sys_common/net.rs",
     "src/libterm", // Not sure how to make this crate portable, but test needs it
     "src/libtest", // Probably should defer to unstable std::sys APIs
 
