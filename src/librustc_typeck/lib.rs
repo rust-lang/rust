@@ -194,12 +194,12 @@ fn require_c_abi_if_variadic(tcx: TyCtxt,
 
 fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 origin: TypeOrigin,
-                                t1: Ty<'tcx>,
-                                t2: Ty<'tcx>)
+                                expected: Ty<'tcx>,
+                                actual: Ty<'tcx>)
                                 -> bool {
     ccx.tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
-        if let Err(err) = infcx.eq_types(false, origin.clone(), t1, t2) {
-            infcx.report_mismatched_types(origin, t1, t2, err);
+        if let Err(err) = infcx.eq_types(false, origin.clone(), expected, actual) {
+            infcx.report_mismatched_types(origin, expected, actual, err);
             false
         } else {
             true
@@ -248,8 +248,8 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             require_same_types(
                 ccx,
                 TypeOrigin::MainFunctionType(main_span),
-                main_t,
-                se_ty);
+                se_ty,
+                main_t);
         }
         _ => {
             span_bug!(main_span,
@@ -303,8 +303,8 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             require_same_types(
                 ccx,
                 TypeOrigin::StartFunctionType(start_span),
-                start_t,
-                se_ty);
+                se_ty,
+                start_t);
         }
         _ => {
             span_bug!(start_span,
