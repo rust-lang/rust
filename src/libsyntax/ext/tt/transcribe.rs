@@ -13,7 +13,7 @@ use ast::Ident;
 use errors::{Handler, DiagnosticBuilder};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{DocComment, MatchNt, SubstNt};
-use parse::token::{Token, Interpolated, NtIdent, NtTT};
+use parse::token::{Token, NtIdent};
 use parse::token;
 use parse::lexer::TokenAndSpan;
 use syntax_pos::{Span, DUMMY_SP};
@@ -269,9 +269,9 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             }
             // FIXME #2887: think about span stuff here
             TokenTree::Token(sp, SubstNt(ident)) => {
+                r.stack.last_mut().unwrap().idx += 1;
                 match lookup_cur_matched(r, ident) {
                     None => {
-                        r.stack.last_mut().unwrap().idx += 1;
                         r.cur_span = sp;
                         r.cur_tok = SubstNt(ident);
                         return ret_val;
@@ -283,24 +283,14 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                             // (a) idents can be in lots of places, so it'd be a pain
                             // (b) we actually can, since it's a token.
                             NtIdent(ref sn) => {
-                                r.stack.last_mut().unwrap().idx += 1;
                                 r.cur_span = sn.span;
                                 r.cur_tok = token::Ident(sn.node);
                                 return ret_val;
                             }
-                            NtTT(_) => {
-                                r.stack.push(TtFrame {
-                                    forest: TokenTree::Token(sp, Interpolated(nt.clone())),
-                                    idx: 0,
-                                    dotdotdoted: false,
-                                    sep: None,
-                                });
-                            }
                             _ => {
-                                r.stack.last_mut().unwrap().idx += 1;
                                 // FIXME(pcwalton): Bad copy.
                                 r.cur_span = sp;
-                                r.cur_tok = Interpolated(nt.clone());
+                                r.cur_tok = token::Interpolated(nt.clone());
                                 return ret_val;
                             }
                         }
