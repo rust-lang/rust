@@ -282,14 +282,11 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         self.incoming_edges(target).sources()
     }
 
-    // # Fixed-point iteration
-    //
-    // A common use for graphs in our compiler is to perform
-    // fixed-point iteration. In this case, each edge represents a
-    // constraint, and the nodes themselves are associated with
-    // variables or other bitsets. This method facilitates such a
-    // computation.
-
+    /// A common use for graphs in our compiler is to perform
+    /// fixed-point iteration. In this case, each edge represents a
+    /// constraint, and the nodes themselves are associated with
+    /// variables or other bitsets. This method facilitates such a
+    /// computation.
     pub fn iterate_until_fixed_point<'a, F>(&'a self, mut op: F)
         where F: FnMut(usize, EdgeIndex, &'a Edge<E>) -> bool
     {
