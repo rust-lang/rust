@@ -575,14 +575,14 @@ impl LimitStack {
 
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {
     for attr in attrs {
-        let attr = &attr.node;
-        if attr.is_sugared_doc {
+        if attr.node.is_sugared_doc {
             continue;
         }
-        if let ast::MetaItemKind::NameValue(ref key, ref value) = attr.value.node {
+        if let ast::MetaItemKind::NameValue(ref key, ref value) = attr.node.value.node {
             if *key == name {
                 if let LitKind::Str(ref s, _) = value.node {
                     if let Ok(value) = FromStr::from_str(s) {
+                        attr::mark_used(attr);
                         f(value)
                     } else {
                         sess.span_err(value.span, "not a number");
