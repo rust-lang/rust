@@ -12,6 +12,8 @@ use io::ErrorKind;
 use io::Read;
 use slice::from_raw_parts_mut;
 
+pub const DEFAULT_BUF_SIZE: usize = 8 * 1024;
+
 // Provides read_to_end functionality over an uninitialized buffer.
 // This function is unsafe because it calls the underlying
 // read function with a slice into uninitialized memory. The default
