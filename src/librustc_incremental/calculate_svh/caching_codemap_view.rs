@@ -68,7 +68,7 @@ impl<'tcx> CachingCodemapView<'tcx> {
 
         // No cache hit ...
         let mut oldest = 0;
-        for index in 1 .. self.line_cache.len() {
+        for index in 1..self.line_cache.len() {
             if self.line_cache[index].time_stamp < self.line_cache[oldest].time_stamp {
                 oldest = index;
             }

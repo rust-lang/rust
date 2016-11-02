@@ -36,15 +36,13 @@ use super::def_path_hash::DefPathHashes;
 use super::caching_codemap_view::CachingCodemapView;
 use super::hasher::IchHasher;
 
-const IGNORED_ATTRIBUTES: &'static [&'static str] = &[
-    "cfg",
-    ::ATTR_IF_THIS_CHANGED,
-    ::ATTR_THEN_THIS_WOULD_NEED,
-    ::ATTR_DIRTY,
-    ::ATTR_CLEAN,
-    ::ATTR_DIRTY_METADATA,
-    ::ATTR_CLEAN_METADATA
-];
+const IGNORED_ATTRIBUTES: &'static [&'static str] = &["cfg",
+                                                      ::ATTR_IF_THIS_CHANGED,
+                                                      ::ATTR_THEN_THIS_WOULD_NEED,
+                                                      ::ATTR_DIRTY,
+                                                      ::ATTR_CLEAN,
+                                                      ::ATTR_DIRTY_METADATA,
+                                                      ::ATTR_CLEAN_METADATA];
 
 pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
     pub tcx: TyCtxt<'hash, 'tcx, 'tcx>,
@@ -149,7 +147,6 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
 // and assigns each a distinct tag to feed into the hash computation.
 #[derive(Hash)]
 enum SawAbiComponent<'a> {
-
     // FIXME (#14132): should we include (some function of)
     // ident.ctxt as well?
     SawIdent(token::InternedString),
@@ -184,9 +181,7 @@ enum SawAbiComponent<'a> {
     SawAssocTypeBinding,
     SawAttribute(ast::AttrStyle),
     SawMacroDef,
-    SawSpan(Option<(&'a str, usize, BytePos)>,
-            Option<(&'a str, usize, BytePos)>,
-            SawSpanExpnKind),
+    SawSpan(Option<(&'a str, usize, BytePos)>, Option<(&'a str, usize, BytePos)>, SawSpanExpnKind),
 }
 
 /// SawExprComponent carries all of the information that we want
@@ -208,7 +203,6 @@ enum SawAbiComponent<'a> {
 /// Ty, TraitItem and ImplItem follow the same methodology.
 #[derive(Hash)]
 enum SawExprComponent<'a> {
-
     SawExprLoop(Option<token::InternedString>),
     SawExprField(token::InternedString),
     SawExprTupField(usize),
@@ -243,35 +237,35 @@ enum SawExprComponent<'a> {
 
 fn saw_expr<'a>(node: &'a Expr_) -> SawExprComponent<'a> {
     match *node {
-        ExprBox(..)              => SawExprBox,
-        ExprArray(..)            => SawExprArray,
-        ExprCall(..)             => SawExprCall,
-        ExprMethodCall(..)       => SawExprMethodCall,
-        ExprTup(..)              => SawExprTup,
-        ExprBinary(op, ..)       => SawExprBinary(op.node),
-        ExprUnary(op, _)         => SawExprUnary(op),
-        ExprLit(ref lit)         => SawExprLit(lit.node.clone()),
-        ExprCast(..)             => SawExprCast,
-        ExprType(..)             => SawExprType,
-        ExprIf(..)               => SawExprIf,
-        ExprWhile(..)            => SawExprWhile,
-        ExprLoop(_, id)          => SawExprLoop(id.map(|id| id.node.as_str())),
-        ExprMatch(..)            => SawExprMatch,
+        ExprBox(..) => SawExprBox,
+        ExprArray(..) => SawExprArray,
+        ExprCall(..) => SawExprCall,
+        ExprMethodCall(..) => SawExprMethodCall,
+        ExprTup(..) => SawExprTup,
+        ExprBinary(op, ..) => SawExprBinary(op.node),
+        ExprUnary(op, _) => SawExprUnary(op),
+        ExprLit(ref lit) => SawExprLit(lit.node.clone()),
+        ExprCast(..) => SawExprCast,
+        ExprType(..) => SawExprType,
+        ExprIf(..) => SawExprIf,
+        ExprWhile(..) => SawExprWhile,
+        ExprLoop(_, id) => SawExprLoop(id.map(|id| id.node.as_str())),
+        ExprMatch(..) => SawExprMatch,
         ExprClosure(cc, _, _, _) => SawExprClosure(cc),
-        ExprBlock(..)            => SawExprBlock,
-        ExprAssign(..)           => SawExprAssign,
-        ExprAssignOp(op, ..)     => SawExprAssignOp(op.node),
-        ExprField(_, name)       => SawExprField(name.node.as_str()),
-        ExprTupField(_, id)      => SawExprTupField(id.node),
-        ExprIndex(..)            => SawExprIndex,
-        ExprPath(ref qself, _)   => SawExprPath(qself.as_ref().map(|q| q.position)),
-        ExprAddrOf(m, _)         => SawExprAddrOf(m),
-        ExprBreak(id)            => SawExprBreak(id.map(|id| id.node.as_str())),
-        ExprAgain(id)            => SawExprAgain(id.map(|id| id.node.as_str())),
-        ExprRet(..)              => SawExprRet,
-        ExprInlineAsm(ref a,..)  => SawExprInlineAsm(a),
-        ExprStruct(..)           => SawExprStruct,
-        ExprRepeat(..)           => SawExprRepeat,
+        ExprBlock(..) => SawExprBlock,
+        ExprAssign(..) => SawExprAssign,
+        ExprAssignOp(op, ..) => SawExprAssignOp(op.node),
+        ExprField(_, name) => SawExprField(name.node.as_str()),
+        ExprTupField(_, id) => SawExprTupField(id.node),
+        ExprIndex(..) => SawExprIndex,
+        ExprPath(ref qself, _) => SawExprPath(qself.as_ref().map(|q| q.position)),
+        ExprAddrOf(m, _) => SawExprAddrOf(m),
+        ExprBreak(id) => SawExprBreak(id.map(|id| id.node.as_str())),
+        ExprAgain(id) => SawExprAgain(id.map(|id| id.node.as_str())),
+        ExprRet(..) => SawExprRet,
+        ExprInlineAsm(ref a, ..) => SawExprInlineAsm(a),
+        ExprStruct(..) => SawExprStruct,
+        ExprRepeat(..) => SawExprRepeat,
     }
 }
 
@@ -290,7 +284,7 @@ enum SawItemComponent {
     SawItemUnion,
     SawItemTrait(Unsafety),
     SawItemDefaultImpl(Unsafety),
-    SawItemImpl(Unsafety, ImplPolarity)
+    SawItemImpl(Unsafety, ImplPolarity),
 }
 
 fn saw_item(node: &Item_) -> SawItemComponent {
@@ -298,7 +292,7 @@ fn saw_item(node: &Item_) -> SawItemComponent {
         ItemExternCrate(..) => SawItemExternCrate,
         ItemUse(..) => SawItemUse,
         ItemStatic(_, mutability, _) => SawItemStatic(mutability),
-        ItemConst(..) =>SawItemConst,
+        ItemConst(..) => SawItemConst,
         ItemFn(_, unsafety, constness, abi, _, _) => SawItemFn(unsafety, constness, abi),
         ItemMod(..) => SawItemMod,
         ItemForeignMod(..) => SawItemForeignMod,
@@ -308,7 +302,7 @@ fn saw_item(node: &Item_) -> SawItemComponent {
         ItemUnion(..) => SawItemUnion,
         ItemTrait(unsafety, ..) => SawItemTrait(unsafety),
         ItemDefaultImpl(unsafety, _) => SawItemDefaultImpl(unsafety),
-        ItemImpl(unsafety, implpolarity, ..) => SawItemImpl(unsafety, implpolarity)
+        ItemImpl(unsafety, implpolarity, ..) => SawItemImpl(unsafety, implpolarity),
     }
 }
 
@@ -324,7 +318,7 @@ enum SawPatComponent {
     SawPatRef(Mutability),
     SawPatLit,
     SawPatRange,
-    SawPatSlice
+    SawPatSlice,
 }
 
 fn saw_pat(node: &PatKind) -> SawPatComponent {
@@ -339,7 +333,7 @@ fn saw_pat(node: &PatKind) -> SawPatComponent {
         PatKind::Ref(_, mutability) => SawPatRef(mutability),
         PatKind::Lit(..) => SawPatLit,
         PatKind::Range(..) => SawPatRange,
-        PatKind::Slice(..) => SawPatSlice
+        PatKind::Slice(..) => SawPatSlice,
     }
 }
 
@@ -357,24 +351,24 @@ enum SawTyComponent {
     SawTyPolyTraitRef,
     SawTyImplTrait,
     SawTyTypeof,
-    SawTyInfer
+    SawTyInfer,
 }
 
 fn saw_ty(node: &Ty_) -> SawTyComponent {
     match *node {
-      TySlice(..) => SawTySlice,
-      TyArray(..) => SawTyArray,
-      TyPtr(ref mty) => SawTyPtr(mty.mutbl),
-      TyRptr(_, ref mty) => SawTyRptr(mty.mutbl),
-      TyBareFn(ref barefnty) => SawTyBareFn(barefnty.unsafety, barefnty.abi),
-      TyNever => SawTyNever,
-      TyTup(..) => SawTyTup,
-      TyPath(..) => SawTyPath,
-      TyObjectSum(..) => SawTyObjectSum,
-      TyPolyTraitRef(..) => SawTyPolyTraitRef,
-      TyImplTrait(..) => SawTyImplTrait,
-      TyTypeof(..) => SawTyTypeof,
-      TyInfer => SawTyInfer
+        TySlice(..) => SawTySlice,
+        TyArray(..) => SawTyArray,
+        TyPtr(ref mty) => SawTyPtr(mty.mutbl),
+        TyRptr(_, ref mty) => SawTyRptr(mty.mutbl),
+        TyBareFn(ref barefnty) => SawTyBareFn(barefnty.unsafety, barefnty.abi),
+        TyNever => SawTyNever,
+        TyTup(..) => SawTyTup,
+        TyPath(..) => SawTyPath,
+        TyObjectSum(..) => SawTyObjectSum,
+        TyPolyTraitRef(..) => SawTyPolyTraitRef,
+        TyImplTrait(..) => SawTyImplTrait,
+        TyTypeof(..) => SawTyTypeof,
+        TyInfer => SawTyInfer,
     }
 }
 
@@ -382,24 +376,26 @@ fn saw_ty(node: &Ty_) -> SawTyComponent {
 enum SawTraitOrImplItemComponent {
     SawTraitOrImplItemConst,
     SawTraitOrImplItemMethod(Unsafety, Constness, Abi),
-    SawTraitOrImplItemType
+    SawTraitOrImplItemType,
 }
 
 fn saw_trait_item(ti: &TraitItem_) -> SawTraitOrImplItemComponent {
     match *ti {
         ConstTraitItem(..) => SawTraitOrImplItemConst,
-        MethodTraitItem(ref sig, _) =>
-            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi),
-        TypeTraitItem(..) => SawTraitOrImplItemType
+        MethodTraitItem(ref sig, _) => {
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi)
+        }
+        TypeTraitItem(..) => SawTraitOrImplItemType,
     }
 }
 
 fn saw_impl_item(ii: &ImplItemKind) -> SawTraitOrImplItemComponent {
     match *ii {
         ImplItemKind::Const(..) => SawTraitOrImplItemConst,
-        ImplItemKind::Method(ref sig, _) =>
-            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi),
-        ImplItemKind::Type(..) => SawTraitOrImplItemType
+        ImplItemKind::Method(ref sig, _) => {
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi)
+        }
+        ImplItemKind::Type(..) => SawTraitOrImplItemType,
     }
 }
 
@@ -444,10 +440,7 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         visit::walk_struct_def(self, s);
     }
 
-    fn visit_variant(&mut self,
-                     v: &'tcx Variant,
-                     g: &'tcx Generics,
-                     item_id: NodeId) {
+    fn visit_variant(&mut self, v: &'tcx Variant, g: &'tcx Generics, item_id: NodeId) {
         debug!("visit_variant: st={:?}", self.st);
         SawVariant.hash(self.st);
         hash_attrs!(self, &v.node.attrs);
@@ -527,7 +520,8 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_mod(&mut self, m: &'tcx Mod, _s: Span, n: NodeId) {
         debug!("visit_mod: st={:?}", self.st);
-        SawMod.hash(self.st); visit::walk_mod(self, m, n)
+        SawMod.hash(self.st);
+        visit::walk_mod(self, m, n)
     }
 
     fn visit_ty(&mut self, t: &'tcx Ty) {
@@ -705,17 +699,17 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         }
 
         if let Some(traits) = self.tcx.trait_map.get(&id) {
-            debug!("hash_resolve: id={:?} traits={:?} st={:?}", id, traits, self.st);
+            debug!("hash_resolve: id={:?} traits={:?} st={:?}",
+                   id,
+                   traits,
+                   self.st);
             traits.len().hash(self.st);
 
             // The ordering of the candidates is not fixed. So we hash
             // the def-ids and then sort them and hash the collection.
-            let mut candidates: Vec<_> =
-                traits.iter()
-                      .map(|&TraitCandidate { def_id, import_id: _ }| {
-                          self.compute_def_id_hash(def_id)
-                      })
-                      .collect();
+            let mut candidates: Vec<_> = traits.iter()
+                .map(|&TraitCandidate { def_id, import_id: _ }| self.compute_def_id_hash(def_id))
+                .collect();
             candidates.sort();
             candidates.hash(self.st);
         }
@@ -825,8 +819,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
 
         for i in indices {
             let attr = &attributes[i].node;
-            if !attr.is_sugared_doc &&
-               !IGNORED_ATTRIBUTES.contains(&&*attr.value.name()) {
+            if !attr.is_sugared_doc && !IGNORED_ATTRIBUTES.contains(&&*attr.value.name()) {
                 SawAttribute(attr.style).hash(self.st);
                 self.hash_meta_item(&*attr.value);
             }
@@ -838,7 +831,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
               F: Fn(&T) -> K
     {
         let mut indices = Vec::with_capacity(items.len());
-        indices.extend(0 .. items.len());
+        indices.extend(0..items.len());
         indices.sort_by_key(|index| get_key(&items[*index]));
         indices
     }

@@ -77,9 +77,11 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     // Find annotations supplied by user (if any).
     let (if_this_changed, then_this_would_need) = {
-        let mut visitor = IfThisChanged { tcx: tcx,
-                                          if_this_changed: vec![],
-                                          then_this_would_need: vec![] };
+        let mut visitor = IfThisChanged {
+            tcx: tcx,
+            if_this_changed: vec![],
+            then_this_would_need: vec![],
+        };
         visitor.process_attrs(ast::CRATE_NODE_ID, &tcx.map.krate().attrs);
         tcx.map.krate().visit_all_items(&mut visitor);
         (visitor.if_this_changed, visitor.then_this_would_need)
@@ -89,7 +91,8 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         assert!(tcx.sess.opts.debugging_opts.query_dep_graph,
                 "cannot use the `#[{}]` or `#[{}]` annotations \
                  without supplying `-Z query-dep-graph`",
-                ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED);
+                ATTR_IF_THIS_CHANGED,
+                ATTR_THEN_THIS_WOULD_NEED);
     }
 
     // Check paths.
@@ -99,7 +102,7 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 type Sources = Vec<(Span, DefId, DepNode<DefId>)>;
 type Targets = Vec<(Span, InternedString, ast::NodeId, DepNode<DefId>)>;
 
-struct IfThisChanged<'a, 'tcx:'a> {
+struct IfThisChanged<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if_this_changed: Sources,
     then_this_would_need: Targets,
@@ -153,15 +156,11 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                         }
                     }
                     None => {
-                        self.tcx.sess.span_fatal(
-                            attr.span,
-                            &format!("missing DepNode variant"));
+                        self.tcx.sess.span_fatal(attr.span, &format!("missing DepNode variant"));
                     }
                 };
-                self.then_this_would_need.push((attr.span,
-                                                dep_node_interned.clone().unwrap(),
-                                                node_id,
-                                                dep_node));
+                self.then_this_would_need
+                    .push((attr.span, dep_node_interned.clone().unwrap(), node_id, dep_node));
             }
         }
     }
@@ -175,14 +174,12 @@ impl<'a, 'tcx> Visitor<'tcx> for IfThisChanged<'a, 'tcx> {
 
 fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          if_this_changed: &Sources,
-                         then_this_would_need: &Targets)
-{
+                         then_this_would_need: &Targets) {
     // Return early here so as not to construct the query, which is not cheap.
     if if_this_changed.is_empty() {
         for &(target_span, _, _, _) in then_this_would_need {
-            tcx.sess.span_err(
-                target_span,
-                &format!("no #[rustc_if_this_changed] annotation detected"));
+            tcx.sess.span_err(target_span,
+                              &format!("no #[rustc_if_this_changed] annotation detected"));
 
         }
         return;
@@ -192,15 +189,12 @@ fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let dependents = query.transitive_successors(source_dep_node);
         for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
             if !dependents.contains(&target_dep_node) {
-                tcx.sess.span_err(
-                    target_span,
-                    &format!("no path from `{}` to `{}`",
-                             tcx.item_path_str(source_def_id),
-                             target_pass));
+                tcx.sess.span_err(target_span,
+                                  &format!("no path from `{}` to `{}`",
+                                           tcx.item_path_str(source_def_id),
+                                           target_pass));
             } else {
-                tcx.sess.span_err(
-                    target_span,
-                    &format!("OK"));
+                tcx.sess.span_err(target_span, &format!("OK"));
             }
         }
     }
@@ -213,22 +207,22 @@ fn dump_graph(tcx: TyCtxt) {
     let nodes = match env::var("RUST_DEP_GRAPH_FILTER") {
         Ok(string) => {
             // Expect one of: "-> target", "source -> target", or "source ->".
-            let edge_filter = EdgeFilter::new(&string).unwrap_or_else(|e| {
-                bug!("invalid filter: {}", e)
-            });
+            let edge_filter = EdgeFilter::new(&string)
+                .unwrap_or_else(|e| bug!("invalid filter: {}", e));
             let sources = node_set(&query, &edge_filter.source);
             let targets = node_set(&query, &edge_filter.target);
             filter_nodes(&query, &sources, &targets)
         }
         Err(_) => {
             query.nodes()
-                 .into_iter()
-                 .collect()
+                .into_iter()
+                .collect()
         }
     };
     let edges = filter_edges(&query, &nodes);
 
-    { // dump a .txt file with just the edges:
+    {
+        // dump a .txt file with just the edges:
         let txt_path = format!("{}.txt", path);
         let mut file = File::create(&txt_path).unwrap();
         for &(ref source, ref target) in &edges {
@@ -236,7 +230,8 @@ fn dump_graph(tcx: TyCtxt) {
         }
     }
 
-    { // dump a .dot file in graphviz format:
+    {
+        // dump a .dot file in graphviz format:
         let dot_path = format!("{}.dot", path);
         let mut v = Vec::new();
         dot::render(&GraphvizDepGraph(nodes, edges), &mut v).unwrap();
@@ -272,10 +267,14 @@ impl<'a, 'tcx, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
         dot::Id::new("DependencyGraph").unwrap()
     }
     fn node_id(&self, n: &&'q DepNode<DefId>) -> dot::Id {
-        let s: String =
-            format!("{:?}", n).chars()
-                              .map(|c| if c == '_' || c.is_alphanumeric() { c } else { '_' })
-                              .collect();
+        let s: String = format!("{:?}", n)
+            .chars()
+            .map(|c| if c == '_' || c.is_alphanumeric() {
+                c
+            } else {
+                '_'
+            })
+            .collect();
         debug!("n={:?} s={:?}", n, s);
         dot::Id::new(s).unwrap()
     }
@@ -287,9 +286,9 @@ impl<'a, 'tcx, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
 // Given an optional filter like `"x,y,z"`, returns either `None` (no
 // filter) or the set of nodes whose labels contain all of those
 // substrings.
-fn node_set<'q>(query: &'q DepGraphQuery<DefId>, filter: &DepNodeFilter)
-                -> Option<FnvHashSet<&'q DepNode<DefId>>>
-{
+fn node_set<'q>(query: &'q DepGraphQuery<DefId>,
+                filter: &DepNodeFilter)
+                -> Option<FnvHashSet<&'q DepNode<DefId>>> {
     debug!("node_set(filter={:?})", filter);
 
     if filter.accepts_all() {
@@ -302,8 +301,7 @@ fn node_set<'q>(query: &'q DepGraphQuery<DefId>, filter: &DepNodeFilter)
 fn filter_nodes<'q>(query: &'q DepGraphQuery<DefId>,
                     sources: &Option<FnvHashSet<&'q DepNode<DefId>>>,
                     targets: &Option<FnvHashSet<&'q DepNode<DefId>>>)
-                    -> FnvHashSet<&'q DepNode<DefId>>
-{
+                    -> FnvHashSet<&'q DepNode<DefId>> {
     if let &Some(ref sources) = sources {
         if let &Some(ref targets) = targets {
             walk_between(query, sources, targets)
@@ -320,11 +318,12 @@ fn filter_nodes<'q>(query: &'q DepGraphQuery<DefId>,
 fn walk_nodes<'q>(query: &'q DepGraphQuery<DefId>,
                   starts: &FnvHashSet<&'q DepNode<DefId>>,
                   direction: Direction)
-                  -> FnvHashSet<&'q DepNode<DefId>>
-{
+                  -> FnvHashSet<&'q DepNode<DefId>> {
     let mut set = FnvHashSet();
     for &start in starts {
-        debug!("walk_nodes: start={:?} outgoing?={:?}", start, direction == OUTGOING);
+        debug!("walk_nodes: start={:?} outgoing?={:?}",
+               start,
+               direction == OUTGOING);
         if set.insert(start) {
             let mut stack = vec![query.indices[start]];
             while let Some(index) = stack.pop() {
@@ -344,15 +343,19 @@ fn walk_nodes<'q>(query: &'q DepGraphQuery<DefId>,
 fn walk_between<'q>(query: &'q DepGraphQuery<DefId>,
                     sources: &FnvHashSet<&'q DepNode<DefId>>,
                     targets: &FnvHashSet<&'q DepNode<DefId>>)
-                    -> FnvHashSet<&'q DepNode<DefId>>
-{
+                    -> FnvHashSet<&'q DepNode<DefId>> {
     // This is a bit tricky. We want to include a node only if it is:
     // (a) reachable from a source and (b) will reach a target. And we
     // have to be careful about cycles etc.  Luckily efficiency is not
     // a big concern!
 
     #[derive(Copy, Clone, PartialEq)]
-    enum State { Undecided, Deciding, Included, Excluded }
+    enum State {
+        Undecided,
+        Deciding,
+        Included,
+        Excluded,
+    }
 
     let mut node_states = vec![State::Undecided; query.graph.len_nodes()];
 
@@ -365,18 +368,14 @@ fn walk_between<'q>(query: &'q DepGraphQuery<DefId>,
     }
 
     return query.nodes()
-                .into_iter()
-                .filter(|&n| {
-                    let index = query.indices[n];
-                    node_states[index.0] == State::Included
-                })
-                .collect();
+        .into_iter()
+        .filter(|&n| {
+            let index = query.indices[n];
+            node_states[index.0] == State::Included
+        })
+        .collect();
 
-    fn recurse(query: &DepGraphQuery<DefId>,
-               node_states: &mut [State],
-               node: NodeIndex)
-               -> bool
-    {
+    fn recurse(query: &DepGraphQuery<DefId>, node_states: &mut [State], node: NodeIndex) -> bool {
         match node_states[node.0] {
             // known to reach a target
             State::Included => return true,
@@ -387,7 +386,7 @@ fn walk_between<'q>(query: &'q DepGraphQuery<DefId>,
             // backedge, not yet known, say false
             State::Deciding => return false,
 
-            State::Undecided => { }
+            State::Undecided => {}
         }
 
         node_states[node.0] = State::Deciding;
@@ -411,10 +410,9 @@ fn walk_between<'q>(query: &'q DepGraphQuery<DefId>,
 
 fn filter_edges<'q>(query: &'q DepGraphQuery<DefId>,
                     nodes: &FnvHashSet<&'q DepNode<DefId>>)
-                    -> Vec<(&'q DepNode<DefId>, &'q DepNode<DefId>)>
-{
+                    -> Vec<(&'q DepNode<DefId>, &'q DepNode<DefId>)> {
     query.edges()
-         .into_iter()
-         .filter(|&(source, target)| nodes.contains(source) && nodes.contains(target))
-         .collect()
+        .into_iter()
+        .filter(|&(source, target)| nodes.contains(source) && nodes.contains(target))
+        .collect()
 }

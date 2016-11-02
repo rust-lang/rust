@@ -112,7 +112,8 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
     tcx.sess.perf_stats.incr_comp_hashes_count.set(visitor.hashes.len() as u64);
 
-    record_time(&tcx.sess.perf_stats.svh_time, || visitor.compute_crate_hash());
+    record_time(&tcx.sess.perf_stats.svh_time,
+                || visitor.compute_crate_hash());
     visitor.hashes
 }
 
@@ -146,10 +147,11 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
         let bytes_hashed = state.bytes_hashed();
         let item_hash = state.finish();
         self.hashes.insert(DepNode::Hir(def_id), item_hash);
-        debug!("calculate_item_hash: def_id={:?} hash={:?}", def_id, item_hash);
+        debug!("calculate_item_hash: def_id={:?} hash={:?}",
+               def_id,
+               item_hash);
 
-        let bytes_hashed = self.tcx.sess.perf_stats.incr_comp_bytes_hashed.get() +
-                           bytes_hashed;
+        let bytes_hashed = self.tcx.sess.perf_stats.incr_comp_bytes_hashed.get() + bytes_hashed;
         self.tcx.sess.perf_stats.incr_comp_bytes_hashed.set(bytes_hashed);
     }
 
@@ -167,18 +169,18 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
         // crate hash.
         {
             let def_path_hashes = &mut self.def_path_hashes;
-            let mut item_hashes: Vec<_> =
-                self.hashes.iter()
-                           .map(|(item_dep_node, &item_hash)| {
-                               // convert from a DepNode<DefId> tp a
-                               // DepNode<u64> where the u64 is the
-                               // hash of the def-id's def-path:
-                               let item_dep_node =
-                                   item_dep_node.map_def(|&did| Some(def_path_hashes.hash(did)))
-                                                .unwrap();
-                               (item_dep_node, item_hash)
-                           })
-                           .collect();
+            let mut item_hashes: Vec<_> = self.hashes
+                .iter()
+                .map(|(item_dep_node, &item_hash)| {
+                    // convert from a DepNode<DefId> tp a
+                    // DepNode<u64> where the u64 is the
+                    // hash of the def-id's def-path:
+                    let item_dep_node =
+                        item_dep_node.map_def(|&did| Some(def_path_hashes.hash(did)))
+                            .unwrap();
+                    (item_dep_node, item_hash)
+                })
+                .collect();
             item_hashes.sort(); // avoid artificial dependencies on item ordering
             item_hashes.hash(&mut crate_state);
         }
@@ -210,4 +212,3 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
         visit::walk_foreign_item(self, item);
     }
 }
-

@@ -106,7 +106,7 @@ pub struct SerializedMetadataHashes {
     /// is only populated if -Z query-dep-graph is specified. It will be
     /// empty otherwise. Importing crates are perfectly happy with just having
     /// the DefIndex.
-    pub index_map: FnvHashMap<DefIndex, DefPathIndex>
+    pub index_map: FnvHashMap<DefIndex, DefPathIndex>,
 }
 
 /// The hash for some metadata that (when saving) will be exported

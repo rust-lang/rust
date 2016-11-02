@@ -31,24 +31,23 @@ pub fn save_trans_partition(sess: &Session,
     }
     let work_product_id = Arc::new(WorkProductId(cgu_name.to_string()));
 
-    let saved_files: Option<Vec<_>> =
-        files.iter()
-             .map(|&(kind, ref path)| {
-                 let file_name = format!("cgu-{}.{}", cgu_name, kind.extension());
-                 let path_in_incr_dir = in_incr_comp_dir_sess(sess, &file_name);
-                 match link_or_copy(path, &path_in_incr_dir) {
-                     Ok(_) => Some((kind, file_name)),
-                     Err(err) => {
-                         sess.warn(&format!("error copying object file `{}` \
-                                             to incremental directory as `{}`: {}",
-                                            path.display(),
-                                            path_in_incr_dir.display(),
-                                            err));
-                         None
-                     }
-                 }
-             })
-             .collect();
+    let saved_files: Option<Vec<_>> = files.iter()
+        .map(|&(kind, ref path)| {
+            let file_name = format!("cgu-{}.{}", cgu_name, kind.extension());
+            let path_in_incr_dir = in_incr_comp_dir_sess(sess, &file_name);
+            match link_or_copy(path, &path_in_incr_dir) {
+                Ok(_) => Some((kind, file_name)),
+                Err(err) => {
+                    sess.warn(&format!("error copying object file `{}` to incremental directory \
+                                        as `{}`: {}",
+                                       path.display(),
+                                       path_in_incr_dir.display(),
+                                       err));
+                    None
+                }
+            }
+        })
+        .collect();
     let saved_files = match saved_files {
         Some(v) => v,
         None => return,

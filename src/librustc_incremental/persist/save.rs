@@ -51,22 +51,20 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // IMPORTANT: We are saving the metadata hashes *before* the dep-graph,
     //            since metadata-encoding might add new entries to the
     //            DefIdDirectory (which is saved in the dep-graph file).
-    save_in(sess,
-            metadata_hash_export_path(sess),
-            |e| encode_metadata_hashes(tcx,
-                                       svh,
-                                       &preds,
-                                       &mut builder,
-                                       &mut current_metadata_hashes,
-                                       e));
+    save_in(sess, metadata_hash_export_path(sess), |e| {
+        encode_metadata_hashes(tcx,
+                               svh,
+                               &preds,
+                               &mut builder,
+                               &mut current_metadata_hashes,
+                               e)
+    });
     save_in(sess,
             dep_graph_path(sess),
             |e| encode_dep_graph(&preds, &mut builder, e));
 
     let prev_metadata_hashes = incremental_hashes_map.prev_metadata_hashes.borrow();
-    dirty_clean::check_dirty_clean_metadata(tcx,
-                                            &*prev_metadata_hashes,
-                                            &current_metadata_hashes);
+    dirty_clean::check_dirty_clean_metadata(tcx, &*prev_metadata_hashes, &current_metadata_hashes);
 }
 
 pub fn save_work_products(sess: &Session) {
@@ -198,7 +196,7 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
     // (I initially wrote this with an iterator, but it seemed harder to read.)
     let mut serialized_hashes = SerializedMetadataHashes {
         hashes: vec![],
-        index_map: FnvHashMap()
+        index_map: FnvHashMap(),
     };
 
     let mut def_id_hashes = FnvHashMap();

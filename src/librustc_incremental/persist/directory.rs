@@ -26,7 +26,7 @@ use std::collections::HashMap;
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, Hash, PartialEq, Eq,
          RustcEncodable, RustcDecodable)]
 pub struct DefPathIndex {
-    index: u32
+    index: u32,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -49,14 +49,19 @@ pub struct CrateInfo {
 
 impl DefIdDirectory {
     pub fn new(krates: Vec<CrateInfo>) -> DefIdDirectory {
-        DefIdDirectory { paths: vec![], krates: krates }
+        DefIdDirectory {
+            paths: vec![],
+            krates: krates,
+        }
     }
 
     fn max_current_crate(&self, tcx: TyCtxt) -> CrateNum {
-        tcx.sess.cstore.crates()
-                       .into_iter()
-                       .max()
-                       .unwrap_or(LOCAL_CRATE)
+        tcx.sess
+            .cstore
+            .crates()
+            .into_iter()
+            .max()
+            .unwrap_or(LOCAL_CRATE)
     }
 
     /// Returns a string form for `index`; useful for debugging
@@ -72,7 +77,8 @@ impl DefIdDirectory {
     pub fn krate_still_valid(&self,
                              tcx: TyCtxt,
                              max_current_crate: CrateNum,
-                             krate: CrateNum) -> bool {
+                             krate: CrateNum)
+                             -> bool {
         // Check that the crate-number still matches. For now, if it
         // doesn't, just return None. We could do better, such as
         // finding the new number.
@@ -96,35 +102,33 @@ impl DefIdDirectory {
             format!("{}/{}", name, disambiguator)
         }
 
-        let new_krates: HashMap<_, _> =
-            once(LOCAL_CRATE)
+        let new_krates: HashMap<_, _> = once(LOCAL_CRATE)
             .chain(tcx.sess.cstore.crates())
-            .map(|krate| (make_key(&tcx.crate_name(krate),
-                                   &tcx.crate_disambiguator(krate)), krate))
+            .map(|krate| (make_key(&tcx.crate_name(krate), &tcx.crate_disambiguator(krate)), krate))
             .collect();
 
-        let ids = self.paths.iter()
-                            .map(|path| {
-                                let old_krate_id = path.krate.as_usize();
-                                assert!(old_krate_id < self.krates.len());
-                                let old_crate_info = &self.krates[old_krate_id];
-                                let old_crate_key = make_key(&old_crate_info.name,
-                                                         &old_crate_info.disambiguator);
-                                if let Some(&new_crate_key) = new_krates.get(&old_crate_key) {
-                                    tcx.retrace_path(new_crate_key, &path.data)
-                                } else {
-                                    debug!("crate {:?} no longer exists", old_crate_key);
-                                    None
-                                }
-                            })
-                            .collect();
+        let ids = self.paths
+            .iter()
+            .map(|path| {
+                let old_krate_id = path.krate.as_usize();
+                assert!(old_krate_id < self.krates.len());
+                let old_crate_info = &self.krates[old_krate_id];
+                let old_crate_key = make_key(&old_crate_info.name, &old_crate_info.disambiguator);
+                if let Some(&new_crate_key) = new_krates.get(&old_crate_key) {
+                    tcx.retrace_path(new_crate_key, &path.data)
+                } else {
+                    debug!("crate {:?} no longer exists", old_crate_key);
+                    None
+                }
+            })
+            .collect();
         RetracedDefIdDirectory { ids: ids }
     }
 }
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct RetracedDefIdDirectory {
-    ids: Vec<Option<DefId>>
+    ids: Vec<Option<DefId>>,
 }
 
 impl RetracedDefIdDirectory {
@@ -137,22 +141,21 @@ impl RetracedDefIdDirectory {
     }
 }
 
-pub struct DefIdDirectoryBuilder<'a,'tcx:'a> {
+pub struct DefIdDirectoryBuilder<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     hash: DefIdMap<DefPathIndex>,
     directory: DefIdDirectory,
 }
 
-impl<'a,'tcx> DefIdDirectoryBuilder<'a,'tcx> {
+impl<'a, 'tcx> DefIdDirectoryBuilder<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> DefIdDirectoryBuilder<'a, 'tcx> {
-        let mut krates: Vec<_> =
-            once(LOCAL_CRATE)
+        let mut krates: Vec<_> = once(LOCAL_CRATE)
             .chain(tcx.sess.cstore.crates())
             .map(|krate| {
                 CrateInfo {
                     krate: krate,
                     name: tcx.crate_name(krate).to_string(),
-                    disambiguator: tcx.crate_disambiguator(krate).to_string()
+                    disambiguator: tcx.crate_disambiguator(krate).to_string(),
                 }
             })
             .collect();
@@ -176,14 +179,15 @@ impl<'a,'tcx> DefIdDirectoryBuilder<'a,'tcx> {
         debug!("DefIdDirectoryBuilder: def_id={:?}", def_id);
         let tcx = self.tcx;
         let paths = &mut self.directory.paths;
-        self.hash.entry(def_id)
-                 .or_insert_with(|| {
-                     let def_path = tcx.def_path(def_id);
-                     let index = paths.len() as u32;
-                     paths.push(def_path);
-                     DefPathIndex { index: index }
-                 })
-                 .clone()
+        self.hash
+            .entry(def_id)
+            .or_insert_with(|| {
+                let def_path = tcx.def_path(def_id);
+                let index = paths.len() as u32;
+                paths.push(def_path);
+                DefPathIndex { index: index }
+            })
+            .clone()
     }
 
     pub fn lookup_def_path(&self, id: DefPathIndex) -> &DefPath {
@@ -202,7 +206,7 @@ impl<'a,'tcx> DefIdDirectoryBuilder<'a,'tcx> {
 impl Debug for DefIdDirectory {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         fmt.debug_list()
-           .entries(self.paths.iter().enumerate())
-           .finish()
+            .entries(self.paths.iter().enumerate())
+            .finish()
     }
 }

@@ -23,8 +23,8 @@ impl Fingerprint {
 
     pub fn from_smaller_hash(hash: u64) -> Fingerprint {
         let mut result = Fingerprint::zero();
-        result.0[0] = (hash >>  0) as u8;
-        result.0[1] = (hash >>  8) as u8;
+        result.0[0] = (hash >> 0) as u8;
+        result.0[1] = (hash >> 8) as u8;
         result.0[2] = (hash >> 16) as u8;
         result.0[3] = (hash >> 24) as u8;
         result.0[4] = (hash >> 32) as u8;
@@ -35,14 +35,9 @@ impl Fingerprint {
     }
 
     pub fn to_smaller_hash(&self) -> u64 {
-        ((self.0[0] as u64) <<  0) |
-        ((self.0[1] as u64) <<  8) |
-        ((self.0[2] as u64) << 16) |
-        ((self.0[3] as u64) << 24) |
-        ((self.0[4] as u64) << 32) |
-        ((self.0[5] as u64) << 40) |
-        ((self.0[6] as u64) << 48) |
-        ((self.0[7] as u64) << 56)
+        ((self.0[0] as u64) << 0) | ((self.0[1] as u64) << 8) | ((self.0[2] as u64) << 16) |
+        ((self.0[3] as u64) << 24) | ((self.0[4] as u64) << 32) |
+        ((self.0[5] as u64) << 40) | ((self.0[6] as u64) << 48) | ((self.0[7] as u64) << 56)
     }
 }
 
@@ -69,7 +64,7 @@ impl Decodable for Fingerprint {
 
 impl ::std::fmt::Display for Fingerprint {
     fn fmt(&self, formatter: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
-        for i in 0 .. self.0.len() {
+        for i in 0..self.0.len() {
             if i > 0 {
                 write!(formatter, "::")?;
             }
