@@ -1267,6 +1267,38 @@ impl error::Error for TryRecvError {
     }
 }
 
+#[stable(feature = "mpsc_recv_timeout_error", since = "1.14.0")]
+impl fmt::Display for RecvTimeoutError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            RecvTimeoutError::Timeout => {
+                "timed out waiting on channel".fmt(f)
+            }
+            RecvTimeoutError::Disconnected => {
+                "channel is empty and sending half is closed".fmt(f)
+            }
+        }
+    }
+}
+
+#[stable(feature = "mpsc_recv_timeout_error", since = "1.14.0")]
+impl error::Error for RecvTimeoutError {
+    fn description(&self) -> &str {
+        match *self {
+            RecvTimeoutError::Timeout => {
+                "timed out waiting on channel"
+            }
+            RecvTimeoutError::Disconnected => {
+                "channel is empty and sending half is closed"
+            }
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        None
+    }
+}
+
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use env;
