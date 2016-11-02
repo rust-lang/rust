@@ -97,7 +97,7 @@ fn format_crate(verbosity: Verbosity) -> Result<ExitStatus, std::io::Error> {
 
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets.into_iter()
-        .filter(|t| t.kind.is_lib() | t.kind.is_bin())
+        .filter(|t| t.kind.should_format())
         .inspect(|t| {
             if verbosity == Verbosity::Verbose {
                 println!("[{:?}] {:?}", t.kind, t.path)
@@ -118,20 +118,17 @@ fn get_fmt_args() -> Vec<String> {
 enum TargetKind {
     Lib, // dylib, staticlib, lib
     Bin, // bin
-    Other, // test, plugin,...
+    Example, // example file
+    Test, // test file
+    Bench, // bench file
+    Other, // plugin,...
 }
 
 impl TargetKind {
-    fn is_lib(&self) -> bool {
+    fn should_format(&self) -> bool {
         match *self {
-            TargetKind::Lib => true,
-            _ => false,
-        }
-    }
-
-    fn is_bin(&self) -> bool {
-        match *self {
-            TargetKind::Bin => true,
+            TargetKind::Lib | TargetKind::Bin | TargetKind::Example | TargetKind::Test |
+            TargetKind::Bench => true,
             _ => false,
         }
     }
@@ -171,6 +168,9 @@ fn target_from_json(jtarget: &Json) -> Target {
     let kind = match kinds[0].as_string().unwrap() {
         "bin" => TargetKind::Bin,
         "lib" | "dylib" | "staticlib" => TargetKind::Lib,
+        "test" => TargetKind::Test,
+        "example" => TargetKind::Example,
+        "bench" => TargetKind::Bench,
         _ => TargetKind::Other,
     };
 
