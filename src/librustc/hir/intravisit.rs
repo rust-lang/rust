@@ -94,7 +94,17 @@ pub trait Visitor<'v> : Sized {
     fn visit_nested_item(&mut self, id: ItemId) {
     }
 
-    /// Visit the top-level item and (optionally) nested items. See
+    /// Invoked when a nested impl item is encountered. By default, does
+    /// nothing. If you want a deep walk, you need to override to
+    /// fetch the item contents. But most of the time, it is easier
+    /// (and better) to invoke `Crate::visit_all_item_likes`, which visits
+    /// all items in the crate in some order (but doesn't respect
+    /// nesting).
+    #[allow(unused_variables)]
+    fn visit_nested_impl_item(&mut self, id: ImplItemId) {
+    }
+
+    /// Visit the top-level item and (optionally) nested items / impl items. See
     /// `visit_nested_item` for details.
     fn visit_item(&mut self, i: &'v Item) {
         walk_item(self, i)
@@ -359,12 +369,14 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemImpl(.., ref type_parameters, ref opt_trait_reference, ref typ, ref impl_items) => {
+        ItemImpl(.., ref type_parameters, ref opt_trait_reference, ref typ, ref impl_item_ids) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(type_parameters);
             walk_list!(visitor, visit_trait_ref, opt_trait_reference);
             visitor.visit_ty(typ);
-            walk_list!(visitor, visit_impl_item, impl_items);
+            for &impl_item_id in impl_item_ids {
+                visitor.visit_nested_impl_item(impl_item_id);
+            }
         }
         ItemStruct(ref struct_definition, ref generics) |
         ItemUnion(ref struct_definition, ref generics) => {

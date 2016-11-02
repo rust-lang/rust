@@ -105,6 +105,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_crate(&mut self, c: &Crate) -> hir::Crate {
         struct ItemLowerer<'lcx, 'interner: 'lcx> {
             items: BTreeMap<NodeId, hir::Item>,
+            impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
             lctx: &'lcx mut LoweringContext<'interner>,
         }
 
@@ -113,12 +114,20 @@ impl<'a> LoweringContext<'a> {
                 self.items.insert(item.id, self.lctx.lower_item(item));
                 visit::walk_item(self, item);
             }
+
+            fn visit_impl_item(&mut self, item: &ImplItem) {
+                let id = self.lctx.lower_impl_item_id(item);
+                self.impl_items.insert(id, self.lctx.lower_impl_item(item));
+                visit::walk_impl_item(self, item);
+            }
         }
 
-        let items = {
-            let mut item_lowerer = ItemLowerer { items: BTreeMap::new(), lctx: self };
+        let (items, impl_items) = {
+            let mut item_lowerer = ItemLowerer { items: BTreeMap::new(),
+                                                 impl_items: BTreeMap::new(),
+                                                 lctx: self };
             visit::walk_crate(&mut item_lowerer, c);
-            item_lowerer.items
+            (item_lowerer.items, item_lowerer.impl_items)
         };
 
         hir::Crate {
@@ -127,6 +136,7 @@ impl<'a> LoweringContext<'a> {
             span: c.span,
             exported_macros: c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect(),
             items: items,
+            impl_items: impl_items,
         }
     }
 
@@ -631,7 +641,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Impl(unsafety, polarity, ref generics, ref ifce, ref ty, ref impl_items) => {
                 let new_impl_items = impl_items.iter()
-                                               .map(|item| self.lower_impl_item(item))
+                                               .map(|item| self.lower_impl_item_id(item))
                                                .collect();
                 let ifce = ifce.as_ref().map(|trait_ref| self.lower_trait_ref(trait_ref));
                 hir::ItemImpl(self.lower_unsafety(unsafety),
@@ -705,6 +715,10 @@ impl<'a> LoweringContext<'a> {
                 span: i.span,
             }
         })
+    }
+
+    fn lower_impl_item_id(&mut self, i: &ImplItem) -> hir::ImplItemId {
+        hir::ImplItemId { id: i.id }
     }
 
     fn lower_mod(&mut self, m: &Mod) -> hir::Mod {
