@@ -34,6 +34,7 @@
 #![feature(unique)]
 #![feature(iter_max_by)]
 #![feature(iter_min_by)]
+#![feature(ordering_chaining)]
 #![feature(result_unwrap_or_default)]
 
 extern crate core;
