@@ -519,7 +519,9 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
-    #[allow(cyclomatic_complexity)]
+    #[allow(unused_attributes)]
+    // ^ required because `cyclomatic_complexity` attribute shows up as unused
+    #[cyclomatic_complexity = "30"]
     fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
         if in_macro(cx, expr.span) {
             return;
@@ -530,7 +532,7 @@ impl LateLintPass for Pass {
                 // Chain calls
                 // GET_UNWRAP needs to be checked before general `UNWRAP` lints
                 if let Some(arglists) = method_chain_args(expr, &["get", "unwrap"]) {
-                lint_get_unwrap(cx, expr, arglists[0], false);
+                    lint_get_unwrap(cx, expr, arglists[0], false);
                 } else if let Some(arglists) = method_chain_args(expr, &["get_mut", "unwrap"]) {
                     lint_get_unwrap(cx, expr, arglists[0], true);
                 } else if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
@@ -852,21 +854,23 @@ fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs, is_
 }
 
 fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &MethodArgs, is_mut: bool) {
-    let mut_str = if is_mut { "_mut" } else {""};
-    let caller_type = if derefs_to_slice(cx, &get_args[0], cx.tcx.expr_ty(&get_args[0])).is_some() {
+    let expr_ty = cx.tcx.expr_ty(&get_args[0]);
+    let caller_type = if derefs_to_slice(cx, &get_args[0], expr_ty).is_some() {
         "slice"
-    } else if match_type(cx, cx.tcx.expr_ty(&get_args[0]), &paths::VEC) {
+    } else if match_type(cx, expr_ty, &paths::VEC) {
         "Vec"
-    } else if match_type(cx, cx.tcx.expr_ty(&get_args[0]), &paths::VEC_DEQUE) {
+    } else if match_type(cx, expr_ty, &paths::VEC_DEQUE) {
         "VecDeque"
-    } else if match_type(cx, cx.tcx.expr_ty(&get_args[0]), &paths::HASHMAP) {
+    } else if match_type(cx, expr_ty, &paths::HASHMAP) {
         "HashMap"
-    } else if match_type(cx, cx.tcx.expr_ty(&get_args[0]), &paths::BTREEMAP) {
+    } else if match_type(cx, expr_ty, &paths::BTREEMAP) {
         "BTreeMap"
     } else {
         return; // caller is not a type that we want to lint
     };
 
+    let mut_str = if is_mut { "_mut" } else {""};
+    let borrow_str = if is_mut { "&mut " } else {""};
     span_lint_and_then(
         cx,
         GET_UNWRAP,
@@ -877,7 +881,8 @@ fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &MethodArgs, is
             db.span_suggestion(
                 expr.span,
                 "try this",
-                format!("{}[{}]", snippet(cx, get_args[0].span, "_"), snippet(cx, get_args[1].span, "_"))
+                format!("{}{}[{}]", borrow_str, snippet(cx, get_args[0].span, "_"),
+                        snippet(cx, get_args[1].span, "_"))
             );
         }
     );

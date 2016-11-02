@@ -436,23 +436,23 @@ fn get_unwrap() {
         *some_slice.get_mut(0).unwrap() = 1;
         //~^ERROR called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
         //~|HELP try this
-        //~|SUGGESTION some_slice[0]
+        //~|SUGGESTION &mut some_slice[0]
         *some_vec.get_mut(0).unwrap() = 1;
         //~^ERROR called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more concise
         //~|HELP try this
-        //~|SUGGESTION some_vec[0]
+        //~|SUGGESTION &mut some_vec[0]
         *some_vecdeque.get_mut(0).unwrap() = 1;
         //~^ERROR called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
         //~|HELP try this
-        //~|SUGGESTION some_vecdeque[0]
+        //~|SUGGESTION &mut some_vecdeque[0]
         *some_hashmap.get_mut(&1).unwrap() = 'b';
         //~^ERROR called `.get_mut().unwrap()` on a HashMap. Using `[]` is more clear and more concise
         //~|HELP try this
-        //~|SUGGESTION some_hashmap[&1]
+        //~|SUGGESTION &mut some_hashmap[&1]
         *some_btreemap.get_mut(&1).unwrap() = 'b';
         //~^ERROR called `.get_mut().unwrap()` on a BTreeMap. Using `[]` is more clear and more concise
         //~|HELP try this
-        //~|SUGGESTION some_btreemap[&1]
+        //~|SUGGESTION &mut some_btreemap[&1]
 
         *false_positive.get_mut(0).unwrap() = 1;
     }
