@@ -171,8 +171,6 @@ struct ConvertedBinding<'tcx> {
     span: Span,
 }
 
-type TraitAndProjections<'tcx> = (ty::PolyTraitRef<'tcx>, Vec<ty::PolyProjectionPredicate<'tcx>>);
-
 /// Dummy type used for the `Self` of a `TraitRef` created for converting
 /// a trait object, and which gets removed in `ExistentialTraitRef`.
 /// This type must not appear anywhere in other converted types.

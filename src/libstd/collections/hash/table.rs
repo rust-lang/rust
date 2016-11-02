@@ -124,10 +124,6 @@ pub struct FullBucket<K, V, M> {
     table: M,
 }
 
-pub type EmptyBucketImm<'table, K, V> = EmptyBucket<K, V, &'table RawTable<K, V>>;
-pub type FullBucketImm<'table, K, V> = FullBucket<K, V, &'table RawTable<K, V>>;
-
-pub type EmptyBucketMut<'table, K, V> = EmptyBucket<K, V, &'table mut RawTable<K, V>>;
 pub type FullBucketMut<'table, K, V> = FullBucket<K, V, &'table mut RawTable<K, V>>;
 
 pub enum BucketState<K, V, M> {

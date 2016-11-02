@@ -12,7 +12,6 @@ use {Module, Resolver};
 use build_reduced_graph::BuildReducedGraphVisitor;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefIndex};
 use rustc::hir::map::{self, DefCollector};
-use rustc::util::nodemap::FnvHashMap;
 use std::cell::Cell;
 use std::rc::Rc;
 use syntax::ast;
@@ -79,8 +78,6 @@ pub struct LegacyBinding<'a> {
     ext: Rc<SyntaxExtension>,
     span: Span,
 }
-
-pub type LegacyImports = FnvHashMap<ast::Name, (Rc<SyntaxExtension>, Span)>;
 
 impl<'a> base::Resolver for Resolver<'a> {
     fn next_node_id(&mut self) -> ast::NodeId {

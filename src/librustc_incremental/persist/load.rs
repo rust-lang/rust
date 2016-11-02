@@ -32,8 +32,6 @@ use super::file_format;
 
 pub type DirtyNodes = FnvHashSet<DepNode<DefPathIndex>>;
 
-type CleanEdges = Vec<(DepNode<DefId>, DepNode<DefId>)>;
-
 /// If we are in incremental mode, and a previous dep-graph exists,
 /// then load up those nodes/edges that are still valid into the
 /// dep-graph for this session. (This is assumed to be running very
