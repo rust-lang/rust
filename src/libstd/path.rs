@@ -914,6 +914,7 @@ impl<'a> cmp::Ord for Components<'a> {
 /// [`Path`]: struct.Path.html
 /// [`push`]: struct.PathBuf.html#method.push
 /// [`set_extension`]: struct.PathBuf.html#method.set_extension
+/// [`Deref`]: ../ops/trait.Deref.html
 ///
 /// More details about the overall approach can be found in
 /// the module documentation.

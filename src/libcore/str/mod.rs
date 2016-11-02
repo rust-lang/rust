@@ -132,7 +132,7 @@ impl Utf8Error {
     /// verified.
     ///
     /// It is the maximum index such that `from_utf8(input[..index])`
-    /// would return `Some(_)`.
+    /// would return `Ok(_)`.
     ///
     /// # Examples
     ///

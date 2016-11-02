@@ -24,9 +24,11 @@ Cargo will automatically generate a simple test when you make a new project.
 Here's the contents of `src/lib.rs`:
 
 ```rust
-# fn main() {}
-#[test]
-fn it_works() {
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+    }
 }
 ```
 
@@ -36,11 +38,11 @@ currently has no body. That's good enough to pass! We can run the tests with
 
 ```bash
 $ cargo test
-   Compiling adder v0.0.1 (file:///home/you/projects/adder)
-     Running target/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
+     Running target/debug/deps/adder-91b3e234d4ed382a
 
 running 1 test
-test it_works ... ok
+test tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
@@ -56,7 +58,7 @@ for the test we wrote, and another for documentation tests. We'll talk about
 those later. For now, see this line:
 
 ```text
-test it_works ... ok
+test tests::it_works ... ok
 ```
 
 Note the `it_works`. This comes from the name of our function:
@@ -89,31 +91,30 @@ run our tests again:
 
 ```bash
 $ cargo test
-   Compiling adder v0.0.1 (file:///home/you/projects/adder)
-     Running target/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
+     Running target/debug/deps/adder-91b3e234d4ed382a
 
 running 1 test
-test it_works ... FAILED
+test tests::it_works ... FAILED
 
 failures:
 
----- it_works stdout ----
-        thread 'it_works' panicked at 'assertion failed: false', /home/steve/tmp/adder/src/lib.rs:3
-
+---- test::it_works stdout ----
+        thread 'tests::it_works' panicked at 'assertion failed: false', src/lib.rs:5
 
 
 failures:
-    it_works
+    tests::it_works
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
 
-thread 'main' panicked at 'Some tests failed', /home/steve/src/rust/src/libtest/lib.rs:247
+error: test failed
 ```
 
 Rust indicates that our test failed:
 
 ```text
-test it_works ... FAILED
+test tests::it_works ... FAILED
 ```
 
 And that's reflected in the summary line:
@@ -159,11 +160,11 @@ This test will now succeed if we `panic!` and fail if we complete. Let's try it:
 
 ```bash
 $ cargo test
-   Compiling adder v0.0.1 (file:///home/you/projects/adder)
-     Running target/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
+     Running target/debug/deps/adder-91b3e234d4ed382a
 
 running 1 test
-test it_works ... ok
+test tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
@@ -191,11 +192,11 @@ passes:
 
 ```bash
 $ cargo test
-   Compiling adder v0.0.1 (file:///home/you/projects/adder)
-     Running target/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
+     Running target/debug/deps/adder-91b3e234d4ed382a
 
 running 1 test
-test it_works ... ok
+test tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
@@ -262,8 +263,8 @@ not:
 
 ```bash
 $ cargo test
-   Compiling adder v0.0.1 (file:///home/you/projects/adder)
-     Running target/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
+     Running target/debug/deps/adder-91b3e234d4ed382a
 
 running 2 tests
 test expensive_test ... ignored
@@ -282,7 +283,7 @@ The expensive tests can be run explicitly using `cargo test -- --ignored`:
 
 ```bash
 $ cargo test -- --ignored
-     Running target/adder-91b3e234d4ed382a
+     Running target/debug/deps/adder-91b3e234d4ed382a
 
 running 1 test
 test expensive_test ... ok
@@ -302,8 +303,11 @@ which is why the command is `cargo test -- --ignored`.
 # The `tests` module
 
 There is one way in which our existing example is not idiomatic: it's
-missing the `tests` module. The idiomatic way of writing our example
-looks like this:
+missing the `tests` module. You might have noticed this test module was
+present in the code that was initially generated with `cargo new` but
+was missing from our last example. Let's explain what this does.
+
+The idiomatic way of writing our example looks like this:
 
 ```rust,ignore
 # fn main() {}
@@ -356,8 +360,8 @@ Note the different `use` line. Now we run our tests:
 ```bash
 $ cargo test
     Updating registry `https://github.com/rust-lang/crates.io-index`
-   Compiling adder v0.0.1 (file:///home/you/projects/adder)
-     Running target/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
+     Running target/debug/deps/adder-91b3e234d4ed382a
 
 running 1 test
 test tests::it_works ... ok
@@ -404,15 +408,15 @@ Let's run them:
 
 ```bash
 $ cargo test
-   Compiling adder v0.0.1 (file:///home/you/projects/adder)
-     Running target/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
+     Running target/debug/deps/adder-91b3e234d4ed382a
 
 running 1 test
 test tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
-     Running target/lib-c18e7d3494509e74
+     Running target/debug/integration_test-68064b69521c828a
 
 running 1 test
 test it_works ... ok
@@ -490,15 +494,15 @@ Let's run the tests again:
 
 ```bash
 $ cargo test
-   Compiling adder v0.0.1 (file:///home/steve/tmp/adder)
-     Running target/adder-91b3e234d4ed382a
+   Compiling adder v0.1.0. (file:///home/you/projects/adder)
+     Running target/debug/deps/adder-91b3e234d4ed382a
 
 running 1 test
 test tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
-     Running target/lib-c18e7d3494509e74
+     Running target/debug/integration_test-68064b69521c828a
 
 running 1 test
 test it_works ... ok

@@ -42,11 +42,12 @@ macro_rules! panic {
 /// Unsafe code relies on `assert!` to enforce run-time invariants that, if
 /// violated could lead to unsafety.
 ///
-/// Other use-cases of `assert!` include
-/// [testing](https://doc.rust-lang.org/book/testing.html) and enforcing
-/// run-time invariants in safe code (whose violation cannot result in unsafety).
+/// Other use-cases of `assert!` include [testing] and enforcing run-time
+/// invariants in safe code (whose violation cannot result in unsafety).
 ///
 /// This macro has a second version, where a custom panic message can be provided.
+///
+/// [testing]: ../book/testing.html
 ///
 /// # Examples
 ///
