@@ -83,7 +83,8 @@ use syntax::{abi, ast, attr};
 use syntax::parse::token::{self, keywords};
 use syntax_pos::Span;
 
-use rustc::hir::{self, intravisit, map as hir_map, print as pprust};
+use rustc::hir::{self, map as hir_map, print as pprust};
+use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 
@@ -92,7 +93,7 @@ use rustc::hir::def_id::DefId;
 
 pub fn collect_item_types(ccx: &CrateCtxt) {
     let mut visitor = CollectItemTypesVisitor { ccx: ccx };
-    ccx.tcx.visit_all_items_in_krate(DepNode::CollectItem, &mut visitor);
+    ccx.tcx.visit_all_item_likes_in_krate(DepNode::CollectItem, &mut visitor.as_deep_visitor());
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -128,7 +129,7 @@ struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         convert_item(self.ccx, item);
         intravisit::walk_item(self, item);

@@ -119,7 +119,7 @@ pub fn krate(sess: &Session,
         late_bound: NodeMap(),
     };
     sess.track_errors(|| {
-        krate.visit_all_items(&mut LifetimeContext {
+        intravisit::walk_crate(&mut LifetimeContext {
             sess: sess,
             hir_map: hir_map,
             map: &mut map,
@@ -127,14 +127,23 @@ pub fn krate(sess: &Session,
             def_map: def_map,
             trait_ref_hack: false,
             labels_in_fn: vec![],
-        });
+        }, krate);
     })?;
     Ok(map)
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
+    // Override the nested functions -- lifetimes follow lexical scope,
+    // so it's convenient to walk the tree in lexical order.
+
+    fn visit_nested_item(&mut self, id: hir::ItemId) {
+        let item = self.hir_map.expect_item(id.id);
+        self.visit_item(item)
+    }
+
     fn visit_item(&mut self, item: &hir::Item) {
-        assert!(self.labels_in_fn.is_empty());
+        // Save labels for nested items.
+        let saved_labels_in_fn = replace(&mut self.labels_in_fn, vec![]);
 
         // Items always introduce a new root scope
         self.with(RootScope, |_, this| {
@@ -175,7 +184,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
         });
 
         // Done traversing the item; remove any labels it created
-        self.labels_in_fn.truncate(0);
+        self.labels_in_fn = saved_labels_in_fn;
     }
 
     fn visit_foreign_item(&mut self, item: &hir::ForeignItem) {

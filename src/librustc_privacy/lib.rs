@@ -31,6 +31,7 @@ use rustc::hir::{self, PatKind};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
@@ -1039,7 +1040,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         let min = |vis1: ty::Visibility, vis2| {
             if vis1.is_at_least(vis2, &self.tcx.map) { vis2 } else { vis1 }
@@ -1161,7 +1162,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             tcx: tcx,
             old_error_set: &visitor.old_error_set,
         };
-        krate.visit_all_items(&mut visitor);
+        krate.visit_all_item_likes(&mut visitor);
     }
 
     visitor.access_levels

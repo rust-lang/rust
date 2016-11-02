@@ -439,7 +439,7 @@ impl Ord for TraitInfo {
 /// Retrieve all traits in this crate and any dependent crates.
 pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
     if ccx.all_traits.borrow().is_none() {
-        use rustc::hir::intravisit;
+        use rustc::hir::itemlikevisit;
 
         let mut traits = vec![];
 
@@ -450,7 +450,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
             map: &'a hir_map::Map<'tcx>,
             traits: &'a mut AllTraitsVec,
         }
-        impl<'v, 'a, 'tcx> intravisit::Visitor<'v> for Visitor<'a, 'tcx> {
+        impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
             fn visit_item(&mut self, i: &'v hir::Item) {
                 match i.node {
                     hir::ItemTrait(..) => {
@@ -461,7 +461,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
                 }
             }
         }
-        ccx.tcx.map.krate().visit_all_items(&mut Visitor {
+        ccx.tcx.map.krate().visit_all_item_likes(&mut Visitor {
             map: &ccx.tcx.map,
             traits: &mut traits,
         });

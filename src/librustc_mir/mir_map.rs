@@ -38,9 +38,9 @@ use syntax_pos::Span;
 use std::mem;
 
 pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.visit_all_items_in_krate(DepNode::Mir, &mut BuildMir {
+    tcx.visit_all_item_likes_in_krate(DepNode::Mir, &mut BuildMir {
         tcx: tcx
-    });
+    }.as_deep_visitor());
 }
 
 /// A pass to lift all the types and substitutions in a Mir

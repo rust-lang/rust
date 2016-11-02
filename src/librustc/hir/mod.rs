@@ -68,6 +68,7 @@ pub mod check_attr;
 pub mod def;
 pub mod def_id;
 pub mod intravisit;
+pub mod itemlikevisit;
 pub mod lowering;
 pub mod map;
 pub mod pat_util;
@@ -438,8 +439,8 @@ impl Crate {
     /// follows lexical scoping rules -- then you want a different
     /// approach. You should override `visit_nested_item` in your
     /// visitor and then call `intravisit::walk_crate` instead.
-    pub fn visit_all_items<'hir, V>(&'hir self, visitor: &mut V)
-        where V: intravisit::Visitor<'hir>
+    pub fn visit_all_item_likes<'hir, V>(&'hir self, visitor: &mut V)
+        where V: itemlikevisit::ItemLikeVisitor<'hir>
     {
         for (_, item) in &self.items {
             visitor.visit_item(item);

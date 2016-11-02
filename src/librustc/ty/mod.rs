@@ -50,7 +50,7 @@ use syntax_pos::{DUMMY_SP, Span};
 use rustc_const_math::ConstInt;
 
 use hir;
-use hir::intravisit::Visitor;
+use hir::itemlikevisit::ItemLikeVisitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{BuiltinBound, BuiltinBounds};
@@ -2695,12 +2695,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_region(ty::ReScope(self.region_maps.node_extent(id)))
     }
 
-    pub fn visit_all_items_in_krate<V,F>(self,
-                                         dep_node_fn: F,
-                                         visitor: &mut V)
-        where F: FnMut(DefId) -> DepNode<DefId>, V: Visitor<'gcx>
+    pub fn visit_all_item_likes_in_krate<V,F>(self,
+                                              dep_node_fn: F,
+                                              visitor: &mut V)
+        where F: FnMut(DefId) -> DepNode<DefId>, V: ItemLikeVisitor<'gcx>
     {
-        dep_graph::visit_all_items_in_krate(self.global_tcx(), dep_node_fn, visitor);
+        dep_graph::visit_all_item_likes_in_krate(self.global_tcx(), dep_node_fn, visitor);
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`
