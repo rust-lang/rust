@@ -277,39 +277,37 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                         return ret_val;
                         // this can't be 0 length, just like TokenTree::Delimited
                     }
-                    Some(cur_matched) => {
-                        match *cur_matched {
+                    Some(cur_matched) => if let MatchedNonterminal(ref nt) = *cur_matched {
+                        match **nt {
                             // sidestep the interpolation tricks for ident because
                             // (a) idents can be in lots of places, so it'd be a pain
                             // (b) we actually can, since it's a token.
-                            MatchedNonterminal(NtIdent(ref sn)) => {
+                            NtIdent(ref sn) => {
                                 r.stack.last_mut().unwrap().idx += 1;
                                 r.cur_span = sn.span;
                                 r.cur_tok = token::Ident(sn.node);
                                 return ret_val;
                             }
-                            MatchedNonterminal(NtTT(ref tt)) => {
+                            NtTT(_) => {
                                 r.stack.push(TtFrame {
-                                    forest: TokenTree::Token(sp, Interpolated(NtTT(tt.clone()))),
+                                    forest: TokenTree::Token(sp, Interpolated(nt.clone())),
                                     idx: 0,
                                     dotdotdoted: false,
                                     sep: None,
                                 });
                             }
-                            MatchedNonterminal(ref other_whole_nt) => {
+                            _ => {
                                 r.stack.last_mut().unwrap().idx += 1;
                                 // FIXME(pcwalton): Bad copy.
                                 r.cur_span = sp;
-                                r.cur_tok = Interpolated((*other_whole_nt).clone());
+                                r.cur_tok = Interpolated(nt.clone());
                                 return ret_val;
                             }
-                            MatchedSeq(..) => {
-                                panic!(r.sp_diag.span_fatal(
-                                    sp, /* blame the macro writer */
-                                    &format!("variable '{}' is still repeating at this depth",
-                                            ident)));
-                            }
                         }
+                    } else {
+                        panic!(r.sp_diag.span_fatal(
+                            sp, /* blame the macro writer */
+                            &format!("variable '{}' is still repeating at this depth", ident)));
                     }
                 }
             }
