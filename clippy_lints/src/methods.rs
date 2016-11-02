@@ -871,8 +871,8 @@ fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &MethodArgs, is
         return; // caller is not a type that we want to lint
     };
 
-    let mut_str = if is_mut { "_mut" } else {""};
-    let borrow_str = if is_mut { "&mut " } else {""};
+    let mut_str = if is_mut { "_mut" } else { "" };
+    let borrow_str = if is_mut { "&mut " } else { "&" };
     span_lint_and_then(
         cx,
         GET_UNWRAP,
