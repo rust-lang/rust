@@ -187,6 +187,10 @@ pub fn compiletest(build: &Build,
         cmd.arg("--verbose");
     }
 
+    if build.config.quiet_tests {
+        cmd.arg("--quiet");
+    }
+
     // Only pass correct values for these flags for the `run-make` suite as it
     // requires that a C++ compiler was configured which isn't always the case.
     if suite == "run-make" {
@@ -277,7 +281,13 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
     build.add_rustc_lib_path(compiler, &mut cmd);
     cmd.arg("--test");
     cmd.arg(markdown);
-    cmd.arg("--test-args").arg(build.flags.args.join(" "));
+
+    let mut test_args = build.flags.args.join(" ");
+    if build.config.quiet_tests {
+        test_args.push_str(" --quiet");
+    }
+    cmd.arg("--test-args").arg(test_args);
+
     build.run(&mut cmd);
 }
 
@@ -366,6 +376,11 @@ pub fn krate(build: &Build,
     let mut dylib_path = dylib_path();
     dylib_path.insert(0, build.sysroot_libdir(compiler, target));
     cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+
+    if build.config.quiet_tests {
+        cargo.arg("--");
+        cargo.arg("--quiet");
+    }
 
     if target.contains("android") {
         build.run(cargo.arg("--no-run"));

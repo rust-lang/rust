@@ -1,0 +1,13 @@
+error: `c` does not live long enough
+  --> $DIR/regionck-unboxed-closure-lifetimes.rs:19:5
+   |
+17 |         let c_ref = &c; //~ ERROR `c` does not live long enough
+   |                      - borrow occurs here
+18 |         f = move |a: isize, b: isize| { a + b + *c_ref };
+19 |     }
+   |     ^ `c` dropped here while still borrowed
+20 | }
+   | - borrowed value needs to live until here
+
+error: aborting due to previous error
+
