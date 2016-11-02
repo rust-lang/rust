@@ -219,9 +219,21 @@ impl<T> io::Seek for Cursor<T> where T: AsRef<[u8]> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Read for Cursor<T> where T: AsRef<[u8]> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let n = Read::read(&mut self.fill_buf()?, buf)?;
-        self.pos += n as u64;
-        Ok(n)
+        // First check if the amount of bytes we want to read is small: the read
+        // in the else branch will end up calling `<&[u8] as Read>::read()`,
+        // which will copy the buffer using a memcopy. If we only want to read a
+        // single byte, then the overhead of the function call is significant.
+        let num_read = {
+            let mut inner_buf = self.fill_buf()?;
+            if buf.len() == 1 && inner_buf.len() > 0 {
+                buf[0] = inner_buf[0];
+                1
+            } else {
+                Read::read(&mut inner_buf, buf)?
+            }
+        };
+        self.pos += num_read as u64;
+        Ok(num_read)
     }
 }
 
