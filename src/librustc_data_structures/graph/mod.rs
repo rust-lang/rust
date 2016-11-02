@@ -231,18 +231,30 @@ impl<N: Debug, E: Debug> Graph<N, E> {
 
     // # Iterating over nodes, edges
 
+    pub fn all_nodes_enumerated(&self) -> Nodes<N> {
+        Nodes {
+            iter: self.nodes.iter().enumerate()
+        }
+    }
+
+    pub fn all_edges_enumerated(&self) -> Edges<E> {
+        Edges {
+            iter: self.edges.iter().enumerate()
+        }
+    }
+
     pub fn each_node<'a, F>(&'a self, mut f: F) -> bool
         where F: FnMut(NodeIndex, &'a Node<N>) -> bool
     {
         //! Iterates over all edges defined in the graph.
-        self.nodes.iter().enumerate().all(|(i, node)| f(NodeIndex(i), node))
+        self.all_nodes_enumerated().all(|(node_idx, node)| f(node_idx, node))
     }
 
     pub fn each_edge<'a, F>(&'a self, mut f: F) -> bool
         where F: FnMut(EdgeIndex, &'a Edge<E>) -> bool
     {
         //! Iterates over all edges defined in the graph
-        self.edges.iter().enumerate().all(|(i, edge)| f(EdgeIndex(i), edge))
+        self.all_edges_enumerated().all(|(edge_idx, edge)| f(edge_idx, edge))
     }
 
     pub fn outgoing_edges(&self, source: NodeIndex) -> AdjacentEdges<N, E> {
@@ -286,8 +298,8 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         while changed {
             changed = false;
             iteration += 1;
-            for (i, edge) in self.edges.iter().enumerate() {
-                changed |= op(iteration, EdgeIndex(i), edge);
+            for (edge_index, edge) in self.all_edges_enumerated() {
+                changed |= op(iteration, edge_index, edge);
             }
         }
     }
@@ -301,6 +313,34 @@ impl<N: Debug, E: Debug> Graph<N, E> {
 }
 
 // # Iterators
+
+pub struct Nodes<'g, N>
+    where N: 'g,
+{
+    iter: ::std::iter::Enumerate<::std::slice::Iter<'g, Node<N>>>
+}
+
+impl<'g, N: Debug> Iterator for Nodes<'g, N> {
+    type Item = (NodeIndex, &'g Node<N>);
+
+    fn next(&mut self) -> Option<(NodeIndex, &'g Node<N>)> {
+        self.iter.next().map(|(idx, n)| (NodeIndex(idx), n))
+    }
+}
+
+pub struct Edges<'g, E>
+    where E: 'g,
+{
+    iter: ::std::iter::Enumerate<::std::slice::Iter<'g, Edge<E>>>
+}
+
+impl<'g, E: Debug> Iterator for Edges<'g, E> {
+    type Item = (EdgeIndex, &'g Edge<E>);
+
+    fn next(&mut self) -> Option<(EdgeIndex, &'g Edge<E>)> {
+        self.iter.next().map(|(idx, e)| (EdgeIndex(idx), e))
+    }
+}
 
 pub struct AdjacentEdges<'g, N, E>
     where N: 'g,
