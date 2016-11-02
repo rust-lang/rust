@@ -576,7 +576,13 @@ pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token 
     match t {
         token::Ident(id) => token::Ident(fld.fold_ident(id)),
         token::Lifetime(id) => token::Lifetime(fld.fold_ident(id)),
-        token::Interpolated(nt) => token::Interpolated(fld.fold_interpolated(nt)),
+        token::Interpolated(nt) => {
+            let nt = match Rc::try_unwrap(nt) {
+                Ok(nt) => nt,
+                Err(nt) => (*nt).clone(),
+            };
+            token::Interpolated(Rc::new(fld.fold_interpolated(nt)))
+        }
         token::SubstNt(ident) => token::SubstNt(fld.fold_ident(ident)),
         token::MatchNt(name, kind) => token::MatchNt(fld.fold_ident(name), fld.fold_ident(kind)),
         _ => t
@@ -614,26 +620,25 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
                           .expect_one("expected fold to produce exactly one item")),
         token::NtBlock(block) => token::NtBlock(fld.fold_block(block)),
         token::NtStmt(stmt) =>
-            token::NtStmt(stmt.map(|stmt| fld.fold_stmt(stmt)
+            token::NtStmt(fld.fold_stmt(stmt)
                           // this is probably okay, because the only folds likely
                           // to peek inside interpolated nodes will be renamings/markings,
                           // which map single items to single items
-                          .expect_one("expected fold to produce exactly one statement"))),
+                          .expect_one("expected fold to produce exactly one statement")),
         token::NtPat(pat) => token::NtPat(fld.fold_pat(pat)),
         token::NtExpr(expr) => token::NtExpr(fld.fold_expr(expr)),
         token::NtTy(ty) => token::NtTy(fld.fold_ty(ty)),
-        token::NtIdent(id) =>
-            token::NtIdent(Box::new(Spanned::<Ident>{node: fld.fold_ident(id.node), ..*id})),
+        token::NtIdent(id) => token::NtIdent(Spanned::<Ident>{node: fld.fold_ident(id.node), ..id}),
         token::NtMeta(meta_item) => token::NtMeta(fld.fold_meta_item(meta_item)),
-        token::NtPath(path) => token::NtPath(Box::new(fld.fold_path(*path))),
-        token::NtTT(tt) => token::NtTT(P(fld.fold_tt(&tt))),
+        token::NtPath(path) => token::NtPath(fld.fold_path(path)),
+        token::NtTT(tt) => token::NtTT(fld.fold_tt(&tt)),
         token::NtArm(arm) => token::NtArm(fld.fold_arm(arm)),
-        token::NtImplItem(arm) =>
-            token::NtImplItem(arm.map(|arm| fld.fold_impl_item(arm)
-                              .expect_one("expected fold to produce exactly one item"))),
-        token::NtTraitItem(arm) =>
-            token::NtTraitItem(arm.map(|arm| fld.fold_trait_item(arm)
-                               .expect_one("expected fold to produce exactly one item"))),
+        token::NtImplItem(item) =>
+            token::NtImplItem(fld.fold_impl_item(item)
+                              .expect_one("expected fold to produce exactly one item")),
+        token::NtTraitItem(item) =>
+            token::NtTraitItem(fld.fold_trait_item(item)
+                               .expect_one("expected fold to produce exactly one item")),
         token::NtGenerics(generics) => token::NtGenerics(fld.fold_generics(generics)),
         token::NtWhereClause(where_clause) =>
             token::NtWhereClause(fld.fold_where_clause(where_clause)),

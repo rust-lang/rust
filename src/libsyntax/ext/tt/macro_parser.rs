@@ -89,7 +89,6 @@ use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, Nonterminal};
 use parse::token;
 use print::pprust;
-use ptr::P;
 use tokenstream::{self, TokenTree};
 use util::small_vector::SmallVector;
 
@@ -198,7 +197,7 @@ pub fn initial_matcher_pos(ms: Vec<TokenTree>, sep: Option<Token>, lo: BytePos)
 
 pub enum NamedMatch {
     MatchedSeq(Vec<Rc<NamedMatch>>, syntax_pos::Span),
-    MatchedNonterminal(Nonterminal)
+    MatchedNonterminal(Rc<Nonterminal>)
 }
 
 pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
@@ -482,7 +481,7 @@ pub fn parse(sess: &ParseSess, mut rdr: TtReader, ms: &[TokenTree]) -> NamedPars
                     if let TokenTree::Token(span, MatchNt(_, ident)) = ei.top_elts.get_tt(ei.idx) {
                         let match_cur = ei.match_cur;
                         (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
-                            parse_nt(&mut rust_parser, span, &ident.name.as_str()))));
+                            Rc::new(parse_nt(&mut rust_parser, span, &ident.name.as_str())))));
                         ei.idx += 1;
                         ei.match_cur += 1;
                     } else {
@@ -503,7 +502,7 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "tt" => {
             p.quote_depth += 1; //but in theory, non-quoted tts might be useful
             let res: ::parse::PResult<'a, _> = p.parse_token_tree();
-            let res = token::NtTT(P(panictry!(res)));
+            let res = token::NtTT(panictry!(res));
             p.quote_depth -= 1;
             return res;
         }
@@ -521,7 +520,7 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         },
         "block" => token::NtBlock(panictry!(p.parse_block())),
         "stmt" => match panictry!(p.parse_stmt()) {
-            Some(s) => token::NtStmt(P(s)),
+            Some(s) => token::NtStmt(s),
             None => {
                 p.fatal("expected a statement").emit();
                 panic!(FatalError);
@@ -534,7 +533,7 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "ident" => match p.token {
             token::Ident(sn) => {
                 p.bump();
-                token::NtIdent(Box::new(Spanned::<Ident>{node: sn, span: p.span}))
+                token::NtIdent(Spanned::<Ident>{node: sn, span: p.span})
             }
             _ => {
                 let token_str = pprust::token_to_string(&p.token);
@@ -544,7 +543,7 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
             }
         },
         "path" => {
-            token::NtPath(Box::new(panictry!(p.parse_path(PathStyle::Type))))
+            token::NtPath(panictry!(p.parse_path(PathStyle::Type)))
         },
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         // this is not supposed to happen, since it has been checked
