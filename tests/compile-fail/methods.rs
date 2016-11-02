@@ -445,15 +445,10 @@ fn get_unwrap() {
         //~^ERROR called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
         //~|HELP try this
         //~|SUGGESTION &mut some_vecdeque[0]
-        *some_hashmap.get_mut(&1).unwrap() = 'b';
-        //~^ERROR called `.get_mut().unwrap()` on a HashMap. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION &mut some_hashmap[&1]
-        *some_btreemap.get_mut(&1).unwrap() = 'b';
-        //~^ERROR called `.get_mut().unwrap()` on a BTreeMap. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION &mut some_btreemap[&1]
 
+        // Check false positives
+        *some_hashmap.get_mut(&1).unwrap() = 'b';
+        *some_btreemap.get_mut(&1).unwrap() = 'b';
         *false_positive.get_mut(0).unwrap() = 1;
     }
 }

@@ -854,6 +854,8 @@ fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs, is_
 }
 
 fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &MethodArgs, is_mut: bool) {
+    // Note: we don't want to lint `get_mut().unwrap` for HashMap or BTreeMap,
+    // because they do not implement `IndexMut`
     let expr_ty = cx.tcx.expr_ty(&get_args[0]);
     let caller_type = if derefs_to_slice(cx, &get_args[0], expr_ty).is_some() {
         "slice"
@@ -861,9 +863,9 @@ fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &MethodArgs, is
         "Vec"
     } else if match_type(cx, expr_ty, &paths::VEC_DEQUE) {
         "VecDeque"
-    } else if match_type(cx, expr_ty, &paths::HASHMAP) {
+    } else if !is_mut && match_type(cx, expr_ty, &paths::HASHMAP) {
         "HashMap"
-    } else if match_type(cx, expr_ty, &paths::BTREEMAP) {
+    } else if !is_mut && match_type(cx, expr_ty, &paths::BTREEMAP) {
         "BTreeMap"
     } else {
         return; // caller is not a type that we want to lint
