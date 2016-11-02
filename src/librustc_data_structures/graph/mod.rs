@@ -336,7 +336,7 @@ impl<'g, N: Debug, E: Debug> Iterator for AdjacentEdges<'g, N, E> {
     }
 }
 
-pub struct AdjacentTargets<'g, N: 'g, E: 'g>
+pub struct AdjacentTargets<'g, N, E>
     where N: 'g,
           E: 'g
 {
@@ -351,7 +351,7 @@ impl<'g, N: Debug, E: Debug> Iterator for AdjacentTargets<'g, N, E> {
     }
 }
 
-pub struct AdjacentSources<'g, N: 'g, E: 'g>
+pub struct AdjacentSources<'g, N, E>
     where N: 'g,
           E: 'g
 {
@@ -366,7 +366,10 @@ impl<'g, N: Debug, E: Debug> Iterator for AdjacentSources<'g, N, E> {
     }
 }
 
-pub struct DepthFirstTraversal<'g, N: 'g, E: 'g> {
+pub struct DepthFirstTraversal<'g, N, E>
+    where N: 'g,
+          E: 'g
+{
     graph: &'g Graph<N, E>,
     stack: Vec<NodeIndex>,
     visited: BitVector,
