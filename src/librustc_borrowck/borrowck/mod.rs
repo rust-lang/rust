@@ -300,8 +300,6 @@ struct BorrowStats {
     guaranteed_paths: usize
 }
 
-pub type BckResult<'tcx, T> = Result<T, BckError<'tcx>>;
-
 ///////////////////////////////////////////////////////////////////////////
 // Loans and loan paths
 
