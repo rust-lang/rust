@@ -1,0 +1,17 @@
+error: cannot borrow immutable argument `self` as mutable
+  --> $DIR/issue-31424.rs:17:15
+   |
+17 |         (&mut self).bar();
+   |               ^^^^
+   |               |
+   |               try removing `&mut` here
+   |               cannot reborrow mutably
+
+error: cannot borrow immutable argument `self` as mutable
+  --> $DIR/issue-31424.rs:23:15
+   |
+23 |         (&mut self).bar();
+   |               ^^^^ cannot borrow mutably
+
+error: aborting due to 2 previous errors
+

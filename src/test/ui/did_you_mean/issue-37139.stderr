@@ -1,0 +1,11 @@
+error: cannot borrow immutable local variable `x` as mutable
+  --> $DIR/issue-37139.rs:22:23
+   |
+22 |             test(&mut x);
+   |                       ^
+   |                       |
+   |                       try removing `&mut` here
+   |                       cannot reborrow mutably
+
+error: aborting due to previous error
+
