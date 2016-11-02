@@ -1,0 +1,41 @@
+error: `z` does not live long enough
+  --> $DIR/regions-escape-loop-via-vec.rs:26:5
+   |
+22 |         _y.push(&mut z); //~ ERROR `z` does not live long enough
+   |                      - borrow occurs here
+...
+26 |     }
+   |     ^ `z` dropped here while still borrowed
+27 |     //~^ NOTE borrowed value only lives until here
+28 | }
+   | - borrowed value needs to live until here
+
+error[E0503]: cannot use `x` because it was mutably borrowed
+  --> $DIR/regions-escape-loop-via-vec.rs:18:11
+   |
+14 |     let mut _y = vec![&mut x];
+   |                            - borrow of `x` occurs here
+...
+18 |     while x < 10 { //~ ERROR cannot use `x` because it was mutably borrowed
+   |           ^ use of borrowed `x`
+
+error[E0503]: cannot use `x` because it was mutably borrowed
+  --> $DIR/regions-escape-loop-via-vec.rs:20:13
+   |
+14 |     let mut _y = vec![&mut x];
+   |                            - borrow of `x` occurs here
+...
+20 |         let mut z = x; //~ ERROR cannot use `x` because it was mutably borrowed
+   |             ^^^^^ use of borrowed `x`
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/regions-escape-loop-via-vec.rs:24:9
+   |
+14 |     let mut _y = vec![&mut x];
+   |                            - borrow of `x` occurs here
+...
+24 |         x += 1; //~ ERROR cannot assign
+   |         ^^^^^^ assignment to borrowed `x` occurs here
+
+error: aborting due to 4 previous errors
+
