@@ -104,13 +104,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Drop { ref location, target, .. } => {
-                // FIXME(solson)
-                let lvalue = self.eval_lvalue(location)?;
-                let lvalue = self.force_allocation(lvalue)?;
+                let val = self.eval_and_read_lvalue(location)?;
 
-                let ptr = lvalue.to_ptr();
                 let ty = self.lvalue_ty(location);
-                self.drop(ptr, ty)?;
+                self.drop(val, ty)?;
                 self.goto_block(target);
             }
 
@@ -471,7 +468,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.tcx.type_needs_drop_given_env(ty, &self.tcx.empty_parameter_environment())
     }
 
-    fn drop(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
+    fn drop(&mut self, val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
         if !self.type_needs_drop(ty) {
             debug!("no need to drop {:?}", ty);
             return Ok(());
@@ -482,7 +479,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         match ty.sty {
             ty::TyBox(_contents_ty) => {
-                let contents_ptr = self.memory.read_ptr(ptr)?;
+                let contents_ptr = val.read_ptr(&self.memory)?;
                 // self.drop(contents_ptr, contents_ty)?;
                 trace!("-deallocating box");
                 self.memory.deallocate(contents_ptr)?;
