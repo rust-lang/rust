@@ -291,6 +291,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, PrimVal::from_ptr(ptr))?;
             }
 
+            "__rust_deallocate" => {
+                let ptr = args[0].read_ptr(&self.memory)?;
+                // FIXME: insert sanity check for size and align?
+                let _old_size = self.value_to_primval(args[1], usize)?
+                    .expect_uint("__rust_deallocate second arg not usize");
+                let _align = self.value_to_primval(args[2], usize)?
+                    .expect_uint("__rust_deallocate third arg not usize");
+                self.memory.deallocate(ptr)?;
+            },
+
             "__rust_reallocate" => {
                 let ptr = args[0].read_ptr(&self.memory)?;
                 let size = self.value_to_primval(args[2], usize)?.expect_uint("__rust_reallocate third arg not usize");

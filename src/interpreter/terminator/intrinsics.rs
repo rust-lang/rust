@@ -69,6 +69,26 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_value_to_ptr(arg_vals[1], dest, ty)?;
             }
 
+            "atomic_fence_acq" => {
+                // we are inherently singlethreaded and singlecored, this is a nop
+            }
+
+            "atomic_xsub_rel" => {
+                let ty = substs.type_at(0);
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let change = self.value_to_primval(arg_vals[1], ty)?;
+                let old = self.read_value(ptr, ty)?;
+                let old = match old {
+                    Value::ByVal(val) => val,
+                    Value::ByRef(_) => bug!("just read the value, can't be byref"),
+                    Value::ByValPair(..) => bug!("atomic_xsub_rel doesn't work with nonprimitives"),
+                };
+                self.write_primval(dest, old)?;
+                // FIXME: what do atomics do on overflow?
+                let (val, _) = primval::binary_op(mir::BinOp::Sub, old, change)?;
+                self.write_primval(Lvalue::from_ptr(ptr), val)?;
+            }
+
             "breakpoint" => unimplemented!(), // halt miri
 
             "copy" |
@@ -99,6 +119,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let adt_ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
                 self.write_primval(dest, PrimVal::new(discr_val, PrimValKind::U64))?;
+            }
+
+            "drop_in_place" => {
+                let ty = substs.type_at(0);
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let mut drops = Vec::new();
+                self.drop(Lvalue::from_ptr(ptr), ty, &mut drops)?;
+                self.eval_drop_impls(drops)?;
             }
 
             "fabsf32" => {
@@ -248,6 +276,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let size_val = self.usize_primval(size);
                 self.write_primval(dest, size_val)?;
             }
+
+            "min_align_of_val" |
+            "align_of_val" => {
+                let ty = substs.type_at(0);
+                let (_, align) = self.size_and_align_of_dst(ty, arg_vals[0])?;
+                let align_val = self.usize_primval(align);
+                self.write_primval(dest, align_val)?;
+            }
+
             "type_name" => {
                 let ty = substs.type_at(0);
                 let ty_name = ty.to_string();
