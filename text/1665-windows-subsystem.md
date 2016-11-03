@@ -6,10 +6,10 @@
 # Summary
 [summary]: #summary
 
-Rust programs compiled for windows will always allocate a console window on
+Rust programs compiled for Windows will always allocate a console window on
 startup. This behavior is controlled via the `SUBSYSTEM` parameter passed to the
 linker, and so *can* be overridden with specific compiler flags. However, doing
-so will bypass the rust-specific initialization code in `libstd`, as when using
+so will bypass the Rust-specific initialization code in `libstd`, as when using
 the MSVC toolchain, the entry point must be named `WinMain`.
 
 This RFC proposes supporting this case explicitly, allowing `libstd` to
@@ -18,10 +18,10 @@ continue to be initialized correctly.
 # Motivation
 [motivation]: #motivation
 
-The `WINDOWS` subsystem is commonly used on windows: desktop applications
+The `WINDOWS` subsystem is commonly used on Windows: desktop applications
 typically do not want to flash up a console window on startup.
 
-Currently, using the `WINDOWS` subsystem from rust is undocumented, and the
+Currently, using the `WINDOWS` subsystem from Rust is undocumented, and the
 process is non-trivial when targeting the MSVC toolchain. There are a couple of
 approaches, each with their own downsides:
 
@@ -38,14 +38,14 @@ The GNU toolchain will accept either entry point.
 ## Override the entry point via linker options
 
 This uses the same method as will be described in this RFC. However, it will
-result in build scripts also being compiled for the windows subsystem, which
+result in build scripts also being compiled for the `WINDOWS` subsystem, which
 can cause additional console windows to pop up during compilation, making the
 system unusable while a build is in progress.
 
 # Detailed design
 [design]: #detailed-design
 
-When an executable is linked while compiling for a windows target, it will be
+When an executable is linked while compiling for a Windows target, it will be
 linked for a specific *subsystem*. The subsystem determines how the operating
 system will run the executable, and will affect the execution environment of
 the program.
@@ -65,7 +65,7 @@ Initially, the set of possible values will be `{windows, console}`, but may be
 extended in future if desired.
 
 The use of this attribute in a non-executable crate will result in a compiler
-warning. If compiling for a non-windows target, the attribute will be silently
+warning. If compiling for a non-Windows target, the attribute will be silently
 ignored.
 
 ## Additional linker argument
@@ -74,7 +74,7 @@ For the GNU toolchain, this will be sufficient. However, for the MSVC toolchain,
 the linker will be expecting a `WinMain` symbol, which will not exist.
 
 There is some complexity to the way in which a different entry point is expected
-when using the windows subsystem. Firstly, the C-runtime library exports two
+when using the `WINDOWS` subsystem. Firstly, the C-runtime library exports two
 symbols designed to be used as an entry point:
 ```
 mainCRTStartup
@@ -93,7 +93,7 @@ targeting the MSVC toolchain:
 
 This will override the entry point to always be `mainCRTStartup`. For
 console-subsystem programs this will have no effect, since it was already the
-default, but for windows-subsystem programs, it will eliminate the need for
+default, but for `WINDOWS` subsystem programs, it will eliminate the need for
 a `WinMain` symbol to be defined.
 
 This command line option will always be passed to the linker, regardless of the
@@ -105,7 +105,7 @@ require `rustc` to perform some basic parsing of the linker options.
 [drawbacks]: #drawbacks
 
 - A new platform-specific crate attribute.
-- The difficulty of manually calling the rust initialization code is potentially
+- The difficulty of manually calling the Rust initialization code is potentially
   a more general problem, and this only solves a specific (if common) case.
 - The subsystem must be specified earlier than is strictly required: when
   compiling C/C++ code only the linker, not the compiler, needs to actually be
@@ -121,7 +121,7 @@ require `rustc` to perform some basic parsing of the linker options.
   command line option.
 
   This command line option would only be applicable when compiling an
-  executable, and only for windows platforms. No other supported platforms
+  executable, and only for Windows platforms. No other supported platforms
   require a different entry point or additional linker arguments for programs
   designed to run with a graphical user interface.
 
@@ -133,7 +133,7 @@ require `rustc` to perform some basic parsing of the linker options.
   A similar option would need to be added to `Cargo.toml` to make usage as
   simple as possible.
 
-  There's some bike-shedding which can be done one the exact command line
+  There's some bike-shedding which can be done on the exact command line
   interface, but one possible option is shown below.
 
   Rustc usage:
@@ -151,7 +151,7 @@ require `rustc` to perform some basic parsing of the linker options.
   ```
 
   The `crate-subsystem` command line option would exist on all platforms,
-  but would be ignored when compiling for a non-windows target, so as to
+  but would be ignored when compiling for a non-Windows target, so as to
   support cross-compiling. If not compiling a binary crate, specifying the
   option is an error regardless of the target.
 
