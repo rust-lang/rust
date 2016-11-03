@@ -8,6 +8,7 @@ pub mod backtrace;
 pub mod condvar;
 pub mod env;
 pub mod ext;
+pub mod fast_thread_local;
 pub mod fd;
 pub mod fs;
 pub mod memchr;
@@ -75,4 +76,9 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
 
 pub fn cvt(result: Result<usize, libc::Error>) -> io::Result<usize> {
     result.map_err(|err| io::Error::from_raw_os_error(err.errno as i32))
+}
+
+/// On Redox, use an illegal instruction to abort
+pub unsafe fn abort_internal() -> ! {
+    ::core::intrinsics::abort();
 }
