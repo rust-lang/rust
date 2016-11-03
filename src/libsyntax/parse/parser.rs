@@ -210,6 +210,7 @@ pub struct Parser<'a> {
     /// into modules, and sub-parsers have new values for this name.
     pub root_module_name: Option<String>,
     pub expected_tokens: Vec<TokenType>,
+    pub tts: Vec<(TokenTree, usize)>,
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -273,21 +274,13 @@ impl From<P<Expr>> for LhsExpr {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(sess: &'a ParseSess, mut rdr: Box<Reader+'a>) -> Self {
-        let tok0 = rdr.real_token();
-        let span = tok0.sp;
-        let mut directory = match span {
-            syntax_pos::DUMMY_SP => PathBuf::new(),
-            _ => PathBuf::from(sess.codemap().span_to_filename(span)),
-        };
-        directory.pop();
-
-        Parser {
+    pub fn new(sess: &'a ParseSess, rdr: Box<Reader+'a>) -> Self {
+        let mut parser = Parser {
             reader: rdr,
             sess: sess,
-            token: tok0.tok,
-            span: span,
-            prev_span: span,
+            token: token::Underscore,
+            span: syntax_pos::DUMMY_SP,
+            prev_span: syntax_pos::DUMMY_SP,
             prev_token_kind: PrevTokenKind::Other,
             lookahead_buffer: Default::default(),
             tokens_consumed: 0,
@@ -295,11 +288,57 @@ impl<'a> Parser<'a> {
             quote_depth: 0,
             parsing_token_tree: false,
             obsolete_set: HashSet::new(),
-            directory: directory,
+            directory: PathBuf::new(),
             open_braces: Vec::new(),
             owns_directory: true,
             root_module_name: None,
             expected_tokens: Vec::new(),
+            tts: Vec::new(),
+        };
+
+        let tok = parser.next_tok();
+        parser.token = tok.tok;
+        parser.span = tok.sp;
+        if parser.span != syntax_pos::DUMMY_SP {
+            parser.directory = PathBuf::from(sess.codemap().span_to_filename(parser.span));
+            parser.directory.pop();
+        }
+        parser
+    }
+
+    fn next_tok(&mut self) -> TokenAndSpan {
+        'outer: loop {
+            let mut tok = if let Some((tts, i)) = self.tts.pop() {
+                let tt = tts.get_tt(i);
+                if i + 1 < tts.len() {
+                    self.tts.push((tts, i + 1));
+                }
+                if let TokenTree::Token(sp, tok) = tt {
+                    TokenAndSpan { tok: tok, sp: sp }
+                } else {
+                    self.tts.push((tt, 0));
+                    continue
+                }
+            } else {
+                self.reader.real_token()
+            };
+
+            loop {
+                let nt = match tok.tok {
+                    token::Interpolated(ref nt) => nt.clone(),
+                    _ => return tok,
+                };
+                match *nt {
+                    token::NtTT(TokenTree::Token(sp, ref t)) => {
+                        tok = TokenAndSpan { tok: t.clone(), sp: sp };
+                    }
+                    token::NtTT(ref tt) => {
+                        self.tts.push((tt.clone(), 0));
+                        continue 'outer
+                    }
+                    _ => return tok,
+                }
+            }
         }
     }
 
@@ -848,7 +887,7 @@ impl<'a> Parser<'a> {
         };
 
         let next = if self.lookahead_buffer.start == self.lookahead_buffer.end {
-            self.reader.real_token()
+            self.next_tok()
         } else {
             // Avoid token copies with `replace`.
             let old_start = self.lookahead_buffer.start;
@@ -893,7 +932,7 @@ impl<'a> Parser<'a> {
             f(&self.token)
         } else if dist < LOOKAHEAD_BUFFER_CAPACITY {
             while self.lookahead_buffer.len() < dist {
-                self.lookahead_buffer.buffer[self.lookahead_buffer.end] = self.reader.real_token();
+                self.lookahead_buffer.buffer[self.lookahead_buffer.end] = self.next_tok();
                 self.lookahead_buffer.end =
                     (self.lookahead_buffer.end + 1) % LOOKAHEAD_BUFFER_CAPACITY;
             }
@@ -2653,8 +2692,6 @@ impl<'a> Parser<'a> {
         // and token::SubstNt's; it's too early to know yet
         // whether something will be a nonterminal or a seq
         // yet.
-        maybe_whole!(self, NtTT, |x| x);
-
         match self.token {
             token::Eof => {
                 let mut err: DiagnosticBuilder<'a> =
@@ -2667,6 +2704,12 @@ impl<'a> Parser<'a> {
                 Err(err)
             },
             token::OpenDelim(delim) => {
+                if self.tts.last().map(|&(_, i)| i == 1).unwrap_or(false) {
+                    let tt = self.tts.pop().unwrap().0;
+                    self.bump();
+                    return Ok(tt);
+                }
+
                 let parsing_token_tree = ::std::mem::replace(&mut self.parsing_token_tree, true);
                 // The span for beginning of the delimited section
                 let pre_span = self.span;
