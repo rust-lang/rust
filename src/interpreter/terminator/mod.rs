@@ -104,10 +104,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Drop { ref location, target, .. } => {
-                let val = self.eval_and_read_lvalue(location)?;
+                let lval = self.eval_lvalue(location)?;
 
                 let ty = self.lvalue_ty(location);
-                self.drop(val, ty)?;
+                self.drop(lval, ty)?;
                 self.goto_block(target);
             }
 
@@ -468,25 +468,49 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.tcx.type_needs_drop_given_env(ty, &self.tcx.empty_parameter_environment())
     }
 
-    fn drop(&mut self, val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
+    fn drop(&mut self, lval: Lvalue<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
         if !self.type_needs_drop(ty) {
             debug!("no need to drop {:?}", ty);
             return Ok(());
         }
-        trace!("-need to drop {:?}", ty);
+        trace!("-need to drop {:?} at {:?}", ty, lval);
 
         // TODO(solson): Call user-defined Drop::drop impls.
 
+        // special case `Box` to deallocate the inner allocation
+        // FIXME: if user defined Drop impls work, then this can go away, since the stdlib calls
+        // heap::deallocate
+        if let ty::TyBox(contents_ty) = ty.sty {
+            let val = self.read_lvalue(lval)?;
+            let contents_ptr = val.read_ptr(&self.memory)?;
+            self.drop(Lvalue::from_ptr(contents_ptr), contents_ty)?;
+            trace!("-deallocating box");
+            return self.memory.deallocate(contents_ptr);
+        }
         match ty.sty {
-            ty::TyBox(contents_ty) => {
-                let contents_ptr = val.read_ptr(&self.memory)?;
-                self.drop(Value::ByRef(contents_ptr), contents_ty)?;
-                trace!("-deallocating box");
-                self.memory.deallocate(contents_ptr)?;
-            }
-
-            // TODO(solson): Implement drop for other relevant types (e.g. aggregates).
-            _ => {}
+            ty::TyAdt(adt_def, substs) => {
+                // FIXME: some structs are represented as ByValPair
+                let ptr = self.force_allocation(lval)?.to_ptr();
+                if adt_def.is_univariant() {
+                    for (i, field_ty) in adt_def.struct_variant().fields.iter().enumerate() {
+                        let field_ty = self.monomorphize_field_ty(field_ty, substs);
+                        let offset = self.get_field_offset(ty, i)?.bytes() as isize;
+                        self.drop(Lvalue::from_ptr(ptr.offset(offset)), field_ty)?;
+                    }
+                } else {
+                    unimplemented!()
+                }
+            },
+            ty::TyTuple(fields) => {
+                // FIXME: some tuples are represented as ByValPair
+                let ptr = self.force_allocation(lval)?.to_ptr();
+                for (i, field_ty) in fields.iter().enumerate() {
+                    let offset = self.get_field_offset(ty, i)?.bytes() as isize;
+                    self.drop(Lvalue::from_ptr(ptr.offset(offset)), field_ty)?;
+                }
+            },
+            // other types do not need to process drop
+            _ => {},
         }
 
         Ok(())
