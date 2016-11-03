@@ -478,9 +478,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // TODO(solson): Call user-defined Drop::drop impls.
 
         match ty.sty {
-            ty::TyBox(_contents_ty) => {
+            ty::TyBox(contents_ty) => {
                 let contents_ptr = val.read_ptr(&self.memory)?;
-                // self.drop(contents_ptr, contents_ty)?;
+                self.drop(Value::ByRef(contents_ptr), contents_ty)?;
                 trace!("-deallocating box");
                 self.memory.deallocate(contents_ptr)?;
             }
