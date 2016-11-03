@@ -1208,36 +1208,30 @@ impl<'a> LoweringContext<'a> {
                 ExprKind::Break(opt_ident) => hir::ExprBreak(self.lower_opt_sp_ident(opt_ident)),
                 ExprKind::Continue(opt_ident) => hir::ExprAgain(self.lower_opt_sp_ident(opt_ident)),
                 ExprKind::Ret(ref e) => hir::ExprRet(e.as_ref().map(|x| self.lower_expr(x))),
-                ExprKind::InlineAsm(InlineAsm {
-                        ref inputs,
-                        ref outputs,
-                        ref asm,
-                        asm_str_style,
-                        ref clobbers,
-                        volatile,
-                        alignstack,
-                        dialect,
-                        expn_id,
-                    }) => hir::ExprInlineAsm(P(hir::InlineAsm {
-                    inputs: inputs.iter().map(|&(ref c, _)| c.clone()).collect(),
-                    outputs: outputs.iter()
-                                    .map(|out| {
-                                        hir::InlineAsmOutput {
-                                            constraint: out.constraint.clone(),
-                                            is_rw: out.is_rw,
-                                            is_indirect: out.is_indirect,
-                                        }
-                                    })
-                                    .collect(),
-                    asm: asm.clone(),
-                    asm_str_style: asm_str_style,
-                    clobbers: clobbers.clone().into(),
-                    volatile: volatile,
-                    alignstack: alignstack,
-                    dialect: dialect,
-                    expn_id: expn_id,
-                }), outputs.iter().map(|out| self.lower_expr(&out.expr)).collect(),
-                   inputs.iter().map(|&(_, ref input)| self.lower_expr(input)).collect()),
+                ExprKind::InlineAsm(ref asm) => {
+                    let hir_asm = hir::InlineAsm {
+                        inputs: asm.inputs.iter().map(|&(ref c, _)| c.clone()).collect(),
+                        outputs: asm.outputs.iter().map(|out| {
+                            hir::InlineAsmOutput {
+                                constraint: out.constraint.clone(),
+                                is_rw: out.is_rw,
+                                is_indirect: out.is_indirect,
+                            }
+                        }).collect(),
+                        asm: asm.asm.clone(),
+                        asm_str_style: asm.asm_str_style,
+                        clobbers: asm.clobbers.clone().into(),
+                        volatile: asm.volatile,
+                        alignstack: asm.alignstack,
+                        dialect: asm.dialect,
+                        expn_id: asm.expn_id,
+                    };
+                    let outputs =
+                        asm.outputs.iter().map(|out| self.lower_expr(&out.expr)).collect();
+                    let inputs =
+                        asm.inputs.iter().map(|&(_, ref input)| self.lower_expr(input)).collect();
+                    hir::ExprInlineAsm(P(hir_asm), outputs, inputs)
+                }
                 ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
                     hir::ExprStruct(self.lower_path(path),
                                     fields.iter().map(|x| self.lower_field(x)).collect(),

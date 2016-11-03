@@ -1050,7 +1050,7 @@ pub enum ExprKind {
     Ret(Option<P<Expr>>),
 
     /// Output of the `asm!()` macro
-    InlineAsm(InlineAsm),
+    InlineAsm(P<InlineAsm>),
 
     /// A macro invocation; pre-expansion
     Mac(Mac),
