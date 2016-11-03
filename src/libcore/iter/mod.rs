@@ -1341,10 +1341,7 @@ impl<I: Iterator> Peekable<I> {
         if self.peeked.is_none() {
             self.peeked = self.iter.next();
         }
-        match self.peeked {
-            Some(ref value) => Some(value),
-            None => None,
-        }
+        self.peeked.as_ref()
     }
 }
 
