@@ -886,7 +886,7 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
-#[unstable(feature = "trusted_len", issue = "0")]
+#[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, A> TrustedLen for Iter<'a, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -927,7 +927,7 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
-#[unstable(feature = "trusted_len", issue = "0")]
+#[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, A> TrustedLen for IterMut<'a, A> {}
 
 /// An iterator over the value in a [`Ok`] variant of a [`Result`]. This struct is
@@ -967,7 +967,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-#[unstable(feature = "trusted_len", issue = "0")]
+#[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A> TrustedLen for IntoIter<A> {}
 
 /////////////////////////////////////////////////////////////////////////////

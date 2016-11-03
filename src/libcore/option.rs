@@ -834,7 +834,7 @@ impl<'a, A> ExactSizeIterator for Iter<'a, A> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, A> FusedIterator for Iter<'a, A> {}
 
-#[unstable(feature = "trusted_len", issue = "0")]
+#[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, A> TrustedLen for Iter<'a, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -872,7 +872,7 @@ impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, A> FusedIterator for IterMut<'a, A> {}
-#[unstable(feature = "trusted_len", issue = "0")]
+#[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, A> TrustedLen for IterMut<'a, A> {}
 
 /// An iterator over the item contained inside an [`Option`].
@@ -904,7 +904,7 @@ impl<A> ExactSizeIterator for IntoIter<A> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<A> FusedIterator for IntoIter<A> {}
 
-#[unstable(feature = "trusted_len", issue = "0")]
+#[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A> TrustedLen for IntoIter<A> {}
 
 /////////////////////////////////////////////////////////////////////////////

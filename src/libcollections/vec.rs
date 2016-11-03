@@ -1931,7 +1931,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-#[unstable(feature = "trusted_len", issue = "0")]
+#[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for IntoIter<T> {}
 
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
