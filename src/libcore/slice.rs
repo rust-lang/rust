@@ -515,9 +515,19 @@ impl<T> SliceExt for [T] {
     fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         assert!(self.len() == src.len(),
                 "destination and source slices have different lengths");
-        unsafe {
-            ptr::copy_nonoverlapping(
-                src.as_ptr(), self.as_mut_ptr(), self.len());
+        // First check if the amount of elements we want to copy is small:
+        // `copy_nonoverlapping` will do a memcopy, which involves an indirect
+        // function call when `memcpy` is in the dynamically-linked libc. For
+        // small elements (such as a single byte or pointer), the overhead is
+        // significant. If the element is big then the assignment is a memcopy
+        // anyway.
+        if self.len() == 1 {
+            self[0] = src[0];
+        } else {
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    src.as_ptr(), self.as_mut_ptr(), self.len());
+            }
         }
     }
 
