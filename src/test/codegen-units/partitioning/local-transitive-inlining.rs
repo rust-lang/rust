@@ -18,7 +18,7 @@
 
 mod inline {
 
-    //~ TRANS_ITEM fn local_transitive_inlining::inline[0]::inlined_function[0] @@ local_transitive_inlining-inline[External] local_transitive_inlining-direct_user[Available] local_transitive_inlining-indirect_user[Available]
+    //~ TRANS_ITEM fn local_transitive_inlining::inline[0]::inlined_function[0] @@ local_transitive_inlining-indirect_user[Internal]
     #[inline(always)]
     pub fn inlined_function()
     {
@@ -29,7 +29,7 @@ mod inline {
 mod direct_user {
     use super::inline;
 
-    //~ TRANS_ITEM fn local_transitive_inlining::direct_user[0]::foo[0] @@ local_transitive_inlining-direct_user[External] local_transitive_inlining-indirect_user[Available]
+    //~ TRANS_ITEM fn local_transitive_inlining::direct_user[0]::foo[0] @@ local_transitive_inlining-indirect_user[Internal]
     #[inline(always)]
     pub fn foo() {
         inline::inlined_function();

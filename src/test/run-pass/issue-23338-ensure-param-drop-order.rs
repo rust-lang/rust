@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty : (#23623) problems when  ending with // comments
+// ignore-pretty issue #37201
 
 // This test is ensuring that parameters are indeed dropped after
 // temporaries in a fn body.

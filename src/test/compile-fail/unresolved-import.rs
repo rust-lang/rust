@@ -11,7 +11,7 @@
 // ignore-tidy-linelength
 
 use foo::bar; //~ ERROR unresolved import `foo::bar` [E0432]
-              //~^ Maybe a missing `extern crate foo`?
+              //~^ Maybe a missing `extern crate foo;`?
 
 use bar::Baz as x; //~ ERROR unresolved import `bar::Baz` [E0432]
                    //~^ no `Baz` in `bar`. Did you mean to use `Bar`?

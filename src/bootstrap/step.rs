@@ -140,6 +140,9 @@ macro_rules! targets {
             (dist_std, DistStd { compiler: Compiler<'a> }),
             (dist_src, DistSrc { _dummy: () }),
 
+            // install target
+            (install, Install { stage: u32 }),
+
             // Misc targets
             (android_copy_libs, AndroidCopyLibs { compiler: Compiler<'a> }),
         }
@@ -171,6 +174,8 @@ targets!(define_source);
 /// into a topologically sorted list which when executed left-to-right will
 /// correctly sequence the entire build.
 pub fn all(build: &Build) -> Vec<Step> {
+    build.verbose("inferred build steps:");
+
     let mut ret = Vec::new();
     let mut all = HashSet::new();
     for target in top_level(build) {
@@ -184,6 +189,7 @@ pub fn all(build: &Build) -> Vec<Step> {
                 set: &mut HashSet<Step<'a>>) {
         if set.insert(target.clone()) {
             for dep in target.deps(build) {
+                build.verbose(&format!("{:?}\n  -> {:?}", target, dep));
                 fill(build, &dep, ret, set);
             }
             ret.push(target.clone());
@@ -246,8 +252,7 @@ fn top_level(build: &Build) -> Vec<Step> {
         }
     }
 
-    return targets
-
+    targets
 }
 
 fn add_steps<'a>(build: &'a Build,
@@ -415,7 +420,6 @@ impl<'a> Step<'a> {
                     self.check_crate_std(compiler),
                     self.check_crate_test(compiler),
                     self.check_debuginfo(compiler),
-                    self.dist(stage),
                 ];
 
                 // If we're testing the build triple, then we know we can
@@ -460,9 +464,12 @@ impl<'a> Step<'a> {
                         // misc
                         self.check_linkcheck(stage),
                         self.check_tidy(stage),
+
+                        // can we make the distributables?
+                        self.dist(stage),
                     ]);
                 }
-                return base
+                base
             }
             Source::CheckLinkcheck { stage } => {
                 vec![self.tool_linkchecker(stage), self.doc(stage)]
@@ -483,7 +490,6 @@ impl<'a> Step<'a> {
             Source::CheckCodegenUnits { compiler } |
             Source::CheckIncremental { compiler } |
             Source::CheckUi { compiler } |
-            Source::CheckRustdoc { compiler } |
             Source::CheckPretty { compiler } |
             Source::CheckCFail { compiler } |
             Source::CheckRPassValgrind { compiler } |
@@ -506,6 +512,7 @@ impl<'a> Step<'a> {
                     self.debugger_scripts(compiler.stage),
                 ]
             }
+            Source::CheckRustdoc { compiler } |
             Source::CheckRPassFull { compiler } |
             Source::CheckRFailFull { compiler } |
             Source::CheckCFailFull { compiler } |
@@ -517,7 +524,7 @@ impl<'a> Step<'a> {
                      self.target(compiler.host).tool_compiletest(compiler.stage)]
             }
             Source::CheckDocs { compiler } => {
-                vec![self.libstd(compiler)]
+                vec![self.libtest(compiler)]
             }
             Source::CheckErrorIndex { compiler } => {
                 vec![self.libstd(compiler),
@@ -585,7 +592,11 @@ impl<'a> Step<'a> {
                         base.push(target.dist_std(compiler));
                     }
                 }
-                return base
+                base
+            }
+
+            Source::Install { stage } => {
+                vec![self.dist(stage)]
             }
 
             Source::AndroidCopyLibs { compiler } => {

@@ -10,8 +10,6 @@
 
 // compile-flags:--test
 // rustc-env:RUSTC_BOOTSTRAP_KEY=
-// ignore-pretty : (#23623) problems when  ending with // comments
-
 #![cfg(any())] // This test should be configured away
 #![feature(rustc_attrs)] // Test that this is allowed on stable/beta
 #![feature(iter_arith_traits)] // Test that this is not unused

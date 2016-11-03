@@ -166,12 +166,22 @@ you can find the Rust executables in a directory like
 `"C:\Program Files\Rust stable GNU 1.x\bin"`.
 
 Rust does not do its own linking, and so you’ll need to have a linker
-installed. Doing so will depend on your specific system, consult its
-documentation for more details.
+installed. Doing so will depend on your specific system. For
+Linux-based systems, Rust will attempt to call `cc` for linking. On
+`windows-msvc` (Rust built on Windows with Microsoft Visual Studio),
+this depends on having [Microsoft Visual C++ Build Tools][msvbt]
+installed. These do not need to be in `%PATH%` as `rustc` will find
+them automatically. In general, if you have your linker in a
+non-traditional location you can call `rustc 
+linker=/path/to/cc`, where `/path/to/cc` should point to your linker path.
 
-If not, there are a number of places where we can get help. The easiest is
-[the #rust-beginners IRC channel on irc.mozilla.org][irc-beginners] and for
-general discussion [the #rust IRC channel on irc.mozilla.org][irc], which we
+[msvbt]: http://landinghub.visualstudio.com/visual-cpp-build-tools
+
+If you are still stuck, there are a number of places where we can get
+help. The easiest is
+[the #rust-beginners IRC channel on irc.mozilla.org][irc-beginners] 
+and for general discussion
+[the #rust IRC channel on irc.mozilla.org][irc], which we 
 can access through [Mibbit][mibbit]. Then we'll be chatting with other
 Rustaceans (a silly nickname we call ourselves) who can help us out. Other great
 resources include [the user’s forum][users] and [Stack Overflow][stackoverflow].
@@ -230,12 +240,13 @@ $ cd hello_world
 
 ## Writing and Running a Rust Program
 
-Next, make a new source file and call it *main.rs*. Rust files always end
-in a *.rs* extension. If you’re using more than one word in your filename, use
-an underscore to separate them; for example, you'd use *hello_world.rs* rather
-than *helloworld.rs*.
+We need to create a source file for our Rust program. Rust files always end
+in a *.rs* extension. If you are using more than one word in your filename,
+use an underscore to separate them; for example, you would use
+*my_program.rs* rather than *myprogram.rs*.
 
-Now open the *main.rs* file you just created, and type the following code:
+Now, make a new file and call it *main.rs*. Open the file and type
+the following code:
 
 ```rust
 fn main() {
@@ -493,6 +504,9 @@ $ cargo run
      Running `target/debug/hello_world`
 Hello, world!
 ```
+
+The `run` command comes in handy when you need to rapidly iterate on a
+project.
 
 Notice that this example didn’t re-build the project. Cargo figured out that
 the file hasn’t changed, and so it just ran the binary. If you'd modified your

@@ -27,7 +27,8 @@
 #![allow(unused_attributes)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
+#![feature(specialization)]
 
 use std::cell::{Cell, RefCell};
 use std::ops::{Add, Sub};
@@ -96,24 +97,6 @@ impl Span {
         self.lo == other.lo && self.hi == other.hi
     }
 
-    /// Returns `Some(span)`, a union of `self` and `other`, on overlap.
-    pub fn merge(self, other: Span) -> Option<Span> {
-        if self.expn_id != other.expn_id {
-            return None;
-        }
-
-        if (self.lo <= other.lo && self.hi > other.lo) ||
-           (self.lo >= other.lo && self.lo < other.hi) {
-            Some(Span {
-                lo: cmp::min(self.lo, other.lo),
-                hi: cmp::max(self.hi, other.hi),
-                expn_id: self.expn_id,
-            })
-        } else {
-            None
-        }
-    }
-
     /// Returns `Some(span)`, where the start is trimmed by the end of `other`
     pub fn trim_start(self, other: Span) -> Option<Span> {
         if self.hi > other.hi {
@@ -137,8 +120,8 @@ pub struct SpanLabel {
     pub label: Option<String>,
 }
 
-impl Encodable for Span {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+impl serialize::UseSpecializedEncodable for Span {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("Span", 2, |s| {
             s.emit_struct_field("lo", 0, |s| {
                 self.lo.encode(s)
@@ -151,17 +134,11 @@ impl Encodable for Span {
     }
 }
 
-impl Decodable for Span {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Span, D::Error> {
+impl serialize::UseSpecializedDecodable for Span {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<Span, D::Error> {
         d.read_struct("Span", 2, |d| {
-            let lo = d.read_struct_field("lo", 0, |d| {
-                BytePos::decode(d)
-            })?;
-
-            let hi = d.read_struct_field("hi", 1, |d| {
-                BytePos::decode(d)
-            })?;
-
+            let lo = d.read_struct_field("lo", 0, Decodable::decode)?;
+            let hi = d.read_struct_field("hi", 1, Decodable::decode)?;
             Ok(mk_sp(lo, hi))
         })
     }
@@ -504,6 +481,9 @@ impl FileMap {
         self.src.is_none()
     }
 
+    pub fn byte_length(&self) -> u32 {
+        self.end_pos.0 - self.start_pos.0
+    }
     pub fn count_lines(&self) -> usize {
         self.lines.borrow().len()
     }

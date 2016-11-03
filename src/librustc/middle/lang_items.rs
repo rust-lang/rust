@@ -43,7 +43,7 @@ macro_rules! language_item_table {
 
 
 enum_from_u32! {
-    #[derive(Copy, Clone, PartialEq, Eq, Hash)]
+    #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
     pub enum LangItem {
         $($variant,)*
     }
@@ -59,7 +59,7 @@ impl LanguageItems {
         fn foo(_: LangItem) -> Option<DefId> { None }
 
         LanguageItems {
-            items: vec!($(foo($variant)),*),
+            items: vec![$(foo($variant)),*],
             missing: Vec::new(),
         }
     }

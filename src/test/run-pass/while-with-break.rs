@@ -16,7 +16,7 @@ pub fn main() {
         i = i + 1;
         if i == 95 {
             let _v: Vec<isize> =
-                vec!(1, 2, 3, 4, 5); // we check that it is freed by break
+                vec![1, 2, 3, 4, 5]; // we check that it is freed by break
 
             println!("breaking");
             break;

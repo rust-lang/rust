@@ -93,6 +93,7 @@ macro_rules! __impl_slice_eq2 {
 macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
+            #[stable(feature = "rust1", since = "1.0.0")]
             impl<T> AsRef<[T]> for [T; $N] {
                 #[inline]
                 fn as_ref(&self) -> &[T] {
@@ -100,6 +101,7 @@ macro_rules! array_impls {
                 }
             }
 
+            #[stable(feature = "rust1", since = "1.0.0")]
             impl<T> AsMut<[T]> for [T; $N] {
                 #[inline]
                 fn as_mut(&mut self) -> &mut [T] {

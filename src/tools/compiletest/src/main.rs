@@ -13,8 +13,9 @@
 #![feature(box_syntax)]
 #![feature(rustc_private)]
 #![feature(test)]
-#![feature(question_mark)]
 #![feature(libc)]
+
+#![cfg_attr(stage0, feature(question_mark))]
 
 #![deny(warnings)]
 
@@ -72,7 +73,7 @@ fn main() {
 pub fn parse_config(args: Vec<String> ) -> Config {
 
     let groups : Vec<getopts::OptGroup> =
-        vec!(reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
+        vec![reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
           reqopt("", "run-lib-path", "path to target shared libraries", "PATH"),
           reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH"),
           reqopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH"),
@@ -109,7 +110,8 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           reqopt("", "cflags", "flags for the C compiler", "FLAGS"),
           reqopt("", "llvm-components", "list of LLVM components built in", "LIST"),
           reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS"),
-          optflag("h", "help", "show this message"));
+          optopt("", "nodejs", "the name of nodejs", "PATH"),
+          optflag("h", "help", "show this message")];
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -190,6 +192,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         cflags: matches.opt_str("cflags").unwrap(),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         llvm_cxxflags: matches.opt_str("llvm-cxxflags").unwrap(),
+        nodejs: matches.opt_str("nodejs"),
     }
 }
 
@@ -313,6 +316,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         },
         color: test::AutoColor,
         test_threads: None,
+        skip: vec![],
     }
 }
 
@@ -430,10 +434,17 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
         }
     };
 
+    // Debugging emscripten code doesn't make sense today
+    let mut ignore = early_props.ignore;
+    if (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb) &&
+        config.target.contains("emscripten") {
+        ignore = true;
+    }
+
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testpaths),
-            ignore: early_props.ignore,
+            ignore: ignore,
             should_panic: should_panic,
         },
         testfn: make_test_closure(config, testpaths),
@@ -454,7 +465,7 @@ pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName 
 pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn {
     let config = config.clone();
     let testpaths = testpaths.clone();
-    test::DynTestFn(Box::new(move || {
+    test::DynTestFn(Box::new(move |()| {
         runtest::run(config, &testpaths)
     }))
 }

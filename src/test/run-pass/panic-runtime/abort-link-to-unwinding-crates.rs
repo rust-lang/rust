@@ -11,6 +11,7 @@
 // compile-flags:-C panic=abort
 // aux-build:exit-success-if-unwind.rs
 // no-prefer-dynamic
+// ignore-emscripten Function not implemented
 
 extern crate exit_success_if_unwind;
 

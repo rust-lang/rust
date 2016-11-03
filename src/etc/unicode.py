@@ -82,28 +82,28 @@ def load_unicode_data(f):
     canon_decomp = {}
     compat_decomp = {}
 
-    udict = {};
-    range_start = -1;
+    udict = {}
+    range_start = -1
     for line in fileinput.input(f):
-        data = line.split(';');
+        data = line.split(';')
         if len(data) != 15:
             continue
-        cp = int(data[0], 16);
+        cp = int(data[0], 16)
         if is_surrogate(cp):
             continue
         if range_start >= 0:
             for i in xrange(range_start, cp):
-                udict[i] = data;
-            range_start = -1;
+                udict[i] = data
+            range_start = -1
         if data[1].endswith(", First>"):
-            range_start = cp;
-            continue;
-        udict[cp] = data;
+            range_start = cp
+            continue
+        udict[cp] = data
 
     for code in udict:
-        [code_org, name, gencat, combine, bidi,
+        (code_org, name, gencat, combine, bidi,
          decomp, deci, digit, num, mirror,
-         old, iso, upcase, lowcase, titlecase ] = udict[code];
+         old, iso, upcase, lowcase, titlecase) = udict[code]
 
         # generate char to char direct common and simple conversions
         # uppercase to lowercase
@@ -382,7 +382,7 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
     global bytes_old, bytes_new
     bytes_old += 8 * len(t_data)
     CHUNK = 64
-    rawdata = [False] * 0x110000;
+    rawdata = [False] * 0x110000
     for (lo, hi) in t_data:
         for cp in range(lo, hi + 1):
             rawdata[cp] = True

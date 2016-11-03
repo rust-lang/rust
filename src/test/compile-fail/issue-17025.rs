@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test the unsized enum no longer compiles
+
 enum A {
     B(char),
     C([Box<A>]),

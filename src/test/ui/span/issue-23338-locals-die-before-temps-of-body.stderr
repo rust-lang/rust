@@ -1,0 +1,22 @@
+error: `y` does not live long enough
+  --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:21:1
+   |
+20 |     y.borrow().clone()
+   |     - borrow occurs here
+21 | }
+   | ^ `y` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: `y` does not live long enough
+  --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:28:5
+   |
+27 |         y.borrow().clone() //~ ERROR `y` does not live long enough
+   |         - borrow occurs here
+28 |     };
+   |     ^- borrowed value needs to live until here
+   |     |
+   |     `y` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+

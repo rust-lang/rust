@@ -779,6 +779,7 @@ impl<T: Debug> Debug for BTreeSet<T> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> {
         Iter { iter: self.iter.clone() }
@@ -864,6 +865,7 @@ fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>, short: Ordering, long: Ordering
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Difference<'a, T> {
     fn clone(&self) -> Difference<'a, T> {
         Difference {
@@ -901,6 +903,7 @@ impl<'a, T: Ord> Iterator for Difference<'a, T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T: Ord> FusedIterator for Difference<'a, T> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for SymmetricDifference<'a, T> {
     fn clone(&self) -> SymmetricDifference<'a, T> {
         SymmetricDifference {
@@ -934,6 +937,7 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T: Ord> FusedIterator for SymmetricDifference<'a, T> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Intersection<'a, T> {
     fn clone(&self) -> Intersection<'a, T> {
         Intersection {
@@ -977,6 +981,7 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T: Ord> FusedIterator for Intersection<'a, T> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Union<'a, T> {
     fn clone(&self) -> Union<'a, T> {
         Union {

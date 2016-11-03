@@ -104,8 +104,7 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                             fn_type: ty::Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
     let abi = fn_type.fn_abi();
-    let sig = ccx.tcx().erase_late_bound_regions(fn_type.fn_sig());
-    let sig = ccx.tcx().normalize_associated_type(&sig);
+    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(fn_type.fn_sig());
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
     let fty = FnType::new(ccx, abi, &sig, &[]);

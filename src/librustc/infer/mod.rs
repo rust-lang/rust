@@ -25,7 +25,7 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::region::CodeExtent;
 use mir::tcx::LvalueTy;
-use ty::subst::{Subst, Substs};
+use ty::subst::{Kind, Subst, Substs};
 use ty::adjustment;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
@@ -199,9 +199,6 @@ pub enum TypeOrigin {
     // Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse(Span),
 
-    // Computing common supertype in a range expression
-    RangeExpression(Span),
-
     // `where a == b`
     EquatePredicate(Span),
 
@@ -231,7 +228,6 @@ impl TypeOrigin {
             },
             &TypeOrigin::IfExpression(_) => "if and else have incompatible types",
             &TypeOrigin::IfExpressionWithNoElse(_) => "if may be missing an else clause",
-            &TypeOrigin::RangeExpression(_) => "start and end of range have incompatible types",
             &TypeOrigin::EquatePredicate(_) => "equality predicate not satisfied",
             &TypeOrigin::MainFunctionType(_) => "main function has wrong type",
             &TypeOrigin::StartFunctionType(_) => "start function has wrong type",
@@ -251,7 +247,6 @@ impl TypeOrigin {
             &TypeOrigin::MatchExpressionArm(..) => "match arms have compatible types",
             &TypeOrigin::IfExpression(_) => "if and else have compatible types",
             &TypeOrigin::IfExpressionWithNoElse(_) => "if missing an else returns ()",
-            &TypeOrigin::RangeExpression(_) => "start and end of range have compatible types",
             &TypeOrigin::EquatePredicate(_) => "equality where clause is satisfied",
             &TypeOrigin::MainFunctionType(_) => "`main` function has the correct type",
             &TypeOrigin::StartFunctionType(_) => "`start` function has the correct type",
@@ -583,7 +578,8 @@ impl_trans_normalize!('gcx,
     ty::FnSig<'gcx>,
     &'gcx ty::BareFnTy<'gcx>,
     ty::ClosureSubsts<'gcx>,
-    ty::PolyTraitRef<'gcx>
+    ty::PolyTraitRef<'gcx>,
+    ty::ExistentialTraitRef<'gcx>
 );
 
 impl<'gcx> TransNormalize<'gcx> for LvalueTy<'gcx> {
@@ -603,6 +599,18 @@ impl<'gcx> TransNormalize<'gcx> for LvalueTy<'gcx> {
 
 // NOTE: Callable from trans only!
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+    /// Currently, higher-ranked type bounds inhibit normalization. Therefore,
+    /// each time we erase them in translation, we need to normalize
+    /// the contents.
+    pub fn erase_late_bound_regions_and_normalize<T>(self, value: &ty::Binder<T>)
+        -> T
+        where T: TransNormalize<'tcx>
+    {
+        assert!(!value.needs_subst());
+        let value = self.erase_late_bound_regions(value);
+        self.normalize_associated_type(&value)
+    }
+
     pub fn normalize_associated_type<T>(self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
@@ -1208,7 +1216,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn type_var_for_def(&self,
                             span: Span,
                             def: &ty::TypeParameterDef<'tcx>,
-                            substs: &Substs<'tcx>)
+                            substs: &[Kind<'tcx>])
                             -> Ty<'tcx> {
         let default = def.default.map(|default| {
             type_variable::Default {
@@ -1742,7 +1750,6 @@ impl TypeOrigin {
             TypeOrigin::MatchExpressionArm(match_span, ..) => match_span,
             TypeOrigin::IfExpression(span) => span,
             TypeOrigin::IfExpressionWithNoElse(span) => span,
-            TypeOrigin::RangeExpression(span) => span,
             TypeOrigin::EquatePredicate(span) => span,
             TypeOrigin::MainFunctionType(span) => span,
             TypeOrigin::StartFunctionType(span) => span,

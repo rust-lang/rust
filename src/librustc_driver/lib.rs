@@ -31,7 +31,7 @@
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 
 extern crate arena;
 extern crate flate;
@@ -42,6 +42,7 @@ extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_borrowck;
 extern crate rustc_const_eval;
+extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 extern crate rustc_passes;
 extern crate rustc_lint;
@@ -73,10 +74,11 @@ use rustc_trans::back::write::{create_target_machine, RELOC_MODEL_ARGS, CODE_GEN
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
-use rustc::session::config::{get_unstable_features_setting, nightly_options};
+use rustc::session::config::nightly_options;
+use rustc::session::early_error;
 use rustc::lint::Lint;
 use rustc::lint;
-use rustc_metadata::loader;
+use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc::util::common::time;
 
@@ -92,8 +94,6 @@ use std::rc::Rc;
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
-
-use rustc::session::early_error;
 
 use syntax::{ast, json};
 use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
@@ -131,17 +131,18 @@ pub fn abort_on_err<T>(result: Result<T, usize>, sess: &Session) -> T {
     }
 }
 
-pub fn run(args: Vec<String>) -> isize {
+pub fn run<F>(run_compiler: F) -> isize
+    where F: FnOnce() -> (CompileResult, Option<Session>) + Send + 'static
+{
     monitor(move || {
-        let (result, session) = run_compiler(&args, &mut RustcDefaultCalls);
+        let (result, session) = run_compiler();
         if let Err(err_count) = result {
             if err_count > 0 {
                 match session {
                     Some(sess) => sess.fatal(&abort_msg(err_count)),
                     None => {
                         let emitter =
-                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
-                                                                   None);
+                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto, None);
                         let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
                         handler.emit(&MultiSpan::new(),
                                      &abort_msg(err_count),
@@ -155,20 +156,15 @@ pub fn run(args: Vec<String>) -> isize {
     0
 }
 
-pub fn run_compiler<'a>(args: &[String],
-                        callbacks: &mut CompilerCalls<'a>)
-                        -> (CompileResult, Option<Session>) {
-    run_compiler_with_file_loader(args, callbacks, box RealFileLoader)
-}
-
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
-pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
-                                            callbacks: &mut CompilerCalls<'a>,
-                                            loader: Box<L>)
-                                            -> (CompileResult, Option<Session>)
-    where L: FileLoader + 'static {
+pub fn run_compiler<'a>(args: &[String],
+                        callbacks: &mut CompilerCalls<'a>,
+                        file_loader: Option<Box<FileLoader + 'static>>,
+                        emitter_dest: Option<Box<Write + Send>>)
+                        -> (CompileResult, Option<Session>)
+{
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
             Compilation::Stop => return (Ok(()), $sess),
@@ -207,24 +203,23 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
 
     let dep_graph = DepGraph::new(sopts.build_dep_graph());
     let cstore = Rc::new(CStore::new(&dep_graph));
+
+    let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader));
-    let sess = session::build_session_with_codemap(sopts,
-                                                   &dep_graph,
-                                                   input_file_path,
-                                                   descriptions,
-                                                   cstore.clone(),
-                                                   codemap);
+    let mut sess = session::build_session_with_codemap(
+        sopts, &dep_graph, input_file_path, descriptions, cstore.clone(), codemap, emitter_dest,
+    );
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+
     let mut cfg = config::build_configuration(&sess, cfg);
     target_features::add_configuration(&mut cfg, &sess);
+    sess.parse_sess.config = cfg;
 
-    do_or_return!(callbacks.late_callback(&matches, &sess, &cfg, &input, &odir, &ofile),
-                  Some(sess));
+    do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile), Some(sess));
 
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess, &matches);
-    (driver::compile_input(&sess, &cstore, cfg, &input, &odir, &ofile,
-                           Some(plugins), &control),
+    (driver::compile_input(&sess, &cstore, &input, &odir, &ofile, Some(plugins), &control),
      Some(sess))
 }
 
@@ -312,7 +307,6 @@ pub trait CompilerCalls<'a> {
     fn late_callback(&mut self,
                      _: &getopts::Matches,
                      _: &Session,
-                     _: &ast::CrateConfig,
                      _: &Input,
                      _: &Option<PathBuf>,
                      _: &Option<PathBuf>)
@@ -441,7 +435,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 }
                 let dep_graph = DepGraph::new(sopts.build_dep_graph());
                 let cstore = Rc::new(CStore::new(&dep_graph));
-                let sess = build_session(sopts.clone(),
+                let mut sess = build_session(sopts.clone(),
                     &dep_graph,
                     None,
                     descriptions.clone(),
@@ -449,11 +443,10 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
                 target_features::add_configuration(&mut cfg, &sess);
-                let should_stop = RustcDefaultCalls::print_crate_info(&sess,
-                                                                      &cfg,
-                                                                      None,
-                                                                      odir,
-                                                                      ofile);
+                sess.parse_sess.config = cfg;
+                let should_stop =
+                    RustcDefaultCalls::print_crate_info(&sess, None, odir, ofile);
+
                 if should_stop == Compilation::Stop {
                     return None;
                 }
@@ -469,12 +462,11 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn late_callback(&mut self,
                      matches: &getopts::Matches,
                      sess: &Session,
-                     cfg: &ast::CrateConfig,
                      input: &Input,
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
                      -> Compilation {
-        RustcDefaultCalls::print_crate_info(sess, cfg, Some(input), odir, ofile)
+        RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile)
             .and_then(|| RustcDefaultCalls::list_metadata(sess, matches, input))
     }
 
@@ -580,8 +572,7 @@ impl RustcDefaultCalls {
                 &Input::File(ref ifile) => {
                     let path = &(*ifile);
                     let mut v = Vec::new();
-                    loader::list_file_metadata(&sess.target.target, path, &mut v)
-                        .unwrap();
+                    locator::list_file_metadata(&sess.target.target, path, &mut v).unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
                 }
                 &Input::Str { .. } => {
@@ -596,7 +587,6 @@ impl RustcDefaultCalls {
 
 
     fn print_crate_info(sess: &Session,
-                        cfg: &ast::CrateConfig,
                         input: Option<&Input>,
                         odir: &Option<PathBuf>,
                         ofile: &Option<PathBuf>)
@@ -649,13 +639,11 @@ impl RustcDefaultCalls {
                     }
                 }
                 PrintRequest::Cfg => {
-                    let allow_unstable_cfg = match get_unstable_features_setting() {
-                        UnstableFeatures::Disallow => false,
-                        _ => true,
-                    };
+                    let allow_unstable_cfg = UnstableFeatures::from_environment()
+                        .is_nightly_build();
 
-                    for cfg in cfg {
-                        if !allow_unstable_cfg && GatedCfg::gate(&*cfg).is_some() {
+                    for cfg in &sess.parse_sess.config {
+                        if !allow_unstable_cfg && GatedCfg::gate(cfg).is_some() {
                             continue;
                         }
 
@@ -733,6 +721,10 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
+        unsafe {
+            println!("LLVM version: {}.{}",
+                     llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor());
+        }
     }
 }
 
@@ -1037,13 +1029,10 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
 fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<ast::Attribute>> {
     match *input {
         Input::File(ref ifile) => {
-            parse::parse_crate_attrs_from_file(ifile, Vec::new(), &sess.parse_sess)
+            parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess)
         }
         Input::Str { ref name, ref input } => {
-            parse::parse_crate_attrs_from_source_str(name.clone(),
-                                                     input.clone(),
-                                                     Vec::new(),
-                                                     &sess.parse_sess)
+            parse::parse_crate_attrs_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
         }
     }
 }
@@ -1054,7 +1043,8 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
 pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
-    const STACK_SIZE: usize = 8 * 1024 * 1024; // 8MB
+    // Temporarily have stack size set to 16MB to deal with nom-using crates failing
+    const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
 
     struct Sink(Arc<Mutex<Vec<u8>>>);
     impl Write for Sink {
@@ -1078,7 +1068,7 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
     }
 
     let thread = cfg.spawn(move || {
-         io::set_panic(box err);
+         io::set_panic(Some(box err));
          f()
      });
 
@@ -1113,7 +1103,7 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                              errors::Level::Note);
             }
 
-            println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
+            writeln!(io::stderr(), "{}", str::from_utf8(&data.lock().unwrap()).unwrap()).unwrap();
         }
 
         exit_on_err();
@@ -1124,7 +1114,7 @@ fn exit_on_err() -> ! {
     // Panic so the process returns a failure code, but don't pollute the
     // output with some unnecessary panic messages, we've already
     // printed everything that we needed to.
-    io::set_panic(box io::sink());
+    io::set_panic(Some(box io::sink()));
     panic!();
 }
 
@@ -1139,11 +1129,15 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
 
     Registry::new(&all_errors)
 }
 
 pub fn main() {
-    let result = run(env::args().collect());
+    let result = run(|| run_compiler(&env::args().collect::<Vec<_>>(),
+                                     &mut RustcDefaultCalls,
+                                     None,
+                                     None));
     process::exit(result as i32);
 }

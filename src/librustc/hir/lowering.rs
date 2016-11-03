@@ -61,7 +61,7 @@ use syntax_pos::Span;
 pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
     // Use to assign ids to hir nodes that do not directly correspond to an ast node
-    sess: Option<&'a Session>,
+    sess: &'a Session,
     // As we walk the AST we must keep track of the current 'parent' def id (in
     // the form of a DefIndex) so that if we create a new node which introduces
     // a definition, then we can properly create the def id.
@@ -81,21 +81,7 @@ pub trait Resolver {
 
     // We must keep the set of definitions up to date as we add nodes that weren't in the AST.
     // This should only return `None` during testing.
-    fn definitions(&mut self) -> Option<&mut Definitions>;
-}
-
-pub struct DummyResolver;
-impl Resolver for DummyResolver {
-    fn resolve_generated_global_path(&mut self, _path: &hir::Path, _is_value: bool) -> Def {
-        Def::Err
-    }
-    fn get_resolution(&mut self, _id: NodeId) -> Option<PathResolution> {
-        None
-    }
-    fn record_resolution(&mut self, _id: NodeId, _def: Def) {}
-    fn definitions(&mut self) -> Option<&mut Definitions> {
-        None
-    }
+    fn definitions(&mut self) -> &mut Definitions;
 }
 
 pub fn lower_crate(sess: &Session,
@@ -108,29 +94,14 @@ pub fn lower_crate(sess: &Session,
     let _ignore = sess.dep_graph.in_ignore();
 
     LoweringContext {
-        crate_root: if std_inject::no_core(krate) {
-            None
-        } else if std_inject::no_std(krate) {
-            Some("core")
-        } else {
-            Some("std")
-        },
-        sess: Some(sess),
+        crate_root: std_inject::injected_crate_name(krate),
+        sess: sess,
         parent_def: None,
         resolver: resolver,
     }.lower_crate(krate)
 }
 
 impl<'a> LoweringContext<'a> {
-    pub fn testing_context(resolver: &'a mut Resolver) -> Self {
-        LoweringContext {
-            crate_root: None,
-            sess: None,
-            parent_def: None,
-            resolver: resolver,
-        }
-    }
-
     fn lower_crate(&mut self, c: &Crate) -> hir::Crate {
         struct ItemLowerer<'lcx, 'interner: 'lcx> {
             items: BTreeMap<NodeId, hir::Item>,
@@ -153,7 +124,6 @@ impl<'a> LoweringContext<'a> {
         hir::Crate {
             module: self.lower_mod(&c.module),
             attrs: self.lower_attrs(&c.attrs),
-            config: c.config.clone().into(),
             span: c.span,
             exported_macros: c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect(),
             items: items,
@@ -161,12 +131,11 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn next_id(&self) -> NodeId {
-        self.sess.map(Session::next_node_id).unwrap_or(0)
+        self.sess.next_node_id()
     }
 
     fn diagnostic(&self) -> &errors::Handler {
-        self.sess.map(Session::diagnostic)
-                 .unwrap_or_else(|| panic!("this lowerer cannot emit diagnostics"))
+        self.sess.diagnostic()
     }
 
     fn str_to_ident(&self, s: &'static str) -> Name {
@@ -177,9 +146,9 @@ impl<'a> LoweringContext<'a> {
         where F: FnOnce(&mut LoweringContext) -> T
     {
         let old_def = self.parent_def;
-        self.parent_def = match self.resolver.definitions() {
-            Some(defs) => Some(defs.opt_def_index(parent_id).unwrap()),
-            None => old_def,
+        self.parent_def = {
+            let defs = self.resolver.definitions();
+            Some(defs.opt_def_index(parent_id).unwrap())
         };
 
         let result = f(self);
@@ -246,17 +215,16 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_ty(&mut self, t: &Ty) -> P<hir::Ty> {
-        use syntax::ast::TyKind::*;
         P(hir::Ty {
             id: t.id,
             node: match t.node {
-                Infer | ImplicitSelf => hir::TyInfer,
-                Vec(ref ty) => hir::TyVec(self.lower_ty(ty)),
-                Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
-                Rptr(ref region, ref mt) => {
+                TyKind::Infer | TyKind::ImplicitSelf => hir::TyInfer,
+                TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty)),
+                TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
+                TyKind::Rptr(ref region, ref mt) => {
                     hir::TyRptr(self.lower_opt_lifetime(region), self.lower_mt(mt))
                 }
-                BareFn(ref f) => {
+                TyKind::BareFn(ref f) => {
                     hir::TyBareFn(P(hir::BareFnTy {
                         lifetimes: self.lower_lifetime_defs(&f.lifetimes),
                         unsafety: self.lower_unsafety(f.unsafety),
@@ -264,12 +232,14 @@ impl<'a> LoweringContext<'a> {
                         decl: self.lower_fn_decl(&f.decl),
                     }))
                 }
-                Never => hir::TyNever,
-                Tup(ref tys) => hir::TyTup(tys.iter().map(|ty| self.lower_ty(ty)).collect()),
-                Paren(ref ty) => {
+                TyKind::Never => hir::TyNever,
+                TyKind::Tup(ref tys) => {
+                    hir::TyTup(tys.iter().map(|ty| self.lower_ty(ty)).collect())
+                }
+                TyKind::Paren(ref ty) => {
                     return self.lower_ty(ty);
                 }
-                Path(ref qself, ref path) => {
+                TyKind::Path(ref qself, ref path) => {
                     let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
                         hir::QSelf {
                             ty: self.lower_ty(ty),
@@ -278,22 +248,22 @@ impl<'a> LoweringContext<'a> {
                     });
                     hir::TyPath(qself, self.lower_path(path))
                 }
-                ObjectSum(ref ty, ref bounds) => {
+                TyKind::ObjectSum(ref ty, ref bounds) => {
                     hir::TyObjectSum(self.lower_ty(ty), self.lower_bounds(bounds))
                 }
-                FixedLengthVec(ref ty, ref e) => {
-                    hir::TyFixedLengthVec(self.lower_ty(ty), self.lower_expr(e))
+                TyKind::Array(ref ty, ref e) => {
+                    hir::TyArray(self.lower_ty(ty), self.lower_expr(e))
                 }
-                Typeof(ref expr) => {
+                TyKind::Typeof(ref expr) => {
                     hir::TyTypeof(self.lower_expr(expr))
                 }
-                PolyTraitRef(ref bounds) => {
+                TyKind::PolyTraitRef(ref bounds) => {
                     hir::TyPolyTraitRef(self.lower_bounds(bounds))
                 }
-                ImplTrait(ref bounds) => {
+                TyKind::ImplTrait(ref bounds) => {
                     hir::TyImplTrait(self.lower_bounds(bounds))
                 }
-                Mac(_) => panic!("TyMac should have been expanded by now."),
+                TyKind::Mac(_) => panic!("TyMac should have been expanded by now."),
             },
             span: t.span,
         })
@@ -415,12 +385,22 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_ty_param(&mut self, tp: &TyParam) -> hir::TyParam {
+        let mut name = tp.ident.name;
+
+        // Don't expose `Self` (recovered "keyword used as ident" parse error).
+        // `rustc::ty` expects `Self` to be only used for a trait's `Self`.
+        // Instead, use gensym("Self") to create a distinct name that looks the same.
+        if name == token::keywords::SelfType.name() {
+            name = token::gensym("Self");
+        }
+
         hir::TyParam {
             id: tp.id,
-            name: tp.ident.name,
+            name: name,
             bounds: self.lower_bounds(&tp.bounds),
             default: tp.default.as_ref().map(|x| self.lower_ty(x)),
             span: tp.span,
+            pure_wrt_drop: tp.attrs.iter().any(|attr| attr.check_name("may_dangle")),
         }
     }
 
@@ -440,6 +420,7 @@ impl<'a> LoweringContext<'a> {
         hir::LifetimeDef {
             lifetime: self.lower_lifetime(&l.lifetime),
             bounds: self.lower_lifetimes(&l.bounds),
+            pure_wrt_drop: l.attrs.iter().any(|attr| attr.check_name("may_dangle")),
         }
     }
 
@@ -561,6 +542,7 @@ impl<'a> LoweringContext<'a> {
             name: respan(f.ident.span, f.ident.node.name),
             expr: self.lower_expr(&f.expr),
             span: f.span,
+            is_shorthand: f.is_shorthand,
         }
     }
 
@@ -734,8 +716,6 @@ impl<'a> LoweringContext<'a> {
             id: m.id,
             span: m.span,
             imported_from: m.imported_from.map(|x| x.name),
-            export: m.export,
-            use_locally: m.use_locally,
             allow_internal_unstable: m.allow_internal_unstable,
             body: m.body.clone().into(),
         }
@@ -869,10 +849,9 @@ impl<'a> LoweringContext<'a> {
                     })
                 }
                 PatKind::Lit(ref e) => hir::PatKind::Lit(self.lower_expr(e)),
-                PatKind::TupleStruct(ref pth, ref pats, ddpos) => {
-                    hir::PatKind::TupleStruct(self.lower_path(pth),
-                                              pats.iter().map(|x| self.lower_pat(x)).collect(),
-                                              ddpos)
+                PatKind::TupleStruct(ref path, ref pats, ddpos) => {
+                    hir::PatKind::TupleStruct(self.lower_path(path),
+                                        pats.iter().map(|x| self.lower_pat(x)).collect(), ddpos)
                 }
                 PatKind::Path(ref opt_qself, ref path) => {
                     let opt_qself = opt_qself.as_ref().map(|qself| {
@@ -906,8 +885,8 @@ impl<'a> LoweringContext<'a> {
                 PatKind::Range(ref e1, ref e2) => {
                     hir::PatKind::Range(self.lower_expr(e1), self.lower_expr(e2))
                 }
-                PatKind::Vec(ref before, ref slice, ref after) => {
-                    hir::PatKind::Vec(before.iter().map(|x| self.lower_pat(x)).collect(),
+                PatKind::Slice(ref before, ref slice, ref after) => {
+                    hir::PatKind::Slice(before.iter().map(|x| self.lower_pat(x)).collect(),
                                 slice.as_ref().map(|x| self.lower_pat(x)),
                                 after.iter().map(|x| self.lower_pat(x)).collect())
                 }
@@ -1046,7 +1025,7 @@ impl<'a> LoweringContext<'a> {
                 }
 
                 ExprKind::Vec(ref exprs) => {
-                    hir::ExprVec(exprs.iter().map(|x| self.lower_expr(x)).collect())
+                    hir::ExprArray(exprs.iter().map(|x| self.lower_expr(x)).collect())
                 }
                 ExprKind::Repeat(ref expr, ref count) => {
                     let expr = self.lower_expr(expr);
@@ -1239,7 +1218,7 @@ impl<'a> LoweringContext<'a> {
                         alignstack,
                         dialect,
                         expn_id,
-                    }) => hir::ExprInlineAsm(hir::InlineAsm {
+                    }) => hir::ExprInlineAsm(P(hir::InlineAsm {
                     inputs: inputs.iter().map(|&(ref c, _)| c.clone()).collect(),
                     outputs: outputs.iter()
                                     .map(|out| {
@@ -1257,7 +1236,7 @@ impl<'a> LoweringContext<'a> {
                     alignstack: alignstack,
                     dialect: dialect,
                     expn_id: expn_id,
-                }, outputs.iter().map(|out| self.lower_expr(&out.expr)).collect(),
+                }), outputs.iter().map(|out| self.lower_expr(&out.expr)).collect(),
                    inputs.iter().map(|&(_, ref input)| self.lower_expr(input)).collect()),
                 ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
                     hir::ExprStruct(self.lower_path(path),
@@ -1703,6 +1682,7 @@ impl<'a> LoweringContext<'a> {
             },
             span: span,
             expr: expr,
+            is_shorthand: false,
         }
     }
 
@@ -1719,9 +1699,10 @@ impl<'a> LoweringContext<'a> {
         let expr_path = hir::ExprPath(None, self.path_ident(span, id));
         let expr = self.expr(span, expr_path, ThinVec::new());
 
-        let def = self.resolver.definitions().map(|defs| {
-            Def::Local(defs.local_def_id(binding), binding)
-        }).unwrap_or(Def::Err);
+        let def = {
+            let defs = self.resolver.definitions();
+            Def::Local(defs.local_def_id(binding))
+        };
         self.resolver.record_resolution(expr.id, def);
 
         expr
@@ -1869,11 +1850,12 @@ impl<'a> LoweringContext<'a> {
         let pat = self.pat(span, pat_ident);
 
         let parent_def = self.parent_def;
-        let def = self.resolver.definitions().map(|defs| {
+        let def = {
+            let defs = self.resolver.definitions();
             let def_path_data = DefPathData::Binding(name.as_str());
             let def_index = defs.create_def_with_parent(parent_def, pat.id, def_path_data);
-            Def::Local(DefId::local(def_index), pat.id)
-        }).unwrap_or(Def::Err);
+            Def::Local(DefId::local(def_index))
+        };
         self.resolver.record_resolution(pat.id, def);
 
         pat

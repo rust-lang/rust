@@ -29,7 +29,8 @@
               target_arch = "mips",
               target_arch = "powerpc",
               target_arch = "powerpc64",
-              target_arch = "asmjs")))]
+              target_arch = "asmjs",
+              target_arch = "wasm32")))]
 const MIN_ALIGN: usize = 8;
 #[cfg(all(any(target_arch = "x86_64",
               target_arch = "aarch64",
@@ -165,6 +166,7 @@ mod imp {
         fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T) -> LPVOID;
         fn HeapReAlloc(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID, dwBytes: SIZE_T) -> LPVOID;
         fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;
+        fn GetLastError() -> DWORD;
     }
 
     #[repr(C)]
@@ -220,11 +222,7 @@ mod imp {
                                   HEAP_REALLOC_IN_PLACE_ONLY,
                                   ptr as LPVOID,
                                   size as SIZE_T) as *mut u8;
-            if new.is_null() {
-                old_size
-            } else {
-                size
-            }
+            if new.is_null() { old_size } else { size }
         } else {
             old_size
         }
@@ -233,11 +231,11 @@ mod imp {
     pub unsafe fn deallocate(ptr: *mut u8, _old_size: usize, align: usize) {
         if align <= MIN_ALIGN {
             let err = HeapFree(GetProcessHeap(), 0, ptr as LPVOID);
-            debug_assert!(err != 0);
+            debug_assert!(err != 0, "Failed to free heap memory: {}", GetLastError());
         } else {
             let header = get_header(ptr);
             let err = HeapFree(GetProcessHeap(), 0, header.0 as LPVOID);
-            debug_assert!(err != 0);
+            debug_assert!(err != 0, "Failed to free heap memory: {}", GetLastError());
         }
     }
 

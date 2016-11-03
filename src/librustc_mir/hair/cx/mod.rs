@@ -16,7 +16,7 @@
  */
 
 use hair::*;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 
 use rustc::middle::const_val::ConstVal;
@@ -27,7 +27,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::infer::InferCtxt;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
 use syntax::parse::token;
 use rustc::hir;
@@ -146,7 +146,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                         params: &[Ty<'tcx>])
                         -> (Ty<'tcx>, Literal<'tcx>) {
         let method_name = token::intern(method_name);
-        let substs = Substs::new_trait(self.tcx, self_ty, params);
+        let substs = self.tcx.mk_substs_trait(self_ty, params);
         for trait_item in self.tcx.trait_items(trait_def_id).iter() {
             match *trait_item {
                 ty::ImplOrTraitItem::MethodTraitItem(ref method) => {
@@ -196,5 +196,4 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
 mod block;
 mod expr;
-mod pattern;
 mod to_ref;

@@ -1,0 +1,12 @@
+error: `x` does not live long enough
+  --> $DIR/regions-escape-loop-via-variable.rs:22:5
+   |
+21 |         p = &x; //~ ERROR `x` does not live long enough
+   |              - borrow occurs here
+22 |     }
+   |     ^ `x` dropped here while still borrowed
+23 | }
+   | - borrowed value needs to live until here
+
+error: aborting due to previous error
+

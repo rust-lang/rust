@@ -9,15 +9,15 @@
 // except according to those terms.
 
 use dep_graph::DepGraph;
-use hir::def_id::DefIndex;
+use hir::def_id::{CrateNum, DefIndex};
 use hir::svh::Svh;
 use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{DebugInfoLevel, PanicStrategy};
+use session::config::DebugInfoLevel;
 use ty::tls;
-use util::nodemap::{NodeMap, FnvHashMap};
+use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
 use util::common::duration_to_secs_str;
 use mir::transform as mir_pass;
 
@@ -33,6 +33,7 @@ use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{Span, MultiSpan};
 
+use rustc_back::PanicStrategy;
 use rustc_back::target::Target;
 use rustc_data_structures::flock;
 use llvm;
@@ -42,6 +43,7 @@ use std::cell::{self, Cell, RefCell};
 use std::collections::HashMap;
 use std::env;
 use std::ffi::CString;
+use std::io::Write;
 use std::rc::Rc;
 use std::fmt;
 use std::time::Duration;
@@ -73,6 +75,10 @@ pub struct Session {
     pub working_dir: PathBuf,
     pub lint_store: RefCell<lint::LintStore>,
     pub lints: RefCell<NodeMap<Vec<(lint::LintId, Span, String)>>>,
+    /// Set of (LintId, span, message) tuples tracking lint (sub)diagnostics
+    /// that have been set once, but should not be set again, in order to avoid
+    /// redundantly verbose output (Issue #24690).
+    pub one_time_diagnostics: RefCell<FnvHashSet<(lint::LintId, Span, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub mir_passes: RefCell<mir_pass::Passes>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
@@ -93,8 +99,8 @@ pub struct Session {
     /// The metadata::creader module may inject an allocator/panic_runtime
     /// dependency if it didn't already find one, and this tracks what was
     /// injected.
-    pub injected_allocator: Cell<Option<ast::CrateNum>>,
-    pub injected_panic_runtime: Cell<Option<ast::CrateNum>>,
+    pub injected_allocator: Cell<Option<CrateNum>>,
+    pub injected_panic_runtime: Cell<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
@@ -116,6 +122,8 @@ pub struct PerfStats {
     pub incr_comp_hashes_time: Cell<Duration>,
     // The number of incr. comp. hash computations performed
     pub incr_comp_hashes_count: Cell<u64>,
+    // The number of bytes hashed when computing ICH values
+    pub incr_comp_bytes_hashed: Cell<u64>,
     // The accumulated time spent on computing symbol hashes
     pub symbol_hash_time: Cell<Duration>,
 }
@@ -264,13 +272,15 @@ impl Session {
             }
             return;
         }
-        lints.insert(id, vec!((lint_id, sp, msg)));
+        lints.insert(id, vec![(lint_id, sp, msg)]);
     }
-    pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
+    pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
         let id = self.next_node_id.get();
 
-        match id.checked_add(count) {
-            Some(next) => self.next_node_id.set(next),
+        match id.as_usize().checked_add(count) {
+            Some(next) => {
+                self.next_node_id.set(ast::NodeId::new(next));
+            }
             None => bug!("Input too large, ran out of node ids!")
         }
 
@@ -282,6 +292,35 @@ impl Session {
     pub fn diagnostic<'a>(&'a self) -> &'a errors::Handler {
         &self.parse_sess.span_diagnostic
     }
+
+    /// Analogous to calling `.span_note` on the given DiagnosticBuilder, but
+    /// deduplicates on lint ID, span, and message for this `Session` if we're
+    /// not outputting in JSON mode.
+    //
+    // FIXME: if the need arises for one-time diagnostics other than
+    // `span_note`, we almost certainly want to generalize this
+    // "check/insert-into the one-time diagnostics map, then set message if
+    // it's not already there" code to accomodate all of them
+    pub fn diag_span_note_once<'a, 'b>(&'a self,
+                                       diag_builder: &'b mut DiagnosticBuilder<'a>,
+                                       lint: &'static lint::Lint, span: Span, message: &str) {
+        match self.opts.error_format {
+            // when outputting JSON for tool consumption, the tool might want
+            // the duplicates
+            config::ErrorOutputType::Json => {
+                diag_builder.span_note(span, &message);
+            },
+            _ => {
+                let lint_id = lint::LintId::of(lint);
+                let id_span_message = (lint_id, span, message.to_owned());
+                let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
+                if fresh {
+                    diag_builder.span_note(span, &message);
+                }
+            }
+        }
+    }
+
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
         self.parse_sess.codemap()
     }
@@ -304,9 +343,13 @@ impl Session {
     pub fn lto(&self) -> bool {
         self.opts.cg.lto
     }
+    /// Returns the panic strategy for this compile session. If the user explicitly selected one
+    /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
+    pub fn panic_strategy(&self) -> PanicStrategy {
+        self.opts.cg.panic.unwrap_or(self.target.target.options.panic_strategy)
+    }
     pub fn no_landing_pads(&self) -> bool {
-        self.opts.debugging_opts.no_landing_pads ||
-            self.opts.cg.panic == PanicStrategy::Abort
+        self.opts.debugging_opts.no_landing_pads || self.panic_strategy() == PanicStrategy::Abort
     }
     pub fn unstable_options(&self) -> bool {
         self.opts.debugging_opts.unstable_options
@@ -431,6 +474,11 @@ impl Session {
                  duration_to_secs_str(self.perf_stats.incr_comp_hashes_time.get()));
         println!("Total number of incr. comp. hashes computed:   {}",
                  self.perf_stats.incr_comp_hashes_count.get());
+        println!("Total number of bytes hashed for incr. comp.:  {}",
+                 self.perf_stats.incr_comp_bytes_hashed.get());
+        println!("Average bytes hashed per incr. comp. HIR node: {}",
+                 self.perf_stats.incr_comp_bytes_hashed.get() /
+                 self.perf_stats.incr_comp_hashes_count.get());
         println!("Total time spent computing symbol hashes:      {}",
                  duration_to_secs_str(self.perf_stats.symbol_hash_time.get()));
     }
@@ -447,7 +495,8 @@ pub fn build_session(sopts: config::Options,
                                local_crate_source_file,
                                registry,
                                cstore,
-                               Rc::new(codemap::CodeMap::new()))
+                               Rc::new(codemap::CodeMap::new()),
+                               None)
 }
 
 pub fn build_session_with_codemap(sopts: config::Options,
@@ -455,7 +504,8 @@ pub fn build_session_with_codemap(sopts: config::Options,
                                   local_crate_source_file: Option<PathBuf>,
                                   registry: errors::registry::Registry,
                                   cstore: Rc<for<'a> CrateStore<'a>>,
-                                  codemap: Rc<codemap::CodeMap>)
+                                  codemap: Rc<codemap::CodeMap>,
+                                  emitter_dest: Option<Box<Write + Send>>)
                                   -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -468,13 +518,20 @@ pub fn build_session_with_codemap(sopts: config::Options,
         .unwrap_or(true);
     let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
 
-    let emitter: Box<Emitter> = match sopts.error_format {
-        config::ErrorOutputType::HumanReadable(color_config) => {
+    let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
+        (config::ErrorOutputType::HumanReadable(color_config), None) => {
             Box::new(EmitterWriter::stderr(color_config,
                                            Some(codemap.clone())))
         }
-        config::ErrorOutputType::Json => {
+        (config::ErrorOutputType::HumanReadable(_), Some(dst)) => {
+            Box::new(EmitterWriter::new(dst,
+                                        Some(codemap.clone())))
+        }
+        (config::ErrorOutputType::Json, None) => {
             Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))
+        }
+        (config::ErrorOutputType::Json, Some(dst)) => {
+            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone()))
         }
     };
 
@@ -537,6 +594,7 @@ pub fn build_session_(sopts: config::Options,
         working_dir: env::current_dir().unwrap(),
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(NodeMap()),
+        one_time_diagnostics: RefCell::new(FnvHashSet()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
         mir_passes: RefCell::new(mir_pass::Passes::new()),
         plugin_attributes: RefCell::new(Vec::new()),
@@ -545,7 +603,7 @@ pub fn build_session_(sopts: config::Options,
         crate_disambiguator: RefCell::new(token::intern("").as_str()),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
-        next_node_id: Cell::new(1),
+        next_node_id: Cell::new(NodeId::new(1)),
         injected_allocator: Cell::new(None),
         injected_panic_runtime: Cell::new(None),
         imported_macro_spans: RefCell::new(HashMap::new()),
@@ -554,6 +612,7 @@ pub fn build_session_(sopts: config::Options,
             svh_time: Cell::new(Duration::from_secs(0)),
             incr_comp_hashes_time: Cell::new(Duration::from_secs(0)),
             incr_comp_hashes_count: Cell::new(0),
+            incr_comp_bytes_hashed: Cell::new(0),
             symbol_hash_time: Cell::new(Duration::from_secs(0)),
         }
     };

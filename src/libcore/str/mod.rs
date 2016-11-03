@@ -101,7 +101,7 @@ impl FromStr for bool {
 }
 
 /// An error returned when parsing a `bool` from a string fails.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseBoolError { _priv: () }
 
@@ -132,7 +132,7 @@ impl Utf8Error {
     /// verified.
     ///
     /// It is the maximum index such that `from_utf8(input[..index])`
-    /// would return `Some(_)`.
+    /// would return `Ok(_)`.
     ///
     /// # Examples
     ///

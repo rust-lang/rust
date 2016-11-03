@@ -103,7 +103,7 @@ pub struct Handle<'rx, T:Send+'rx> {
 struct Packets { cur: *mut Handle<'static, ()> }
 
 #[doc(hidden)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum StartResult {
     Installed,
     Abort,
@@ -352,22 +352,20 @@ impl Iterator for Packets {
     }
 }
 
-#[stable(feature = "mpsc_debug", since = "1.7.0")]
 impl fmt::Debug for Select {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Select {{ .. }}")
     }
 }
 
-#[stable(feature = "mpsc_debug", since = "1.7.0")]
 impl<'rx, T:Send+'rx> fmt::Debug for Handle<'rx, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Handle {{ .. }}")
     }
 }
 
-#[cfg(test)]
 #[allow(unused_imports)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use thread;
     use sync::mpsc::*;

@@ -17,9 +17,8 @@ use dep_graph::DepNode;
 use hir::map as hir_map;
 use session::Session;
 use lint;
-use middle::cstore::LOCAL_CRATE;
 use hir::def::Def;
-use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
+use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, DefIndex, LOCAL_CRATE};
 use ty::{self, TyCtxt, AdtKind};
 use middle::privacy::AccessLevels;
 use syntax::parse::token::InternedString;
@@ -103,7 +102,7 @@ pub struct Index<'tcx> {
     depr_map: DefIdMap<Option<DeprecationEntry>>,
 
     /// Maps for each crate whether it is part of the staged API.
-    staged_api: FnvHashMap<ast::CrateNum, bool>
+    staged_api: FnvHashMap<CrateNum, bool>
 }
 
 // A private tree-walker for producing an Index.
@@ -412,8 +411,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                                                &feature, &r),
                         None => format!("use of unstable library feature '{}'", &feature)
                     };
-                    emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
-                                      &feature, span, GateIssue::Library(Some(issue)), &msg);
+                    emit_feature_err(&self.tcx.sess.parse_sess, &feature, span,
+                                     GateIssue::Library(Some(issue)), &msg);
                 }
             }
             Some(&Stability { ref level, ref feature, .. }) => {
@@ -618,12 +617,8 @@ pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            &Option<DeprecationEntry>)) {
     // Paths in import prefixes may have no resolution.
     match tcx.expect_def_or_none(id) {
-        Some(Def::PrimTy(..)) => {}
-        Some(Def::SelfTy(..)) => {}
-        Some(def) => {
-            maybe_do_stability_check(tcx, def.def_id(), path.span, cb);
-        }
-        None => {}
+        None | Some(Def::PrimTy(..)) | Some(Def::SelfTy(..)) => {}
+        Some(def) => maybe_do_stability_check(tcx, def.def_id(), path.span, cb)
     }
 }
 
@@ -632,12 +627,7 @@ pub fn check_path_list_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       cb: &mut FnMut(DefId, Span,
                                                      &Option<&Stability>,
                                                      &Option<DeprecationEntry>)) {
-    match tcx.expect_def(item.node.id) {
-        Def::PrimTy(..) => {}
-        def => {
-            maybe_do_stability_check(tcx, def.def_id(), item.span, cb);
-        }
-    }
+    maybe_do_stability_check(tcx, tcx.expect_def(item.node.id).def_id(), item.span, cb);
 }
 
 pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
@@ -696,10 +686,9 @@ fn is_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span) -> bool {
 
 fn is_staged_api<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> bool {
     match tcx.trait_item_of_item(id) {
-        Some(ty::MethodTraitItemId(trait_method_id))
-            if trait_method_id != id => {
-                is_staged_api(tcx, trait_method_id)
-            }
+        Some(trait_method_id) if trait_method_id != id => {
+            is_staged_api(tcx, trait_method_id)
+        }
         _ => {
             *tcx.stability.borrow_mut().staged_api.entry(id.krate).or_insert_with(
                 || tcx.sess.cstore.is_staged_api(id.krate))

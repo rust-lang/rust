@@ -10,10 +10,13 @@
 
 //! Functionality for ordering and comparison.
 //!
-//! This module defines both `PartialOrd` and `PartialEq` traits which are used
+//! This module defines both [`PartialOrd`] and [`PartialEq`] traits which are used
 //! by the compiler to implement comparison operators. Rust programs may
-//! implement `PartialOrd` to overload the `<`, `<=`, `>`, and `>=` operators,
-//! and may implement `PartialEq` to overload the `==` and `!=` operators.
+//! implement [`PartialOrd`] to overload the `<`, `<=`, `>`, and `>=` operators,
+//! and may implement [`PartialEq`] to overload the `==` and `!=` operators.
+//!
+//! [`PartialOrd`]: trait.PartialOrd.html
+//! [`PartialEq`]: trait.PartialEq.html
 //!
 //! # Examples
 //!
@@ -243,6 +246,80 @@ impl Ordering {
             Less => Greater,
             Equal => Equal,
             Greater => Less,
+        }
+    }
+
+    /// Chains two orderings.
+    ///
+    /// Returns `self` when it's not `Equal`. Otherwise returns `other`.
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_chaining)]
+    ///
+    /// use std::cmp::Ordering;
+    ///
+    /// let result = Ordering::Equal.then(Ordering::Less);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Less.then(Ordering::Equal);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Less.then(Ordering::Greater);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Equal.then(Ordering::Equal);
+    /// assert_eq!(result, Ordering::Equal);
+    ///
+    /// let x: (i64, i64, i64) = (1, 2, 7);
+    /// let y: (i64, i64, i64) = (1, 5, 3);
+    /// let result = x.0.cmp(&y.0).then(x.1.cmp(&y.1)).then(x.2.cmp(&y.2));
+    ///
+    /// assert_eq!(result, Ordering::Less);
+    /// ```
+    #[unstable(feature = "ordering_chaining", issue = "37053")]
+    pub fn then(self, other: Ordering) -> Ordering {
+        match self {
+            Equal => other,
+            _ => self,
+        }
+    }
+
+    /// Chains the ordering with the given function.
+    ///
+    /// Returns `self` when it's not `Equal`. Otherwise calls `f` and returns
+    /// the result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_chaining)]
+    ///
+    /// use std::cmp::Ordering;
+    ///
+    /// let result = Ordering::Equal.then_with(|| Ordering::Less);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Less.then_with(|| Ordering::Equal);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Less.then_with(|| Ordering::Greater);
+    /// assert_eq!(result, Ordering::Less);
+    ///
+    /// let result = Ordering::Equal.then_with(|| Ordering::Equal);
+    /// assert_eq!(result, Ordering::Equal);
+    ///
+    /// let x: (i64, i64, i64) = (1, 2, 7);
+    /// let y: (i64, i64, i64)  = (1, 5, 3);
+    /// let result = x.0.cmp(&y.0).then_with(|| x.1.cmp(&y.1)).then_with(|| x.2.cmp(&y.2));
+    ///
+    /// assert_eq!(result, Ordering::Less);
+    /// ```
+    #[unstable(feature = "ordering_chaining", issue = "37053")]
+    pub fn then_with<F: FnOnce() -> Ordering>(self, f: F) -> Ordering {
+        match self {
+            Equal => f(),
+            _ => self,
         }
     }
 }
@@ -703,24 +780,24 @@ mod impls {
 
     ord_impl! { char usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[unstable(feature = "never_type_impls", issue = "35121")]
     impl PartialEq for ! {
         fn eq(&self, _: &!) -> bool {
             *self
         }
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[unstable(feature = "never_type_impls", issue = "35121")]
     impl Eq for ! {}
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[unstable(feature = "never_type_impls", issue = "35121")]
     impl PartialOrd for ! {
         fn partial_cmp(&self, _: &!) -> Option<Ordering> {
             *self
         }
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[unstable(feature = "never_type_impls", issue = "35121")]
     impl Ord for ! {
         fn cmp(&self, _: &!) -> Ordering {
             *self

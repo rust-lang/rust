@@ -19,6 +19,7 @@ use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
+use rustc::mir::Mir;
 use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
 use rustc::ty::subst::Substs;
@@ -32,7 +33,6 @@ use consts;
 use debuginfo::{self, DebugLoc};
 use declare;
 use machine;
-use mir::CachedMir;
 use monomorphize;
 use type_::Type;
 use value::Value;
@@ -46,7 +46,7 @@ use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::ops::Deref;
 use std::ffi::CString;
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, Ref};
 
 use syntax::ast;
 use syntax::parse::token::InternedString;
@@ -127,7 +127,7 @@ pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
         Layout::FatPointer { .. } => true,
         Layout::Univariant { ref variant, .. } => {
             // There must be only 2 fields.
-            if variant.offset_after_field.len() != 2 {
+            if variant.offsets.len() != 2 {
                 return false;
             }
 
@@ -148,15 +148,6 @@ pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     use type_of::sizing_type_of;
     let llty = sizing_type_of(ccx, ty);
     llsize_of_alloc(ccx, llty) == 0
-}
-
-/// Generates a unique symbol based off the name given. This is used to create
-/// unique symbols for things like closures.
-pub fn gensym_name(name: &str) -> ast::Name {
-    let num = token::gensym(name).0;
-    // use one colon which will get translated to a period by the mangler, and
-    // we're guaranteed that `num` is globally unique for this crate.
-    token::gensym(&format!("{}:{}", name, num))
 }
 
 /*
@@ -259,10 +250,8 @@ pub fn validate_substs(substs: &Substs) {
 // Function context.  Every LLVM function we create will have one of
 // these.
 pub struct FunctionContext<'a, 'tcx: 'a> {
-    // The MIR for this function. At present, this is optional because
-    // we only have MIR available for things that are local to the
-    // crate.
-    pub mir: Option<CachedMir<'a, 'tcx>>,
+    // The MIR for this function.
+    pub mir: Option<Ref<'tcx, Mir<'tcx>>>,
 
     // The ValueRef returned from a call to llvm::LLVMAddFunction; the
     // address of the first instruction in the sequence of
@@ -322,8 +311,8 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
-    pub fn mir(&self) -> CachedMir<'a, 'tcx> {
-        self.mir.clone().expect("fcx.mir was empty")
+    pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
+        self.mir.as_ref().map(Ref::clone).expect("fcx.mir was empty")
     }
 
     pub fn cleanup(&self) {
@@ -385,7 +374,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         let tcx = ccx.tcx();
         match tcx.lang_items.eh_personality() {
             Some(def_id) if !base::wants_msvc_seh(ccx.sess()) => {
-                Callee::def(ccx, def_id, Substs::empty(tcx)).reify(ccx)
+                Callee::def(ccx, def_id, tcx.intern_substs(&[])).reify(ccx)
             }
             _ => {
                 if let Some(llpersonality) = ccx.eh_personality().get() {
@@ -412,7 +401,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         let tcx = ccx.tcx();
         assert!(ccx.sess().target.target.options.custom_unwind_resume);
         if let Some(def_id) = tcx.lang_items.eh_unwind_resume() {
-            return Callee::def(ccx, def_id, Substs::empty(tcx));
+            return Callee::def(ccx, def_id, tcx.intern_substs(&[]));
         }
 
         let ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
@@ -499,7 +488,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         self.set_lpad_ref(lpad.map(|p| &*self.fcx().lpad_arena.alloc(p)))
     }
 
-    pub fn mir(&self) -> CachedMir<'blk, 'tcx> {
+    pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
         self.fcx.mir()
     }
 
@@ -618,7 +607,7 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         self.bcx.llbb
     }
 
-    pub fn mir(&self) -> CachedMir<'blk, 'tcx> {
+    pub fn mir(&self) -> Ref<'tcx, Mir<'tcx>> {
         self.bcx.mir()
     }
 
@@ -808,9 +797,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
                                                 s.as_ptr() as *const c_char,
                                                 s.len() as c_uint,
                                                 !null_terminated as Bool);
-
-        let gsym = token::gensym("str");
-        let sym = format!("str{}", gsym.0);
+        let sym = cx.generate_local_symbol_name("str");
         let g = declare::define_global(cx, &sym[..], val_ty(sc)).unwrap_or_else(||{
             bug!("symbol `{}` is already defined", sym);
         });
@@ -881,12 +868,6 @@ pub fn const_get_elt(v: ValueRef, us: &[c_uint])
                Value(v), us, Value(r));
 
         r
-    }
-}
-
-pub fn const_to_int(v: ValueRef) -> i64 {
-    unsafe {
-        llvm::LLVMConstIntGetSExtValue(v)
     }
 }
 
@@ -999,35 +980,6 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
             vtable
         })
-    })
-}
-
-/// Normalizes the predicates and checks whether they hold.  If this
-/// returns false, then either normalize encountered an error or one
-/// of the predicates did not hold. Used when creating vtables to
-/// check for unsatisfiable methods.
-pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               predicates: Vec<ty::Predicate<'tcx>>)
-                                               -> bool
-{
-    debug!("normalize_and_test_predicates(predicates={:?})",
-           predicates);
-
-    tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
-        let mut selcx = SelectionContext::new(&infcx);
-        let mut fulfill_cx = traits::FulfillmentContext::new();
-        let cause = traits::ObligationCause::dummy();
-        let traits::Normalized { value: predicates, obligations } =
-            traits::normalize(&mut selcx, cause.clone(), &predicates);
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
-        for predicate in predicates {
-            let obligation = traits::Obligation::new(cause.clone(), predicate);
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
-
-        fulfill_cx.select_all_or_error(&infcx).is_ok()
     })
 }
 

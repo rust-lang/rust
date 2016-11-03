@@ -34,4 +34,3 @@ pub fn infer_variance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     solve::solve_constraints(constraints_cx);
     tcx.variance_computed.set(true);
 }
-

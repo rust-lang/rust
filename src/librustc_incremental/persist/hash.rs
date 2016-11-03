@@ -8,28 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rbml::Error;
-use rbml::opaque::Decoder;
 use rustc::dep_graph::DepNode;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::svh::Svh;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_data_structures::flock;
 use rustc_serialize::Decodable;
-use std::io::{ErrorKind, Read};
-use std::fs::File;
-use syntax::ast;
+use rustc_serialize::opaque::Decoder;
 
 use IncrementalHashesMap;
+use ich::Fingerprint;
 use super::data::*;
 use super::fs::*;
+use super::file_format;
 
 pub struct HashContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     incremental_hashes_map: &'a IncrementalHashesMap,
-    item_metadata_hashes: FnvHashMap<DefId, u64>,
-    crate_hashes: FnvHashMap<ast::CrateNum, Svh>,
+    item_metadata_hashes: FnvHashMap<DefId, Fingerprint>,
+    crate_hashes: FnvHashMap<CrateNum, Svh>,
 }
 
 impl<'a, 'tcx> HashContext<'a, 'tcx> {
@@ -53,7 +51,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<u64> {
+    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<Fingerprint> {
         match *dep_node {
             DepNode::Krate => {
                 Some(self.incremental_hashes_map[dep_node])
@@ -92,7 +90,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    fn metadata_hash(&mut self, def_id: DefId) -> u64 {
+    fn metadata_hash(&mut self, def_id: DefId) -> Fingerprint {
         debug!("metadata_hash(def_id={:?})", def_id);
 
         assert!(!def_id.is_local());
@@ -105,14 +103,15 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
             // check whether we did not find detailed metadata for this
             // krate; in that case, we just use the krate's overall hash
-            if let Some(&hash) = self.crate_hashes.get(&def_id.krate) {
-                debug!("metadata_hash: def_id={:?} crate_hash={:?}", def_id, hash);
+            if let Some(&svh) = self.crate_hashes.get(&def_id.krate) {
+                debug!("metadata_hash: def_id={:?} crate_hash={:?}", def_id, svh);
 
                 // micro-"optimization": avoid a cache miss if we ask
                 // for metadata from this particular def-id again.
-                self.item_metadata_hashes.insert(def_id, hash.as_u64());
+                let fingerprint = svh_to_fingerprint(svh);
+                self.item_metadata_hashes.insert(def_id, fingerprint);
 
-                return hash.as_u64();
+                return fingerprint;
             }
 
             // otherwise, load the data and repeat.
@@ -121,7 +120,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    fn load_data(&mut self, cnum: ast::CrateNum) {
+    fn load_data(&mut self, cnum: CrateNum) {
         debug!("load_data(cnum={})", cnum);
 
         let svh = self.tcx.sess.cstore.crate_hash(cnum);
@@ -155,12 +154,9 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
             let hashes_file_path = metadata_hash_import_path(&session_dir);
 
-            let mut data = vec![];
-            match
-                File::open(&hashes_file_path)
-                     .and_then(|mut file| file.read_to_end(&mut data))
+            match file_format::read_file(&hashes_file_path)
             {
-                Ok(_) => {
+                Ok(Some(data)) => {
                     match self.load_from_data(cnum, &data, svh) {
                         Ok(()) => { }
                         Err(err) => {
@@ -169,27 +165,22 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
                         }
                     }
                 }
+                Ok(None) => {
+                    // If the file is not found, that's ok.
+                }
                 Err(err) => {
-                    match err.kind() {
-                        ErrorKind::NotFound => {
-                            // If the file is not found, that's ok.
-                        }
-                        _ => {
-                            self.tcx.sess.err(
-                                &format!("could not load dep information from `{}`: {}",
-                                         hashes_file_path.display(), err));
-                            return;
-                        }
-                    }
+                    self.tcx.sess.err(
+                        &format!("could not load dep information from `{}`: {}",
+                                 hashes_file_path.display(), err));
                 }
             }
         }
     }
 
     fn load_from_data(&mut self,
-                      cnum: ast::CrateNum,
+                      cnum: CrateNum,
                       data: &[u8],
-                      expected_svh: Svh) -> Result<(), Error> {
+                      expected_svh: Svh) -> Result<(), String> {
         debug!("load_from_data(cnum={})", cnum);
 
         // Load up the hashes for the def-ids from this crate.
@@ -216,4 +207,8 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
         Ok(())
     }
+}
+
+fn svh_to_fingerprint(svh: Svh) -> Fingerprint {
+    Fingerprint::from_smaller_hash(svh.as_u64())
 }

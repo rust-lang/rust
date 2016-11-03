@@ -20,21 +20,23 @@ use std::path::PathBuf;
 
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
-    let rustdoc = env::var_os("RUSTDOC_REAL").unwrap();
-    let libdir = env::var_os("RUSTC_LIBDIR").unwrap();
+    let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
+    let libdir = env::var_os("RUSTC_LIBDIR").expect("RUSTC_LIBDIR was not set");
+    let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
 
     let mut dylib_path = bootstrap::util::dylib_path();
     dylib_path.insert(0, PathBuf::from(libdir));
 
     let mut cmd = Command::new(rustdoc);
     cmd.args(&args)
-       .arg("--cfg").arg(format!("stage{}", env::var("RUSTC_STAGE").unwrap()))
-       .arg("--cfg").arg("dox")
-       .env(bootstrap::util::dylib_path_var(),
-            env::join_paths(&dylib_path).unwrap());
+        .arg("--cfg")
+        .arg(format!("stage{}", stage))
+        .arg("--cfg")
+        .arg("dox")
+        .env(bootstrap::util::dylib_path_var(),
+             env::join_paths(&dylib_path).unwrap());
     std::process::exit(match cmd.status() {
         Ok(s) => s.code().unwrap_or(1),
         Err(e) => panic!("\n\nfailed to run {:?}: {}\n\n", cmd, e),
     })
 }
-

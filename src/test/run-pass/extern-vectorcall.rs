@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-arm
+// ignore-aarch64
+
 #![feature(abi_vectorcall)]
 
 trait A {

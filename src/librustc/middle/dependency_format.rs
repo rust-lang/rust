@@ -61,12 +61,13 @@
 //! Additionally, the algorithm is geared towards finding *any* solution rather
 //! than finding a number of solutions (there are normally quite a few).
 
-use syntax::ast;
+use hir::def_id::CrateNum;
 
 use session;
-use session::config::{self, PanicStrategy};
+use session::config;
 use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use util::nodemap::FnvHashMap;
+use rustc_back::PanicStrategy;
 
 /// A list of dependencies for a certain crate type.
 ///
@@ -140,12 +141,12 @@ fn calculate_type(sess: &session::Session,
         }
 
         // Everything else falls through below. This will happen either with the
-        // `-C prefer-dynamic` or because we're a rustc-macro crate. Note that
-        // rustc-macro crates are required to be dylibs, and they're currently
+        // `-C prefer-dynamic` or because we're a proc-macro crate. Note that
+        // proc-macro crates are required to be dylibs, and they're currently
         // required to link to libsyntax as well.
         config::CrateTypeExecutable |
         config::CrateTypeDylib |
-        config::CrateTypeRustcMacro => {},
+        config::CrateTypeProcMacro => {},
     }
 
     let mut formats = FnvHashMap();
@@ -169,9 +170,9 @@ fn calculate_type(sess: &session::Session,
     }
 
     // Collect what we've got so far in the return vector.
-    let last_crate = sess.cstore.crates().len() as ast::CrateNum;
+    let last_crate = sess.cstore.crates().len();
     let mut ret = (1..last_crate+1).map(|cnum| {
-        match formats.get(&cnum) {
+        match formats.get(&CrateNum::new(cnum)) {
             Some(&RequireDynamic) => Linkage::Dynamic,
             Some(&RequireStatic) => Linkage::IncludedFromDylib,
             None => Linkage::NotLinked,
@@ -191,7 +192,7 @@ fn calculate_type(sess: &session::Session,
             assert!(src.rlib.is_some());
             info!("adding staticlib: {}", sess.cstore.crate_name(cnum));
             add_library(sess, cnum, RequireStatic, &mut formats);
-            ret[cnum as usize - 1] = Linkage::Static;
+            ret[cnum.as_usize() - 1] = Linkage::Static;
         }
     }
 
@@ -213,7 +214,7 @@ fn calculate_type(sess: &session::Session,
     // For situations like this, we perform one last pass over the dependencies,
     // making sure that everything is available in the requested format.
     for (cnum, kind) in ret.iter().enumerate() {
-        let cnum = (cnum + 1) as ast::CrateNum;
+        let cnum = CrateNum::new(cnum + 1);
         let src = sess.cstore.used_crate_source(cnum);
         match *kind {
             Linkage::NotLinked |
@@ -237,9 +238,9 @@ fn calculate_type(sess: &session::Session,
 }
 
 fn add_library(sess: &session::Session,
-               cnum: ast::CrateNum,
+               cnum: CrateNum,
                link: LinkagePreference,
-               m: &mut FnvHashMap<ast::CrateNum, LinkagePreference>) {
+               m: &mut FnvHashMap<CrateNum, LinkagePreference>) {
     match m.get(&cnum) {
         Some(&link2) => {
             // If the linkages differ, then we'd have two copies of the library
@@ -269,9 +270,9 @@ fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
 
     // All crates are available in an rlib format, so we're just going to link
     // everything in explicitly so long as it's actually required.
-    let last_crate = sess.cstore.crates().len() as ast::CrateNum;
+    let last_crate = sess.cstore.crates().len();
     let mut ret = (1..last_crate+1).map(|cnum| {
-        if sess.cstore.is_explicitly_linked(cnum) {
+        if sess.cstore.is_explicitly_linked(CrateNum::new(cnum)) {
             Linkage::Static
         } else {
             Linkage::NotLinked
@@ -298,11 +299,11 @@ fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
 // a required dependency) in one of the session's field. If this field is not
 // set then this compilation doesn't actually need the dependency and we can
 // also skip this step entirely.
-fn activate_injected_dep(injected: Option<ast::CrateNum>,
+fn activate_injected_dep(injected: Option<CrateNum>,
                          list: &mut DependencyList,
-                         replaces_injected: &Fn(ast::CrateNum) -> bool) {
+                         replaces_injected: &Fn(CrateNum) -> bool) {
     for (i, slot) in list.iter().enumerate() {
-        let cnum = (i + 1) as ast::CrateNum;
+        let cnum = CrateNum::new(i + 1);
         if !replaces_injected(cnum) {
             continue
         }
@@ -311,7 +312,7 @@ fn activate_injected_dep(injected: Option<ast::CrateNum>,
         }
     }
     if let Some(injected) = injected {
-        let idx = injected as usize - 1;
+        let idx = injected.as_usize() - 1;
         assert_eq!(list[idx], Linkage::NotLinked);
         list[idx] = Linkage::Static;
     }
@@ -329,7 +330,7 @@ fn verify_ok(sess: &session::Session, list: &[Linkage]) {
         if let Linkage::NotLinked = *linkage {
             continue
         }
-        let cnum = (i + 1) as ast::CrateNum;
+        let cnum = CrateNum::new(i + 1);
         if sess.cstore.is_allocator(cnum) {
             if let Some(prev) = allocator {
                 let prev_name = sess.cstore.crate_name(prev);
@@ -357,7 +358,7 @@ fn verify_ok(sess: &session::Session, list: &[Linkage]) {
     // only one, but we perform validation here that all the panic strategy
     // compilation modes for the whole DAG are valid.
     if let Some((cnum, found_strategy)) = panic_runtime {
-        let desired_strategy = sess.opts.cg.panic.clone();
+        let desired_strategy = sess.panic_strategy();
 
         // First up, validate that our selected panic runtime is indeed exactly
         // our same strategy.
@@ -380,7 +381,7 @@ fn verify_ok(sess: &session::Session, list: &[Linkage]) {
             if desired_strategy == PanicStrategy::Abort {
                 continue
             }
-            let cnum = (i + 1) as ast::CrateNum;
+            let cnum = CrateNum::new(i + 1);
             let found_strategy = sess.cstore.panic_strategy(cnum);
             if desired_strategy == found_strategy {
                 continue

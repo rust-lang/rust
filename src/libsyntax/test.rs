@@ -19,7 +19,7 @@ use std::iter;
 use std::slice;
 use std::mem;
 use std::vec;
-use attr;
+use attr::{self, HasAttrs};
 use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
 use std::rc::Rc;
 
@@ -119,7 +119,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         }
         debug!("current path: {}", path_name_i(&self.cx.path));
 
-        let i = if is_test_fn(&self.cx, &i) || is_bench_fn(&self.cx, &i) {
+        if is_test_fn(&self.cx, &i) || is_bench_fn(&self.cx, &i) {
             match i.node {
                 ast::ItemKind::Fn(_, ast::Unsafety::Unsafe, _, _, _, _) => {
                     let diag = self.cx.span_diagnostic;
@@ -136,54 +136,37 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     };
                     self.cx.testfns.push(test);
                     self.tests.push(i.ident);
-                    // debug!("have {} test/bench functions",
-                    //        cx.testfns.len());
-
-                    // Make all tests public so we can call them from outside
-                    // the module (note that the tests are re-exported and must
-                    // be made public themselves to avoid privacy errors).
-                    i.map(|mut i| {
-                        i.vis = ast::Visibility::Public;
-                        i
-                    })
                 }
             }
-        } else {
-            i
-        };
+        }
 
+        let mut item = i.unwrap();
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        let res = match i.node {
-            ast::ItemKind::Mod(..) => fold::noop_fold_item(i, self),
-            _ => SmallVector::one(i),
-        };
+        if let ast::ItemKind::Mod(module) = item.node {
+            let tests = mem::replace(&mut self.tests, Vec::new());
+            let tested_submods = mem::replace(&mut self.tested_submods, Vec::new());
+            let mut mod_folded = fold::noop_fold_mod(module, self);
+            let tests = mem::replace(&mut self.tests, tests);
+            let tested_submods = mem::replace(&mut self.tested_submods, tested_submods);
+
+            if !tests.is_empty() || !tested_submods.is_empty() {
+                let (it, sym) = mk_reexport_mod(&mut self.cx, item.id, tests, tested_submods);
+                mod_folded.items.push(it);
+
+                if !self.cx.path.is_empty() {
+                    self.tested_submods.push((self.cx.path[self.cx.path.len()-1], sym));
+                } else {
+                    debug!("pushing nothing, sym: {:?}", sym);
+                    self.cx.toplevel_reexport = Some(sym);
+                }
+            }
+            item.node = ast::ItemKind::Mod(mod_folded);
+        }
         if ident.name != keywords::Invalid.name() {
             self.cx.path.pop();
         }
-        res
-    }
-
-    fn fold_mod(&mut self, m: ast::Mod) -> ast::Mod {
-        let tests = mem::replace(&mut self.tests, Vec::new());
-        let tested_submods = mem::replace(&mut self.tested_submods, Vec::new());
-        let mut mod_folded = fold::noop_fold_mod(m, self);
-        let tests = mem::replace(&mut self.tests, tests);
-        let tested_submods = mem::replace(&mut self.tested_submods, tested_submods);
-
-        if !tests.is_empty() || !tested_submods.is_empty() {
-            let (it, sym) = mk_reexport_mod(&mut self.cx, tests, tested_submods);
-            mod_folded.items.push(it);
-
-            if !self.cx.path.is_empty() {
-                self.tested_submods.push((self.cx.path[self.cx.path.len()-1], sym));
-            } else {
-                debug!("pushing nothing, sym: {:?}", sym);
-                self.cx.toplevel_reexport = Some(sym);
-            }
-        }
-
-        mod_folded
+        SmallVector::one(P(item))
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
@@ -239,16 +222,24 @@ impl fold::Folder for EntryPointCleaner {
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
 }
 
-fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
+fn mk_reexport_mod(cx: &mut TestCtxt, parent: ast::NodeId, tests: Vec<ast::Ident>,
                    tested_submods: Vec<(ast::Ident, ast::Ident)>) -> (P<ast::Item>, ast::Ident) {
     let super_ = token::str_to_ident("super");
 
+    // Generate imports with `#[allow(private_in_public)]` to work around issue #36768.
+    let allow_private_in_public = cx.ext_cx.attribute(DUMMY_SP, cx.ext_cx.meta_list(
+        DUMMY_SP,
+        InternedString::new("allow"),
+        vec![cx.ext_cx.meta_list_item_word(DUMMY_SP, InternedString::new("private_in_public"))],
+    ));
     let items = tests.into_iter().map(|r| {
         cx.ext_cx.item_use_simple(DUMMY_SP, ast::Visibility::Public,
                                   cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
+            .map_attrs(|_| vec![allow_private_in_public.clone()])
     }).chain(tested_submods.into_iter().map(|(r, sym)| {
         let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, sym]);
         cx.ext_cx.item_use_simple_(DUMMY_SP, ast::Visibility::Public, r, path)
+            .map_attrs(|_| vec![allow_private_in_public.clone()])
     })).collect();
 
     let reexport_mod = ast::Mod {
@@ -257,6 +248,8 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
     };
 
     let sym = token::gensym_ident("__test_reexports");
+    let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
+    cx.ext_cx.current_expansion.mark = cx.ext_cx.resolver.get_module_scope(parent);
     let it = cx.ext_cx.monotonic_expander().fold_item(P(ast::Item {
         ident: sym.clone(),
         attrs: Vec::new(),
@@ -281,7 +274,7 @@ fn generate_test_harness(sess: &ParseSess,
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         span_diagnostic: sd,
-        ext_cx: ExtCtxt::new(sess, vec![], ExpansionConfig::default("test".to_string()), resolver),
+        ext_cx: ExtCtxt::new(sess, ExpansionConfig::default("test".to_string()), resolver),
         path: Vec::new(),
         testfns: Vec::new(),
         reexport_test_harness_main: reexport_test_harness_main,
@@ -437,7 +430,7 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     let (vi, vis, ident) = if cx.is_test_crate {
         (ast::ItemKind::Use(
             P(nospan(ast::ViewPathSimple(id_test,
-                                         path_node(vec!(id_test)))))),
+                                         path_node(vec![id_test]))))),
          ast::Visibility::Public, keywords::Invalid.ident())
     } else {
         (ast::ItemKind::ExternCrate(None), ast::Visibility::Inherited, id_test)
@@ -579,7 +572,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     let static_lt = ecx.lifetime(sp, keywords::StaticLifetime.name());
     // &'static [self::test::TestDescAndFn]
     let static_type = ecx.ty_rptr(sp,
-                                  ecx.ty(sp, ast::TyKind::Vec(struct_type)),
+                                  ecx.ty(sp, ast::TyKind::Slice(struct_type)),
                                   Some(static_lt),
                                   ast::Mutability::Immutable);
     // static TESTS: $static_type = &[...];

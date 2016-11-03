@@ -15,5 +15,5 @@ enum Field {
 fn main() {
     let s = Field::Fool { joke: 0 };
     //~^ ERROR E0559
-    //~| NOTE did you mean `x`?
+    //~| NOTE field does not exist - did you mean `x`?
 }

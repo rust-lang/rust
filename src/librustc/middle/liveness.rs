@@ -465,7 +465,8 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         let mut call_caps = Vec::new();
         ir.tcx.with_freevars(expr.id, |freevars| {
             for fv in freevars {
-                if let Def::Local(_, rv) = fv.def {
+                if let Def::Local(def_id) = fv.def {
+                    let rv = ir.tcx.map.as_local_node_id(def_id).unwrap();
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
                     call_caps.push(CaptureInfo {ln: fv_ln,
                                                 var_nid: rv});
@@ -489,7 +490,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
 
       // otherwise, live nodes are not required:
       hir::ExprIndex(..) | hir::ExprField(..) | hir::ExprTupField(..) |
-      hir::ExprVec(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) |
+      hir::ExprArray(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) |
       hir::ExprTup(..) | hir::ExprBinary(..) | hir::ExprAddrOf(..) |
       hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprBreak(_) |
       hir::ExprAgain(_) | hir::ExprLit(_) | hir::ExprRet(..) |
@@ -1094,7 +1095,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           // Uninteresting cases: just propagate in rev exec order
 
-          hir::ExprVec(ref exprs) => {
+          hir::ExprArray(ref exprs) => {
             self.propagate_through_exprs(&exprs[..], succ)
           }
 
@@ -1270,7 +1271,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: u32)
                    -> LiveNode {
         match self.ir.tcx.expect_def(expr.id) {
-          Def::Local(_, nid) => {
+          Def::Local(def_id) => {
+            let nid = self.ir.tcx.map.as_local_node_id(def_id).unwrap();
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0 {
                 self.init_from_succ(ln, succ);
@@ -1434,7 +1436,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       hir::ExprCall(..) | hir::ExprMethodCall(..) | hir::ExprIf(..) |
       hir::ExprMatch(..) | hir::ExprWhile(..) | hir::ExprLoop(..) |
       hir::ExprIndex(..) | hir::ExprField(..) | hir::ExprTupField(..) |
-      hir::ExprVec(..) | hir::ExprTup(..) | hir::ExprBinary(..) |
+      hir::ExprArray(..) | hir::ExprTup(..) | hir::ExprBinary(..) |
       hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprRet(..) |
       hir::ExprBreak(..) | hir::ExprAgain(..) | hir::ExprLit(_) |
       hir::ExprBlock(..) | hir::ExprAddrOf(..) |
@@ -1529,11 +1531,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_lvalue(&mut self, expr: &Expr) {
         match expr.node {
             hir::ExprPath(..) => {
-                if let Def::Local(_, nid) = self.ir.tcx.expect_def(expr.id) {
+                if let Def::Local(def_id) = self.ir.tcx.expect_def(expr.id) {
                     // Assignment to an immutable variable or argument: only legal
                     // if there is no later assignment. If this local is actually
                     // mutable, then check for a reassignment to flag the mutability
                     // as being used.
+                    let nid = self.ir.tcx.map.as_local_node_id(def_id).unwrap();
                     let ln = self.live_node(expr.id, expr.span);
                     let var = self.variable(nid, expr.span);
                     self.warn_about_dead_assign(expr.span, expr.id, ln, var);

@@ -13,7 +13,7 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::Category;
 use hair::*;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -77,11 +77,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 success.and(slice.index(idx))
             }
             ExprKind::SelfRef => {
-                block.and(Lvalue::Arg(Arg::new(0)))
+                block.and(Lvalue::Local(Local::new(1)))
             }
             ExprKind::VarRef { id } => {
                 let index = this.var_indices[&id];
-                block.and(Lvalue::Var(index))
+                block.and(Lvalue::Local(index))
             }
             ExprKind::StaticRef { id } => {
                 block.and(Lvalue::Static(id))
@@ -96,6 +96,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::LogicalOp { .. } |
             ExprKind::Box { .. } |
             ExprKind::Cast { .. } |
+            ExprKind::Use { .. } |
             ExprKind::NeverToAny { .. } |
             ExprKind::ReifyFnPointer { .. } |
             ExprKind::UnsafeFnPointer { .. } |

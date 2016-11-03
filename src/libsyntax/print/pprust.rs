@@ -112,7 +112,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                                       out,
                                       ann,
                                       is_expanded);
-    if is_expanded && !std_inject::no_std(krate) {
+    if is_expanded && !std_inject::injected_crate_name(krate).is_none() {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
         // However we don't want these attributes in the AST because
@@ -284,8 +284,6 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Whitespace           => " ".to_string(),
         token::Comment              => "/* */".to_string(),
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
-
-        token::SpecialVarNt(var)    => format!("${}", var.as_str()),
 
         token::Interpolated(ref nt) => match *nt {
             token::NtExpr(ref e)        => expr_to_string(&e),
@@ -545,15 +543,12 @@ pub trait PrintState<'a> {
     }
 
     fn maybe_print_comment(&mut self, pos: BytePos) -> io::Result<()> {
-        loop {
-            match self.next_comment() {
-                Some(ref cmnt) => {
-                    if (*cmnt).pos < pos {
-                        try!(self.print_comment(cmnt));
-                        self.cur_cmnt_and_lit().cur_cmnt += 1;
-                    } else { break; }
-                }
-                _ => break
+        while let Some(ref cmnt) = self.next_comment() {
+            if cmnt.pos < pos {
+                try!(self.print_comment(cmnt));
+                self.cur_cmnt_and_lit().cur_cmnt += 1;
+            } else {
+                break
             }
         }
         Ok(())
@@ -581,7 +576,9 @@ pub trait PrintState<'a> {
                 Ok(())
             }
             comments::Trailing => {
-                try!(word(self.writer(), " "));
+                if !self.is_bol() {
+                    try!(word(self.writer(), " "));
+                }
                 if cmnt.lines.len() == 1 {
                     try!(word(self.writer(), &cmnt.lines[0]));
                     hardbreak(self.writer())
@@ -972,7 +969,7 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ty.span.lo));
         try!(self.ibox(0));
         match ty.node {
-            ast::TyKind::Vec(ref ty) => {
+            ast::TyKind::Slice(ref ty) => {
                 try!(word(&mut self.s, "["));
                 try!(self.print_type(&ty));
                 try!(word(&mut self.s, "]"));
@@ -1039,7 +1036,7 @@ impl<'a> State<'a> {
             ast::TyKind::ImplTrait(ref bounds) => {
                 try!(self.print_bounds("impl ", &bounds[..]));
             }
-            ast::TyKind::FixedLengthVec(ref ty, ref v) => {
+            ast::TyKind::Array(ref ty, ref v) => {
                 try!(word(&mut self.s, "["));
                 try!(self.print_type(&ty));
                 try!(word(&mut self.s, "; "));
@@ -1361,6 +1358,7 @@ impl<'a> State<'a> {
                 if comma {
                     try!(self.word_space(","))
                 }
+                try!(self.print_outer_attributes_inline(&lifetime_def.attrs));
                 try!(self.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds));
                 comma = true;
             }
@@ -1715,6 +1713,7 @@ impl<'a> State<'a> {
         for (i, st) in blk.stmts.iter().enumerate() {
             match st.node {
                 ast::StmtKind::Expr(ref expr) if i == blk.stmts.len() - 1 => {
+                    try!(self.maybe_print_comment(st.span.lo));
                     try!(self.space_if_not_bol());
                     try!(self.print_expr_outer_attr_style(&expr, false));
                     try!(self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi)));
@@ -1894,8 +1893,10 @@ impl<'a> State<'a> {
             &fields[..],
             |s, field| {
                 try!(s.ibox(INDENT_UNIT));
-                try!(s.print_ident(field.ident.node));
-                try!(s.word_space(":"));
+                if !field.is_shorthand {
+                    try!(s.print_ident(field.ident.node));
+                    try!(s.word_space(":"));
+                }
                 try!(s.print_expr(&field.expr));
                 s.end()
             },
@@ -2276,7 +2277,7 @@ impl<'a> State<'a> {
                     Ok(())
                 }));
 
-                let mut options = vec!();
+                let mut options = vec![];
                 if a.volatile {
                     options.push("volatile");
                 }
@@ -2450,13 +2451,10 @@ impl<'a> State<'a> {
                     |s, ty| s.print_type(&ty)));
                 try!(word(&mut self.s, ")"));
 
-                match data.output {
-                    None => { }
-                    Some(ref ty) => {
-                        try!(self.space_if_not_bol());
-                        try!(self.word_space("->"));
-                        try!(self.print_type(&ty));
-                    }
+                if let Some(ref ty) = data.output {
+                    try!(self.space_if_not_bol());
+                    try!(self.word_space("->"));
+                    try!(self.print_type(&ty));
                 }
             }
         }
@@ -2573,7 +2571,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "..."));
                 try!(self.print_expr(&end));
             }
-            PatKind::Vec(ref before, ref slice, ref after) => {
+            PatKind::Slice(ref before, ref slice, ref after) => {
                 try!(word(&mut self.s, "["));
                 try!(self.commasep(Inconsistent,
                                    &before[..],
@@ -2604,6 +2602,7 @@ impl<'a> State<'a> {
         }
         try!(self.cbox(INDENT_UNIT));
         try!(self.ibox(0));
+        try!(self.maybe_print_comment(arm.pats[0].span.lo));
         try!(self.print_outer_attributes(&arm.attrs));
         let mut first = true;
         for p in &arm.pats {
@@ -2803,6 +2802,7 @@ impl<'a> State<'a> {
         try!(self.commasep(Inconsistent, &ints[..], |s, &idx| {
             if idx < generics.lifetimes.len() {
                 let lifetime_def = &generics.lifetimes[idx];
+                try!(s.print_outer_attributes_inline(&lifetime_def.attrs));
                 s.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds)
             } else {
                 let idx = idx - generics.lifetimes.len();
@@ -2816,6 +2816,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ty_param(&mut self, param: &ast::TyParam) -> io::Result<()> {
+        try!(self.print_outer_attributes_inline(&param.attrs));
         try!(self.print_ident(param.ident));
         try!(self.print_bounds(":", &param.bounds));
         match param.default {
@@ -3007,15 +3008,11 @@ impl<'a> State<'a> {
             _ => return Ok(())
         };
         if let Some(ref cmnt) = self.next_comment() {
-            if (*cmnt).style != comments::Trailing { return Ok(()) }
+            if cmnt.style != comments::Trailing { return Ok(()) }
             let span_line = cm.lookup_char_pos(span.hi);
-            let comment_line = cm.lookup_char_pos((*cmnt).pos);
-            let mut next = (*cmnt).pos + BytePos(1);
-            if let Some(p) = next_pos {
-                next = p;
-            }
-            if span.hi < (*cmnt).pos && (*cmnt).pos < next &&
-               span_line.line == comment_line.line {
+            let comment_line = cm.lookup_char_pos(cmnt.pos);
+            let next = next_pos.unwrap_or(cmnt.pos + BytePos(1));
+            if span.hi < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
                 self.print_comment(cmnt)?;
                 self.cur_cmnt_and_lit.cur_cmnt += 1;
             }

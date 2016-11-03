@@ -9,7 +9,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty: `expand` adds some preludes before shebang
-//
-
 pub fn main() { println!("Hello World"); }

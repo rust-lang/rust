@@ -14,24 +14,25 @@
 //! [`ToString`]s, and several error types that may result from working with
 //! [`String`]s.
 //!
-//! [`String`]: struct.String.html
 //! [`ToString`]: trait.ToString.html
 //!
 //! # Examples
 //!
-//! There are multiple ways to create a new `String` from a string literal:
+//! There are multiple ways to create a new [`String`] from a string literal:
 //!
-//! ```rust
+//! ```
 //! let s = "Hello".to_string();
 //!
 //! let s = String::from("world");
 //! let s: String = "also this".into();
 //! ```
 //!
-//! You can create a new `String` from an existing one by concatenating with
+//! You can create a new [`String`] from an existing one by concatenating with
 //! `+`:
 //!
-//! ```rust
+//! [`String`]: struct.String.html
+//!
+//! ```
 //! let s = "Hello".to_string();
 //!
 //! let message = s + " world!";
@@ -40,7 +41,7 @@
 //! If you have a vector of valid UTF-8 bytes, you can make a `String` out of
 //! it. You can do the reverse too.
 //!
-//! ```rust
+//! ```
 //! let sparkle_heart = vec![240, 159, 146, 150];
 //!
 //! // We know these bytes are valid, so we'll use `unwrap()`.
@@ -134,10 +135,10 @@ use boxed::Box;
 /// Indexing is intended to be a constant-time operation, but UTF-8 encoding
 /// does not allow us to do this. Furthermore, it's not clear what sort of
 /// thing the index should return: a byte, a codepoint, or a grapheme cluster.
-/// The [`as_bytes()`] and [`chars()`] methods return iterators over the first
+/// The [`bytes()`] and [`chars()`] methods return iterators over the first
 /// two, respectively.
 ///
-/// [`as_bytes()`]: #method.as_bytes
+/// [`bytes()`]: #method.bytes
 /// [`chars()`]: #method.chars
 ///
 /// # Deref
@@ -975,7 +976,7 @@ impl String {
     pub fn push(&mut self, ch: char) {
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
-            _ => self.vec.extend_from_slice(ch.encode_utf8().as_slice()),
+            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0;4]).as_bytes()),
         }
     }
 
@@ -1131,10 +1132,11 @@ impl String {
         let len = self.len();
         assert!(idx <= len);
         assert!(self.is_char_boundary(idx));
-        let bits = ch.encode_utf8();
+        let mut bits = [0; 4];
+        let bits = ch.encode_utf8(&mut bits).as_bytes();
 
         unsafe {
-            self.insert_bytes(idx, bits.as_slice());
+            self.insert_bytes(idx, bits);
         }
     }
 
@@ -1858,6 +1860,13 @@ impl<'a> From<&'a str> for String {
     }
 }
 
+#[stable(feature = "string_from_cow_str", since = "1.14.0")]
+impl<'a> From<Cow<'a, str>> for String {
+    fn from(s: Cow<'a, str>) -> String {
+        s.into_owned()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for Cow<'a, str> {
     #[inline]
@@ -1899,26 +1908,6 @@ impl<'a> FromIterator<String> for Cow<'a, str> {
 impl Into<Vec<u8>> for String {
     fn into(self) -> Vec<u8> {
         self.into_bytes()
-    }
-}
-
-#[stable(feature = "stringfromchars", since = "1.12.0")]
-impl<'a> From<&'a [char]> for String {
-    #[inline]
-    fn from(v: &'a [char]) -> String {
-        let mut s = String::with_capacity(v.len());
-        for c in v {
-            s.push(*c);
-        }
-        s
-    }
-}
-
-#[stable(feature = "stringfromchars", since = "1.12.0")]
-impl From<Vec<char>> for String {
-    #[inline]
-    fn from(v: Vec<char>) -> String {
-        String::from(v.as_slice())
     }
 }
 

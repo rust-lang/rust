@@ -92,6 +92,22 @@ pub trait AsRef<T: ?Sized> {
 /// [`Option<T>`]: ../../std/option/enum.Option.html
 /// [`Result<T, E>`]: ../../std/result/enum.Result.html
 ///
+/// # Examples
+///
+/// [`Box<T>`] implements `AsMut<T>`:
+///
+/// [`Box<T>`]: ../../std/boxed/struct.Box.html
+///
+/// ```
+/// fn add_one<T: AsMut<u64>>(num: &mut T) {
+///     *num.as_mut() += 1;
+/// }
+///
+/// let mut boxed_num = Box::new(0);
+/// add_one(&mut boxed_num);
+/// assert_eq!(*boxed_num, 1);
+/// ```
+///
 /// # Generic Impls
 ///
 /// - `AsMut` auto-dereferences if the inner type is a reference or a mutable
@@ -129,7 +145,7 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// # Generic Impls
 ///
-/// - `[From<T>][From] for U` implies `Into<U> for T`
+/// - [`From<T>`][From]` for U` implies `Into<U> for T`
 /// - [`into()`] is reflexive, which means that `Into<T> for T` is implemented
 ///
 /// [`TryInto`]: trait.TryInto.html
@@ -162,14 +178,14 @@ pub trait Into<T>: Sized {
 /// ```
 /// # Generic impls
 ///
-/// - `From<T> for U` implies `[Into<U>] for T`
+/// - `From<T> for U` implies [`Into<U>`]` for T`
 /// - [`from()`] is reflexive, which means that `From<T> for T` is implemented
 ///
 /// [`TryFrom`]: trait.TryFrom.html
 /// [`Option<T>`]: ../../std/option/enum.Option.html
 /// [`Result<T, E>`]: ../../std/result/enum.Result.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [Into<U>]: trait.Into.html
+/// [`Into<U>`]: trait.Into.html
 /// [`from()`]: trait.From.html#tymethod.from
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait From<T>: Sized {

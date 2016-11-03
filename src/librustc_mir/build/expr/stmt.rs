@@ -12,7 +12,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::scope::LoopScope;
 use hair::*;
 use rustc::middle::region::CodeExtent;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -90,9 +90,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::Return { value } => {
                 block = match value {
-                    Some(value) => unpack!(this.into(&Lvalue::ReturnPointer, block, value)),
+                    Some(value) => {
+                        unpack!(this.into(&Lvalue::Local(RETURN_POINTER), block, value))
+                    }
                     None => {
-                        this.cfg.push_assign_unit(block, source_info, &Lvalue::ReturnPointer);
+                        this.cfg.push_assign_unit(block,
+                                                  source_info,
+                                                  &Lvalue::Local(RETURN_POINTER));
                         block
                     }
                 };

@@ -336,7 +336,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn param_env(&self) -> &'cx ty::ParameterEnvironment<'tcx> {
+    pub fn param_env(&self) -> &'cx ty::ParameterEnvironment<'gcx> {
         self.infcx.param_env()
     }
 
@@ -788,14 +788,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                stack);
         assert!(!stack.obligation.predicate.has_escaping_regions());
 
-        match self.check_candidate_cache(&cache_fresh_trait_pred) {
-            Some(c) => {
-                debug!("CACHE HIT: SELECT({:?})={:?}",
-                       cache_fresh_trait_pred,
-                       c);
-                return c;
-            }
-            None => { }
+        if let Some(c) = self.check_candidate_cache(&cache_fresh_trait_pred) {
+            debug!("CACHE HIT: SELECT({:?})={:?}",
+                   cache_fresh_trait_pred,
+                   c);
+            return c;
         }
 
         // If no match, compute result and insert into cache.
@@ -814,7 +811,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn filter_negative_impls(&self, candidate: SelectionCandidate<'tcx>)
                              -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         if let ImplCandidate(def_id) = candidate {
-            if self.tcx().trait_impl_polarity(def_id) == Some(hir::ImplPolarity::Negative) {
+            if self.tcx().trait_impl_polarity(def_id) == hir::ImplPolarity::Negative {
                 return Err(Unimplemented)
             }
         }
@@ -1617,7 +1614,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 //
                 // We always upcast when we can because of reason
                 // #2 (region bounds).
-                data_a.principal.def_id() == data_a.principal.def_id() &&
+                data_a.principal.def_id() == data_b.principal.def_id() &&
                 data_a.builtin_bounds.is_superset(&data_b.builtin_bounds)
             }
 
@@ -1980,7 +1977,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                                   normalized_ty,
                                                   &[]);
                 obligations.push(skol_obligation);
-                this.infcx().plug_leaks(skol_map, snapshot, &obligations)
+                this.infcx().plug_leaks(skol_map, snapshot, obligations)
             })
         }).collect()
     }
@@ -2599,7 +2596,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         k
                     }
                 });
-                let substs = Substs::new(tcx, params);
+                let substs = tcx.mk_substs(params);
                 for &ty in fields.split_last().unwrap().1 {
                     if ty.subst(tcx, substs).references_error() {
                         return Err(Unimplemented);
@@ -2619,7 +2616,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         k
                     }
                 });
-                let new_struct = tcx.mk_adt(def, Substs::new(tcx, params));
+                let new_struct = tcx.mk_adt(def, tcx.mk_substs(params));
                 let origin = TypeOrigin::Misc(obligation.cause.span);
                 let InferOk { obligations, .. } =
                     self.infcx.sub_types(false, origin, new_struct, target)
@@ -2899,7 +2896,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     predicate: predicate.value
                 }))
         }).collect();
-        self.infcx().plug_leaks(skol_map, snapshot, &predicates)
+        self.infcx().plug_leaks(skol_map, snapshot, predicates)
     }
 }
 

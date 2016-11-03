@@ -46,7 +46,7 @@ LLVMInitializePasses() {
   initializeVectorization(Registry);
   initializeIPO(Registry);
   initializeAnalysis(Registry);
-#if LLVM_VERSION_MINOR == 7
+#if LLVM_VERSION_EQ(3, 7)
   initializeIPA(Registry);
 #endif
   initializeTransformUtils(Registry);
@@ -297,7 +297,7 @@ LLVMRustCreateTargetMachine(const char *triple,
                             bool FunctionSections,
                             bool DataSections) {
 
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LE(3, 8)
     Reloc::Model RM;
 #else
     Optional<Reloc::Model> RM;
@@ -316,7 +316,7 @@ LLVMRustCreateTargetMachine(const char *triple,
             RM = Reloc::DynamicNoPIC;
             break;
         default:
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LE(3, 8)
             RM = Reloc::Default;
 #endif
             break;
@@ -337,7 +337,7 @@ LLVMRustCreateTargetMachine(const char *triple,
     }
 
     TargetOptions Options;
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LE(3, 8)
     Options.PositionIndependentExecutable = PositionIndependentExecutable;
 #endif
 
@@ -539,7 +539,7 @@ extern "C" void
 LLVMRustRunRestrictionPass(LLVMModuleRef M, char **symbols, size_t len) {
     llvm::legacy::PassManager passes;
 
-#if LLVM_VERSION_MINOR <= 8
+#if LLVM_VERSION_LE(3, 8)
     ArrayRef<const char*> ref(symbols, len);
     passes.add(llvm::createInternalizePass(ref));
 #else
@@ -593,7 +593,7 @@ LLVMRustGetModuleDataLayout(LLVMModuleRef M) {
 
 extern "C" void
 LLVMRustSetModulePIELevel(LLVMModuleRef M) {
-#if LLVM_VERSION_MINOR >= 9
+#if LLVM_VERSION_GE(3, 9)
     unwrap(M)->setPIELevel(PIELevel::Level::Large);
 #endif
 }

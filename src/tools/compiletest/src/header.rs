@@ -182,42 +182,32 @@ pub struct TestProps {
     // testing harness and used when generating compilation
     // arguments. (In particular, it propagates to the aux-builds.)
     pub incremental_dir: Option<PathBuf>,
+    // Specifies that a cfail test must actually compile without errors.
+    pub must_compile_successfully: bool,
 }
 
 impl TestProps {
     pub fn new() -> Self {
-        let error_patterns = Vec::new();
-        let aux_builds = Vec::new();
-        let exec_env = Vec::new();
-        let run_flags = None;
-        let pp_exact = None;
-        let check_lines = Vec::new();
-        let build_aux_docs = false;
-        let force_host = false;
-        let check_stdout = false;
-        let no_prefer_dynamic = false;
-        let pretty_expanded = false;
-        let pretty_compare_only = false;
-        let forbid_output = Vec::new();
         TestProps {
-            error_patterns: error_patterns,
+            error_patterns: vec![],
             compile_flags: vec![],
-            run_flags: run_flags,
-            pp_exact: pp_exact,
-            aux_builds: aux_builds,
+            run_flags: None,
+            pp_exact: None,
+            aux_builds: vec![],
             revisions: vec![],
             rustc_env: vec![],
-            exec_env: exec_env,
-            check_lines: check_lines,
-            build_aux_docs: build_aux_docs,
-            force_host: force_host,
-            check_stdout: check_stdout,
-            no_prefer_dynamic: no_prefer_dynamic,
-            pretty_expanded: pretty_expanded,
+            exec_env: vec![],
+            check_lines: vec![],
+            build_aux_docs: false,
+            force_host: false,
+            check_stdout: false,
+            no_prefer_dynamic: false,
+            pretty_expanded: false,
             pretty_mode: format!("normal"),
-            pretty_compare_only: pretty_compare_only,
-            forbid_output: forbid_output,
+            pretty_compare_only: false,
+            forbid_output: vec![],
             incremental_dir: None,
+            must_compile_successfully: false,
         }
     }
 
@@ -312,6 +302,10 @@ impl TestProps {
 
             if let Some(of) = parse_forbid_output(ln) {
                 self.forbid_output.push(of);
+            }
+
+            if !self.must_compile_successfully {
+                self.must_compile_successfully = parse_must_compile_successfully(ln);
             }
         });
 
@@ -418,6 +412,10 @@ fn parse_pretty_mode(line: &str) -> Option<String> {
 
 fn parse_pretty_compare_only(line: &str) -> bool {
     parse_name_directive(line, "pretty-compare-only")
+}
+
+fn parse_must_compile_successfully(line: &str) -> bool {
+    parse_name_directive(line, "must-compile-successfully")
 }
 
 fn parse_env(line: &str, name: &str) -> Option<(String, String)> {

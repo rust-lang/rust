@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty : (#23623) problems with newlines before // comments
+// ignore-pretty issue #37199
 
 pub struct Foo;
 

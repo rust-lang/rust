@@ -14,7 +14,7 @@ pub use self::DelimToken::*;
 pub use self::Lit::*;
 pub use self::Token::*;
 
-use ast::{self, BinOpKind};
+use ast::{self};
 use ptr::P;
 use util::interner::Interner;
 use tokenstream;
@@ -50,21 +50,6 @@ pub enum DelimToken {
     Brace,
     /// An empty delimiter
     NoDelim,
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
-pub enum SpecialMacroVar {
-    /// `$crate` will be filled in with the name of the crate a macro was
-    /// imported from, if any.
-    CrateMacroVar,
-}
-
-impl SpecialMacroVar {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            SpecialMacroVar::CrateMacroVar => "crate",
-        }
-    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -148,8 +133,6 @@ pub enum Token {
     // In right-hand-sides of MBE macros:
     /// A syntactic variable that will be filled in by macro expansion.
     SubstNt(ast::Ident),
-    /// A macro variable with special meaning.
-    SpecialVarNt(SpecialMacroVar),
 
     // Junk. These carry no data because we don't really care about the data
     // they *would* carry, and don't really want to allocate a new ident for
@@ -176,10 +159,8 @@ impl Token {
     /// Returns `true` if the token can appear at the start of an expression.
     pub fn can_begin_expr(&self) -> bool {
         match *self {
-            OpenDelim(_)                => true,
+            OpenDelim(..)               => true,
             Ident(..)                   => true,
-            Underscore                  => true,
-            Tilde                       => true,
             Literal(..)                 => true,
             Not                         => true,
             BinOp(Minus)                => true,
@@ -189,6 +170,7 @@ impl Token {
             OrOr                        => true, // in lambda syntax
             AndAnd                      => true, // double borrow
             DotDot | DotDotDot          => true, // range notation
+            Lt | BinOp(Shl)             => true, // associated path
             ModSep                      => true,
             Interpolated(NtExpr(..))    => true,
             Interpolated(NtIdent(..))   => true,
@@ -253,34 +235,13 @@ impl Token {
         self.is_keyword(keywords::Const)
     }
 
-    pub fn is_path_start(&self) -> bool {
-        self == &ModSep || self == &Lt || self.is_path() ||
-        self.is_path_segment_keyword() || self.is_ident() && !self.is_any_keyword()
+    pub fn is_qpath_start(&self) -> bool {
+        self == &Lt || self == &BinOp(Shl)
     }
 
-    /// Maps a token to its corresponding binary operator.
-    pub fn to_binop(&self) -> Option<BinOpKind> {
-        match *self {
-            BinOp(Star)     => Some(BinOpKind::Mul),
-            BinOp(Slash)    => Some(BinOpKind::Div),
-            BinOp(Percent)  => Some(BinOpKind::Rem),
-            BinOp(Plus)     => Some(BinOpKind::Add),
-            BinOp(Minus)    => Some(BinOpKind::Sub),
-            BinOp(Shl)      => Some(BinOpKind::Shl),
-            BinOp(Shr)      => Some(BinOpKind::Shr),
-            BinOp(And)      => Some(BinOpKind::BitAnd),
-            BinOp(Caret)    => Some(BinOpKind::BitXor),
-            BinOp(Or)       => Some(BinOpKind::BitOr),
-            Lt              => Some(BinOpKind::Lt),
-            Le              => Some(BinOpKind::Le),
-            Ge              => Some(BinOpKind::Ge),
-            Gt              => Some(BinOpKind::Gt),
-            EqEq            => Some(BinOpKind::Eq),
-            Ne              => Some(BinOpKind::Ne),
-            AndAnd          => Some(BinOpKind::And),
-            OrOr            => Some(BinOpKind::Or),
-            _               => None,
-        }
+    pub fn is_path_start(&self) -> bool {
+        self == &ModSep || self.is_qpath_start() || self.is_path() ||
+        self.is_path_segment_keyword() || self.is_ident() && !self.is_any_keyword()
     }
 
     /// Returns `true` if the token is a given keyword, `kw`.
@@ -503,27 +464,20 @@ pub fn clear_ident_interner() {
 /// somehow.
 #[derive(Clone, PartialEq, Hash, PartialOrd, Eq, Ord)]
 pub struct InternedString {
-    string: Rc<String>,
+    string: Rc<str>,
 }
 
 impl InternedString {
     #[inline]
     pub fn new(string: &'static str) -> InternedString {
         InternedString {
-            string: Rc::new(string.to_owned()),
-        }
-    }
-
-    #[inline]
-    fn new_from_rc_str(string: Rc<String>) -> InternedString {
-        InternedString {
-            string: string,
+            string: Rc::__from_str(string),
         }
     }
 
     #[inline]
     pub fn new_from_name(name: ast::Name) -> InternedString {
-        with_ident_interner(|interner| InternedString::new_from_rc_str(interner.get(name)))
+        with_ident_interner(|interner| InternedString { string: interner.get(name) })
     }
 }
 
@@ -591,7 +545,7 @@ impl PartialEq<InternedString> for str {
 
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(intern(d.read_str()?.as_ref()).as_str())
+        Ok(intern(&d.read_str()?).as_str())
     }
 }
 

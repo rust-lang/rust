@@ -270,7 +270,6 @@ use error;
 use fmt;
 use mem;
 use cell::UnsafeCell;
-use marker::Reflect;
 use time::{Duration, Instant};
 
 #[unstable(feature = "mpsc_select", issue = "27800")]
@@ -1163,7 +1162,7 @@ impl<T> fmt::Display for SendError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send + Reflect> error::Error for SendError<T> {
+impl<T: Send> error::Error for SendError<T> {
     fn description(&self) -> &str {
         "sending on a closed channel"
     }
@@ -1198,7 +1197,7 @@ impl<T> fmt::Display for TrySendError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send + Reflect> error::Error for TrySendError<T> {
+impl<T: Send> error::Error for TrySendError<T> {
 
     fn description(&self) -> &str {
         match *self {
@@ -1268,7 +1267,7 @@ impl error::Error for TryRecvError {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use env;
     use super::*;
@@ -1940,9 +1939,16 @@ mod tests {
         // wait for the child thread to exit before we exit
         rx2.recv().unwrap();
     }
+
+    #[test]
+    fn issue_32114() {
+        let (tx, _) = channel();
+        let _ = tx.send(123);
+        assert_eq!(tx.send(123), Err(SendError(123)));
+    }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod sync_tests {
     use env;
     use thread;

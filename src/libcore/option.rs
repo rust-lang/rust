@@ -296,15 +296,13 @@ impl<T> Option<T> {
 
     /// Moves the value `v` out of the `Option<T>` if it is `Some(v)`.
     ///
-    /// # Panics
-    ///
-    /// Panics if the self value equals `None`.
-    ///
-    /// # Safety note
-    ///
     /// In general, because this function may panic, its use is discouraged.
     /// Instead, prefer to use pattern matching and handle the `None`
     /// case explicitly.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the self value equals `None`.
     ///
     /// # Examples
     ///
@@ -916,12 +914,12 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// ```
     /// use std::u16;
     ///
-    /// let v = vec!(1, 2);
+    /// let v = vec![1, 2];
     /// let res: Option<Vec<u16>> = v.iter().map(|&x: &u16|
     ///     if x == u16::MAX { None }
     ///     else { Some(x + 1) }
     /// ).collect();
-    /// assert!(res == Some(vec!(2, 3)));
+    /// assert!(res == Some(vec![2, 3]));
     /// ```
     #[inline]
     fn from_iter<I: IntoIterator<Item=Option<A>>>(iter: I) -> Option<V> {

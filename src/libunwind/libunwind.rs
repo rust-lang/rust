@@ -65,7 +65,7 @@ pub const unwinder_private_data_size: usize = 2;
 #[cfg(target_arch = "s390x")]
 pub const unwinder_private_data_size: usize = 2;
 
-#[cfg(target_arch = "asmjs")]
+#[cfg(target_os = "emscripten")]
 pub const unwinder_private_data_size: usize = 20;
 
 #[repr(C)]
@@ -241,6 +241,7 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
 #[cfg_attr(any(all(target_os = "linux", not(target_env = "musl")),
                target_os = "freebsd",
                target_os = "solaris",
+               target_os = "haiku",
                all(target_os = "linux",
                    target_env = "musl",
                    not(target_arch = "x86"),
@@ -251,6 +252,8 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
                any(target_arch = "x86", target_arch = "x86_64"),
                not(test)),
            link(name = "unwind", kind = "static"))]
+#[cfg_attr(target_os = "fuchsia",
+           link(name = "unwind"))]
 #[cfg_attr(any(target_os = "android", target_os = "openbsd"),
            link(name = "gcc"))]
 #[cfg_attr(all(target_os = "netbsd", not(target_vendor = "rumprun")),

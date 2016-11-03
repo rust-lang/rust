@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
-
 fn main() {
     const iter: i32 = 0;
 

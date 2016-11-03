@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, ValueRef};
+use llvm::{self, ValueRef, Integer, Pointer, Float, Double, Struct, Array, Vector};
 use base;
 use build::AllocaFcx;
 use common::{type_is_fat_ptr, BlockAndBuilder, C_uint};
@@ -24,7 +24,7 @@ use cabi_s390x;
 use cabi_mips;
 use cabi_mips64;
 use cabi_asmjs;
-use machine::{llalign_of_min, llsize_of, llsize_of_real, llsize_of_store};
+use machine::{llalign_of_min, llsize_of, llsize_of_alloc};
 use type_::Type;
 use type_of;
 
@@ -102,7 +102,7 @@ impl ArgType {
         // Wipe old attributes, likely not valid through indirection.
         self.attrs = llvm::Attributes::default();
 
-        let llarg_sz = llsize_of_real(ccx, self.ty);
+        let llarg_sz = llsize_of_alloc(ccx, self.ty);
 
         // For non-immediate arguments the callee gets its own copy of
         // the value on the stack, so there are no aliases. It's also
@@ -200,7 +200,7 @@ impl ArgType {
                 base::call_memcpy(bcx,
                                   bcx.pointercast(dst, Type::i8p(ccx)),
                                   bcx.pointercast(llscratch, Type::i8p(ccx)),
-                                  C_uint(ccx, llsize_of_store(ccx, self.ty)),
+                                  C_uint(ccx, llsize_of_alloc(ccx, self.ty)),
                                   cmp::min(llalign_of_min(ccx, self.ty),
                                            llalign_of_min(ccx, ty)) as u32);
 
@@ -327,7 +327,7 @@ impl FnType {
                 if let Layout::CEnum { signed, .. } = *ccx.layout_of(ty) {
                     arg.signedness = Some(signed);
                 }
-                if llsize_of_real(ccx, arg.ty) == 0 {
+                if llsize_of_alloc(ccx, arg.ty) == 0 {
                     // For some forsaken reason, x86_64-pc-windows-gnu
                     // doesn't ignore zero-sized struct arguments.
                     // The same is true for s390x-unknown-linux-gnu.
@@ -358,7 +358,7 @@ impl FnType {
                 ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
                 ty::TyBox(ty) => {
                     let llty = type_of::sizing_type_of(ccx, ty);
-                    let llsz = llsize_of_real(ccx, llty);
+                    let llsz = llsize_of_alloc(ccx, llty);
                     ret.attrs.set_dereferenceable(llsz);
                 }
                 _ => {}
@@ -427,7 +427,7 @@ impl FnType {
             } else {
                 if let Some(inner) = rust_ptr_attrs(ty, &mut arg) {
                     let llty = type_of::sizing_type_of(ccx, inner);
-                    let llsz = llsize_of_real(ccx, llty);
+                    let llsz = llsize_of_alloc(ccx, llty);
                     arg.attrs.set_dereferenceable(llsz);
                 }
                 args.push(arg);
@@ -469,8 +469,8 @@ impl FnType {
                     return;
                 }
 
-                let size = llsize_of_real(ccx, llty);
-                if size > llsize_of_real(ccx, ccx.int_type()) {
+                let size = llsize_of_alloc(ccx, llty);
+                if size > llsize_of_alloc(ccx, ccx.int_type()) {
                     arg.make_indirect(ccx);
                 } else if size > 0 {
                     // We want to pass small aggregates as immediates, but using
@@ -519,6 +519,7 @@ impl FnType {
             "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, self),
             "s390x" => cabi_s390x::compute_abi_info(ccx, self),
             "asmjs" => cabi_asmjs::compute_abi_info(ccx, self),
+            "wasm32" => cabi_asmjs::compute_abi_info(ccx, self),
             a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a))
         }
 
@@ -596,5 +597,75 @@ impl FnType {
         if self.cconv != llvm::CCallConv {
             llvm::SetInstructionCallConv(callsite, self.cconv);
         }
+    }
+}
+
+pub fn align_up_to(off: usize, a: usize) -> usize {
+    return (off + a - 1) / a * a;
+}
+
+fn align(off: usize, ty: Type, pointer: usize) -> usize {
+    let a = ty_align(ty, pointer);
+    return align_up_to(off, a);
+}
+
+pub fn ty_align(ty: Type, pointer: usize) -> usize {
+    match ty.kind() {
+        Integer => ((ty.int_width() as usize) + 7) / 8,
+        Pointer => pointer,
+        Float => 4,
+        Double => 8,
+        Struct => {
+            if ty.is_packed() {
+                1
+            } else {
+                let str_tys = ty.field_types();
+                str_tys.iter().fold(1, |a, t| cmp::max(a, ty_align(*t, pointer)))
+            }
+        }
+        Array => {
+            let elt = ty.element_type();
+            ty_align(elt, pointer)
+        }
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            ty_align(elt, pointer) * len
+        }
+        _ => bug!("ty_align: unhandled type")
+    }
+}
+
+pub fn ty_size(ty: Type, pointer: usize) -> usize {
+    match ty.kind() {
+        Integer => ((ty.int_width() as usize) + 7) / 8,
+        Pointer => pointer,
+        Float => 4,
+        Double => 8,
+        Struct => {
+            if ty.is_packed() {
+                let str_tys = ty.field_types();
+                str_tys.iter().fold(0, |s, t| s + ty_size(*t, pointer))
+            } else {
+                let str_tys = ty.field_types();
+                let size = str_tys.iter().fold(0, |s, t| {
+                    align(s, *t, pointer) + ty_size(*t, pointer)
+                });
+                align(size, ty, pointer)
+            }
+        }
+        Array => {
+            let len = ty.array_length();
+            let elt = ty.element_type();
+            let eltsz = ty_size(elt, pointer);
+            len * eltsz
+        }
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            let eltsz = ty_size(elt, pointer);
+            len * eltsz
+        },
+        _ => bug!("ty_size: unhandled type")
     }
 }

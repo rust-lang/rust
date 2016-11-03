@@ -15,7 +15,7 @@ fn call<F>(f: F) where F : FnOnce() {
 }
 
 fn main() {
-    let y = vec!(format!("Hello"), format!("World"));
+    let y = vec![format!("Hello"), format!("World")];
     let mut counter = 22_u32;
 
     call(|| {

@@ -12,6 +12,9 @@
 // llvm. Also checks that the abi-sysv64 feature gate allows usage
 // of the sysv64 abi.
 
+// ignore-arm
+// ignore-aarch64
+
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]

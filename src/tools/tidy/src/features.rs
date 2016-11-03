@@ -18,27 +18,42 @@
 //! * Library features have at most one `since` value
 
 use std::collections::HashMap;
+use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-const STATUSES: &'static [&'static str] = &[
-    "Active", "Deprecated", "Removed", "Accepted",
-];
+#[derive(PartialEq)]
+enum Status {
+    Stable,
+    Unstable,
+}
+
+impl fmt::Display for Status {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let as_str = match *self {
+            Status::Stable => "stable",
+            Status::Unstable => "unstable",
+        };
+        fmt::Display::fmt(as_str, f)
+    }
+}
+
 
 struct Feature {
     name: String,
+    level: Status,
     since: String,
-    status: String,
 }
 
 struct LibFeature {
-    level: String,
+    level: Status,
     since: String,
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
     let features = collect_lang_features(&path.join("libsyntax/feature_gate.rs"));
+    assert!(!features.is_empty());
     let mut lib_features = HashMap::<String, LibFeature>::new();
 
     let mut contents = String::new();
@@ -48,7 +63,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         let filename = file.file_name().unwrap().to_string_lossy();
         if !filename.ends_with(".rs") || filename == "features.rs" ||
            filename == "diagnostic_list.rs" {
-            return
+            return;
         }
 
         contents.truncate(0);
@@ -60,24 +75,24 @@ pub fn check(path: &Path, bad: &mut bool) {
                 *bad = true;
             };
             let level = if line.contains("[unstable(") {
-                "unstable"
+                Status::Unstable
             } else if line.contains("[stable(") {
-                "stable"
+                Status::Stable
             } else {
-                continue
+                continue;
             };
             let feature_name = match find_attr_val(line, "feature") {
                 Some(name) => name,
                 None => {
                     err("malformed stability attribute");
-                    continue
+                    continue;
                 }
             };
             let since = match find_attr_val(line, "since") {
                 Some(name) => name,
-                None if level == "stable" => {
+                None if level == Status::Stable => {
                     err("malformed stability attribute");
-                    continue
+                    continue;
                 }
                 None => "None",
             };
@@ -92,27 +107,34 @@ pub fn check(path: &Path, bad: &mut bool) {
                 if s.since != since {
                     err("different `since` than before");
                 }
-                continue
+                continue;
             }
-            lib_features.insert(feature_name.to_owned(), LibFeature {
-                level: level.to_owned(),
-                since: since.to_owned(),
-            });
+            lib_features.insert(feature_name.to_owned(),
+                                LibFeature {
+                                    level: level,
+                                    since: since.to_owned(),
+                                });
         }
     });
 
     if *bad {
-        return
+        return;
     }
 
     let mut lines = Vec::new();
     for feature in features {
         lines.push(format!("{:<32} {:<8} {:<12} {:<8}",
-                           feature.name, "lang", feature.status, feature.since));
+                           feature.name,
+                           "lang",
+                           feature.level,
+                           feature.since));
     }
     for (name, feature) in lib_features {
         lines.push(format!("{:<32} {:<8} {:<12} {:<8}",
-                           name, "lib", feature.level, feature.since));
+                           name,
+                           "lib",
+                           feature.level,
+                           feature.since));
     }
 
     lines.sort();
@@ -122,39 +144,32 @@ pub fn check(path: &Path, bad: &mut bool) {
 }
 
 fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
-    line.find(attr).and_then(|i| {
-        line[i..].find("\"").map(|j| i + j + 1)
-    }).and_then(|i| {
-        line[i..].find("\"").map(|j| (i, i + j))
-    }).map(|(i, j)| {
-        &line[i..j]
-    })
+    line.find(attr)
+        .and_then(|i| line[i..].find('"').map(|j| i + j + 1))
+        .and_then(|i| line[i..].find('"').map(|j| (i, i + j)))
+        .map(|(i, j)| &line[i..j])
 }
 
 fn collect_lang_features(path: &Path) -> Vec<Feature> {
     let mut contents = String::new();
     t!(t!(File::open(path)).read_to_string(&mut contents));
 
-    let mut features = Vec::new();
-    for line in contents.lines().map(|l| l.trim()) {
-        if !STATUSES.iter().any(|s| line.starts_with(&format!("({}", s))) {
-            continue
-        }
-        let mut parts = line.split(",");
-        let status = match &parts.next().unwrap().trim().replace("(", "")[..] {
-            "active"   => "unstable",
-            "removed"  => "unstable",
-            "accepted" => "stable",
-            s => panic!("unknown status: {}", s),
-        };
-        let name = parts.next().unwrap().trim().to_owned();
-        let since = parts.next().unwrap().trim().replace("\"", "");
-
-        features.push(Feature {
-            name: name,
-            since: since,
-            status: status.to_owned(),
-        });
-    }
-    return features
+    contents.lines()
+        .filter_map(|line| {
+            let mut parts = line.trim().split(",");
+            let level = match parts.next().map(|l| l.trim().trim_left_matches('(')) {
+                Some("active") => Status::Unstable,
+                Some("removed") => Status::Unstable,
+                Some("accepted") => Status::Stable,
+                _ => return None,
+            };
+            let name = parts.next().unwrap().trim();
+            let since = parts.next().unwrap().trim().trim_matches('"');
+            Some(Feature {
+                name: name.to_owned(),
+                level: level,
+                since: since.to_owned(),
+            })
+        })
+        .collect()
 }

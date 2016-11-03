@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::{Target, TargetResult};
+use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
     base.features = "+v7,+thumb2,+vfp3,+d16".to_string();
-    base.max_atomic_width = 64;
+    base.max_atomic_width = Some(64);
 
     Ok(Target {
         llvm_target: "armv7-none-linux-android".to_string(),
@@ -24,6 +24,9 @@ pub fn target() -> TargetResult {
         target_os: "android".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
-        options: base,
+        options: TargetOptions {
+            abi_blacklist: super::arm_base::abi_blacklist(),
+            .. base
+        },
     })
 }

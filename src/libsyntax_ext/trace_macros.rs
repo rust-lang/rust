@@ -20,7 +20,7 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
                            tt: &[TokenTree])
                            -> Box<base::MacResult + 'static> {
     if !cx.ecfg.enable_trace_macros() {
-        feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
+        feature_gate::emit_feature_err(&cx.parse_sess,
                                        "trace_macros",
                                        sp,
                                        feature_gate::GateIssue::Language,

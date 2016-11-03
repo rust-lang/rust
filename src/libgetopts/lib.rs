@@ -1610,8 +1610,8 @@ Options:
 
     #[test]
     fn test_args_with_equals() {
-        let args = vec!("--one".to_string(), "A=B".to_string(),
-                        "--two=C=D".to_string());
+        let args = vec!["--one".to_string(), "A=B".to_string(),
+                        "--two=C=D".to_string()];
         let opts = vec![optopt("o", "one", "One", "INFO"),
                         optopt("t", "two", "Two", "INFO")];
         let matches = &match getopts(&args, &opts) {

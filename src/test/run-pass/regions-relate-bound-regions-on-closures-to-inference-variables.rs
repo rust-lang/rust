@@ -63,7 +63,7 @@ impl<'a,'tcx> Foo<'a,'tcx> {
 }
 
 fn main() {
-    let v = vec!();
+    let v = vec![];
     let cx = Ctxt { x: &v };
     let mut foo = Foo { cx: &cx };
     assert_eq!(foo.bother(), 22); // just so the code is not dead, basically

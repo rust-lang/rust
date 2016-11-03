@@ -11,7 +11,7 @@
 struct Foo<T> { x: T }
 struct Bar { x: Foo }
                 //~^ ERROR E0243
-                //~| NOTE expected 1 type arguments, found 0
+                //~| NOTE expected 1 type argument, found 0
 
 fn main() {
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use attr::HasAttrs;
-use feature_gate::{emit_feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
+use feature_gate::{feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
 use {fold, attr};
 use ast;
 use codemap::{Spanned, respan};
@@ -20,7 +20,6 @@ use util::small_vector::SmallVector;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
-    pub config: &'a ast::CrateConfig,
     pub should_test: bool,
     pub sess: &'a ParseSess,
     pub features: Option<&'a Features>,
@@ -32,7 +31,6 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool)
     let features;
     {
         let mut strip_unconfigured = StripUnconfigured {
-            config: &krate.config.clone(),
             should_test: should_test,
             sess: sess,
             features: None,
@@ -107,7 +105,7 @@ impl<'a> StripUnconfigured<'a> {
         use attr::cfg_matches;
         match (cfg.meta_item(), mi.meta_item()) {
             (Some(cfg), Some(mi)) =>
-                if cfg_matches(self.config, &cfg, self.sess, self.features) {
+                if cfg_matches(&cfg, self.sess, self.features) {
                     self.process_cfg_attr(respan(mi.span, ast::Attribute_ {
                         id: attr::mk_attr_id(),
                         style: attr.node.style,
@@ -126,7 +124,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     // Determine if a node with the given attributes should be included in this configuation.
-    fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
+    pub fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
         attrs.iter().all(|attr| {
             // When not compiling with --test we should not compile the #[test] functions
             if !self.should_test && is_test_or_bench(attr) {
@@ -148,20 +146,24 @@ impl<'a> StripUnconfigured<'a> {
                 return true;
             }
 
-            attr::cfg_matches(self.config, mis[0].meta_item().unwrap(), self.sess, self.features)
+            attr::cfg_matches(mis[0].meta_item().unwrap(), self.sess, self.features)
         })
     }
 
     // Visit attributes on expression and statements (but not attributes on items in blocks).
-    fn visit_stmt_or_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
+    fn visit_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
         // flag the offending attributes
         for attr in attrs.iter() {
             if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
-                emit_feature_err(&self.sess.span_diagnostic,
-                                 "stmt_expr_attributes",
-                                 attr.span,
-                                 GateIssue::Language,
-                                 EXPLAIN_STMT_ATTR_SYNTAX);
+                let mut err = feature_err(&self.sess,
+                                          "stmt_expr_attributes",
+                                          attr.span,
+                                          GateIssue::Language,
+                                          EXPLAIN_STMT_ATTR_SYNTAX);
+                if attr.node.is_sugared_doc {
+                    err.help("`///` is for documentation comments. For a plain comment, use `//`.");
+                }
+                err.emit();
             }
         }
     }
@@ -227,7 +229,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
-        self.visit_stmt_or_expr_attrs(expr.attrs());
+        self.visit_expr_attrs(expr.attrs());
 
         // If an expr is valid to cfg away it will have been removed by the
         // outer stmt or expression folder before descending in here.
@@ -245,7 +247,6 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_stmt(&mut self, stmt: ast::Stmt) -> Option<ast::Stmt> {
-        self.visit_stmt_or_expr_attrs(stmt.attrs());
         self.configure(stmt)
     }
 }
@@ -303,6 +304,6 @@ fn is_cfg(attr: &ast::Attribute) -> bool {
     attr.check_name("cfg")
 }
 
-fn is_test_or_bench(attr: &ast::Attribute) -> bool {
+pub fn is_test_or_bench(attr: &ast::Attribute) -> bool {
     attr.check_name("test") || attr.check_name("bench")
 }

@@ -22,7 +22,7 @@ use hair::*;
 use rustc_const_math::{ConstInt, ConstIsize};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -115,6 +115,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let source = unpack!(block = this.as_operand(block, source));
                 block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
             }
+            ExprKind::Use { source } => {
+                let source = unpack!(block = this.as_operand(block, source));
+                block.and(Rvalue::Use(source))
+            }
             ExprKind::ReifyFnPointer { source } => {
                 let source = unpack!(block = this.as_operand(block, source));
                 block.and(Rvalue::Cast(CastKind::ReifyFnPointer, source, expr.ty))
@@ -160,7 +164,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                           .map(|f| unpack!(block = this.as_operand(block, f)))
                           .collect();
 
-                block.and(Rvalue::Aggregate(AggregateKind::Vec, fields))
+                block.and(Rvalue::Aggregate(AggregateKind::Array, fields))
             }
             ExprKind::Tuple { fields } => { // see (*) above
                 // first process the set of fields
@@ -253,7 +257,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(span);
         let bool_ty = self.hir.bool_ty();
         if self.hir.check_overflow() && op.is_checkable() && ty.is_integral() {
-            let result_tup = self.hir.tcx().mk_tup(vec![ty, bool_ty]);
+            let result_tup = self.hir.tcx().intern_tup(&[ty, bool_ty]);
             let result_value = self.temp(result_tup);
 
             self.cfg.push_assign(block, source_info,

@@ -15,7 +15,6 @@ use ty;
 use ty::fast_reject;
 use ty::{Ty, TyCtxt, TraitRef};
 use std::cell::{Cell, RefCell};
-use syntax::ast::Name;
 use hir;
 use util::nodemap::FnvHashMap;
 
@@ -37,10 +36,6 @@ pub struct TraitDef<'tcx> {
     pub generics: &'tcx ty::Generics<'tcx>,
 
     pub trait_ref: ty::TraitRef<'tcx>,
-
-    /// A list of the associated types defined in this trait. Useful
-    /// for resolving `X::Foo` type markers.
-    pub associated_type_names: Vec<Name>,
 
     // Impls of a trait. To allow for quicker lookup, the impls are indexed by a
     // simplified version of their `Self` type: impls with a simplifiable `Self`
@@ -82,7 +77,6 @@ impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
                paren_sugar: bool,
                generics: &'tcx ty::Generics<'tcx>,
                trait_ref: ty::TraitRef<'tcx>,
-               associated_type_names: Vec<Name>,
                def_path_hash: u64)
                -> TraitDef<'tcx> {
         TraitDef {
@@ -90,7 +84,6 @@ impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
             unsafety: unsafety,
             generics: generics,
             trait_ref: trait_ref,
-            associated_type_names: associated_type_names,
             nonblanket_impls: RefCell::new(FnvHashMap()),
             blanket_impls: RefCell::new(vec![]),
             flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS),

@@ -24,7 +24,7 @@ mod test {
     mod bad {
         fn CamelCase() {} //~ ERROR function `CamelCase` should have a snake case name
 
-        static bad: isize = 1; //~ ERROR static constant `bad` should have an upper case name
+        static bad: isize = 1; //~ ERROR static variable `bad` should have an upper case name
     }
 
     mod warn {

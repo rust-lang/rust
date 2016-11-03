@@ -76,12 +76,13 @@ This API is completely unstable and subject to change.
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(conservative_impl_trait)]
 #![feature(dotdot_in_tuple_patterns)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(question_mark)]
+#![cfg_attr(stage0, feature(question_mark))]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -193,12 +194,12 @@ fn require_c_abi_if_variadic(tcx: TyCtxt,
 
 fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 origin: TypeOrigin,
-                                t1: Ty<'tcx>,
-                                t2: Ty<'tcx>)
+                                expected: Ty<'tcx>,
+                                actual: Ty<'tcx>)
                                 -> bool {
     ccx.tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
-        if let Err(err) = infcx.eq_types(false, origin.clone(), t1, t2) {
-            infcx.report_mismatched_types(origin, t1, t2, err);
+        if let Err(err) = infcx.eq_types(false, origin.clone(), expected, actual) {
+            infcx.report_mismatched_types(origin, expected, actual, err);
             false
         } else {
             true
@@ -232,7 +233,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
             let main_def_id = tcx.map.local_def_id(main_id);
-            let substs = Substs::empty(tcx);
+            let substs = tcx.intern_substs(&[]);
             let se_ty = tcx.mk_fn_def(main_def_id, substs,
                                       tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
@@ -247,8 +248,8 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             require_same_types(
                 ccx,
                 TypeOrigin::MainFunctionType(main_span),
-                main_t,
-                se_ty);
+                se_ty,
+                main_t);
         }
         _ => {
             span_bug!(main_span,
@@ -284,16 +285,16 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             }
 
             let start_def_id = ccx.tcx.map.local_def_id(start_id);
-            let substs = Substs::empty(tcx);
+            let substs = tcx.intern_substs(&[]);
             let se_ty = tcx.mk_fn_def(start_def_id, substs,
                                       tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
-                    inputs: vec!(
+                    inputs: vec![
                         tcx.types.isize,
                         tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
-                    ),
+                    ],
                     output: tcx.types.isize,
                     variadic: false,
                 }),
@@ -302,8 +303,8 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             require_same_types(
                 ccx,
                 TypeOrigin::StartFunctionType(start_span),
-                start_t,
-                se_ty);
+                se_ty,
+                start_t);
         }
         _ => {
             span_bug!(start_span,

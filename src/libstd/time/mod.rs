@@ -118,7 +118,7 @@ pub struct Instant(time::Instant);
 pub struct SystemTime(time::SystemTime);
 
 /// An error returned from the `duration_since` method on `SystemTime`,
-/// used to learn about why how far in the opposite direction a timestamp lies.
+/// used to learn how far in the opposite direction a system time lies.
 #[derive(Clone, Debug)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct SystemTimeError(Duration);

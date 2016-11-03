@@ -99,13 +99,12 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("trans_intrinsic_call");
 
-    let (def_id, substs, sig) = match callee_ty.sty {
-        ty::TyFnDef(def_id, substs, fty) => {
-            let sig = tcx.erase_late_bound_regions(&fty.sig);
-            (def_id, substs, tcx.normalize_associated_type(&sig))
-        }
+    let (def_id, substs, fty) = match callee_ty.sty {
+        ty::TyFnDef(def_id, substs, ref fty) => (def_id, substs, fty),
         _ => bug!("expected fn item type, found {}", callee_ty)
     };
+
+    let sig = tcx.erase_late_bound_regions_and_normalize(&fty.sig);
     let arg_tys = sig.inputs;
     let ret_ty = sig.output;
     let name = tcx.item_name(def_id).as_str();
@@ -418,8 +417,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let val_ty = substs.type_at(0);
             match val_ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
-                    let repr = adt::represent_type(ccx, val_ty);
-                    adt::trans_get_discr(bcx, &repr, llargs[0],
+                    adt::trans_get_discr(bcx, val_ty, llargs[0],
                                          Some(llret_ty), true)
                 }
                 _ => C_null(llret_ty)
@@ -629,13 +627,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         // destructors, and the contents are SIMD
                         // etc.
                         assert!(!bcx.fcx.type_needs_drop(arg_type));
-
-                        let repr = adt::represent_type(bcx.ccx(), arg_type);
-                        let repr_ptr = &repr;
                         let arg = adt::MaybeSizedValue::sized(llarg);
                         (0..contents.len())
                             .map(|i| {
-                                Load(bcx, adt::trans_field_ptr(bcx, repr_ptr, arg, Disr(0), i))
+                                Load(bcx, adt::trans_field_ptr(bcx, arg_type, arg, Disr(0), i))
                             })
                             .collect()
                     }
@@ -1112,8 +1107,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
 
     let tcx = bcx.tcx();
-    let sig = tcx.erase_late_bound_regions(callee_ty.fn_sig());
-    let sig = tcx.normalize_associated_type(&sig);
+    let sig = tcx.erase_late_bound_regions_and_normalize(callee_ty.fn_sig());
     let arg_tys = sig.inputs;
 
     // every intrinsic takes a SIMD vector as its first argument

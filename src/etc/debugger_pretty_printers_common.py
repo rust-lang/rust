@@ -328,7 +328,7 @@ def extract_length_and_ptr_from_slice(slice_val):
 UNQUALIFIED_TYPE_MARKERS = frozenset(["(", "[", "&", "*"])
 
 def extract_type_name(qualified_type_name):
-    '''Extracts the type name from a fully qualified path'''
+    """Extracts the type name from a fully qualified path"""
     if qualified_type_name[0] in UNQUALIFIED_TYPE_MARKERS:
         return qualified_type_name
 

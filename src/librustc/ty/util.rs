@@ -12,6 +12,7 @@
 
 use hir::def_id::DefId;
 use infer::InferCtxt;
+use hir::map as ast_map;
 use hir::pat_util;
 use traits::{self, Reveal};
 use ty::{self, Ty, AdtKind, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
@@ -19,11 +20,14 @@ use ty::{Disr, ParameterEnvironment};
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
+use util::nodemap::FnvHashMap;
 
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 
+use std::cell::RefCell;
 use std::cmp;
-use std::hash::{Hash, SipHasher, Hasher};
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 use std::intrinsics;
 use syntax::ast::{self, Name};
 use syntax::attr::{self, SignedInt, UnsignedInt};
@@ -240,7 +244,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn enum_repr_type(self, opt_hint: Option<&attr::ReprAttr>) -> attr::IntType {
         match opt_hint {
             // Feed in the given type
-            Some(&attr::ReprInt(_, int_t)) => int_t,
+            Some(&attr::ReprInt(int_t)) => int_t,
             // ... but provide sensible default if none provided
             //
             // NB. Historically `fn enum_variants` generate i64 here, while
@@ -352,12 +356,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
-        let mut hasher = TypeIdHasher {
-            tcx: self,
-            state: SipHasher::new()
-        };
+        let mut hasher = TypeIdHasher::new(self, DefaultHasher::default());
         hasher.visit_ty(ty);
-        hasher.state.finish()
+        hasher.finish()
     }
 
     /// Returns true if this ADT is a dtorck type.
@@ -391,14 +392,94 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    state: SipHasher
+/// When hashing a type this ends up affecting properties like symbol names. We
+/// want these symbol names to be calculated independent of other factors like
+/// what architecture you're compiling *from*.
+///
+/// The hashing just uses the standard `Hash` trait, but the implementations of
+/// `Hash` for the `usize` and `isize` types are *not* architecture independent
+/// (e.g. they has 4 or 8 bytes). As a result we want to avoid `usize` and
+/// `isize` completely when hashing. To ensure that these don't leak in we use a
+/// custom hasher implementation here which inflates the size of these to a `u64`
+/// and `i64`.
+///
+/// The same goes for endianess: We always convert multi-byte integers to little
+/// endian before hashing.
+#[derive(Debug)]
+pub struct ArchIndependentHasher<H> {
+    inner: H,
 }
 
-impl<'a, 'gcx, 'tcx> TypeIdHasher<'a, 'gcx, 'tcx> {
-    fn hash<T: Hash>(&mut self, x: T) {
+impl<H> ArchIndependentHasher<H> {
+    pub fn new(inner: H) -> ArchIndependentHasher<H> {
+        ArchIndependentHasher { inner: inner }
+    }
+
+    pub fn into_inner(self) -> H {
+        self.inner
+    }
+}
+
+impl<H: Hasher> Hasher for ArchIndependentHasher<H> {
+    fn write(&mut self, bytes: &[u8]) {
+        self.inner.write(bytes)
+    }
+
+    fn finish(&self) -> u64 {
+        self.inner.finish()
+    }
+
+    fn write_u8(&mut self, i: u8) {
+        self.inner.write_u8(i)
+    }
+    fn write_u16(&mut self, i: u16) {
+        self.inner.write_u16(i.to_le())
+    }
+    fn write_u32(&mut self, i: u32) {
+        self.inner.write_u32(i.to_le())
+    }
+    fn write_u64(&mut self, i: u64) {
+        self.inner.write_u64(i.to_le())
+    }
+    fn write_usize(&mut self, i: usize) {
+        self.inner.write_u64((i as u64).to_le())
+    }
+    fn write_i8(&mut self, i: i8) {
+        self.inner.write_i8(i)
+    }
+    fn write_i16(&mut self, i: i16) {
+        self.inner.write_i16(i.to_le())
+    }
+    fn write_i32(&mut self, i: i32) {
+        self.inner.write_i32(i.to_le())
+    }
+    fn write_i64(&mut self, i: i64) {
+        self.inner.write_i64(i.to_le())
+    }
+    fn write_isize(&mut self, i: isize) {
+        self.inner.write_i64((i as i64).to_le())
+    }
+}
+
+pub struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a, H> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    state: ArchIndependentHasher<H>,
+}
+
+impl<'a, 'gcx, 'tcx, H: Hasher> TypeIdHasher<'a, 'gcx, 'tcx, H> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, state: H) -> Self {
+        TypeIdHasher {
+            tcx: tcx,
+            state: ArchIndependentHasher::new(state),
+        }
+    }
+
+    pub fn hash<T: Hash>(&mut self, x: T) {
         x.hash(&mut self.state);
+    }
+
+    pub fn finish(self) -> u64 {
+        self.state.finish()
     }
 
     fn hash_discriminant_u8<T>(&mut self, x: &T) {
@@ -413,13 +494,20 @@ impl<'a, 'gcx, 'tcx> TypeIdHasher<'a, 'gcx, 'tcx> {
     fn def_id(&mut self, did: DefId) {
         // Hash the DefPath corresponding to the DefId, which is independent
         // of compiler internal state.
-        let tcx = self.tcx;
-        let def_path = tcx.def_path(did);
-        def_path.deterministic_hash_to(tcx, &mut self.state);
+        let path = self.tcx.def_path(did);
+        self.def_path(&path)
+    }
+
+    pub fn def_path(&mut self, def_path: &ast_map::DefPath) {
+        def_path.deterministic_hash_to(self.tcx, &mut self.state);
+    }
+
+    pub fn into_inner(self) -> H {
+        self.state.inner
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, H> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         // Distinguish between the Ty variants uniformly.
         self.hash_discriminant_u8(&ty.sty);
@@ -428,17 +516,18 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             TyInt(i) => self.hash(i),
             TyUint(u) => self.hash(u),
             TyFloat(f) => self.hash(f),
-            TyAdt(d, _) => self.def_id(d.did),
             TyArray(_, n) => self.hash(n),
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
             TyAnon(def_id, _) |
             TyFnDef(def_id, ..) => self.def_id(def_id),
+            TyAdt(d, _) => self.def_id(d.did),
             TyFnPtr(f) => {
                 self.hash(f.unsafety);
                 self.hash(f.abi);
                 self.hash(f.sig.variadic());
+                self.hash(f.sig.inputs().skip_binder().len());
             }
             TyTrait(ref data) => {
                 self.def_id(data.principal.def_id());
@@ -460,9 +549,10 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             TyChar |
             TyStr |
             TyBox(_) |
-            TySlice(_) |
-            TyError => {}
-            TyInfer(_) => bug!()
+            TySlice(_) => {}
+
+            TyError |
+            TyInfer(_) => bug!("TypeIdHasher: unexpected type {}", ty)
         }
 
         ty.super_visit_with(self)
@@ -470,7 +560,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
 
     fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
         match *r {
-            ty::ReStatic | ty::ReErased => {
+            ty::ReErased => {
                 self.hash::<u32>(0);
             }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
@@ -478,6 +568,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
                 self.hash::<u32>(db.depth);
                 self.hash(i);
             }
+            ty::ReStatic |
             ty::ReEmpty |
             ty::ReEarlyBound(..) |
             ty::ReLateBound(..) |
@@ -485,7 +576,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             ty::ReScope(..) |
             ty::ReVar(..) |
             ty::ReSkolemized(..) => {
-                bug!("unexpected region found when hashing a type")
+                bug!("TypeIdHasher: unexpected region {:?}", r)
             }
         }
         false
@@ -502,11 +593,24 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
 impl<'a, 'tcx> ty::TyS<'tcx> {
     fn impls_bound(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    param_env: &ParameterEnvironment<'tcx>,
-                   bound: ty::BuiltinBound, span: Span) -> bool
+                   bound: ty::BuiltinBound,
+                   cache: &RefCell<FnvHashMap<Ty<'tcx>, bool>>,
+                   span: Span) -> bool
     {
-        tcx.infer_ctxt(None, Some(param_env.clone()), Reveal::ExactMatch).enter(|infcx| {
-            traits::type_known_to_meet_builtin_bound(&infcx, self, bound, span)
-        })
+        if self.has_param_types() || self.has_self_ty() {
+            if let Some(result) = cache.borrow().get(self) {
+                return *result;
+            }
+        }
+        let result =
+            tcx.infer_ctxt(None, Some(param_env.clone()), Reveal::ExactMatch)
+            .enter(|infcx| {
+                traits::type_known_to_meet_builtin_bound(&infcx, self, bound, span)
+            });
+        if self.has_param_types() || self.has_self_ty() {
+            cache.borrow_mut().insert(self, result);
+        }
+        return result;
     }
 
     // FIXME (@jroesch): I made this public to use it, not sure if should be private
@@ -533,7 +637,9 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             TyArray(..) | TySlice(..) | TyTrait(..) | TyTuple(..) |
             TyClosure(..) | TyAdt(..) | TyAnon(..) |
             TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
-        }.unwrap_or_else(|| !self.impls_bound(tcx, param_env, ty::BoundCopy, span));
+        }.unwrap_or_else(|| {
+            !self.impls_bound(tcx, param_env, ty::BoundCopy, &param_env.is_copy_cache, span)
+        });
 
         if !self.has_param_types() && !self.has_self_ty() {
             self.flags.set(self.flags.get() | if result {
@@ -573,7 +679,9 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
             TyAdt(..) | TyProjection(..) | TyParam(..) |
             TyInfer(..) | TyAnon(..) | TyError => None
-        }.unwrap_or_else(|| self.impls_bound(tcx, param_env, ty::BoundSized, span));
+        }.unwrap_or_else(|| {
+            self.impls_bound(tcx, param_env, ty::BoundSized, &param_env.is_sized_cache, span)
+        });
 
         if !self.has_param_types() && !self.has_self_ty() {
             self.flags.set(self.flags.get() | if result {
@@ -597,10 +705,19 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             }
         }
 
+        let rec_limit = tcx.sess.recursion_limit.get();
+        let depth = tcx.layout_depth.get();
+        if depth > rec_limit {
+            tcx.sess.fatal(
+                &format!("overflow representing the type `{}`", self));
+        }
+
+        tcx.layout_depth.set(depth+1);
         let layout = Layout::compute_uncached(self, infcx)?;
         if can_cache {
             tcx.layout_cache.borrow_mut().insert(self, layout);
         }
+        tcx.layout_depth.set(depth);
         Ok(layout)
     }
 

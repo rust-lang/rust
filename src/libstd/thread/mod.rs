@@ -151,7 +151,7 @@
 //!
 //! [`Cell`]: ../cell/struct.Cell.html
 //! [`RefCell`]: ../cell/struct.RefCell.html
-//! [`thread_local!`]: ../macro.thread_local!.html
+//! [`thread_local!`]: ../macro.thread_local.html
 //! [`with`]: struct.LocalKey.html#method.with
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -166,6 +166,7 @@ use panicking;
 use str;
 use sync::{Mutex, Condvar, Arc};
 use sys::thread as imp;
+use sys_common::mutex;
 use sys_common::thread_info;
 use sys_common::util;
 use sys_common::{AsInner, IntoInner};
@@ -180,9 +181,18 @@ use time::Duration;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{LocalKey, LocalKeyState};
 
+// The types used by the thread_local! macro to access TLS keys. Note that there
+// are two types, the "OS" type and the "fast" type. The OS thread local key
+// type is accessed via platform-specific API calls and is slow, while the fast
+// key type is accessed via code generated via LLVM, where TLS keys are set up
+// by the elf linker. Note that the OS TLS type is always available: on macOS
+// the standard library is compiled with support for older platform versions
+// where fast TLS was not available; end-user code is compiled with fast TLS
+// where available, but both are needed.
+
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[cfg(target_thread_local)]
-#[doc(hidden)] pub use self::local::elf::Key as __ElfLocalKeyInner;
+#[doc(hidden)] pub use sys::fast_thread_local::Key as __FastLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[doc(hidden)] pub use self::local::os::Key as __OsLocalKeyInner;
 
@@ -525,12 +535,52 @@ pub fn park_timeout(dur: Duration) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// ThreadId
+////////////////////////////////////////////////////////////////////////////////
+
+/// A unique identifier for a running thread.
+///
+/// A `ThreadId` is an opaque object that has a unique value for each thread
+/// that creates one. `ThreadId`s do not correspond to a thread's system-
+/// designated identifier.
+#[unstable(feature = "thread_id", issue = "21507")]
+#[derive(Eq, PartialEq, Copy, Clone)]
+pub struct ThreadId(u64);
+
+impl ThreadId {
+    // Generate a new unique thread ID.
+    fn new() -> ThreadId {
+        static GUARD: mutex::Mutex = mutex::Mutex::new();
+        static mut COUNTER: u64 = 0;
+
+        unsafe {
+            GUARD.lock();
+
+            // If we somehow use up all our bits, panic so that we're not
+            // covering up subtle bugs of IDs being reused.
+            if COUNTER == ::u64::MAX {
+                GUARD.unlock();
+                panic!("failed to generate unique thread ID: bitspace exhausted");
+            }
+
+            let id = COUNTER;
+            COUNTER += 1;
+
+            GUARD.unlock();
+
+            ThreadId(id)
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Thread
 ////////////////////////////////////////////////////////////////////////////////
 
 /// The internal representation of a `Thread` handle
 struct Inner {
     name: Option<CString>,      // Guaranteed to be UTF-8
+    id: ThreadId,
     lock: Mutex<bool>,          // true when there is a buffered unpark
     cvar: Condvar,
 }
@@ -551,6 +601,7 @@ impl Thread {
         Thread {
             inner: Arc::new(Inner {
                 name: cname,
+                id: ThreadId::new(),
                 lock: Mutex::new(false),
                 cvar: Condvar::new(),
             })
@@ -567,6 +618,12 @@ impl Thread {
             *guard = true;
             self.inner.cvar.notify_one();
         }
+    }
+
+    /// Gets the thread's unique identifier.
+    #[unstable(feature = "thread_id", issue = "21507")]
+    pub fn id(&self) -> ThreadId {
+        self.inner.id
     }
 
     /// Gets the thread's name.
@@ -741,7 +798,7 @@ fn _assert_sync_and_send() {
 // Tests
 ////////////////////////////////////////////////////////////////////////////////
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use any::Any;
     use sync::mpsc::{channel, Sender};
@@ -975,6 +1032,17 @@ mod tests {
     #[test]
     fn sleep_ms_smoke() {
         thread::sleep(Duration::from_millis(2));
+    }
+
+    #[test]
+    fn test_thread_id_equal() {
+        assert!(thread::current().id() == thread::current().id());
+    }
+
+    #[test]
+    fn test_thread_id_not_equal() {
+        let spawned_id = thread::spawn(|| thread::current().id()).join().unwrap();
+        assert!(thread::current().id() != spawned_id);
     }
 
     // NOTE: the corresponding test for stderr is in run-pass/thread-stderr, due

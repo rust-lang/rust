@@ -73,7 +73,6 @@
 
 use fmt;
 use intrinsics;
-use marker::Reflect;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -86,7 +85,7 @@ use marker::Reflect;
 ///
 /// [mod]: index.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Any: Reflect + 'static {
+pub trait Any: 'static {
     /// Gets the `TypeId` of `self`.
     ///
     /// # Examples
@@ -112,7 +111,7 @@ pub trait Any: Reflect + 'static {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Reflect + 'static + ?Sized > Any for T {
+impl<T: 'static + ?Sized > Any for T {
     fn get_type_id(&self) -> TypeId { TypeId::of::<T>() }
 }
 
@@ -352,12 +351,10 @@ impl TypeId {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_type_id)]
-    ///
     /// use std::any::{Any, TypeId};
     ///
-    /// fn is_string(s: &Any) -> bool {
-    ///     TypeId::of::<String>() == s.get_type_id()
+    /// fn is_string<T: ?Sized + Any>(_s: &T) -> bool {
+    ///     TypeId::of::<String>() == TypeId::of::<T>()
     /// }
     ///
     /// fn main() {
@@ -366,7 +363,7 @@ impl TypeId {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn of<T: ?Sized + Reflect + 'static>() -> TypeId {
+    pub fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId {
             t: unsafe { intrinsics::type_id::<T>() },
         }

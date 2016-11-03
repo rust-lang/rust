@@ -22,6 +22,6 @@ fn uhoh<T>(v: Vec<clam<T>> ) {
 }
 
 pub fn main() {
-    let v: Vec<clam<isize>> = vec!(clam::b::<isize>, clam::b::<isize>, clam::a::<isize>(42, 17));
+    let v: Vec<clam<isize>> = vec![clam::b::<isize>, clam::b::<isize>, clam::a::<isize>(42, 17)];
     uhoh::<isize>(v);
 }

@@ -88,9 +88,11 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
             continue
         }
 
-        // We want the compiler to depend on the proc_macro crate so that it is built and
-        // included in the end, but we don't want to actually use it in the compiler.
-        if toml.contains("name = \"rustc_driver\"") && krate == "proc_macro" {
+        // We want the compiler to depend on the proc_macro_plugin crate so
+        // that it is built and included in the end, but we don't want to
+        // actually use it in the compiler.
+        if toml.contains("name = \"rustc_driver\"") &&
+           krate == "proc_macro_plugin" {
             continue
         }
 

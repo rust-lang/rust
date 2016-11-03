@@ -9,8 +9,6 @@
 // except according to those terms.
 
 // compile-flags: --cfg bar -D warnings
-// ignore-pretty
-
 #![cfg(bar)]
 
 fn main() {}

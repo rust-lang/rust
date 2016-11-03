@@ -16,7 +16,7 @@ fn test_int() {
 }
 
 fn test_vec() {
-    fn f() -> Vec<isize> { vec!(10, 11) }
+    fn f() -> Vec<isize> { vec![10, 11] }
     let vect = f();
     assert_eq!(vect[1], 11);
 }

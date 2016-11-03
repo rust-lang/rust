@@ -1,7 +1,7 @@
-LIB := $(shell $(RUSTC) --print file-names --crate-type=lib lib.rs)
+LIB := $(shell $(RUSTC) --print file-names --crate-type=lib $(TMPDIR)/lib.rs)
 
 $(TMPDIR)/$(LIB):
-	$(RUSTC) --emit link,dep-info --crate-type=lib lib.rs
+	$(RUSTC) --emit link,dep-info --crate-type=lib $(TMPDIR)/lib.rs
 	touch $(TMPDIR)/done
 
 -include $(TMPDIR)/lib.d

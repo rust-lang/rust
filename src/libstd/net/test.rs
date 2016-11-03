@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(dead_code)] // not used on emscripten
+
 use env;
 use net::{SocketAddr, SocketAddrV4, SocketAddrV6, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
 use sync::atomic::{AtomicUsize, Ordering};

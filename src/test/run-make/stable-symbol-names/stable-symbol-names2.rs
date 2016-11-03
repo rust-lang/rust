@@ -18,3 +18,9 @@ pub fn user() {
   let x = 2u64;
   stable_symbol_names1::some_test_function(&x);
 }
+
+pub fn trait_impl_test_function() {
+  use stable_symbol_names1::*;
+  Bar::foo::<Bar>();
+  bar();
+}

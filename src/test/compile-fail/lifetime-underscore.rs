@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(lifetime_underscore)]
-
 fn _f<'_>() //~ ERROR invalid lifetime name `'_`
 //~^ WARN this was previously accepted
     -> &'_ u8 //~ ERROR invalid lifetime name `'_`

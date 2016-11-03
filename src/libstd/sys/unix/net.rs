@@ -10,7 +10,7 @@
 
 use ffi::CStr;
 use io;
-use libc::{self, c_int, size_t, sockaddr, socklen_t};
+use libc::{self, c_int, size_t, sockaddr, socklen_t, EAI_SYSTEM};
 use net::{SocketAddr, Shutdown};
 use str;
 use sys::fd::FileDesc;
@@ -33,12 +33,25 @@ use libc::SOCK_CLOEXEC;
 #[cfg(not(target_os = "linux"))]
 const SOCK_CLOEXEC: c_int = 0;
 
+// Another conditional contant for name resolution: Macos et iOS use
+// SO_NOSIGPIPE as a setsockopt flag to disable SIGPIPE emission on socket.
+// Other platforms do otherwise.
+#[cfg(target_vendor = "apple")]
+use libc::SO_NOSIGPIPE;
+#[cfg(not(target_vendor = "apple"))]
+const SO_NOSIGPIPE: c_int = 0;
+
 pub struct Socket(FileDesc);
 
 pub fn init() {}
 
 pub fn cvt_gai(err: c_int) -> io::Result<()> {
-    if err == 0 { return Ok(()) }
+    if err == 0 {
+        return Ok(())
+    }
+    if err == EAI_SYSTEM {
+        return Err(io::Error::last_os_error())
+    }
 
     let detail = unsafe {
         str::from_utf8(CStr::from_ptr(libc::gai_strerror(err)).to_bytes()).unwrap()
@@ -76,7 +89,11 @@ impl Socket {
             let fd = cvt(libc::socket(fam, ty, 0))?;
             let fd = FileDesc::new(fd);
             fd.set_cloexec()?;
-            Ok(Socket(fd))
+            let socket = Socket(fd);
+            if cfg!(target_vendor = "apple") {
+                setsockopt(&socket, libc::SOL_SOCKET, SO_NOSIGPIPE, 1)?;
+            }
+            Ok(socket)
         }
     }
 
