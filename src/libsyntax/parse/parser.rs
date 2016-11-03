@@ -212,6 +212,7 @@ pub struct Parser<'a> {
     pub expected_tokens: Vec<TokenType>,
     pub tts: Vec<(TokenTree, usize)>,
     pub desugar_doc_comments: bool,
+    pub allow_interpolated_tts: bool,
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -301,6 +302,7 @@ impl<'a> Parser<'a> {
             expected_tokens: Vec::new(),
             tts: Vec::new(),
             desugar_doc_comments: desugar_doc_comments,
+            allow_interpolated_tts: true,
         };
 
         let tok = parser.next_tok();
@@ -2718,7 +2720,12 @@ impl<'a> Parser<'a> {
                 if self.tts.last().map(|&(_, i)| i == 1).unwrap_or(false) {
                     let tt = self.tts.pop().unwrap().0;
                     self.bump();
-                    return Ok(tt);
+                    return Ok(if self.allow_interpolated_tts {
+                        // avoid needlessly reparsing token trees in recursive macro expansions
+                        TokenTree::Token(tt.span(), token::Interpolated(Rc::new(token::NtTT(tt))))
+                    } else {
+                        tt
+                    });
                 }
 
                 let parsing_token_tree = ::std::mem::replace(&mut self.parsing_token_tree, true);
