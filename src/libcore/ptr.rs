@@ -377,7 +377,7 @@ impl<T: ?Sized> *const T {
     ///     ptr = ptr.wrapping_offset(step);
     /// }
     /// ```
-    #[unstable(feature = "ptr_wrapping_offset", issue = "0")]
+    #[unstable(feature = "ptr_wrapping_offset", issue = "37570")]
     #[inline]
     pub fn wrapping_offset(self, count: isize) -> *const T where T: Sized {
         unsafe {
@@ -501,7 +501,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// assert_eq!(&data, &[0, 2, 0, 4, 0]);
     /// ```
-    #[unstable(feature = "ptr_wrapping_offset", issue = "0")]
+    #[unstable(feature = "ptr_wrapping_offset", issue = "37570")]
     #[inline]
     pub fn wrapping_offset(self, count: isize) -> *mut T where T: Sized {
         unsafe {
