@@ -1724,16 +1724,15 @@ fn add_unsized_bound<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     match unbound {
         Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.
-            let trait_def_id = tcx.expect_def(tpb.ref_id).def_id();
-            match kind_id {
-                Ok(kind_id) if trait_def_id != kind_id => {
+            if let Ok(kind_id) = kind_id {
+                let trait_def = tcx.expect_def(tpb.ref_id);
+                if trait_def != Def::Trait(kind_id) {
                     tcx.sess.span_warn(span,
                                        "default bound relaxed for a type parameter, but \
                                        this does nothing because the given bound is not \
                                        a default. Only `?Sized` is supported");
                     tcx.try_add_builtin_trait(kind_id, bounds);
                 }
-                _ => {}
             }
         }
         _ if kind_id.is_ok() => {
