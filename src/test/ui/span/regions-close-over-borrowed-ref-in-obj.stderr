@@ -1,0 +1,13 @@
+error: borrowed value does not live long enough
+  --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:22:5
+   |
+20 |         let ss: &isize = &1;
+   |                           - temporary value created here
+21 |         blah = box ss as Box<Foo>;
+22 |     }
+   |     ^ temporary value dropped here while still borrowed
+23 | }
+   | - temporary value needs to live until here
+
+error: aborting due to previous error
+

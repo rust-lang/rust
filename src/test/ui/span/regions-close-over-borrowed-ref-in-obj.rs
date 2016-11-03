@@ -17,7 +17,7 @@ impl<'a> Foo for &'a isize { }
 fn main() {
     let blah;
     {
-        let ss: &isize = &1; //~ ERROR borrowed value does not live long enough
+        let ss: &isize = &1;
         blah = box ss as Box<Foo>;
     }
 }
