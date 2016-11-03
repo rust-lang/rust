@@ -1,0 +1,28 @@
+error: `x` does not live long enough
+  --> $DIR/send-is-not-static-ensures-scoping.rs:32:5
+   |
+26 |         let y = &x; //~ ERROR `x` does not live long enough
+   |                  - borrow occurs here
+...
+32 |     };
+   |     ^ `x` dropped here while still borrowed
+...
+35 | }
+   | - borrowed value needs to live until here
+
+error: `y` does not live long enough
+  --> $DIR/send-is-not-static-ensures-scoping.rs:29:22
+   |
+28 |         scoped(|| {
+   |                -- capture occurs here
+29 |             let _z = y;
+   |                      ^ does not live long enough
+...
+32 |     };
+   |     - borrowed value only lives until here
+...
+35 | }
+   | - borrowed value needs to live until here
+
+error: aborting due to 2 previous errors
+

@@ -199,9 +199,6 @@ pub enum TypeOrigin {
     // Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse(Span),
 
-    // Computing common supertype in a range expression
-    RangeExpression(Span),
-
     // `where a == b`
     EquatePredicate(Span),
 
@@ -231,7 +228,6 @@ impl TypeOrigin {
             },
             &TypeOrigin::IfExpression(_) => "if and else have incompatible types",
             &TypeOrigin::IfExpressionWithNoElse(_) => "if may be missing an else clause",
-            &TypeOrigin::RangeExpression(_) => "start and end of range have incompatible types",
             &TypeOrigin::EquatePredicate(_) => "equality predicate not satisfied",
             &TypeOrigin::MainFunctionType(_) => "main function has wrong type",
             &TypeOrigin::StartFunctionType(_) => "start function has wrong type",
@@ -251,7 +247,6 @@ impl TypeOrigin {
             &TypeOrigin::MatchExpressionArm(..) => "match arms have compatible types",
             &TypeOrigin::IfExpression(_) => "if and else have compatible types",
             &TypeOrigin::IfExpressionWithNoElse(_) => "if missing an else returns ()",
-            &TypeOrigin::RangeExpression(_) => "start and end of range have compatible types",
             &TypeOrigin::EquatePredicate(_) => "equality where clause is satisfied",
             &TypeOrigin::MainFunctionType(_) => "`main` function has the correct type",
             &TypeOrigin::StartFunctionType(_) => "`start` function has the correct type",
@@ -1755,7 +1750,6 @@ impl TypeOrigin {
             TypeOrigin::MatchExpressionArm(match_span, ..) => match_span,
             TypeOrigin::IfExpression(span) => span,
             TypeOrigin::IfExpressionWithNoElse(span) => span,
-            TypeOrigin::RangeExpression(span) => span,
             TypeOrigin::EquatePredicate(span) => span,
             TypeOrigin::MainFunctionType(span) => span,
             TypeOrigin::StartFunctionType(span) => span,

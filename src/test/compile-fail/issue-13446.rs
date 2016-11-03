@@ -13,6 +13,6 @@
 
 // error-pattern: mismatched types
 
-static VEC: [u32; 256] = vec!();
+static VEC: [u32; 256] = vec![];
 
 fn main() {}

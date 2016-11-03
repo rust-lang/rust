@@ -4,8 +4,8 @@ error: `x` does not live long enough
 18 |         let f = to_fn_once(move|| &x);
    |                                    ^
    |                                    |
-   |                                    does not live long enough
-   |                                    borrowed value only lives until here
+   |                                    borrow occurs here
+   |                                    `x` dropped here while still borrowed
 ...
 23 | }
    | - borrowed value needs to live until here

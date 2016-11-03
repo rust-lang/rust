@@ -1546,7 +1546,7 @@ impl<'a> TraitDef<'a> {
                             cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
                         }
                         codemap::Spanned {
-                            span: pat.span,
+                            span: Span { expn_id: self.span.expn_id, ..pat.span },
                             node: ast::FieldPat {
                                 ident: ident.unwrap(),
                                 pat: pat,
@@ -1577,7 +1577,8 @@ impl<'a> TraitDef<'a> {
          mutbl: ast::Mutability)
          -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
         let variant_ident = variant.node.name;
-        let variant_path = cx.path(variant.span, vec![enum_ident, variant_ident]);
+        let sp = Span { expn_id: self.span.expn_id, ..variant.span };
+        let variant_path = cx.path(sp, vec![enum_ident, variant_ident]);
         self.create_struct_pattern(cx, variant_path, &variant.node.data, prefix, mutbl)
     }
 }

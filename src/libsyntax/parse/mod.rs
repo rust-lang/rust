@@ -624,12 +624,12 @@ mod tests {
                     node: ast::ExprKind::Path(None, ast::Path {
                         span: sp(0, 1),
                         global: false,
-                        segments: vec!(
+                        segments: vec![
                             ast::PathSegment {
                                 identifier: str_to_ident("a"),
                                 parameters: ast::PathParameters::none(),
                             }
-                        ),
+                        ],
                     }),
                     span: sp(0, 1),
                     attrs: ThinVec::new(),
@@ -643,7 +643,7 @@ mod tests {
                     node: ast::ExprKind::Path(None, ast::Path {
                             span: sp(0, 6),
                             global: true,
-                            segments: vec!(
+                            segments: vec![
                                 ast::PathSegment {
                                     identifier: str_to_ident("a"),
                                     parameters: ast::PathParameters::none(),
@@ -652,7 +652,7 @@ mod tests {
                                     identifier: str_to_ident("b"),
                                     parameters: ast::PathParameters::none(),
                                 }
-                            )
+                            ]
                         }),
                     span: sp(0, 6),
                     attrs: ThinVec::new(),
@@ -763,12 +763,12 @@ mod tests {
                         node:ast::ExprKind::Path(None, ast::Path{
                             span: sp(7, 8),
                             global: false,
-                            segments: vec!(
+                            segments: vec![
                                 ast::PathSegment {
                                     identifier: str_to_ident("d"),
                                     parameters: ast::PathParameters::none(),
                                 }
-                            ),
+                            ],
                         }),
                         span:sp(7,8),
                         attrs: ThinVec::new(),
@@ -786,12 +786,12 @@ mod tests {
                            node: ast::ExprKind::Path(None, ast::Path {
                                span:sp(0,1),
                                global:false,
-                               segments: vec!(
+                               segments: vec![
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
                                     parameters: ast::PathParameters::none(),
                                 }
-                               ),
+                               ],
                             }),
                            span: sp(0,1),
                            attrs: ThinVec::new()})),
@@ -828,18 +828,18 @@ mod tests {
                             attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
                             node: ast::ItemKind::Fn(P(ast::FnDecl {
-                                inputs: vec!(ast::Arg{
+                                inputs: vec![ast::Arg{
                                     ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
                                                   node: ast::TyKind::Path(None, ast::Path{
                                         span:sp(10,13),
                                         global:false,
-                                        segments: vec!(
+                                        segments: vec![
                                             ast::PathSegment {
                                                 identifier:
                                                     str_to_ident("i32"),
                                                 parameters: ast::PathParameters::none(),
                                             }
-                                        ),
+                                        ],
                                         }),
                                         span:sp(10,13)
                                     }),
@@ -855,7 +855,7 @@ mod tests {
                                             span: sp(6,7)
                                     }),
                                         id: ast::DUMMY_NODE_ID
-                                    }),
+                                    }],
                                 output: ast::FunctionRetTy::Default(sp(15, 15)),
                                 variadic: false
                             }),
@@ -875,14 +875,14 @@ mod tests {
                                         span: syntax_pos::DUMMY_SP,
                                     },
                                     P(ast::Block {
-                                        stmts: vec!(ast::Stmt {
+                                        stmts: vec![ast::Stmt {
                                             node: ast::StmtKind::Semi(P(ast::Expr{
                                                 id: ast::DUMMY_NODE_ID,
                                                 node: ast::ExprKind::Path(None,
                                                       ast::Path{
                                                         span:sp(17,18),
                                                         global:false,
-                                                        segments: vec!(
+                                                        segments: vec![
                                                             ast::PathSegment {
                                                                 identifier:
                                                                 str_to_ident(
@@ -890,12 +890,12 @@ mod tests {
                                                                 parameters:
                                                                 ast::PathParameters::none(),
                                                             }
-                                                        ),
+                                                        ],
                                                       }),
                                                 span: sp(17,18),
                                                 attrs: ThinVec::new()})),
                                             id: ast::DUMMY_NODE_ID,
-                                            span: sp(17,19)}),
+                                            span: sp(17,19)}],
                                         id: ast::DUMMY_NODE_ID,
                                         rules: ast::BlockCheckMode::Default, // no idea
                                         span: sp(15,21),

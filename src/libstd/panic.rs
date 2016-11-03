@@ -18,7 +18,7 @@ use ops::{Deref, DerefMut};
 use panicking;
 use ptr::{Unique, Shared};
 use rc::Rc;
-use sync::{Arc, Mutex, RwLock};
+use sync::{Arc, Mutex, RwLock, atomic};
 use thread::Result;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
@@ -230,6 +230,46 @@ impl<T> RefUnwindSafe for AssertUnwindSafe<T> {}
 impl<T: ?Sized> RefUnwindSafe for Mutex<T> {}
 #[stable(feature = "unwind_safe_lock_refs", since = "1.12.0")]
 impl<T: ?Sized> RefUnwindSafe for RwLock<T> {}
+
+#[cfg(target_has_atomic = "ptr")]
+#[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
+impl RefUnwindSafe for atomic::AtomicIsize {}
+#[cfg(target_has_atomic = "8")]
+#[unstable(feature = "integer_atomics", issue = "32976")]
+impl RefUnwindSafe for atomic::AtomicI8 {}
+#[cfg(target_has_atomic = "16")]
+#[unstable(feature = "integer_atomics", issue = "32976")]
+impl RefUnwindSafe for atomic::AtomicI16 {}
+#[cfg(target_has_atomic = "32")]
+#[unstable(feature = "integer_atomics", issue = "32976")]
+impl RefUnwindSafe for atomic::AtomicI32 {}
+#[cfg(target_has_atomic = "64")]
+#[unstable(feature = "integer_atomics", issue = "32976")]
+impl RefUnwindSafe for atomic::AtomicI64 {}
+
+#[cfg(target_has_atomic = "ptr")]
+#[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
+impl RefUnwindSafe for atomic::AtomicUsize {}
+#[cfg(target_has_atomic = "8")]
+#[unstable(feature = "integer_atomics", issue = "32976")]
+impl RefUnwindSafe for atomic::AtomicU8 {}
+#[cfg(target_has_atomic = "16")]
+#[unstable(feature = "integer_atomics", issue = "32976")]
+impl RefUnwindSafe for atomic::AtomicU16 {}
+#[cfg(target_has_atomic = "32")]
+#[unstable(feature = "integer_atomics", issue = "32976")]
+impl RefUnwindSafe for atomic::AtomicU32 {}
+#[cfg(target_has_atomic = "64")]
+#[unstable(feature = "integer_atomics", issue = "32976")]
+impl RefUnwindSafe for atomic::AtomicU64 {}
+
+#[cfg(target_has_atomic = "8")]
+#[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
+impl RefUnwindSafe for atomic::AtomicBool {}
+
+#[cfg(target_has_atomic = "ptr")]
+#[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
+impl<T> RefUnwindSafe for atomic::AtomicPtr<T> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T> Deref for AssertUnwindSafe<T> {

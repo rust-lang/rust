@@ -859,9 +859,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
     // expression/block context can't possibly contain exported things.
     // (Making them no-ops stops us from traversing the whole AST without
     // having to be super careful about our `walk_...` calls above.)
-    // FIXME(#29524): Unfortunately this ^^^ is not true, blocks can contain
-    // exported items (e.g. impls) and actual code in rustc itself breaks
-    // if we don't traverse blocks in `EmbargoVisitor`
     fn visit_block(&mut self, _: &hir::Block) {}
     fn visit_expr(&mut self, _: &hir::Expr) {}
 }

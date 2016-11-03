@@ -848,7 +848,7 @@ impl<'a> Parser<'a> {
               Fe: FnMut(DiagnosticBuilder)
     {
         let mut first: bool = true;
-        let mut v = vec!();
+        let mut v = vec![];
         while !kets.contains(&&self.token) {
             match sep.sep {
                 Some(ref t) => {
@@ -2224,13 +2224,13 @@ impl<'a> Parser<'a> {
                             SeqSep::trailing_allowed(token::Comma),
                             |p| Ok(p.parse_expr()?)
                         )?;
-                        let mut exprs = vec!(first_expr);
+                        let mut exprs = vec![first_expr];
                         exprs.extend(remaining_exprs);
                         ex = ExprKind::Vec(exprs);
                     } else {
                         // Vector with one element.
                         self.expect(&token::CloseDelim(token::Bracket))?;
-                        ex = ExprKind::Vec(vec!(first_expr));
+                        ex = ExprKind::Vec(vec![first_expr]);
                     }
                 }
                 hi = self.prev_span.hi;
@@ -4224,7 +4224,7 @@ impl<'a> Parser<'a> {
                              mode: BoundParsingMode)
                              -> PResult<'a, TyParamBounds>
     {
-        let mut result = vec!();
+        let mut result = vec![];
         loop {
             let question_span = self.span;
             let ate_question = self.eat(&token::Question);

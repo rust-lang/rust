@@ -45,9 +45,9 @@ fn transform(x: Option<isize>) -> Option<String> {
 pub fn main() {
     assert_eq!(transform(Some(10)), Some("11".to_string()));
     assert_eq!(transform(None), None);
-    assert_eq!((vec!("hi".to_string()))
-        .bind(|x| vec!(x.clone(), format!("{}!", x)) )
-        .bind(|x| vec!(x.clone(), format!("{}?", x)) ),
+    assert_eq!((vec!["hi".to_string()])
+        .bind(|x| vec![x.clone(), format!("{}!", x)] )
+        .bind(|x| vec![x.clone(), format!("{}?", x)] ),
         ["hi".to_string(),
          "hi?".to_string(),
          "hi!".to_string(),

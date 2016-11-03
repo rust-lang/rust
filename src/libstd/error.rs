@@ -69,7 +69,9 @@ pub trait Error: Debug + Display {
     /// It should not contain newlines or sentence-ending punctuation,
     /// to facilitate embedding in larger user-facing strings.
     /// For showing formatted error messages with more information see
-    /// [Display](https://doc.rust-lang.org/std/fmt/trait.Display.html).
+    /// [`Display`].
+    ///
+    /// [`Display`]: ../fmt/trait.Display.html
     ///
     /// # Examples
     ///

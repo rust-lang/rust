@@ -1,0 +1,13 @@
+error: `pointer` does not live long enough
+  --> $DIR/wf-method-late-bound-regions.rs:31:5
+   |
+30 |         f2.xmute(&pointer) //~ ERROR `pointer` does not live long enough
+   |                   ------- borrow occurs here
+31 |     };
+   |     ^ `pointer` dropped here while still borrowed
+32 |     println!("{}", dangling);
+33 | }
+   | - borrowed value needs to live until here
+
+error: aborting due to previous error
+

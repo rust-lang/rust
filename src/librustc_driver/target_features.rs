@@ -20,26 +20,11 @@ use libc::c_char;
 // detection code will walk past the end of the feature array,
 // leading to crashes.
 
-const ARM_WHITELIST: &'static [&'static str] = &[
-    "neon\0",
-    "vfp2\0",
-    "vfp3\0",
-    "vfp4\0",
-];
+const ARM_WHITELIST: &'static [&'static str] = &["neon\0", "vfp2\0", "vfp3\0", "vfp4\0"];
 
-const X86_WHITELIST: &'static [&'static str] = &[
-    "avx\0",
-    "avx2\0",
-    "bmi\0",
-    "bmi2\0",
-    "sse\0",
-    "sse2\0",
-    "sse3\0",
-    "sse4.1\0",
-    "sse4.2\0",
-    "ssse3\0",
-    "tbm\0",
-];
+const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bmi2\0", "sse\0",
+                                                 "sse2\0", "sse3\0", "sse4.1\0", "sse4.2\0",
+                                                 "ssse3\0", "tbm\0"];
 
 /// Add `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
@@ -59,7 +44,7 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
     for feat in whitelist {
         assert_eq!(feat.chars().last(), Some('\0'));
         if unsafe { LLVMRustHasFeature(target_machine, feat.as_ptr() as *const c_char) } {
-            cfg.push(attr::mk_name_value_item_str(tf.clone(), intern(&feat[..feat.len()-1])))
+            cfg.push(attr::mk_name_value_item_str(tf.clone(), intern(&feat[..feat.len() - 1])))
         }
     }
 }
