@@ -100,7 +100,7 @@ DEPS_serialize := std log
 DEPS_term := std
 DEPS_test := std getopts term native:rust_test_helpers
 
-DEPS_syntax := std term serialize log arena libc rustc_bitflags rustc_unicode rustc_errors syntax_pos
+DEPS_syntax := std term serialize log arena libc rustc_bitflags rustc_unicode rustc_errors syntax_pos rustc_data_structures
 DEPS_syntax_ext := syntax syntax_pos rustc_errors fmt_macros proc_macro
 DEPS_syntax_pos := serialize
 DEPS_proc_macro_tokens := syntax syntax_pos log

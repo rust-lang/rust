@@ -46,6 +46,7 @@ extern crate libc;
 
 pub mod array_vec;
 pub mod accumulate_vec;
+pub mod small_vec;
 pub mod bitslice;
 pub mod blake2b;
 pub mod bitvec;

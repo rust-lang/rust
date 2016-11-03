@@ -45,6 +45,7 @@ extern crate libc;
 extern crate rustc_unicode;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
+extern crate rustc_data_structures;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
