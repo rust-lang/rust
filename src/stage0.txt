@@ -13,5 +13,4 @@
 # released on `$date`
 
 rustc: 1.12.1-2016-10-20
-rustc_key: 5c6cf767
 cargo: nightly-2016-08-21

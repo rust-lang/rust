@@ -1131,8 +1131,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     Adt(adt_def, variant, substs, _) => {
                         let variant_def = &adt_def.variants[variant];
 
-                        ppaux::parameterized(fmt, substs, variant_def.did,
-                                             ppaux::Ns::Value, &[])?;
+                        ppaux::parameterized(fmt, substs, variant_def.did, &[])?;
 
                         match variant_def.kind {
                             ty::VariantKind::Unit => Ok(()),
@@ -1227,7 +1226,7 @@ impl<'tcx> Debug for Literal<'tcx> {
         use self::Literal::*;
         match *self {
             Item { def_id, substs } => {
-                ppaux::parameterized(fmt, substs, def_id, ppaux::Ns::Value, &[])
+                ppaux::parameterized(fmt, substs, def_id, &[])
             }
             Value { ref value } => {
                 write!(fmt, "const ")?;
