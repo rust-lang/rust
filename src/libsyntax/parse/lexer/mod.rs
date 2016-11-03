@@ -171,10 +171,10 @@ impl<'a> Reader for TtReader<'a> {
         self.fatal_errs.clear();
     }
     fn peek(&self) -> TokenAndSpan {
-        self.next_tok.clone().unwrap_or(TokenAndSpan {
+        TokenAndSpan {
             tok: self.cur_tok.clone(),
             sp: self.cur_span,
-        })
+        }
     }
 }
 

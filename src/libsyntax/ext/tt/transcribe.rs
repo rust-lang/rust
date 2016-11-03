@@ -44,7 +44,6 @@ pub struct TtReader<'a> {
     /* cached: */
     pub cur_tok: Token,
     pub cur_span: Span,
-    pub next_tok: Option<TokenAndSpan>,
     /// Transform doc comments. Only useful in macro invocations
     pub fatal_errs: Vec<DiagnosticBuilder<'a>>,
 }
@@ -77,7 +76,6 @@ pub fn new_tt_reader(sp_diag: &Handler,
         /* dummy values, never read: */
         cur_tok: token::Eof,
         cur_span: DUMMY_SP,
-        next_tok: None,
         fatal_errs: Vec::new(),
     };
     tt_next_token(&mut r); /* get cur_tok and cur_span set up */
@@ -156,9 +154,6 @@ fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
 /// Return the next token from the TtReader.
 /// EFFECT: advances the reader's token field
 pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
-    if let Some(tok) = r.next_tok.take() {
-        return tok;
-    }
     // FIXME(pcwalton): Bad copy?
     let ret_val = TokenAndSpan {
         tok: r.cur_tok.clone(),
