@@ -1555,7 +1555,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     /// convenience function to ensure correct usage of globals and code-sharing with locals
     pub fn modify_global<
-        F: FnOnce(&mut Self, Option<Value>) -> EvalResult<'tcx, Value>,
+        F: FnOnce(&mut Self, Option<Value>) -> EvalResult<'tcx, Option<Value>>,
     >(
         &mut self,
         cid: GlobalId<'tcx>,
@@ -1565,14 +1565,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         if !val.mutable {
             return Err(EvalError::ModifiedConstantMemory);
         }
-        val.data = Some(f(self, val.data)?);
+        val.data = f(self, val.data)?;
         *self.globals.get_mut(&cid).expect("already checked") = val;
         Ok(())
     }
 
     /// convenience function to ensure correct usage of locals and code-sharing with globals
     pub fn modify_local<
-        F: FnOnce(&mut Self, Option<Value>) -> EvalResult<'tcx, Value>,
+        F: FnOnce(&mut Self, Option<Value>) -> EvalResult<'tcx, Option<Value>>,
     >(
         &mut self,
         frame: usize,
@@ -1581,7 +1581,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, ()> {
         let val = self.stack[frame].get_local(local);
         let val = f(self, val)?;
-        self.stack[frame].set_local(local, val);
+        // can't use `set_local` here, because that's only meant for going to an initialized value
+        self.stack[frame].locals[local.index() - 1] = val;
         Ok(())
     }
 }

@@ -131,21 +131,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     match val {
                         Some(Value::ByRef(ptr)) => {
                             this.memory.write_repeat(ptr, 0, size)?;
-                            Ok(Value::ByRef(ptr))
+                            Ok(Some(Value::ByRef(ptr)))
                         },
                         None => match this.ty_to_primval_kind(dest_ty) {
-                            Ok(kind) => Ok(Value::ByVal(PrimVal::new(0, kind))),
+                            Ok(kind) => Ok(Some(Value::ByVal(PrimVal::new(0, kind)))),
                             Err(_) => {
                                 let ptr = this.alloc_ptr_with_substs(dest_ty, substs)?;
                                 this.memory.write_repeat(ptr, 0, size)?;
-                                Ok(Value::ByRef(ptr))
+                                Ok(Some(Value::ByRef(ptr)))
                             }
                         },
-                        Some(Value::ByVal(value)) => Ok(Value::ByVal(PrimVal::new(0, value.kind))),
-                        Some(Value::ByValPair(a, b)) => Ok(Value::ByValPair(
+                        Some(Value::ByVal(value)) => Ok(Some(Value::ByVal(PrimVal::new(0, value.kind)))),
+                        Some(Value::ByValPair(a, b)) => Ok(Some(Value::ByValPair(
                             PrimVal::new(0, a.kind),
                             PrimVal::new(0, b.kind),
-                        )),
+                        ))),
                     }
                 };
                 match dest {
@@ -271,12 +271,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "uninit" => {
-                // FIXME(solson): Attempt writing a None over the destination when it's an
-                // Lvalue::Local (that is not ByRef). Otherwise do the mark_definedness as usual.
-                let dest = self.force_allocation(dest)?.to_ptr();
-
                 let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
-                self.memory.mark_definedness(dest, size, false)?;
+                let uninit = |this: &mut Self, val: Option<Value>| {
+                    match val {
+                        Some(Value::ByRef(ptr)) => {
+                            this.memory.mark_definedness(ptr, size, false)?;
+                            Ok(Some(Value::ByRef(ptr)))
+                        },
+                        None => Ok(None),
+                        Some(_) => Ok(None),
+                    }
+                };
+                match dest {
+                    Lvalue::Local { frame, local } => self.modify_local(frame, local, uninit)?,
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::None } => self.memory.mark_definedness(ptr, size, false)?,
+                    Lvalue::Ptr { .. } => bug!("uninit intrinsic tried to write to fat ptr target"),
+                    Lvalue::Global(cid) => self.modify_global(cid, uninit)?,
+                }
             }
 
             name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),
