@@ -1552,6 +1552,38 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
         }
     }
+
+    /// convenience function to ensure correct usage of globals and code-sharing with locals
+    pub fn modify_global<
+        F: FnOnce(&mut Self, Option<Value>) -> EvalResult<'tcx, Value>,
+    >(
+        &mut self,
+        cid: GlobalId<'tcx>,
+        f: F,
+    ) -> EvalResult<'tcx, ()> {
+        let mut val = *self.globals.get(&cid).expect("global not cached");
+        if !val.mutable {
+            return Err(EvalError::ModifiedConstantMemory);
+        }
+        val.data = Some(f(self, val.data)?);
+        *self.globals.get_mut(&cid).expect("already checked") = val;
+        Ok(())
+    }
+
+    /// convenience function to ensure correct usage of locals and code-sharing with globals
+    pub fn modify_local<
+        F: FnOnce(&mut Self, Option<Value>) -> EvalResult<'tcx, Value>,
+    >(
+        &mut self,
+        frame: usize,
+        local: mir::Local,
+        f: F,
+    ) -> EvalResult<'tcx, ()> {
+        let val = self.stack[frame].get_local(local);
+        let val = f(self, val)?;
+        self.stack[frame].set_local(local, val);
+        Ok(())
+    }
 }
 
 impl<'tcx> Frame<'tcx> {

@@ -127,52 +127,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "init" => {
                 let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
-                match dest {
-                    Lvalue::Local { frame, local } => {
-                        match self.stack[frame].get_local(local) {
-                            Some(Value::ByRef(ptr)) => self.memory.write_repeat(ptr, 0, size)?,
-                            None => match self.ty_to_primval_kind(dest_ty) {
-                                Ok(kind) => self.stack[frame].set_local(local, Value::ByVal(PrimVal::new(0, kind))),
-                                Err(_) => {
-                                    let ptr = self.alloc_ptr_with_substs(dest_ty, substs)?;
-                                    self.memory.write_repeat(ptr, 0, size)?;
-                                    self.stack[frame].set_local(local, Value::ByRef(ptr));
-                                }
-                            },
-                            Some(Value::ByVal(val)) => self.stack[frame].set_local(local, Value::ByVal(PrimVal::new(0, val.kind))),
-                            Some(Value::ByValPair(a, b)) => self.stack[frame].set_local(local, Value::ByValPair(
-                                PrimVal::new(0, a.kind),
-                                PrimVal::new(0, b.kind),
-                            )),
-                        }
+                let init = |this: &mut Self, val: Option<Value>| {
+                    match val {
+                        Some(Value::ByRef(ptr)) => {
+                            this.memory.write_repeat(ptr, 0, size)?;
+                            Ok(Value::ByRef(ptr))
+                        },
+                        None => match this.ty_to_primval_kind(dest_ty) {
+                            Ok(kind) => Ok(Value::ByVal(PrimVal::new(0, kind))),
+                            Err(_) => {
+                                let ptr = this.alloc_ptr_with_substs(dest_ty, substs)?;
+                                this.memory.write_repeat(ptr, 0, size)?;
+                                Ok(Value::ByRef(ptr))
+                            }
+                        },
+                        Some(Value::ByVal(value)) => Ok(Value::ByVal(PrimVal::new(0, value.kind))),
+                        Some(Value::ByValPair(a, b)) => Ok(Value::ByValPair(
+                            PrimVal::new(0, a.kind),
+                            PrimVal::new(0, b.kind),
+                        )),
                     }
+                };
+                match dest {
+                    Lvalue::Local { frame, local } => self.modify_local(frame, local, init)?,
                     Lvalue::Ptr { ptr, extra: LvalueExtra::None } => self.memory.write_repeat(ptr, 0, size)?,
                     Lvalue::Ptr { .. } => bug!("init intrinsic tried to write to fat ptr target"),
-                    Lvalue::Global(cid) => {
-                        let global_val = *self.globals.get(&cid).expect("global not cached");
-                        if !global_val.mutable {
-                            return Err(EvalError::ModifiedConstantMemory);
-                        }
-                        match global_val.data {
-                            Some(Value::ByRef(ptr)) => self.memory.write_repeat(ptr, 0, size)?,
-                            None => match self.ty_to_primval_kind(dest_ty) {
-                                Ok(kind) => self.globals
-                                                .get_mut(&cid)
-                                                .expect("already checked")
-                                                .data = Some(Value::ByVal(PrimVal::new(0, kind))),
-                                Err(_) => {
-                                    let ptr = self.alloc_ptr_with_substs(dest_ty, substs)?;
-                                    self.memory.write_repeat(ptr, 0, size)?;
-                                    self.globals.get_mut(&cid).expect("already checked").data = Some(Value::ByRef(ptr));
-                                },
-                            },
-                            Some(Value::ByVal(val)) => self.globals.get_mut(&cid).expect("already checked").data = Some(Value::ByVal(PrimVal::new(0, val.kind))),
-                            Some(Value::ByValPair(a, b)) => self.globals.get_mut(&cid).expect("already checked").data = Some(Value::ByValPair(
-                                PrimVal::new(0, a.kind),
-                                PrimVal::new(0, b.kind),
-                            )),
-                        }
-                    }
+                    Lvalue::Global(cid) => self.modify_global(cid, init)?,
                 }
             }
 
