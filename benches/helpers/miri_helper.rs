@@ -6,7 +6,6 @@ extern crate test;
 
 use self::miri::{eval_main, run_mir_passes};
 use self::rustc::session::Session;
-use self::rustc::mir::mir_map::MirMap;
 use self::rustc_driver::{driver, CompilerCalls, Compilation};
 use std::cell::RefCell;
 use std::rc::Rc;

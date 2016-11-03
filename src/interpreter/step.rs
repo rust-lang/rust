@@ -3,21 +3,21 @@
 //! The main entry point is the `step` method.
 
 use super::{
-    CachedMir,
     GlobalId,
     EvalContext,
     Lvalue,
     StackPopCleanup,
     Global,
+    MirRef,
 };
 use error::EvalResult;
-use rustc::mir::repr as mir;
+use rustc::mir;
 use rustc::ty::{subst, self};
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::mir::visit::{Visitor, LvalueContext};
+use std::cell::Ref;
 use syntax::codemap::Span;
-use std::rc::Rc;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     /// Returns true as long as there are more things to do.
@@ -38,7 +38,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 substs: self.substs(),
                 def_id: self.frame().def_id,
                 ecx: self,
-                mir: &mir,
+                mir: Ref::clone(&mir),
                 new_constants: &mut new,
             }.visit_statement(block, stmt, mir::Location {
                 block: block,
@@ -59,7 +59,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             substs: self.substs(),
             def_id: self.frame().def_id,
             ecx: self,
-            mir: &mir,
+            mir: Ref::clone(&mir),
             new_constants: &mut new,
         }.visit_terminator(block, terminator, mir::Location {
             block: block,
@@ -76,7 +76,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<'tcx, ()> {
         trace!("{:?}", stmt);
 
-        use rustc::mir::repr::StatementKind::*;
+        use rustc::mir::StatementKind::*;
         match stmt.kind {
             Assign(ref lvalue, ref rvalue) => self.eval_rvalue_into_lvalue(rvalue, lvalue)?,
             SetDiscriminant { .. } => unimplemented!(),
@@ -110,7 +110,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
     span: Span,
     ecx: &'a mut EvalContext<'b, 'tcx>,
-    mir: &'a mir::Mir<'tcx>,
+    mir: MirRef<'tcx>,
     def_id: DefId,
     substs: &'tcx subst::Substs<'tcx>,
     new_constants: &'a mut EvalResult<'tcx, u64>,
@@ -165,7 +165,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 }
             },
             mir::Literal::Promoted { index } => {
-                let mir = self.mir.promoted[index].clone();
                 let cid = GlobalId {
                     def_id: self.def_id,
                     substs: self.substs,
@@ -174,8 +173,9 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 if self.ecx.globals.contains_key(&cid) {
                     return;
                 }
+                let mir = Ref::clone(&self.mir);
+                let mir = Ref::map(mir, |mir| &mir.promoted[index]);
                 self.try(|this| {
-                    let mir = CachedMir::Owned(Rc::new(mir));
                     let ty = this.ecx.monomorphize(mir.return_ty, this.substs);
                     this.ecx.globals.insert(cid, Global::uninitialized(ty));
                     this.ecx.push_stack_frame(this.def_id,

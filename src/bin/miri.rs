@@ -11,7 +11,6 @@ extern crate syntax;
 
 use miri::{eval_main, run_mir_passes};
 use rustc::session::Session;
-use rustc::mir::mir_map::MirMap;
 use rustc_driver::{driver, CompilerCalls, Compilation};
 use syntax::ast::{MetaItemKind, NestedMetaItemKind};
 
@@ -32,7 +31,6 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
             state.session.abort_if_errors();
 
             let tcx = state.tcx.unwrap();
-            let mir_map = state.mir_map.unwrap();
             let (entry_node_id, _) = state.session.entry_fn.borrow()
                 .expect("no main or start function found");
             let entry_def_id = tcx.map.local_def_id(entry_node_id);
@@ -70,12 +68,8 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
                 }
             }
 
-            let mut mir_map_copy = MirMap::new(tcx.dep_graph.clone());
-            for def_id in mir_map.map.keys() {
-                mir_map_copy.map.insert(def_id, mir_map.map.get(&def_id).unwrap().clone());
-            }
-            run_mir_passes(tcx, &mut mir_map_copy);
-            eval_main(tcx, &mir_map_copy, entry_def_id, memory_size, step_limit, stack_limit);
+            run_mir_passes(tcx);
+            eval_main(tcx, entry_def_id, memory_size, step_limit, stack_limit);
 
             state.session.abort_if_errors();
         });
