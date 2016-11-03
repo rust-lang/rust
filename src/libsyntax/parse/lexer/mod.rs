@@ -22,7 +22,7 @@ use std::char;
 use std::mem::replace;
 use std::rc::Rc;
 
-pub use ext::tt::transcribe::{TtReader, new_tt_reader, new_tt_reader_with_doc_flag};
+pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
 pub mod comments;
 mod unicode_chars;

@@ -12,9 +12,7 @@ use self::LockstepIterSize::*;
 use ast::Ident;
 use errors::{Handler, DiagnosticBuilder};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
-use parse::token::{DocComment, MatchNt, SubstNt};
-use parse::token::{Token, NtIdent};
-use parse::token;
+use parse::token::{self, MatchNt, SubstNt, Token, NtIdent};
 use parse::lexer::TokenAndSpan;
 use syntax_pos::{Span, DUMMY_SP};
 use tokenstream::{self, TokenTree};
@@ -48,7 +46,6 @@ pub struct TtReader<'a> {
     pub cur_span: Span,
     pub next_tok: Option<TokenAndSpan>,
     /// Transform doc comments. Only useful in macro invocations
-    pub desugar_doc_comments: bool,
     pub fatal_errs: Vec<DiagnosticBuilder<'a>>,
 }
 
@@ -59,20 +56,6 @@ pub fn new_tt_reader(sp_diag: &Handler,
                      interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
                      src: Vec<tokenstream::TokenTree>)
                      -> TtReader {
-    new_tt_reader_with_doc_flag(sp_diag, interp, src, false)
-}
-
-/// The extra `desugar_doc_comments` flag enables reading doc comments
-/// like any other attribute which consists of `meta` and surrounding #[ ] tokens.
-///
-/// This can do Macro-By-Example transcription. On the other hand, if
-/// `src` contains no `TokenTree::Sequence`s, `MatchNt`s or `SubstNt`s, `interp` can
-/// (and should) be None.
-pub fn new_tt_reader_with_doc_flag(sp_diag: &Handler,
-                                   interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
-                                   src: Vec<tokenstream::TokenTree>,
-                                   desugar_doc_comments: bool)
-                                   -> TtReader {
     let mut r = TtReader {
         sp_diag: sp_diag,
         stack: SmallVector::one(TtFrame {
@@ -91,7 +74,6 @@ pub fn new_tt_reader_with_doc_flag(sp_diag: &Handler,
         },
         repeat_idx: Vec::new(),
         repeat_len: Vec::new(),
-        desugar_doc_comments: desugar_doc_comments,
         /* dummy values, never read: */
         cur_tok: token::Eof,
         cur_span: DUMMY_SP,
@@ -311,14 +293,6 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                    sep: None
                 });
                 // if this could be 0-length, we'd need to potentially recur here
-            }
-            TokenTree::Token(sp, DocComment(name)) if r.desugar_doc_comments => {
-                r.stack.push(TtFrame {
-                   forest: TokenTree::Token(sp, DocComment(name)),
-                   idx: 0,
-                   dotdotdoted: false,
-                   sep: None
-                });
             }
             TokenTree::Token(sp, tok) => {
                 r.cur_span = sp;

@@ -211,6 +211,7 @@ pub struct Parser<'a> {
     pub root_module_name: Option<String>,
     pub expected_tokens: Vec<TokenType>,
     pub tts: Vec<(TokenTree, usize)>,
+    pub desugar_doc_comments: bool,
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -275,6 +276,11 @@ impl From<P<Expr>> for LhsExpr {
 
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess, rdr: Box<Reader+'a>) -> Self {
+        Parser::new_with_doc_flag(sess, rdr, false)
+    }
+
+    pub fn new_with_doc_flag(sess: &'a ParseSess, rdr: Box<Reader+'a>, desugar_doc_comments: bool)
+                             -> Self {
         let mut parser = Parser {
             reader: rdr,
             sess: sess,
@@ -294,6 +300,7 @@ impl<'a> Parser<'a> {
             root_module_name: None,
             expected_tokens: Vec::new(),
             tts: Vec::new(),
+            desugar_doc_comments: desugar_doc_comments,
         };
 
         let tok = parser.next_tok();
@@ -326,6 +333,10 @@ impl<'a> Parser<'a> {
             loop {
                 let nt = match tok.tok {
                     token::Interpolated(ref nt) => nt.clone(),
+                    token::DocComment(name) if self.desugar_doc_comments => {
+                        self.tts.push((TokenTree::Token(tok.sp, token::DocComment(name)), 0));
+                        continue 'outer
+                    }
                     _ => return tok,
                 };
                 match *nt {
