@@ -244,17 +244,10 @@ fn write_scope_tree(tcx: TyCtxt,
                 continue;
             };
 
-            let mut_str = if var.mutability == Mutability::Mut {
-                "mut "
-            } else {
-                ""
-            };
-
             let indent = indent + INDENT.len();
-            let indented_var = format!("{0:1$}let {2}{3:?}: {4};",
+            let indented_var = format!("{0:1$}let {2:?}: {3};",
                                        INDENT,
                                        indent,
-                                       mut_str,
                                        local,
                                        var.ty);
             writeln!(w, "{0:1$} // \"{2}\" in {3}",

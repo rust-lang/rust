@@ -621,7 +621,6 @@ macro_rules! make_mir_visitor {
             fn super_local_decl(&mut self,
                                 local_decl: & $($mutability)* LocalDecl<'tcx>) {
                 let LocalDecl {
-                    mutability: _,
                     ref $($mutability)* ty,
                     name: _,
                     ref $($mutability)* source_info,

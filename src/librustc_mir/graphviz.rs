@@ -148,10 +148,6 @@ fn write_graph_label<'a, 'tcx, W: Write>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let decl = &mir.local_decls[local];
 
         write!(w, "let ")?;
-        if decl.mutability == Mutability::Mut {
-            write!(w, "mut ")?;
-        }
-
         if let Some(name) = decl.name {
             write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
                    Lvalue::Local(local), escape(&decl.ty), name)?;

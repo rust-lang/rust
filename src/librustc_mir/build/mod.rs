@@ -327,7 +327,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             self.local_decls.push(LocalDecl {
-                mutability: Mutability::Not,
                 ty: ty,
                 source_info: None,
                 name: name,

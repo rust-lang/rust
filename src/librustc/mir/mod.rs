@@ -175,18 +175,12 @@ impl<'tcx> Mir<'tcx> {
     pub fn local_kind(&self, local: Local) -> LocalKind {
         let index = local.0 as usize;
         if index == 0 {
-            debug_assert!(self.local_decls[local].mutability == Mutability::Mut,
-                          "return pointer should be mutable");
-
             LocalKind::ReturnPointer
         } else if index < self.arg_count + 1 {
             LocalKind::Arg
         } else if self.local_decls[local].name.is_some() {
             LocalKind::Var
         } else {
-            debug_assert!(self.local_decls[local].mutability == Mutability::Mut,
-                          "temp should be mutable");
-
             LocalKind::Temp
         }
     }
@@ -351,11 +345,6 @@ pub enum LocalKind {
 /// argument, or the return pointer.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct LocalDecl<'tcx> {
-    /// `let mut x` vs `let x`.
-    ///
-    /// Temporaries and the return pointer are always mutable.
-    pub mutability: Mutability,
-
     /// Type of this local.
     pub ty: Ty<'tcx>,
 
@@ -379,7 +368,6 @@ impl<'tcx> LocalDecl<'tcx> {
     #[inline]
     pub fn new_temp(ty: Ty<'tcx>) -> Self {
         LocalDecl {
-            mutability: Mutability::Mut,
             ty: ty,
             name: None,
             source_info: None,
@@ -392,7 +380,6 @@ impl<'tcx> LocalDecl<'tcx> {
     #[inline]
     pub fn new_return_pointer(return_ty: Ty) -> LocalDecl {
         LocalDecl {
-            mutability: Mutability::Mut,
             ty: return_ty,
             source_info: None,
             name: None,     // FIXME maybe we do want some name here?

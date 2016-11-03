@@ -174,7 +174,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             pattern: &Pattern<'tcx>)
                             -> Option<VisibilityScope> {
         match *pattern.kind {
-            PatternKind::Binding { mutability, name, mode: _, var, ty, ref subpattern } => {
+            PatternKind::Binding { mutability: _, name, mode: _, var, ty, ref subpattern } => {
                 if var_scope.is_none() {
                     var_scope = Some(self.new_visibility_scope(scope_span));
                 }
@@ -182,7 +182,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     span: pattern.span,
                     scope: var_scope.unwrap()
                 };
-                self.declare_binding(source_info, mutability, name, var, ty);
+                self.declare_binding(source_info, name, var, ty);
                 if let Some(subpattern) = subpattern.as_ref() {
                     var_scope = self.declare_bindings(var_scope, scope_span, subpattern);
                 }
@@ -714,7 +714,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn declare_binding(&mut self,
                        source_info: SourceInfo,
-                       mutability: Mutability,
                        name: Name,
                        var_id: NodeId,
                        var_ty: Ty<'tcx>)
@@ -724,7 +723,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                var_id, name, var_ty, source_info);
 
         let var = self.local_decls.push(LocalDecl::<'tcx> {
-            mutability: mutability,
             ty: var_ty.clone(),
             name: Some(name),
             source_info: Some(source_info),
