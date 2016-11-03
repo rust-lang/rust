@@ -1325,11 +1325,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         PrimValKind::from_uint_size(size)
                     }
                 } else {
-                    bug!("primitive read of non-clike enum: {:?}", ty);
+                    return Err(EvalError::TypeNotPrimitive(ty));
                 }
             },
 
-            _ => bug!("primitive read of non-primitive type: {:?}", ty),
+            _ => return Err(EvalError::TypeNotPrimitive(ty)),
         };
 
         Ok(kind)

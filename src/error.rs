@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt;
 use rustc::mir;
-use rustc::ty::BareFnTy;
+use rustc::ty::{BareFnTy, Ty};
 use memory::Pointer;
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
@@ -46,6 +46,7 @@ pub enum EvalError<'tcx> {
     ModifiedConstantMemory,
     AssumptionNotHeld,
     InlineAsm,
+    TypeNotPrimitive(Ty<'tcx>),
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -106,6 +107,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "`assume` argument was false",
             EvalError::InlineAsm =>
                 "cannot evaluate inline assembly",
+            EvalError::TypeNotPrimitive(_) =>
+                "expected primitive type, got nonprimitive",
         }
     }
 
@@ -134,6 +137,8 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
             EvalError::AlignmentCheckFailed { required, has } =>
                write!(f, "tried to access memory with alignment {}, but alignment {} is required",
                       has, required),
+            EvalError::TypeNotPrimitive(ref ty) =>
+                write!(f, "expected primitive type, got {}", ty),
             _ => write!(f, "{}", self.description()),
         }
     }
