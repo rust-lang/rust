@@ -490,15 +490,34 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match ty.sty {
             ty::TyAdt(adt_def, substs) => {
                 // FIXME: some structs are represented as ByValPair
-                let ptr = self.force_allocation(lval)?.to_ptr();
-                if adt_def.is_univariant() {
-                    for (i, field_ty) in adt_def.struct_variant().fields.iter().enumerate() {
-                        let field_ty = self.monomorphize_field_ty(field_ty, substs);
-                        let offset = self.get_field_offset(ty, i)?.bytes() as isize;
-                        self.drop(Lvalue::from_ptr(ptr.offset(offset)), field_ty)?;
-                    }
-                } else {
-                    unimplemented!()
+                let adt_ptr = self.force_allocation(lval)?.to_ptr();
+                let layout = self.type_layout(ty);
+                let fields = match *layout {
+                    Layout::Univariant { ref variant, .. } => {
+                        adt_def.struct_variant().fields.iter().zip(&variant.offsets)
+                    },
+                    Layout::General { ref variants, .. } => {
+                        let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
+                        match adt_def.variants.iter().position(|v| discr_val == v.disr_val.to_u64_unchecked()) {
+                            // start at offset 1, to skip over the discriminant
+                            Some(i) => adt_def.variants[i].fields.iter().zip(&variants[i].offsets[1..]),
+                            None => return Err(EvalError::InvalidDiscriminant),
+                        }
+                    },
+                    Layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
+                        let discr = self.read_discriminant_value(adt_ptr, ty)?;
+                        if discr == nndiscr {
+                            adt_def.variants[discr as usize].fields.iter().zip(&nonnull.offsets)
+                        } else {
+                            // FIXME: the zst variant might contain zst types that impl Drop
+                            return Ok(()); // nothing to do, this is zero sized (e.g. `None`)
+                        }
+                    },
+                    _ => bug!("{:?} is not an adt layout", layout),
+                };
+                for (field_ty, offset) in fields {
+                    let field_ty = self.monomorphize_field_ty(field_ty, substs);
+                    self.drop(Lvalue::from_ptr(adt_ptr.offset(offset.bytes() as isize)), field_ty)?;
                 }
             },
             ty::TyTuple(fields) => {
