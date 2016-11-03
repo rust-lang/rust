@@ -253,7 +253,7 @@ impl<'test> TestCx<'test> {
 
         let mut src = String::new();
         File::open(&self.testpaths.file).unwrap().read_to_string(&mut src).unwrap();
-        let mut srcs = vec!(src);
+        let mut srcs = vec![src];
 
         let mut round = 0;
         while round < rounds {
@@ -335,13 +335,13 @@ impl<'test> TestCx<'test> {
                     -> ProcArgs {
         let aux_dir = self.aux_output_dir_name();
         // FIXME (#9639): This needs to handle non-utf8 paths
-        let mut args = vec!("-".to_owned(),
+        let mut args = vec!["-".to_owned(),
                             "-Zunstable-options".to_owned(),
                             "--unpretty".to_owned(),
                             pretty_type,
                             format!("--target={}", self.config.target),
                             "-L".to_owned(),
-                            aux_dir.to_str().unwrap().to_owned());
+                            aux_dir.to_str().unwrap().to_owned()];
         args.extend(self.split_maybe_args(&self.config.target_rustcflags));
         args.extend(self.props.compile_flags.iter().cloned());
         return ProcArgs {
@@ -388,7 +388,7 @@ actual:\n\
         self.create_dir_racy(&out_dir);
 
         // FIXME (#9639): This needs to handle non-utf8 paths
-        let mut args = vec!("-".to_owned(),
+        let mut args = vec!["-".to_owned(),
                             "-Zno-trans".to_owned(),
                             "--out-dir".to_owned(),
                             out_dir.to_str().unwrap().to_owned(),
@@ -396,7 +396,7 @@ actual:\n\
                             "-L".to_owned(),
                             self.config.build_base.to_str().unwrap().to_owned(),
                             "-L".to_owned(),
-                            aux_dir.to_str().unwrap().to_owned());
+                            aux_dir.to_str().unwrap().to_owned()];
         if let Some(revision) = self.revision {
             args.extend(vec![
                 format!("--cfg"),
@@ -487,7 +487,7 @@ actual:\n\
                                  exe_file.to_str().unwrap().to_owned(),
                                  self.config.adb_test_dir.clone()
                              ],
-                             vec!(("".to_owned(), "".to_owned())),
+                             vec![("".to_owned(), "".to_owned())],
                              Some("".to_owned()))
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
 
@@ -499,7 +499,7 @@ actual:\n\
                                  "tcp:5039".to_owned(),
                                  "tcp:5039".to_owned()
                              ],
-                             vec!(("".to_owned(), "".to_owned())),
+                             vec![("".to_owned(), "".to_owned())],
                              Some("".to_owned()))
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
 
@@ -520,8 +520,8 @@ actual:\n\
                                                               "shell".to_owned(),
                                                               adb_arg.clone()
                                                           ],
-                                                          vec!(("".to_owned(),
-                                                                "".to_owned())),
+                                                          vec![("".to_owned(),
+                                                                "".to_owned())],
                                                           Some("".to_owned()))
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
                 loop {
@@ -535,10 +535,10 @@ actual:\n\
                 let debugger_script = self.make_out_name("debugger.script");
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 let debugger_opts =
-                    vec!("-quiet".to_owned(),
+                    vec!["-quiet".to_owned(),
                          "-batch".to_owned(),
                          "-nx".to_owned(),
-                         format!("-command={}", debugger_script.to_str().unwrap()));
+                         format!("-command={}", debugger_script.to_str().unwrap())];
 
                 let mut gdb_path = tool_path;
                 gdb_path.push_str(&format!("/bin/{}-gdb", self.config.target));
@@ -550,7 +550,7 @@ actual:\n\
                                  &gdb_path,
                                  None,
                                  &debugger_opts,
-                                 vec!(("".to_owned(), "".to_owned())),
+                                 vec![("".to_owned(), "".to_owned())],
                                  None)
                     .expect(&format!("failed to exec `{:?}`", gdb_path));
                 let cmdline = {
@@ -642,10 +642,10 @@ actual:\n\
 
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 let debugger_opts =
-                    vec!("-quiet".to_owned(),
+                    vec!["-quiet".to_owned(),
                          "-batch".to_owned(),
                          "-nx".to_owned(),
-                         format!("-command={}", debugger_script.to_str().unwrap()));
+                         format!("-command={}", debugger_script.to_str().unwrap())];
 
                 let proc_args = ProcArgs {
                     prog: debugger().to_owned(),
@@ -830,9 +830,9 @@ actual:\n\
         let command_directive = format!("{}-command", debugger_prefix);
         let check_directive = format!("{}-check", debugger_prefix);
 
-        let mut breakpoint_lines = vec!();
-        let mut commands = vec!();
-        let mut check_lines = vec!();
+        let mut breakpoint_lines = vec![];
+        let mut commands = vec![];
+        let mut check_lines = vec![];
         let mut counter = 1;
         let reader = BufReader::new(File::open(&self.testpaths.file).unwrap());
         for line in reader.lines() {
@@ -1120,8 +1120,8 @@ actual:\n\
     fn compile_test(&self) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
         // FIXME (#9639): This needs to handle non-utf8 paths
-        let link_args = vec!("-L".to_owned(),
-                             aux_dir.to_str().unwrap().to_owned());
+        let link_args = vec!["-L".to_owned(),
+                             aux_dir.to_str().unwrap().to_owned()];
         let args = self.make_compile_args(link_args,
                                           &self.testpaths.file,
                                           TargetLocation::ThisFile(self.make_exe_name()));
@@ -1231,9 +1231,9 @@ actual:\n\
                 if (self.config.target.contains("musl") && !aux_props.force_host) ||
                     self.config.target.contains("emscripten")
                 {
-                    vec!("--crate-type=lib".to_owned())
+                    vec!["--crate-type=lib".to_owned()]
                 } else {
-                    vec!("--crate-type=dylib".to_owned())
+                    vec!["--crate-type=dylib".to_owned()]
                 }
             };
             crate_type.extend(extra_link_args.clone());
@@ -1315,10 +1315,10 @@ actual:\n\
         };
 
         // FIXME (#9639): This needs to handle non-utf8 paths
-        let mut args = vec!(input_file.to_str().unwrap().to_owned(),
+        let mut args = vec![input_file.to_str().unwrap().to_owned(),
                             "-L".to_owned(),
                             self.config.build_base.to_str().unwrap().to_owned(),
-                            format!("--target={}", target));
+                            format!("--target={}", target)];
 
         if let Some(revision) = self.revision {
             args.extend(vec![
@@ -1613,7 +1613,7 @@ actual:\n\
                                            args.prog.clone(),
                                            self.config.adb_test_dir.clone()
                                        ],
-                                       vec!(("".to_owned(), "".to_owned())),
+                                       vec![("".to_owned(), "".to_owned())],
                                        Some("".to_owned()))
             .expect(&format!("failed to exec `{}`", self.config.adb_path));
 
@@ -1645,7 +1645,7 @@ actual:\n\
                      &self.config.adb_path,
                      None,
                      &runargs,
-                     vec!(("".to_owned(), "".to_owned())), Some("".to_owned()))
+                     vec![("".to_owned(), "".to_owned())], Some("".to_owned()))
             .expect(&format!("failed to exec `{}`", self.config.adb_path));
 
         // get exitcode of result
@@ -1659,7 +1659,7 @@ actual:\n\
                          &self.config.adb_path,
                          None,
                          &runargs,
-                         vec!(("".to_owned(), "".to_owned())),
+                         vec![("".to_owned(), "".to_owned())],
                          Some("".to_owned()))
             .expect(&format!("failed to exec `{}`", self.config.adb_path));
 
@@ -1683,7 +1683,7 @@ actual:\n\
                          &self.config.adb_path,
                          None,
                          &runargs,
-                         vec!(("".to_owned(), "".to_owned())),
+                         vec![("".to_owned(), "".to_owned())],
                          Some("".to_owned()))
             .expect(&format!("failed to exec `{}`", self.config.adb_path));
 
@@ -1698,7 +1698,7 @@ actual:\n\
                          &self.config.adb_path,
                          None,
                          &runargs,
-                         vec!(("".to_owned(), "".to_owned())),
+                         vec![("".to_owned(), "".to_owned())],
                          Some("".to_owned()))
             .expect(&format!("failed to exec `{}`", self.config.adb_path));
 
@@ -1730,8 +1730,8 @@ actual:\n\
                                                        .to_owned(),
                                                    self.config.adb_test_dir.to_owned(),
                                                ],
-                                               vec!(("".to_owned(),
-                                                     "".to_owned())),
+                                               vec![("".to_owned(),
+                                                     "".to_owned())],
                                                Some("".to_owned()))
                     .expect(&format!("failed to exec `{}`", self.config.adb_path));
 
@@ -1749,9 +1749,9 @@ actual:\n\
     fn compile_test_and_save_ir(&self) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
         // FIXME (#9639): This needs to handle non-utf8 paths
-        let mut link_args = vec!("-L".to_owned(),
-                                 aux_dir.to_str().unwrap().to_owned());
-        let llvm_args = vec!("--emit=llvm-ir".to_owned(),);
+        let mut link_args = vec!["-L".to_owned(),
+                                 aux_dir.to_str().unwrap().to_owned()];
+        let llvm_args = vec!["--emit=llvm-ir".to_owned(),];
         link_args.extend(llvm_args);
         let args = self.make_compile_args(link_args,
                                           &self.testpaths.file,
@@ -1768,8 +1768,8 @@ actual:\n\
         let proc_args = ProcArgs {
             // FIXME (#9639): This needs to handle non-utf8 paths
             prog: prog.to_str().unwrap().to_owned(),
-            args: vec!(format!("-input-file={}", irfile.to_str().unwrap()),
-                       self.testpaths.file.to_str().unwrap().to_owned())
+            args: vec![format!("-input-file={}", irfile.to_str().unwrap()),
+                       self.testpaths.file.to_str().unwrap().to_owned()]
         };
         self.compose_and_run(proc_args, Vec::new(), "", None, None)
     }

@@ -16,7 +16,7 @@ fn test_simple() {
 }
 
 fn test_box() {
-    let r = match true { true => { vec!(10) } false => { panic!() } };
+    let r = match true { true => { vec![10] } false => { panic!() } };
     assert_eq!(r[0], 10);
 }
 

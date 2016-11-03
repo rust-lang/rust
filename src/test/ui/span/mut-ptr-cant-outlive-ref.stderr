@@ -1,0 +1,12 @@
+error: `b` does not live long enough
+  --> $DIR/mut-ptr-cant-outlive-ref.rs:19:5
+   |
+18 |         p = &*b; //~ ERROR `b` does not live long enough
+   |               - borrow occurs here
+19 |     }
+   |     ^ `b` dropped here while still borrowed
+20 | }
+   | - borrowed value needs to live until here
+
+error: aborting due to previous error
+

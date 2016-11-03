@@ -21,5 +21,5 @@ fn has_mut_vec(v: Vec<isize> ) -> isize {
 }
 
 pub fn main() {
-    assert_eq!(has_mut_vec(vec!(1, 2, 3)), 6);
+    assert_eq!(has_mut_vec(vec![1, 2, 3]), 6);
 }

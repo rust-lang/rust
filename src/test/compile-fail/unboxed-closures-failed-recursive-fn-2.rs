@@ -16,7 +16,7 @@
 
 fn a() {
     let mut closure0 = None;
-    let vec = vec!(1, 2, 3);
+    let vec = vec![1, 2, 3];
 
     loop {
         {

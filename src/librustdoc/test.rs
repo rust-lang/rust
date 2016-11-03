@@ -66,7 +66,7 @@ pub fn run(input: &str,
         maybe_sysroot: Some(env::current_exe().unwrap().parent().unwrap()
                                               .parent().unwrap().to_path_buf()),
         search_paths: libs.clone(),
-        crate_types: vec!(config::CrateTypeDylib),
+        crate_types: vec![config::CrateTypeDylib],
         externs: externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),
         ..config::basic_options().clone()
@@ -185,7 +185,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         maybe_sysroot: Some(env::current_exe().unwrap().parent().unwrap()
                                               .parent().unwrap().to_path_buf()),
         search_paths: libs,
-        crate_types: vec!(config::CrateTypeExecutable),
+        crate_types: vec![config::CrateTypeExecutable],
         output_types: outputs,
         externs: externs,
         cg: config::CodegenOptions {

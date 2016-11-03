@@ -1,0 +1,24 @@
+error: `a` does not live long enough
+  --> $DIR/range-2.rs:20:5
+   |
+17 |         &a..&b
+   |          - borrow occurs here
+...
+20 |     };
+   |     ^ `a` dropped here while still borrowed
+21 | }
+   | - borrowed value needs to live until here
+
+error: `b` does not live long enough
+  --> $DIR/range-2.rs:20:5
+   |
+17 |         &a..&b
+   |              - borrow occurs here
+...
+20 |     };
+   |     ^ `b` dropped here while still borrowed
+21 | }
+   | - borrowed value needs to live until here
+
+error: aborting due to 2 previous errors
+

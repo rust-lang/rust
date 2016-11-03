@@ -61,7 +61,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Default per-arch clobbers
     // Basically what clang does
     let arch_clobbers = match &bcx.sess().target.target.arch[..] {
-        "x86" | "x86_64" => vec!("~{dirflag}", "~{fpsr}", "~{flags}"),
+        "x86" | "x86_64" => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
         _                => Vec::new()
     };
 

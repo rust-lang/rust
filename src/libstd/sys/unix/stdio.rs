@@ -67,3 +67,4 @@ impl io::Write for Stderr {
 }
 
 pub const EBADF_ERR: i32 = ::libc::EBADF as i32;
+pub const STDIN_BUF_SIZE: usize = ::sys_common::io::DEFAULT_BUF_SIZE;

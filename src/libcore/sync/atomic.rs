@@ -166,6 +166,10 @@ pub enum Ordering {
     /// sequentially consistent operations in the same order.
     #[stable(feature = "rust1", since = "1.0.0")]
     SeqCst,
+    // Prevent exhaustive matching to allow for future extension
+    #[doc(hidden)]
+    #[unstable(feature = "future_atomic_orderings", issue = "0")]
+    __Nonexhaustive,
 }
 
 /// An `AtomicBool` initialized to `false`.
@@ -1277,6 +1281,7 @@ fn strongest_failure_ordering(order: Ordering) -> Ordering {
         SeqCst => SeqCst,
         Acquire => Acquire,
         AcqRel => Acquire,
+        __Nonexhaustive => __Nonexhaustive,
     }
 }
 
@@ -1288,6 +1293,7 @@ unsafe fn atomic_store<T>(dst: *mut T, val: T, order: Ordering) {
         SeqCst => intrinsics::atomic_store(dst, val),
         Acquire => panic!("there is no such thing as an acquire store"),
         AcqRel => panic!("there is no such thing as an acquire/release store"),
+        __Nonexhaustive => panic!("invalid memory ordering"),
     }
 }
 
@@ -1299,6 +1305,7 @@ unsafe fn atomic_load<T>(dst: *const T, order: Ordering) -> T {
         SeqCst => intrinsics::atomic_load(dst),
         Release => panic!("there is no such thing as a release load"),
         AcqRel => panic!("there is no such thing as an acquire/release load"),
+        __Nonexhaustive => panic!("invalid memory ordering"),
     }
 }
 
@@ -1310,6 +1317,7 @@ unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
         AcqRel => intrinsics::atomic_xchg_acqrel(dst, val),
         Relaxed => intrinsics::atomic_xchg_relaxed(dst, val),
         SeqCst => intrinsics::atomic_xchg(dst, val),
+        __Nonexhaustive => panic!("invalid memory ordering"),
     }
 }
 
@@ -1322,6 +1330,7 @@ unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
         AcqRel => intrinsics::atomic_xadd_acqrel(dst, val),
         Relaxed => intrinsics::atomic_xadd_relaxed(dst, val),
         SeqCst => intrinsics::atomic_xadd(dst, val),
+        __Nonexhaustive => panic!("invalid memory ordering"),
     }
 }
 
@@ -1334,6 +1343,7 @@ unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
         AcqRel => intrinsics::atomic_xsub_acqrel(dst, val),
         Relaxed => intrinsics::atomic_xsub_relaxed(dst, val),
         SeqCst => intrinsics::atomic_xsub(dst, val),
+        __Nonexhaustive => panic!("invalid memory ordering"),
     }
 }
 
@@ -1354,6 +1364,8 @@ unsafe fn atomic_compare_exchange<T>(dst: *mut T,
         (AcqRel, Relaxed) => intrinsics::atomic_cxchg_acqrel_failrelaxed(dst, old, new),
         (SeqCst, Relaxed) => intrinsics::atomic_cxchg_failrelaxed(dst, old, new),
         (SeqCst, Acquire) => intrinsics::atomic_cxchg_failacq(dst, old, new),
+        (__Nonexhaustive, _) => panic!("invalid memory ordering"),
+        (_, __Nonexhaustive) => panic!("invalid memory ordering"),
         (_, AcqRel) => panic!("there is no such thing as an acquire/release failure ordering"),
         (_, Release) => panic!("there is no such thing as a release failure ordering"),
         _ => panic!("a failure ordering can't be stronger than a success ordering"),
@@ -1378,6 +1390,8 @@ unsafe fn atomic_compare_exchange_weak<T>(dst: *mut T,
         (AcqRel, Relaxed) => intrinsics::atomic_cxchgweak_acqrel_failrelaxed(dst, old, new),
         (SeqCst, Relaxed) => intrinsics::atomic_cxchgweak_failrelaxed(dst, old, new),
         (SeqCst, Acquire) => intrinsics::atomic_cxchgweak_failacq(dst, old, new),
+        (__Nonexhaustive, _) => panic!("invalid memory ordering"),
+        (_, __Nonexhaustive) => panic!("invalid memory ordering"),
         (_, AcqRel) => panic!("there is no such thing as an acquire/release failure ordering"),
         (_, Release) => panic!("there is no such thing as a release failure ordering"),
         _ => panic!("a failure ordering can't be stronger than a success ordering"),
@@ -1393,6 +1407,7 @@ unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
         AcqRel => intrinsics::atomic_and_acqrel(dst, val),
         Relaxed => intrinsics::atomic_and_relaxed(dst, val),
         SeqCst => intrinsics::atomic_and(dst, val),
+        __Nonexhaustive => panic!("invalid memory ordering"),
     }
 }
 
@@ -1404,6 +1419,7 @@ unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
         AcqRel => intrinsics::atomic_or_acqrel(dst, val),
         Relaxed => intrinsics::atomic_or_relaxed(dst, val),
         SeqCst => intrinsics::atomic_or(dst, val),
+        __Nonexhaustive => panic!("invalid memory ordering"),
     }
 }
 
@@ -1415,6 +1431,7 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
         AcqRel => intrinsics::atomic_xor_acqrel(dst, val),
         Relaxed => intrinsics::atomic_xor_relaxed(dst, val),
         SeqCst => intrinsics::atomic_xor(dst, val),
+        __Nonexhaustive => panic!("invalid memory ordering"),
     }
 }
 
@@ -1448,6 +1465,7 @@ pub fn fence(order: Ordering) {
             AcqRel => intrinsics::atomic_fence_acqrel(),
             SeqCst => intrinsics::atomic_fence(),
             Relaxed => panic!("there is no such thing as a relaxed fence"),
+            __Nonexhaustive => panic!("invalid memory ordering"),
         }
     }
 }

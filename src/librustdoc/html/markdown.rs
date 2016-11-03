@@ -644,7 +644,7 @@ mod tests {
         t("test_harness",          false,        false,  false,  true,  true,  false, Vec::new());
         t("compile_fail",          false,        true,   false,  true,  false, true,  Vec::new());
         t("E0450",                 false,        false,  false,  true,  false, false,
-                                   vec!("E0450".to_owned()));
+                                   vec!["E0450".to_owned()]);
         t("{.no_run .example}",    false,        true,   false,  true,  false, false, Vec::new());
         t("{.sh .should_panic}",   true,         false,  false,  true,  false, false, Vec::new());
         t("{.example .rust}",      false,        false,  false,  true,  false, false, Vec::new());

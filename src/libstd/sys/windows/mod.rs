@@ -179,7 +179,7 @@ pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
     }
 }
 
-trait IsZero {
+pub trait IsZero {
     fn is_zero(&self) -> bool;
 }
 
@@ -193,7 +193,7 @@ macro_rules! impl_is_zero {
 
 impl_is_zero! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
 
-fn cvt<I: IsZero>(i: I) -> io::Result<I> {
+pub fn cvt<I: IsZero>(i: I) -> io::Result<I> {
     if i.is_zero() {
         Err(io::Error::last_os_error())
     } else {
@@ -201,7 +201,7 @@ fn cvt<I: IsZero>(i: I) -> io::Result<I> {
     }
 }
 
-fn dur2timeout(dur: Duration) -> c::DWORD {
+pub fn dur2timeout(dur: Duration) -> c::DWORD {
     // Note that a duration is a (u64, u32) (seconds, nanoseconds) pair, and the
     // timeouts in windows APIs are typically u32 milliseconds. To translate, we
     // have two pieces to take care of:
@@ -220,4 +220,18 @@ fn dur2timeout(dur: Duration) -> c::DWORD {
             ms as c::DWORD
         }
     }).unwrap_or(c::INFINITE)
+}
+
+// On Windows, use the processor-specific __fastfail mechanism.  In Windows 8
+// and later, this will terminate the process immediately without running any
+// in-process exception handlers.  In earlier versions of Windows, this
+// sequence of instructions will be treated as an access violation,
+// terminating the process but without necessarily bypassing all exception
+// handlers.
+//
+// https://msdn.microsoft.com/en-us/library/dn774154.aspx
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+pub unsafe fn abort_internal() -> ! {
+    asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+    ::intrinsics::unreachable();
 }

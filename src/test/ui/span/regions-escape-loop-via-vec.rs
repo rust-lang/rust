@@ -11,7 +11,7 @@
 // The type of `y` ends up getting inferred to the type of the block.
 fn broken() {
     let mut x = 3;
-    let mut _y = vec!(&mut x);
+    let mut _y = vec![&mut x];
     //~^ NOTE borrow of `x` occurs here
     //~| NOTE borrow of `x` occurs here
     //~| NOTE borrow of `x` occurs here

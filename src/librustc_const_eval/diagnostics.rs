@@ -454,7 +454,7 @@ loop variable, consider using a `match` or `if let` inside the loop body. For
 instance:
 
 ```compile_fail,E0297
-let xs : Vec<Option<i32>> = vec!(Some(1), None);
+let xs : Vec<Option<i32>> = vec![Some(1), None];
 
 // This fails because `None` is not covered.
 for Some(x) in xs {
@@ -465,7 +465,7 @@ for Some(x) in xs {
 Match inside the loop instead:
 
 ```
-let xs : Vec<Option<i32>> = vec!(Some(1), None);
+let xs : Vec<Option<i32>> = vec![Some(1), None];
 
 for item in xs {
     match item {
@@ -478,7 +478,7 @@ for item in xs {
 Or use `if let`:
 
 ```
-let xs : Vec<Option<i32>> = vec!(Some(1), None);
+let xs : Vec<Option<i32>> = vec![Some(1), None];
 
 for item in xs {
     if let Some(x) = item {
