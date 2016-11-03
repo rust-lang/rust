@@ -2833,29 +2833,20 @@ impl<'a> Parser<'a> {
                     close_span: close_span,
                 })))
             },
+            token::CloseDelim(_) => {
+                // An unexpected closing delimiter (i.e., there is no
+                // matching opening delimiter).
+                let token_str = self.this_token_to_string();
+                let err = self.diagnostic().struct_span_err(self.span,
+                    &format!("unexpected close delimiter: `{}`", token_str));
+                Err(err)
+            },
+            /* we ought to allow different depths of unquotation */
+            token::Dollar | token::SubstNt(..) if self.quote_depth > 0 => {
+                self.parse_unquoted()
+            }
             _ => {
-                // invariants: the current token is not a left-delimiter,
-                // not an EOF, and not the desired right-delimiter (if
-                // it were, parse_seq_to_before_end would have prevented
-                // reaching this point).
-                maybe_whole!(deref self, NtTT);
-                match self.token {
-                    token::CloseDelim(_) => {
-                        // An unexpected closing delimiter (i.e., there is no
-                        // matching opening delimiter).
-                        let token_str = self.this_token_to_string();
-                        let err = self.diagnostic().struct_span_err(self.span,
-                            &format!("unexpected close delimiter: `{}`", token_str));
-                        Err(err)
-                    },
-                    /* we ought to allow different depths of unquotation */
-                    token::Dollar | token::SubstNt(..) if self.quote_depth > 0 => {
-                        self.parse_unquoted()
-                    }
-                    _ => {
-                        Ok(TokenTree::Token(self.span, self.bump_and_get()))
-                    }
-                }
+                Ok(TokenTree::Token(self.span, self.bump_and_get()))
             }
         }
     }
