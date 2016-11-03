@@ -1,11 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.97 — 2016-10-24
+## 0.0.97 — 2016-11-03
 * For convenience, `cargo clippy` defines a `cargo-clippy` feature. This was
   previously added for a short time under the name `clippy` but removed for
   compatibility.
 * `cargo clippy --help` is more helping (and less helpful :smile:)
+* Rustup to *rustc 1.14.0-nightly (5665bdf3e 2016-11-02)*
 
 ## 0.0.96 — 2016-10-22
 * Rustup to *rustc 1.14.0-nightly (f09420685 2016-10-20)*
