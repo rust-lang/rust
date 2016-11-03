@@ -59,12 +59,11 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
     fn late_callback(&mut self,
                      matches: &getopts::Matches,
                      sess: &Session,
-                     cfg: &ast::CrateConfig,
                      input: &Input,
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
                      -> Compilation {
-        self.default.late_callback(matches, sess, cfg, input, odir, ofile)
+        self.default.late_callback(matches, sess, input, odir, ofile)
     }
     fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> driver::CompileController<'a> {
         let mut control = self.default.build_controller(sess, matches);
