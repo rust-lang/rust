@@ -679,8 +679,8 @@ impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
 ///
 /// This trait must only be implemented when the contract is upheld.
 /// Consumers of this trait must inspect `.size_hint()`’s upper bound.
-#[unstable(feature = "trusted_len", issue = "0")]
+#[unstable(feature = "trusted_len", issue = "37572")]
 pub unsafe trait TrustedLen : Iterator {}
 
-#[unstable(feature = "trusted_len", issue = "0")]
+#[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, I: TrustedLen + ?Sized> TrustedLen for &'a mut I {}

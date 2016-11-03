@@ -482,7 +482,7 @@ macro_rules! range_incl_exact_iter_impl {
 
 macro_rules! range_trusted_len_impl {
     ($($t:ty)*) => ($(
-        #[unstable(feature = "trusted_len", issue = "0")]
+        #[unstable(feature = "trusted_len", issue = "37572")]
         unsafe impl TrustedLen for ops::Range<$t> { }
     )*)
 }
