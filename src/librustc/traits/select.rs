@@ -1912,16 +1912,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 tys.to_vec()
             }
 
-            ty::TyClosure(_, ref substs) => {
+            ty::TyClosure(def_id, ref substs) => {
                 // FIXME(#27086). We are invariant w/r/t our
-                // substs.func_substs, but we don't see them as
+                // func_substs, but we don't see them as
                 // constituent types; this seems RIGHT but also like
                 // something that a normal type couldn't simulate. Is
                 // this just a gap with the way that PhantomData and
                 // OIBIT interact? That is, there is no way to say
                 // "make me invariant with respect to this TYPE, but
                 // do not act as though I can reach it"
-                substs.upvar_tys.to_vec()
+                substs.upvar_tys(def_id, self.tcx()).collect()
             }
 
             // for `PhantomData<T>`, we pass `T`

@@ -574,10 +574,11 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
 
         }
-        ty::TyClosure(_, ref substs) => {
+        ty::TyClosure(def_id, substs) => {
+            let upvar_tys : Vec<_> = substs.upvar_tys(def_id, cx.tcx()).collect();
             prepare_tuple_metadata(cx,
                                    t,
-                                   &substs.upvar_tys,
+                                   &upvar_tys,
                                    unique_type_id,
                                    usage_site_span).finalize(cx)
         }

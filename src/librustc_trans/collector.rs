@@ -452,7 +452,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
                 let concrete_substs = monomorphize::apply_param_substs(self.scx,
                                                                        self.param_substs,
-                                                                       &substs.func_substs);
+                                                                       &substs.substs);
                 let concrete_substs = self.scx.tcx().erase_regions(&concrete_substs);
 
                 let visitor = MirNeighborCollector {
@@ -797,8 +797,8 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                 }
             }
         }
-        ty::TyClosure(_, substs) => {
-            for upvar_ty in substs.upvar_tys {
+        ty::TyClosure(def_id, substs) => {
+            for upvar_ty in substs.upvar_tys(def_id, scx.tcx()) {
                 let upvar_ty = glue::get_drop_glue_type(scx.tcx(), upvar_ty);
                 if glue::type_needs_drop(scx.tcx(), upvar_ty) {
                     output.push(TransItem::DropGlue(DropGlueKind::Ty(upvar_ty)));

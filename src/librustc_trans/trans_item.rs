@@ -477,12 +477,14 @@ pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 push_unique_type_name(tcx, sig.output, output);
             }
         },
-        ty::TyClosure(def_id, ref closure_substs) => {
+        ty::TyClosure(def_id, closure_substs) => {
             push_item_name(tcx, def_id, output);
             output.push_str("{");
             output.push_str(&format!("{}:{}", def_id.krate, def_id.index.as_usize()));
             output.push_str("}");
-            push_type_params(tcx, closure_substs.func_substs, &[], output);
+            let generics = tcx.item_generics(tcx.closure_base_def_id(def_id));
+            let substs = closure_substs.substs.truncate_to(tcx, generics);
+            push_type_params(tcx, substs, &[], output);
         }
         ty::TyError |
         ty::TyInfer(_) |

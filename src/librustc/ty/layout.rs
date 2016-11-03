@@ -631,7 +631,9 @@ impl<'a, 'gcx, 'tcx> Struct {
 
             // Perhaps one of the upvars of this closure is non-zero
             // Let's recurse and find out!
-            (_, &ty::TyClosure(_, ty::ClosureSubsts { upvar_tys: tys, .. })) |
+            (_, &ty::TyClosure(def_id, ref substs)) => {
+                Struct::non_zero_field_path(infcx, substs.upvar_tys(def_id, tcx))
+            }
             // Can we use one of the fields in this tuple?
             (_, &ty::TyTuple(tys)) => {
                 Struct::non_zero_field_path(infcx, tys.iter().cloned())
@@ -961,7 +963,13 @@ impl<'a, 'gcx, 'tcx> Layout {
             }
 
             // Tuples and closures.
-            ty::TyClosure(_, ty::ClosureSubsts { upvar_tys: tys, .. }) |
+            ty::TyClosure(def_id, ref substs) => {
+                let mut st = Struct::new(dl, false);
+                let tys = substs.upvar_tys(def_id, tcx);
+                st.extend(dl, tys.map(|ty| ty.layout(infcx)), ty)?;
+                Univariant { variant: st, non_zero: false }
+            }
+
             ty::TyTuple(tys) => {
                 let mut st = Struct::new(dl, false);
                 st.extend(dl, tys.iter().map(|ty| ty.layout(infcx)), ty)?;

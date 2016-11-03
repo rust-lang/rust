@@ -183,8 +183,8 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         // inference algorithm will reject it).
 
         // Extract the type variables UV0...UVn.
-        let closure_substs = match self.fcx.node_ty(id).sty {
-            ty::TyClosure(_, ref substs) => substs,
+        let (def_id, closure_substs) = match self.fcx.node_ty(id).sty {
+            ty::TyClosure(def_id, substs) => (def_id, substs),
             ref t => {
                 span_bug!(
                     span,
@@ -197,7 +197,9 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         let final_upvar_tys = self.final_upvar_tys(id);
         debug!("analyze_closure: id={:?} closure_substs={:?} final_upvar_tys={:?}",
                id, closure_substs, final_upvar_tys);
-        for (&upvar_ty, final_upvar_ty) in closure_substs.upvar_tys.iter().zip(final_upvar_tys) {
+        for (upvar_ty, final_upvar_ty) in
+            closure_substs.upvar_tys(def_id, self.fcx.tcx).zip(final_upvar_tys)
+        {
             self.fcx.demand_eqtype(span, final_upvar_ty, upvar_ty);
         }
 

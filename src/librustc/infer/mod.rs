@@ -1657,7 +1657,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         if let InferTables::Local(tables) = self.tables {
             if let Some(ty) = tables.borrow().closure_tys.get(&def_id) {
-                return ty.subst(self.tcx, substs.func_substs);
+                return ty.subst(self.tcx, substs.substs);
             }
         }
 
