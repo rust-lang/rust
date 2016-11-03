@@ -1758,6 +1758,33 @@ To understand better how closures work in Rust, read:
 https://doc.rust-lang.org/book/closures.html
 "##,
 
+E0571: r##"
+A nested function was declared with the `#[start]` attribute.
+
+Erroneous code example:
+
+```compile_fail,E0571
+#![feature(start)]
+
+fn foo() {
+    #[start]
+    fn bar(_: isize, _: *const *const u8) -> isize { foo(); 0 }
+    // error: the 'start' function feature can't be set to a nested function
+}
+```
+
+This error indicates that the compiler found a function with the `#[start]`
+attribute nested within another function. Nesting this function is forbidden
+outside of modules to avoid confusion. Example:
+
+```
+#![feature(start)]
+
+#[start]
+fn foo(argc: isize, argv: *const *const u8) -> isize { 0 } // ok!
+```
+"##,
+
 }
 
 

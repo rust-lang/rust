@@ -122,7 +122,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
                 ctxt.attr_main_fn = Some((item.id, item.span));
             } else {
                 struct_span_err!(ctxt.session, item.span, E0137,
-                          "multiple functions with a #[main] attribute")
+                                 "multiple functions with a #[main] attribute")
                 .span_label(item.span, &format!("additional #[main] function"))
                 .span_label(ctxt.attr_main_fn.unwrap().1, &format!("first #[main] function"))
                 .emit();
@@ -130,7 +130,21 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
         },
         EntryPointType::Start => {
             if ctxt.start_fn.is_none() {
-                ctxt.start_fn = Some((item.id, item.span));
+                let parent_id = ctxt.map.get_parent(item.id);
+
+                if ctxt.map.get_module_parent(item.id) != parent_id {
+                    // The start function is enclosed by a parent that isn't a module
+                    let mut err = struct_span_err!(ctxt.session, item.span, E0571,
+                                                   "the 'start' function feature can't be set to \
+                                                   a nested function");
+                    if let Some(span) = ctxt.map.opt_span(parent_id) {
+                        err.span_label(span, &format!("`start` function is nested inside this \
+                                                      function"));
+                    }
+                    err.emit();
+                } else {
+                    ctxt.start_fn = Some((item.id, item.span));
+                }
             } else {
                 struct_span_err!(
                     ctxt.session, item.span, E0138,
