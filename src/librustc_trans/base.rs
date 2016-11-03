@@ -1196,6 +1196,9 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         }
         let llfn = declare::declare_cfn(ccx, "main", llfty);
 
+        // `main` should respect same config for frame pointer elimination as rest of code
+        attributes::set_frame_pointer_elimination(ccx, llfn);
+
         let llbb = unsafe {
             llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llfn, "top\0".as_ptr() as *const _)
         };
