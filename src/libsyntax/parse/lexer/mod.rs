@@ -178,27 +178,6 @@ impl<'a> Reader for TtReader<'a> {
     }
 }
 
-impl<'a, 'b> Reader for &'b mut TtReader<'a> {
-    fn is_eof(&self) -> bool {
-        (**self).is_eof()
-    }
-    fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
-        (**self).try_next_token()
-    }
-    fn fatal(&self, m: &str) -> FatalError {
-        (**self).fatal(m)
-    }
-    fn err(&self, m: &str) {
-        (**self).err(m)
-    }
-    fn emit_fatal_errors(&mut self) {
-        (**self).emit_fatal_errors()
-    }
-    fn peek(&self) -> TokenAndSpan {
-        (**self).peek()
-    }
-}
-
 impl<'a> StringReader<'a> {
     /// For comments.rs, which hackily pokes into next_pos and ch
     pub fn new_raw<'b>(span_diagnostic: &'b Handler,
