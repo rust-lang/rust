@@ -275,14 +275,14 @@ enum CharClassesStatus {
     LineComment,
 }
 
-/// Distinguish between functionnal part of code and comments
+/// Distinguish between functional part of code and comments
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum CodeCharKind {
     Normal,
     Comment,
 }
 
-/// Distinguish between functionnal part of code and comments,
+/// Distinguish between functional part of code and comments,
 /// describing opening and closing of comments for ease when chunking
 /// code from tagged characters
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
