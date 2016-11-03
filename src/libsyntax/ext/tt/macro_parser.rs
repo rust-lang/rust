@@ -496,10 +496,19 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
     match name {
         "tt" => {
             p.quote_depth += 1; //but in theory, non-quoted tts might be useful
-            let res: ::parse::PResult<'a, _> = p.parse_token_tree();
-            let res = token::NtTT(panictry!(res));
+            let mut tt = panictry!(p.parse_token_tree());
             p.quote_depth -= 1;
-            return res;
+            loop {
+                let nt = match tt {
+                    TokenTree::Token(_, token::Interpolated(ref nt)) => nt.clone(),
+                    _ => break,
+                };
+                match *nt {
+                    token::NtTT(ref sub_tt) => tt = sub_tt.clone(),
+                    _ => break,
+                }
+            }
+            return token::NtTT(tt);
         }
         _ => {}
     }
