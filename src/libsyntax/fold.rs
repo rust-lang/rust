@@ -1249,36 +1249,22 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                        folder.fold_ident(label.node)))
             ),
             ExprKind::Ret(e) => ExprKind::Ret(e.map(|x| folder.fold_expr(x))),
-            ExprKind::InlineAsm(InlineAsm {
-                inputs,
-                outputs,
-                asm,
-                asm_str_style,
-                clobbers,
-                volatile,
-                alignstack,
-                dialect,
-                expn_id,
-            }) => ExprKind::InlineAsm(InlineAsm {
-                inputs: inputs.move_map(|(c, input)| {
-                    (c, folder.fold_expr(input))
-                }),
-                outputs: outputs.move_map(|out| {
-                    InlineAsmOutput {
-                        constraint: out.constraint,
-                        expr: folder.fold_expr(out.expr),
-                        is_rw: out.is_rw,
-                        is_indirect: out.is_indirect,
-                    }
-                }),
-                asm: asm,
-                asm_str_style: asm_str_style,
-                clobbers: clobbers,
-                volatile: volatile,
-                alignstack: alignstack,
-                dialect: dialect,
-                expn_id: expn_id,
-            }),
+            ExprKind::InlineAsm(asm) => ExprKind::InlineAsm(asm.map(|asm| {
+                InlineAsm {
+                    inputs: asm.inputs.move_map(|(c, input)| {
+                        (c, folder.fold_expr(input))
+                    }),
+                    outputs: asm.outputs.move_map(|out| {
+                        InlineAsmOutput {
+                            constraint: out.constraint,
+                            expr: folder.fold_expr(out.expr),
+                            is_rw: out.is_rw,
+                            is_indirect: out.is_indirect,
+                        }
+                    }),
+                    ..asm
+                }
+            })),
             ExprKind::Mac(mac) => ExprKind::Mac(folder.fold_mac(mac)),
             ExprKind::Struct(path, fields, maybe_expr) => {
                 ExprKind::Struct(folder.fold_path(path),
