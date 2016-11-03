@@ -278,17 +278,16 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     }
 }
 
-pub fn parse(sess: &ParseSess, mut rdr: TtReader, ms: &[TokenTree]) -> NamedParseResult {
-    let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(),
-                                                           None,
-                                                           rdr.peek().sp.lo));
+pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseResult {
+    let mut parser = Parser::new(sess, Box::new(rdr));
+    let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(), None, parser.span.lo));
 
     loop {
         let mut bb_eis = Vec::new(); // black-box parsed by parser.rs
         let mut next_eis = Vec::new(); // or proceed normally
         let mut eof_eis = Vec::new();
 
-        let TokenAndSpan { tok, sp } = rdr.peek();
+        let (sp, tok) = (parser.span, parser.token.clone());
 
         /* we append new items to this while we go */
         loop {
@@ -473,23 +472,19 @@ pub fn parse(sess: &ParseSess, mut rdr: TtReader, ms: &[TokenTree]) -> NamedPars
                 while !next_eis.is_empty() {
                     cur_eis.push(next_eis.pop().unwrap());
                 }
-                rdr.next_token();
+                parser.bump();
             } else /* bb_eis.len() == 1 */ {
-                rdr.next_tok = {
-                    let mut rust_parser = Parser::new(sess, Box::new(&mut rdr));
-                    let mut ei = bb_eis.pop().unwrap();
-                    if let TokenTree::Token(span, MatchNt(_, ident)) = ei.top_elts.get_tt(ei.idx) {
-                        let match_cur = ei.match_cur;
-                        (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
-                            Rc::new(parse_nt(&mut rust_parser, span, &ident.name.as_str())))));
-                        ei.idx += 1;
-                        ei.match_cur += 1;
-                    } else {
-                        unreachable!()
-                    }
-                    cur_eis.push(ei);
-                    Some(TokenAndSpan { tok: rust_parser.token, sp: rust_parser.span })
-                };
+                let mut ei = bb_eis.pop().unwrap();
+                if let TokenTree::Token(span, MatchNt(_, ident)) = ei.top_elts.get_tt(ei.idx) {
+                    let match_cur = ei.match_cur;
+                    (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
+                        Rc::new(parse_nt(&mut parser, span, &ident.name.as_str())))));
+                    ei.idx += 1;
+                    ei.match_cur += 1;
+                } else {
+                    unreachable!()
+                }
+                cur_eis.push(ei);
             }
         }
 
