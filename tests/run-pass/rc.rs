@@ -1,5 +1,3 @@
-//error-pattern: no mir for `std::result::unwrap_failed::__STATIC_FMTSTR`
-
 use std::cell::RefCell;
 use std::rc::Rc;
 
