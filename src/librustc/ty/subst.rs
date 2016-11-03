@@ -274,6 +274,20 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         let defs = tcx.item_generics(source_ancestor);
         tcx.mk_substs(target_substs.iter().chain(&self[defs.own_count()..]).cloned())
     }
+
+    pub fn extend_with_types(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                             types: &[Ty<'tcx>])
+                             -> &'tcx Substs<'tcx> {
+        tcx.mk_substs(
+            self[..].iter().cloned().chain(
+                types.iter().map(|a| Kind::from(*a)))
+        )
+    }
+
+    pub fn truncate_to(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, generics: &ty::Generics<'tcx>)
+                       -> &'tcx Substs<'tcx> {
+        tcx.mk_substs(self.iter().take(generics.count()).cloned())
+    }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {

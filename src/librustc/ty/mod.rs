@@ -2544,12 +2544,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // tables by typeck; else, it will be retreived from
         // the external crate metadata.
         if let Some(ty) = self.tables.borrow().closure_tys.get(&def_id) {
-            return ty.subst(self, substs.func_substs);
+            return ty.subst(self, substs.substs);
         }
 
         let ty = self.sess.cstore.closure_ty(self.global_tcx(), def_id);
         self.tables.borrow_mut().closure_tys.insert(def_id, ty.clone());
-        ty.subst(self, substs.func_substs)
+        ty.subst(self, substs.substs)
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.

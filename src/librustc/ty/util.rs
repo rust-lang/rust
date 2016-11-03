@@ -11,6 +11,7 @@
 //! misc. type-system utilities too small to deserve their own file
 
 use hir::def_id::DefId;
+use hir::map::DefPathData;
 use infer::InferCtxt;
 use hir::map as ast_map;
 use hir::pat_util;
@@ -389,6 +390,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // `*foo.0` of `Foo<'a>(&'a u32)`) or indirectly hidden
         // (e.g. calling `foo.0.clone()` of `Foo<T:Clone>`).
         return !self.has_attr(dtor_method, "unsafe_destructor_blind_to_params");
+    }
+
+    pub fn closure_base_def_id(&self, def_id: DefId) -> DefId {
+        let mut def_id = def_id;
+        while self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr {
+            def_id = self.parent_def_id(def_id).unwrap_or_else(|| {
+                bug!("closure {:?} has no parent", def_id);
+            });
+        }
+        def_id
     }
 }
 

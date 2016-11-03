@@ -108,9 +108,9 @@ fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
             }).collect::<Vec<_>>()
         },
         ty::TyTuple(fields) => fields.to_vec(),
-        ty::TyClosure(_, substs) => {
+        ty::TyClosure(def_id, substs) => {
             if variant_index > 0 { bug!("{} is a closure, which only has one variant", t);}
-            substs.upvar_tys.to_vec()
+            substs.upvar_tys(def_id, cx.tcx()).collect()
         },
         _ => bug!("{} is not a type that can have fields.", t)
     }

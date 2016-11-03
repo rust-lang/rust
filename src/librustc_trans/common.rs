@@ -109,7 +109,16 @@ pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
             Some([monomorphize::field_ty(ccx.tcx(), substs, &fields[0]),
                   monomorphize::field_ty(ccx.tcx(), substs, &fields[1])])
         }
-        ty::TyClosure(_, ty::ClosureSubsts { upvar_tys: tys, .. }) |
+        ty::TyClosure(def_id, substs) => {
+            let mut tys = substs.upvar_tys(def_id, ccx.tcx());
+            tys.next().and_then(|first_ty| tys.next().and_then(|second_ty| {
+                if tys.next().is_some() {
+                    None
+                } else {
+                    Some([first_ty, second_ty])
+                }
+            }))
+        }
         ty::TyTuple(tys) => {
             if tys.len() != 2 {
                 return None;
