@@ -279,7 +279,7 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
 }
 
 pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseResult {
-    let mut parser = Parser::new(sess, Box::new(rdr));
+    let mut parser = Parser::new_with_doc_flag(sess, Box::new(rdr), true);
     let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(), None, parser.span.lo));
 
     loop {
