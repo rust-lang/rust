@@ -560,6 +560,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             return Ok(()); // nothing to do, this is zero sized (e.g. `None`)
                         }
                     },
+                    Layout::RawNullablePointer { nndiscr, .. } => {
+                        let discr = self.read_discriminant_value(adt_ptr, ty)?;
+                        if discr == nndiscr {
+                            assert_eq!(adt_def.variants[discr as usize].fields.len(), 1);
+                            let field_ty = &adt_def.variants[discr as usize].fields[0];
+                            let field_ty = self.monomorphize_field_ty(field_ty, substs);
+                            // FIXME: once read_discriminant_value works with lvalue, don't force
+                            // alloc in the RawNullablePointer case
+                            self.drop(Lvalue::from_ptr(adt_ptr), field_ty, drop)?;
+                            return Ok(());
+                        } else {
+                            // FIXME: the zst variant might contain zst types that impl Drop
+                            return Ok(()); // nothing to do, this is zero sized (e.g. `None`)
+                        }
+                    },
                     _ => bug!("{:?} is not an adt layout", layout),
                 };
                 for (field_ty, offset) in fields {
