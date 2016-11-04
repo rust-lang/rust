@@ -27,7 +27,7 @@ num_cpus = "0.2"
 toml = "0.1"
 getopts = "0.2"
 rustc-serialize = "0.3"
-gcc = { git = "https://github.com/alexcrichton/gcc-rs" }
+gcc = "0.3.36"
 libc = "0.2"
 md5 = "0.1"
 
