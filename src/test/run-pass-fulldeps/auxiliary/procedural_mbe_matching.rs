@@ -18,10 +18,10 @@ extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
 
-use syntax::parse::token::{self, str_to_ident, NtExpr, NtPat};
+use syntax::parse::token::{str_to_ident, NtExpr, NtPat};
 use syntax::ast::{Pat};
 use syntax::tokenstream::{TokenTree};
-use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
+use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use syntax::ext::tt::macro_parser::{Success, Failure, Error};
@@ -30,41 +30,46 @@ use syntax::ptr::P;
 use syntax_pos::Span;
 use rustc_plugin::Registry;
 
-fn expand_mbe_matches(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
+fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {
 
     let mbe_matcher = quote_matcher!(cx, $matched:expr, $($pat:pat)|+);
-
-    let mac_expr = match TokenTree::parse(cx, &mbe_matcher[..], args) {
-        Success(map) => {
-            match (&*map[&str_to_ident("matched")], &*map[&str_to_ident("pat")]) {
-                (&MatchedNonterminal(NtExpr(ref matched_expr)),
-                 &MatchedSeq(ref pats, seq_sp)) => {
-                    let pats: Vec<P<Pat>> = pats.iter().map(|pat_nt|
-                        if let &MatchedNonterminal(NtPat(ref pat)) = &**pat_nt {
-                            pat.clone()
-                        } else {
-                            unreachable!()
-                        }
-                    ).collect();
-                    let arm = cx.arm(seq_sp, pats, cx.expr_bool(seq_sp, true));
-
-                    quote_expr!(cx,
-                        match $matched_expr {
-                            $arm
-                            _ => false
-                        }
-                    )
-                }
-                _ => unreachable!()
-            }
-        }
+    let map = match TokenTree::parse(cx, &mbe_matcher, args) {
+        Success(map) => map,
         Failure(_, tok) => {
             panic!("expected Success, but got Failure: {}", parse_failure_msg(tok));
         }
         Error(_, s) => {
             panic!("expected Success, but got Error: {}", s);
         }
+    };
+
+    let matched_nt = match *map[&str_to_ident("matched")] {
+        MatchedNonterminal(ref nt) => nt.clone(),
+        _ => unreachable!(),
+    };
+
+    let mac_expr = match (&*matched_nt, &*map[&str_to_ident("pat")]) {
+        (&NtExpr(ref matched_expr), &MatchedSeq(ref pats, seq_sp)) => {
+            let pats: Vec<P<Pat>> = pats.iter().map(|pat_nt| {
+                match **pat_nt {
+                    MatchedNonterminal(ref nt) => match **nt {
+                        NtPat(ref pat) => pat.clone(),
+                        _ => unreachable!(),
+                    },
+                    _ => unreachable!(),
+                }
+            }).collect();
+            let arm = cx.arm(seq_sp, pats, cx.expr_bool(seq_sp, true));
+
+            quote_expr!(cx,
+                match $matched_expr {
+                    $arm
+                    _ => false
+                }
+            )
+        }
+        _ => unreachable!()
     };
 
     MacEager::expr(mac_expr)

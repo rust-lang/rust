@@ -22,7 +22,7 @@ use std::char;
 use std::mem::replace;
 use std::rc::Rc;
 
-pub use ext::tt::transcribe::{TtReader, new_tt_reader, new_tt_reader_with_doc_flag};
+pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
 pub mod comments;
 mod unicode_chars;
@@ -171,31 +171,10 @@ impl<'a> Reader for TtReader<'a> {
         self.fatal_errs.clear();
     }
     fn peek(&self) -> TokenAndSpan {
-        self.next_tok.clone().unwrap_or(TokenAndSpan {
+        TokenAndSpan {
             tok: self.cur_tok.clone(),
             sp: self.cur_span,
-        })
-    }
-}
-
-impl<'a, 'b> Reader for &'b mut TtReader<'a> {
-    fn is_eof(&self) -> bool {
-        (**self).is_eof()
-    }
-    fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
-        (**self).try_next_token()
-    }
-    fn fatal(&self, m: &str) -> FatalError {
-        (**self).fatal(m)
-    }
-    fn err(&self, m: &str) {
-        (**self).err(m)
-    }
-    fn emit_fatal_errors(&mut self) {
-        (**self).emit_fatal_errors()
-    }
-    fn peek(&self) -> TokenAndSpan {
-        (**self).peek()
+        }
     }
 }
 
