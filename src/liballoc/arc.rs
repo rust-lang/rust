@@ -36,6 +36,10 @@ use core::{isize, usize};
 use core::convert::From;
 use heap::deallocate;
 
+/// A soft limit on the amount of references that may be made to an `Arc`.
+///
+/// Going above this limit will abort your program (although not
+/// necessarily) at _exactly_ `MAX_REFCOUNT + 1` references.
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
 /// A thread-safe reference-counting pointer.
