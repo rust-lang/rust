@@ -840,8 +840,8 @@ pub enum UnsafeSource {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Expr {
     pub id: NodeId,
-    pub node: Expr_,
     pub span: Span,
+    pub node: Expr_,
     pub attrs: ThinVec<Attribute>,
 }
 
@@ -946,7 +946,7 @@ pub enum Expr_ {
     ///
     /// For example, `Foo {x: 1, y: 2}`, or
     /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
-    ExprStruct(Path, HirVec<Field>, Option<P<Expr>>),
+    ExprStruct(P<Path>, HirVec<Field>, Option<P<Expr>>),
 
     /// An array literal constructed from one repeated element.
     ///
