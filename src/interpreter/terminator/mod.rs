@@ -628,6 +628,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 self.drop_fields(fields.iter().cloned().zip(offsets.iter().cloned()), lval, drop)?;
             },
+            ty::TyTrait(_) => {
+                let lval = self.force_allocation(lval)?;
+                let (ptr, vtable) = match lval {
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => (ptr, vtable),
+                    _ => bug!("expected an lvalue with a vtable"),
+                };
+                let drop_fn = self.memory.read_ptr(vtable)?;
+                // some values don't need to call a drop impl, so the value is null
+                if !drop_fn.points_to_zst() {
+                    let (def_id, substs, ty) = self.memory.get_fn(drop_fn.alloc_id)?;
+                    let fn_sig = self.tcx.erase_late_bound_regions_and_normalize(&ty.sig);
+                    let real_ty = fn_sig.inputs[0];
+                    self.drop(Lvalue::from_ptr(ptr), real_ty, drop)?;
+                    drop.push((def_id, Value::ByVal(PrimVal::from_ptr(ptr)), substs));
+                } else {
+                    // just a sanity check
+                    assert_eq!(drop_fn.offset, 0);
+                }
+            }
             // other types do not need to process drop
             _ => {},
         }

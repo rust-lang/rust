@@ -84,8 +84,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let ptr_size = self.memory.pointer_size();
         let vtable = self.memory.allocate(ptr_size * (3 + methods.len()), ptr_size)?;
 
-        // FIXME: generate a destructor for the vtable.
-        // trans does this with glue::get_drop_glue(ccx, trait_ref.self_ty())
+        // in case there is no drop function to be called, this still needs to be initialized
+        self.memory.write_usize(vtable, 0)?;
+        if let ty::TyAdt(adt_def, substs) = trait_ref.self_ty().sty {
+            if let Some(drop_def_id) = adt_def.destructor() {
+                let ty_scheme = self.tcx.lookup_item_type(drop_def_id);
+                let fn_ty = match ty_scheme.ty.sty {
+                    ty::TyFnDef(_, _, fn_ty) => fn_ty,
+                    _ => bug!("drop method is not a TyFnDef"),
+                };
+                let fn_ptr = self.memory.create_fn_ptr(drop_def_id, substs, fn_ty);
+                self.memory.write_ptr(vtable, fn_ptr)?;
+            }
+        }
 
         self.memory.write_usize(vtable.offset(ptr_size as isize), size as u64)?;
         self.memory.write_usize(vtable.offset((ptr_size * 2) as isize), align as u64)?;
