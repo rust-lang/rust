@@ -18,6 +18,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
         dest_layout: &'tcx Layout,
+        target: mir::BasicBlock,
     ) -> EvalResult<'tcx, ()> {
         let arg_vals: EvalResult<Vec<Value>> = args.iter()
             .map(|arg| self.eval_operand(arg))
@@ -137,7 +138,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 let mut drops = Vec::new();
                 self.drop(lvalue, ty, &mut drops)?;
-                self.eval_drop_impls(drops)?;
+                // need to change the block before pushing the drop impl stack frames
+                // we could do this for all intrinsics before evaluating the intrinsics, but if
+                // the evaluation fails, we should not have moved forward
+                self.goto_block(target);
+                return self.eval_drop_impls(drops);
             }
 
             "fabsf32" => {
@@ -340,6 +345,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),
         }
+
+        self.goto_block(target);
 
         // Since we pushed no stack frame, the main loop will act
         // as if the call just completed and it's returning to the

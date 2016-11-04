@@ -187,8 +187,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = fn_ty.sig.0.output;
                 let layout = self.type_layout(ty);
                 let (ret, target) = destination.unwrap();
-                self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout)?;
-                self.goto_block(target);
+                self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout, target)?;
                 Ok(())
             }
 
