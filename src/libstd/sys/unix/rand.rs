@@ -350,11 +350,19 @@ mod imp {
 
     #[link(name = "magenta")]
     extern {
-        fn mx_cprng_draw(buffer: *mut u8, len: usize) -> isize;
+        fn mx_cprng_draw(buffer: *mut u8, len: usize, actual: *mut usize) -> i32;
     }
 
-    fn getrandom(buf: &mut [u8]) -> isize {
-        unsafe { mx_cprng_draw(buf.as_mut_ptr(), buf.len()) }
+    fn getrandom(buf: &mut [u8]) -> Result<usize, i32> {
+        unsafe {
+            let mut actual = 0;
+            let status = mx_cprng_draw(buf.as_mut_ptr(), buf.len(), &mut actual);
+            if status == 0 {
+                Ok(actual)
+            } else {
+                Err(status)
+            }
+        }
     }
 
     pub struct OsRng {
@@ -381,12 +389,16 @@ mod imp {
             let mut buf = v;
             while !buf.is_empty() {
                 let ret = getrandom(buf);
-                if ret < 0 {
-                    panic!("kernel mx_cprng_draw call failed! (returned {}, buf.len() {})",
-                        ret, buf.len());
+                match ret {
+                    Err(err) => {
+                        panic!("kernel mx_cprng_draw call failed! (returned {}, buf.len() {})",
+                            err, buf.len())
+                    }
+                    Ok(actual) => {
+                        let move_buf = buf;
+                        buf = &mut move_buf[(actual as usize)..];
+                    }
                 }
-                let move_buf = buf;
-                buf = &mut move_buf[(ret as usize)..];
             }
         }
     }
