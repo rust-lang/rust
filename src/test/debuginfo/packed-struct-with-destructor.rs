@@ -18,29 +18,37 @@
 // gdb-command:run
 
 // gdb-command:print packed
-// gdb-check:$1 = {x = 123, y = 234, z = 345}
+// gdbg-check:$1 = {x = 123, y = 234, z = 345}
+// gdbr-check:$1 = packed_struct_with_destructor::Packed {x: 123, y: 234, z: 345}
 
 // gdb-command:print packedInPacked
-// gdb-check:$2 = {a = 1111, b = {x = 2222, y = 3333, z = 4444}, c = 5555, d = {x = 6666, y = 7777, z = 8888}}
+// gdbg-check:$2 = {a = 1111, b = {x = 2222, y = 3333, z = 4444}, c = 5555, d = {x = 6666, y = 7777, z = 8888}}
+// gdbr-check:$2 = packed_struct_with_destructor::PackedInPacked {a: 1111, b: packed_struct_with_destructor::Packed {x: 2222, y: 3333, z: 4444}, c: 5555, d: packed_struct_with_destructor::Packed {x: 6666, y: 7777, z: 8888}}
 
 // gdb-command:print packedInUnpacked
-// gdb-check:$3 = {a = -1111, b = {x = -2222, y = -3333, z = -4444}, c = -5555, d = {x = -6666, y = -7777, z = -8888}}
+// gdbg-check:$3 = {a = -1111, b = {x = -2222, y = -3333, z = -4444}, c = -5555, d = {x = -6666, y = -7777, z = -8888}}
+// gdbr-check:$3 = packed_struct_with_destructor::PackedInUnpacked {a: -1111, b: packed_struct_with_destructor::Packed {x: -2222, y: -3333, z: -4444}, c: -5555, d: packed_struct_with_destructor::Packed {x: -6666, y: -7777, z: -8888}}
 
 // gdb-command:print unpackedInPacked
-// gdb-check:$4 = {a = 987, b = {x = 876, y = 765, z = 654}, c = {x = 543, y = 432, z = 321}, d = 210}
+// gdbg-check:$4 = {a = 987, b = {x = 876, y = 765, z = 654}, c = {x = 543, y = 432, z = 321}, d = 210}
+// gdbr-check:$4 = packed_struct_with_destructor::UnpackedInPacked {a: 987, b: packed_struct_with_destructor::Unpacked {x: 876, y: 765, z: 654}, c: packed_struct_with_destructor::Unpacked {x: 543, y: 432, z: 321}, d: 210}
 
 
 // gdb-command:print packedInPackedWithDrop
-// gdb-check:$5 = {a = 11, b = {x = 22, y = 33, z = 44}, c = 55, d = {x = 66, y = 77, z = 88}}
+// gdbg-check:$5 = {a = 11, b = {x = 22, y = 33, z = 44}, c = 55, d = {x = 66, y = 77, z = 88}}
+// gdbr-check:$5 = packed_struct_with_destructor::PackedInPackedWithDrop {a: 11, b: packed_struct_with_destructor::Packed {x: 22, y: 33, z: 44}, c: 55, d: packed_struct_with_destructor::Packed {x: 66, y: 77, z: 88}}
 
 // gdb-command:print packedInUnpackedWithDrop
-// gdb-check:$6 = {a = -11, b = {x = -22, y = -33, z = -44}, c = -55, d = {x = -66, y = -77, z = -88}}
+// gdbg-check:$6 = {a = -11, b = {x = -22, y = -33, z = -44}, c = -55, d = {x = -66, y = -77, z = -88}}
+// gdbr-check:$6 = packed_struct_with_destructor::PackedInUnpackedWithDrop {a: -11, b: packed_struct_with_destructor::Packed {x: -22, y: -33, z: -44}, c: -55, d: packed_struct_with_destructor::Packed {x: -66, y: -77, z: -88}}
 
 // gdb-command:print unpackedInPackedWithDrop
-// gdb-check:$7 = {a = 98, b = {x = 87, y = 76, z = 65}, c = {x = 54, y = 43, z = 32}, d = 21}
+// gdbg-check:$7 = {a = 98, b = {x = 87, y = 76, z = 65}, c = {x = 54, y = 43, z = 32}, d = 21}
+// gdbr-check:$7 = packed_struct_with_destructor::UnpackedInPackedWithDrop {a: 98, b: packed_struct_with_destructor::Unpacked {x: 87, y: 76, z: 65}, c: packed_struct_with_destructor::Unpacked {x: 54, y: 43, z: 32}, d: 21}
 
 // gdb-command:print deeplyNested
-// gdb-check:$8 = {a = {a = 1, b = {x = 2, y = 3, z = 4}, c = 5, d = {x = 6, y = 7, z = 8}}, b = {a = 9, b = {x = 10, y = 11, z = 12}, c = {x = 13, y = 14, z = 15}, d = 16}, c = {a = 17, b = {x = 18, y = 19, z = 20}, c = 21, d = {x = 22, y = 23, z = 24}}, d = {a = 25, b = {x = 26, y = 27, z = 28}, c = 29, d = {x = 30, y = 31, z = 32}}, e = {a = 33, b = {x = 34, y = 35, z = 36}, c = {x = 37, y = 38, z = 39}, d = 40}, f = {a = 41, b = {x = 42, y = 43, z = 44}, c = 45, d = {x = 46, y = 47, z = 48}}}
+// gdbg-check:$8 = {a = {a = 1, b = {x = 2, y = 3, z = 4}, c = 5, d = {x = 6, y = 7, z = 8}}, b = {a = 9, b = {x = 10, y = 11, z = 12}, c = {x = 13, y = 14, z = 15}, d = 16}, c = {a = 17, b = {x = 18, y = 19, z = 20}, c = 21, d = {x = 22, y = 23, z = 24}}, d = {a = 25, b = {x = 26, y = 27, z = 28}, c = 29, d = {x = 30, y = 31, z = 32}}, e = {a = 33, b = {x = 34, y = 35, z = 36}, c = {x = 37, y = 38, z = 39}, d = 40}, f = {a = 41, b = {x = 42, y = 43, z = 44}, c = 45, d = {x = 46, y = 47, z = 48}}}
+// gdbr-check:$8 = packed_struct_with_destructor::DeeplyNested {a: packed_struct_with_destructor::PackedInPacked {a: 1, b: packed_struct_with_destructor::Packed {x: 2, y: 3, z: 4}, c: 5, d: packed_struct_with_destructor::Packed {x: 6, y: 7, z: 8}}, b: packed_struct_with_destructor::UnpackedInPackedWithDrop {a: 9, b: packed_struct_with_destructor::Unpacked {x: 10, y: 11, z: 12}, c: packed_struct_with_destructor::Unpacked {x: 13, y: 14, z: 15}, d: 16}, c: packed_struct_with_destructor::PackedInUnpacked {a: 17, b: packed_struct_with_destructor::Packed {x: 18, y: 19, z: 20}, c: 21, d: packed_struct_with_destructor::Packed {x: 22, y: 23, z: 24}}, d: packed_struct_with_destructor::PackedInUnpackedWithDrop {a: 25, b: packed_struct_with_destructor::Packed {x: 26, y: 27, z: 28}, c: 29, d: packed_struct_with_destructor::Packed {x: 30, y: 31, z: 32}}, e: packed_struct_with_destructor::UnpackedInPacked {a: 33, b: packed_struct_with_destructor::Unpacked {x: 34, y: 35, z: 36}, c: packed_struct_with_destructor::Unpacked {x: 37, y: 38, z: 39}, d: 40}, f: packed_struct_with_destructor::PackedInPackedWithDrop {a: 41, b: packed_struct_with_destructor::Packed {x: 42, y: 43, z: 44}, c: 45, d: packed_struct_with_destructor::Packed {x: 46, y: 47, z: 48}}}
 
 
 // === LLDB TESTS ==================================================================================

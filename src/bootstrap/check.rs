@@ -168,8 +168,8 @@ pub fn compiletest(build: &Build,
         cmd.arg("--lldb-python").arg(python_default);
     }
 
-    if let Some(ref vers) = build.gdb_version {
-        cmd.arg("--gdb-version").arg(vers);
+    if let Some(ref gdb) = build.config.gdb {
+        cmd.arg("--gdb").arg(gdb);
     }
     if let Some(ref vers) = build.lldb_version {
         cmd.arg("--lldb-version").arg(vers);

@@ -16,7 +16,8 @@
 // gdb-command:run
 
 // gdb-command:print *stack_val_ref
-// gdb-check:$1 = {x = 10, y = 23.5}
+// gdbg-check:$1 = {x = 10, y = 23.5}
+// gdbr-check:$1 = borrowed_struct::SomeStruct {x: 10, y: 23.5}
 
 // gdb-command:print *stack_val_interior_ref_1
 // gdb-check:$2 = 10
@@ -25,10 +26,12 @@
 // gdb-check:$3 = 23.5
 
 // gdb-command:print *ref_to_unnamed
-// gdb-check:$4 = {x = 11, y = 24.5}
+// gdbg-check:$4 = {x = 11, y = 24.5}
+// gdbr-check:$4 = borrowed_struct::SomeStruct {x: 11, y: 24.5}
 
 // gdb-command:print *unique_val_ref
-// gdb-check:$5 = {x = 13, y = 26.5}
+// gdbg-check:$5 = {x = 13, y = 26.5}
+// gdbr-check:$5 = borrowed_struct::SomeStruct {x: 13, y: 26.5}
 
 // gdb-command:print *unique_val_interior_ref_1
 // gdb-check:$6 = 13
