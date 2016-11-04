@@ -160,7 +160,10 @@ impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
         match *self {
             Borrowed(borrowed) => {
                 *self = Owned(borrowed.to_owned());
-                self.to_mut()
+                match *self {
+                    Borrowed(..) => unreachable!(),
+                    Owned(ref mut owned) => owned,
+                }
             }
             Owned(ref mut owned) => owned,
         }
