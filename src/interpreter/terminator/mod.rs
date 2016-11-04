@@ -646,6 +646,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     // just a sanity check
                     assert_eq!(drop_fn.offset, 0);
                 }
+            },
+            ty::TySlice(elem_ty) => {
+                let lval = self.force_allocation(lval)?;
+                let (ptr, len) = match lval {
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => (ptr, len as isize),
+                    _ => bug!("expected an lvalue with a length"),
+                };
+                let size = self.type_size(elem_ty) as isize;
+                // FIXME: this creates a lot of stack frames if the element type has
+                // a drop impl
+                for i in 0..len {
+                    self.drop(Lvalue::from_ptr(ptr.offset(i * size)), elem_ty, drop)?;
+                }
             }
             // other types do not need to process drop
             _ => {},
