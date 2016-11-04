@@ -147,20 +147,14 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                         -> (Ty<'tcx>, Literal<'tcx>) {
         let method_name = token::intern(method_name);
         let substs = self.tcx.mk_substs_trait(self_ty, params);
-        for trait_item in self.tcx.trait_items(trait_def_id).iter() {
-            match *trait_item {
-                ty::ImplOrTraitItem::MethodTraitItem(ref method) => {
-                    if method.name == method_name {
-                        let method_ty = self.tcx.lookup_item_type(method.def_id);
-                        let method_ty = method_ty.ty.subst(self.tcx, substs);
-                        return (method_ty, Literal::Item {
-                            def_id: method.def_id,
-                            substs: substs,
-                        });
-                    }
-                }
-                ty::ImplOrTraitItem::ConstTraitItem(..) |
-                ty::ImplOrTraitItem::TypeTraitItem(..) => {}
+        for item in self.tcx.associated_items(trait_def_id) {
+            if item.kind == ty::AssociatedKind::Method && item.name == method_name {
+                let method_ty = self.tcx.lookup_item_type(item.def_id);
+                let method_ty = method_ty.ty.subst(self.tcx, substs);
+                return (method_ty, Literal::Item {
+                    def_id: item.def_id,
+                    substs: substs,
+                });
             }
         }
 

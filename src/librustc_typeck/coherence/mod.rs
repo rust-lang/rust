@@ -38,8 +38,6 @@ use rustc::hir::intravisit;
 use rustc::hir::{Item, ItemImpl};
 use rustc::hir;
 
-use std::rc::Rc;
-
 mod orphan;
 mod overlap;
 mod unsafety;
@@ -113,8 +111,6 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         // If there are no traits, then this implementation must have a
         // base type.
 
-        let impl_items = self.create_impl_from_item(item);
-
         if let Some(trait_ref) = self.crate_context.tcx.impl_trait_ref(impl_did) {
             debug!("(checking implementation) adding impl for trait '{:?}', item '{}'",
                    trait_ref,
@@ -144,8 +140,6 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                 self.add_inherent_impl(base_def_id, impl_did);
             }
         }
-
-        tcx.impl_or_trait_item_def_ids.borrow_mut().insert(impl_did, Rc::new(impl_items));
     }
 
     fn add_inherent_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
@@ -161,20 +155,6 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         trait_def.record_local_impl(self.crate_context.tcx, impl_def_id, impl_trait_ref);
     }
 
-    // Converts an implementation in the AST to a vector of items.
-    fn create_impl_from_item(&self, item: &Item) -> Vec<DefId> {
-        match item.node {
-            ItemImpl(.., ref impl_items) => {
-                impl_items.iter()
-                    .map(|impl_item| self.crate_context.tcx.map.local_def_id(impl_item.id))
-                    .collect()
-            }
-            _ => {
-                span_bug!(item.span, "can't convert a non-impl to an impl");
-            }
-        }
-    }
-
     // Destructors
     //
 
@@ -187,10 +167,8 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         tcx.populate_implementations_for_trait_if_necessary(drop_trait);
         let drop_trait = tcx.lookup_trait_def(drop_trait);
 
-        let impl_items = tcx.impl_or_trait_item_def_ids.borrow();
-
         drop_trait.for_each_impl(tcx, |impl_did| {
-            let items = impl_items.get(&impl_did).unwrap();
+            let items = tcx.associated_item_def_ids(impl_did);
             if items.is_empty() {
                 // We'll error out later. For now, just don't ICE.
                 return;

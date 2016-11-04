@@ -29,10 +29,10 @@ pub enum MethodLateContext {
 
 pub fn method_context(cx: &LateContext, id: ast::NodeId, span: Span) -> MethodLateContext {
     let def_id = cx.tcx.map.local_def_id(id);
-    match cx.tcx.impl_or_trait_items.borrow().get(&def_id) {
+    match cx.tcx.associated_items.borrow().get(&def_id) {
         None => span_bug!(span, "missing method descriptor?!"),
         Some(item) => {
-            match item.container() {
+            match item.container {
                 ty::TraitContainer(..) => MethodLateContext::TraitDefaultImpl,
                 ty::ImplContainer(cid) => {
                     match cx.tcx.impl_trait_ref(cid) {
