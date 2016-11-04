@@ -24,7 +24,8 @@ use mem;
 ///
 /// See: https://131002.net/siphash/
 #[unstable(feature = "sip_hash_13", issue = "34767")]
-#[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
+#[rustc_deprecated(since = "1.13.0",
+                   reason = "use `std::collections::hash_map::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 pub struct SipHasher13 {
     hasher: Hasher<Sip13Rounds>,
@@ -34,7 +35,8 @@ pub struct SipHasher13 {
 ///
 /// See: https://131002.net/siphash/
 #[unstable(feature = "sip_hash_13", issue = "34767")]
-#[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
+#[rustc_deprecated(since = "1.13.0",
+                   reason = "use `std::collections::hash_map::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 pub struct SipHasher24 {
     hasher: Hasher<Sip24Rounds>,
@@ -53,7 +55,8 @@ pub struct SipHasher24 {
 /// it is not intended for cryptographic purposes. As such, all
 /// cryptographic uses of this implementation are _strongly discouraged_.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
+#[rustc_deprecated(since = "1.13.0",
+                   reason = "use `std::collections::hash_map::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 pub struct SipHasher(SipHasher24);
 
@@ -140,7 +143,8 @@ impl SipHasher {
     /// Creates a new `SipHasher` with the two initial keys set to 0.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
+    #[rustc_deprecated(since = "1.13.0",
+                       reason = "use `std::collections::hash_map::DefaultHasher` instead")]
     pub fn new() -> SipHasher {
         SipHasher::new_with_keys(0, 0)
     }
@@ -148,7 +152,8 @@ impl SipHasher {
     /// Creates a `SipHasher` that is keyed off the provided keys.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
+    #[rustc_deprecated(since = "1.13.0",
+                       reason = "use `std::collections::hash_map::DefaultHasher` instead")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
         SipHasher(SipHasher24::new_with_keys(key0, key1))
     }
@@ -158,7 +163,8 @@ impl SipHasher13 {
     /// Creates a new `SipHasher13` with the two initial keys set to 0.
     #[inline]
     #[unstable(feature = "sip_hash_13", issue = "34767")]
-    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
+    #[rustc_deprecated(since = "1.13.0",
+                       reason = "use `std::collections::hash_map::DefaultHasher` instead")]
     pub fn new() -> SipHasher13 {
         SipHasher13::new_with_keys(0, 0)
     }
@@ -166,7 +172,8 @@ impl SipHasher13 {
     /// Creates a `SipHasher13` that is keyed off the provided keys.
     #[inline]
     #[unstable(feature = "sip_hash_13", issue = "34767")]
-    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
+    #[rustc_deprecated(since = "1.13.0",
+                       reason = "use `std::collections::hash_map::DefaultHasher` instead")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
         SipHasher13 {
             hasher: Hasher::new_with_keys(key0, key1)
@@ -178,7 +185,8 @@ impl SipHasher24 {
     /// Creates a new `SipHasher24` with the two initial keys set to 0.
     #[inline]
     #[unstable(feature = "sip_hash_13", issue = "34767")]
-    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
+    #[rustc_deprecated(since = "1.13.0",
+                       reason = "use `std::collections::hash_map::DefaultHasher` instead")]
     pub fn new() -> SipHasher24 {
         SipHasher24::new_with_keys(0, 0)
     }
@@ -186,7 +194,8 @@ impl SipHasher24 {
     /// Creates a `SipHasher24` that is keyed off the provided keys.
     #[inline]
     #[unstable(feature = "sip_hash_13", issue = "34767")]
-    #[rustc_deprecated(since = "1.13.0", reason = "use `DefaultHasher` instead")]
+    #[rustc_deprecated(since = "1.13.0",
+                       reason = "use `std::collections::hash_map::DefaultHasher` instead")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher24 {
         SipHasher24 {
             hasher: Hasher::new_with_keys(key0, key1)
