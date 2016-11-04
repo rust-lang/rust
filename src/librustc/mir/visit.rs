@@ -157,14 +157,14 @@ macro_rules! make_mir_visitor {
 
             fn visit_projection(&mut self,
                                 lvalue: & $($mutability)* LvalueProjection<'tcx>,
-                                context: LvalueContext,
+                                context: LvalueContext<'tcx>,
                                 location: Location) {
                 self.super_projection(lvalue, context, location);
             }
 
             fn visit_projection_elem(&mut self,
                                      lvalue: & $($mutability)* LvalueElem<'tcx>,
-                                     context: LvalueContext,
+                                     context: LvalueContext<'tcx>,
                                      location: Location) {
                 self.super_projection_elem(lvalue, context, location);
             }
@@ -579,7 +579,7 @@ macro_rules! make_mir_visitor {
 
             fn super_projection(&mut self,
                                 proj: & $($mutability)* LvalueProjection<'tcx>,
-                                context: LvalueContext,
+                                context: LvalueContext<'tcx>,
                                 location: Location) {
                 let Projection {
                     ref $($mutability)* base,
@@ -596,7 +596,7 @@ macro_rules! make_mir_visitor {
 
             fn super_projection_elem(&mut self,
                                      proj: & $($mutability)* LvalueElem<'tcx>,
-                                     _context: LvalueContext,
+                                     _context: LvalueContext<'tcx>,
                                      location: Location) {
                 match *proj {
                     ProjectionElem::Deref => {
@@ -739,7 +739,7 @@ macro_rules! make_mir_visitor {
 make_mir_visitor!(Visitor,);
 make_mir_visitor!(MutVisitor,mut);
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LvalueContext<'tcx> {
     // Appears as LHS of an assignment
     Store,
