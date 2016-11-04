@@ -6,7 +6,7 @@ use rustc::ty::{self, Ty};
 
 use error::{EvalError, EvalResult};
 use interpreter::value::Value;
-use interpreter::{EvalContext, Lvalue};
+use interpreter::{EvalContext, Lvalue, LvalueExtra};
 use primval::{self, PrimVal, PrimValKind};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
@@ -69,6 +69,26 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_value_to_ptr(arg_vals[1], dest, ty)?;
             }
 
+            "atomic_fence_acq" => {
+                // we are inherently singlethreaded and singlecored, this is a nop
+            }
+
+            "atomic_xsub_rel" => {
+                let ty = substs.type_at(0);
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let change = self.value_to_primval(arg_vals[1], ty)?;
+                let old = self.read_value(ptr, ty)?;
+                let old = match old {
+                    Value::ByVal(val) => val,
+                    Value::ByRef(_) => bug!("just read the value, can't be byref"),
+                    Value::ByValPair(..) => bug!("atomic_xsub_rel doesn't work with nonprimitives"),
+                };
+                self.write_primval(dest, old)?;
+                // FIXME: what do atomics do on overflow?
+                let (val, _) = primval::binary_op(mir::BinOp::Sub, old, change)?;
+                self.write_primval(Lvalue::from_ptr(ptr), val)?;
+            }
+
             "breakpoint" => unimplemented!(), // halt miri
 
             "copy" |
@@ -101,6 +121,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, PrimVal::new(discr_val, PrimValKind::U64))?;
             }
 
+            "drop_in_place" => {
+                let ty = substs.type_at(0);
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let mut drops = Vec::new();
+                self.drop(Lvalue::from_ptr(ptr), ty, &mut drops)?;
+                self.eval_drop_impls(drops)?;
+            }
+
             "fabsf32" => {
                 let f = self.value_to_primval(arg_vals[2], f32)?
                     .expect_f32("fabsf32 read non f32");
@@ -126,11 +154,34 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "forget" => {}
 
             "init" => {
-                // FIXME(solson)
-                let dest = self.force_allocation(dest)?.to_ptr();
-
                 let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
-                self.memory.write_repeat(dest, 0, size)?;
+                let init = |this: &mut Self, val: Option<Value>| {
+                    match val {
+                        Some(Value::ByRef(ptr)) => {
+                            this.memory.write_repeat(ptr, 0, size)?;
+                            Ok(Some(Value::ByRef(ptr)))
+                        },
+                        None => match this.ty_to_primval_kind(dest_ty) {
+                            Ok(kind) => Ok(Some(Value::ByVal(PrimVal::new(0, kind)))),
+                            Err(_) => {
+                                let ptr = this.alloc_ptr_with_substs(dest_ty, substs)?;
+                                this.memory.write_repeat(ptr, 0, size)?;
+                                Ok(Some(Value::ByRef(ptr)))
+                            }
+                        },
+                        Some(Value::ByVal(value)) => Ok(Some(Value::ByVal(PrimVal::new(0, value.kind)))),
+                        Some(Value::ByValPair(a, b)) => Ok(Some(Value::ByValPair(
+                            PrimVal::new(0, a.kind),
+                            PrimVal::new(0, b.kind),
+                        ))),
+                    }
+                };
+                match dest {
+                    Lvalue::Local { frame, local } => self.modify_local(frame, local, init)?,
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::None } => self.memory.write_repeat(ptr, 0, size)?,
+                    Lvalue::Ptr { .. } => bug!("init intrinsic tried to write to fat ptr target"),
+                    Lvalue::Global(cid) => self.modify_global(cid, init)?,
+                }
             }
 
             "min_align_of" => {
@@ -225,6 +276,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let size_val = self.usize_primval(size);
                 self.write_primval(dest, size_val)?;
             }
+
+            "min_align_of_val" |
+            "align_of_val" => {
+                let ty = substs.type_at(0);
+                let (_, align) = self.size_and_align_of_dst(ty, arg_vals[0])?;
+                let align_val = self.usize_primval(align);
+                self.write_primval(dest, align_val)?;
+            }
+
             "type_name" => {
                 let ty = substs.type_at(0);
                 let ty_name = ty.to_string();
@@ -248,12 +308,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "uninit" => {
-                // FIXME(solson): Attempt writing a None over the destination when it's an
-                // Lvalue::Local (that is not ByRef). Otherwise do the mark_definedness as usual.
-                let dest = self.force_allocation(dest)?.to_ptr();
-
                 let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
-                self.memory.mark_definedness(dest, size, false)?;
+                let uninit = |this: &mut Self, val: Option<Value>| {
+                    match val {
+                        Some(Value::ByRef(ptr)) => {
+                            this.memory.mark_definedness(ptr, size, false)?;
+                            Ok(Some(Value::ByRef(ptr)))
+                        },
+                        None => Ok(None),
+                        Some(_) => Ok(None),
+                    }
+                };
+                match dest {
+                    Lvalue::Local { frame, local } => self.modify_local(frame, local, uninit)?,
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::None } => self.memory.mark_definedness(ptr, size, false)?,
+                    Lvalue::Ptr { .. } => bug!("uninit intrinsic tried to write to fat ptr target"),
+                    Lvalue::Global(cid) => self.modify_global(cid, uninit)?,
+                }
             }
 
             name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),

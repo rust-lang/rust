@@ -1325,11 +1325,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         PrimValKind::from_uint_size(size)
                     }
                 } else {
-                    bug!("primitive read of non-clike enum: {:?}", ty);
+                    return Err(EvalError::TypeNotPrimitive(ty));
                 }
             },
 
-            _ => bug!("primitive read of non-primitive type: {:?}", ty),
+            _ => return Err(EvalError::TypeNotPrimitive(ty)),
         };
 
         Ok(kind)
@@ -1551,6 +1551,39 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    /// convenience function to ensure correct usage of globals and code-sharing with locals
+    pub fn modify_global<
+        F: FnOnce(&mut Self, Option<Value>) -> EvalResult<'tcx, Option<Value>>,
+    >(
+        &mut self,
+        cid: GlobalId<'tcx>,
+        f: F,
+    ) -> EvalResult<'tcx, ()> {
+        let mut val = *self.globals.get(&cid).expect("global not cached");
+        if !val.mutable {
+            return Err(EvalError::ModifiedConstantMemory);
+        }
+        val.data = f(self, val.data)?;
+        *self.globals.get_mut(&cid).expect("already checked") = val;
+        Ok(())
+    }
+
+    /// convenience function to ensure correct usage of locals and code-sharing with globals
+    pub fn modify_local<
+        F: FnOnce(&mut Self, Option<Value>) -> EvalResult<'tcx, Option<Value>>,
+    >(
+        &mut self,
+        frame: usize,
+        local: mir::Local,
+        f: F,
+    ) -> EvalResult<'tcx, ()> {
+        let val = self.stack[frame].get_local(local);
+        let val = f(self, val)?;
+        // can't use `set_local` here, because that's only meant for going to an initialized value
+        self.stack[frame].locals[local.index() - 1] = val;
+        Ok(())
     }
 }
 

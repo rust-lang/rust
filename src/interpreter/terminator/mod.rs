@@ -104,14 +104,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Drop { ref location, target, .. } => {
-                // FIXME(solson)
-                let lvalue = self.eval_lvalue(location)?;
-                let lvalue = self.force_allocation(lvalue)?;
+                let lval = self.eval_lvalue(location)?;
 
-                let ptr = lvalue.to_ptr();
                 let ty = self.lvalue_ty(location);
-                self.drop(ptr, ty)?;
+
+                // we can't generate the drop stack frames on the fly,
+                // because that would change our call stack
+                // and very much confuse the further processing of the drop glue
+                let mut drops = Vec::new();
+                self.drop(lval, ty, &mut drops)?;
                 self.goto_block(target);
+                self.eval_drop_impls(drops)?;
             }
 
             Assert { ref cond, expected, ref msg, target, .. } => {
@@ -140,6 +143,30 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Unreachable => unimplemented!(),
         }
 
+        Ok(())
+    }
+
+    fn eval_drop_impls(&mut self, drops: Vec<(DefId, Pointer, &'tcx Substs<'tcx>)>) -> EvalResult<'tcx, ()> {
+        let span = self.frame().span;
+        for (drop_def_id, adt_ptr, substs) in drops {
+            // FIXME: supply a real span
+            let mir = self.load_mir(drop_def_id)?;
+            trace!("substs for drop glue: {:?}", substs);
+            self.push_stack_frame(
+                drop_def_id,
+                span,
+                mir,
+                substs,
+                Lvalue::from_ptr(Pointer::zst_ptr()),
+                StackPopCleanup::None,
+            )?;
+            let mut arg_locals = self.frame().mir.args_iter();
+            let first = arg_locals.next().expect("drop impl has self arg");
+            assert!(arg_locals.next().is_none(), "drop impl should have only one arg");
+            let dest = self.eval_lvalue(&mir::Lvalue::Local(first))?;
+            let ty = self.frame().mir.local_decls[first].ty;
+            self.write_value(Value::ByVal(PrimVal::from_ptr(adt_ptr)), dest, ty)?;
+        }
         Ok(())
     }
 
@@ -293,6 +320,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = self.memory.allocate(size as usize, align as usize)?;
                 self.write_primval(dest, PrimVal::from_ptr(ptr))?;
             }
+
+            "__rust_deallocate" => {
+                let ptr = args[0].read_ptr(&self.memory)?;
+                // FIXME: insert sanity check for size and align?
+                let _old_size = self.value_to_primval(args[1], usize)?
+                    .expect_uint("__rust_deallocate second arg not usize");
+                let _align = self.value_to_primval(args[2], usize)?
+                    .expect_uint("__rust_deallocate third arg not usize");
+                self.memory.deallocate(ptr)?;
+            },
 
             "__rust_reallocate" => {
                 let ptr = args[0].read_ptr(&self.memory)?;
@@ -471,25 +508,75 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.tcx.type_needs_drop_given_env(ty, &self.tcx.empty_parameter_environment())
     }
 
-    fn drop(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
+    /// push DefIds of drop impls and their argument on the given vector
+    fn drop(
+        &mut self,
+        lval: Lvalue<'tcx>,
+        ty: Ty<'tcx>,
+        drop: &mut Vec<(DefId, Pointer, &'tcx Substs<'tcx>)>,
+    ) -> EvalResult<'tcx, ()> {
         if !self.type_needs_drop(ty) {
             debug!("no need to drop {:?}", ty);
             return Ok(());
         }
-        trace!("-need to drop {:?}", ty);
-
-        // TODO(solson): Call user-defined Drop::drop impls.
+        trace!("-need to drop {:?} at {:?}", ty, lval);
 
         match ty.sty {
-            ty::TyBox(_contents_ty) => {
-                let contents_ptr = self.memory.read_ptr(ptr)?;
-                // self.drop(contents_ptr, contents_ty)?;
+            // special case `Box` to deallocate the inner allocation
+            ty::TyBox(contents_ty) => {
+                let val = self.read_lvalue(lval)?;
+                let contents_ptr = val.read_ptr(&self.memory)?;
+                self.drop(Lvalue::from_ptr(contents_ptr), contents_ty, drop)?;
                 trace!("-deallocating box");
                 self.memory.deallocate(contents_ptr)?;
-            }
+            },
 
-            // TODO(solson): Implement drop for other relevant types (e.g. aggregates).
-            _ => {}
+            ty::TyAdt(adt_def, substs) => {
+                // FIXME: some structs are represented as ByValPair
+                let adt_ptr = self.force_allocation(lval)?.to_ptr();
+                // run drop impl before the fields' drop impls
+                if let Some(drop_def_id) = adt_def.destructor() {
+                    drop.push((drop_def_id, adt_ptr, substs));
+                }
+                let layout = self.type_layout(ty);
+                let fields = match *layout {
+                    Layout::Univariant { ref variant, .. } => {
+                        adt_def.struct_variant().fields.iter().zip(&variant.offsets)
+                    },
+                    Layout::General { ref variants, .. } => {
+                        let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
+                        match adt_def.variants.iter().position(|v| discr_val == v.disr_val.to_u64_unchecked()) {
+                            // start at offset 1, to skip over the discriminant
+                            Some(i) => adt_def.variants[i].fields.iter().zip(&variants[i].offsets[1..]),
+                            None => return Err(EvalError::InvalidDiscriminant),
+                        }
+                    },
+                    Layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
+                        let discr = self.read_discriminant_value(adt_ptr, ty)?;
+                        if discr == nndiscr {
+                            adt_def.variants[discr as usize].fields.iter().zip(&nonnull.offsets)
+                        } else {
+                            // FIXME: the zst variant might contain zst types that impl Drop
+                            return Ok(()); // nothing to do, this is zero sized (e.g. `None`)
+                        }
+                    },
+                    _ => bug!("{:?} is not an adt layout", layout),
+                };
+                for (field_ty, offset) in fields {
+                    let field_ty = self.monomorphize_field_ty(field_ty, substs);
+                    self.drop(Lvalue::from_ptr(adt_ptr.offset(offset.bytes() as isize)), field_ty, drop)?;
+                }
+            },
+            ty::TyTuple(fields) => {
+                // FIXME: some tuples are represented as ByValPair
+                let ptr = self.force_allocation(lval)?.to_ptr();
+                for (i, field_ty) in fields.iter().enumerate() {
+                    let offset = self.get_field_offset(ty, i)?.bytes() as isize;
+                    self.drop(Lvalue::from_ptr(ptr.offset(offset)), field_ty, drop)?;
+                }
+            },
+            // other types do not need to process drop
+            _ => {},
         }
 
         Ok(())

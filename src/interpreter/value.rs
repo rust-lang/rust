@@ -23,12 +23,9 @@ impl<'a, 'tcx: 'a> Value {
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr),
 
-            ByVal(ptr) if ptr.try_as_ptr().is_some() => {
-                Ok(ptr.try_as_ptr().unwrap())
+            ByVal(ptr) | ByValPair(ptr, _) => {
+                Ok(ptr.try_as_ptr().expect("unimplemented: `read_ptr` on non-ptr primval"))
             }
-
-            ByValPair(..) => unimplemented!(),
-            ByVal(_other) => unimplemented!(),
         }
     }
 
