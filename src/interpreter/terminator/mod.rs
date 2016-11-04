@@ -521,16 +521,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
         trace!("-need to drop {:?} at {:?}", ty, lval);
 
-        // special case `Box` to deallocate the inner allocation
-        if let ty::TyBox(contents_ty) = ty.sty {
-            let val = self.read_lvalue(lval)?;
-            let contents_ptr = val.read_ptr(&self.memory)?;
-            self.drop(Lvalue::from_ptr(contents_ptr), contents_ty, drop)?;
-            trace!("-deallocating box");
-            return self.memory.deallocate(contents_ptr);
-        }
-
         match ty.sty {
+            // special case `Box` to deallocate the inner allocation
+            ty::TyBox(contents_ty) => {
+                let val = self.read_lvalue(lval)?;
+                let contents_ptr = val.read_ptr(&self.memory)?;
+                self.drop(Lvalue::from_ptr(contents_ptr), contents_ty, drop)?;
+                trace!("-deallocating box");
+                self.memory.deallocate(contents_ptr)?;
+            },
+
             ty::TyAdt(adt_def, substs) => {
                 // FIXME: some structs are represented as ByValPair
                 let adt_ptr = self.force_allocation(lval)?.to_ptr();
