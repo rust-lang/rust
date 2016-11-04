@@ -105,6 +105,17 @@ impl<'a> Visitor for CollectCustomDerives<'a> {
         match item.node {
             ast::ItemKind::Fn(..) => {}
             _ => {
+                // Check for invalid use of proc_macro_derive
+                let attr = item.attrs.iter()
+                    .filter(|a| a.check_name("proc_macro_derive"))
+                    .next();
+                if let Some(attr) = attr {
+                    self.handler.span_err(attr.span(),
+                                          "the `#[proc_macro_derive]` \
+                                          attribute may only be used \
+                                          on bare functions");
+                    return;
+                }
                 self.check_not_pub_in_root(&item.vis, item.span);
                 return visit::walk_item(self, item)
             }
