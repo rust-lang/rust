@@ -330,11 +330,12 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
 //   or
 //   2) We are not sure to be live or not
 //     * Implementation of a trait method
-struct LifeSeeder {
-    worklist: Vec<ast::NodeId>
+struct LifeSeeder<'k> {
+    worklist: Vec<ast::NodeId>,
+    krate: &'k hir::Crate,
 }
 
-impl<'v> ItemLikeVisitor<'v> for LifeSeeder {
+impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
     fn visit_item(&mut self, item: &hir::Item) {
         let allow_dead_code = has_allow_dead_code_or_lang_attr(&item.attrs);
         if allow_dead_code {
@@ -358,16 +359,21 @@ impl<'v> ItemLikeVisitor<'v> for LifeSeeder {
                     }
                 }
             }
-            hir::ItemImpl(.., ref opt_trait, _, ref impl_items) => {
-                for impl_item in impl_items {
+            hir::ItemImpl(.., ref opt_trait, _, ref impl_item_ids) => {
+                for &impl_item_id in impl_item_ids {
+                    let impl_item = self.krate.impl_item(impl_item_id);
                     if opt_trait.is_some() ||
                             has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
-                        self.worklist.push(impl_item.id);
+                        self.worklist.push(impl_item_id.id);
                     }
                 }
             }
             _ => ()
         }
+    }
+
+    fn visit_impl_item(&mut self, _item: &hir::ImplItem) {
+        // ignore: we are handling this in `visit_item` above
     }
 }
 
@@ -387,7 +393,8 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Seed implemented trait items
     let mut life_seeder = LifeSeeder {
-        worklist: worklist
+        worklist: worklist,
+        krate: krate,
     };
     krate.visit_all_item_likes(&mut life_seeder);
 
@@ -510,8 +517,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
     fn visit_nested_item(&mut self, item: hir::ItemId) {
-        let tcx = self.tcx;
-        self.visit_item(tcx.map.expect_item(item.id))
+        let item = self.tcx.map.expect_item(item.id);
+        self.visit_item(item)
+    }
+
+    fn visit_nested_impl_item(&mut self, item_id: hir::ImplItemId) {
+        let impl_item = self.tcx.map.impl_item(item_id);
+        self.visit_impl_item(impl_item)
     }
 
     fn visit_item(&mut self, item: &hir::Item) {

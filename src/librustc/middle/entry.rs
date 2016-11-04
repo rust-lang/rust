@@ -17,7 +17,7 @@ use syntax::ast::NodeId;
 use syntax::attr;
 use syntax::entry::EntryPointType;
 use syntax_pos::Span;
-use hir::{Item, ItemFn};
+use hir::{Item, ItemFn, ImplItem};
 use hir::itemlikevisit::ItemLikeVisitor;
 
 struct EntryContext<'a, 'tcx: 'a> {
@@ -45,6 +45,10 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
         let def_key = self.map.def_key(def_id);
         let at_root = def_key.parent == Some(CRATE_DEF_INDEX);
         find_item(item, self, at_root);
+    }
+
+    fn visit_impl_item(&mut self, _impl_item: &'tcx ImplItem) {
+        // entry fn is never an impl item
     }
 }
 

@@ -336,6 +336,10 @@ impl<'a, 'v> ItemLikeVisitor<'v> for CollectPrivateImplItemsVisitor<'a> {
             }
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+        // processed in visit_item above
+    }
 }
 
 pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

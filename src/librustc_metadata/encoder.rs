@@ -1177,6 +1177,10 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
             }
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem) {
+        // handled in `visit_item` above
+    }
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {

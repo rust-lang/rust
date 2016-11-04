@@ -460,6 +460,9 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
                     _ => {}
                 }
             }
+
+            fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+            }
         }
         ccx.tcx.map.krate().visit_all_item_likes(&mut Visitor {
             map: &ccx.tcx.map,

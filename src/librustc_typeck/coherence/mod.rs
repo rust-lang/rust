@@ -57,6 +57,9 @@ impl<'a, 'gcx, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceCheckVisitor<'a, 'gcx,
             self.cc.check_implementation(item)
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    }
 }
 
 impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {

@@ -34,4 +34,8 @@ impl<'v> ItemLikeVisitor<'v> for Finder {
             self.registrar = Some(item.id);
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    }
 }
+

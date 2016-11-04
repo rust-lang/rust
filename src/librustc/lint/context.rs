@@ -797,8 +797,13 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     /// items in the context of the outer item, so enable
     /// deep-walking.
     fn visit_nested_item(&mut self, item: hir::ItemId) {
-        let tcx = self.tcx;
-        self.visit_item(tcx.map.expect_item(item.id))
+        let item = self.tcx.map.expect_item(item.id);
+        self.visit_item(item)
+    }
+
+    fn visit_nested_impl_item(&mut self, item_id: hir::ImplItemId) {
+        let impl_item = self.tcx.map.impl_item(item_id);
+        self.visit_impl_item(impl_item)
     }
 
     fn visit_item(&mut self, it: &hir::Item) {

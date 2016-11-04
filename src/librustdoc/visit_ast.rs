@@ -502,10 +502,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.traits.push(t);
             },
 
-            hir::ItemImpl(unsafety, polarity, ref gen, ref tr, ref ty, ref items) => {
+            hir::ItemImpl(unsafety, polarity, ref gen, ref tr, ref ty, ref item_ids) => {
                 // Don't duplicate impls when inlining, we'll pick them up
                 // regardless of where they're located.
                 if !self.inlining {
+                    let items = item_ids.iter()
+                                        .map(|&id| self.cx.map.impl_item(id).clone())
+                                        .collect();
                     let i = Impl {
                         unsafety: unsafety,
                         polarity: polarity,

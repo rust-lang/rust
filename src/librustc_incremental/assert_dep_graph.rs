@@ -171,6 +171,10 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for IfThisChanged<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.process_attrs(item.id, &item.attrs);
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) {
+        // handled in `visit_item` above
+    }
 }
 
 fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

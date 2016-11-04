@@ -189,7 +189,7 @@
 //! regardless of whether it is actually needed or not.
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
@@ -308,7 +308,7 @@ fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             output: &mut roots,
         };
 
-        scx.tcx().map.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+        scx.tcx().map.krate().visit_all_item_likes(&mut visitor);
     }
 
     roots
@@ -1031,7 +1031,7 @@ struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     output: &'b mut Vec<TransItem<'tcx>>,
 }
 
-impl<'b, 'a, 'v> Visitor<'v> for RootCollector<'b, 'a, 'v> {
+impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
             hir::ItemExternCrate(..) |
@@ -1089,8 +1089,6 @@ impl<'b, 'a, 'v> Visitor<'v> for RootCollector<'b, 'a, 'v> {
                 }
             }
         }
-
-        intravisit::walk_item(self, item)
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
@@ -1125,8 +1123,6 @@ impl<'b, 'a, 'v> Visitor<'v> for RootCollector<'b, 'a, 'v> {
             }
             _ => { /* Nothing to do here */ }
         }
-
-        intravisit::walk_impl_item(self, ii)
     }
 }
 
@@ -1151,9 +1147,11 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
                 let callee_substs = tcx.erase_regions(&trait_ref.substs);
-                let overridden_methods: FxHashSet<_> = items.iter()
-                                                            .map(|item| item.name)
-                                                            .collect();
+                let overridden_methods: FxHashSet<_> =
+                    items.iter()
+                         .map(|&id| tcx.map.impl_item(id))
+                         .map(|item| item.name)
+                         .collect();
                 for method in tcx.provided_trait_methods(trait_ref.def_id) {
                     if overridden_methods.contains(&method.name) {
                         continue;
