@@ -1549,7 +1549,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
                 tcx.prohibit_type_params(base_segments);
                 let impl_id = tcx.map.as_local_node_id(def_id).unwrap();
-                let ty = tcx.node_id_to_type(impl_id);
+                let ty = tcx.tables().node_id_to_type(impl_id);
                 if let Some(free_substs) = self.get_free_substs() {
                     ty.subst(tcx, free_substs)
                 } else {

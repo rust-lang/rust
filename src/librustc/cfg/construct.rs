@@ -311,11 +311,11 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprIndex(ref l, ref r) |
-            hir::ExprBinary(_, ref l, ref r) if self.tcx.is_method_call(expr.id) => {
+            hir::ExprBinary(_, ref l, ref r) if self.tcx.tables().is_method_call(expr.id) => {
                 self.call(expr, pred, &l, Some(&**r).into_iter())
             }
 
-            hir::ExprUnary(_, ref e) if self.tcx.is_method_call(expr.id) => {
+            hir::ExprUnary(_, ref e) if self.tcx.tables().is_method_call(expr.id) => {
                 self.call(expr, pred, &e, None::<hir::Expr>.iter())
             }
 
@@ -372,9 +372,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             func_or_rcvr: &hir::Expr,
             args: I) -> CFGIndex {
         let method_call = ty::MethodCall::expr(call_expr.id);
-        let fn_ty = match self.tcx.tables.borrow().method_map.get(&method_call) {
+        let fn_ty = match self.tcx.tables().method_map.get(&method_call) {
             Some(method) => method.ty,
-            None => self.tcx.expr_ty_adjusted(func_or_rcvr)
+            None => self.tcx.tables().expr_ty_adjusted(func_or_rcvr)
         };
 
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);

@@ -259,23 +259,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         self.resolve_type(t)
     }
 
-    fn resolve_method_type(&self, method_call: MethodCall) -> Option<Ty<'tcx>> {
-        let method_ty = self.tables.borrow().method_map
-                            .get(&method_call).map(|method| method.ty);
-        method_ty.map(|method_ty| self.resolve_type(method_ty))
-    }
-
     /// Try to resolve the type for the given node.
     pub fn resolve_expr_type_adjusted(&mut self, expr: &hir::Expr) -> Ty<'tcx> {
-        let ty_unadjusted = self.resolve_node_type(expr.id);
-        if ty_unadjusted.references_error() {
-            ty_unadjusted
-        } else {
-            ty_unadjusted.adjust(
-                self.tcx, expr.span, expr.id,
-                self.tables.borrow().adjustments.get(&expr.id),
-                |method_call| self.resolve_method_type(method_call))
-        }
+        let ty = self.tables.borrow().expr_ty_adjusted(expr);
+        self.resolve_type(ty)
     }
 
     fn visit_fn_body(&mut self,
@@ -553,10 +540,8 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
         let adjustment = self.tables.borrow().adjustments.get(&expr.id).map(|a| a.clone());
         if let Some(adjustment) = adjustment {
             debug!("adjustment={:?}", adjustment);
-            match adjustment {
-                adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
-                    autoderefs, ref autoref, ..
-                }) => {
+            match adjustment.kind {
+                adjustment::Adjust::DerefRef { autoderefs, ref autoref, .. } => {
                     let expr_ty = self.resolve_node_type(expr.id);
                     self.constrain_autoderefs(expr, autoderefs, expr_ty);
                     if let Some(ref autoref) = *autoref {
@@ -946,7 +931,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     let origin = infer::ParameterOrigin::OverloadedDeref;
                     self.substs_wf_in_scope(origin, method.substs, deref_expr.span, r_deref_expr);
 
-                    // Treat overloaded autoderefs as if an AutoRef adjustment
+                    // Treat overloaded autoderefs as if an AutoBorrow adjustment
                     // was applied on the base type, as that is always the case.
                     let fn_sig = method.ty.fn_sig();
                     let fn_sig = // late-bound regions should have been instantiated
@@ -1060,15 +1045,12 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         id: ast::NodeId,
         minimum_lifetime: &'tcx ty::Region)
     {
-        let tcx = self.tcx;
-
         // Try to resolve the type.  If we encounter an error, then typeck
         // is going to fail anyway, so just stop here and let typeck
         // report errors later on in the writeback phase.
         let ty0 = self.resolve_node_type(id);
-        let ty = ty0.adjust(tcx, origin.span(), id,
-                            self.tables.borrow().adjustments.get(&id),
-                            |method_call| self.resolve_method_type(method_call));
+        let ty = self.tables.borrow().adjustments.get(&id).map_or(ty0, |adj| adj.target);
+        let ty = self.resolve_type(ty);
         debug!("constrain_regions_in_type_of_node(\
                 ty={}, ty0={}, id={}, minimum_lifetime={:?})",
                 ty,  ty0,
@@ -1165,7 +1147,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn link_autoref(&self,
                     expr: &hir::Expr,
                     autoderefs: usize,
-                    autoref: &adjustment::AutoRef<'tcx>)
+                    autoref: &adjustment::AutoBorrow<'tcx>)
     {
         debug!("link_autoref(autoref={:?})", autoref);
         let mc = mc::MemCategorizationContext::new(self);
@@ -1173,12 +1155,12 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         debug!("expr_cmt={:?}", expr_cmt);
 
         match *autoref {
-            adjustment::AutoPtr(r, m) => {
+            adjustment::AutoBorrow::Ref(r, m) => {
                 self.link_region(expr.span, r,
                                  ty::BorrowKind::from_mutbl(m), expr_cmt);
             }
 
-            adjustment::AutoUnsafe(m) => {
+            adjustment::AutoBorrow::RawPtr(m) => {
                 let r = self.tcx.node_scope_region(expr.id);
                 self.link_region(expr.span, r, ty::BorrowKind::from_mutbl(m), expr_cmt);
             }

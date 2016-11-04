@@ -229,7 +229,7 @@ impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
         debug!("Type for pattern binding {} (id {}) resolved to {:?}",
                pat_to_string(p),
                p.id,
-               self.tcx().node_id_to_type(p.id));
+               self.tcx().tables().node_id_to_type(p.id));
 
         intravisit::walk_pat(self, p);
     }
@@ -381,35 +381,39 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             }
 
             Some(adjustment) => {
-                let resolved_adjustment = match adjustment {
-                    adjustment::AdjustNeverToAny(ty) => {
-                        adjustment::AdjustNeverToAny(self.resolve(&ty, reason))
+                let resolved_adjustment = match adjustment.kind {
+                    adjustment::Adjust::NeverToAny => {
+                        adjustment::Adjust::NeverToAny
                     }
 
-                    adjustment::AdjustReifyFnPointer => {
-                        adjustment::AdjustReifyFnPointer
+                    adjustment::Adjust::ReifyFnPointer => {
+                        adjustment::Adjust::ReifyFnPointer
                     }
 
-                    adjustment::AdjustMutToConstPointer => {
-                        adjustment::AdjustMutToConstPointer
+                    adjustment::Adjust::MutToConstPointer => {
+                        adjustment::Adjust::MutToConstPointer
                     }
 
-                    adjustment::AdjustUnsafeFnPointer => {
-                        adjustment::AdjustUnsafeFnPointer
+                    adjustment::Adjust::UnsafeFnPointer => {
+                        adjustment::Adjust::UnsafeFnPointer
                     }
 
-                    adjustment::AdjustDerefRef(adj) => {
-                        for autoderef in 0..adj.autoderefs {
+                    adjustment::Adjust::DerefRef { autoderefs, autoref, unsize } => {
+                        for autoderef in 0..autoderefs {
                             let method_call = MethodCall::autoderef(id, autoderef as u32);
                             self.visit_method_map_entry(reason, method_call);
                         }
 
-                        adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
-                            autoderefs: adj.autoderefs,
-                            autoref: self.resolve(&adj.autoref, reason),
-                            unsize: self.resolve(&adj.unsize, reason),
-                        })
+                        adjustment::Adjust::DerefRef {
+                            autoderefs: autoderefs,
+                            autoref: self.resolve(&autoref, reason),
+                            unsize: unsize,
+                        }
                     }
+                };
+                let resolved_adjustment = adjustment::Adjustment {
+                    kind: resolved_adjustment,
+                    target: self.resolve(&adjustment.target, reason)
                 };
                 debug!("Adjustments for node {}: {:?}", id, resolved_adjustment);
                 self.tcx().tables.borrow_mut().adjustments.insert(
