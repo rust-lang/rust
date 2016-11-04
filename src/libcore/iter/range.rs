@@ -12,7 +12,7 @@ use mem;
 use ops::{self, Add, Sub};
 use usize;
 
-use super::FusedIterator;
+use super::{FusedIterator, TrustedLen};
 
 /// Objects that can be stepped over in both directions.
 ///
@@ -480,6 +480,22 @@ macro_rules! range_incl_exact_iter_impl {
     )*)
 }
 
+macro_rules! range_trusted_len_impl {
+    ($($t:ty)*) => ($(
+        #[unstable(feature = "trusted_len", issue = "37572")]
+        unsafe impl TrustedLen for ops::Range<$t> { }
+    )*)
+}
+
+macro_rules! range_incl_trusted_len_impl {
+    ($($t:ty)*) => ($(
+        #[unstable(feature = "inclusive_range",
+                   reason = "recently added, follows RFC",
+                   issue = "28237")]
+        unsafe impl TrustedLen for ops::RangeInclusive<$t> { }
+    )*)
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step> Iterator for ops::Range<A> where
     for<'a> &'a A: Add<&'a A, Output = A>
@@ -512,6 +528,13 @@ impl<A: Step> Iterator for ops::Range<A> where
 // required by ExactSizeIterator.
 range_exact_iter_impl!(usize u8 u16 u32 isize i8 i16 i32);
 range_incl_exact_iter_impl!(u8 u16 i8 i16);
+
+// These macros generate `TrustedLen` impls.
+//
+// They need to guarantee that .size_hint() is either exact, or that
+// the upper bound is None when it does not fit the type limits.
+range_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
+range_incl_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step + Clone> DoubleEndedIterator for ops::Range<A> where

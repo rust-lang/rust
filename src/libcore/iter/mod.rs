@@ -328,6 +328,8 @@ pub use self::traits::{FromIterator, IntoIterator, DoubleEndedIterator, Extend};
 pub use self::traits::{ExactSizeIterator, Sum, Product};
 #[unstable(feature = "fused", issue = "35602")]
 pub use self::traits::FusedIterator;
+#[unstable(feature = "trusted_len", issue = "37572")]
+pub use self::traits::TrustedLen;
 
 mod iterator;
 mod range;
@@ -371,6 +373,10 @@ impl<I> ExactSizeIterator for Rev<I>
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Rev<I>
     where I: FusedIterator + DoubleEndedIterator {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<I> TrustedLen for Rev<I>
+    where I: TrustedLen + DoubleEndedIterator {}
 
 /// An iterator that clones the elements of an underlying iterator.
 ///
@@ -437,6 +443,12 @@ unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
     #[inline]
     fn may_have_side_effect() -> bool { true }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, I, T: 'a> TrustedLen for Cloned<I>
+    where I: TrustedLen<Item=&'a T>,
+          T: Clone
+{}
 
 /// An iterator that repeats endlessly.
 ///
@@ -667,6 +679,11 @@ impl<A, B> FusedIterator for Chain<A, B>
           B: FusedIterator<Item=A::Item>,
 {}
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<A, B> TrustedLen for Chain<A, B>
+    where A: TrustedLen, B: TrustedLen<Item=A::Item>,
+{}
+
 /// An iterator that iterates two other iterators simultaneously.
 ///
 /// This `struct` is created by the [`zip()`] method on [`Iterator`]. See its
@@ -884,6 +901,11 @@ unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
 impl<A, B> FusedIterator for Zip<A, B>
     where A: FusedIterator, B: FusedIterator, {}
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<A, B> TrustedLen for Zip<A, B>
+    where A: TrustedLen, B: TrustedLen,
+{}
+
 /// An iterator that maps the values of `iter` with `f`.
 ///
 /// This `struct` is created by the [`map()`] method on [`Iterator`]. See its
@@ -990,6 +1012,11 @@ impl<B, I: ExactSizeIterator, F> ExactSizeIterator for Map<I, F>
 #[unstable(feature = "fused", issue = "35602")]
 impl<B, I: FusedIterator, F> FusedIterator for Map<I, F>
     where F: FnMut(I::Item) -> B {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<B, I, F> TrustedLen for Map<I, F>
+    where I: TrustedLen,
+          F: FnMut(I::Item) -> B {}
 
 #[doc(hidden)]
 unsafe impl<B, I, F> TrustedRandomAccess for Map<I, F>
@@ -1226,6 +1253,12 @@ unsafe impl<I> TrustedRandomAccess for Enumerate<I>
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Enumerate<I> where I: FusedIterator {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<I> TrustedLen for Enumerate<I>
+    where I: TrustedLen,
+{}
+
 
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.

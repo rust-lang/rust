@@ -75,7 +75,7 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::{FromIterator, FusedIterator};
+use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::mem;
 use core::ops::{Index, IndexMut};
 use core::ops;
@@ -83,7 +83,6 @@ use core::ptr;
 use core::ptr::Shared;
 use core::slice;
 
-use super::SpecExtend;
 use super::range::RangeArgument;
 
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
@@ -1245,26 +1244,7 @@ impl<T: Clone> Vec<T> {
     /// ```
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
-        self.reserve(other.len());
-
-        // Unsafe code so this can be optimised to a memcpy (or something
-        // similarly fast) when T is Copy. LLVM is easily confused, so any
-        // extra operations during the loop can prevent this optimisation.
-        unsafe {
-            let len = self.len();
-            let ptr = self.get_unchecked_mut(len) as *mut T;
-            // Use SetLenOnDrop to work around bug where compiler
-            // may not realize the store through `ptr` trough self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            for i in 0..other.len() {
-                ptr::write(ptr.offset(i as isize), other.get_unchecked(i).clone());
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
-        }
+        self.extend(other.iter().cloned())
     }
 }
 
@@ -1606,19 +1586,25 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        <Self as SpecExtend<I>>::spec_extend(self, iter);
-    }
-}
-
-impl<I: IntoIterator> SpecExtend<I> for Vec<I::Item> {
-    default fn spec_extend(&mut self, iter: I) {
         self.extend_desugared(iter.into_iter())
     }
 }
 
-impl<T> SpecExtend<Vec<T>> for Vec<T> {
-    fn spec_extend(&mut self, ref mut other: Vec<T>) {
-        self.append(other);
+trait IsTrustedLen : Iterator {
+    fn trusted_len(&self) -> Option<usize> { None }
+}
+impl<I> IsTrustedLen for I where I: Iterator { }
+
+impl<I> IsTrustedLen for I where I: TrustedLen
+{
+    fn trusted_len(&self) -> Option<usize> {
+        let (low, high) = self.size_hint();
+        if let Some(high_value) = high {
+            debug_assert_eq!(low, high_value,
+                             "TrustedLen iterator's size hint is not exact: {:?}",
+                             (low, high));
+        }
+        high
     }
 }
 
@@ -1629,16 +1615,30 @@ impl<T> Vec<T> {
         //      for item in iterator {
         //          self.push(item);
         //      }
-        while let Some(element) = iterator.next() {
-            let len = self.len();
-            if len == self.capacity() {
-                let (lower, _) = iterator.size_hint();
-                self.reserve(lower.saturating_add(1));
-            }
+        if let Some(additional) = iterator.trusted_len() {
+            self.reserve(additional);
             unsafe {
-                ptr::write(self.get_unchecked_mut(len), element);
-                // NB can't overflow since we would have had to alloc the address space
-                self.set_len(len + 1);
+                let mut ptr = self.as_mut_ptr().offset(self.len() as isize);
+                let mut local_len = SetLenOnDrop::new(&mut self.len);
+                for element in iterator {
+                    ptr::write(ptr, element);
+                    ptr = ptr.offset(1);
+                    // NB can't overflow since we would have had to alloc the address space
+                    local_len.increment_len(1);
+                }
+            }
+        } else {
+            while let Some(element) = iterator.next() {
+                let len = self.len();
+                if len == self.capacity() {
+                    let (lower, _) = iterator.size_hint();
+                    self.reserve(lower.saturating_add(1));
+                }
+                unsafe {
+                    ptr::write(self.get_unchecked_mut(len), element);
+                    // NB can't overflow since we would have had to alloc the address space
+                    self.set_len(len + 1);
+                }
             }
         }
     }
@@ -1647,24 +1647,7 @@ impl<T> Vec<T> {
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        <I as SpecExtendVec<T>>::extend_vec(iter, self);
-    }
-}
-
-// helper trait for specialization of Vec's Extend impl
-trait SpecExtendVec<T> {
-    fn extend_vec(self, vec: &mut Vec<T>);
-}
-
-impl <'a, T: 'a + Copy, I: IntoIterator<Item=&'a T>> SpecExtendVec<T> for I {
-    default fn extend_vec(self, vec: &mut Vec<T>) {
-        vec.extend(self.into_iter().cloned());
-    }
-}
-
-impl<'a, T: Copy> SpecExtendVec<T> for &'a [T] {
-    fn extend_vec(self, vec: &mut Vec<T>) {
-        vec.extend_from_slice(self);
+        self.extend(iter.into_iter().map(|&x| x))
     }
 }
 
@@ -1987,6 +1970,9 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T> TrustedLen for IntoIter<T> {}
 
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 impl<T: Clone> Clone for IntoIter<T> {
