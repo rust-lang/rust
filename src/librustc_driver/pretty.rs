@@ -501,7 +501,7 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
                 pp::space(&mut s.s)?;
                 pp::word(&mut s.s, "as")?;
                 pp::space(&mut s.s)?;
-                pp::word(&mut s.s, &self.tcx.expr_ty(expr).to_string())?;
+                pp::word(&mut s.s, &self.tcx.tables().expr_ty(expr).to_string())?;
                 s.pclose()
             }
             _ => Ok(()),

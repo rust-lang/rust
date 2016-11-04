@@ -38,7 +38,7 @@ enum TableEntry<'tcx> {
     Def(Def),
     NodeType(Ty<'tcx>),
     ItemSubsts(ty::ItemSubsts<'tcx>),
-    Adjustment(ty::adjustment::AutoAdjustment<'tcx>),
+    Adjustment(ty::adjustment::Adjustment<'tcx>),
     ConstQualif(ConstQualif),
 }
 
@@ -94,9 +94,9 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> 
         };
 
         encode(tcx.expect_def_or_none(id).map(TableEntry::Def));
-        encode(tcx.node_types().get(&id).cloned().map(TableEntry::NodeType));
-        encode(tcx.tables.borrow().item_substs.get(&id).cloned().map(TableEntry::ItemSubsts));
-        encode(tcx.tables.borrow().adjustments.get(&id).cloned().map(TableEntry::Adjustment));
+        encode(tcx.tables().node_types.get(&id).cloned().map(TableEntry::NodeType));
+        encode(tcx.tables().item_substs.get(&id).cloned().map(TableEntry::ItemSubsts));
+        encode(tcx.tables().adjustments.get(&id).cloned().map(TableEntry::Adjustment));
         encode(tcx.const_qualif_map.borrow().get(&id).cloned().map(TableEntry::ConstQualif));
     }
 }

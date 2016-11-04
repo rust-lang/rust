@@ -92,7 +92,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         match def {
             Def::AssociatedTy(..) | Def::Method(_) | Def::AssociatedConst(_)
             if self.tcx.trait_of_item(def.def_id()).is_some() => {
-                if let Some(substs) = self.tcx.tables.borrow().item_substs.get(&id) {
+                if let Some(substs) = self.tcx.tables().item_substs.get(&id) {
                     if let ty::TyAdt(tyid, _) = substs.substs.type_at(0).sty {
                         self.check_def_id(tyid.did);
                     }
@@ -123,12 +123,12 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn lookup_and_handle_method(&mut self, id: ast::NodeId) {
         let method_call = ty::MethodCall::expr(id);
-        let method = self.tcx.tables.borrow().method_map[&method_call];
+        let method = self.tcx.tables().method_map[&method_call];
         self.check_def_id(method.def_id);
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
-        match self.tcx.expr_ty_adjusted(lhs).sty {
+        match self.tcx.tables().expr_ty_adjusted(lhs).sty {
             ty::TyAdt(def, _) => {
                 self.insert_def_id(def.struct_variant().field_named(name).did);
             }
@@ -137,7 +137,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_tup_field_access(&mut self, lhs: &hir::Expr, idx: usize) {
-        match self.tcx.expr_ty_adjusted(lhs).sty {
+        match self.tcx.tables().expr_ty_adjusted(lhs).sty {
             ty::TyAdt(def, _) => {
                 self.insert_def_id(def.struct_variant().fields[idx].did);
             }
@@ -148,7 +148,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_field_pattern_match(&mut self, lhs: &hir::Pat,
                                   pats: &[codemap::Spanned<hir::FieldPat>]) {
-        let variant = match self.tcx.node_id_to_type(lhs.id).sty {
+        let variant = match self.tcx.tables().node_id_to_type(lhs.id).sty {
             ty::TyAdt(adt, _) => {
                 adt.variant_of_def(self.tcx.expect_def(lhs.id))
             }
@@ -433,7 +433,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
-        let field_type = self.tcx.node_id_to_type(field.id);
+        let field_type = self.tcx.tables().node_id_to_type(field.id);
         let is_marker_field = match field_type.ty_to_def_id() {
             Some(def_id) => self.tcx.lang_items.items().iter().any(|item| *item == Some(def_id)),
             _ => false

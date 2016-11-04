@@ -140,7 +140,7 @@ impl LateLintPass for UnusedResults {
             return;
         }
 
-        let t = cx.tcx.expr_ty(&expr);
+        let t = cx.tcx.tables().expr_ty(&expr);
         let warned = match t.sty {
             ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyNever => return,
@@ -441,16 +441,15 @@ impl LateLintPass for UnusedAllocation {
             _ => return,
         }
 
-        if let Some(adjustment) = cx.tcx.tables.borrow().adjustments.get(&e.id) {
-            if let adjustment::AdjustDerefRef(adjustment::AutoDerefRef { ref autoref, .. }) =
-                *adjustment {
+        if let Some(adjustment) = cx.tcx.tables().adjustments.get(&e.id) {
+            if let adjustment::Adjust::DerefRef { autoref, .. } = adjustment.kind {
                 match autoref {
-                    &Some(adjustment::AutoPtr(_, hir::MutImmutable)) => {
+                    Some(adjustment::AutoBorrow::Ref(_, hir::MutImmutable)) => {
                         cx.span_lint(UNUSED_ALLOCATION,
                                      e.span,
                                      "unnecessary allocation, use & instead");
                     }
-                    &Some(adjustment::AutoPtr(_, hir::MutMutable)) => {
+                    Some(adjustment::AutoBorrow::Ref(_, hir::MutMutable)) => {
                         cx.span_lint(UNUSED_ALLOCATION,
                                      e.span,
                                      "unnecessary allocation, use &mut instead");
