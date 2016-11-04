@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(more_struct_aliases)]
+
 struct Foo<A> { inner: A }
 
 trait Bar { fn bar(); }
