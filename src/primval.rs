@@ -289,7 +289,7 @@ pub fn binary_op<'tcx>(
         }
 
         (None, None) => {}
-        _ => unimplemented!(),
+        _ => return Err(EvalError::ReadPointerAsBytes),
     }
 
     let (l, r) = (left.bits, right.bits);
