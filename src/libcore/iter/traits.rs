@@ -665,3 +665,22 @@ pub trait FusedIterator: Iterator {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
+
+/// An iterator that reports an accurate length using size_hint.
+///
+/// The iterator reports a size hint where it is either exact
+/// (lower bound is equal to upper bound), or the upper bound is `None`.
+/// The upper bound must only be `None` if the actual iterator length is
+/// larger than `usize::MAX`.
+///
+/// The iterator must produce exactly the number of elements it reported.
+///
+/// # Safety
+///
+/// This trait must only be implemented when the contract is upheld.
+/// Consumers of this trait must inspect `.size_hint()`’s upper bound.
+#[unstable(feature = "trusted_len", issue = "37572")]
+pub unsafe trait TrustedLen : Iterator {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, I: TrustedLen + ?Sized> TrustedLen for &'a mut I {}

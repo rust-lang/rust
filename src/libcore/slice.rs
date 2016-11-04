@@ -988,6 +988,9 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, T> TrustedLen for Iter<'a, T> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { Iter { ptr: self.ptr, end: self.end, _marker: self._marker } }
@@ -1108,6 +1111,9 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, T> TrustedLen for IterMut<'a, T> {}
 
 /// An internal abstraction over the splitting iterators, so that
 /// splitn, splitn_mut etc can be implemented once.
