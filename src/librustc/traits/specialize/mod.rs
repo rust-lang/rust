@@ -194,7 +194,8 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let selcx = &mut SelectionContext::new(&infcx);
             traits::normalize(selcx, ObligationCause::dummy(), &impl1_trait_ref)
         };
-        infcx.parameter_environment.caller_bounds.extend(normalization_obligations.into_iter().map(|o| {
+        infcx.parameter_environment.caller_bounds
+            .extend(normalization_obligations.into_iter().map(|o| {
             match tcx.lift_to_global(&o.predicate) {
                 Some(predicate) => predicate,
                 None => {
