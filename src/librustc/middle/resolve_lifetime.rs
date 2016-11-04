@@ -141,6 +141,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
         self.visit_item(item)
     }
 
+    fn visit_nested_impl_item(&mut self, id: hir::ImplItemId) {
+        let impl_item = self.hir_map.impl_item(id);
+        self.visit_impl_item(impl_item)
+    }
+
     fn visit_item(&mut self, item: &hir::Item) {
         // Save labels for nested items.
         let saved_labels_in_fn = replace(&mut self.labels_in_fn, vec![]);

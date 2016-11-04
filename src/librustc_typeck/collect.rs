@@ -149,6 +149,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
         }
         intravisit::walk_ty(self, ty);
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+        // handled in `visit_item` above; we may want to break this out later
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -727,7 +731,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                       ref generics,
                       ref opt_trait_ref,
                       ref selfty,
-                      ref impl_items) => {
+                      ref impl_item_ids) => {
             // Create generics from the generics specified in the impl head.
             debug!("convert: ast_generics={:?}", generics);
             let def_id = ccx.tcx.map.local_def_id(it.id);
@@ -757,7 +761,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             let mut seen_type_items = FxHashMap();
             let mut seen_value_items = FxHashMap();
 
-            for impl_item in impl_items {
+            for &impl_item_id in impl_item_ids {
+                let impl_item = tcx.map.impl_item(impl_item_id);
                 let seen_items = match impl_item.node {
                     hir::ImplItemKind::Type(_) => &mut seen_type_items,
                     _                    => &mut seen_value_items,
@@ -790,7 +795,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             }
 
             // Convert all the associated types.
-            for impl_item in impl_items {
+            for &impl_item_id in impl_item_ids {
+                let impl_item = tcx.map.impl_item(impl_item_id);
                 if let hir::ImplItemKind::Type(ref ty) = impl_item.node {
                     let type_def_id = ccx.tcx.map.local_def_id(impl_item.id);
                     generics_of_def_id(ccx, type_def_id);
@@ -806,7 +812,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                 }
             }
 
-            for impl_item in impl_items {
+            for &impl_item_id in impl_item_ids {
+                let impl_item = tcx.map.impl_item(impl_item_id);
                 if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
                     convert_method(ccx, ImplContainer(def_id),
                                    impl_item.id, sig, selfty,
@@ -814,7 +821,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                 }
             }
 
-            enforce_impl_lifetimes_are_constrained(ccx, generics, def_id, impl_items);
+            enforce_impl_lifetimes_are_constrained(ccx, generics, def_id, impl_item_ids);
         },
         hir::ItemTrait(.., ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);
@@ -2103,7 +2110,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                     ast_generics: &hir::Generics,
                                                     impl_def_id: DefId,
-                                                    impl_items: &[hir::ImplItem])
+                                                    impl_item_ids: &[hir::ImplItemId])
 {
     // Every lifetime used in an associated type must be constrained.
     let impl_ty = ccx.tcx.item_type(impl_def_id);
@@ -2118,8 +2125,8 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     ctp::identify_constrained_type_params(
         &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
 
-    let lifetimes_in_associated_types: FxHashSet<_> = impl_items.iter()
-        .map(|item|  ccx.tcx.map.local_def_id(item.id))
+    let lifetimes_in_associated_types: FxHashSet<_> = impl_item_ids.iter()
+        .map(|item_id|  ccx.tcx.map.local_def_id(item_id.id))
         .filter(|&def_id| {
             let item = ccx.tcx.associated_item(def_id);
             item.kind == ty::AssociatedKind::Type && item.has_value

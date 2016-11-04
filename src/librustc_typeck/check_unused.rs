@@ -58,6 +58,9 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for UnusedTraitImportVisitor<'a, 'tcx> {
             }
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    }
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

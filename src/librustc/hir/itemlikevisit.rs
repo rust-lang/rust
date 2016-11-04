@@ -56,6 +56,7 @@ use super::intravisit::Visitor;
 /// needed.
 pub trait ItemLikeVisitor<'hir> {
     fn visit_item(&mut self, item: &'hir Item);
+    fn visit_impl_item(&mut self, impl_item: &'hir ImplItem);
 }
 
 pub struct DeepVisitor<'v, V: 'v> {
@@ -75,5 +76,9 @@ impl<'v, 'hir, V> ItemLikeVisitor<'hir> for DeepVisitor<'v, V>
 {
     fn visit_item(&mut self, item: &'hir Item) {
         self.visitor.visit_item(item);
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &'hir ImplItem) {
+        self.visitor.visit_impl_item(impl_item);
     }
 }

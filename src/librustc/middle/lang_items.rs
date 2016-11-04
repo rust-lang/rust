@@ -164,6 +164,10 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
             }
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+        // at present, lang items are always items, not impl items
+    }
 }
 
 impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {

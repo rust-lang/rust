@@ -115,6 +115,9 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             hir::ItemDefaultImpl(..) => {}
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    }
 }
 
 /// Is `param_id` a lifetime according to `map`?

@@ -44,6 +44,10 @@ impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
         self.with_context(Normal, |v| intravisit::walk_item(v, i));
     }
 
+    fn visit_impl_item(&mut self, i: &hir::ImplItem) {
+        self.with_context(Normal, |v| intravisit::walk_impl_item(v, i));
+    }
+
     fn visit_expr(&mut self, e: &hir::Expr) {
         match e.node {
             hir::ExprWhile(ref e, ref b, _) => {
