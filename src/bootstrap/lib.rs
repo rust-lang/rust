@@ -871,7 +871,7 @@ impl Build {
 
     /// Adds the compiler's bootstrap key to the environment of `cmd`.
     fn add_bootstrap_key(&self, cmd: &mut Command) {
-        cmd.env("RUSTC_BOOTSTRAP", "");
+        cmd.env("RUSTC_BOOTSTRAP", "1");
         // FIXME: Transitionary measure to bootstrap using the old bootstrap logic.
         // Remove this once the bootstrap compiler uses the new login in Issue #36548.
         cmd.env("RUSTC_BOOTSTRAP_KEY", "62b3e239");
