@@ -661,7 +661,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let lval = self.force_allocation(lval)?;
                 let (ptr, extra) = match lval {
                     Lvalue::Ptr { ptr, extra } => (ptr, extra),
-                    _ => bug!("expected an lvalue with a length"),
+                    _ => bug!("expected an lvalue with optional extra data"),
                 };
                 let size = self.type_size(elem_ty) as isize;
                 // FIXME: this creates a lot of stack frames if the element type has
