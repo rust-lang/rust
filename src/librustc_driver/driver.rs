@@ -37,7 +37,8 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{ast_validation, no_asm, loops, consts, rvalues, static_recursion};
+use rustc_passes::{ast_validation, no_asm, loops, consts, rvalues,
+                   static_recursion, hir_stats};
 use rustc_const_eval::check_match;
 use super::Compilation;
 
@@ -513,6 +514,10 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session, input: &Input) -> PResult<'a, 
         syntax::show_span::run(sess.diagnostic(), s, &krate);
     }
 
+    if sess.opts.debugging_opts.hir_stats {
+        hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS");
+    }
+
     Ok(krate)
 }
 
@@ -718,6 +723,10 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         println!("Post-expansion node count: {}", count_nodes(&krate));
     }
 
+    if sess.opts.debugging_opts.hir_stats {
+        hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS");
+    }
+
     if sess.opts.debugging_opts.ast_json {
         println!("{}", json::as_json(&krate));
     }
@@ -758,7 +767,13 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
 
     // Lower ast -> hir.
     let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
-        hir_map::Forest::new(lower_crate(sess, &krate, &mut resolver), &sess.dep_graph)
+        let hir_crate = lower_crate(sess, &krate, &mut resolver);
+
+        if sess.opts.debugging_opts.hir_stats {
+            hir_stats::print_hir_stats(&hir_crate);
+        }
+
+        hir_map::Forest::new(hir_crate, &sess.dep_graph)
     });
 
     // Discard hygiene data, which isn't required past lowering to HIR.
