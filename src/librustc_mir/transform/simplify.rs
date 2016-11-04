@@ -8,35 +8,41 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A pass that removes various redundancies in the CFG. It should be
-//! called after every significant CFG modification to tidy things
-//! up.
+//! A number of passes which remove various redundancies in the CFG.
 //!
-//! This pass must also be run before any analysis passes because it removes
-//! dead blocks, and some of these can be ill-typed.
+//! The `SimplifyCfg` pass gets rid of unnecessary blocks in the CFG, whereas the `SimplifyLocals`
+//! gets rid of all the unnecessary local variable declarations.
 //!
-//! The cause of that is that typeck lets most blocks whose end is not
-//! reachable have an arbitrary return type, rather than having the
-//! usual () return type (as a note, typeck's notion of reachability
-//! is in fact slightly weaker than MIR CFG reachability - see #31617).
+//! The `SimplifyLocals` pass is kinda expensive and therefore not very suitable to be run often.
+//! Most of the passes should not care or be impacted in meaningful ways due to extra locals
+//! either, so running the pass once, right before translation, should suffice.
 //!
-//! A standard example of the situation is:
+//! On the other side of the spectrum, the `SimplifyCfg` pass is considerably cheap to run, thus
+//! one should run it after every pass which may modify CFG in significant ways. This pass must
+//! also be run before any analysis passes because it removes dead blocks, and some of these can be
+//! ill-typed.
+//!
+//! The cause of this typing issue is typeck allowing most blocks whose end is not reachable have
+//! an arbitrary return type, rather than having the usual () return type (as a note, typeck's
+//! notion of reachability is in fact slightly weaker than MIR CFG reachability - see #31617). A
+//! standard example of the situation is:
+//!
 //! ```rust
 //!   fn example() {
 //!       let _a: char = { return; };
 //!   }
 //! ```
 //!
-//! Here the block (`{ return; }`) has the return type `char`,
-//! rather than `()`, but the MIR we naively generate still contains
-//! the `_a = ()` write in the unreachable block "after" the return.
-
+//! Here the block (`{ return; }`) has the return type `char`, rather than `()`, but the MIR we
+//! naively generate still contains the `_a = ()` write in the unreachable block "after" the
+//! return.
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::visit::{MutVisitor, Visitor, LvalueContext};
 use std::fmt;
 
 pub struct SimplifyCfg<'a> { label: &'a str }
@@ -255,5 +261,89 @@ fn remove_dead_blocks(mir: &mut Mir) {
         for target in block.terminator_mut().successors_mut() {
             *target = replacements[target.index()];
         }
+    }
+}
+
+
+pub struct SimplifyLocals;
+
+impl Pass for SimplifyLocals {
+    fn name(&self) -> ::std::borrow::Cow<'static, str> { "SimplifyLocals".into() }
+}
+
+impl<'tcx> MirPass<'tcx> for SimplifyLocals {
+    fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
+        let mut marker = DeclMarker { locals: BitVector::new(mir.local_decls.len()) };
+        marker.visit_mir(mir);
+        // Return pointer and arguments are always live
+        marker.locals.insert(0);
+        for idx in mir.args_iter() {
+            marker.locals.insert(idx.index());
+        }
+        let map = make_local_map(&mut mir.local_decls, marker.locals);
+        // Update references to all vars and tmps now
+        LocalUpdater { map: map }.visit_mir(mir);
+        mir.local_decls.shrink_to_fit();
+    }
+}
+
+/// Construct the mapping while swapping out unused stuff out from the `vec`.
+fn make_local_map<'tcx, I: Idx, V>(vec: &mut IndexVec<I, V>, mask: BitVector) -> Vec<usize> {
+    let mut map: Vec<usize> = ::std::iter::repeat(!0).take(vec.len()).collect();
+    let mut used = 0;
+    for alive_index in mask.iter() {
+        map[alive_index] = used;
+        if alive_index != used {
+            vec.swap(alive_index, used);
+        }
+        used += 1;
+    }
+    vec.truncate(used);
+    map
+}
+
+struct DeclMarker {
+    pub locals: BitVector,
+}
+
+impl<'tcx> Visitor<'tcx> for DeclMarker {
+    fn visit_lvalue(&mut self, lval: &Lvalue<'tcx>, ctx: LvalueContext<'tcx>, loc: Location) {
+        if ctx == LvalueContext::StorageLive || ctx == LvalueContext::StorageDead {
+            // ignore these altogether, they get removed along with their otherwise unused decls.
+            return;
+        }
+        if let Lvalue::Local(ref v) = *lval {
+            self.locals.insert(v.index());
+        }
+        self.super_lvalue(lval, ctx, loc);
+    }
+}
+
+struct LocalUpdater {
+    map: Vec<usize>,
+}
+
+impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
+    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
+        // Remove unnecessary StorageLive and StorageDead annotations.
+        data.statements.retain(|stmt| {
+            match stmt.kind {
+                StatementKind::StorageLive(ref lval) | StatementKind::StorageDead(ref lval) => {
+                    match *lval {
+                        Lvalue::Local(l) => self.map[l.index()] != !0,
+                        _ => true
+                    }
+                }
+                _ => true
+            }
+        });
+        self.super_basic_block_data(block, data);
+    }
+    fn visit_lvalue(&mut self, lval: &mut Lvalue<'tcx>, ctx: LvalueContext<'tcx>, loc: Location) {
+        match *lval {
+            Lvalue::Local(ref mut l) => *l = Local::new(self.map[l.index()]),
+            _ => (),
+        };
+        self.super_lvalue(lval, ctx, loc);
     }
 }
