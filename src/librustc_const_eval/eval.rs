@@ -314,7 +314,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           },
                       }))
                       .collect::<Result<_, _>>()?;
-            PatKind::Struct(path.clone(), field_pats, false)
+            PatKind::Struct((**path).clone(), field_pats, false)
         }
 
         hir::ExprArray(ref exprs) => {
