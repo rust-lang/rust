@@ -123,9 +123,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "drop_in_place" => {
                 let ty = substs.type_at(0);
-                let ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let ptr_ty = self.tcx.mk_mut_ptr(ty);
+                let lvalue = match self.follow_by_ref_value(arg_vals[0], ptr_ty)? {
+                    Value::ByRef(_) => bug!("follow_by_ref_value returned ByRef"),
+                    Value::ByVal(ptr) => Lvalue::from_ptr(ptr.expect_ptr("drop_in_place first arg not a pointer")),
+                    Value::ByValPair(ptr, extra) => Lvalue::Ptr {
+                        ptr: ptr.expect_ptr("drop_in_place first arg not a pointer"),
+                        extra: match extra.try_as_ptr() {
+                            Some(vtable) => LvalueExtra::Vtable(vtable),
+                            None => LvalueExtra::Length(extra.expect_uint("either pointer or not, but not neither")),
+                        },
+                    },
+                };
                 let mut drops = Vec::new();
-                self.drop(Lvalue::from_ptr(ptr), ty, &mut drops)?;
+                self.drop(lvalue, ty, &mut drops)?;
                 self.eval_drop_impls(drops)?;
             }
 
