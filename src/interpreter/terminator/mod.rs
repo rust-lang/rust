@@ -659,7 +659,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 for i in 0..len {
                     self.drop(Lvalue::from_ptr(ptr.offset(i * size)), elem_ty, drop)?;
                 }
-            }
+            },
+            ty::TyArray(elem_ty, len) => {
+                let lval = self.force_allocation(lval)?;
+                let (ptr, extra) = match lval {
+                    Lvalue::Ptr { ptr, extra } => (ptr, extra),
+                    _ => bug!("expected an lvalue with a length"),
+                };
+                let size = self.type_size(elem_ty) as isize;
+                // FIXME: this creates a lot of stack frames if the element type has
+                // a drop impl
+                for i in 0..len {
+                    self.drop(Lvalue::Ptr { ptr: ptr.offset(i as isize * size), extra: extra }, elem_ty, drop)?;
+                }
+            },
+            // FIXME: what about TyClosure and TyAnon?
             // other types do not need to process drop
             _ => {},
         }
