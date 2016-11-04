@@ -103,11 +103,11 @@ pub enum DepNode<D: Clone + Debug> {
     // nodes. Often we map multiple tables to the same node if there
     // is no point in distinguishing them (e.g., both the type and
     // predicates for an item wind up in `ItemSignature`).
-    ImplOrTraitItems(D),
+    AssociatedItems(D),
     ItemSignature(D),
     FieldTy(D),
     SizedConstraint(D),
-    ImplOrTraitItemDefIds(D),
+    AssociatedItemDefIds(D),
     InherentImpls(D),
 
     // The set of impls for a given trait. Ultimately, it would be
@@ -153,10 +153,10 @@ impl<D: Clone + Debug> DepNode<D> {
             TransCrateItem,
             TypeckItemType,
             TypeckItemBody,
-            ImplOrTraitItems,
+            AssociatedItems,
             ItemSignature,
             FieldTy,
-            ImplOrTraitItemDefIds,
+            AssociatedItemDefIds,
             InherentImpls,
             TraitImpls,
             ReprHints,
@@ -219,11 +219,11 @@ impl<D: Clone + Debug> DepNode<D> {
             RvalueCheck(ref d) => op(d).map(RvalueCheck),
             TransCrateItem(ref d) => op(d).map(TransCrateItem),
             TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
-            ImplOrTraitItems(ref d) => op(d).map(ImplOrTraitItems),
+            AssociatedItems(ref d) => op(d).map(AssociatedItems),
             ItemSignature(ref d) => op(d).map(ItemSignature),
             FieldTy(ref d) => op(d).map(FieldTy),
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
-            ImplOrTraitItemDefIds(ref d) => op(d).map(ImplOrTraitItemDefIds),
+            AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),

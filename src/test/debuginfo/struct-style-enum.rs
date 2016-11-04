@@ -19,16 +19,20 @@
 // gdb-command:run
 
 // gdb-command:print case1
-// gdb-check:$1 = {{RUST$ENUM$DISR = Case1, a = 0, b = 31868, c = 31868, d = 31868, e = 31868}, {RUST$ENUM$DISR = Case1, a = 0, b = 2088533116, c = 2088533116}, {RUST$ENUM$DISR = Case1, a = 0, b = 8970181431921507452}}
+// gdbg-check:$1 = {{RUST$ENUM$DISR = Case1, a = 0, b = 31868, c = 31868, d = 31868, e = 31868}, {RUST$ENUM$DISR = Case1, a = 0, b = 2088533116, c = 2088533116}, {RUST$ENUM$DISR = Case1, a = 0, b = 8970181431921507452}}
+// gdbr-check:$1 = struct_style_enum::Regular::Case1{a: 0, b: 31868, c: 31868, d: 31868, e: 31868}
 
 // gdb-command:print case2
-// gdb-check:$2 = {{RUST$ENUM$DISR = Case2, a = 0, b = 4369, c = 4369, d = 4369, e = 4369}, {RUST$ENUM$DISR = Case2, a = 0, b = 286331153, c = 286331153}, {RUST$ENUM$DISR = Case2, a = 0, b = 1229782938247303441}}
+// gdbg-check:$2 = {{RUST$ENUM$DISR = Case2, a = 0, b = 4369, c = 4369, d = 4369, e = 4369}, {RUST$ENUM$DISR = Case2, a = 0, b = 286331153, c = 286331153}, {RUST$ENUM$DISR = Case2, a = 0, b = 1229782938247303441}}
+// gdbr-check:$2 = struct_style_enum::Regular::Case2{a: 0, b: 286331153, c: 286331153}
 
 // gdb-command:print case3
-// gdb-check:$3 = {{RUST$ENUM$DISR = Case3, a = 0, b = 22873, c = 22873, d = 22873, e = 22873}, {RUST$ENUM$DISR = Case3, a = 0, b = 1499027801, c = 1499027801}, {RUST$ENUM$DISR = Case3, a = 0, b = 6438275382588823897}}
+// gdbg-check:$3 = {{RUST$ENUM$DISR = Case3, a = 0, b = 22873, c = 22873, d = 22873, e = 22873}, {RUST$ENUM$DISR = Case3, a = 0, b = 1499027801, c = 1499027801}, {RUST$ENUM$DISR = Case3, a = 0, b = 6438275382588823897}}
+// gdbr-check:$3 = struct_style_enum::Regular::Case3{a: 0, b: 6438275382588823897}
 
 // gdb-command:print univariant
-// gdb-check:$4 = {{a = -1}}
+// gdbg-check:$4 = {{a = -1}}
+// gdbr-check:$4 = struct_style_enum::Univariant::TheOnlyCase{a: -1}
 
 
 // === LLDB TESTS ==================================================================================

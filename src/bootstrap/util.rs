@@ -172,3 +172,21 @@ pub fn dylib_path() -> Vec<PathBuf> {
     env::split_paths(&env::var_os(dylib_path_var()).unwrap_or(OsString::new()))
         .collect()
 }
+
+/// `push` all components to `buf`. On windows, append `.exe` to the last component.
+pub fn push_exe_path(mut buf: PathBuf, components: &[&str]) -> PathBuf {
+    let (&file, components) = components.split_last().expect("at least one component required");
+    let mut file = file.to_owned();
+
+    if cfg!(windows) {
+        file.push_str(".exe");
+    }
+
+    for c in components {
+        buf.push(c);
+    }
+
+    buf.push(file);
+
+    buf
+}

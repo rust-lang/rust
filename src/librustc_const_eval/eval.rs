@@ -27,7 +27,7 @@ use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::Substs;
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
-use rustc::util::nodemap::NodeMap;
+use rustc::util::nodemap::DefIdMap;
 use rustc::lint;
 
 use graphviz::IntoCow;
@@ -314,7 +314,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           },
                       }))
                       .collect::<Result<_, _>>()?;
-            PatKind::Struct(path.clone(), field_pats, false)
+            PatKind::Struct((**path).clone(), field_pats, false)
         }
 
         hir::ExprArray(ref exprs) => {
@@ -413,7 +413,7 @@ pub fn eval_const_expr_checked<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     eval_const_expr_partial(tcx, e, ExprTypeChecked, None)
 }
 
-pub type FnArgMap<'a> = Option<&'a NodeMap<ConstVal>>;
+pub type FnArgMap<'a> = Option<&'a DefIdMap<ConstVal>>;
 
 #[derive(Clone, Debug)]
 pub struct ConstEvalErr {
@@ -835,9 +835,8 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   ConstVal::Struct(e.id)
               }
               Def::Local(def_id) => {
-                  let id = tcx.map.as_local_node_id(def_id).unwrap();
-                  debug!("Def::Local({:?}): {:?}", id, fn_args);
-                  if let Some(val) = fn_args.and_then(|args| args.get(&id)) {
+                  debug!("Def::Local({:?}): {:?}", def_id, fn_args);
+                  if let Some(val) = fn_args.and_then(|args| args.get(&def_id)) {
                       val.clone()
                   } else {
                       signal!(e, NonConstPath);
@@ -863,7 +862,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           let result = result.as_ref().expect("const fn has no result expression");
           assert_eq!(decl.inputs.len(), args.len());
 
-          let mut call_args = NodeMap();
+          let mut call_args = DefIdMap();
           for (arg, arg_expr) in decl.inputs.iter().zip(args.iter()) {
               let arg_hint = ty_hint.erase_hint();
               let arg_val = eval_const_expr_partial(
@@ -873,7 +872,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   fn_args
               )?;
               debug!("const call arg: {:?}", arg);
-              let old = call_args.insert(arg.pat.id, arg_val);
+              let old = call_args.insert(tcx.expect_def(arg.pat.id).def_id(), arg_val);
               assert!(old.is_none());
           }
           debug!("const call({:?})", call_args);
@@ -1090,13 +1089,8 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // when constructing the inference context above.
         match selection {
             traits::VtableImpl(ref impl_data) => {
-                let ac = tcx.impl_or_trait_items(impl_data.impl_def_id)
-                    .iter().filter_map(|&def_id| {
-                        match tcx.impl_or_trait_item(def_id) {
-                            ty::ConstTraitItem(ic) => Some(ic),
-                            _ => None
-                        }
-                    }).find(|ic| ic.name == ti.name);
+                let ac = tcx.associated_items(impl_data.impl_def_id)
+                    .find(|item| item.kind == ty::AssociatedKind::Const && item.name == ti.name);
                 match ac {
                     Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
                     None => match ti.node {

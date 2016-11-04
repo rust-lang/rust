@@ -18,6 +18,8 @@ use common::Config;
 use common;
 use util;
 
+use extract_gdb_version;
+
 /// Properties which must be known very early, before actually running
 /// the test.
 pub struct EarlyProps {
@@ -75,7 +77,7 @@ impl EarlyProps {
                 return true;
             }
 
-            if let Some(ref actual_version) = config.gdb_version {
+            if let Some(actual_version) = config.gdb_version {
                 if line.contains("min-gdb-version") {
                     let min_version = line.trim()
                         .split(' ')
@@ -83,7 +85,7 @@ impl EarlyProps {
                         .expect("Malformed GDB version directive");
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    gdb_version_to_int(actual_version) < gdb_version_to_int(min_version)
+                    actual_version < extract_gdb_version(min_version).unwrap()
                 } else {
                     false
                 }
@@ -462,23 +464,6 @@ pub fn parse_name_value_directive(line: &str, directive: &str) -> Option<String>
     } else {
         None
     }
-}
-
-pub fn gdb_version_to_int(version_string: &str) -> isize {
-    let error_string = format!("Encountered GDB version string with unexpected format: {}",
-                               version_string);
-    let error_string = error_string;
-
-    let components: Vec<&str> = version_string.trim().split('.').collect();
-
-    if components.len() != 2 {
-        panic!("{}", error_string);
-    }
-
-    let major: isize = components[0].parse().ok().expect(&error_string);
-    let minor: isize = components[1].parse().ok().expect(&error_string);
-
-    return major * 1000 + minor;
 }
 
 pub fn lldb_version_to_int(version_string: &str) -> isize {

@@ -11,6 +11,7 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
+use cell::Cell;
 use borrow::Borrow;
 use cmp::max;
 use fmt::{self, Debug};
@@ -2049,24 +2050,21 @@ impl RandomState {
         // many hash maps are created on a thread. To solve this performance
         // trap we cache the first set of randomly generated keys per-thread.
         //
-        // In doing this, however, we lose the property that all hash maps have
-        // nondeterministic iteration order as all of those created on the same
-        // thread would have the same hash keys. This property has been nice in
-        // the past as it allows for maximal flexibility in the implementation
-        // of `HashMap` itself.
-        //
-        // The constraint here (if there even is one) is just that maps created
-        // on the same thread have the same iteration order, and that *may* be
-        // relied upon even though it is not a documented guarantee at all of
-        // the `HashMap` type. In any case we've decided that this is reasonable
-        // for now, so caching keys thread-locally seems fine.
-        thread_local!(static KEYS: (u64, u64) = {
+        // Later in #36481 it was discovered that exposing a deterministic
+        // iteration order allows a form of DOS attack. To counter that we
+        // increment one of the seeds on every RandomState creation, giving
+        // every corresponding HashMap a different iteration order.
+        thread_local!(static KEYS: Cell<(u64, u64)> = {
             let r = rand::OsRng::new();
             let mut r = r.expect("failed to create an OS RNG");
-            (r.gen(), r.gen())
+            Cell::new((r.gen(), r.gen()))
         });
 
-        KEYS.with(|&(k0, k1)| RandomState { k0: k0, k1: k1 })
+        KEYS.with(|keys| {
+            let (k0, k1) = keys.get();
+            keys.set((k0.wrapping_add(1), k1));
+            RandomState { k0: k0, k1: k1 }
+        })
     }
 }
 

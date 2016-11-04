@@ -529,14 +529,11 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // items.
         hir::ItemImpl(.., Some(ref t), _, ref impl_items) => {
             let trait_did = tcx.expect_def(t.ref_id).def_id();
-            let trait_items = tcx.trait_items(trait_did);
-
             for impl_item in impl_items {
-                let item = trait_items.iter().find(|item| {
-                    item.name() == impl_item.name
-                }).unwrap();
+                let item = tcx.associated_items(trait_did)
+                    .find(|item| item.name == impl_item.name).unwrap();
                 if warn_about_defns {
-                    maybe_do_stability_check(tcx, item.def_id(), impl_item.span, cb);
+                    maybe_do_stability_check(tcx, item.def_id, impl_item.span, cb);
                 }
             }
         }
@@ -685,15 +682,8 @@ fn is_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span) -> bool {
 }
 
 fn is_staged_api<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> bool {
-    match tcx.trait_item_of_item(id) {
-        Some(trait_method_id) if trait_method_id != id => {
-            is_staged_api(tcx, trait_method_id)
-        }
-        _ => {
-            *tcx.stability.borrow_mut().staged_api.entry(id.krate).or_insert_with(
-                || tcx.sess.cstore.is_staged_api(id.krate))
-        }
-    }
+    *tcx.stability.borrow_mut().staged_api.entry(id.krate).or_insert_with(
+        || tcx.sess.cstore.is_staged_api(id.krate))
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {

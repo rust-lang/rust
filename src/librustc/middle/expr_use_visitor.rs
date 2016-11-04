@@ -227,8 +227,8 @@ impl OverloadedCallType {
     }
 
     fn from_method_id(tcx: TyCtxt, method_id: DefId) -> OverloadedCallType {
-        let method = tcx.impl_or_trait_item(method_id);
-        OverloadedCallType::from_trait_id(tcx, method.container().id())
+        let method = tcx.associated_item(method_id);
+        OverloadedCallType::from_trait_id(tcx, method.container.id())
     }
 }
 

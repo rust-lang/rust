@@ -123,7 +123,6 @@ pub struct Build {
     bootstrap_key_stage0: String,
 
     // Probed tools at runtime
-    gdb_version: Option<String>,
     lldb_version: Option<String>,
     lldb_python_dir: Option<String>,
 
@@ -196,7 +195,6 @@ impl Build {
             package_vers: String::new(),
             cc: HashMap::new(),
             cxx: HashMap::new(),
-            gdb_version: None,
             lldb_version: None,
             lldb_python_dir: None,
         }
@@ -873,7 +871,7 @@ impl Build {
 
     /// Adds the compiler's bootstrap key to the environment of `cmd`.
     fn add_bootstrap_key(&self, cmd: &mut Command) {
-        cmd.env("RUSTC_BOOTSTRAP", "");
+        cmd.env("RUSTC_BOOTSTRAP", "1");
         // FIXME: Transitionary measure to bootstrap using the old bootstrap logic.
         // Remove this once the bootstrap compiler uses the new login in Issue #36548.
         cmd.env("RUSTC_BOOTSTRAP_KEY", "62b3e239");

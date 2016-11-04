@@ -35,7 +35,8 @@
 // gdb-check:$5 = Some = {8}
 
 // gdb-command: print none
-// gdb-check:$6 = None
+// gdbg-check:$6 = None
+// gdbr-check:$6 = core::option::Option::None
 
 
 // === LLDB TESTS ==================================================================================

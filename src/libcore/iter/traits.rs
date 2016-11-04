@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 use ops::{Mul, Add};
+use num::Wrapping;
 
 /// Conversion from an `Iterator`.
 ///
@@ -584,35 +585,39 @@ pub trait Product<A = Self>: Sized {
 
 // NB: explicitly use Add and Mul here to inherit overflow checks
 macro_rules! integer_sum_product {
-    ($($a:ident)*) => ($(
+    (@impls $zero:expr, $one:expr, $($a:ty)*) => ($(
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Sum for $a {
             fn sum<I: Iterator<Item=$a>>(iter: I) -> $a {
-                iter.fold(0, Add::add)
+                iter.fold($zero, Add::add)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Product for $a {
             fn product<I: Iterator<Item=$a>>(iter: I) -> $a {
-                iter.fold(1, Mul::mul)
+                iter.fold($one, Mul::mul)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Sum<&'a $a> for $a {
             fn sum<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
-                iter.cloned().fold(0, Add::add)
+                iter.fold($zero, Add::add)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Product<&'a $a> for $a {
             fn product<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
-                iter.cloned().fold(1, Mul::mul)
+                iter.fold($one, Mul::mul)
             }
         }
-    )*)
+    )*);
+    ($($a:ty)*) => (
+        integer_sum_product!(@impls 0, 1, $($a)+);
+        integer_sum_product!(@impls Wrapping(0), Wrapping(1), $(Wrapping<$a>)+);
+    );
 }
 
 macro_rules! float_sum_product {
@@ -665,3 +670,22 @@ pub trait FusedIterator: Iterator {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
+
+/// An iterator that reports an accurate length using size_hint.
+///
+/// The iterator reports a size hint where it is either exact
+/// (lower bound is equal to upper bound), or the upper bound is `None`.
+/// The upper bound must only be `None` if the actual iterator length is
+/// larger than `usize::MAX`.
+///
+/// The iterator must produce exactly the number of elements it reported.
+///
+/// # Safety
+///
+/// This trait must only be implemented when the contract is upheld.
+/// Consumers of this trait must inspect `.size_hint()`’s upper bound.
+#[unstable(feature = "trusted_len", issue = "37572")]
+pub unsafe trait TrustedLen : Iterator {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, I: TrustedLen + ?Sized> TrustedLen for &'a mut I {}
