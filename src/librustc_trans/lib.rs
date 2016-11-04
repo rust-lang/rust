@@ -169,6 +169,7 @@ pub struct CrateTranslation {
     pub metadata: Vec<u8>,
     pub reachable: Vec<String>,
     pub no_builtins: bool,
+    pub windows_subsystem: Option<String>,
     pub linker_info: back::linker::LinkerInfo
 }
 
