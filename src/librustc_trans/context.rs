@@ -26,6 +26,7 @@ use monomorphize::Instance;
 use partitioning::CodegenUnit;
 use trans_item::TransItem;
 use type_::Type;
+use rustc_data_structures::base_n;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
@@ -975,7 +976,11 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local().local_gen_sym_counter.set(idx + 1);
         // Include a '.' character, so there can be no accidental conflicts with
         // user defined names
-        format!("{}.{}", prefix, idx)
+        let mut name = String::with_capacity(prefix.len() + 6);
+        name.push_str(prefix);
+        name.push_str(".");
+        base_n::push_str(idx as u64, base_n::MAX_BASE, &mut name);
+        name
     }
 }
 
