@@ -27,7 +27,7 @@ use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::Substs;
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
-use rustc::util::nodemap::NodeMap;
+use rustc::util::nodemap::DefIdMap;
 use rustc::lint;
 
 use graphviz::IntoCow;
@@ -414,7 +414,7 @@ pub fn eval_const_expr_checked<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     eval_const_expr_partial(tcx, e, ExprTypeChecked, None)
 }
 
-pub type FnArgMap<'a> = Option<&'a NodeMap<ConstVal>>;
+pub type FnArgMap<'a> = Option<&'a DefIdMap<ConstVal>>;
 
 #[derive(Clone, Debug)]
 pub struct ConstEvalErr {
@@ -837,9 +837,8 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   ConstVal::Struct(e.id)
               }
               Def::Local(def_id) => {
-                  let id = tcx.map.as_local_node_id(def_id).unwrap();
-                  debug!("Def::Local({:?}): {:?}", id, fn_args);
-                  if let Some(val) = fn_args.and_then(|args| args.get(&id)) {
+                  debug!("Def::Local({:?}): {:?}", def_id, fn_args);
+                  if let Some(val) = fn_args.and_then(|args| args.get(&def_id)) {
                       val.clone()
                   } else {
                       signal!(e, NonConstPath);
@@ -865,7 +864,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           let result = result.as_ref().expect("const fn has no result expression");
           assert_eq!(decl.inputs.len(), args.len());
 
-          let mut call_args = NodeMap();
+          let mut call_args = DefIdMap();
           for (arg, arg_expr) in decl.inputs.iter().zip(args.iter()) {
               let arg_hint = ty_hint.erase_hint();
               let arg_val = eval_const_expr_partial(
@@ -875,7 +874,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   fn_args
               )?;
               debug!("const call arg: {:?}", arg);
-              let old = call_args.insert(arg.pat.id, arg_val);
+              let old = call_args.insert(tcx.expect_def(arg.pat.id).def_id(), arg_val);
               assert!(old.is_none());
           }
           debug!("const call({:?})", call_args);
