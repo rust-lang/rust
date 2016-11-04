@@ -308,10 +308,10 @@ fn plus_one(i: i32) -> i32 {
 }
 
 // without type inference
-let f: fn(i32) -> i32 = plus_one;
+let f = plus_one;
 
 // with type inference
-let f = plus_one;
+let f: fn(i32) -> i32 = plus_one;
 ```
 
 We can then use `f` to call the function:
