@@ -243,7 +243,21 @@ to know more about [operator traits][operators-and-overloading].
 # Rules for implementing traits
 
 So far, we’ve only added trait implementations to structs, but you can
-implement a trait for any type such as `i32`.
+implement a trait for any type such as `f32`:
+
+```rust
+trait ApproxEqual {
+    fn approx_equal(&self, other: &Self) -> bool;
+}
+impl ApproxEqual for f32 {
+    fn approx_equal(&self, other: &Self) -> bool {
+        // Appropriate for `self` and `other` being close to 1.0.
+        (self - other).abs() <= ::std::f32::EPSILON
+    }
+}
+
+println!("{}", 1.0.approx_equal(&1.00000001));
+```
 
 This may seem like the Wild West, but there are two restrictions around
 implementing traits that prevent this from getting out of hand. The first is
