@@ -628,7 +628,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.drop_fields(fields.iter().cloned().zip(offsets.iter().cloned()), lval, drop)?;
             },
             ty::TyTrait(_) => {
-                let lval = self.force_allocation(lval)?;
                 let (ptr, vtable) = match lval {
                     Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => (ptr, vtable),
                     _ => bug!("expected an lvalue with a vtable"),
@@ -647,7 +646,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             },
             ty::TySlice(elem_ty) => {
-                let lval = self.force_allocation(lval)?;
                 let (ptr, len) = match lval {
                     Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => (ptr, len as isize),
                     _ => bug!("expected an lvalue with a length"),
