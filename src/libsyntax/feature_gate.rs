@@ -312,6 +312,9 @@ declare_features! (
 
     // The #![windows_subsystem] attribute
     (active, windows_subsystem, "1.14.0", Some(37499)),
+
+    // Allows using `Self` and associated types in struct expressions and patterns.
+    (active, more_struct_aliases, "1.14.0", Some(37544)),
 );
 
 declare_features! (
