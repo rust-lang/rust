@@ -131,6 +131,7 @@ macro_rules! wrapping_impl {
                 Wrapping(self.0.wrapping_add(other.0))
             }
         }
+        forward_ref_binop! { impl Add, add for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl AddAssign for Wrapping<$t> {
@@ -149,6 +150,7 @@ macro_rules! wrapping_impl {
                 Wrapping(self.0.wrapping_sub(other.0))
             }
         }
+        forward_ref_binop! { impl Sub, sub for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl SubAssign for Wrapping<$t> {
@@ -167,6 +169,7 @@ macro_rules! wrapping_impl {
                 Wrapping(self.0.wrapping_mul(other.0))
             }
         }
+        forward_ref_binop! { impl Mul, mul for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl MulAssign for Wrapping<$t> {
@@ -185,6 +188,7 @@ macro_rules! wrapping_impl {
                 Wrapping(self.0.wrapping_div(other.0))
             }
         }
+        forward_ref_binop! { impl Div, div for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl DivAssign for Wrapping<$t> {
@@ -203,6 +207,7 @@ macro_rules! wrapping_impl {
                 Wrapping(self.0.wrapping_rem(other.0))
             }
         }
+        forward_ref_binop! { impl Rem, rem for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl RemAssign for Wrapping<$t> {
@@ -221,6 +226,7 @@ macro_rules! wrapping_impl {
                 Wrapping(!self.0)
             }
         }
+        forward_ref_unop! { impl Not, not for Wrapping<$t> }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitXor for Wrapping<$t> {
@@ -231,6 +237,7 @@ macro_rules! wrapping_impl {
                 Wrapping(self.0 ^ other.0)
             }
         }
+        forward_ref_binop! { impl BitXor, bitxor for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitXorAssign for Wrapping<$t> {
@@ -249,6 +256,7 @@ macro_rules! wrapping_impl {
                 Wrapping(self.0 | other.0)
             }
         }
+        forward_ref_binop! { impl BitOr, bitor for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitOrAssign for Wrapping<$t> {
@@ -267,6 +275,7 @@ macro_rules! wrapping_impl {
                 Wrapping(self.0 & other.0)
             }
         }
+        forward_ref_binop! { impl BitAnd, bitand for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitAndAssign for Wrapping<$t> {
@@ -284,6 +293,7 @@ macro_rules! wrapping_impl {
                 Wrapping(0) - self
             }
         }
+        forward_ref_unop! { impl Neg, neg for Wrapping<$t> }
     )*)
 }
 
