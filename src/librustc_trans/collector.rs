@@ -213,7 +213,7 @@ use glue::{self, DropGlueKind};
 use monomorphize::{self, Instance};
 use util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
-use trans_item::{TransItem, type_to_string, def_id_to_string};
+use trans_item::{TransItem, DefPathBasedNames};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum TransItemCollectionMode {
@@ -1233,4 +1233,22 @@ fn visit_mir_and_promoted<'tcx, V: MirVisitor<'tcx>>(mut visitor: V, mir: &mir::
     for promoted in &mir.promoted {
         visitor.visit_mir(promoted);
     }
+}
+
+fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              def_id: DefId)
+                              -> String {
+    let mut output = String::new();
+    let printer = DefPathBasedNames::new(tcx, false, false);
+    printer.push_def_path(def_id, &mut output);
+    output
+}
+
+fn type_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            ty: ty::Ty<'tcx>)
+                            -> String {
+    let mut output = String::new();
+    let printer = DefPathBasedNames::new(tcx, false, false);
+    printer.push_type_name(ty, &mut output);
+    output
 }

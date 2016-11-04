@@ -34,6 +34,7 @@ use type_of;
 use glue;
 use abi::{Abi, FnType};
 use back::symbol_names;
+use std::fmt::Write;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum TransItem<'tcx> {
@@ -307,7 +308,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
                     DropGlueKind::Ty(_) => s.push_str("drop-glue "),
                     DropGlueKind::TyContents(_) => s.push_str("drop-glue-contents "),
                 };
-                push_unique_type_name(tcx, dg.ty(), &mut s);
+                let printer = DefPathBasedNames::new(tcx, false, false);
+                printer.push_type_name(dg.ty(), &mut s);
                 s
             }
             TransItem::Fn(instance) => {
@@ -326,7 +328,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
                                         -> String {
             let mut result = String::with_capacity(32);
             result.push_str(prefix);
-            push_instance_as_string(tcx, instance, &mut result);
+            let printer = DefPathBasedNames::new(tcx, false, false);
+            printer.push_instance_as_string(instance, &mut result);
             result
         }
     }
@@ -367,209 +370,219 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
 /// Same as `unique_type_name()` but with the result pushed onto the given
 /// `output` parameter.
-pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       t: Ty<'tcx>,
-                                       output: &mut String) {
-    match t.sty {
-        ty::TyBool              => output.push_str("bool"),
-        ty::TyChar              => output.push_str("char"),
-        ty::TyStr               => output.push_str("str"),
-        ty::TyNever             => output.push_str("!"),
-        ty::TyInt(ast::IntTy::Is)    => output.push_str("isize"),
-        ty::TyInt(ast::IntTy::I8)    => output.push_str("i8"),
-        ty::TyInt(ast::IntTy::I16)   => output.push_str("i16"),
-        ty::TyInt(ast::IntTy::I32)   => output.push_str("i32"),
-        ty::TyInt(ast::IntTy::I64)   => output.push_str("i64"),
-        ty::TyUint(ast::UintTy::Us)   => output.push_str("usize"),
-        ty::TyUint(ast::UintTy::U8)   => output.push_str("u8"),
-        ty::TyUint(ast::UintTy::U16)  => output.push_str("u16"),
-        ty::TyUint(ast::UintTy::U32)  => output.push_str("u32"),
-        ty::TyUint(ast::UintTy::U64)  => output.push_str("u64"),
-        ty::TyFloat(ast::FloatTy::F32) => output.push_str("f32"),
-        ty::TyFloat(ast::FloatTy::F64) => output.push_str("f64"),
-        ty::TyAdt(adt_def, substs) => {
-            push_item_name(tcx, adt_def.did, output);
-            push_type_params(tcx, substs, &[], output);
-        },
-        ty::TyTuple(component_types) => {
-            output.push('(');
-            for &component_type in component_types {
-                push_unique_type_name(tcx, component_type, output);
-                output.push_str(", ");
-            }
-            if !component_types.is_empty() {
-                output.pop();
-                output.pop();
-            }
-            output.push(')');
-        },
-        ty::TyBox(inner_type) => {
-            output.push_str("Box<");
-            push_unique_type_name(tcx, inner_type, output);
-            output.push('>');
-        },
-        ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
-            output.push('*');
-            match mutbl {
-                hir::MutImmutable => output.push_str("const "),
-                hir::MutMutable => output.push_str("mut "),
-            }
+pub struct DefPathBasedNames<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    omit_disambiguators: bool,
+    omit_local_crate_name: bool,
+}
 
-            push_unique_type_name(tcx, inner_type, output);
-        },
-        ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
-            output.push('&');
-            if mutbl == hir::MutMutable {
-                output.push_str("mut ");
-            }
+impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               omit_disambiguators: bool,
+               omit_local_crate_name: bool)
+               -> Self {
+        DefPathBasedNames {
+            tcx: tcx,
+            omit_disambiguators: omit_disambiguators,
+            omit_local_crate_name: omit_local_crate_name,
+        }
+    }
 
-            push_unique_type_name(tcx, inner_type, output);
-        },
-        ty::TyArray(inner_type, len) => {
-            output.push('[');
-            push_unique_type_name(tcx, inner_type, output);
-            output.push_str(&format!("; {}", len));
-            output.push(']');
-        },
-        ty::TySlice(inner_type) => {
-            output.push('[');
-            push_unique_type_name(tcx, inner_type, output);
-            output.push(']');
-        },
-        ty::TyTrait(ref trait_data) => {
-            push_item_name(tcx, trait_data.principal.def_id(), output);
-            push_type_params(tcx,
-                             trait_data.principal.skip_binder().substs,
-                             &trait_data.projection_bounds,
-                             output);
-        },
-        ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
-        ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
-            if unsafety == hir::Unsafety::Unsafe {
-                output.push_str("unsafe ");
-            }
-
-            if abi != ::abi::Abi::Rust {
-                output.push_str("extern \"");
-                output.push_str(abi.name());
-                output.push_str("\" ");
-            }
-
-            output.push_str("fn(");
-
-            let sig = tcx.erase_late_bound_regions_and_normalize(sig);
-            if !sig.inputs.is_empty() {
-                for &parameter_type in &sig.inputs {
-                    push_unique_type_name(tcx, parameter_type, output);
+    pub fn push_type_name(&self, t: Ty<'tcx>, output: &mut String) {
+        match t.sty {
+            ty::TyBool              => output.push_str("bool"),
+            ty::TyChar              => output.push_str("char"),
+            ty::TyStr               => output.push_str("str"),
+            ty::TyNever             => output.push_str("!"),
+            ty::TyInt(ast::IntTy::Is)    => output.push_str("isize"),
+            ty::TyInt(ast::IntTy::I8)    => output.push_str("i8"),
+            ty::TyInt(ast::IntTy::I16)   => output.push_str("i16"),
+            ty::TyInt(ast::IntTy::I32)   => output.push_str("i32"),
+            ty::TyInt(ast::IntTy::I64)   => output.push_str("i64"),
+            ty::TyUint(ast::UintTy::Us)   => output.push_str("usize"),
+            ty::TyUint(ast::UintTy::U8)   => output.push_str("u8"),
+            ty::TyUint(ast::UintTy::U16)  => output.push_str("u16"),
+            ty::TyUint(ast::UintTy::U32)  => output.push_str("u32"),
+            ty::TyUint(ast::UintTy::U64)  => output.push_str("u64"),
+            ty::TyFloat(ast::FloatTy::F32) => output.push_str("f32"),
+            ty::TyFloat(ast::FloatTy::F64) => output.push_str("f64"),
+            ty::TyAdt(adt_def, substs) => {
+                self.push_def_path(adt_def.did, output);
+                self.push_type_params(substs, &[], output);
+            },
+            ty::TyTuple(component_types) => {
+                output.push('(');
+                for &component_type in component_types {
+                    self.push_type_name(component_type, output);
                     output.push_str(", ");
                 }
-                output.pop();
-                output.pop();
-            }
-
-            if sig.variadic {
-                if !sig.inputs.is_empty() {
-                    output.push_str(", ...");
-                } else {
-                    output.push_str("...");
+                if !component_types.is_empty() {
+                    output.pop();
+                    output.pop();
                 }
+                output.push(')');
+            },
+            ty::TyBox(inner_type) => {
+                output.push_str("Box<");
+                self.push_type_name(inner_type, output);
+                output.push('>');
+            },
+            ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
+                output.push('*');
+                match mutbl {
+                    hir::MutImmutable => output.push_str("const "),
+                    hir::MutMutable => output.push_str("mut "),
+                }
+
+                self.push_type_name(inner_type, output);
+            },
+            ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
+                output.push('&');
+                if mutbl == hir::MutMutable {
+                    output.push_str("mut ");
+                }
+
+                self.push_type_name(inner_type, output);
+            },
+            ty::TyArray(inner_type, len) => {
+                output.push('[');
+                self.push_type_name(inner_type, output);
+                write!(output, "; {}", len).unwrap();
+                output.push(']');
+            },
+            ty::TySlice(inner_type) => {
+                output.push('[');
+                self.push_type_name(inner_type, output);
+                output.push(']');
+            },
+            ty::TyTrait(ref trait_data) => {
+                self.push_def_path(trait_data.principal.def_id(), output);
+                self.push_type_params(trait_data.principal.skip_binder().substs,
+                                      &trait_data.projection_bounds,
+                                      output);
+            },
+            ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
+            ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
+                if unsafety == hir::Unsafety::Unsafe {
+                    output.push_str("unsafe ");
+                }
+
+                if abi != ::abi::Abi::Rust {
+                    output.push_str("extern \"");
+                    output.push_str(abi.name());
+                    output.push_str("\" ");
+                }
+
+                output.push_str("fn(");
+
+                let ty::FnSig {
+                    inputs: sig_inputs,
+                    output: sig_output,
+                    variadic: sig_variadic
+                } = self.tcx.erase_late_bound_regions_and_normalize(sig);
+
+                if !sig_inputs.is_empty() {
+                    for &parameter_type in &sig_inputs {
+                        self.push_type_name(parameter_type, output);
+                        output.push_str(", ");
+                    }
+                    output.pop();
+                    output.pop();
+                }
+
+                if sig_variadic {
+                    if !sig_inputs.is_empty() {
+                        output.push_str(", ...");
+                    } else {
+                        output.push_str("...");
+                    }
+                }
+
+                output.push(')');
+
+                if !sig_output.is_nil() {
+                    output.push_str(" -> ");
+                    self.push_type_name(sig_output, output);
+                }
+            },
+            ty::TyClosure(def_id, ref closure_substs) => {
+                self.push_def_path(def_id, output);
+                let generics = self.tcx.item_generics(self.tcx.closure_base_def_id(def_id));
+                let substs = closure_substs.substs.truncate_to(self.tcx, generics);
+                self.push_type_params(substs, &[], output);
             }
-
-            output.push(')');
-
-            if !sig.output.is_nil() {
-                output.push_str(" -> ");
-                push_unique_type_name(tcx, sig.output, output);
+            ty::TyError |
+            ty::TyInfer(_) |
+            ty::TyProjection(..) |
+            ty::TyParam(_) |
+            ty::TyAnon(..) => {
+                bug!("DefPathBasedNames: Trying to create type name for \
+                                         unexpected type: {:?}", t);
             }
-        },
-        ty::TyClosure(def_id, closure_substs) => {
-            push_item_name(tcx, def_id, output);
-            output.push_str("{");
-            output.push_str(&format!("{}:{}", def_id.krate, def_id.index.as_usize()));
-            output.push_str("}");
-            let generics = tcx.item_generics(tcx.closure_base_def_id(def_id));
-            let substs = closure_substs.substs.truncate_to(tcx, generics);
-            push_type_params(tcx, substs, &[], output);
-        }
-        ty::TyError |
-        ty::TyInfer(_) |
-        ty::TyProjection(..) |
-        ty::TyParam(_) |
-        ty::TyAnon(..) => {
-            bug!("debuginfo: Trying to create type name for \
-                  unexpected type: {:?}", t);
         }
     }
-}
 
-fn push_item_name(tcx: TyCtxt,
-                  def_id: DefId,
-                  output: &mut String) {
-    let def_path = tcx.def_path(def_id);
+    pub fn push_def_path(&self,
+                         def_id: DefId,
+                         output: &mut String) {
+        let def_path = self.tcx.def_path(def_id);
 
-    // some_crate::
-    output.push_str(&tcx.crate_name(def_path.krate));
-    output.push_str("::");
+        // some_crate::
+        if !(self.omit_local_crate_name && def_id.is_local()) {
+            output.push_str(&self.tcx.crate_name(def_path.krate));
+            output.push_str("::");
+        }
 
-    // foo::bar::ItemName::
-    for part in tcx.def_path(def_id).data {
-        output.push_str(&format!("{}[{}]::",
-                        part.data.as_interned_str(),
-                        part.disambiguator));
+        // foo::bar::ItemName::
+        for part in self.tcx.def_path(def_id).data {
+            if self.omit_disambiguators {
+                write!(output, "{}::", part.data.as_interned_str()).unwrap();
+            } else {
+                write!(output, "{}[{}]::",
+                       part.data.as_interned_str(),
+                       part.disambiguator).unwrap();
+            }
+        }
+
+        // remove final "::"
+        output.pop();
+        output.pop();
     }
 
-    // remove final "::"
-    output.pop();
-    output.pop();
-}
+    pub fn push_type_params(&self,
+                            substs: &Substs<'tcx>,
+                            projections: &[ty::PolyExistentialProjection<'tcx>],
+                            output: &mut String) {
+        if substs.types().next().is_none() && projections.is_empty() {
+            return;
+        }
 
-fn push_type_params<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              substs: &Substs<'tcx>,
-                              projections: &[ty::PolyExistentialProjection<'tcx>],
-                              output: &mut String) {
-    if substs.types().next().is_none() && projections.is_empty() {
-        return;
+        output.push('<');
+
+        for type_parameter in substs.types() {
+            self.push_type_name(type_parameter, output);
+            output.push_str(", ");
+        }
+
+        for projection in projections {
+            let projection = projection.skip_binder();
+            let name = &projection.item_name.as_str();
+            output.push_str(name);
+            output.push_str("=");
+            self.push_type_name(projection.ty, output);
+            output.push_str(", ");
+        }
+
+        output.pop();
+        output.pop();
+
+        output.push('>');
     }
 
-    output.push('<');
-
-    for type_parameter in substs.types() {
-        push_unique_type_name(tcx, type_parameter, output);
-        output.push_str(", ");
+    pub fn push_instance_as_string(&self,
+                                   instance: Instance<'tcx>,
+                                   output: &mut String) {
+        self.push_def_path(instance.def, output);
+        self.push_type_params(instance.substs, &[], output);
     }
-
-    for projection in projections {
-        let projection = projection.skip_binder();
-        let name = &projection.item_name.as_str();
-        output.push_str(name);
-        output.push_str("=");
-        push_unique_type_name(tcx, projection.ty, output);
-        output.push_str(", ");
-    }
-
-    output.pop();
-    output.pop();
-
-    output.push('>');
-}
-
-fn push_instance_as_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     instance: Instance<'tcx>,
-                                     output: &mut String) {
-    push_item_name(tcx, instance.def, output);
-    push_type_params(tcx, instance.substs, &[], output);
-}
-
-pub fn def_id_to_string(tcx: TyCtxt, def_id: DefId) -> String {
-    let mut output = String::new();
-    push_item_name(tcx, def_id, &mut output);
-    output
-}
-
-pub fn type_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                ty: Ty<'tcx>)
-                                -> String {
-    let mut output = String::new();
-    push_unique_type_name(tcx, ty, &mut output);
-    output
 }
