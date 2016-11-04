@@ -4,6 +4,7 @@
     collections_bound,
     rustc_private,
     pub_restricted,
+    cell_extras,
 )]
 
 // From rustc.
@@ -30,7 +31,6 @@ pub use error::{
 };
 
 pub use interpreter::{
-    CachedMir,
     EvalContext,
     Frame,
     eval_main,

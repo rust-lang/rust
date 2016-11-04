@@ -3,7 +3,7 @@
 
 use std::mem::transmute;
 
-use rustc::mir::repr as mir;
+use rustc::mir;
 
 use error::{EvalError, EvalResult};
 use memory::{AllocId, Pointer};
@@ -274,7 +274,7 @@ pub fn binary_op<'tcx>(
     left: PrimVal,
     right: PrimVal
 ) -> EvalResult<'tcx, (PrimVal, bool)> {
-    use rustc::mir::repr::BinOp::*;
+    use rustc::mir::BinOp::*;
     use self::PrimValKind::*;
 
     match (left.try_as_ptr(), right.try_as_ptr()) {
@@ -377,7 +377,7 @@ pub fn binary_op<'tcx>(
 }
 
 fn unrelated_ptr_ops<'tcx>(bin_op: mir::BinOp) -> EvalResult<'tcx, PrimVal> {
-    use rustc::mir::repr::BinOp::*;
+    use rustc::mir::BinOp::*;
     match bin_op {
         Eq => Ok(PrimVal::from_bool(false)),
         Ne => Ok(PrimVal::from_bool(true)),
@@ -387,7 +387,7 @@ fn unrelated_ptr_ops<'tcx>(bin_op: mir::BinOp) -> EvalResult<'tcx, PrimVal> {
 }
 
 pub fn unary_op<'tcx>(un_op: mir::UnOp, val: PrimVal) -> EvalResult<'tcx, PrimVal> {
-    use rustc::mir::repr::UnOp::*;
+    use rustc::mir::UnOp::*;
     use self::PrimValKind::*;
 
     let bits = match (un_op, val.kind) {

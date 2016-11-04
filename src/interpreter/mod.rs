@@ -1,17 +1,12 @@
 use rustc::middle::const_val::ConstVal;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
-use rustc::mir::mir_map::MirMap;
-use rustc::mir::repr as mir;
+use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::indexed_vec::Idx;
-use std::cell::RefCell;
-use std::ops::Deref;
-use std::rc::Rc;
 use syntax::codemap::{self, DUMMY_SP};
 
 use error::{EvalError, EvalResult};
@@ -20,6 +15,7 @@ use primval::{self, PrimVal, PrimValKind};
 pub use self::value::Value;
 
 use std::collections::HashMap;
+use std::cell::Ref;
 
 mod step;
 mod terminator;
@@ -27,15 +23,11 @@ mod cast;
 mod vtable;
 mod value;
 
+pub type MirRef<'tcx> = ::std::cell::Ref<'tcx, mir::Mir<'tcx>>;
+
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-
-    /// A mapping from NodeIds to Mir, from rustc. Only contains MIR for crate-local items.
-    mir_map: &'a MirMap<'tcx>,
-
-    /// A local cache from DefIds to Mir for non-crate-local items.
-    mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
 
     /// The virtual memory system.
     memory: Memory<'a, 'tcx>,
@@ -44,20 +36,20 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
 
     /// The virtual call stack.
-    stack: Vec<Frame<'a, 'tcx>>,
+    stack: Vec<Frame<'tcx>>,
 
     /// The maximum number of stack frames allowed
     stack_limit: usize,
 }
 
 /// A stack frame.
-pub struct Frame<'a, 'tcx: 'a> {
+pub struct Frame<'tcx> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
 
     /// The MIR for the function called on this frame.
-    pub mir: CachedMir<'a, 'tcx>,
+    pub mir: MirRef<'tcx>,
 
     /// The def_id of the current function.
     pub def_id: DefId,
@@ -125,12 +117,6 @@ pub enum LvalueExtra {
     DowncastVariant(usize),
 }
 
-#[derive(Clone)]
-pub enum CachedMir<'mir, 'tcx: 'mir> {
-    Ref(&'mir mir::Mir<'tcx>),
-    Owned(Rc<mir::Mir<'tcx>>)
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 /// Uniquely identifies a specific constant or static
 pub struct GlobalId<'tcx> {
@@ -176,11 +162,9 @@ pub enum StackPopCleanup {
 }
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>, memory_size: usize, stack_limit: usize) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, memory_size: usize, stack_limit: usize) -> Self {
         EvalContext {
             tcx: tcx,
-            mir_map: mir_map,
-            mir_cache: RefCell::new(DefIdMap()),
             memory: Memory::new(&tcx.data_layout, memory_size),
             globals: HashMap::new(),
             stack: Vec::new(),
@@ -211,7 +195,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self.memory
     }
 
-    pub fn stack(&self) -> &[Frame<'a, 'tcx>] {
+    pub fn stack(&self) -> &[Frame<'tcx>] {
         &self.stack
     }
 
@@ -292,25 +276,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
     }
 
-    pub fn load_mir(&self, def_id: DefId) -> EvalResult<'tcx, CachedMir<'a, 'tcx>> {
+    pub fn load_mir(&self, def_id: DefId) -> EvalResult<'tcx, MirRef<'tcx>> {
         trace!("load mir {:?}", def_id);
-        if def_id.is_local() {
-            Ok(CachedMir::Ref(self.mir_map.map.get(&def_id).unwrap()))
+        if def_id.is_local() || self.tcx.sess.cstore.is_item_mir_available(def_id) {
+            Ok(self.tcx.item_mir(def_id))
         } else {
-            let mut mir_cache = self.mir_cache.borrow_mut();
-            if let Some(mir) = mir_cache.get(&def_id) {
-                return Ok(CachedMir::Owned(mir.clone()));
-            }
-
-            let cs = &self.tcx.sess.cstore;
-            match cs.maybe_get_item_mir(self.tcx, def_id) {
-                Some(mir) => {
-                    let cached = Rc::new(mir);
-                    mir_cache.insert(def_id, cached.clone());
-                    Ok(CachedMir::Owned(cached))
-                },
-                None => Err(EvalError::NoMirFor(self.tcx.item_path_str(def_id))),
-            }
+            Err(EvalError::NoMirFor(self.tcx.item_path_str(def_id)))
         }
     }
 
@@ -358,7 +329,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         def_id: DefId,
         span: codemap::Span,
-        mir: CachedMir<'a, 'tcx>,
+        mir: MirRef<'tcx>,
         substs: &'tcx Substs<'tcx>,
         return_lvalue: Lvalue<'tcx>,
         return_to_block: StackPopCleanup,
@@ -371,7 +342,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let locals = vec![None; num_locals];
 
         self.stack.push(Frame {
-            mir: mir.clone(),
+            mir: mir,
             block: mir::START_BLOCK,
             return_to_block: return_to_block,
             return_lvalue: return_lvalue,
@@ -483,7 +454,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let dest_ty = self.lvalue_ty(lvalue);
         let dest_layout = self.type_layout(dest_ty);
 
-        use rustc::mir::repr::Rvalue::*;
+        use rustc::mir::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
                 let value = self.eval_operand(operand)?;
@@ -653,7 +624,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Cast(kind, ref operand, cast_ty) => {
                 debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
-                use rustc::mir::repr::CastKind::*;
+                use rustc::mir::CastKind::*;
                 match kind {
                     Unsize => {
                         let src = self.eval_operand(operand)?;
@@ -812,12 +783,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
-        use rustc::mir::repr::Operand::*;
+        use rustc::mir::Operand::*;
         match *op {
             Consume(ref lvalue) => self.eval_and_read_lvalue(lvalue),
 
             Constant(mir::Constant { ref literal, ty, .. }) => {
-                use rustc::mir::repr::Literal;
+                use rustc::mir::Literal;
                 let value = match *literal {
                     Literal::Value { ref value } => self.const_to_value(value)?,
 
@@ -883,7 +854,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn eval_lvalue(&mut self, mir_lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
-        use rustc::mir::repr::Lvalue::*;
+        use rustc::mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
 
@@ -922,7 +893,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let base_ty = self.lvalue_ty(&proj.base);
         let base_layout = self.type_layout(base_ty);
 
-        use rustc::mir::repr::ProjectionElem::*;
+        use rustc::mir::ProjectionElem::*;
         let (ptr, extra) = match proj.elem {
             Field(field, field_ty) => {
                 // FIXME(solson)
@@ -1462,16 +1433,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Value::ByVal(val))
     }
 
-    fn frame(&self) -> &Frame<'a, 'tcx> {
+    fn frame(&self) -> &Frame<'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
-    pub fn frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
+    pub fn frame_mut(&mut self) -> &mut Frame<'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
 
-    fn mir(&self) -> CachedMir<'a, 'tcx> {
-        self.frame().mir.clone()
+    fn mir(&self) -> MirRef<'tcx> {
+        Ref::clone(&self.frame().mir)
     }
 
     fn substs(&self) -> &'tcx Substs<'tcx> {
@@ -1583,7 +1554,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
+impl<'tcx> Frame<'tcx> {
     pub fn get_local(&self, local: mir::Local) -> Option<Value> {
         // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
         self.locals[local.index() - 1]
@@ -1630,34 +1601,23 @@ impl<'tcx> Lvalue<'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
-    type Target = mir::Mir<'tcx>;
-    fn deref(&self) -> &mir::Mir<'tcx> {
-        match *self {
-            CachedMir::Ref(r) => r,
-            CachedMir::Owned(ref rc) => rc,
-        }
-    }
-}
-
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir_map: &'a MirMap<'tcx>,
     def_id: DefId,
     memory_size: usize,
     step_limit: u64,
     stack_limit: usize,
 ) {
-    let mir = mir_map.map.get(&def_id).expect("no mir for main function");
-    let mut ecx = EvalContext::new(tcx, mir_map, memory_size, stack_limit);
+    let mut ecx = EvalContext::new(tcx, memory_size, stack_limit);
+    let mir = ecx.load_mir(def_id).expect("main function's MIR not found");
 
     ecx.push_stack_frame(
         def_id,
         mir.span,
-        CachedMir::Ref(mir),
+        mir,
         tcx.intern_substs(&[]),
         Lvalue::from_ptr(Pointer::zst_ptr()),
-        StackPopCleanup::None
+        StackPopCleanup::None,
     ).expect("could not allocate first stack frame");
 
     for _ in 0..step_limit {
@@ -1695,7 +1655,7 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
         impl<'tcx> ::std::panic::RefUnwindSafe for Instance<'tcx> {}
         impl<'tcx> fmt::Display for Instance<'tcx> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[])
+                ppaux::parameterized(f, self.1, self.0, &[])
             }
         }
         err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
@@ -1703,7 +1663,7 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
     err.emit();
 }
 
-pub fn run_mir_passes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &mut MirMap<'tcx>) {
+pub fn run_mir_passes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut passes = ::rustc::mir::transform::Passes::new();
     passes.push_hook(Box::new(::rustc_mir::transform::dump_mir::DumpMir));
     passes.push_pass(Box::new(::rustc_mir::transform::no_landing_pads::NoLandingPads));
@@ -1716,7 +1676,7 @@ pub fn run_mir_passes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &mut MirMa
     passes.push_pass(Box::new(::rustc_mir::transform::simplify_cfg::SimplifyCfg::new("elaborate-drops")));
     passes.push_pass(Box::new(::rustc_mir::transform::dump_mir::Marker("PreMiri")));
 
-    passes.run_passes(tcx, mir_map);
+    passes.run_passes(tcx);
 }
 
 // TODO(solson): Upstream these methods into rustc::ty::layout.

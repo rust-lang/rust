@@ -1,5 +1,5 @@
 use rustc::hir::def_id::DefId;
-use rustc::mir::repr as mir;
+use rustc::mir;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};

@@ -1,5 +1,5 @@
 use rustc::hir::def_id::DefId;
-use rustc::mir::repr as mir;
+use rustc::mir;
 use rustc::traits::{self, Reveal};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::layout::Layout;
@@ -28,7 +28,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         terminator: &mir::Terminator<'tcx>,
     ) -> EvalResult<'tcx, ()> {
-        use rustc::mir::repr::TerminatorKind::*;
+        use rustc::mir::TerminatorKind::*;
         match terminator.kind {
             Return => self.pop_stack_frame()?,
 
@@ -204,7 +204,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     mir,
                     resolved_substs,
                     return_lvalue,
-                    return_to_block
+                    return_to_block,
                 )?;
 
                 let arg_locals = self.frame().mir.args_iter();

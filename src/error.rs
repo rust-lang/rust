@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::fmt;
-use rustc::mir::repr as mir;
+use rustc::mir;
 use rustc::ty::BareFnTy;
 use memory::Pointer;
 use rustc_const_math::ConstMathErr;
