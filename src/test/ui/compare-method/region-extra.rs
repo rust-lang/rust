@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+#![allow(dead_code)]
+#![deny(extra_requirement_in_impl)]
 
-struct Heap;
+// Test that you cannot add an extra where clause in the impl relating
+// two regions.
 
-struct Vec<A = Heap, T>; //~ ERROR type parameters with a default must be trailing
+trait Master<'a, 'b> {
+    fn foo();
+}
 
-struct Foo<A, B = Vec<C>, C>; //~ ERROR type parameters with a default must be trailing
+impl<'a, 'b> Master<'a, 'b> for () {
+    fn foo() where 'a: 'b { }
+}
 
-fn main() {}
+fn main() {
+    println!("Hello, world!");
+}

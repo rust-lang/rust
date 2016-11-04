@@ -356,7 +356,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             debug!("visit_region_obligations: r_o={:?} cause={:?}",
                    r_o, r_o.cause);
             let sup_type = self.resolve_type(r_o.sup_type);
-            let origin = self.code_to_origin(r_o.cause.span, sup_type, &r_o.cause.code);
+            let origin = self.code_to_origin(&r_o.cause, sup_type);
             self.type_must_outlive(origin, sup_type, r_o.sub_region);
         }
 
@@ -366,16 +366,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn code_to_origin(&self,
-                      span: Span,
-                      sup_type: Ty<'tcx>,
-                      code: &traits::ObligationCauseCode<'tcx>)
+                      cause: &traits::ObligationCause<'tcx>,
+                      sup_type: Ty<'tcx>)
                       -> SubregionOrigin<'tcx> {
-        match *code {
-            traits::ObligationCauseCode::ReferenceOutlivesReferent(ref_type) =>
-                infer::ReferenceOutlivesReferent(ref_type, span),
-            _ =>
-                infer::RelateParamBound(span, sup_type),
-        }
+        SubregionOrigin::from_obligation_cause(cause,
+                                               || infer::RelateParamBound(cause.span, sup_type))
     }
 
     /// This method populates the region map's `free_region_map`. It walks over the transformed
@@ -1474,7 +1469,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         assert!(!ty.has_escaping_regions());
 
-        let components = self.outlives_components(ty);
+        let components = self.tcx.outlives_components(ty);
         self.components_must_outlive(origin, components, region);
     }
 
