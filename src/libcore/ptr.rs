@@ -344,6 +344,46 @@ impl<T: ?Sized> *const T {
     pub unsafe fn offset(self, count: isize) -> *const T where T: Sized {
         intrinsics::offset(self, count)
     }
+
+    /// Calculates the offset from a pointer using wrapping arithmetic.
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * sizeof::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// The resulting pointer does not need to be in bounds, but it is
+    /// potentially hazardous to dereference (which requires `unsafe`).
+    ///
+    /// Always use `.offset(count)` instead when possible, because `offset`
+    /// allows the compiler to optimize better.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(ptr_wrapping_offset)]
+    /// // Iterate using a raw pointer in increments of two elements
+    /// let data = [1u8, 2, 3, 4, 5];
+    /// let mut ptr: *const u8 = data.as_ptr();
+    /// let step = 2;
+    /// let end_rounded_up = ptr.wrapping_offset(6);
+    ///
+    /// // This loop prints "1, 3, 5, "
+    /// while ptr != end_rounded_up {
+    ///     unsafe {
+    ///         print!("{}, ", *ptr);
+    ///     }
+    ///     ptr = ptr.wrapping_offset(step);
+    /// }
+    /// ```
+    #[unstable(feature = "ptr_wrapping_offset", issue = "37570")]
+    #[inline]
+    pub fn wrapping_offset(self, count: isize) -> *const T where T: Sized {
+        unsafe {
+            intrinsics::arith_offset(self, count)
+        }
+    }
 }
 
 #[lang = "mut_ptr"]
@@ -427,6 +467,46 @@ impl<T: ?Sized> *mut T {
     #[inline]
     pub unsafe fn offset(self, count: isize) -> *mut T where T: Sized {
         intrinsics::offset(self, count) as *mut T
+    }
+
+    /// Calculates the offset from a pointer using wrapping arithmetic.
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * sizeof::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// The resulting pointer does not need to be in bounds, but it is
+    /// potentially hazardous to dereference (which requires `unsafe`).
+    ///
+    /// Always use `.offset(count)` instead when possible, because `offset`
+    /// allows the compiler to optimize better.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(ptr_wrapping_offset)]
+    /// // Iterate using a raw pointer in increments of two elements
+    /// let mut data = [1u8, 2, 3, 4, 5];
+    /// let mut ptr: *mut u8 = data.as_mut_ptr();
+    /// let step = 2;
+    /// let end_rounded_up = ptr.wrapping_offset(6);
+    ///
+    /// while ptr != end_rounded_up {
+    ///     unsafe {
+    ///         *ptr = 0;
+    ///     }
+    ///     ptr = ptr.wrapping_offset(step);
+    /// }
+    /// assert_eq!(&data, &[0, 2, 0, 4, 0]);
+    /// ```
+    #[unstable(feature = "ptr_wrapping_offset", issue = "37570")]
+    #[inline]
+    pub fn wrapping_offset(self, count: isize) -> *mut T where T: Sized {
+        unsafe {
+            intrinsics::arith_offset(self, count) as *mut T
+        }
     }
 
     /// Returns `None` if the pointer is null, or else returns a mutable
