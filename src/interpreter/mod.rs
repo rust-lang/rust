@@ -1115,13 +1115,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    /// ensures this Value is not a ByRef
+    fn follow_by_ref_value(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         match value {
-            Value::ByRef(ptr) => match self.read_value(ptr, ty)? {
-                Value::ByRef(_) => bug!("read_value can't result in `ByRef`"),
-                Value::ByVal(primval) => Ok(primval),
-                Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
-            },
+            Value::ByRef(ptr) => self.read_value(ptr, ty),
+            other => Ok(other),
+        }
+    }
+
+    fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+        match self.follow_by_ref_value(value, ty)? {
+            Value::ByRef(_) => bug!("follow_by_ref_value can't result in `ByRef`"),
 
             Value::ByVal(primval) => {
                 let new_primval = self.transmute_primval(primval, ty)?;
