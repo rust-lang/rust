@@ -111,6 +111,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),
 
+    /// A type like `Box<Foo<'a> + 'b>` is WF only if `'b: 'a`.
+    ObjectTypeBound(Ty<'tcx>, &'tcx ty::Region),
+
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ Ty<'tcx>),
 
@@ -138,7 +141,13 @@ pub enum ObligationCauseCode<'tcx> {
 
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
 
-    CompareImplMethodObligation,
+    // error derived when matching traits/impls; see ObligationCause for more details
+    CompareImplMethodObligation {
+        item_name: ast::Name,
+        impl_item_def_id: DefId,
+        trait_item_def_id: DefId,
+        lint_id: Option<ast::NodeId>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

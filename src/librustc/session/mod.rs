@@ -74,7 +74,7 @@ pub struct Session {
     pub local_crate_source_file: Option<PathBuf>,
     pub working_dir: PathBuf,
     pub lint_store: RefCell<lint::LintStore>,
-    pub lints: RefCell<NodeMap<Vec<(lint::LintId, Span, String)>>>,
+    pub lints: RefCell<NodeMap<Vec<lint::EarlyLint>>>,
     /// Set of (LintId, span, message) tuples tracking lint (sub)diagnostics
     /// that have been set once, but should not be set again, in order to avoid
     /// redundantly verbose output (Issue #24690).
@@ -262,17 +262,26 @@ impl Session {
                     lint: &'static lint::Lint,
                     id: ast::NodeId,
                     sp: Span,
-                    msg: String) {
+                    msg: String)
+    {
+        self.add_lint_diagnostic(lint, id, (sp, &msg[..]))
+    }
+    pub fn add_lint_diagnostic<M>(&self,
+                                  lint: &'static lint::Lint,
+                                  id: ast::NodeId,
+                                  msg: M)
+        where M: lint::IntoEarlyLint,
+    {
         let lint_id = lint::LintId::of(lint);
         let mut lints = self.lints.borrow_mut();
+        let early_lint = msg.into_early_lint(lint_id);
         if let Some(arr) = lints.get_mut(&id) {
-            let tuple = (lint_id, sp, msg);
-            if !arr.contains(&tuple) {
-                arr.push(tuple);
+            if !arr.contains(&early_lint) {
+                arr.push(early_lint);
             }
             return;
         }
-        lints.insert(id, vec![(lint_id, sp, msg)]);
+        lints.insert(id, vec![early_lint]);
     }
     pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
         let id = self.next_node_id.get();

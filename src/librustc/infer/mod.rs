@@ -355,6 +355,19 @@ pub enum SubregionOrigin<'tcx> {
 
     // Region constraint arriving from destructor safety
     SafeDestructor(Span),
+
+    // Comparing the signature and requirements of an impl method against
+    // the containing trait.
+    CompareImplMethodObligation {
+        span: Span,
+        item_name: ast::Name,
+        impl_item_def_id: DefId,
+        trait_item_def_id: DefId,
+
+        // this is `Some(_)` if this error arises from the bug fix for
+        // #18937. This is a temporary measure.
+        lint_id: Option<ast::NodeId>,
+    },
 }
 
 /// Places that type/region parameters can appear.
@@ -1147,16 +1160,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn region_outlives_predicate(&self,
-                                     span: Span,
+                                     cause: &traits::ObligationCause<'tcx>,
                                      predicate: &ty::PolyRegionOutlivesPredicate<'tcx>)
         -> UnitResult<'tcx>
     {
         self.commit_if_ok(|snapshot| {
             let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
-            let origin = RelateRegionParamBound(span);
+            let origin =
+                SubregionOrigin::from_obligation_cause(cause,
+                                                       || RelateRegionParamBound(cause.span));
             self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-            self.leak_check(false, span, &skol_map, snapshot)?;
+            self.leak_check(false, cause.span, &skol_map, snapshot)?;
             Ok(self.pop_skolemized(skol_map, snapshot))
         })
     }
@@ -1786,6 +1801,32 @@ impl<'tcx> SubregionOrigin<'tcx> {
             AddrOf(a) => a,
             AutoBorrow(a) => a,
             SafeDestructor(a) => a,
+            CompareImplMethodObligation { span, .. } => span,
+        }
+    }
+
+    pub fn from_obligation_cause<F>(cause: &traits::ObligationCause<'tcx>,
+                                    default: F)
+                                    -> Self
+        where F: FnOnce() -> Self
+    {
+        match cause.code {
+            traits::ObligationCauseCode::ReferenceOutlivesReferent(ref_type) =>
+                SubregionOrigin::ReferenceOutlivesReferent(ref_type, cause.span),
+
+            traits::ObligationCauseCode::CompareImplMethodObligation { item_name,
+                                                                       impl_item_def_id,
+                                                                       trait_item_def_id,
+                                                                       lint_id } =>
+                SubregionOrigin::CompareImplMethodObligation {
+                    span: cause.span,
+                    item_name: item_name,
+                    impl_item_def_id: impl_item_def_id,
+                    trait_item_def_id: trait_item_def_id,
+                    lint_id: lint_id,
+                },
+
+            _ => default(),
         }
     }
 }

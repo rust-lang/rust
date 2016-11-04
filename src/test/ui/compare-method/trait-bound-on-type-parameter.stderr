@@ -1,0 +1,11 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/trait-bound-on-type-parameter.rs:25:5
+   |
+17 |   fn b<C,D>(&self, x: C) -> C;
+   |   ---------------------------- definition of `b` from trait
+...
+25 |     fn b<F: Sync, G>(&self, _x: F) -> F { panic!() } //~ ERROR E0276
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `F: std::marker::Sync`
+
+error: aborting due to previous error
+

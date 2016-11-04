@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that an impl method's bounds aren't *more* restrictive
-// than the trait method it's implementing
+// Tests that impl can't add extra `F: Sync` bound aren't *more* restrictive
+// than the trait method it's implementing.
+//
+// Regr test for #26111.
 
 trait A {
   fn b<C,D>(&self, x: C) -> C;
@@ -20,8 +22,7 @@ struct E {
 }
 
 impl A for E {
-    fn b<F: Sync, G>(&self, _x: F) -> F { panic!() }
-    //~^ ERROR `F: std::marker::Sync` appears on the impl method
+    fn b<F: Sync, G>(&self, _x: F) -> F { panic!() } //~ ERROR E0276
 }
 
 fn main() {}

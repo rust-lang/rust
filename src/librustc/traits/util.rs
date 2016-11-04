@@ -11,6 +11,7 @@
 use hir::def_id::DefId;
 use ty::subst::{Subst, Substs};
 use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
+use ty::outlives::Component;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashSet;
 
@@ -166,27 +167,63 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
             ty::Predicate::ClosureKind(..) => {
                 // Nothing to elaborate when waiting for a closure's kind to be inferred.
             }
-            ty::Predicate::RegionOutlives(..) |
-            ty::Predicate::TypeOutlives(..) => {
-                // Currently, we do not "elaborate" predicates like
-                // `'a : 'b` or `T : 'a`.  We could conceivably do
-                // more here.  For example,
+
+            ty::Predicate::RegionOutlives(..) => {
+                // Nothing to elaborate from `'a: 'b`.
+            }
+
+            ty::Predicate::TypeOutlives(ref data) => {
+                // We know that `T: 'a` for some type `T`. We can
+                // often elaborate this. For example, if we know that
+                // `[U]: 'a`, that implies that `U: 'a`. Similarly, if
+                // we know `&'a U: 'b`, then we know that `'a: 'b` and
+                // `U: 'b`.
                 //
-                //     &'a int : 'b
-                //
-                // implies that
-                //
-                //     'a : 'b
-                //
-                // and we could get even more if we took WF
-                // constraints into account. For example,
-                //
-                //     &'a &'b int : 'c
-                //
-                // implies that
-                //
-                //     'b : 'a
-                //     'a : 'c
+                // We can basically ignore bound regions here. So for
+                // example `for<'c> Foo<'a,'c>: 'b` can be elaborated to
+                // `'a: 'b`.
+
+                // Ignore `for<'a> T: 'a` -- we might in the future
+                // consider this as evidence that `T: 'static`, but
+                // I'm a bit wary of such constructions and so for now
+                // I want to be conservative. --nmatsakis
+                let ty_max = data.skip_binder().0;
+                let r_min = data.skip_binder().1;
+                if r_min.is_bound() {
+                    return;
+                }
+
+                let visited = &mut self.visited;
+                self.stack.extend(
+                    tcx.outlives_components(ty_max)
+                       .into_iter()
+                       .filter_map(|component| match component {
+                           Component::Region(r) => if r.is_bound() {
+                               None
+                           } else {
+                               Some(ty::Predicate::RegionOutlives(
+                                   ty::Binder(ty::OutlivesPredicate(r, r_min))))
+                           },
+
+                           Component::Param(p) => {
+                               let ty = tcx.mk_param(p.idx, p.name);
+                               Some(ty::Predicate::TypeOutlives(
+                                   ty::Binder(ty::OutlivesPredicate(ty, r_min))))
+                           },
+
+                           Component::UnresolvedInferenceVariable(_) => {
+                               None
+                           },
+
+                           Component::Projection(_) |
+                           Component::EscapingProjection(_) => {
+                               // We can probably do more here. This
+                               // corresponds to a case like `<T as
+                               // Foo<'a>>::U: 'b`.
+                               None
+                           },
+                       })
+                       .filter(|p| visited.insert(p)));
             }
         }
     }
