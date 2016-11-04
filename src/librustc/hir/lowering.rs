@@ -1239,7 +1239,7 @@ impl<'a> LoweringContext<'a> {
                 }), outputs.iter().map(|out| self.lower_expr(&out.expr)).collect(),
                    inputs.iter().map(|&(_, ref input)| self.lower_expr(input)).collect()),
                 ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
-                    hir::ExprStruct(self.lower_path(path),
+                    hir::ExprStruct(P(self.lower_path(path)),
                                     fields.iter().map(|x| self.lower_field(x)).collect(),
                                     maybe_expr.as_ref().map(|x| self.lower_expr(x)))
                 }
@@ -1743,7 +1743,7 @@ impl<'a> LoweringContext<'a> {
                    e: Option<P<hir::Expr>>,
                    attrs: ThinVec<Attribute>) -> P<hir::Expr> {
         let def = self.resolver.resolve_generated_global_path(&path, false);
-        let expr = self.expr(sp, hir::ExprStruct(path, fields, e), attrs);
+        let expr = self.expr(sp, hir::ExprStruct(P(path), fields, e), attrs);
         self.resolver.record_resolution(expr.id, def);
         expr
     }
