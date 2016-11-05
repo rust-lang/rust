@@ -10,7 +10,10 @@
 
 // aux-build:derive-a.rs
 
-extern crate derive_a;
-//~^ ERROR: crates of the `proc-macro` crate type cannot be linked at runtime
+#![feature(rustc_attrs)]
 
-fn main() {}
+extern crate derive_a;
+//~^ WARN custom derive crates and `#[no_link]` crates have no effect without `#[macro_use]`
+
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful

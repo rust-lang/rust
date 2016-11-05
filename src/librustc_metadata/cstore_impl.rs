@@ -14,7 +14,7 @@ use locator;
 use schema;
 
 use rustc::middle::cstore::{InlinedItem, CrateStore, CrateSource, DepKind, ExternCrate};
-use rustc::middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
+use rustc::middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference, LoadedMacro};
 use rustc::hir::def::{self, Def};
 use rustc::middle::lang_items;
 use rustc::session::Session;
@@ -353,8 +353,13 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         result
     }
 
-    fn load_macro(&self, id: DefId, sess: &Session) -> ast::MacroDef {
-        let (name, def) = self.get_crate_data(id.krate).get_macro(id.index);
+    fn load_macro(&self, id: DefId, sess: &Session) -> LoadedMacro {
+        let data = self.get_crate_data(id.krate);
+        if let Some(ref proc_macros) = data.proc_macros {
+            return LoadedMacro::ProcMacro(proc_macros[id.index.as_usize()].1.clone());
+        }
+
+        let (name, def) = data.get_macro(id.index);
         let source_name = format!("<{} macros>", name);
 
         // NB: Don't use parse_tts_from_source_str because it parses with quote_depth > 0.
@@ -379,7 +384,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         sess.imported_macro_spans.borrow_mut()
             .insert(local_span, (def.name.as_str().to_string(), def.span));
 
-        ast::MacroDef {
+        LoadedMacro::MacroRules(ast::MacroDef {
             ident: ast::Ident::with_empty_ctxt(def.name),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
@@ -387,7 +392,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
             allow_internal_unstable: attr::contains_name(&def.attrs, "allow_internal_unstable"),
             attrs: def.attrs,
             body: body,
-        }
+        })
     }
 
     fn maybe_get_item_ast<'a>(&'tcx self,

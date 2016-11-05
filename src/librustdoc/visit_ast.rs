@@ -21,6 +21,7 @@ use syntax_pos::Span;
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::middle::cstore::LoadedMacro;
 use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::FxHashSet;
 
@@ -198,7 +199,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     if def_id.krate == LOCAL_CRATE {
                         continue // These are `krate.exported_macros`, handled in `self.visit()`.
                     }
-                    let def = self.cx.sess().cstore.load_macro(def_id, self.cx.sess());
+                    let def = match self.cx.sess().cstore.load_macro(def_id, self.cx.sess()) {
+                        LoadedMacro::MacroRules(macro_rules) => macro_rules,
+                        // FIXME(jseyfried): document proc macro reexports
+                        LoadedMacro::ProcMacro(..) => continue,
+                    };
+
                     // FIXME(jseyfried) merge with `self.visit_macro()`
                     let matchers = def.body.chunks(4).map(|arm| arm[0].get_span()).collect();
                     om.macros.push(Macro {
