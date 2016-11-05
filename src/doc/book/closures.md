@@ -327,7 +327,7 @@ that takes a reference like so:
 fn call_with_ref<F>(some_closure:F) -> i32
     where F: Fn(&i32) -> i32 {
 
-    let mut value = 0;
+    let value = 0;
     some_closure(&value)
 }
 ```
@@ -340,14 +340,15 @@ fn call_with_ref<'a, F>(some_closure:F) -> i32
     where F: Fn(&'a i32) -> i32 {
 ```
 
-However this presents a problem in our case. When you specify the explicit
-lifetime on a function it binds that lifetime to the *entire* scope of the function
-instead of just the invocation scope of our closure. This means that the borrow checker
-will see a mutable reference in the same lifetime as our immutable reference and fail
-to compile.
+However, this presents a problem in our case. When a function has an explicit
+lifetime parameter, that lifetime must be at least as long as the *entire*
+call to that function.  The borrow checker will complain that `value` doesn't
+live long enough, because it is only in scope after its declaration inside the
+function body.
 
-In order to say that we only need the lifetime to be valid for the invocation scope
-of the closure we can use Higher-Ranked Trait Bounds with the `for<...>` syntax:
+What we need is a closure that can borrow its argument only for its own
+invocation scope, not for the outer function's scope.  In order to say that,
+we can use Higher-Ranked Trait Bounds with the `for<...>` syntax:
 
 ```ignore
 fn call_with_ref<F>(some_closure:F) -> i32
@@ -362,7 +363,7 @@ expect.
 fn call_with_ref<F>(some_closure:F) -> i32
     where F: for<'a> Fn(&'a i32) -> i32 {
 
-    let mut value = 0;
+    let value = 0;
     some_closure(&value)
 }
 ```
