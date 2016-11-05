@@ -288,13 +288,13 @@ pub fn build_rules(build: &Build) -> Rules {
                                None));
     for (krate, path, _default) in krates("rustc-main") {
         rules.test(&krate.test_step, path)
-             .dep(|s| s.name("libtest"))
+             .dep(|s| s.name("librustc"))
              .host(true)
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Librustc, Some(&krate.name)));
     }
     rules.test("check-rustc-all", "path/to/nowhere")
-         .dep(|s| s.name("libtest"))
+         .dep(|s| s.name("librustc"))
          .default(true)
              .host(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target, Mode::Librustc,

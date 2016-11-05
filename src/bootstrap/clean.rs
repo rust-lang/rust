@@ -16,6 +16,7 @@
 //! directory as we want that cached between builds.
 
 use std::fs;
+use std::io::{self, ErrorKind};
 use std::path::Path;
 
 use Build;
@@ -35,14 +36,47 @@ pub fn clean(build: &Build) {
             if entry.file_name().to_str() == Some("llvm") {
                 continue
             }
-            t!(fs::remove_dir_all(&entry.path()));
+            rm_rf(build, &entry.path());
         }
     }
 }
 
 fn rm_rf(build: &Build, path: &Path) {
-    if path.exists() {
-        build.verbose(&format!("removing `{}`", path.display()));
-        t!(fs::remove_dir_all(path));
+    if !path.exists() {
+        return
+    }
+
+    for file in t!(fs::read_dir(path)) {
+        let file = t!(file).path();
+
+        if file.is_dir() {
+            rm_rf(build, &file);
+        } else {
+            // On windows we can't remove a readonly file, and git will
+            // often clone files as readonly. As a result, we have some
+            // special logic to remove readonly files on windows.
+            do_op(&file, "remove file", |p| fs::remove_file(p));
+        }
+    }
+    do_op(path, "remove dir", |p| fs::remove_dir(p));
+}
+
+fn do_op<F>(path: &Path, desc: &str, mut f: F)
+    where F: FnMut(&Path) -> io::Result<()>
+{
+    match f(path) {
+        Ok(()) => {}
+        Err(ref e) if cfg!(windows) &&
+                      e.kind() == ErrorKind::PermissionDenied => {
+            let mut p = t!(path.metadata()).permissions();
+            p.set_readonly(false);
+            t!(fs::set_permissions(path, p));
+            f(path).unwrap_or_else(|e| {
+                panic!("failed to {} {}: {}", desc, path.display(), e);
+            })
+        }
+        Err(e) => {
+            panic!("failed to {} {}: {}", desc, path.display(), e);
+        }
     }
 }

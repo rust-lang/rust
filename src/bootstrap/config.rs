@@ -454,6 +454,30 @@ impl Config {
     }
 }
 
+#[cfg(not(windows))]
+fn parse_configure_path(path: &str) -> PathBuf {
+    path.into()
+}
+
+#[cfg(windows)]
+fn parse_configure_path(path: &str) -> PathBuf {
+    // on windows, configure produces unix style paths e.g. /c/some/path but we
+    // only want real windows paths
+
+    use std::process::Command;
+    use build_helper;
+
+    // '/' is invalid in windows paths, so we can detect unix paths by the presence of it
+    if !path.contains('/') {
+        return path.into();
+    }
+
+    let win_path = build_helper::output(Command::new("cygpath").arg("-w").arg(path));
+    let win_path = win_path.trim();
+
+    win_path.into()
+}
+
 fn set<T>(field: &mut T, val: Option<T>) {
     if let Some(v) = val {
         *field = v;

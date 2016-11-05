@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern: invalid windows subsystem `wrong`, only `windows` and `console` are allowed
+
 #![feature(windows_subsystem)]
 #![windows_subsystem = "wrong"]
-//~^ ERROR: invalid subsystem `wrong`, only `windows` and `console` are allowed
 
 fn main() {}
