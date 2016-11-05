@@ -28,6 +28,7 @@ use std::rc::Rc;
 use std::path::PathBuf;
 use flate::Bytes;
 use syntax::{ast, attr};
+use syntax::ext::base::SyntaxExtension;
 use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibraryKind, LinkagePreference};
@@ -80,6 +81,8 @@ pub struct CrateMetadata {
 
     pub dep_kind: Cell<DepKind>,
     pub source: CrateSource,
+
+    pub proc_macros: Option<Vec<(ast::Name, Rc<SyntaxExtension>)>>,
 }
 
 pub struct CachedInlinedItem {

@@ -12,4 +12,6 @@
 
 #[macro_use]
 extern crate derive_a;
-//~^ ERROR: loading custom derive macro crates is experimentally supported
+
+#[derive(A)] //~ ERROR custom derive macros are experimentally supported
+struct S;
