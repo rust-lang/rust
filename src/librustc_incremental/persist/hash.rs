@@ -45,7 +45,9 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
     pub fn is_hashable(dep_node: &DepNode<DefId>) -> bool {
         match *dep_node {
             DepNode::Krate |
-            DepNode::Hir(_) => true,
+            DepNode::Hir(_) |
+            DepNode::HirBody(_) =>
+                true,
             DepNode::MetaData(def_id) => !def_id.is_local(),
             _ => false,
         }
@@ -58,7 +60,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             }
 
             // HIR nodes (which always come from our crate) are an input:
-            DepNode::Hir(def_id) => {
+            DepNode::Hir(def_id) | DepNode::HirBody(def_id) => {
                 assert!(def_id.is_local(),
                         "cannot hash HIR for non-local def-id {:?} => {:?}",
                         def_id,

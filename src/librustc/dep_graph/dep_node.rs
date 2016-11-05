@@ -42,6 +42,9 @@ pub enum DepNode<D: Clone + Debug> {
     // Represents the HIR node with the given node-id
     Hir(D),
 
+    // Represents the body of a function or method
+    HirBody(D),
+
     // Represents the metadata for a given HIR node, typically found
     // in an extern crate.
     MetaData(D),
@@ -150,6 +153,7 @@ impl<D: Clone + Debug> DepNode<D> {
             CollectItem,
             BorrowCheck,
             Hir,
+            HirBody,
             TransCrateItem,
             TypeckItemType,
             TypeckItemBody,
@@ -199,6 +203,7 @@ impl<D: Clone + Debug> DepNode<D> {
             WorkProduct(ref id) => Some(WorkProduct(id.clone())),
 
             Hir(ref d) => op(d).map(Hir),
+            HirBody(ref d) => op(d).map(HirBody),
             MetaData(ref d) => op(d).map(MetaData),
             CollectItem(ref d) => op(d).map(CollectItem),
             CoherenceCheckImpl(ref d) => op(d).map(CoherenceCheckImpl),

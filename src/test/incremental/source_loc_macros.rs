@@ -17,17 +17,17 @@
 
 #![feature(rustc_attrs)]
 
-#[rustc_clean(label="Hir", cfg="rpass2")]
+#[rustc_clean(label="HirBody", cfg="rpass2")]
 fn line_same() {
     let _ = line!();
 }
 
-#[rustc_clean(label="Hir", cfg="rpass2")]
+#[rustc_clean(label="HirBody", cfg="rpass2")]
 fn col_same() {
     let _ = column!();
 }
 
-#[rustc_clean(label="Hir", cfg="rpass2")]
+#[rustc_clean(label="HirBody", cfg="rpass2")]
 fn file_same() {
     let _ = file!();
 }
@@ -38,7 +38,7 @@ fn line_different() {
 }
 
 #[cfg(rpass2)]
-#[rustc_dirty(label="Hir", cfg="rpass2")]
+#[rustc_dirty(label="HirBody", cfg="rpass2")]
 fn line_different() {
     let _ = line!();
 }
@@ -49,7 +49,7 @@ fn col_different() {
 }
 
 #[cfg(rpass2)]
-#[rustc_dirty(label="Hir", cfg="rpass2")]
+#[rustc_dirty(label="HirBody", cfg="rpass2")]
 fn col_different() {
     let _ =        column!();
 }

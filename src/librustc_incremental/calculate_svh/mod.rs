@@ -149,19 +149,27 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
     {
         assert!(def_id.is_local());
         debug!("HashItemsVisitor::calculate(def_id={:?})", def_id);
+        self.calculate_def_hash(DepNode::Hir(def_id), false, &mut walk_op);
+        self.calculate_def_hash(DepNode::HirBody(def_id), true, &mut walk_op);
+    }
+
+    fn calculate_def_hash<W>(&mut self, dep_node: DepNode<DefId>, hash_bodies: bool, walk_op: &mut W)
+        where W: for<'v> FnMut(&mut StrictVersionHashVisitor<'v, 'a, 'tcx>)
+    {
         let mut state = IchHasher::new();
         walk_op(&mut StrictVersionHashVisitor::new(&mut state,
                                                    self.tcx,
                                                    &mut self.def_path_hashes,
                                                    &mut self.codemap,
-                                                   self.hash_spans));
+                                                   self.hash_spans,
+                                                   hash_bodies));
         let bytes_hashed = state.bytes_hashed();
         let item_hash = state.finish();
-        self.hashes.insert(DepNode::Hir(def_id), item_hash);
-        debug!("calculate_item_hash: def_id={:?} hash={:?}", def_id, item_hash);
+        debug!("calculate_def_hash: dep_node={:?} hash={:?}", dep_node, item_hash);
+        self.hashes.insert(dep_node, item_hash);
 
         let bytes_hashed = self.tcx.sess.perf_stats.incr_comp_bytes_hashed.get() +
-                           bytes_hashed;
+            bytes_hashed;
         self.tcx.sess.perf_stats.incr_comp_bytes_hashed.set(bytes_hashed);
     }
 
@@ -200,7 +208,8 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
                                                             self.tcx,
                                                             &mut self.def_path_hashes,
                                                             &mut self.codemap,
-                                                            self.hash_spans);
+                                                            self.hash_spans,
+                                                            false);
             visitor.hash_attributes(&krate.attrs);
         }
 
