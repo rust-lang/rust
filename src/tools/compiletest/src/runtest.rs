@@ -43,11 +43,12 @@ pub fn run(config: Config, testpaths: &TestPaths) {
             }
         }
 
-        _=> { }
-    }
-
-    if config.mode == DebugInfoGdb && config.gdb.is_none() {
-        panic!("gdb not available but debuginfo gdb debuginfo test requested");
+        _ => {
+            // android has it's own gdb handling
+            if config.mode == DebugInfoGdb && config.gdb.is_none() {
+                panic!("gdb not available but debuginfo gdb debuginfo test requested");
+            }
+        }
     }
 
     if config.verbose {
