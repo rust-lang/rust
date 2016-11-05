@@ -39,7 +39,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use arena::TypedArena;
 
-use std::cmp::Ordering;
+use std::cmp::{self, Ordering};
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
 
@@ -419,6 +419,52 @@ fn all_constructors(_cx: &mut MatchCheckCtxt, pcx: PatternContext) -> Vec<Constr
     }
 }
 
+fn max_slice_length<'a: 'b, 'b, 'tcx, I>(
+    _cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    patterns: I) -> usize
+    where I: Iterator<Item=&'b [&'a Pattern<'tcx>]>
+{
+    // The exhaustiveness-checking paper does not include any details on
+    // checking variable-length slice patterns. However, they are matched
+    // by an infinite collection of fixed-length array patterns.
+    //
+    // To check that infinite set, we notice that for every length
+    // larger than the length of the maximum fixed-length pattern,
+    // only variable-length patterns apply.
+    //
+    // For variable length patterns, all elements after the first
+    // `prefix_len` but before the last `suffix_len` are matched by
+    // the wildcard "middle" pattern, and therefore can be added/removed
+    // without affecting the match result.
+    //
+    // This means that all patterns with length at least
+    // `max(max_fixed+1,max_prefix+max_suffix)` are equivalent, so we
+    // only need to check patterns from that length and below.
+
+    let mut max_prefix_len = 0;
+    let mut max_suffix_len = 0;
+    let mut max_fixed_len = 0;
+
+    for row in patterns {
+        match *row[0].kind {
+            PatternKind::Constant { value: ConstVal::ByteStr(ref data) } => {
+                max_fixed_len = cmp::max(max_fixed_len, data.len());
+            }
+            PatternKind::Slice { ref prefix, slice: None, ref suffix } => {
+                let fixed_len = prefix.len() + suffix.len();
+                max_fixed_len = cmp::max(max_fixed_len, fixed_len);
+            }
+            PatternKind::Slice { ref prefix, slice: Some(_), ref suffix } => {
+                max_prefix_len = cmp::max(max_prefix_len, prefix.len());
+                max_suffix_len = cmp::max(max_suffix_len, suffix.len());
+            }
+            _ => {}
+        }
+    }
+
+    cmp::max(max_fixed_len + 1, max_prefix_len + max_suffix_len)
+}
+
 /// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html
 ///
 /// Whether a vector `v` of patterns is 'useful' in relation to a set of such
@@ -453,16 +499,12 @@ pub fn is_useful<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
     let &Matrix(ref rows) = matrix;
     assert!(rows.iter().all(|r| r.len() == v.len()));
+
+
     let pcx = PatternContext {
         ty: rows.iter().map(|r| r[0].ty).find(|ty| !ty.references_error())
             .unwrap_or(v[0].ty),
-        max_slice_length: rows.iter().filter_map(|row| match *row[0].kind {
-            PatternKind::Slice { ref prefix, slice: _, ref suffix } =>
-                Some(prefix.len() + suffix.len()),
-            PatternKind::Constant { value: ConstVal::ByteStr(ref data) } =>
-                Some(data.len()),
-            _ => None
-        }).max().map_or(0, |v| v + 1)
+        max_slice_length: max_slice_length(cx, rows.iter().map(|r| &**r).chain(Some(v)))
     };
 
     debug!("is_useful_expand_first_col: pcx={:?}, expanding {:?}", pcx, v[0]);
