@@ -42,8 +42,7 @@ pub fn check(build: &mut Build) {
     }
     let have_cmd = |cmd: &OsStr| {
         for path in env::split_paths(&path).map(|p| p.join(cmd)) {
-            if fs::metadata(&path).is_ok() ||
-               fs::metadata(path.with_extension("exe")).is_ok() {
+            if fs::metadata(&path).is_ok() || fs::metadata(path.with_extension("exe")).is_ok() {
                 return Some(path);
             }
         }
@@ -52,7 +51,7 @@ pub fn check(build: &mut Build) {
 
     let mut need_cmd = |cmd: &OsStr| {
         if !checked.insert(cmd.to_owned()) {
-            return
+            return;
         }
         if have_cmd(cmd).is_none() {
             panic!("\n\ncouldn't find required command: {:?}\n\n", cmd);
@@ -69,14 +68,14 @@ pub fn check(build: &mut Build) {
     for host in build.config.host.iter() {
         if let Some(config) = build.config.target_config.get(host) {
             if config.llvm_config.is_some() {
-                continue
+                continue;
             }
         }
         need_cmd("cmake".as_ref());
         if build.config.ninja {
             need_cmd("ninja".as_ref())
         }
-        break
+        break;
     }
 
     need_cmd("python".as_ref());
@@ -127,8 +126,7 @@ pub fn check(build: &mut Build) {
 
     for target in build.config.target.iter() {
         // Can't compile for iOS unless we're on OSX
-        if target.contains("apple-ios") &&
-           !build.config.build.contains("apple-darwin") {
+        if target.contains("apple-ios") && !build.config.build.contains("apple-darwin") {
             panic!("the iOS target is only supported on OSX");
         }
 
@@ -194,8 +192,10 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
     let run = |cmd: &mut Command| {
         cmd.output().map(|output| {
             String::from_utf8_lossy(&output.stdout)
-                   .lines().next().unwrap()
-                   .to_string()
+                .lines()
+                .next()
+                .unwrap()
+                .to_string()
         })
     };
     build.gdb_version = run(Command::new("gdb").arg("--version")).ok();

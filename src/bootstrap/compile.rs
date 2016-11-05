@@ -34,8 +34,10 @@ use {Build, Compiler, Mode};
 /// using the `compiler` targeting the `target` architecture. The artifacts
 /// created will also be linked into the sysroot directory.
 pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
-    println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
-             compiler.host, target);
+    println!("Building stage{} std artifacts ({} -> {})",
+             compiler.stage,
+             compiler.host,
+             target);
 
     let libdir = build.sysroot_libdir(compiler, target);
     let _ = fs::remove_dir_all(&libdir);
@@ -48,9 +50,10 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
     build.clear_if_dirty(&out_dir, &build.compiler_path(compiler));
     let mut cargo = build.cargo(compiler, Mode::Libstd, target, "build");
-    cargo.arg("--features").arg(build.std_features())
-         .arg("--manifest-path")
-         .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
+    cargo.arg("--features")
+        .arg(build.std_features())
+        .arg("--manifest-path")
+        .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
 
     if let Some(target) = build.config.target_config.get(target) {
         if let Some(ref jemalloc) = target.jemalloc {
@@ -72,10 +75,7 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
 ///
 /// Links those artifacts generated in the given `stage` for `target` produced
 /// by `compiler` into `host`'s sysroot.
-pub fn std_link(build: &Build,
-                target: &str,
-                compiler: &Compiler,
-                host: &str) {
+pub fn std_link(build: &Build, target: &str, compiler: &Compiler, host: &str) {
     let target_compiler = Compiler::new(compiler.stage, host);
     let libdir = build.sysroot_libdir(&target_compiler, target);
     let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
@@ -99,7 +99,8 @@ pub fn std_link(build: &Build,
 /// Only required for musl targets that statically link to libc
 fn copy_musl_third_party_objects(build: &Build, target: &str, into: &Path) {
     for &obj in &["crt1.o", "crti.o", "crtn.o"] {
-        copy(&build.musl_root(target).unwrap().join("lib").join(obj), &into.join(obj));
+        copy(&build.musl_root(target).unwrap().join("lib").join(obj),
+             &into.join(obj));
     }
 }
 
@@ -111,7 +112,7 @@ fn copy_musl_third_party_objects(build: &Build, target: &str, into: &Path) {
 /// no other compilers are guaranteed to be available).
 fn build_startup_objects(build: &Build, target: &str, into: &Path) {
     if !target.contains("pc-windows-gnu") {
-        return
+        return;
     }
     let compiler = Compiler::new(0, &build.config.build);
     let compiler_path = build.compiler_path(&compiler);
@@ -120,10 +121,12 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
         let file = t!(file);
         let mut cmd = Command::new(&compiler_path);
         build.add_bootstrap_key(&mut cmd);
-        build.run(cmd.arg("--target").arg(target)
-                     .arg("--emit=obj")
-                     .arg("--out-dir").arg(into)
-                     .arg(file.path()));
+        build.run(cmd.arg("--target")
+            .arg(target)
+            .arg("--emit=obj")
+            .arg("--out-dir")
+            .arg(into)
+            .arg(file.path()));
     }
 
     for obj in ["crt2.o", "dllcrt2.o"].iter() {
@@ -137,13 +140,15 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
 /// the build using the `compiler` targeting the `target` architecture. The
 /// artifacts created will also be linked into the sysroot directory.
 pub fn test<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
-    println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
-             compiler.host, target);
+    println!("Building stage{} test artifacts ({} -> {})",
+             compiler.stage,
+             compiler.host,
+             target);
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
     build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
     let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
+        .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
     build.run(&mut cargo);
     update_mtime(&libtest_stamp(build, compiler, target));
     test_link(build, target, compiler, compiler.host);
@@ -153,10 +158,7 @@ pub fn test<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
 ///
 /// Links those artifacts generated in the given `stage` for `target` produced
 /// by `compiler` into `host`'s sysroot.
-pub fn test_link(build: &Build,
-                 target: &str,
-                 compiler: &Compiler,
-                 host: &str) {
+pub fn test_link(build: &Build, target: &str, compiler: &Compiler, host: &str) {
     let target_compiler = Compiler::new(compiler.stage, host);
     let libdir = build.sysroot_libdir(&target_compiler, target);
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
@@ -170,23 +172,27 @@ pub fn test_link(build: &Build,
 /// created will also be linked into the sysroot directory.
 pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     println!("Building stage{} compiler artifacts ({} -> {})",
-             compiler.stage, compiler.host, target);
+             compiler.stage,
+             compiler.host,
+             target);
 
     let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
     build.clear_if_dirty(&out_dir, &libtest_stamp(build, compiler, target));
 
     let mut cargo = build.cargo(compiler, Mode::Librustc, target, "build");
-    cargo.arg("--features").arg(build.rustc_features())
-         .arg("--manifest-path")
-         .arg(build.src.join("src/rustc/Cargo.toml"));
+    cargo.arg("--features")
+        .arg(build.rustc_features())
+        .arg("--manifest-path")
+        .arg(build.src.join("src/rustc/Cargo.toml"));
 
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo.env("CFG_RELEASE", &build.release)
-         .env("CFG_RELEASE_CHANNEL", &build.config.channel)
-         .env("CFG_VERSION", &build.version)
-         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(String::new()))
-         .env("CFG_LIBDIR_RELATIVE", "lib");
+        .env("CFG_RELEASE_CHANNEL", &build.config.channel)
+        .env("CFG_VERSION", &build.version)
+        .env("CFG_PREFIX",
+             build.config.prefix.clone().unwrap_or(String::new()))
+        .env("CFG_LIBDIR_RELATIVE", "lib");
 
     if let Some(ref ver_date) = build.ver_date {
         cargo.env("CFG_VER_DATE", ver_date);
@@ -225,10 +231,7 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
 ///
 /// Links those artifacts generated in the given `stage` for `target` produced
 /// by `compiler` into `host`'s sysroot.
-pub fn rustc_link(build: &Build,
-                  target: &str,
-                  compiler: &Compiler,
-                  host: &str) {
+pub fn rustc_link(build: &Build, target: &str, compiler: &Compiler, host: &str) {
     let target_compiler = Compiler::new(compiler.stage, host);
     let libdir = build.sysroot_libdir(&target_compiler, target);
     let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
@@ -248,8 +251,7 @@ fn libtest_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
 }
 
 fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
-    let out = output(Command::new(compiler)
-                            .arg(format!("-print-file-name={}", file)));
+    let out = output(Command::new(compiler).arg(format!("-print-file-name={}", file)));
     PathBuf::from(out.trim())
 }
 
@@ -259,7 +261,8 @@ fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
 /// must have been previously produced by the `stage - 1` build.config.build
 /// compiler.
 pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
-    assert!(stage > 0, "the stage0 compiler isn't assembled, it's downloaded");
+    assert!(stage > 0,
+            "the stage0 compiler isn't assembled, it's downloaded");
     // The compiler that we're assembling
     let target_compiler = Compiler::new(stage, host);
 
@@ -318,25 +321,24 @@ fn add_to_sysroot(out_dir: &Path, sysroot_dst: &Path) {
 
         // We're only interested in linking rlibs + dylibs, other things like
         // unit tests don't get linked in
-        if !filename.ends_with(".rlib") &&
-           !filename.ends_with(".lib") &&
-           !is_dylib(&filename) {
-            continue
+        if !filename.ends_with(".rlib") && !filename.ends_with(".lib") && !is_dylib(&filename) {
+            continue;
         }
         let file = file.path();
         let dash = filename.find("-").unwrap();
-        let key = (filename[..dash].to_string(),
-                   file.extension().unwrap().to_owned());
-        map.entry(key).or_insert(Vec::new())
-           .push(file.clone());
+        let key = (filename[..dash].to_string(), file.extension().unwrap().to_owned());
+        map.entry(key)
+            .or_insert(Vec::new())
+            .push(file.clone());
     }
 
     // For all hash values found, pick the most recent one to move into the
     // sysroot, that should be the one we just built.
     for (_, paths) in map {
-        let (_, path) = paths.iter().map(|path| {
-            (mtime(&path).seconds(), path)
-        }).max().unwrap();
+        let (_, path) = paths.iter()
+            .map(|path| (mtime(&path).seconds(), path))
+            .max()
+            .unwrap();
         copy(&path, &sysroot_dst.join(path.file_name().unwrap()));
     }
 }
@@ -361,7 +363,7 @@ pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
 
     let mut cargo = build.cargo(&compiler, Mode::Tool, host, "build");
     cargo.arg("--manifest-path")
-         .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
+        .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
     build.run(&mut cargo);
 }
 
@@ -385,7 +387,7 @@ fn update_mtime(path: &Path) {
     }
 
     if !max.is_none() && max <= Some(mtime(path)) {
-        return
+        return;
     }
     t!(File::create(path));
 }

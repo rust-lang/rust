@@ -185,32 +185,32 @@ impl Config {
         config.codegen_tests = true;
 
         let toml = file.map(|file| {
-            let mut f = t!(File::open(&file));
-            let mut toml = String::new();
-            t!(f.read_to_string(&mut toml));
-            let mut p = Parser::new(&toml);
-            let table = match p.parse() {
-                Some(table) => table,
-                None => {
-                    println!("failed to parse TOML configuration:");
-                    for err in p.errors.iter() {
-                        let (loline, locol) = p.to_linecol(err.lo);
-                        let (hiline, hicol) = p.to_linecol(err.hi);
-                        println!("{}:{}-{}:{}: {}", loline, locol, hiline,
-                                 hicol, err.desc);
+                let mut f = t!(File::open(&file));
+                let mut toml = String::new();
+                t!(f.read_to_string(&mut toml));
+                let mut p = Parser::new(&toml);
+                let table = match p.parse() {
+                    Some(table) => table,
+                    None => {
+                        println!("failed to parse TOML configuration:");
+                        for err in p.errors.iter() {
+                            let (loline, locol) = p.to_linecol(err.lo);
+                            let (hiline, hicol) = p.to_linecol(err.hi);
+                            println!("{}:{}-{}:{}: {}", loline, locol, hiline, hicol, err.desc);
+                        }
+                        process::exit(2);
                     }
-                    process::exit(2);
+                };
+                let mut d = Decoder::new(Value::Table(table));
+                match Decodable::decode(&mut d) {
+                    Ok(cfg) => cfg,
+                    Err(e) => {
+                        println!("failed to decode TOML: {}", e);
+                        process::exit(2);
+                    }
                 }
-            };
-            let mut d = Decoder::new(Value::Table(table));
-            match Decodable::decode(&mut d) {
-                Ok(cfg) => cfg,
-                Err(e) => {
-                    println!("failed to decode TOML: {}", e);
-                    process::exit(2);
-                }
-            }
-        }).unwrap_or_else(|| TomlConfig::default());
+            })
+            .unwrap_or_else(|| TomlConfig::default());
 
         let build = toml.build.clone().unwrap_or(Build::default());
         set(&mut config.build, build.build.clone());
@@ -284,7 +284,7 @@ impl Config {
             }
         }
 
-        return config
+        return config;
     }
 
     /// "Temporary" routine to parse `config.mk` into this configuration.
@@ -301,7 +301,7 @@ impl Config {
             let value = match parts.next() {
                 Some(n) if n.starts_with('\"') => &n[1..n.len() - 1],
                 Some(n) => n,
-                None => continue
+                None => continue,
             };
 
             macro_rules! check {
@@ -348,44 +348,51 @@ impl Config {
             match key {
                 "CFG_BUILD" => self.build = value.to_string(),
                 "CFG_HOST" => {
-                    self.host = value.split(" ").map(|s| s.to_string())
-                                     .collect();
+                    self.host = value.split(" ")
+                        .map(|s| s.to_string())
+                        .collect();
                 }
                 "CFG_TARGET" => {
-                    self.target = value.split(" ").map(|s| s.to_string())
-                                       .collect();
+                    self.target = value.split(" ")
+                        .map(|s| s.to_string())
+                        .collect();
                 }
                 "CFG_MUSL_ROOT" if value.len() > 0 => {
                     self.musl_root = Some(PathBuf::from(value));
                 }
                 "CFG_MUSL_ROOT_X86_64" if value.len() > 0 => {
                     let target = "x86_64-unknown-linux-musl".to_string();
-                    let target = self.target_config.entry(target)
-                                     .or_insert(Target::default());
+                    let target = self.target_config
+                        .entry(target)
+                        .or_insert(Target::default());
                     target.musl_root = Some(PathBuf::from(value));
                 }
                 "CFG_MUSL_ROOT_I686" if value.len() > 0 => {
                     let target = "i686-unknown-linux-musl".to_string();
-                    let target = self.target_config.entry(target)
-                                     .or_insert(Target::default());
+                    let target = self.target_config
+                        .entry(target)
+                        .or_insert(Target::default());
                     target.musl_root = Some(PathBuf::from(value));
                 }
                 "CFG_MUSL_ROOT_ARM" if value.len() > 0 => {
                     let target = "arm-unknown-linux-musleabi".to_string();
-                    let target = self.target_config.entry(target)
-                                     .or_insert(Target::default());
+                    let target = self.target_config
+                        .entry(target)
+                        .or_insert(Target::default());
                     target.musl_root = Some(PathBuf::from(value));
                 }
                 "CFG_MUSL_ROOT_ARMHF" if value.len() > 0 => {
                     let target = "arm-unknown-linux-musleabihf".to_string();
-                    let target = self.target_config.entry(target)
-                                     .or_insert(Target::default());
+                    let target = self.target_config
+                        .entry(target)
+                        .or_insert(Target::default());
                     target.musl_root = Some(PathBuf::from(value));
                 }
                 "CFG_MUSL_ROOT_ARMV7" if value.len() > 0 => {
                     let target = "armv7-unknown-linux-musleabihf".to_string();
-                    let target = self.target_config.entry(target)
-                                     .or_insert(Target::default());
+                    let target = self.target_config
+                        .entry(target)
+                        .or_insert(Target::default());
                     target.musl_root = Some(PathBuf::from(value));
                 }
                 "CFG_DEFAULT_AR" if value.len() > 0 => {
@@ -410,38 +417,44 @@ impl Config {
                     self.mandir = Some(value.to_string());
                 }
                 "CFG_LLVM_ROOT" if value.len() > 0 => {
-                    let target = self.target_config.entry(self.build.clone())
-                                     .or_insert(Target::default());
+                    let target = self.target_config
+                        .entry(self.build.clone())
+                        .or_insert(Target::default());
                     let root = PathBuf::from(value);
                     target.llvm_config = Some(root.join("bin/llvm-config"));
                 }
                 "CFG_JEMALLOC_ROOT" if value.len() > 0 => {
-                    let target = self.target_config.entry(self.build.clone())
-                                     .or_insert(Target::default());
+                    let target = self.target_config
+                        .entry(self.build.clone())
+                        .or_insert(Target::default());
                     target.jemalloc = Some(PathBuf::from(value));
                 }
                 "CFG_ARM_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
                     let target = "arm-linux-androideabi".to_string();
-                    let target = self.target_config.entry(target)
-                                     .or_insert(Target::default());
+                    let target = self.target_config
+                        .entry(target)
+                        .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));
                 }
                 "CFG_ARMV7_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
                     let target = "armv7-linux-androideabi".to_string();
-                    let target = self.target_config.entry(target)
-                                     .or_insert(Target::default());
+                    let target = self.target_config
+                        .entry(target)
+                        .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));
                 }
                 "CFG_I686_LINUX_ANDROID_NDK" if value.len() > 0 => {
                     let target = "i686-linux-android".to_string();
-                    let target = self.target_config.entry(target)
-                                     .or_insert(Target::default());
+                    let target = self.target_config
+                        .entry(target)
+                        .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));
                 }
                 "CFG_AARCH64_LINUX_ANDROID_NDK" if value.len() > 0 => {
                     let target = "aarch64-linux-android".to_string();
-                    let target = self.target_config.entry(target)
-                                     .or_insert(Target::default());
+                    let target = self.target_config
+                        .entry(target)
+                        .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));
                 }
                 "CFG_LOCAL_RUST_ROOT" if value.len() > 0 => {

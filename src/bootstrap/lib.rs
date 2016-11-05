@@ -221,11 +221,14 @@ impl Build {
         self.verbose("collecting channel variables");
         channel::collect(self);
         // If local-rust is the same major.minor as the current version, then force a local-rebuild
-        let local_version_verbose = output(
-            Command::new(&self.rustc).arg("--version").arg("--verbose"));
-        let local_release = local_version_verbose
-            .lines().filter(|x| x.starts_with("release:"))
-            .next().unwrap().trim_left_matches("release:").trim();
+        let local_version_verbose =
+            output(Command::new(&self.rustc).arg("--version").arg("--verbose"));
+        let local_release = local_version_verbose.lines()
+            .filter(|x| x.starts_with("release:"))
+            .next()
+            .unwrap()
+            .trim_left_matches("release:")
+            .trim();
         if local_release.split('.').take(2).eq(self.release.split('.').take(2)) {
             self.verbose(&format!("auto-detected local-rebuild {}", local_release));
             self.local_rebuild = true;
@@ -290,8 +293,7 @@ impl Build {
                     compile::tool(self, stage, target.target, "rustbook");
                 }
                 ToolErrorIndex { stage } => {
-                    compile::tool(self, stage, target.target,
-                                  "error_index_generator");
+                    compile::tool(self, stage, target.target, "error_index_generator");
                 }
                 ToolCargoTest { stage } => {
                     compile::tool(self, stage, target.target, "cargotest");
@@ -306,8 +308,7 @@ impl Build {
                     doc::rustbook(self, stage, target.target, "book", &doc_out);
                 }
                 DocNomicon { stage } => {
-                    doc::rustbook(self, stage, target.target, "nomicon",
-                                  &doc_out);
+                    doc::rustbook(self, stage, target.target, "nomicon", &doc_out);
                 }
                 DocStandalone { stage } => {
                     doc::standalone(self, stage, target.target, &doc_out);
@@ -335,97 +336,123 @@ impl Build {
                     check::tidy(self, stage, target.target);
                 }
                 CheckRPass { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-pass", "run-pass");
+                    check::compiletest(self, &compiler, target.target, "run-pass", "run-pass");
                 }
                 CheckRPassFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-pass", "run-pass-fulldeps");
+                    check::compiletest(self,
+                                       &compiler,
+                                       target.target,
+                                       "run-pass",
+                                       "run-pass-fulldeps");
                 }
                 CheckCFail { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "compile-fail", "compile-fail");
+                    check::compiletest(self,
+                                       &compiler,
+                                       target.target,
+                                       "compile-fail",
+                                       "compile-fail");
                 }
                 CheckCFailFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "compile-fail", "compile-fail-fulldeps")
+                    check::compiletest(self,
+                                       &compiler,
+                                       target.target,
+                                       "compile-fail",
+                                       "compile-fail-fulldeps")
                 }
                 CheckPFail { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "parse-fail", "parse-fail");
+                    check::compiletest(self, &compiler, target.target, "parse-fail", "parse-fail");
                 }
                 CheckRFail { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-fail", "run-fail");
+                    check::compiletest(self, &compiler, target.target, "run-fail", "run-fail");
                 }
                 CheckRFailFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-fail", "run-fail-fulldeps");
+                    check::compiletest(self,
+                                       &compiler,
+                                       target.target,
+                                       "run-fail",
+                                       "run-fail-fulldeps");
                 }
                 CheckPretty { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "pretty");
+                    check::compiletest(self, &compiler, target.target, "pretty", "pretty");
                 }
                 CheckPrettyRPass { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "run-pass");
+                    check::compiletest(self, &compiler, target.target, "pretty", "run-pass");
                 }
                 CheckPrettyRPassFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "run-pass-fulldeps");
+                    check::compiletest(self,
+                                       &compiler,
+                                       target.target,
+                                       "pretty",
+                                       "run-pass-fulldeps");
                 }
                 CheckPrettyRFail { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "run-fail");
+                    check::compiletest(self, &compiler, target.target, "pretty", "run-fail");
                 }
                 CheckPrettyRFailFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "run-fail-fulldeps");
+                    check::compiletest(self,
+                                       &compiler,
+                                       target.target,
+                                       "pretty",
+                                       "run-fail-fulldeps");
                 }
                 CheckPrettyRPassValgrind { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "run-pass-valgrind");
+                    check::compiletest(self,
+                                       &compiler,
+                                       target.target,
+                                       "pretty",
+                                       "run-pass-valgrind");
                 }
                 CheckMirOpt { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "mir-opt", "mir-opt");
+                    check::compiletest(self, &compiler, target.target, "mir-opt", "mir-opt");
                 }
                 CheckCodegen { compiler } => {
                     if self.config.codegen_tests {
-                        check::compiletest(self, &compiler, target.target,
-                                           "codegen", "codegen");
+                        check::compiletest(self, &compiler, target.target, "codegen", "codegen");
                     }
                 }
                 CheckCodegenUnits { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "codegen-units", "codegen-units");
+                    check::compiletest(self,
+                                       &compiler,
+                                       target.target,
+                                       "codegen-units",
+                                       "codegen-units");
                 }
                 CheckIncremental { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "incremental", "incremental");
+                    check::compiletest(self,
+                                       &compiler,
+                                       target.target,
+                                       "incremental",
+                                       "incremental");
                 }
                 CheckUi { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "ui", "ui");
+                    check::compiletest(self, &compiler, target.target, "ui", "ui");
                 }
                 CheckDebuginfo { compiler } => {
                     if target.target.contains("msvc") {
                         // nothing to do
                     } else if target.target.contains("apple") {
-                        check::compiletest(self, &compiler, target.target,
-                                           "debuginfo-lldb", "debuginfo");
+                        check::compiletest(self,
+                                           &compiler,
+                                           target.target,
+                                           "debuginfo-lldb",
+                                           "debuginfo");
                     } else {
-                        check::compiletest(self, &compiler, target.target,
-                                           "debuginfo-gdb", "debuginfo");
+                        check::compiletest(self,
+                                           &compiler,
+                                           target.target,
+                                           "debuginfo-gdb",
+                                           "debuginfo");
                     }
                 }
                 CheckRustdoc { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "rustdoc", "rustdoc");
+                    check::compiletest(self, &compiler, target.target, "rustdoc", "rustdoc");
                 }
                 CheckRPassValgrind { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-pass-valgrind", "run-pass-valgrind");
+                    check::compiletest(self,
+                                       &compiler,
+                                       target.target,
+                                       "run-pass-valgrind",
+                                       "run-pass-valgrind");
                 }
                 CheckDocs { compiler } => {
                     check::docs(self, &compiler);
@@ -434,8 +461,7 @@ impl Build {
                     check::error_index(self, &compiler);
                 }
                 CheckRMake { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-make", "run-make")
+                    check::compiletest(self, &compiler, target.target, "run-make", "run-make")
                 }
                 CheckCrateStd { compiler } => {
                     check::krate(self, &compiler, target.target, Mode::Libstd)
@@ -457,9 +483,7 @@ impl Build {
 
                 DebuggerScripts { stage } => {
                     let compiler = Compiler::new(stage, target.target);
-                    dist::debugger_scripts(self,
-                                           &self.sysroot(&compiler),
-                                           target.target);
+                    dist::debugger_scripts(self, &self.sysroot(&compiler), target.target);
                 }
 
                 AndroidCopyLibs { compiler } => {
@@ -496,20 +520,20 @@ impl Build {
         }
 
         if !self.config.submodules {
-            return
+            return;
         }
         if fs::metadata(self.src.join(".git")).is_err() {
-            return
+            return;
         }
         let git = || {
             let mut cmd = Command::new("git");
             cmd.current_dir(&self.src);
-            return cmd
+            return cmd;
         };
         let git_submodule = || {
             let mut cmd = Command::new("git");
             cmd.current_dir(&self.src).arg("submodule");
-            return cmd
+            return cmd;
         };
 
         // FIXME: this takes a seriously long time to execute on Windows and a
@@ -539,7 +563,10 @@ impl Build {
                 panic!("unexpected git submodule state: {:?}", line.chars().next());
             };
 
-            submodules.push(Submodule { path: path, state: state })
+            submodules.push(Submodule {
+                path: path,
+                state: state,
+            })
         }
 
         self.run(git_submodule().arg("sync"));
@@ -547,16 +574,17 @@ impl Build {
         for submodule in submodules {
             // If using llvm-root then don't touch the llvm submodule.
             if submodule.path.components().any(|c| c == Component::Normal("llvm".as_ref())) &&
-                self.config.target_config.get(&self.config.build)
-                    .and_then(|c| c.llvm_config.as_ref()).is_some()
-            {
-                continue
+               self.config
+                .target_config
+                .get(&self.config.build)
+                .and_then(|c| c.llvm_config.as_ref())
+                .is_some() {
+                continue;
             }
 
             if submodule.path.components().any(|c| c == Component::Normal("jemalloc".as_ref())) &&
-                !self.config.use_jemalloc
-            {
-                continue
+               !self.config.use_jemalloc {
+                continue;
             }
 
             // `submodule.path` is the relative path to a submodule (from the repository root)
@@ -571,24 +599,28 @@ impl Build {
             match submodule.state {
                 State::MaybeDirty => {
                     // drop staged changes
-                    self.run(git().current_dir(&submodule_path)
-                                  .args(&["reset", "--hard"]));
+                    self.run(git()
+                        .current_dir(&submodule_path)
+                        .args(&["reset", "--hard"]));
                     // drops unstaged changes
-                    self.run(git().current_dir(&submodule_path)
-                                  .args(&["clean", "-fdx"]));
-                },
+                    self.run(git()
+                        .current_dir(&submodule_path)
+                        .args(&["clean", "-fdx"]));
+                }
                 State::NotInitialized => {
                     self.run(git_submodule().arg("init").arg(submodule.path));
                     self.run(git_submodule().arg("update").arg(submodule.path));
-                },
+                }
                 State::OutOfSync => {
                     // drops submodule commits that weren't reported to the (outer) git repository
                     self.run(git_submodule().arg("update").arg(submodule.path));
-                    self.run(git().current_dir(&submodule_path)
-                                  .args(&["reset", "--hard"]));
-                    self.run(git().current_dir(&submodule_path)
-                                  .args(&["clean", "-fdx"]));
-                },
+                    self.run(git()
+                        .current_dir(&submodule_path)
+                        .args(&["reset", "--hard"]));
+                    self.run(git()
+                        .current_dir(&submodule_path)
+                        .args(&["clean", "-fdx"]));
+                }
             }
         }
     }
@@ -602,7 +634,7 @@ impl Build {
             self.verbose(&format!("Dirty - {}", dir.display()));
             let _ = fs::remove_dir_all(dir);
         } else if stamp.exists() {
-            return
+            return;
         }
         t!(fs::create_dir_all(dir));
         t!(File::create(stamp));
@@ -615,17 +647,15 @@ impl Build {
     /// rustc compiler, its output will be scoped by `mode`'s output directory,
     /// it will pass the `--target` flag for the specified `target`, and will be
     /// executing the Cargo command `cmd`.
-    fn cargo(&self,
-             compiler: &Compiler,
-             mode: Mode,
-             target: &str,
-             cmd: &str) -> Command {
+    fn cargo(&self, compiler: &Compiler, mode: Mode, target: &str, cmd: &str) -> Command {
         let mut cargo = Command::new(&self.cargo);
         let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", out_dir)
-             .arg(cmd)
-             .arg("-j").arg(self.jobs().to_string())
-             .arg("--target").arg(target);
+            .arg(cmd)
+            .arg("-j")
+            .arg(self.jobs().to_string())
+            .arg("--target")
+            .arg(target);
 
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name
@@ -646,22 +676,23 @@ impl Build {
         // These variables are primarily all read by
         // src/bootstrap/{rustc,rustdoc.rs}
         cargo.env("RUSTC", self.out.join("bootstrap/debug/rustc"))
-             .env("RUSTC_REAL", self.compiler_path(compiler))
-             .env("RUSTC_STAGE", stage.to_string())
-             .env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
-             .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
-             .env("RUSTC_CODEGEN_UNITS",
-                  self.config.rust_codegen_units.to_string())
-             .env("RUSTC_DEBUG_ASSERTIONS",
-                  self.config.rust_debug_assertions.to_string())
-             .env("RUSTC_SNAPSHOT", &self.rustc)
-             .env("RUSTC_SYSROOT", self.sysroot(compiler))
-             .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
-             .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir())
-             .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
-             .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
-             .env("RUSTDOC_REAL", self.rustdoc(compiler))
-             .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
+            .env("RUSTC_REAL", self.compiler_path(compiler))
+            .env("RUSTC_STAGE", stage.to_string())
+            .env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
+            .env("RUSTC_DEBUGINFO_LINES",
+                 self.config.rust_debuginfo_lines.to_string())
+            .env("RUSTC_CODEGEN_UNITS",
+                 self.config.rust_codegen_units.to_string())
+            .env("RUSTC_DEBUG_ASSERTIONS",
+                 self.config.rust_debug_assertions.to_string())
+            .env("RUSTC_SNAPSHOT", &self.rustc)
+            .env("RUSTC_SYSROOT", self.sysroot(compiler))
+            .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
+            .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir())
+            .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
+            .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
+            .env("RUSTDOC_REAL", self.rustdoc(compiler))
+            .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
         self.add_bootstrap_key(&mut cargo);
 
@@ -686,7 +717,7 @@ impl Build {
         if self.config.rust_optimize {
             cargo.arg("--release");
         }
-        return cargo
+        return cargo;
     }
 
     /// Get a path to the compiler specified.
@@ -709,7 +740,7 @@ impl Build {
         let mut rustdoc = self.compiler_path(compiler);
         rustdoc.pop();
         rustdoc.push(exe("rustdoc", compiler.host));
-        return rustdoc
+        return rustdoc;
     }
 
     /// Get a `Command` which is ready to run `tool` in `stage` built for
@@ -724,7 +755,7 @@ impl Build {
             self.cargo_out(compiler, Mode::Tool, host).join("deps"),
         ];
         add_lib_path(paths, &mut cmd);
-        return cmd
+        return cmd;
     }
 
     /// Get the space-separated set of activated features for the standard
@@ -740,7 +771,7 @@ impl Build {
         if self.config.backtrace {
             features.push_str(" backtrace");
         }
-        return features
+        return features;
     }
 
     /// Get the space-separated set of activated features for the compiler.
@@ -749,13 +780,17 @@ impl Build {
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
         }
-        return features
+        return features;
     }
 
     /// Component directory that Cargo will produce output into (e.g.
     /// release/debug)
     fn cargo_dir(&self) -> &'static str {
-        if self.config.rust_optimize {"release"} else {"debug"}
+        if self.config.rust_optimize {
+            "release"
+        } else {
+            "debug"
+        }
     }
 
     /// Returns the sysroot for the `compiler` specified that *this build system
@@ -775,8 +810,11 @@ impl Build {
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
     fn sysroot_libdir(&self, compiler: &Compiler, target: &str) -> PathBuf {
-        self.sysroot(compiler).join("lib").join("rustlib")
-            .join(target).join("lib")
+        self.sysroot(compiler)
+            .join("lib")
+            .join("rustlib")
+            .join(target)
+            .join("lib")
     }
 
     /// Returns the root directory for all output generated in a particular
@@ -790,17 +828,15 @@ impl Build {
             Mode::Tool => "-tools",
             Mode::Librustc => "-rustc",
         };
-        self.out.join(compiler.host)
-                .join(format!("stage{}{}", compiler.stage, suffix))
+        self.out
+            .join(compiler.host)
+            .join(format!("stage{}{}", compiler.stage, suffix))
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,
     /// running a particular comipler, wehther or not we're building the
     /// standard library, and targeting the specified architecture.
-    fn cargo_out(&self,
-                 compiler: &Compiler,
-                 mode: Mode,
-                 target: &str) -> PathBuf {
+    fn cargo_out(&self, compiler: &Compiler, mode: Mode, target: &str) -> PathBuf {
         self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
     }
 
@@ -818,7 +854,7 @@ impl Build {
     fn is_rust_llvm(&self, target: &str) -> bool {
         match self.config.target_config.get(target) {
             Some(ref c) => c.llvm_config.is_none(),
-            None => true
+            None => true,
         }
     }
 
@@ -831,7 +867,8 @@ impl Build {
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             s.clone()
         } else {
-            self.llvm_out(&self.config.build).join("bin")
+            self.llvm_out(&self.config.build)
+                .join("bin")
                 .join(exe("llvm-config", target))
         }
     }
@@ -865,7 +902,7 @@ impl Build {
         // compiler live next to the compiler and the system will find them
         // automatically.
         if cfg!(windows) {
-            return
+            return;
         }
 
         add_lib_path(vec![self.rustc_libdir(compiler)], cmd);
@@ -894,7 +931,11 @@ impl Build {
 
     /// Returns the libdir of the snapshot compiler.
     fn rustc_snapshot_libdir(&self) -> PathBuf {
-        self.rustc.parent().unwrap().parent().unwrap()
+        self.rustc
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
             .join(libdir(&self.config.build))
     }
 
@@ -927,10 +968,13 @@ impl Build {
     fn cflags(&self, target: &str) -> Vec<String> {
         // Filter out -O and /O (the optimization flags) that we picked up from
         // gcc-rs because the build scripts will determine that for themselves.
-        let mut base = self.cc[target].0.args().iter()
-                           .map(|s| s.to_string_lossy().into_owned())
-                           .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
-                           .collect::<Vec<_>>();
+        let mut base = self.cc[target]
+            .0
+            .args()
+            .iter()
+            .map(|s| s.to_string_lossy().into_owned())
+            .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
+            .collect::<Vec<_>>();
 
         // If we're compiling on OSX then we add a few unconditional flags
         // indicating that we want libc++ (more filled out than libstdc++) and
@@ -947,10 +991,10 @@ impl Build {
             "i686-unknown-linux-musl" |
             "x86_64-unknown-linux-musl" => {
                 base.push("-Wa,-mrelax-relocations=no".into());
-            },
-            _ => {},
+            }
+            _ => {}
         }
-        return base
+        return base;
     }
 
     /// Returns the path to the `ar` archive utility for the target specified.
@@ -963,8 +1007,12 @@ impl Build {
     fn cxx(&self, target: &str) -> &Path {
         match self.cxx.get(target) {
             Some(p) => p.path(),
-            None => panic!("\n\ntarget `{}` is not configured as a host,
-                            only as a target\n\n", target),
+            None => {
+                panic!("\n\ntarget `{}` is not configured as a host,
+                            \
+                        only as a target\n\n",
+                       target)
+            }
         }
     }
 
@@ -979,15 +1027,17 @@ impl Build {
 
         let mut base = Vec::new();
         if target != self.config.build && !target.contains("msvc") &&
-            !target.contains("emscripten") {
+           !target.contains("emscripten") {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }
-        return base
+        return base;
     }
 
     /// Returns the "musl root" for this `target`, if defined
     fn musl_root(&self, target: &str) -> Option<&Path> {
-        self.config.target_config.get(target)
+        self.config
+            .target_config
+            .get(target)
             .and_then(|t| t.musl_root.as_ref())
             .or(self.config.musl_root.as_ref())
             .map(|p| &**p)
@@ -997,7 +1047,10 @@ impl Build {
 impl<'a> Compiler<'a> {
     /// Creates a new complier for the specified stage/host
     fn new(stage: u32, host: &'a str) -> Compiler<'a> {
-        Compiler { stage: stage, host: host }
+        Compiler {
+            stage: stage,
+            host: host,
+        }
     }
 
     /// Returns whether this is a snapshot compiler for `build`'s configuration
