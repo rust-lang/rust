@@ -722,7 +722,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("windows_subsystem", Whitelisted, Gated(Stability::Unstable,
                                              "windows_subsystem",
                                              "the windows subsystem attribute \
-                                              id currently unstable",
+                                              is currently unstable",
                                              cfg_fn!(windows_subsystem))),
 
     // Crate level attributes
