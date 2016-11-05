@@ -88,6 +88,8 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
     // within the CodeMap.
     // Also note that we are hashing byte offsets for the column, not unicode
     // codepoint offsets. For the purpose of the hash that's sufficient.
+    // Also, hashing filenames is expensive so we avoid doing it twice when the
+    // span starts and ends in the same file, which is almost always the case.
     fn hash_span(&mut self, span: Span) {
         debug!("hash_span: st={:?}", self.st);
 
@@ -103,21 +105,35 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             span.hi
         };
 
-        let loc1 = self.codemap.byte_pos_to_line_and_col(span.lo);
-        let loc2 = self.codemap.byte_pos_to_line_and_col(span_hi);
-
-        let expansion_kind = match span.expn_id {
+        let expn_kind = match span.expn_id {
             NO_EXPANSION => SawSpanExpnKind::NoExpansion,
             COMMAND_LINE_EXPN => SawSpanExpnKind::CommandLine,
             _ => SawSpanExpnKind::SomeExpansion,
         };
 
-        SawSpan(loc1.as_ref().map(|&(ref fm, line, col)| (&fm.name[..], line, col)),
-                loc2.as_ref().map(|&(ref fm, line, col)| (&fm.name[..], line, col)),
-                expansion_kind)
-            .hash(self.st);
+        let loc1 = self.codemap.byte_pos_to_line_and_col(span.lo);
+        let loc1 = loc1.as_ref()
+                       .map(|&(ref fm, line, col)| (&fm.name[..], line, col))
+                       .unwrap_or(("???", 0, BytePos(0)));
 
-        if expansion_kind == SawSpanExpnKind::SomeExpansion {
+        let loc2 = self.codemap.byte_pos_to_line_and_col(span_hi);
+        let loc2 = loc2.as_ref()
+                       .map(|&(ref fm, line, col)| (&fm.name[..], line, col))
+                       .unwrap_or(("???", 0, BytePos(0)));
+
+        let saw = if loc1.0 == loc2.0 {
+            SawSpan(loc1.0,
+                    loc1.1, loc1.2,
+                    loc2.1, loc2.2,
+                    expn_kind)
+        } else {
+            SawSpanTwoFiles(loc1.0, loc1.1, loc1.2,
+                            loc2.0, loc2.1, loc2.2,
+                            expn_kind)
+        };
+        saw.hash(self.st);
+
+        if expn_kind == SawSpanExpnKind::SomeExpansion {
             let call_site = self.codemap.codemap().source_callsite(span);
             self.hash_span(call_site);
         }
@@ -189,9 +205,13 @@ enum SawAbiComponent<'a> {
     SawAssocTypeBinding,
     SawAttribute(ast::AttrStyle),
     SawMacroDef,
-    SawSpan(Option<(&'a str, usize, BytePos)>,
-            Option<(&'a str, usize, BytePos)>,
+    SawSpan(&'a str,
+            usize, BytePos,
+            usize, BytePos,
             SawSpanExpnKind),
+    SawSpanTwoFiles(&'a str, usize, BytePos,
+                    &'a str, usize, BytePos,
+                    SawSpanExpnKind),
 }
 
 /// SawExprComponent carries all of the information that we want
