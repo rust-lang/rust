@@ -17,21 +17,28 @@
 // gdb-command:run
 
 // gdb-command:print no_padding1
-// gdb-check:$1 = {__0 = {__0 = 0, __1 = 1}, __1 = 2, __2 = 3}
+// gdbg-check:$1 = {__0 = {__0 = 0, __1 = 1}, __1 = 2, __2 = 3}
+// gdbr-check:$1 = ((0, 1), 2, 3)
 // gdb-command:print no_padding2
-// gdb-check:$2 = {__0 = 4, __1 = {__0 = 5, __1 = 6}, __2 = 7}
+// gdbg-check:$2 = {__0 = 4, __1 = {__0 = 5, __1 = 6}, __2 = 7}
+// gdbr-check:$2 = (4, (5, 6), 7)
 // gdb-command:print no_padding3
-// gdb-check:$3 = {__0 = 8, __1 = 9, __2 = {__0 = 10, __1 = 11}}
+// gdbg-check:$3 = {__0 = 8, __1 = 9, __2 = {__0 = 10, __1 = 11}}
+// gdbr-check:$3 = (8, 9, (10, 11))
 
 // gdb-command:print internal_padding1
-// gdb-check:$4 = {__0 = 12, __1 = {__0 = 13, __1 = 14}}
+// gdbg-check:$4 = {__0 = 12, __1 = {__0 = 13, __1 = 14}}
+// gdbr-check:$4 = (12, (13, 14))
 // gdb-command:print internal_padding2
-// gdb-check:$5 = {__0 = 15, __1 = {__0 = 16, __1 = 17}}
+// gdbg-check:$5 = {__0 = 15, __1 = {__0 = 16, __1 = 17}}
+// gdbr-check:$5 = (15, (16, 17))
 
 // gdb-command:print padding_at_end1
-// gdb-check:$6 = {__0 = 18, __1 = {__0 = 19, __1 = 20}}
+// gdbg-check:$6 = {__0 = 18, __1 = {__0 = 19, __1 = 20}}
+// gdbr-check:$6 = (18, (19, 20))
 // gdb-command:print padding_at_end2
-// gdb-check:$7 = {__0 = {__0 = 21, __1 = 22}, __1 = 23}
+// gdbg-check:$7 = {__0 = {__0 = 21, __1 = 22}, __1 = 23}
+// gdbr-check:$7 = ((21, 22), 23)
 
 
 // === LLDB TESTS ==================================================================================

@@ -17,22 +17,28 @@
 // gdb-command:run
 
 // gdb-command:print no_padding16
-// gdb-check:$1 = {__0 = 10000, __1 = -10001}
+// gdbg-check:$1 = {__0 = 10000, __1 = -10001}
+// gdbr-check:$1 = tuple_struct::NoPadding16 (10000, -10001)
 
 // gdb-command:print no_padding32
-// gdb-check:$2 = {__0 = -10002, __1 = -10003.5, __2 = 10004}
+// gdbg-check:$2 = {__0 = -10002, __1 = -10003.5, __2 = 10004}
+// gdbr-check:$2 = tuple_struct::NoPadding32 (-10002, -10003.5, 10004)
 
 // gdb-command:print no_padding64
-// gdb-check:$3 = {__0 = -10005.5, __1 = 10006, __2 = 10007}
+// gdbg-check:$3 = {__0 = -10005.5, __1 = 10006, __2 = 10007}
+// gdbr-check:$3 = tuple_struct::NoPadding64 (-10005.5, 10006, 10007)
 
 // gdb-command:print no_padding163264
-// gdb-check:$4 = {__0 = -10008, __1 = 10009, __2 = 10010, __3 = 10011}
+// gdbg-check:$4 = {__0 = -10008, __1 = 10009, __2 = 10010, __3 = 10011}
+// gdbr-check:$4 = tuple_struct::NoPadding163264 (-10008, 10009, 10010, 10011)
 
 // gdb-command:print internal_padding
-// gdb-check:$5 = {__0 = 10012, __1 = -10013}
+// gdbg-check:$5 = {__0 = 10012, __1 = -10013}
+// gdbr-check:$5 = tuple_struct::InternalPadding (10012, -10013)
 
 // gdb-command:print padding_at_end
-// gdb-check:$6 = {__0 = -10014, __1 = 10015}
+// gdbg-check:$6 = {__0 = -10014, __1 = 10015}
+// gdbr-check:$6 = tuple_struct::PaddingAtEnd (-10014, 10015)
 
 
 // === LLDB TESTS ==================================================================================

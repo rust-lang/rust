@@ -92,6 +92,12 @@ pub fn check(build: &mut Build) {
         need_cmd(s.as_ref());
     }
 
+    if let Some(ref gdb) = build.config.gdb {
+        need_cmd(gdb.as_ref());
+    } else {
+        build.config.gdb = have_cmd("gdb".as_ref());
+    }
+
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in build.config.target.iter() {
@@ -198,7 +204,6 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
                    .to_string()
         })
     };
-    build.gdb_version = run(Command::new("gdb").arg("--version")).ok();
     build.lldb_version = run(Command::new("lldb").arg("--version")).ok();
     if build.lldb_version.is_some() {
         build.lldb_python_dir = run(Command::new("lldb").arg("-P")).ok();

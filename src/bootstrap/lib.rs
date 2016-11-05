@@ -124,7 +124,6 @@ pub struct Build {
     bootstrap_key_stage0: String,
 
     // Probed tools at runtime
-    gdb_version: Option<String>,
     lldb_version: Option<String>,
     lldb_python_dir: Option<String>,
 
@@ -211,7 +210,6 @@ impl Build {
             cc: HashMap::new(),
             cxx: HashMap::new(),
             crates: HashMap::new(),
-            gdb_version: None,
             lldb_version: None,
             lldb_python_dir: None,
         }

@@ -45,20 +45,29 @@
 // gdb-command:whatis fnptr
 // gdb-check:type = [...] (*)([...])
 // gdb-command:info functions _yyy
-// gdb-check:[...]![...]_yyy([...]);
+// gdbg-check:[...]![...]_yyy([...]);
+// gdbr-check:static fn basic_types_metadata::_yyy() -> !;
 // gdb-command:ptype closure_0
-// gdb-check: type = struct closure {
-// gdb-check:     <no data fields>
-// gdb-check: }
+// gdbr-check: type = struct closure
+// gdbg-check: type = struct closure {
+// gdbg-check:     <no data fields>
+// gdbg-check: }
 // gdb-command:ptype closure_1
-// gdb-check: type = struct closure {
-// gdb-check:     bool *__0;
-// gdb-check: }
+// gdbg-check: type = struct closure {
+// gdbg-check:     bool *__0;
+// gdbg-check: }
+// gdbr-check: type = struct closure (
+// gdbr-check:     bool *,
+// gdbr-check: )
 // gdb-command:ptype closure_2
-// gdb-check: type = struct closure {
-// gdb-check:     bool *__0;
-// gdb-check:     isize *__1;
-// gdb-check: }
+// gdbg-check: type = struct closure {
+// gdbg-check:     bool *__0;
+// gdbg-check:     isize *__1;
+// gdbg-check: }
+// gdbr-check: type = struct closure (
+// gdbr-check:     bool *,
+// gdbr-check:     isize *,
+// gdbr-check: )
 
 //
 // gdb-command:continue
