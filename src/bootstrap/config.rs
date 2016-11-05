@@ -470,6 +470,7 @@ fn parse_configure_path(path: &str) -> PathBuf {
     // on windows, configure produces unix style paths e.g. /c/some/path but we
     // only want real windows paths
 
+    use std::process::Command;
     use build_helper;
 
     // '/' is invalid in windows paths, so we can detect unix paths by the presence of it
