@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
-
 // error-pattern: cannot declare a new module at this location
 
-mod mod_file_not_owning_aux1;
-
-fn main() {}
+// This is not a directory owner since the file name is not "mod.rs".
+#[path = "mod_file_not_owning_aux1.rs"]
+mod foo;
