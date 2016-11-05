@@ -31,7 +31,7 @@ mod x {
 mod y {
     use x;
 
-    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
     pub fn y() {
         x::x();
     }

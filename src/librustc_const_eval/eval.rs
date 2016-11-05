@@ -33,7 +33,6 @@ use graphviz::IntoCow;
 use syntax::ast;
 use rustc::hir::{Expr, PatKind};
 use rustc::hir;
-use rustc::hir::intravisit::FnKind;
 use syntax::ptr::P;
 use syntax::codemap;
 use syntax::attr::IntType;
