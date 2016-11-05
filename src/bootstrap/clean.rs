@@ -36,7 +36,8 @@ pub fn clean(build: &Build) {
             if entry.file_name().to_str() == Some("llvm") {
                 continue
             }
-            rm_rf(build, &entry.path());
+            let path = t!(entry.path().canonicalize());
+            rm_rf(build, &path);
         }
     }
 }
