@@ -26,13 +26,16 @@
 // gdb-check:$2 = EmptyStruct
 
 // gdb-command: print c_style_enum1
-// gdb-check:$3 = CStyleEnumVar1
+// gdbg-check:$3 = CStyleEnumVar1
+// gdbr-check:$3 = gdb_pretty_struct_and_enums_pre_gdb_7_7::CStyleEnum::CStyleEnumVar1
 
 // gdb-command: print c_style_enum2
-// gdb-check:$4 = CStyleEnumVar2
+// gdbg-check:$4 = CStyleEnumVar2
+// gdbr-check:$4 = gdb_pretty_struct_and_enums_pre_gdb_7_7::CStyleEnum::CStyleEnumVar2
 
 // gdb-command: print c_style_enum3
-// gdb-check:$5 = CStyleEnumVar3
+// gdbg-check:$5 = CStyleEnumVar3
+// gdbr-check:$5 = gdb_pretty_struct_and_enums_pre_gdb_7_7::CStyleEnum::CStyleEnumVar3
 
 #![allow(dead_code, unused_variables)]
 

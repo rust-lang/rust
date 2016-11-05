@@ -79,6 +79,9 @@
 # Indicate whether submodules are managed and updated automatically.
 #submodules = true
 
+# The path to (or name of) the GDB executable to use
+#gdb = "gdb"
+
 # =============================================================================
 # Options for compiling Rust code itself
 # =============================================================================

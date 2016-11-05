@@ -868,13 +868,6 @@ then
     fi
 fi
 
-if [ -n "$CFG_GDB" ]
-then
-    # Store GDB's version
-    CFG_GDB_VERSION=$($CFG_GDB --version 2>/dev/null | head -1)
-    putvar CFG_GDB_VERSION
-fi
-
 if [ -n "$CFG_LLDB" ]
 then
     # Store LLDB's version
