@@ -1027,8 +1027,12 @@ extern "rust-intrinsic" {
     pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 
     /// Perform a volatile load from the `src` pointer.
+    /// The stabilized version of this intrinsic is
+    /// [`std::ptr::read_volatile`](../../std/ptr/fn.read_volatile.html).
     pub fn volatile_load<T>(src: *const T) -> T;
     /// Perform a volatile store to the `dst` pointer.
+    /// The stabilized version of this intrinsic is
+    /// [`std::ptr::write_volatile`](../../std/ptr/fn.write_volatile.html).
     pub fn volatile_store<T>(dst: *mut T, val: T);
 
     /// Returns the square root of an `f32`
