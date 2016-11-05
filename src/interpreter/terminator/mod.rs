@@ -686,11 +686,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         lval: Lvalue<'tcx>,
         drop: &mut Vec<(DefId, Value, &'tcx Substs<'tcx>)>,
     ) -> EvalResult<'tcx, ()> {
-        // FIXME: some aggregates may be represented by PrimVal::Pair
-        let (adt_ptr, extra) = match self.force_allocation(lval)? {
-            Lvalue::Ptr { ptr, extra } => (ptr, extra),
-            _ => bug!("force allocation must yield Lvalue::Ptr"),
-        };
+        // FIXME: some aggregates may be represented by Value::ByValPair
+        let (adt_ptr, extra) = match self.force_allocation(lval)?.to_ptr_and_extra();
         // manual iteration, because we need to be careful about the last field if it is unsized
         while let Some((field_ty, offset)) = fields.next() {
             let ptr = adt_ptr.offset(offset.bytes() as isize);
