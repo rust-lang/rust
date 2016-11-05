@@ -112,7 +112,7 @@ pub fn build_rules(build: &Build) -> Rules {
          .dep(|s| s.name("build-crate-rustc-main"));
     for (krate, path, _default) in krates("std_shim") {
         rules.build(&krate.build_step, path)
-             .dep(|s| s.name("rustc").target(s.host))
+             .dep(move |s| s.name("rustc").host(&build.config.build).target(s.host))
              .dep(move |s| {
                  if s.host == build.config.build {
                     dummy(s, build)
@@ -296,7 +296,7 @@ pub fn build_rules(build: &Build) -> Rules {
     rules.test("check-rustc-all", "path/to/nowhere")
          .dep(|s| s.name("librustc"))
          .default(true)
-             .host(true)
+         .host(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target, Mode::Librustc,
                                None));
 
@@ -304,23 +304,28 @@ pub fn build_rules(build: &Build) -> Rules {
          .dep(|s| s.name("tool-linkchecker"))
          .dep(|s| s.name("default:doc"))
          .default(true)
+         .host(true)
          .run(move |s| check::linkcheck(build, s.stage, s.target));
     rules.test("check-cargotest", "src/tools/cargotest")
          .dep(|s| s.name("tool-cargotest"))
          .dep(|s| s.name("librustc"))
+         .host(true)
          .run(move |s| check::cargotest(build, s.stage, s.target));
     rules.test("check-tidy", "src/tools/tidy")
          .dep(|s| s.name("tool-tidy"))
          .default(true)
+         .host(true)
          .run(move |s| check::tidy(build, s.stage, s.target));
     rules.test("check-error-index", "src/tools/error_index_generator")
          .dep(|s| s.name("libstd"))
          .dep(|s| s.name("tool-error-index").host(s.host))
          .default(true)
+         .host(true)
          .run(move |s| check::error_index(build, &s.compiler()));
     rules.test("check-docs", "src/doc")
          .dep(|s| s.name("libtest"))
          .default(true)
+         .host(true)
          .run(move |s| check::docs(build, &s.compiler()));
 
     rules.build("test-helpers", "src/rt/rust_test_helpers.c")
@@ -363,12 +368,14 @@ pub fn build_rules(build: &Build) -> Rules {
          .default(build.config.docs)
          .run(move |s| doc::rustbook(build, s.stage, s.target, "nomicon"));
     rules.doc("doc-standalone", "src/doc")
-         .dep(move |s| s.name("rustc").target(&build.config.build))
+         .dep(move |s| s.name("rustc").host(&build.config.build).target(&build.config.build))
          .default(build.config.docs)
          .run(move |s| doc::standalone(build, s.stage, s.target));
     rules.doc("doc-error-index", "src/tools/error_index_generator")
          .dep(move |s| s.name("tool-error-index").target(&build.config.build))
+         .dep(move |s| s.name("librustc"))
          .default(build.config.docs)
+         .host(true)
          .run(move |s| doc::error_index(build, s.stage, s.target));
     for (krate, path, default) in krates("std_shim") {
         rules.doc(&krate.doc_step, path)
@@ -393,7 +400,7 @@ pub fn build_rules(build: &Build) -> Rules {
     // ========================================================================
     // Distribution targets
     rules.dist("dist-rustc", "src/librustc")
-         .dep(|s| s.name("rustc"))
+         .dep(move |s| s.name("rustc").host(&build.config.build))
          .host(true)
          .default(true)
          .run(move |s| dist::rustc(build, s.stage, s.target));
@@ -658,6 +665,7 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
 
         // And finally, iterate over everything and execute it.
         for step in order.iter() {
+            self.build.verbose(&format!("executing step {:?}", step));
             (self.rules[step.name].run)(step);
         }
     }
