@@ -3756,6 +3756,21 @@ to an implicit type parameter representing the "implementing" type. In an impl,
 it is an alias for the implementing type. For example, in:
 
 ```
+pub trait From<T> {
+    fn from(T) -> Self;
+}
+
+impl From<i32> for String {
+    fn from(x: i32) -> Self {
+        x.to_string()
+    }
+}
+```
+
+The notation `Self` in the impl refers to the implementing type: `String`. In another 
+example:
+
+```
 trait Printable {
     fn make_string(&self) -> String;
 }
