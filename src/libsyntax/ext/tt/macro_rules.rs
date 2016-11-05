@@ -19,7 +19,7 @@ use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_failure_msg};
 use parse::ParseSess;
 use parse::lexer::new_tt_reader;
-use parse::parser::{Parser, Restrictions};
+use parse::parser::Parser;
 use parse::token::{self, NtTT, Token};
 use parse::token::Token::*;
 use print;
@@ -117,11 +117,12 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 let trncbr =
                     new_tt_reader(&cx.parse_sess.span_diagnostic, Some(named_matches), rhs);
                 let mut p = Parser::new(cx.parse_sess(), Box::new(trncbr));
-                p.directory = cx.current_expansion.module.directory.clone();
-                p.restrictions = match cx.current_expansion.no_noninline_mod {
-                    true => Restrictions::NO_NONINLINE_MOD,
-                    false => Restrictions::empty(),
-                };
+                let module = &cx.current_expansion.module;
+                p.directory.path = module.directory.clone();
+                p.directory.ownership = cx.current_expansion.directory_ownership;
+                p.root_module_name =
+                    module.mod_path.last().map(|id| (*id.name.as_str()).to_owned());
+
                 p.check_unknown_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
