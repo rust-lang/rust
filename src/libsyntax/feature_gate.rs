@@ -309,6 +309,9 @@ declare_features! (
 
     // Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
     (active, field_init_shorthand, "1.14.0", Some(37340)),
+
+    // Allows using `Self` and associated types in struct expressions and patterns.
+    (active, more_struct_aliases, "1.14.0", Some(37544)),
 );
 
 declare_features! (
