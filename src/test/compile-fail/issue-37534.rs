@@ -8,30 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(more_struct_aliases)]
+struct Foo<T: ?Hash> { }
+//~^ ERROR trait `Hash` is not in scope [E0405]
+//~^^ ERROR parameter `T` is never used [E0392]
+//~^^^ WARN default bound relaxed for a type parameter, but this does nothing
 
-struct S<T, U = u16> {
-    a: T,
-    b: U,
-}
-
-trait Tr {
-    type A;
-}
-impl Tr for u8 {
-    type A = S<u8, u16>;
-}
-
-fn f<T: Tr<A = S<u8>>>() {
-    let s = T::A { a: 0, b: 1 };
-    match s {
-        T::A { a, b } => {
-            assert_eq!(a, 0);
-            assert_eq!(b, 1);
-        }
-    }
-}
-
-fn main() {
-    f::<u8>();
-}
+fn main() { }

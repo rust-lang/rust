@@ -8,30 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(more_struct_aliases)]
+#![feature(const_fn)]
+#![crate_type = "lib"]
 
-struct S<T, U = u16> {
-    a: T,
-    b: U,
-}
-
-trait Tr {
-    type A;
-}
-impl Tr for u8 {
-    type A = S<u8, u16>;
+const fn foo(i: i32) -> i32 {
+    i
 }
 
-fn f<T: Tr<A = S<u8>>>() {
-    let s = T::A { a: 0, b: 1 };
-    match s {
-        T::A { a, b } => {
-            assert_eq!(a, 0);
-            assert_eq!(b, 1);
-        }
-    }
-}
-
-fn main() {
-    f::<u8>();
-}
+pub const FOO: i32 = foo(1);
