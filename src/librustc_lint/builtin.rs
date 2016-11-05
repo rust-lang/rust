@@ -33,8 +33,8 @@ use rustc::hir::def_id::DefId;
 use middle::stability;
 use rustc::cfg;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::adjustment;
+use rustc::ty::{self, Ty, TyCtxt, TyInt, TyUint};
+use rustc::ty::{adjustment, subst};
 use rustc::traits::{self, Reveal};
 use rustc::hir::map as hir_map;
 use util::nodemap::NodeSet;
@@ -1294,5 +1294,175 @@ impl LateLintPass for UnionsWithDropFields {
                 }
             }
         }
+    }
+}
+
+/// Lints for non-portable integer conversions.
+pub struct NonPortable1632;
+pub struct NonPortable3264;
+pub struct NonPortable64128;
+
+declare_lint! {
+    NONPORTABLE_16_32,
+    Allow,
+    "conversions not portable between 32-bit and 16-bit platforms"
+}
+declare_lint! {
+    NONPORTABLE_32_64,
+    Warn,
+    "conversions not portable between 64-bit and 32-bit platforms"
+}
+declare_lint! {
+    NONPORTABLE_64_128,
+    Allow,
+    "conversions not portable between 64-bit and 128-bit platforms"
+}
+
+impl LintPass for NonPortable1632 {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(NONPORTABLE_16_32)
+    }
+}
+impl LintPass for NonPortable3264 {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(NONPORTABLE_32_64)
+    }
+}
+impl LintPass for NonPortable64128 {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(NONPORTABLE_64_128)
+    }
+}
+
+mod pred {
+    use super::*;
+    use syntax::ast::IntTy::*;
+    use syntax::ast::UintTy::*;
+
+    pub fn is_nonportable_conv_32_64(src: &ty::TypeVariants, dst: &ty::TypeVariants) -> bool {
+        match (src, dst) {
+            // All conditional impls from libcore/num/mod.rs
+            // not including "32" and "64" at the same time.
+            (&TyUint(U64), &TyUint(Us)) |
+            (&TyUint(Us), &TyUint(U16)) |
+            (&TyUint(Us), &TyUint(U32)) |
+            (&TyInt(I64), &TyInt(Is)) |
+            (&TyInt(Is), &TyInt(I16)) |
+            (&TyInt(Is), &TyInt(I32)) |
+            (&TyUint(U32), &TyInt(Is)) |
+            (&TyUint(Us), &TyInt(I32)) |
+            (&TyUint(Us), &TyInt(I64)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_nonportable_conv_16_32(src: &ty::TypeVariants, dst: &ty::TypeVariants) -> bool {
+        match (src, dst) {
+            // All conditional impls from libcore/num/mod.rs
+            // not including "16" and "32" at the same time.
+            (&TyUint(U32), &TyUint(Us)) |
+            (&TyUint(Us), &TyUint(U16)) |
+            (&TyInt(I32), &TyInt(Is)) |
+            (&TyInt(Is), &TyInt(I16)) |
+            (&TyUint(U16), &TyInt(Is)) |
+            (&TyUint(Us), &TyInt(I32)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_nonportable_conv_64_128(src: &ty::TypeVariants, dst: &ty::TypeVariants) -> bool {
+        match (src, dst) {
+            // All conditional impls from libcore/num/mod.rs
+            // not including "64" and potentially "128" at the same time.
+            (&TyUint(Us), &TyUint(U64)) |
+            (&TyInt(Is), &TyInt(I64)) => true,
+            _ => false,
+        }
+    }
+}
+
+fn is_nonportable_conv<Pred>(src: subst::Kind, dst: subst::Kind, pred: Pred) -> bool
+    where Pred: Fn(&ty::TypeVariants, &ty::TypeVariants) -> bool
+{
+    match (src.as_type(), dst.as_type()) {
+        (Some(src), Some(dst)) => pred(&src.sty, &dst.sty),
+        _ => false,
+    }
+}
+
+fn nonportable_check_expr<Pred>(cx: &LateContext, e: &hir::Expr, w1: u8, w2: u8,
+                                lint: &'static Lint, pred: Pred)
+    where Pred: Fn(&ty::TypeVariants, &ty::TypeVariants) -> bool
+{
+    let tcx = cx.tcx;
+    let report_lint = |span, src: subst::Kind, dst: subst::Kind| {
+        let src_ty = src.as_type().unwrap();
+        let dst_ty = dst.as_type().unwrap();
+        cx.span_lint(lint, span,
+                     &format!("conversion `{}` -> `{}` is not portable \
+                               between {}-bit and {}-bit platforms", src_ty, dst_ty, w1, w2));
+    };
+    match e.node {
+        hir::ExprMethodCall(name, ..) => {
+            if name.node.as_str() == "into" {
+                if let Some(callee) = tcx.tables.borrow().method_map
+                                                .get(&ty::MethodCall::expr(e.id)).cloned() {
+                    if let ty::TyFnDef(def_id, substs, _) = callee.ty.sty {
+                        let ti = tcx.impl_or_trait_item(def_id);
+                        if let ty::TraitContainer(trait_def_id) = ti.container() {
+                            if substs.len() == 2 {
+                                if tcx.item_name(trait_def_id).as_str() == "Into" {
+                                    if is_nonportable_conv(substs[0], substs[1], pred) {
+                                        report_lint(name.span, substs[0], substs[1]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        hir::ExprPath(..) => {
+            if let Def::Method(def_id) = tcx.expect_def(e.id) {
+                let ti = tcx.impl_or_trait_item(def_id);
+                if let ty::MethodTraitItem(ref method) = ti {
+                    if let ty::TraitContainer(trait_def_id) = ti.container() {
+                        let substs = tcx.node_id_item_substs(e.id).substs;
+                        if substs.len() == 2 {
+                            if method.name.as_str() == "into" {
+                                if tcx.item_name(trait_def_id).as_str() == "Into" {
+                                    if is_nonportable_conv(substs[0], substs[1], pred) {
+                                        report_lint(e.span, substs[0], substs[1]);
+                                    }
+                                }
+                            } else if method.name.as_str() == "from" {
+                                if tcx.item_name(trait_def_id).as_str() == "From" {
+                                    if is_nonportable_conv(substs[1], substs[0], pred) {
+                                        report_lint(e.span, substs[1], substs[0]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+impl LateLintPass for NonPortable1632 {
+    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
+        nonportable_check_expr(cx, e, 32, 16, NONPORTABLE_16_32, pred::is_nonportable_conv_16_32)
+    }
+}
+impl LateLintPass for NonPortable3264 {
+    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
+        nonportable_check_expr(cx, e, 64, 32, NONPORTABLE_32_64, pred::is_nonportable_conv_32_64)
+    }
+}
+impl LateLintPass for NonPortable64128 {
+    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
+        nonportable_check_expr(cx, e, 64, 128, NONPORTABLE_64_128, pred::is_nonportable_conv_64_128)
     }
 }

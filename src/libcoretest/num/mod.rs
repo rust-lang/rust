@@ -117,6 +117,7 @@ fn test_empty() {
 macro_rules! test_impl_from {
     ($fn_name: ident, $Small: ty, $Large: ty) => {
         #[test]
+        #[allow(nonportable_32_64)]
         fn $fn_name() {
             let small_max = <$Small>::max_value();
             let small_min = <$Small>::min_value();
@@ -128,6 +129,13 @@ macro_rules! test_impl_from {
     }
 }
 
+macro_rules! test_impl_from_cond {
+    ($fn_name: ident, $Small: ty, $Large: ty | $($width: expr),*) => {
+        #[cfg(any($(target_pointer_width = $width,)*))]
+        test_impl_from! { $fn_name, $Small, $Large }
+    }
+}
+
 // Unsigned -> Unsigned
 test_impl_from! { test_u8u16, u8, u16 }
 test_impl_from! { test_u8u32, u8, u32 }
@@ -136,6 +144,12 @@ test_impl_from! { test_u8usize, u8, usize }
 test_impl_from! { test_u16u32, u16, u32 }
 test_impl_from! { test_u16u64, u16, u64 }
 test_impl_from! { test_u32u64, u32, u64 }
+test_impl_from_cond! { test_u16usize, u16, usize | "16", "32", "64" }
+test_impl_from_cond! { test_u32usize, u32, usize | "32", "64" }
+test_impl_from_cond! { test_u64usize, u64, usize | "64" }
+test_impl_from_cond! { test_usizeu16, usize, u16 | "16" }
+test_impl_from_cond! { test_usizeu32, usize, u32 | "16", "32" }
+test_impl_from_cond! { test_usizeu64, usize, u64 | "16", "32", "64" }
 
 // Signed -> Signed
 test_impl_from! { test_i8i16, i8, i16 }
@@ -145,6 +159,12 @@ test_impl_from! { test_i8isize, i8, isize }
 test_impl_from! { test_i16i32, i16, i32 }
 test_impl_from! { test_i16i64, i16, i64 }
 test_impl_from! { test_i32i64, i32, i64 }
+test_impl_from_cond! { test_i16isize, i16, isize | "16", "32", "64" }
+test_impl_from_cond! { test_i32isize, i32, isize | "32", "64" }
+test_impl_from_cond! { test_i64isize, i64, isize | "64" }
+test_impl_from_cond! { test_isizei16, isize, i16 | "16" }
+test_impl_from_cond! { test_isizei32, isize, i32 | "16", "32" }
+test_impl_from_cond! { test_isizei64, isize, i64 | "16", "32", "64" }
 
 // Unsigned -> Signed
 test_impl_from! { test_u8i16, u8, i16 }
@@ -153,6 +173,11 @@ test_impl_from! { test_u8i64, u8, i64 }
 test_impl_from! { test_u16i32, u16, i32 }
 test_impl_from! { test_u16i64, u16, i64 }
 test_impl_from! { test_u32i64, u32, i64 }
+test_impl_from_cond! { test_u8isize, u8, isize | "16", "32", "64" }
+test_impl_from_cond! { test_u16isize, u16, isize | "32", "64" }
+test_impl_from_cond! { test_u32isize, u32, isize | "64" }
+test_impl_from_cond! { test_isizeu32, usize, i32 | "16" }
+test_impl_from_cond! { test_isizeu64, usize, i64 | "16", "32" }
 
 // Signed -> Float
 test_impl_from! { test_i8f32, i8, f32 }
