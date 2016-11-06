@@ -1355,7 +1355,7 @@ extern "rust-intrinsic" {
 }
 ```
 
-Please check that you provided the right number of lifetime parameters
+Please check that you provided the right number of type parameters
 and verify with the function declaration in the Rust source code.
 Example:
 
