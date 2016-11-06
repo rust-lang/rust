@@ -22,7 +22,7 @@ use super::util::impl_trait_ref_and_oblig;
 
 use rustc_data_structures::fnv::FnvHashMap;
 use hir::def_id::DefId;
-use infer::{InferCtxt, TypeOrigin};
+use infer::{InferCtxt, InferOk, TypeOrigin};
 use middle::region;
 use ty::subst::{Subst, Substs};
 use traits::{self, Reveal, ObligationCause};
@@ -222,14 +222,18 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                                                    target_substs);
 
     // do the impls unify? If not, no specialization.
-    if let Err(_) = infcx.eq_trait_refs(true,
-                                        TypeOrigin::Misc(DUMMY_SP),
-                                        source_trait_ref,
-                                        target_trait_ref) {
-        debug!("fulfill_implication: {:?} does not unify with {:?}",
-               source_trait_ref,
-               target_trait_ref);
-        return Err(());
+    match infcx.eq_trait_refs(true, TypeOrigin::Misc(DUMMY_SP), source_trait_ref,
+                                                                target_trait_ref) {
+        Ok(InferOk { obligations, .. }) => {
+            // FIXME(#32730) propagate obligations
+            assert!(obligations.is_empty())
+        }
+        Err(_) => {
+            debug!("fulfill_implication: {:?} does not unify with {:?}",
+                   source_trait_ref,
+                   target_trait_ref);
+            return Err(());
+        }
     }
 
     // attempt to prove all of the predicates for impl2 given those for impl1

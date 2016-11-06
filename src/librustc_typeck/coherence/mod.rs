@@ -415,15 +415,19 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
 
                                 if f.unsubst_ty().is_phantom_data() {
                                     // Ignore PhantomData fields
-                                    None
-                                } else if infcx.sub_types(false, origin, b, a).is_ok() {
-                                    // Ignore fields that aren't significantly changed
-                                    None
-                                } else {
-                                    // Collect up all fields that were significantly changed
-                                    // i.e. those that contain T in coerce_unsized T -> U
-                                    Some((i, a, b))
+                                    return None;
                                 }
+
+                                // Ignore fields that aren't significantly changed
+                                if let Ok(ok) = infcx.sub_types(false, origin, b, a) {
+                                    if ok.obligations.is_empty() {
+                                        return None;
+                                    }
+                                }
+
+                                // Collect up all fields that were significantly changed
+                                // i.e. those that contain T in coerce_unsized T -> U
+                                Some((i, a, b))
                             })
                             .collect::<Vec<_>>();
 
