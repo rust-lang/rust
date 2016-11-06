@@ -298,7 +298,13 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
-        if let Err(terr) = infcx.sub_types(false, origin, impl_fty, trait_fty) {
+        let sub_result = infcx.sub_types(false, origin, impl_fty, trait_fty)
+            .map(|InferOk { obligations, .. }| {
+                // FIXME(#32730) propagate obligations
+                assert!(obligations.is_empty());
+            });
+
+        if let Err(terr) = sub_result {
             debug!("sub_types failed: impl ty {:?}, trait ty {:?}",
                    impl_fty,
                    trait_fty);
