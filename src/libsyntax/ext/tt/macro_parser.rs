@@ -131,7 +131,7 @@ struct MatcherTtFrame {
 
 #[derive(Clone)]
 pub struct MatcherPos {
-    stack: Vec<MatcherTtFrame>,
+    stack: Option<MatcherTtFrame>,
     top_elts: TokenTreeOrTokenTreeVec,
     sep: Option<Token>,
     idx: usize,
@@ -165,7 +165,7 @@ pub fn initial_matcher_pos(ms: Vec<TokenTree>, sep: Option<Token>, lo: BytePos)
     let match_idx_hi = count_names(&ms[..]);
     let matches: Vec<_> = (0..match_idx_hi).map(|_| Vec::new()).collect();
     Box::new(MatcherPos {
-        stack: vec![],
+        stack: None,
         top_elts: TtSeq(ms),
         sep: sep,
         idx: 0,
@@ -297,14 +297,9 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
             };
 
             // When unzipped trees end, remove them
-            while ei.idx >= ei.top_elts.len() {
-                match ei.stack.pop() {
-                    Some(MatcherTtFrame { elts, idx }) => {
-                        ei.top_elts = elts;
-                        ei.idx = idx + 1;
-                    }
-                    None => break
-                }
+            if let Some(MatcherTtFrame { elts, idx }) = ei.stack.take() {
+                ei.top_elts = elts;
+                ei.idx = idx + 1;
             }
 
             let idx = ei.idx;
@@ -390,7 +385,7 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
                             .map(|_| Vec::new()).collect();
                         let ei_t = ei;
                         cur_eis.push(Box::new(MatcherPos {
-                            stack: vec![],
+                            stack: None,
                             sep: seq.separator.clone(),
                             idx: 0,
                             matches: matches,
@@ -416,10 +411,12 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
                     seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
                         let lower_elts = mem::replace(&mut ei.top_elts, Tt(seq));
                         let idx = ei.idx;
-                        ei.stack.push(MatcherTtFrame {
-                            elts: lower_elts,
-                            idx: idx,
-                        });
+                        if ei.stack.is_none() {
+                            ei.stack = Some(MatcherTtFrame {
+                                elts: lower_elts,
+                                idx: idx,
+                            });
+                        }
                         ei.idx = 0;
                         cur_eis.push(ei);
                     }
