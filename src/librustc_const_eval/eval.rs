@@ -102,14 +102,15 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => None
             },
             Some(ast_map::NodeTraitItem(ti)) => match ti.node {
-                hir::ConstTraitItem(..) => {
+                hir::ConstTraitItem(ref ty, ref expr_option) => {
                     if let Some(substs) = substs {
                         // If we have a trait item and the substitutions for it,
                         // `resolve_trait_associated_const` will select an impl
                         // or the default.
                         let trait_id = tcx.map.get_parent(node_id);
                         let trait_id = tcx.map.local_def_id(trait_id);
-                        resolve_trait_associated_const(tcx, ti, trait_id, substs)
+                        let default_value = expr_option.as_ref().map(|expr| (&**expr, tcx.ast_ty_to_prim_ty(ty)));
+                        resolve_trait_associated_const(tcx, def_id, default_value, trait_id, substs)
                     } else {
                         // Technically, without knowing anything about the
                         // expression that generates the obligation, we could
@@ -144,6 +145,27 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Some((&**const_expr, tcx.ast_ty_to_prim_ty(ty)))
             }
             _ => None
+        };
+        let expr_ty = match tcx.sess.cstore.describe_def(def_id) {
+            Some(Def::AssociatedConst(_)) => {
+                let trait_id = tcx.sess.cstore.trait_of_item(def_id);
+                // As mentioned in the comments above for in-crate
+                // constants, we only try to find the expression for a
+                // trait-associated const if the caller gives us the
+                // substitutions for the reference to it.
+                if let Some(trait_id) = trait_id {
+                    used_substs = true;
+
+                    if let Some(substs) = substs {
+                        resolve_trait_associated_const(tcx, def_id, expr_ty, trait_id, substs)
+                    } else {
+                        None
+                    }
+                } else {
+                    expr_ty
+                }
+            }
+            _ => expr_ty
         };
         // If we used the substitutions, particularly to choose an impl
         // of a trait-associated const, don't cache that, because the next
@@ -1036,7 +1058,8 @@ fn infer<'a, 'tcx>(i: ConstInt,
 }
 
 fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                ti: &'tcx hir::TraitItem,
+                                                trait_item_id: DefId,
+                                                default_value: Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)>,
                                                 trait_id: DefId,
                                                 rcvr_substs: &'tcx Substs<'tcx>)
                                                 -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)>
@@ -1070,21 +1093,16 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // when constructing the inference context above.
         match selection {
             traits::VtableImpl(ref impl_data) => {
+                let name = tcx.associated_item(trait_item_id).name;
                 let ac = tcx.associated_items(impl_data.impl_def_id)
-                    .find(|item| item.kind == ty::AssociatedKind::Const && item.name == ti.name);
+                    .find(|item| item.kind == ty::AssociatedKind::Const && item.name == name);
                 match ac {
                     Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
-                    None => match ti.node {
-                        hir::ConstTraitItem(ref ty, Some(ref expr)) => {
-                            Some((&*expr, tcx.ast_ty_to_prim_ty(ty)))
-                        },
-                        _ => None,
-                    },
+                    None => default_value,
                 }
             }
             _ => {
-            span_bug!(ti.span,
-                      "resolve_trait_associated_const: unexpected vtable type")
+                bug!("resolve_trait_associated_const: unexpected vtable type")
             }
         }
     })
