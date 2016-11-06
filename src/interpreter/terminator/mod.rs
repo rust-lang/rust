@@ -252,9 +252,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let adt_layout = self.type_layout(adt_ty);
 
         let discr_val = match *adt_layout {
-            General { discr, .. } | CEnum { discr, .. } => {
+            General { discr, .. } | CEnum { discr, signed: false, .. } => {
                 let discr_size = discr.size().bytes();
                 self.memory.read_uint(adt_ptr, discr_size as usize)?
+            }
+
+            CEnum { discr, signed: true, .. } => {
+                let discr_size = discr.size().bytes();
+                self.memory.read_int(adt_ptr, discr_size as usize)? as u64
             }
 
             RawNullablePointer { nndiscr, .. } => {
