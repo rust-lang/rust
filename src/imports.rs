@@ -158,7 +158,10 @@ impl<'a> FmtVisitor<'a> {
         // Find the location immediately before the first use item in the run. This must not lie
         // before the current `self.last_pos`
         let pos_before_first_use_item = use_items.first()
-            .map(|p_i| cmp::max(self.last_pos, p_i.span.lo))
+            .map(|p_i| {
+                cmp::max(self.last_pos,
+                         p_i.attrs.iter().map(|attr| attr.span.lo).min().unwrap_or(p_i.span.lo))
+            })
             .unwrap_or(self.last_pos);
         // Construct a list of pairs, each containing a `use` item and the start of span before
         // that `use` item.

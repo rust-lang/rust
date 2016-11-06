@@ -33,7 +33,7 @@ fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
 
 // Integration tests. The files in the tests/source are formatted and compared
 // to their equivalent in tests/target. The target file and config can be
-// overriden by annotations in the source file. The input and output must match
+// overridden by annotations in the source file. The input and output must match
 // exactly.
 // FIXME(#28) would be good to check for error messages and fail on them, or at
 // least report.

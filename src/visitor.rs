@@ -179,7 +179,7 @@ impl<'a> FmtVisitor<'a> {
     pub fn visit_item(&mut self, item: &ast::Item) {
         // This is where we bail out if there is a skip attribute. This is only
         // complex in the module case. It is complex because the module could be
-        // in a seperate file and there might be attributes in both files, but
+        // in a separate file and there might be attributes in both files, but
         // the AST lumps them all together.
         match item.node {
             ast::ItemKind::Mod(ref m) => {
