@@ -128,6 +128,19 @@ fn main() {
     // of llvm-config, not the target that we're attempting to link.
     let mut cmd = Command::new(&llvm_config);
     cmd.arg("--libs");
+
+    // Force static linking with "--link-static" if available.
+    let mut version_cmd = Command::new(&llvm_config);
+    version_cmd.arg("--version");
+    let version_output = output(&mut version_cmd);
+    let mut parts = version_output.split('.');
+    if let (Some(major), Some(minor)) = (parts.next().and_then(|s| s.parse::<u32>().ok()),
+                                         parts.next().and_then(|s| s.parse::<u32>().ok())) {
+        if major > 3 || (major == 3 && minor >= 8) {
+            cmd.arg("--link-static");
+        }
+    }
+
     if !is_crossed {
         cmd.arg("--system-libs");
     }
