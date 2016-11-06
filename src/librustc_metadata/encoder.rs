@@ -516,7 +516,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
-            ast: if trait_item.kind == ty::AssociatedKind::Const {
+            ast: if let hir::ConstTraitItem(_, Some(_)) = ast_item.node {
+                // We only save the HIR for associated consts with bodies
+                // (InlinedItemRef::from_trait_item panics otherwise)
                 let trait_def_id = trait_item.container.id();
                 Some(self.encode_inlined_item(InlinedItemRef::from_trait_item(trait_def_id, ast_item, &tcx.map)))
             } else {

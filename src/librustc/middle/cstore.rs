@@ -181,6 +181,7 @@ impl<'a> InlinedItemRef<'a> {
     pub fn from_trait_item(def_id: DefId, item: &'a hir::TraitItem, _map: &hir_map::Map) -> InlinedItemRef<'a> {
         let (body, kind) = match item.node {
             hir::ConstTraitItem(ref ty, Some(ref body)) => (&**body, InlinedItemKindRef::Const(ty)),
+            hir::ConstTraitItem(_, None) => bug!("InlinedItemRef::from_trait_item called for const without body"),
             _ => bug!("InlinedItemRef::from_trait_item wrong kind")
         };
         InlinedItemRef {
