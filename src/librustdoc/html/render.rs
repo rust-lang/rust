@@ -2513,15 +2513,16 @@ fn render_attribute(attr: &clean::Attribute, recurse: bool) -> Option<String> {
             Some(format!("{} = \"{}\"", k, v))
         }
         clean::List(ref k, ref values) if attribute_with_values(&*k) => {
-            let mut display = Vec::new();
+            let display: Vec<_> = values.iter()
+                                        .filter_map(|value| render_attribute(value, true))
+                                        .map(|entry| format!("{}", entry))
+                                        .collect();
 
-            for value in values {
-                let s = render_attribute(value, true);
-                if s.len() > 0 {
-                    display.push(format!("{}", s));
-                }
+            if display.len() > 0 {
+                Some(format!("{}({})", k, display.join(", ")))
+            } else {
+                None
             }
-            Some(format!("{}({})", k, display.join(", ")))
         }
         _ => {
             None
@@ -2538,7 +2539,7 @@ fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
         }
     }
     if attrs.len() > 0 {
-        write!(w, "<div class=\"docblock\">{}</div>", &attrs)?;
+        write!(w, "<div class=\"docblock attributes\">{}</div>", &attrs)?;
     }
     Ok(())
 }

@@ -1005,6 +1005,8 @@
                     .html('&nbsp;Expand&nbsp;description'));
         var wrapper = $("<div class='toggle-wrapper'>").append(mainToggle);
         $("#main > .docblock").before(wrapper);
+        var wrapper = $("<div class='toggle-wrapper toggle-attributes'>").append(mainToggle);
+        $("#main > pre > .docblock").before(wrapper);
     });
 
     $('pre.line-numbers').on('click', 'span', function() {
