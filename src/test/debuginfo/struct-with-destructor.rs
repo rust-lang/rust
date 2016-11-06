@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 // min-lldb-version: 310
 
 // compile-flags:-g
@@ -16,16 +18,20 @@
 
 // gdb-command:run
 // gdb-command:print simple
-// gdb-check:$1 = {x = 10, y = 20}
+// gdbg-check:$1 = {x = 10, y = 20}
+// gdbr-check:$1 = struct_with_destructor::WithDestructor {x: 10, y: 20}
 
 // gdb-command:print noDestructor
-// gdb-check:$2 = {a = {x = 10, y = 20}, guard = -1}
+// gdbg-check:$2 = {a = {x = 10, y = 20}, guard = -1}
+// gdbr-check:$2 = struct_with_destructor::NoDestructorGuarded {a: struct_with_destructor::NoDestructor {x: 10, y: 20}, guard: -1}
 
 // gdb-command:print withDestructor
-// gdb-check:$3 = {a = {x = 10, y = 20}, guard = -1}
+// gdbg-check:$3 = {a = {x = 10, y = 20}, guard = -1}
+// gdbr-check:$3 = struct_with_destructor::WithDestructorGuarded {a: struct_with_destructor::WithDestructor {x: 10, y: 20}, guard: -1}
 
 // gdb-command:print nested
-// gdb-check:$4 = {a = {a = {x = 7890, y = 9870}}}
+// gdbg-check:$4 = {a = {a = {x = 7890, y = 9870}}}
+// gdbr-check:$4 = struct_with_destructor::NestedOuter {a: struct_with_destructor::NestedInner {a: struct_with_destructor::WithDestructor {x: 7890, y: 9870}}}
 
 
 // === LLDB TESTS ==================================================================================

@@ -42,6 +42,7 @@ mod bench;
 
 mod binary_heap;
 mod btree;
+mod cow_str;
 mod enum_set;
 mod fmt;
 mod linked_list;

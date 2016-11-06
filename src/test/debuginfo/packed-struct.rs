@@ -18,16 +18,20 @@
 // gdb-command:run
 
 // gdb-command:print packed
-// gdb-check:$1 = {x = 123, y = 234, z = 345}
+// gdbg-check:$1 = {x = 123, y = 234, z = 345}
+// gdbr-check:$1 = packed_struct::Packed {x: 123, y: 234, z: 345}
 
 // gdb-command:print packedInPacked
-// gdb-check:$2 = {a = 1111, b = {x = 2222, y = 3333, z = 4444}, c = 5555, d = {x = 6666, y = 7777, z = 8888}}
+// gdbg-check:$2 = {a = 1111, b = {x = 2222, y = 3333, z = 4444}, c = 5555, d = {x = 6666, y = 7777, z = 8888}}
+// gdbr-check:$2 = packed_struct::PackedInPacked {a: 1111, b: packed_struct::Packed {x: 2222, y: 3333, z: 4444}, c: 5555, d: packed_struct::Packed {x: 6666, y: 7777, z: 8888}}
 
 // gdb-command:print packedInUnpacked
-// gdb-check:$3 = {a = -1111, b = {x = -2222, y = -3333, z = -4444}, c = -5555, d = {x = -6666, y = -7777, z = -8888}}
+// gdbg-check:$3 = {a = -1111, b = {x = -2222, y = -3333, z = -4444}, c = -5555, d = {x = -6666, y = -7777, z = -8888}}
+// gdbr-check:$3 = packed_struct::PackedInUnpacked {a: -1111, b: packed_struct::Packed {x: -2222, y: -3333, z: -4444}, c: -5555, d: packed_struct::Packed {x: -6666, y: -7777, z: -8888}}
 
 // gdb-command:print unpackedInPacked
-// gdb-check:$4 = {a = 987, b = {x = 876, y = 765, z = 654, w = 543}, c = {x = 432, y = 321, z = 210, w = 109}, d = -98}
+// gdbg-check:$4 = {a = 987, b = {x = 876, y = 765, z = 654, w = 543}, c = {x = 432, y = 321, z = 210, w = 109}, d = -98}
+// gdbr-check:$4 = packed_struct::UnpackedInPacked {a: 987, b: packed_struct::Unpacked {x: 876, y: 765, z: 654, w: 543}, c: packed_struct::Unpacked {x: 432, y: 321, z: 210, w: 109}, d: -98}
 
 // gdb-command:print sizeof(packed)
 // gdb-check:$5 = 14

@@ -128,7 +128,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
     }
 
     pub fn lower_pattern(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
-        let mut ty = self.tcx.node_id_to_type(pat.id);
+        let mut ty = self.tcx.tables().node_id_to_type(pat.id);
 
         let kind = match pat.node {
             PatKind::Wild => PatternKind::Wild,
@@ -167,8 +167,9 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 match self.tcx.expect_def(pat.id) {
                     Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                         let tcx = self.tcx.global_tcx();
-                        let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
-                        match eval::lookup_const_by_id(tcx, def_id, substs) {
+                        let substs = tcx.tables().node_id_item_substs(pat.id)
+                            .unwrap_or_else(|| tcx.intern_substs(&[]));
+                        match eval::lookup_const_by_id(tcx, def_id, Some(substs)) {
                             Some((const_expr, _const_ty)) => {
                                 match eval::const_expr_to_pat(
                                     tcx, const_expr, pat.id, pat.span)
@@ -197,7 +198,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::Slice(ref prefix, ref slice, ref suffix) => {
-                let ty = self.tcx.node_id_to_type(pat.id);
+                let ty = self.tcx.tables().node_id_to_type(pat.id);
                 match ty.sty {
                     ty::TyRef(_, mt) =>
                         PatternKind::Deref {
@@ -222,7 +223,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::Tuple(ref subpatterns, ddpos) => {
-                match self.tcx.node_id_to_type(pat.id).sty {
+                match self.tcx.tables().node_id_to_type(pat.id).sty {
                     ty::TyTuple(ref tys) => {
                         let subpatterns =
                             subpatterns.iter()
@@ -243,7 +244,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             PatKind::Binding(bm, ref ident, ref sub) => {
                 let def_id = self.tcx.expect_def(pat.id).def_id();
                 let id = self.tcx.map.as_local_node_id(def_id).unwrap();
-                let var_ty = self.tcx.node_id_to_type(pat.id);
+                let var_ty = self.tcx.tables().node_id_to_type(pat.id);
                 let region = match var_ty.sty {
                     ty::TyRef(r, _) => Some(r),
                     _ => None,
@@ -280,7 +281,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::TupleStruct(_, ref subpatterns, ddpos) => {
-                let pat_ty = self.tcx.node_id_to_type(pat.id);
+                let pat_ty = self.tcx.tables().node_id_to_type(pat.id);
                 let adt_def = match pat_ty.sty {
                     ty::TyAdt(adt_def, _) => adt_def,
                     _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT"),
@@ -299,7 +300,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::Struct(_, ref fields, _) => {
-                let pat_ty = self.tcx.node_id_to_type(pat.id);
+                let pat_ty = self.tcx.tables().node_id_to_type(pat.id);
                 let adt_def = match pat_ty.sty {
                     ty::TyAdt(adt_def, _) => adt_def,
                     _ => {

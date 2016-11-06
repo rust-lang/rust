@@ -1904,10 +1904,10 @@ impl<'a> FromIterator<String> for Cow<'a, str> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Into<Vec<u8>> for String {
-    fn into(self) -> Vec<u8> {
-        self.into_bytes()
+#[stable(feature = "from_string_for_vec_u8", since = "1.14.0")]
+impl From<String> for Vec<u8> {
+    fn from(string : String) -> Vec<u8> {
+        string.into_bytes()
     }
 }
 

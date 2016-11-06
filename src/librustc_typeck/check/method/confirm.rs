@@ -15,7 +15,7 @@ use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, LvaluePreference, NoPreference, PreferMutLvalue, Ty};
-use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use syntax_pos::Span;
@@ -140,19 +140,18 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                       unadjusted_self_ty: Ty<'tcx>,
                       pick: &probe::Pick<'tcx>)
                       -> Ty<'tcx> {
-        let (autoref, unsize) = if let Some(mutbl) = pick.autoref {
+        let autoref = if let Some(mutbl) = pick.autoref {
             let region = self.next_region_var(infer::Autoref(self.span));
-            let autoref = AutoPtr(region, mutbl);
-            (Some(autoref),
-             pick.unsize.map(|target| target.adjust_for_autoref(self.tcx, Some(autoref))))
+            Some(AutoBorrow::Ref(region, mutbl))
         } else {
             // No unsizing should be performed without autoref (at
             // least during method dispach). This is because we
             // currently only unsize `[T;N]` to `[T]`, and naturally
             // that must occur being a reference.
             assert!(pick.unsize.is_none());
-            (None, None)
+            None
         };
+
 
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various tables.
@@ -163,19 +162,20 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         autoderef.unambiguous_final_ty();
         autoderef.finalize(LvaluePreference::NoPreference, Some(self.self_expr));
 
-        // Write out the final adjustment.
-        self.write_adjustment(self.self_expr.id,
-                              AdjustDerefRef(AutoDerefRef {
-                                  autoderefs: pick.autoderefs,
-                                  autoref: autoref,
-                                  unsize: unsize,
-                              }));
+        let target = pick.unsize.unwrap_or(autoderefd_ty);
+        let target = target.adjust_for_autoref(self.tcx, autoref);
 
-        if let Some(target) = unsize {
-            target
-        } else {
-            autoderefd_ty.adjust_for_autoref(self.tcx, autoref)
-        }
+        // Write out the final adjustment.
+        self.write_adjustment(self.self_expr.id, Adjustment {
+            kind: Adjust::DerefRef {
+                autoderefs: pick.autoderefs,
+                autoref: autoref,
+                unsize: pick.unsize.is_some(),
+            },
+            target: target
+        });
+
+        target
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -463,29 +463,23 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Fix up autoderefs and derefs.
         for (i, &expr) in exprs.iter().rev().enumerate() {
+            debug!("convert_lvalue_derefs_to_mutable: i={} expr={:?}", i, expr);
+
             // Count autoderefs.
-            let autoderef_count = match self.tables
-                .borrow()
-                .adjustments
-                .get(&expr.id) {
-                Some(&AdjustDerefRef(ref adj)) => adj.autoderefs,
-                Some(_) | None => 0,
-            };
-
-            debug!("convert_lvalue_derefs_to_mutable: i={} expr={:?} \
-                                                      autoderef_count={}",
-                   i,
-                   expr,
-                   autoderef_count);
-
-            if autoderef_count > 0 {
-                let mut autoderef = self.autoderef(expr.span, self.node_ty(expr.id));
-                autoderef.nth(autoderef_count).unwrap_or_else(|| {
-                    span_bug!(expr.span,
-                              "expr was deref-able {} times but now isn't?",
-                              autoderef_count);
-                });
-                autoderef.finalize(PreferMutLvalue, Some(expr));
+            let adjustment = self.tables.borrow().adjustments.get(&expr.id).cloned();
+            match adjustment {
+                Some(Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) => {
+                    if autoderefs > 0 {
+                        let mut autoderef = self.autoderef(expr.span, self.node_ty(expr.id));
+                        autoderef.nth(autoderefs).unwrap_or_else(|| {
+                            span_bug!(expr.span,
+                                      "expr was deref-able {} times but now isn't?",
+                                      autoderefs);
+                        });
+                        autoderef.finalize(PreferMutLvalue, Some(expr));
+                    }
+                }
+                Some(_) | None => {}
             }
 
             // Don't retry the first one or we might infinite loop!
@@ -503,45 +497,55 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     // ought to recode this routine so it doesn't
                     // (ab)use the normal type checking paths.
                     let adj = self.tables.borrow().adjustments.get(&base_expr.id).cloned();
-                    let (autoderefs, unsize) = match adj {
-                        Some(AdjustDerefRef(adr)) => {
-                            match adr.autoref {
+                    let (autoderefs, unsize, adjusted_base_ty) = match adj {
+                        Some(Adjustment {
+                            kind: Adjust::DerefRef { autoderefs, autoref, unsize },
+                            target
+                        }) => {
+                            match autoref {
                                 None => {
-                                    assert!(adr.unsize.is_none());
-                                    (adr.autoderefs, None)
+                                    assert!(!unsize);
                                 }
-                                Some(AutoPtr(..)) => {
-                                    (adr.autoderefs,
-                                     adr.unsize.map(|target| {
-                                         target.builtin_deref(false, NoPreference)
-                                             .expect("fixup: AutoPtr is not &T")
-                                             .ty
-                                     }))
-                                }
+                                Some(AutoBorrow::Ref(..)) => {}
                                 Some(_) => {
                                     span_bug!(base_expr.span,
                                               "unexpected adjustment autoref {:?}",
-                                              adr);
+                                              adj);
                                 }
                             }
+
+                            (autoderefs, unsize, if unsize {
+                                target.builtin_deref(false, NoPreference)
+                                      .expect("fixup: AutoBorrow::Ref is not &T")
+                                      .ty
+                            } else {
+                                let ty = self.node_ty(base_expr.id);
+                                let mut ty = self.shallow_resolve(ty);
+                                let mut method_type = |method_call: ty::MethodCall| {
+                                    self.tables.borrow().method_map.get(&method_call).map(|m| {
+                                        self.resolve_type_vars_if_possible(&m.ty)
+                                    })
+                                };
+
+                                if !ty.references_error() {
+                                    for i in 0..autoderefs {
+                                        ty = ty.adjust_for_autoderef(self.tcx,
+                                                                     base_expr.id,
+                                                                     base_expr.span,
+                                                                     i as u32,
+                                                                     &mut method_type);
+                                    }
+                                }
+
+                                ty
+                            })
                         }
-                        None => (0, None),
+                        None => (0, false, self.node_ty(base_expr.id)),
                         Some(_) => {
                             span_bug!(base_expr.span, "unexpected adjustment type");
                         }
                     };
 
-                    let (adjusted_base_ty, unsize) = if let Some(target) = unsize {
-                        (target, true)
-                    } else {
-                        (self.adjust_expr_ty(base_expr,
-                                             Some(&AdjustDerefRef(AutoDerefRef {
-                                                 autoderefs: autoderefs,
-                                                 autoref: None,
-                                                 unsize: None,
-                                             }))),
-                         false)
-                    };
                     let index_expr_ty = self.node_ty(index_expr.id);
 
                     let result = self.try_index_step(ty::MethodCall::expr(expr.id),

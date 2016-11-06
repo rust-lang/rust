@@ -250,7 +250,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
 
     MacEager::expr(P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
-        node: ast::ExprKind::InlineAsm(ast::InlineAsm {
+        node: ast::ExprKind::InlineAsm(P(ast::InlineAsm {
             asm: token::intern_and_get_ident(&asm),
             asm_str_style: asm_str_style.unwrap(),
             outputs: outputs,
@@ -260,7 +260,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
             alignstack: alignstack,
             dialect: dialect,
             expn_id: expn_id,
-        }),
+        })),
         span: sp,
         attrs: ast::ThinVec::new(),
     }))

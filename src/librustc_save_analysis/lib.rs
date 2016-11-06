@@ -286,7 +286,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                           scope: NodeId) -> Option<VariableData> {
         if let Some(ident) = field.ident {
             let qualname = format!("::{}::{}", self.tcx.node_path_str(scope), ident);
-            let typ = self.tcx.node_types().get(&field.id).unwrap().to_string();
+            let typ = self.tcx.tables().node_types.get(&field.id).unwrap().to_string();
             let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
             filter!(self.span_utils, sub_span, field.span, None);
             Some(VariableData {
@@ -418,7 +418,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
         let hir_node = self.tcx.map.expect_expr(expr.id);
-        let ty = self.tcx.expr_ty_adjusted_opt(&hir_node);
+        let ty = self.tcx.tables().expr_ty_adjusted_opt(&hir_node);
         if ty.is_none() || ty.unwrap().sty == ty::TyError {
             return None;
         }
@@ -432,7 +432,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         return None;
                     }
                 };
-                match self.tcx.expr_ty_adjusted(&hir_node).sty {
+                match self.tcx.tables().expr_ty_adjusted(&hir_node).sty {
                     ty::TyAdt(def, _) if !def.is_enum() => {
                         let f = def.struct_variant().field_named(ident.node.name);
                         let sub_span = self.span_utils.span_for_last_ident(expr.span);
@@ -451,7 +451,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprKind::Struct(ref path, ..) => {
-                match self.tcx.expr_ty_adjusted(&hir_node).sty {
+                match self.tcx.tables().expr_ty_adjusted(&hir_node).sty {
                     ty::TyAdt(def, _) if !def.is_enum() => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
                         filter!(self.span_utils, sub_span, path.span, None);
@@ -472,7 +472,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             ast::ExprKind::MethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
-                let method_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
+                let method_id = self.tcx.tables().method_map[&method_call].def_id;
                 let (def_id, decl_id) = match self.tcx.impl_or_trait_item(method_id).container() {
                     ty::ImplContainer(_) => (Some(method_id), None),
                     ty::TraitContainer(_) => (None, Some(method_id)),

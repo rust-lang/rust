@@ -27,7 +27,7 @@ use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::Substs;
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
-use rustc::util::nodemap::NodeMap;
+use rustc::util::nodemap::DefIdMap;
 use rustc::lint;
 
 use graphviz::IntoCow;
@@ -246,7 +246,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    pat_id: ast::NodeId,
                                    span: Span)
                                    -> Result<P<hir::Pat>, DefId> {
-    let pat_ty = tcx.expr_ty(expr);
+    let pat_ty = tcx.tables().expr_ty(expr);
     debug!("expr={:?} pat_ty={:?} pat_id={}", expr, pat_ty, pat_id);
     match pat_ty.sty {
         ty::TyFloat(_) => {
@@ -314,7 +314,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           },
                       }))
                       .collect::<Result<_, _>>()?;
-            PatKind::Struct(path.clone(), field_pats, false)
+            PatKind::Struct((**path).clone(), field_pats, false)
         }
 
         hir::ExprArray(ref exprs) => {
@@ -329,7 +329,8 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Def::StructCtor(_, CtorKind::Const) |
                 Def::VariantCtor(_, CtorKind::Const) => PatKind::Path(None, path.clone()),
                 Def::Const(def_id) | Def::AssociatedConst(def_id) => {
-                    let substs = Some(tcx.node_id_item_substs(expr.id).substs);
+                    let substs = Some(tcx.tables().node_id_item_substs(expr.id)
+                        .unwrap_or_else(|| tcx.intern_substs(&[])));
                     let (expr, _ty) = lookup_const_by_id(tcx, def_id, substs).unwrap();
                     return const_expr_to_pat(tcx, expr, pat_id, span);
                 },
@@ -413,7 +414,7 @@ pub fn eval_const_expr_checked<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     eval_const_expr_partial(tcx, e, ExprTypeChecked, None)
 }
 
-pub type FnArgMap<'a> = Option<&'a NodeMap<ConstVal>>;
+pub type FnArgMap<'a> = Option<&'a DefIdMap<ConstVal>>;
 
 #[derive(Clone, Debug)]
 pub struct ConstEvalErr {
@@ -606,7 +607,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ety = match ty_hint {
         ExprTypeChecked => {
             // After type-checking, expr_ty is guaranteed to succeed.
-            Some(tcx.expr_ty(e))
+            Some(tcx.tables().expr_ty(e))
         }
         UncheckedExprHint(ty) => {
             // Use the type hint; it's not guaranteed to be right, but it's
@@ -617,7 +618,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // This expression might not be type-checked, and we have no hint.
             // Try to query the context for a type anyway; we might get lucky
             // (for example, if the expression was imported from another crate).
-            tcx.expr_ty_opt(e)
+            tcx.tables().expr_ty_opt(e)
         }
     };
     let result = match e.node {
@@ -759,7 +760,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let base_hint = if let ExprTypeChecked = ty_hint {
             ExprTypeChecked
         } else {
-            match tcx.expr_ty_opt(&base) {
+            match tcx.tables().expr_ty_opt(&base) {
                 Some(t) => UncheckedExprHint(t),
                 None => ty_hint
             }
@@ -798,7 +799,8 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
                   let substs = if let ExprTypeChecked = ty_hint {
-                      Some(tcx.node_id_item_substs(e.id).substs)
+                      Some(tcx.tables().node_id_item_substs(e.id)
+                        .unwrap_or_else(|| tcx.intern_substs(&[])))
                   } else {
                       None
                   };
@@ -835,9 +837,8 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   ConstVal::Struct(e.id)
               }
               Def::Local(def_id) => {
-                  let id = tcx.map.as_local_node_id(def_id).unwrap();
-                  debug!("Def::Local({:?}): {:?}", id, fn_args);
-                  if let Some(val) = fn_args.and_then(|args| args.get(&id)) {
+                  debug!("Def::Local({:?}): {:?}", def_id, fn_args);
+                  if let Some(val) = fn_args.and_then(|args| args.get(&def_id)) {
                       val.clone()
                   } else {
                       signal!(e, NonConstPath);
@@ -863,7 +864,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           let result = result.as_ref().expect("const fn has no result expression");
           assert_eq!(decl.inputs.len(), args.len());
 
-          let mut call_args = NodeMap();
+          let mut call_args = DefIdMap();
           for (arg, arg_expr) in decl.inputs.iter().zip(args.iter()) {
               let arg_hint = ty_hint.erase_hint();
               let arg_val = eval_const_expr_partial(
@@ -873,7 +874,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   fn_args
               )?;
               debug!("const call arg: {:?}", arg);
-              let old = call_args.insert(arg.pat.id, arg_val);
+              let old = call_args.insert(tcx.expect_def(arg.pat.id).def_id(), arg_val);
               assert!(old.is_none());
           }
           debug!("const call({:?})", call_args);

@@ -134,8 +134,10 @@ impl TokenTree {
                     AttrStyle::Inner => 3,
                 }
             }
+            TokenTree::Token(_, token::Interpolated(ref nt)) => {
+                if let Nonterminal::NtTT(..) = **nt { 1 } else { 0 }
+            },
             TokenTree::Token(_, token::MatchNt(..)) => 3,
-            TokenTree::Token(_, token::Interpolated(Nonterminal::NtTT(..))) => 1,
             TokenTree::Delimited(_, ref delimed) => delimed.tts.len() + 2,
             TokenTree::Sequence(_, ref seq) => seq.tts.len(),
             TokenTree::Token(..) => 0,
@@ -193,9 +195,6 @@ impl TokenTree {
                          TokenTree::Token(sp, token::Ident(kind))];
                 v[index].clone()
             }
-            (&TokenTree::Token(_, token::Interpolated(Nonterminal::NtTT(ref tt))), _) => {
-                tt.clone().unwrap()
-            }
             (&TokenTree::Sequence(_, ref seq), _) => seq.tts[index].clone(),
             _ => panic!("Cannot expand a token tree"),
         }
@@ -215,11 +214,9 @@ impl TokenTree {
                  mtch: &[TokenTree],
                  tts: &[TokenTree])
                  -> macro_parser::NamedParseResult {
+        let diag = &cx.parse_sess().span_diagnostic;
         // `None` is because we're not interpolating
-        let arg_rdr = lexer::new_tt_reader_with_doc_flag(&cx.parse_sess().span_diagnostic,
-                                                         None,
-                                                         tts.iter().cloned().collect(),
-                                                         true);
+        let arg_rdr = lexer::new_tt_reader(diag, None, tts.iter().cloned().collect());
         macro_parser::parse(cx.parse_sess(), arg_rdr, mtch)
     }
 

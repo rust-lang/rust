@@ -319,7 +319,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         let mut outer = self.qualif;
         self.qualif = ConstQualif::empty();
 
-        let node_ty = self.tcx.node_id_to_type(ex.id);
+        let node_ty = self.tcx.tables().node_id_to_type(ex.id);
         check_expr(self, ex, node_ty);
         check_adjustments(self, ex);
 
@@ -449,14 +449,14 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
     match e.node {
         hir::ExprUnary(..) |
         hir::ExprBinary(..) |
-        hir::ExprIndex(..) if v.tcx.tables.borrow().method_map.contains_key(&method_call) => {
+        hir::ExprIndex(..) if v.tcx.tables().method_map.contains_key(&method_call) => {
             v.add_qualif(ConstQualif::NOT_CONST);
         }
         hir::ExprBox(_) => {
             v.add_qualif(ConstQualif::NOT_CONST);
         }
         hir::ExprUnary(op, ref inner) => {
-            match v.tcx.node_id_to_type(inner.id).sty {
+            match v.tcx.tables().node_id_to_type(inner.id).sty {
                 ty::TyRawPtr(_) => {
                     assert!(op == hir::UnDeref);
 
@@ -466,7 +466,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprBinary(op, ref lhs, _) => {
-            match v.tcx.node_id_to_type(lhs.id).sty {
+            match v.tcx.tables().node_id_to_type(lhs.id).sty {
                 ty::TyRawPtr(_) => {
                     assert!(op.node == hir::BiEq || op.node == hir::BiNe ||
                             op.node == hir::BiLe || op.node == hir::BiLt ||
@@ -503,7 +503,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                     }
                 }
                 Def::Const(did) | Def::AssociatedConst(did) => {
-                    let substs = Some(v.tcx.node_id_item_substs(e.id).substs);
+                    let substs = Some(v.tcx.tables().node_id_item_substs(e.id)
+                        .unwrap_or_else(|| v.tcx.intern_substs(&[])));
                     if let Some((expr, _)) = lookup_const_by_id(v.tcx, did, substs) {
                         let inner = v.global_expr(Mode::Const, expr);
                         v.add_qualif(inner);
@@ -555,7 +556,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprMethodCall(..) => {
-            let method = v.tcx.tables.borrow().method_map[&method_call];
+            let method = v.tcx.tables().method_map[&method_call];
             let is_const = match v.tcx.impl_or_trait_item(method.def_id).container() {
                 ty::ImplContainer(_) => v.handle_const_fn_call(e, method.def_id, node_ty),
                 ty::TraitContainer(_) => false
@@ -565,7 +566,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprStruct(..) => {
-            if let ty::TyAdt(adt, ..) = v.tcx.expr_ty(e).sty {
+            if let ty::TyAdt(adt, ..) = v.tcx.tables().expr_ty(e).sty {
                 // unsafe_cell_type doesn't necessarily exist with no_core
                 if Some(adt.did) == v.tcx.lang_items.unsafe_cell_type() {
                     v.add_qualif(ConstQualif::MUTABLE_MEM);
@@ -624,16 +625,18 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
 
 /// Check the adjustments of an expression
 fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr) {
-    match v.tcx.tables.borrow().adjustments.get(&e.id) {
-        None |
-        Some(&ty::adjustment::AdjustNeverToAny(..)) |
-        Some(&ty::adjustment::AdjustReifyFnPointer) |
-        Some(&ty::adjustment::AdjustUnsafeFnPointer) |
-        Some(&ty::adjustment::AdjustMutToConstPointer) => {}
+    use rustc::ty::adjustment::*;
 
-        Some(&ty::adjustment::AdjustDerefRef(ty::adjustment::AutoDerefRef { autoderefs, .. })) => {
+    match v.tcx.tables().adjustments.get(&e.id).map(|adj| adj.kind) {
+        None |
+        Some(Adjust::NeverToAny) |
+        Some(Adjust::ReifyFnPointer) |
+        Some(Adjust::UnsafeFnPointer) |
+        Some(Adjust::MutToConstPointer) => {}
+
+        Some(Adjust::DerefRef { autoderefs, .. }) => {
             if (0..autoderefs as u32)
-                .any(|autoderef| v.tcx.is_overloaded_autoderef(e.id, autoderef)) {
+                .any(|autoderef| v.tcx.tables().is_overloaded_autoderef(e.id, autoderef)) {
                 v.add_qualif(ConstQualif::NOT_CONST);
             }
         }

@@ -17,47 +17,46 @@ else
 BOOTSTRAP_ARGS :=
 endif
 
-BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py $(BOOTSTRAP_ARGS)
+BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py
 
 all:
-	$(Q)$(BOOTSTRAP)
+	$(Q)$(BOOTSTRAP) build $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc $(BOOTSTRAP_ARGS)
 
 # Don’t use $(Q) here, always show how to invoke the bootstrap script directly
 help:
 	$(BOOTSTRAP) --help
 
 clean:
-	$(Q)$(BOOTSTRAP) --clean
+	$(Q)$(BOOTSTRAP) clean $(BOOTSTRAP_ARGS)
 
 rustc-stage1:
-	$(Q)$(BOOTSTRAP) --step libtest --stage 1
+	$(Q)$(BOOTSTRAP) build --stage 1 src/libtest $(BOOTSTRAP_ARGS)
 rustc-stage2:
-	$(Q)$(BOOTSTRAP) --step libtest --stage 2
+	$(Q)$(BOOTSTRAP) build --stage 2 src/libtest $(BOOTSTRAP_ARGS)
 
 docs: doc
 doc:
-	$(Q)$(BOOTSTRAP) --step doc
-style:
-	$(Q)$(BOOTSTRAP) --step doc-style
+	$(Q)$(BOOTSTRAP) doc $(BOOTSTRAP_ARGS)
 nomicon:
-	$(Q)$(BOOTSTRAP) --step doc-nomicon
+	$(Q)$(BOOTSTRAP) doc src/doc/nomicon $(BOOTSTRAP_ARGS)
 book:
-	$(Q)$(BOOTSTRAP) --step doc-book
+	$(Q)$(BOOTSTRAP) doc src/doc/book $(BOOTSTRAP_ARGS)
 standalone-docs:
-	$(Q)$(BOOTSTRAP) --step doc-standalone
+	$(Q)$(BOOTSTRAP) doc src/doc $(BOOTSTRAP_ARGS)
 check:
-	$(Q)$(BOOTSTRAP) --step check
+	$(Q)$(BOOTSTRAP) test $(BOOTSTRAP_ARGS)
 check-cargotest:
-	$(Q)$(BOOTSTRAP) --step check-cargotest
+	$(Q)$(BOOTSTRAP) test src/tools/cargotest $(BOOTSTRAP_ARGS)
 dist:
-	$(Q)$(BOOTSTRAP) --step dist
+	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 install:
 ifeq (root user, $(USER) $(patsubst %,user,$(SUDO_USER)))
 	$(Q)echo "'sudo make install' is not supported currently."
 else
-	$(Q)$(BOOTSTRAP) --step install
+	$(Q)$(BOOTSTRAP) dist --install $(BOOTSTRAP_ARGS)
 endif
 tidy:
-	$(Q)$(BOOTSTRAP) --step check-tidy --stage 0
+	$(Q)$(BOOTSTRAP) test src/tools/tidy $(BOOTSTRAP_ARGS)
 
 .PHONY: dist

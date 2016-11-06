@@ -555,11 +555,11 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
         hir::ExprMethodCall(i, ..) => {
             span = i.span;
             let method_call = ty::MethodCall::expr(e.id);
-            tcx.tables.borrow().method_map[&method_call].def_id
+            tcx.tables().method_map[&method_call].def_id
         }
         hir::ExprField(ref base_e, ref field) => {
             span = field.span;
-            match tcx.expr_ty_adjusted(base_e).sty {
+            match tcx.tables().expr_ty_adjusted(base_e).sty {
                 ty::TyAdt(def, _) => {
                     def.struct_variant().field_named(field.node).did
                 }
@@ -569,7 +569,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
         }
         hir::ExprTupField(ref base_e, ref field) => {
             span = field.span;
-            match tcx.expr_ty_adjusted(base_e).sty {
+            match tcx.tables().expr_ty_adjusted(base_e).sty {
                 ty::TyAdt(def, _) => {
                     def.struct_variant().fields[field.node].did
                 }
@@ -580,7 +580,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
             }
         }
         hir::ExprStruct(_, ref expr_fields, _) => {
-            match tcx.expr_ty(e).sty {
+            match tcx.tables().expr_ty(e).sty {
                 ty::TyAdt(adt, ..) => match adt.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
                         // check the stability of each field that appears
@@ -637,7 +637,7 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
-    let v = match tcx.pat_ty_opt(pat).map(|ty| &ty.sty) {
+    let v = match tcx.tables().pat_ty_opt(pat).map(|ty| &ty.sty) {
         Some(&ty::TyAdt(adt, _)) if !adt.is_enum() => adt.struct_variant(),
         _ => return,
     };

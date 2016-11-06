@@ -201,7 +201,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
-            let pat_ty = self.tcx.node_id_to_type(scrut.id);
+            let pat_ty = self.tcx.tables().node_id_to_type(scrut.id);
             if inlined_arms.is_empty() {
                 if !pat_ty.is_uninhabited(self.tcx) {
                     // We know the type is inhabited, so this must be wrong
@@ -262,7 +262,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
         if let PatKind::Binding(hir::BindByValue(hir::MutImmutable), name, None) = p.node {
-            let pat_ty = cx.tcx.pat_ty(p);
+            let pat_ty = cx.tcx.tables().pat_ty(p);
             if let ty::TyAdt(edef, _) = pat_ty.sty {
                 if edef.is_enum() {
                     if let Def::Local(..) = cx.tcx.expect_def(p.id) {
@@ -486,7 +486,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
     for pat in pats {
         pat.walk(|p| {
             if let PatKind::Binding(hir::BindByValue(..), _, ref sub) = p.node {
-                let pat_ty = cx.tcx.node_id_to_type(p.id);
+                let pat_ty = cx.tcx.tables().node_id_to_type(p.id);
                 if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
                     check_move(p, sub.as_ref().map(|p| &**p));
                 }

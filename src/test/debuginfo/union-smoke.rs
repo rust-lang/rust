@@ -16,9 +16,11 @@
 
 // gdb-command:run
 // gdb-command:print u
-// gdb-check:$1 = {a = {__0 = 2 '\002', __1 = 2 '\002'}, b = 514}
+// gdbg-check:$1 = {a = {__0 = 2 '\002', __1 = 2 '\002'}, b = 514}
+// gdbr-check:$1 = union_smoke::U {a: (2, 2), b: 514}
 // gdb-command:print union_smoke::SU
-// gdb-check:$2 = {a = {__0 = 1 '\001', __1 = 1 '\001'}, b = 257}
+// gdbg-check:$2 = {a = {__0 = 1 '\001', __1 = 1 '\001'}, b = 257}
+// gdbr-check:$2 = union_smoke::U {a: (1, 1), b: 257}
 
 // === LLDB TESTS ==================================================================================
 

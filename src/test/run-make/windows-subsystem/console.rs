@@ -8,14 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(proc_macro)]
-
-extern crate proc_macro;
-
-#[proc_macro_derive(Foo)]
-//~^ ERROR: only usable with crates of the `proc-macro` crate type
-pub fn foo(a: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    a
-}
+#![feature(windows_subsystem)]
+#![windows_subsystem = "console"]
 
 fn main() {}
+

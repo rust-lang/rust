@@ -57,6 +57,7 @@ mod channel;
 mod check;
 mod clean;
 mod compile;
+mod metadata;
 mod config;
 mod dist;
 mod doc;
@@ -76,7 +77,7 @@ mod job {
 }
 
 pub use config::Config;
-pub use flags::Flags;
+pub use flags::{Flags, Subcommand};
 
 /// A structure representing a Rust compiler.
 ///
@@ -123,13 +124,23 @@ pub struct Build {
     bootstrap_key_stage0: String,
 
     // Probed tools at runtime
-    gdb_version: Option<String>,
     lldb_version: Option<String>,
     lldb_python_dir: Option<String>,
 
     // Runtime state filled in later on
     cc: HashMap<String, (gcc::Tool, Option<PathBuf>)>,
     cxx: HashMap<String, gcc::Tool>,
+    crates: HashMap<String, Crate>,
+}
+
+#[derive(Debug)]
+struct Crate {
+    name: String,
+    deps: Vec<String>,
+    path: PathBuf,
+    doc_step: String,
+    build_step: String,
+    test_step: String,
 }
 
 /// The various "modes" of invoking Cargo.
@@ -162,7 +173,9 @@ impl Build {
     /// By default all build output will be placed in the current directory.
     pub fn new(flags: Flags, config: Config) -> Build {
         let cwd = t!(env::current_dir());
-        let src = flags.src.clone().unwrap_or(cwd.clone());
+        let src = flags.src.clone().or_else(|| {
+            env::var_os("SRC").map(|x| x.into())
+        }).unwrap_or(cwd.clone());
         let out = cwd.join("build");
 
         let stage0_root = out.join(&config.build).join("stage0/bin");
@@ -196,7 +209,7 @@ impl Build {
             package_vers: String::new(),
             cc: HashMap::new(),
             cxx: HashMap::new(),
-            gdb_version: None,
+            crates: HashMap::new(),
             lldb_version: None,
             lldb_python_dir: None,
         }
@@ -204,13 +217,11 @@ impl Build {
 
     /// Executes the entire build, as configured by the flags and configuration.
     pub fn build(&mut self) {
-        use step::Source::*;
-
         unsafe {
             job::setup();
         }
 
-        if self.flags.clean {
+        if let Subcommand::Clean = self.flags.cmd {
             return clean::clean(self);
         }
 
@@ -232,247 +243,10 @@ impl Build {
         }
         self.verbose("updating submodules");
         self.update_submodules();
+        self.verbose("learning about cargo");
+        metadata::build(self);
 
-        // The main loop of the build system.
-        //
-        // The `step::all` function returns a topographically sorted list of all
-        // steps that need to be executed as part of this build. Each step has a
-        // corresponding entry in `step.rs` and indicates some unit of work that
-        // needs to be done as part of the build.
-        //
-        // Almost all of these are simple one-liners that shell out to the
-        // corresponding functionality in the extra modules, where more
-        // documentation can be found.
-        let steps = step::all(self);
-
-        self.verbose("bootstrap build plan:");
-        for step in &steps {
-            self.verbose(&format!("{:?}", step));
-        }
-
-        for target in steps {
-            let doc_out = self.out.join(&target.target).join("doc");
-            match target.src {
-                Llvm { _dummy } => {
-                    native::llvm(self, target.target);
-                }
-                TestHelpers { _dummy } => {
-                    native::test_helpers(self, target.target);
-                }
-                Libstd { compiler } => {
-                    compile::std(self, target.target, &compiler);
-                }
-                Libtest { compiler } => {
-                    compile::test(self, target.target, &compiler);
-                }
-                Librustc { compiler } => {
-                    compile::rustc(self, target.target, &compiler);
-                }
-                LibstdLink { compiler, host } => {
-                    compile::std_link(self, target.target, &compiler, host);
-                }
-                LibtestLink { compiler, host } => {
-                    compile::test_link(self, target.target, &compiler, host);
-                }
-                LibrustcLink { compiler, host } => {
-                    compile::rustc_link(self, target.target, &compiler, host);
-                }
-                Rustc { stage: 0 } => {
-                    // nothing to do...
-                }
-                Rustc { stage } => {
-                    compile::assemble_rustc(self, stage, target.target);
-                }
-                ToolLinkchecker { stage } => {
-                    compile::tool(self, stage, target.target, "linkchecker");
-                }
-                ToolRustbook { stage } => {
-                    compile::tool(self, stage, target.target, "rustbook");
-                }
-                ToolErrorIndex { stage } => {
-                    compile::tool(self, stage, target.target,
-                                  "error_index_generator");
-                }
-                ToolCargoTest { stage } => {
-                    compile::tool(self, stage, target.target, "cargotest");
-                }
-                ToolTidy { stage } => {
-                    compile::tool(self, stage, target.target, "tidy");
-                }
-                ToolCompiletest { stage } => {
-                    compile::tool(self, stage, target.target, "compiletest");
-                }
-                DocBook { stage } => {
-                    doc::rustbook(self, stage, target.target, "book", &doc_out);
-                }
-                DocNomicon { stage } => {
-                    doc::rustbook(self, stage, target.target, "nomicon",
-                                  &doc_out);
-                }
-                DocStandalone { stage } => {
-                    doc::standalone(self, stage, target.target, &doc_out);
-                }
-                DocStd { stage } => {
-                    doc::std(self, stage, target.target, &doc_out);
-                }
-                DocTest { stage } => {
-                    doc::test(self, stage, target.target, &doc_out);
-                }
-                DocRustc { stage } => {
-                    doc::rustc(self, stage, target.target, &doc_out);
-                }
-                DocErrorIndex { stage } => {
-                    doc::error_index(self, stage, target.target, &doc_out);
-                }
-
-                CheckLinkcheck { stage } => {
-                    check::linkcheck(self, stage, target.target);
-                }
-                CheckCargoTest { stage } => {
-                    check::cargotest(self, stage, target.target);
-                }
-                CheckTidy { stage } => {
-                    check::tidy(self, stage, target.target);
-                }
-                CheckRPass { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-pass", "run-pass");
-                }
-                CheckRPassFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-pass", "run-pass-fulldeps");
-                }
-                CheckCFail { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "compile-fail", "compile-fail");
-                }
-                CheckCFailFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "compile-fail", "compile-fail-fulldeps")
-                }
-                CheckPFail { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "parse-fail", "parse-fail");
-                }
-                CheckRFail { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-fail", "run-fail");
-                }
-                CheckRFailFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-fail", "run-fail-fulldeps");
-                }
-                CheckPretty { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "pretty");
-                }
-                CheckPrettyRPass { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "run-pass");
-                }
-                CheckPrettyRPassFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "run-pass-fulldeps");
-                }
-                CheckPrettyRFail { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "run-fail");
-                }
-                CheckPrettyRFailFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "run-fail-fulldeps");
-                }
-                CheckPrettyRPassValgrind { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "pretty", "run-pass-valgrind");
-                }
-                CheckMirOpt { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "mir-opt", "mir-opt");
-                }
-                CheckCodegen { compiler } => {
-                    if self.config.codegen_tests {
-                        check::compiletest(self, &compiler, target.target,
-                                           "codegen", "codegen");
-                    }
-                }
-                CheckCodegenUnits { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "codegen-units", "codegen-units");
-                }
-                CheckIncremental { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "incremental", "incremental");
-                }
-                CheckUi { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "ui", "ui");
-                }
-                CheckDebuginfo { compiler } => {
-                    if target.target.contains("msvc") {
-                        // nothing to do
-                    } else if target.target.contains("apple") {
-                        check::compiletest(self, &compiler, target.target,
-                                           "debuginfo-lldb", "debuginfo");
-                    } else {
-                        check::compiletest(self, &compiler, target.target,
-                                           "debuginfo-gdb", "debuginfo");
-                    }
-                }
-                CheckRustdoc { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "rustdoc", "rustdoc");
-                }
-                CheckRPassValgrind { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-pass-valgrind", "run-pass-valgrind");
-                }
-                CheckDocs { compiler } => {
-                    check::docs(self, &compiler);
-                }
-                CheckErrorIndex { compiler } => {
-                    check::error_index(self, &compiler);
-                }
-                CheckRMake { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-make", "run-make")
-                }
-                CheckCrateStd { compiler } => {
-                    check::krate(self, &compiler, target.target, Mode::Libstd)
-                }
-                CheckCrateTest { compiler } => {
-                    check::krate(self, &compiler, target.target, Mode::Libtest)
-                }
-                CheckCrateRustc { compiler } => {
-                    check::krate(self, &compiler, target.target, Mode::Librustc)
-                }
-
-                DistDocs { stage } => dist::docs(self, stage, target.target),
-                DistMingw { _dummy } => dist::mingw(self, target.target),
-                DistRustc { stage } => dist::rustc(self, stage, target.target),
-                DistStd { compiler } => dist::std(self, &compiler, target.target),
-                DistSrc { _dummy } => dist::rust_src(self),
-
-                Install { stage } => install::install(self, stage, target.target),
-
-                DebuggerScripts { stage } => {
-                    let compiler = Compiler::new(stage, target.target);
-                    dist::debugger_scripts(self,
-                                           &self.sysroot(&compiler),
-                                           target.target);
-                }
-
-                AndroidCopyLibs { compiler } => {
-                    check::android_copy_libs(self, &compiler, target.target);
-                }
-
-                // pseudo-steps
-                Dist { .. } |
-                Doc { .. } |
-                CheckTarget { .. } |
-                Check { .. } => {}
-            }
-        }
+        step::run(self);
     }
 
     /// Updates all git submodules that we have.
@@ -812,6 +586,11 @@ impl Build {
         self.out.join(target).join("llvm")
     }
 
+    /// Output directory for all documentation for a target
+    fn doc_out(&self, target: &str) -> PathBuf {
+        self.out.join(target).join("doc")
+    }
+
     /// Returns true if no custom `llvm-config` is set for the specified target.
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
@@ -873,7 +652,7 @@ impl Build {
 
     /// Adds the compiler's bootstrap key to the environment of `cmd`.
     fn add_bootstrap_key(&self, cmd: &mut Command) {
-        cmd.env("RUSTC_BOOTSTRAP", "");
+        cmd.env("RUSTC_BOOTSTRAP", "1");
         // FIXME: Transitionary measure to bootstrap using the old bootstrap logic.
         // Remove this once the bootstrap compiler uses the new login in Issue #36548.
         cmd.env("RUSTC_BOOTSTRAP_KEY", "62b3e239");

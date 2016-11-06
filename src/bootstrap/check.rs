@@ -13,43 +13,18 @@
 //! This file implements the various regression test suites that we execute on
 //! our CI.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 
 use build_helper::output;
-use rustc_serialize::json;
 
 use {Build, Compiler, Mode};
 use util::{self, dylib_path, dylib_path_var};
 
 const ADB_TEST_DIR: &'static str = "/data/tmp";
-
-#[derive(RustcDecodable)]
-struct Output {
-    packages: Vec<Package>,
-    resolve: Resolve,
-}
-
-#[derive(RustcDecodable)]
-struct Package {
-    id: String,
-    name: String,
-    source: Option<String>,
-}
-
-#[derive(RustcDecodable)]
-struct Resolve {
-    nodes: Vec<ResolveNode>,
-}
-
-#[derive(RustcDecodable)]
-struct ResolveNode {
-    id: String,
-    dependencies: Vec<String>,
-}
 
 /// Runs the `linkchecker` tool as compiled in `stage` by the `host` compiler.
 ///
@@ -168,8 +143,8 @@ pub fn compiletest(build: &Build,
         cmd.arg("--lldb-python").arg(python_default);
     }
 
-    if let Some(ref vers) = build.gdb_version {
-        cmd.arg("--gdb-version").arg(vers);
+    if let Some(ref gdb) = build.config.gdb {
+        cmd.arg("--gdb").arg(gdb);
     }
     if let Some(ref vers) = build.lldb_version {
         cmd.arg("--lldb-version").arg(vers);
@@ -181,7 +156,7 @@ pub fn compiletest(build: &Build,
     let llvm_version = output(Command::new(&llvm_config).arg("--version"));
     cmd.arg("--llvm-version").arg(llvm_version);
 
-    cmd.args(&build.flags.args);
+    cmd.args(&build.flags.cmd.test_args());
 
     if build.config.verbose || build.flags.verbose {
         cmd.arg("--verbose");
@@ -282,7 +257,7 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
     cmd.arg("--test");
     cmd.arg(markdown);
 
-    let mut test_args = build.flags.args.join(" ");
+    let mut test_args = build.flags.cmd.test_args().join(" ");
     if build.config.quiet_tests {
         test_args.push_str(" --quiet");
     }
@@ -302,7 +277,8 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
 pub fn krate(build: &Build,
              compiler: &Compiler,
              target: &str,
-             mode: Mode) {
+             mode: Mode,
+             krate: Option<&str>) {
     let (name, path, features, root) = match mode {
         Mode::Libstd => {
             ("libstd", "src/rustc/std_shim", build.std_features(), "std_shim")
@@ -318,24 +294,6 @@ pub fn krate(build: &Build,
     println!("Testing {} stage{} ({} -> {})", name, compiler.stage,
              compiler.host, target);
 
-    // Run `cargo metadata` to figure out what crates we're testing.
-    //
-    // Down below we're going to call `cargo test`, but to test the right set
-    // of packages we're going to have to know what `-p` arguments to pass it
-    // to know what crates to test. Here we run `cargo metadata` to learn about
-    // the dependency graph and what `-p` arguments there are.
-    let mut cargo = Command::new(&build.cargo);
-    cargo.arg("metadata")
-         .arg("--manifest-path").arg(build.src.join(path).join("Cargo.toml"));
-    let output = output(&mut cargo);
-    let output: Output = json::decode(&output).unwrap();
-    let id2pkg = output.packages.iter()
-                        .map(|pkg| (&pkg.id, pkg))
-                        .collect::<HashMap<_, _>>();
-    let id2deps = output.resolve.nodes.iter()
-                        .map(|node| (&node.id, &node.dependencies))
-                        .collect::<HashMap<_, _>>();
-
     // Build up the base `cargo test` command.
     //
     // Pass in some standard flags then iterate over the graph we've discovered
@@ -346,24 +304,25 @@ pub fn krate(build: &Build,
          .arg(build.src.join(path).join("Cargo.toml"))
          .arg("--features").arg(features);
 
-    let mut visited = HashSet::new();
-    let root_pkg = output.packages.iter().find(|p| p.name == root).unwrap();
-    let mut next = vec![&root_pkg.id];
-    while let Some(id) = next.pop() {
-        // Skip any packages with sources listed, as these come from crates.io
-        // and we shouldn't be testing them.
-        if id2pkg[id].source.is_some() {
-            continue
+    match krate {
+        Some(krate) => {
+            cargo.arg("-p").arg(krate);
         }
-        // Right now jemalloc is our only target-specific crate in the sense
-        // that it's not present on all platforms. Custom skip it here for now,
-        // but if we add more this probably wants to get more generalized.
-        if !id.contains("jemalloc") {
-            cargo.arg("-p").arg(&id2pkg[id].name);
-        }
-        for dep in id2deps[id] {
-            if visited.insert(dep) {
-                next.push(dep);
+        None => {
+            let mut visited = HashSet::new();
+            let mut next = vec![root];
+            while let Some(name) = next.pop() {
+                // Right now jemalloc is our only target-specific crate in the sense
+                // that it's not present on all platforms. Custom skip it here for now,
+                // but if we add more this probably wants to get more generalized.
+                if !name.contains("jemalloc") {
+                    cargo.arg("-p").arg(name);
+                }
+                for dep in build.crates[name].deps.iter() {
+                    if visited.insert(dep) {
+                        next.push(dep);
+                    }
+                }
             }
         }
     }
@@ -389,7 +348,7 @@ pub fn krate(build: &Build,
         build.run(cargo.arg("--no-run"));
         krate_emscripten(build, compiler, target, mode);
     } else {
-        cargo.args(&build.flags.args);
+        cargo.args(&build.flags.cmd.test_args());
         build.run(&mut cargo);
     }
 }
@@ -421,7 +380,7 @@ fn krate_android(build: &Build,
                               target = target,
                               test = test_file_name,
                               log = log,
-                              args = build.flags.args.join(" "));
+                              args = build.flags.cmd.test_args().join(" "));
 
         let output = output(Command::new("adb").arg("shell").arg(&program));
         println!("{}", output);

@@ -211,7 +211,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     main_id: ast::NodeId,
                     main_span: Span) {
     let tcx = ccx.tcx;
-    let main_t = tcx.node_id_to_type(main_id);
+    let main_t = tcx.tables().node_id_to_type(main_id);
     match main_t.sty {
         ty::TyFnDef(..) => {
             match tcx.map.find(main_id) {
@@ -263,7 +263,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                      start_id: ast::NodeId,
                      start_span: Span) {
     let tcx = ccx.tcx;
-    let start_t = tcx.node_id_to_type(start_id);
+    let start_t = tcx.tables().node_id_to_type(start_id);
     match start_t.sty {
         ty::TyFnDef(..) => {
             match tcx.map.find(start_id) {
