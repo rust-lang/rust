@@ -127,7 +127,7 @@ ones from MSYS if you have it installed). You'll also need Visual Studio 2013 or
 newer with the C++ tools. Then all you need to do is to kick off rustbuild.
 
 ```
-python .\src\bootstrap\bootstrap.py
+python x.py build
 ```
 
 Currently rustbuild only works with some known versions of Visual Studio. If you
@@ -137,7 +137,7 @@ by manually calling the appropriate vcvars file before running the bootstrap.
 
 ```
 CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
-python .\src\bootstrap\bootstrap.py
+python x.py build
 ```
 
 ## Building Documentation

@@ -1081,7 +1081,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprAssignOp(_, ref l, ref r) => {
             // an overloaded assign op is like a method call
-            if self.ir.tcx.is_method_call(expr.id) {
+            if self.ir.tcx.tables().is_method_call(expr.id) {
                 let succ = self.propagate_through_expr(&l, succ);
                 self.propagate_through_expr(&r, succ)
             } else {
@@ -1113,8 +1113,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprCall(ref f, ref args) => {
             // FIXME(canndrew): This is_never should really be an is_uninhabited
-            let diverges = !self.ir.tcx.is_method_call(expr.id) &&
-                self.ir.tcx.expr_ty_adjusted(&f).fn_ret().0.is_never();
+            let diverges = !self.ir.tcx.tables().is_method_call(expr.id) &&
+                self.ir.tcx.tables().expr_ty_adjusted(&f).fn_ret().0.is_never();
             let succ = if diverges {
                 self.s.exit_ln
             } else {
@@ -1126,7 +1126,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprMethodCall(.., ref args) => {
             let method_call = ty::MethodCall::expr(expr.id);
-            let method_ty = self.ir.tcx.tables.borrow().method_map[&method_call].ty;
+            let method_ty = self.ir.tcx.tables().method_map[&method_call].ty;
             // FIXME(canndrew): This is_never should really be an is_uninhabited
             let succ = if method_ty.fn_ret().0.is_never() {
                 self.s.exit_ln
@@ -1409,7 +1409,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       }
 
       hir::ExprAssignOp(_, ref l, _) => {
-        if !this.ir.tcx.is_method_call(expr.id) {
+        if !this.ir.tcx.tables().is_method_call(expr.id) {
             this.check_lvalue(&l);
         }
 
@@ -1459,7 +1459,7 @@ fn check_fn(_v: &Liveness,
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn fn_ret(&self, id: NodeId) -> ty::Binder<Ty<'tcx>> {
-        let fn_ty = self.ir.tcx.node_id_to_type(id);
+        let fn_ty = self.ir.tcx.tables().node_id_to_type(id);
         match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) =>
                 self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
@@ -1502,7 +1502,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     None if !body.stmts.is_empty() =>
                         match body.stmts.last().unwrap().node {
                             hir::StmtSemi(ref e, _) => {
-                                self.ir.tcx.expr_ty(&e) == fn_ret
+                                self.ir.tcx.tables().expr_ty(&e) == fn_ret
                             },
                             _ => false
                         },

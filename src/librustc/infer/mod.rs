@@ -1266,26 +1266,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.region_vars.new_bound(debruijn)
     }
 
-    /// Apply `adjustment` to the type of `expr`
-    pub fn adjust_expr_ty(&self,
-                          expr: &hir::Expr,
-                          adjustment: Option<&adjustment::AutoAdjustment<'tcx>>)
-                          -> Ty<'tcx>
-    {
-        let raw_ty = self.expr_ty(expr);
-        let raw_ty = self.shallow_resolve(raw_ty);
-        let resolve_ty = |ty: Ty<'tcx>| self.resolve_type_vars_if_possible(&ty);
-        raw_ty.adjust(self.tcx,
-                      expr.span,
-                      expr.id,
-                      adjustment,
-                      |method_call| self.tables
-                                        .borrow()
-                                        .method_map
-                                        .get(&method_call)
-                                        .map(|method| resolve_ty(method.ty)))
-    }
-
     /// True if errors have been reported since this infcx was
     /// created.  This is sometimes used as a heuristic to skip
     /// reporting errors that often occur as a result of earlier
@@ -1622,7 +1602,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
-        let ty = self.adjust_expr_ty(expr, self.tables.borrow().adjustments.get(&expr.id));
+        let ty = self.tables.borrow().expr_ty_adjusted(expr);
         self.resolve_type_vars_or_error(&ty)
     }
 
@@ -1666,9 +1646,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .map(|method| method.def_id)
     }
 
-    pub fn adjustments(&self) -> Ref<NodeMap<adjustment::AutoAdjustment<'tcx>>> {
+    pub fn adjustments(&self) -> Ref<NodeMap<adjustment::Adjustment<'tcx>>> {
         fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
-                                        -> &'a NodeMap<adjustment::AutoAdjustment<'tcx>> {
+                                        -> &'a NodeMap<adjustment::Adjustment<'tcx>> {
             &tables.adjustments
         }
 

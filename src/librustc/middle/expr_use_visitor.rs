@@ -720,11 +720,11 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         //NOTE(@jroesch): mixed RefCell borrow causes crash
         let adj = infcx.adjustments().get(&expr.id).map(|x| x.clone());
         if let Some(adjustment) = adj {
-            match adjustment {
-                adjustment::AdjustNeverToAny(..) |
-                adjustment::AdjustReifyFnPointer |
-                adjustment::AdjustUnsafeFnPointer |
-                adjustment::AdjustMutToConstPointer => {
+            match adjustment.kind {
+                adjustment::Adjust::NeverToAny |
+                adjustment::Adjust::ReifyFnPointer |
+                adjustment::Adjust::UnsafeFnPointer |
+                adjustment::Adjust::MutToConstPointer => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
                     debug!("walk_adjustment: trivial adjustment");
@@ -732,8 +732,21 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         return_if_err!(self.mc.cat_expr_unadjusted(expr));
                     self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
                 }
-                adjustment::AdjustDerefRef(ref adj) => {
-                    self.walk_autoderefref(expr, adj);
+                adjustment::Adjust::DerefRef { autoderefs, autoref, unsize } => {
+                    debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
+
+                    self.walk_autoderefs(expr, autoderefs);
+
+                    let cmt_derefd =
+                        return_if_err!(self.mc.cat_expr_autoderefd(expr, autoderefs));
+
+                    let cmt_refd =
+                        self.walk_autoref(expr, cmt_derefd, autoref);
+
+                    if unsize {
+                        // Unsizing consumes the thin pointer and produces a fat one.
+                        self.delegate_consume(expr.id, expr.span, cmt_refd);
+                    }
                 }
             }
         }
@@ -770,28 +783,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn walk_autoderefref(&mut self,
-                         expr: &hir::Expr,
-                         adj: &adjustment::AutoDerefRef<'tcx>) {
-        debug!("walk_autoderefref expr={:?} adj={:?}",
-               expr,
-               adj);
-
-        self.walk_autoderefs(expr, adj.autoderefs);
-
-        let cmt_derefd =
-            return_if_err!(self.mc.cat_expr_autoderefd(expr, adj.autoderefs));
-
-        let cmt_refd =
-            self.walk_autoref(expr, cmt_derefd, adj.autoref);
-
-        if adj.unsize.is_some() {
-            // Unsizing consumes the thin pointer and produces a fat one.
-            self.delegate_consume(expr.id, expr.span, cmt_refd);
-        }
-    }
-
-
     /// Walks the autoref `opt_autoref` applied to the autoderef'd
     /// `expr`. `cmt_derefd` is the mem-categorized form of `expr`
     /// after all relevant autoderefs have occurred. Because AutoRefs
@@ -803,7 +794,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn walk_autoref(&mut self,
                     expr: &hir::Expr,
                     cmt_base: mc::cmt<'tcx>,
-                    opt_autoref: Option<adjustment::AutoRef<'tcx>>)
+                    opt_autoref: Option<adjustment::AutoBorrow<'tcx>>)
                     -> mc::cmt<'tcx>
     {
         debug!("walk_autoref(expr.id={} cmt_derefd={:?} opt_autoref={:?})",
@@ -822,7 +813,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         };
 
         match *autoref {
-            adjustment::AutoPtr(r, m) => {
+            adjustment::AutoBorrow::Ref(r, m) => {
                 self.delegate.borrow(expr.id,
                                      expr.span,
                                      cmt_base,
@@ -831,7 +822,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                      AutoRef);
             }
 
-            adjustment::AutoUnsafe(m) => {
+            adjustment::AutoBorrow::RawPtr(m) => {
                 debug!("walk_autoref: expr.id={} cmt_base={:?}",
                        expr.id,
                        cmt_base);

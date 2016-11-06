@@ -918,6 +918,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "the directory the MIR is dumped into"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
           "print some performance-related statistics"),
+    hir_stats: bool = (false, parse_bool, [UNTRACKED],
+          "print some statistics about AST and HIR"),
 }
 
 pub fn default_lib_output() -> CrateType {

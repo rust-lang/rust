@@ -309,6 +309,12 @@ declare_features! (
 
     // Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
     (active, field_init_shorthand, "1.14.0", Some(37340)),
+
+    // The #![windows_subsystem] attribute
+    (active, windows_subsystem, "1.14.0", Some(37499)),
+
+    // Allows using `Self` and associated types in struct expressions and patterns.
+    (active, more_struct_aliases, "1.14.0", Some(37544)),
 );
 
 declare_features! (
@@ -712,6 +718,12 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                               "reflect",
                                               "defining reflective traits is still evolving",
                                               cfg_fn!(reflect))),
+
+    ("windows_subsystem", Whitelisted, Gated(Stability::Unstable,
+                                             "windows_subsystem",
+                                             "the windows subsystem attribute \
+                                              is currently unstable",
+                                             cfg_fn!(windows_subsystem))),
 
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),

@@ -126,23 +126,28 @@ pub enum ErrorKind {
     InvalidInput,
     /// Data not valid for the operation were encountered.
     ///
-    /// Unlike `InvalidInput`, this typically means that the operation
+    /// Unlike [`InvalidInput`], this typically means that the operation
     /// parameters were valid, however the error was caused by malformed
     /// input data.
     ///
     /// For example, a function that reads a file into a string will error with
     /// `InvalidData` if the file's contents are not valid UTF-8.
+    ///
+    /// [`InvalidInput`]: #variant.InvalidInput
     #[stable(feature = "io_invalid_data", since = "1.2.0")]
     InvalidData,
     /// The I/O operation's timeout expired, causing it to be canceled.
     #[stable(feature = "rust1", since = "1.0.0")]
     TimedOut,
     /// An error returned when an operation could not be completed because a
-    /// call to `write` returned `Ok(0)`.
+    /// call to [`write()`] returned [`Ok(0)`].
     ///
     /// This typically means that an operation could only succeed if it wrote a
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
+    ///
+    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`Ok(0)`]: ../../std/io/type.Result.html
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
     /// This operation was interrupted.

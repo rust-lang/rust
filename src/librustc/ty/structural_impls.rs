@@ -218,15 +218,15 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ItemSubsts<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::AutoRef<'a> {
-    type Lifted = ty::adjustment::AutoRef<'tcx>;
+impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::AutoBorrow<'a> {
+    type Lifted = ty::adjustment::AutoBorrow<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         match *self {
-            ty::adjustment::AutoPtr(r, m) => {
-                tcx.lift(&r).map(|r| ty::adjustment::AutoPtr(r, m))
+            ty::adjustment::AutoBorrow::Ref(r, m) => {
+                tcx.lift(&r).map(|r| ty::adjustment::AutoBorrow::Ref(r, m))
             }
-            ty::adjustment::AutoUnsafe(m) => {
-                Some(ty::adjustment::AutoUnsafe(m))
+            ty::adjustment::AutoBorrow::RawPtr(m) => {
+                Some(ty::adjustment::AutoBorrow::RawPtr(m))
             }
         }
     }
@@ -676,13 +676,13 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ItemSubsts<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::AutoRef<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::AutoBorrow<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            ty::adjustment::AutoPtr(ref r, m) => {
-                ty::adjustment::AutoPtr(r.fold_with(folder), m)
+            ty::adjustment::AutoBorrow::Ref(ref r, m) => {
+                ty::adjustment::AutoBorrow::Ref(r.fold_with(folder), m)
             }
-            ty::adjustment::AutoUnsafe(m) => ty::adjustment::AutoUnsafe(m)
+            ty::adjustment::AutoBorrow::RawPtr(m) => ty::adjustment::AutoBorrow::RawPtr(m)
         }
     }
 
@@ -692,8 +692,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::AutoRef<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            ty::adjustment::AutoPtr(r, _m) => r.visit_with(visitor),
-            ty::adjustment::AutoUnsafe(_m) => false,
+            ty::adjustment::AutoBorrow::Ref(r, _m) => r.visit_with(visitor),
+            ty::adjustment::AutoBorrow::RawPtr(_m) => false,
         }
     }
 }

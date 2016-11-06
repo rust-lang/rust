@@ -372,7 +372,7 @@ CFG_INFO := $(info cfg: disabling unstable features (CFG_DISABLE_UNSTABLE_FEATUR
 # Turn on feature-staging
 export CFG_DISABLE_UNSTABLE_FEATURES
 # Subvert unstable feature lints to do the self-build
-export RUSTC_BOOTSTRAP
+export RUSTC_BOOTSTRAP=1
 endif
 ifdef CFG_MUSL_ROOT
 export CFG_MUSL_ROOT

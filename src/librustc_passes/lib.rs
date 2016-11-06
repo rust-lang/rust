@@ -45,6 +45,7 @@ pub mod diagnostics;
 
 pub mod ast_validation;
 pub mod consts;
+pub mod hir_stats;
 pub mod loops;
 pub mod no_asm;
 pub mod rvalues;

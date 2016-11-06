@@ -23,6 +23,7 @@ use std::process;
 use num_cpus;
 use rustc_serialize::Decodable;
 use toml::{Parser, Decoder, Value};
+use util::push_exe_path;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -86,6 +87,7 @@ pub struct Config {
     pub mandir: Option<String>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
+    pub gdb: Option<PathBuf>,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -123,6 +125,7 @@ struct Build {
     compiler_docs: Option<bool>,
     docs: Option<bool>,
     submodules: Option<bool>,
+    gdb: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -227,6 +230,7 @@ impl Config {
         }
         config.rustc = build.rustc.map(PathBuf::from);
         config.cargo = build.cargo.map(PathBuf::from);
+        config.gdb = build.gdb.map(PathBuf::from);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
@@ -356,43 +360,46 @@ impl Config {
                                        .collect();
                 }
                 "CFG_MUSL_ROOT" if value.len() > 0 => {
-                    self.musl_root = Some(PathBuf::from(value));
+                    self.musl_root = Some(parse_configure_path(value));
                 }
                 "CFG_MUSL_ROOT_X86_64" if value.len() > 0 => {
                     let target = "x86_64-unknown-linux-musl".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.musl_root = Some(PathBuf::from(value));
+                    target.musl_root = Some(parse_configure_path(value));
                 }
                 "CFG_MUSL_ROOT_I686" if value.len() > 0 => {
                     let target = "i686-unknown-linux-musl".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.musl_root = Some(PathBuf::from(value));
+                    target.musl_root = Some(parse_configure_path(value));
                 }
                 "CFG_MUSL_ROOT_ARM" if value.len() > 0 => {
                     let target = "arm-unknown-linux-musleabi".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.musl_root = Some(PathBuf::from(value));
+                    target.musl_root = Some(parse_configure_path(value));
                 }
                 "CFG_MUSL_ROOT_ARMHF" if value.len() > 0 => {
                     let target = "arm-unknown-linux-musleabihf".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.musl_root = Some(PathBuf::from(value));
+                    target.musl_root = Some(parse_configure_path(value));
                 }
                 "CFG_MUSL_ROOT_ARMV7" if value.len() > 0 => {
                     let target = "armv7-unknown-linux-musleabihf".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.musl_root = Some(PathBuf::from(value));
+                    target.musl_root = Some(parse_configure_path(value));
                 }
                 "CFG_DEFAULT_AR" if value.len() > 0 => {
                     self.rustc_default_ar = Some(value.to_string());
                 }
                 "CFG_DEFAULT_LINKER" if value.len() > 0 => {
                     self.rustc_default_linker = Some(value.to_string());
+                }
+                "CFG_GDB" if value.len() > 0 => {
+                    self.gdb = Some(parse_configure_path(value));
                 }
                 "CFG_RELEASE_CHANNEL" => {
                     self.channel = value.to_string();
@@ -412,46 +419,71 @@ impl Config {
                 "CFG_LLVM_ROOT" if value.len() > 0 => {
                     let target = self.target_config.entry(self.build.clone())
                                      .or_insert(Target::default());
-                    let root = PathBuf::from(value);
-                    target.llvm_config = Some(root.join("bin/llvm-config"));
+                    let root = parse_configure_path(value);
+                    target.llvm_config = Some(push_exe_path(root, &["bin", "llvm-config"]));
                 }
                 "CFG_JEMALLOC_ROOT" if value.len() > 0 => {
                     let target = self.target_config.entry(self.build.clone())
                                      .or_insert(Target::default());
-                    target.jemalloc = Some(PathBuf::from(value));
+                    target.jemalloc = Some(parse_configure_path(value));
                 }
                 "CFG_ARM_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
                     let target = "arm-linux-androideabi".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.ndk = Some(PathBuf::from(value));
+                    target.ndk = Some(parse_configure_path(value));
                 }
                 "CFG_ARMV7_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
                     let target = "armv7-linux-androideabi".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.ndk = Some(PathBuf::from(value));
+                    target.ndk = Some(parse_configure_path(value));
                 }
                 "CFG_I686_LINUX_ANDROID_NDK" if value.len() > 0 => {
                     let target = "i686-linux-android".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.ndk = Some(PathBuf::from(value));
+                    target.ndk = Some(parse_configure_path(value));
                 }
                 "CFG_AARCH64_LINUX_ANDROID_NDK" if value.len() > 0 => {
                     let target = "aarch64-linux-android".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.ndk = Some(PathBuf::from(value));
+                    target.ndk = Some(parse_configure_path(value));
                 }
                 "CFG_LOCAL_RUST_ROOT" if value.len() > 0 => {
-                    self.rustc = Some(PathBuf::from(value).join("bin/rustc"));
-                    self.cargo = Some(PathBuf::from(value).join("bin/cargo"));
+                    let path = parse_configure_path(value);
+                    self.rustc = Some(push_exe_path(path.clone(), &["bin", "rustc"]));
+                    self.cargo = Some(push_exe_path(path, &["bin", "cargo"]));
                 }
                 _ => {}
             }
         }
     }
+}
+
+#[cfg(not(windows))]
+fn parse_configure_path(path: &str) -> PathBuf {
+    path.into()
+}
+
+#[cfg(windows)]
+fn parse_configure_path(path: &str) -> PathBuf {
+    // on windows, configure produces unix style paths e.g. /c/some/path but we
+    // only want real windows paths
+
+    use std::process::Command;
+    use build_helper;
+
+    // '/' is invalid in windows paths, so we can detect unix paths by the presence of it
+    if !path.contains('/') {
+        return path.into();
+    }
+
+    let win_path = build_helper::output(Command::new("cygpath").arg("-w").arg(path));
+    let win_path = win_path.trim();
+
+    win_path.into()
 }
 
 fn set<T>(field: &mut T, val: Option<T>) {

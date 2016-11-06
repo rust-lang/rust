@@ -2120,80 +2120,8 @@ impl BorrowKind {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn node_id_to_type(self, id: NodeId) -> Ty<'gcx> {
-        match self.node_id_to_type_opt(id) {
-           Some(ty) => ty,
-           None => bug!("node_id_to_type: no type for node `{}`",
-                        self.map.node_to_string(id))
-        }
-    }
-
-    pub fn node_id_to_type_opt(self, id: NodeId) -> Option<Ty<'gcx>> {
-        self.tables.borrow().node_types.get(&id).cloned()
-    }
-
-    pub fn node_id_item_substs(self, id: NodeId) -> ItemSubsts<'gcx> {
-        match self.tables.borrow().item_substs.get(&id) {
-            None => ItemSubsts {
-                substs: self.global_tcx().intern_substs(&[])
-            },
-            Some(ts) => ts.clone(),
-        }
-    }
-
-    // Returns the type of a pattern as a monotype. Like @expr_ty, this function
-    // doesn't provide type parameter substitutions.
-    pub fn pat_ty(self, pat: &hir::Pat) -> Ty<'gcx> {
-        self.node_id_to_type(pat.id)
-    }
-    pub fn pat_ty_opt(self, pat: &hir::Pat) -> Option<Ty<'gcx>> {
-        self.node_id_to_type_opt(pat.id)
-    }
-
-    // Returns the type of an expression as a monotype.
-    //
-    // NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
-    // some cases, we insert `AutoAdjustment` annotations such as auto-deref or
-    // auto-ref.  The type returned by this function does not consider such
-    // adjustments.  See `expr_ty_adjusted()` instead.
-    //
-    // NB (2): This type doesn't provide type parameter substitutions; e.g. if you
-    // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
-    // instead of "fn(ty) -> T with T = isize".
-    pub fn expr_ty(self, expr: &hir::Expr) -> Ty<'gcx> {
-        self.node_id_to_type(expr.id)
-    }
-
-    pub fn expr_ty_opt(self, expr: &hir::Expr) -> Option<Ty<'gcx>> {
-        self.node_id_to_type_opt(expr.id)
-    }
-
-    /// Returns the type of `expr`, considering any `AutoAdjustment`
-    /// entry recorded for that expression.
-    ///
-    /// It would almost certainly be better to store the adjusted ty in with
-    /// the `AutoAdjustment`, but I opted not to do this because it would
-    /// require serializing and deserializing the type and, although that's not
-    /// hard to do, I just hate that code so much I didn't want to touch it
-    /// unless it was to fix it properly, which seemed a distraction from the
-    /// thread at hand! -nmatsakis
-    pub fn expr_ty_adjusted(self, expr: &hir::Expr) -> Ty<'gcx> {
-        self.expr_ty(expr)
-            .adjust(self.global_tcx(), expr.span, expr.id,
-                    self.tables.borrow().adjustments.get(&expr.id),
-                    |method_call| {
-            self.tables.borrow().method_map.get(&method_call).map(|method| method.ty)
-        })
-    }
-
-    pub fn expr_ty_adjusted_opt(self, expr: &hir::Expr) -> Option<Ty<'gcx>> {
-        self.expr_ty_opt(expr).map(|t| t.adjust(self.global_tcx(),
-                                                expr.span,
-                                                expr.id,
-                                                self.tables.borrow().adjustments.get(&expr.id),
-                                                |method_call| {
-            self.tables.borrow().method_map.get(&method_call).map(|method| method.ty)
-        }))
+    pub fn tables(self) -> Ref<'a, Tables<'gcx>> {
+        self.tables.borrow()
     }
 
     pub fn expr_span(self, id: NodeId) -> Span {
@@ -2906,19 +2834,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn node_scope_region(self, id: NodeId) -> &'tcx Region {
         self.mk_region(ty::ReScope(self.region_maps.node_extent(id)))
-    }
-
-    pub fn is_method_call(self, expr_id: NodeId) -> bool {
-        self.tables.borrow().method_map.contains_key(&MethodCall::expr(expr_id))
-    }
-
-    pub fn is_overloaded_autoderef(self, expr_id: NodeId, autoderefs: u32) -> bool {
-        self.tables.borrow().method_map.contains_key(&MethodCall::autoderef(expr_id,
-                                                                            autoderefs))
-    }
-
-    pub fn upvar_capture(self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {
-        Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
 
     pub fn visit_all_items_in_krate<V,F>(self,

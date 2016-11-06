@@ -41,7 +41,7 @@ use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 use arena::TypedArena;
 use std::borrow::Borrow;
-use std::cell::{Cell, RefCell, Ref};
+use std::cell::{Cell, RefCell};
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::Deref;
@@ -212,7 +212,7 @@ pub struct Tables<'tcx> {
     /// other items.
     pub item_substs: NodeMap<ty::ItemSubsts<'tcx>>,
 
-    pub adjustments: NodeMap<ty::adjustment::AutoAdjustment<'tcx>>,
+    pub adjustments: NodeMap<ty::adjustment::Adjustment<'tcx>>,
 
     pub method_map: ty::MethodMap<'tcx>,
 
@@ -254,6 +254,76 @@ impl<'a, 'gcx, 'tcx> Tables<'tcx> {
             liberated_fn_sigs: NodeMap(),
             fru_field_types: NodeMap()
         }
+    }
+
+    pub fn node_id_to_type(&self, id: NodeId) -> Ty<'tcx> {
+        match self.node_id_to_type_opt(id) {
+            Some(ty) => ty,
+            None => {
+                bug!("node_id_to_type: no type for node `{}`",
+                     tls::with(|tcx| tcx.map.node_to_string(id)))
+            }
+        }
+    }
+
+    pub fn node_id_to_type_opt(&self, id: NodeId) -> Option<Ty<'tcx>> {
+        self.node_types.get(&id).cloned()
+    }
+
+    pub fn node_id_item_substs(&self, id: NodeId) -> Option<&'tcx Substs<'tcx>> {
+        self.item_substs.get(&id).map(|ts| ts.substs)
+    }
+
+    // Returns the type of a pattern as a monotype. Like @expr_ty, this function
+    // doesn't provide type parameter substitutions.
+    pub fn pat_ty(&self, pat: &hir::Pat) -> Ty<'tcx> {
+        self.node_id_to_type(pat.id)
+    }
+
+    pub fn pat_ty_opt(&self, pat: &hir::Pat) -> Option<Ty<'tcx>> {
+        self.node_id_to_type_opt(pat.id)
+    }
+
+    // Returns the type of an expression as a monotype.
+    //
+    // NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
+    // some cases, we insert `Adjustment` annotations such as auto-deref or
+    // auto-ref.  The type returned by this function does not consider such
+    // adjustments.  See `expr_ty_adjusted()` instead.
+    //
+    // NB (2): This type doesn't provide type parameter substitutions; e.g. if you
+    // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
+    // instead of "fn(ty) -> T with T = isize".
+    pub fn expr_ty(&self, expr: &hir::Expr) -> Ty<'tcx> {
+        self.node_id_to_type(expr.id)
+    }
+
+    pub fn expr_ty_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
+        self.node_id_to_type_opt(expr.id)
+    }
+
+    /// Returns the type of `expr`, considering any `Adjustment`
+    /// entry recorded for that expression.
+    pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> Ty<'tcx> {
+        self.adjustments.get(&expr.id)
+            .map_or_else(|| self.expr_ty(expr), |adj| adj.target)
+    }
+
+    pub fn expr_ty_adjusted_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
+        self.adjustments.get(&expr.id)
+            .map(|adj| adj.target).or_else(|| self.expr_ty_opt(expr))
+    }
+
+    pub fn is_method_call(&self, expr_id: NodeId) -> bool {
+        self.method_map.contains_key(&ty::MethodCall::expr(expr_id))
+    }
+
+    pub fn is_overloaded_autoderef(&self, expr_id: NodeId, autoderefs: u32) -> bool {
+        self.method_map.contains_key(&ty::MethodCall::autoderef(expr_id, autoderefs))
+    }
+
+    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {
+        Some(self.upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
 }
 
@@ -597,14 +667,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                               -> ty::TypeParameterDef<'tcx>
     {
         self.ty_param_defs.borrow().get(&node_id).unwrap().clone()
-    }
-
-    pub fn node_types(self) -> Ref<'a, NodeMap<Ty<'tcx>>> {
-        fn projection<'a, 'tcx>(tables: &'a Tables<'tcx>) -> &'a NodeMap<Ty<'tcx>> {
-            &tables.node_types
-        }
-
-        Ref::map(self.tables.borrow(), projection)
     }
 
     pub fn node_type_insert(self, id: NodeId, ty: Ty<'gcx>) {
