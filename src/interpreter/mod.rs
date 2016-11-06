@@ -285,11 +285,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub fn monomorphize_field_ty(&self, f: ty::FieldDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
-        let substituted = &f.ty(self.tcx, substs);
-        self.tcx.normalize_associated_type(&substituted)
-    }
-
     pub fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         let substituted = ty.subst(self.tcx, substs);
         self.tcx.normalize_associated_type(&substituted)
@@ -1120,13 +1115,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    /// ensures this Value is not a ByRef
+    fn follow_by_ref_value(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         match value {
-            Value::ByRef(ptr) => match self.read_value(ptr, ty)? {
-                Value::ByRef(_) => bug!("read_value can't result in `ByRef`"),
-                Value::ByVal(primval) => Ok(primval),
-                Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
-            },
+            Value::ByRef(ptr) => self.read_value(ptr, ty),
+            other => Ok(other),
+        }
+    }
+
+    fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+        match self.follow_by_ref_value(value, ty)? {
+            Value::ByRef(_) => bug!("follow_by_ref_value can't result in `ByRef`"),
 
             Value::ByVal(primval) => {
                 let new_primval = self.transmute_primval(primval, ty)?;
@@ -1511,8 +1510,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let iter = src_fields.zip(dst_fields).enumerate();
                 for (i, (src_f, dst_f)) in iter {
-                    let src_fty = self.monomorphize_field_ty(src_f, substs_a);
-                    let dst_fty = self.monomorphize_field_ty(dst_f, substs_b);
+                    let src_fty = monomorphize_field_ty(self.tcx, src_f, substs_a);
+                    let dst_fty = monomorphize_field_ty(self.tcx, dst_f, substs_b);
                     if self.type_size(dst_fty) == 0 {
                         continue;
                     }
@@ -1728,4 +1727,10 @@ impl IntegerExt for layout::Integer {
             I64 => Size::from_bits(64),
         }
     }
+}
+
+
+pub fn monomorphize_field_ty<'a, 'tcx:'a >(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: ty::FieldDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    let substituted = &f.ty(tcx, substs);
+    tcx.normalize_associated_type(&substituted)
 }

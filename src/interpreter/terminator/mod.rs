@@ -3,7 +3,7 @@ use rustc::mir;
 use rustc::traits::{self, Reveal};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::layout::Layout;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, Ty, TyCtxt, BareFnTy};
 use std::rc::Rc;
 use syntax::codemap::{DUMMY_SP, Span};
@@ -12,7 +12,7 @@ use syntax::{ast, attr};
 use error::{EvalError, EvalResult};
 use memory::Pointer;
 use primval::PrimVal;
-use super::{EvalContext, Lvalue, IntegerExt, StackPopCleanup};
+use super::{EvalContext, Lvalue, IntegerExt, StackPopCleanup, LvalueExtra, monomorphize_field_ty};
 use super::value::Value;
 
 mod intrinsics;
@@ -146,9 +146,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn eval_drop_impls(&mut self, drops: Vec<(DefId, Pointer, &'tcx Substs<'tcx>)>) -> EvalResult<'tcx, ()> {
+    fn eval_drop_impls(&mut self, drops: Vec<(DefId, Value, &'tcx Substs<'tcx>)>) -> EvalResult<'tcx, ()> {
         let span = self.frame().span;
-        for (drop_def_id, adt_ptr, substs) in drops {
+        // add them to the stack in reverse order, because the impl that needs to run the last
+        // is the one that needs to be at the bottom of the stack
+        for (drop_def_id, self_arg, substs) in drops.into_iter().rev() {
             // FIXME: supply a real span
             let mir = self.load_mir(drop_def_id)?;
             trace!("substs for drop glue: {:?}", substs);
@@ -165,7 +167,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             assert!(arg_locals.next().is_none(), "drop impl should have only one arg");
             let dest = self.eval_lvalue(&mir::Lvalue::Local(first))?;
             let ty = self.frame().mir.local_decls[first].ty;
-            self.write_value(Value::ByVal(PrimVal::from_ptr(adt_ptr)), dest, ty)?;
+            self.write_value(self_arg, dest, ty)?;
         }
         Ok(())
     }
@@ -185,8 +187,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = fn_ty.sig.0.output;
                 let layout = self.type_layout(ty);
                 let (ret, target) = destination.unwrap();
-                self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout)?;
-                self.goto_block(target);
+                self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout, target)?;
                 Ok(())
             }
 
@@ -518,7 +519,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         lval: Lvalue<'tcx>,
         ty: Ty<'tcx>,
-        drop: &mut Vec<(DefId, Pointer, &'tcx Substs<'tcx>)>,
+        drop: &mut Vec<(DefId, Value, &'tcx Substs<'tcx>)>,
     ) -> EvalResult<'tcx, ()> {
         if !self.type_needs_drop(ty) {
             debug!("no need to drop {:?}", ty);
@@ -530,18 +531,53 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // special case `Box` to deallocate the inner allocation
             ty::TyBox(contents_ty) => {
                 let val = self.read_lvalue(lval)?;
-                let contents_ptr = val.read_ptr(&self.memory)?;
-                self.drop(Lvalue::from_ptr(contents_ptr), contents_ty, drop)?;
-                trace!("-deallocating box");
-                self.memory.deallocate(contents_ptr)?;
+                // we are going through the read_value path, because that already does all the
+                // checks for the trait object types. We'd only be repeating ourselves here.
+                let val = self.follow_by_ref_value(val, ty)?;
+                trace!("box dealloc on {:?}", val);
+                match val {
+                    Value::ByRef(_) => bug!("follow_by_ref_value can't result in ByRef"),
+                    Value::ByVal(ptr) => {
+                        assert!(self.type_is_sized(contents_ty));
+                        let contents_ptr = ptr.expect_ptr("value of Box type must be a pointer");
+                        self.drop(Lvalue::from_ptr(contents_ptr), contents_ty, drop)?;
+                    },
+                    Value::ByValPair(prim_ptr, extra) => {
+                        let ptr = prim_ptr.expect_ptr("value of Box type must be a pointer");
+                        let extra = match extra.try_as_ptr() {
+                            Some(vtable) => LvalueExtra::Vtable(vtable),
+                            None => LvalueExtra::Length(extra.expect_uint("slice length")),
+                        };
+                        self.drop(
+                            Lvalue::Ptr {
+                                ptr: ptr,
+                                extra: extra,
+                            },
+                            contents_ty,
+                            drop,
+                        )?;
+                    },
+                }
+                let box_free_fn = self.tcx.lang_items.box_free_fn().expect("no box_free lang item");
+                let substs = self.tcx.intern_substs(&[Kind::from(contents_ty)]);
+                // this is somewhat hacky, but hey, there's no representation difference between
+                // pointers and references, so
+                // #[lang = "box_free"] unsafe fn box_free<T>(ptr: *mut T)
+                // is the same as
+                // fn drop(&mut self) if Self is Box<T>
+                drop.push((box_free_fn, val, substs));
             },
 
             ty::TyAdt(adt_def, substs) => {
                 // FIXME: some structs are represented as ByValPair
-                let adt_ptr = self.force_allocation(lval)?.to_ptr();
+                let lval = self.force_allocation(lval)?;
+                let adt_ptr = match lval {
+                    Lvalue::Ptr { ptr, .. } => ptr,
+                    _ => bug!("force allocation can only yield Lvalue::Ptr"),
+                };
                 // run drop impl before the fields' drop impls
                 if let Some(drop_def_id) = adt_def.destructor() {
-                    drop.push((drop_def_id, adt_ptr, substs));
+                    drop.push((drop_def_id, Value::ByVal(PrimVal::from_ptr(adt_ptr)), substs));
                 }
                 let layout = self.type_layout(ty);
                 let fields = match *layout {
@@ -565,25 +601,113 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             return Ok(()); // nothing to do, this is zero sized (e.g. `None`)
                         }
                     },
+                    Layout::RawNullablePointer { nndiscr, .. } => {
+                        let discr = self.read_discriminant_value(adt_ptr, ty)?;
+                        if discr == nndiscr {
+                            assert_eq!(adt_def.variants[discr as usize].fields.len(), 1);
+                            let field_ty = &adt_def.variants[discr as usize].fields[0];
+                            let field_ty = monomorphize_field_ty(self.tcx, field_ty, substs);
+                            // FIXME: once read_discriminant_value works with lvalue, don't force
+                            // alloc in the RawNullablePointer case
+                            self.drop(lval, field_ty, drop)?;
+                            return Ok(());
+                        } else {
+                            // FIXME: the zst variant might contain zst types that impl Drop
+                            return Ok(()); // nothing to do, this is zero sized (e.g. `None`)
+                        }
+                    },
                     _ => bug!("{:?} is not an adt layout", layout),
                 };
-                for (field_ty, offset) in fields {
-                    let field_ty = self.monomorphize_field_ty(field_ty, substs);
-                    self.drop(Lvalue::from_ptr(adt_ptr.offset(offset.bytes() as isize)), field_ty, drop)?;
-                }
+                let tcx = self.tcx;
+                self.drop_fields(
+                    fields.map(|(ty, &offset)| (monomorphize_field_ty(tcx, ty, substs), offset)),
+                    lval,
+                    drop,
+                )?;
             },
             ty::TyTuple(fields) => {
-                // FIXME: some tuples are represented as ByValPair
-                let ptr = self.force_allocation(lval)?.to_ptr();
-                for (i, field_ty) in fields.iter().enumerate() {
-                    let offset = self.get_field_offset(ty, i)?.bytes() as isize;
-                    self.drop(Lvalue::from_ptr(ptr.offset(offset)), field_ty, drop)?;
+                let offsets = match *self.type_layout(ty) {
+                    Layout::Univariant { ref variant, .. } => &variant.offsets,
+                    _ => bug!("tuples must be univariant"),
+                };
+                self.drop_fields(fields.iter().cloned().zip(offsets.iter().cloned()), lval, drop)?;
+            },
+            ty::TyTrait(_) => {
+                let (ptr, vtable) = match lval {
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => (ptr, vtable),
+                    _ => bug!("expected an lvalue with a vtable"),
+                };
+                let drop_fn = self.memory.read_ptr(vtable)?;
+                // some values don't need to call a drop impl, so the value is null
+                if !drop_fn.points_to_zst() {
+                    let (def_id, substs, ty) = self.memory.get_fn(drop_fn.alloc_id)?;
+                    let fn_sig = self.tcx.erase_late_bound_regions_and_normalize(&ty.sig);
+                    let real_ty = fn_sig.inputs[0];
+                    self.drop(Lvalue::from_ptr(ptr), real_ty, drop)?;
+                    drop.push((def_id, Value::ByVal(PrimVal::from_ptr(ptr)), substs));
+                } else {
+                    // just a sanity check
+                    assert_eq!(drop_fn.offset, 0);
                 }
             },
+            ty::TySlice(elem_ty) => {
+                let (ptr, len) = match lval {
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => (ptr, len as isize),
+                    _ => bug!("expected an lvalue with a length"),
+                };
+                let size = self.type_size(elem_ty) as isize;
+                // FIXME: this creates a lot of stack frames if the element type has
+                // a drop impl
+                for i in 0..len {
+                    self.drop(Lvalue::from_ptr(ptr.offset(i * size)), elem_ty, drop)?;
+                }
+            },
+            ty::TyArray(elem_ty, len) => {
+                let lval = self.force_allocation(lval)?;
+                let (ptr, extra) = match lval {
+                    Lvalue::Ptr { ptr, extra } => (ptr, extra),
+                    _ => bug!("expected an lvalue with optional extra data"),
+                };
+                let size = self.type_size(elem_ty) as isize;
+                // FIXME: this creates a lot of stack frames if the element type has
+                // a drop impl
+                for i in 0..len {
+                    self.drop(Lvalue::Ptr { ptr: ptr.offset(i as isize * size), extra: extra }, elem_ty, drop)?;
+                }
+            },
+            // FIXME: what about TyClosure and TyAnon?
             // other types do not need to process drop
             _ => {},
         }
 
+        Ok(())
+    }
+
+    fn drop_fields<
+        I: Iterator<Item=(Ty<'tcx>, ty::layout::Size)>,
+    >(
+        &mut self,
+        mut fields: I,
+        lval: Lvalue<'tcx>,
+        drop: &mut Vec<(DefId, Value, &'tcx Substs<'tcx>)>,
+    ) -> EvalResult<'tcx, ()> {
+        // FIXME: some aggregates may be represented by Value::ByValPair
+        let (adt_ptr, extra) = self.force_allocation(lval)?.to_ptr_and_extra();
+        // manual iteration, because we need to be careful about the last field if it is unsized
+        while let Some((field_ty, offset)) = fields.next() {
+            let ptr = adt_ptr.offset(offset.bytes() as isize);
+            if self.type_is_sized(field_ty) {
+                self.drop(Lvalue::from_ptr(ptr), field_ty, drop)?;
+            } else {
+                let lvalue = Lvalue::Ptr {
+                    ptr: ptr,
+                    extra: extra,
+                };
+                self.drop(lvalue, field_ty, drop)?;
+                break; // if it is not sized, then this is the last field anyway
+            }
+        }
+        assert!(fields.next().is_none());
         Ok(())
     }
 }
