@@ -274,7 +274,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
     {
         let mut generalize = Generalizer {
             infcx: self.infcx,
-            span: self.trace.origin.span(),
+            span: self.trace.cause.span,
             for_vid: for_vid,
             make_region_vars: make_region_vars,
             cycle_detected: false

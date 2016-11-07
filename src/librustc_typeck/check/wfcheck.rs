@@ -15,8 +15,7 @@ use CrateCtxt;
 
 use hir::def_id::DefId;
 use middle::region::{CodeExtent};
-use rustc::infer::TypeOrigin;
-use rustc::traits;
+use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
@@ -29,7 +28,7 @@ use rustc::hir;
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
     ccx: &'ccx CrateCtxt<'ccx, 'tcx>,
-    code: traits::ObligationCauseCode<'tcx>,
+    code: ObligationCauseCode<'tcx>,
 }
 
 /// Helper type of a temporary returned by .for_item(...).
@@ -37,7 +36,7 @@ pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
 /// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(FnCtxt<'b, 'gcx, 'tcx>).
 struct CheckWfFcxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     inherited: super::InheritedBuilder<'a, 'gcx, 'tcx>,
-    code: traits::ObligationCauseCode<'gcx>,
+    code: ObligationCauseCode<'gcx>,
     id: ast::NodeId,
     span: Span
 }
@@ -67,7 +66,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                -> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         CheckTypeWellFormedVisitor {
             ccx: ccx,
-            code: traits::ObligationCauseCode::MiscObligation
+            code: ObligationCauseCode::MiscObligation
         }
     }
 
@@ -515,8 +514,8 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
         debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
 
-        let origin = TypeOrigin::MethodReceiver(span);
-        fcx.demand_eqtype_with_origin(origin, rcvr_ty, self_arg_ty);
+        let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
+        fcx.demand_eqtype_with_origin(&cause, rcvr_ty, self_arg_ty);
     }
 
     fn check_variances_for_type_defn(&self,

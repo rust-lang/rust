@@ -111,6 +111,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                -> RelateResult<'tcx, &'tcx ty::Region> {
         debug!("{}.regions({:?}, {:?}) self.cause={:?}",
                self.tag(), a, b, self.fields.cause);
+
         // FIXME -- we have more fine-grained information available
         // from the "cause" field, we could perhaps give more tailored
         // error messages.

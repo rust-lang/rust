@@ -24,7 +24,7 @@ use super::VtableImplData;
 use super::util;
 
 use hir::def_id::DefId;
-use infer::{InferOk, TypeOrigin};
+use infer::InferOk;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::parse::token;
 use syntax::ast;
@@ -209,8 +209,7 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
            obligations);
 
     let infcx = selcx.infcx();
-    let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
-    match infcx.eq_types(true, origin, normalized_ty, obligation.predicate.ty) {
+    match infcx.eq_types(true, &obligation.cause, normalized_ty, obligation.predicate.ty) {
         Ok(InferOk { obligations: inferred_obligations, .. }) => {
             // FIXME(#32730) once obligations are generated in inference, drop this assertion
             assert!(inferred_obligations.is_empty());
@@ -840,13 +839,12 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
                 let same_name = data.item_name() == obligation.predicate.item_name;
 
                 let is_match = same_name && infcx.probe(|_| {
-                    let origin = TypeOrigin::Misc(obligation.cause.span);
                     let data_poly_trait_ref =
                         data.to_poly_trait_ref();
                     let obligation_poly_trait_ref =
                         obligation_trait_ref.to_poly_trait_ref();
                     infcx.sub_poly_trait_refs(false,
-                                              origin,
+                                              obligation.cause.clone(),
                                               data_poly_trait_ref,
                                               obligation_poly_trait_ref)
                         // FIXME(#32730) once obligations are propagated from unification in
@@ -1153,12 +1151,11 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
 
         // select those with a relevant trait-ref
         let mut env_predicates = env_predicates.filter(|data| {
-            let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
             let data_poly_trait_ref = data.to_poly_trait_ref();
             let obligation_poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
             selcx.infcx().probe(|_| {
                 selcx.infcx().sub_poly_trait_refs(false,
-                                                  origin,
+                                                  obligation.cause.clone(),
                                                   data_poly_trait_ref,
                                                   obligation_poly_trait_ref).is_ok()
             })
@@ -1265,9 +1262,9 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
     -> Progress<'tcx>
 {
     let infcx = selcx.infcx();
-    let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
+    let cause = obligation.cause.clone();
     let trait_ref = obligation.predicate.trait_ref;
-    match infcx.match_poly_projection_predicate(origin, poly_projection, trait_ref) {
+    match infcx.match_poly_projection_predicate(cause, poly_projection, trait_ref) {
         Ok(InferOk { value: ty_match, obligations }) => {
             // FIXME(#32730) once obligations are generated in inference, drop this assertion
             assert!(obligations.is_empty());

@@ -519,7 +519,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
         }
 
         ty::Predicate::Equate(ref binder) => {
-            match selcx.infcx().equality_predicate(obligation.cause.span, binder) {
+            match selcx.infcx().equality_predicate(&obligation.cause, binder) {
                 Ok(InferOk { obligations, .. }) => {
                     // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty());

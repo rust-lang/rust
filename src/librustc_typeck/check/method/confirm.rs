@@ -17,7 +17,7 @@ use rustc::traits;
 use rustc::ty::{self, LvaluePreference, NoPreference, PreferMutLvalue, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::ty::fold::TypeFoldable;
-use rustc::infer::{self, InferOk, TypeOrigin};
+use rustc::infer::{self, InferOk};
 use syntax_pos::Span;
 use rustc::hir;
 
@@ -330,7 +330,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     }
 
     fn unify_receivers(&mut self, self_ty: Ty<'tcx>, method_self_ty: Ty<'tcx>) {
-        match self.sub_types(false, TypeOrigin::Misc(self.span), self_ty, method_self_ty) {
+        match self.sub_types(false, &self.misc(self.span), self_ty, method_self_ty) {
             Ok(InferOk { obligations, .. }) => {
                 // FIXME(#32730) propagate obligations
                 assert!(obligations.is_empty());
