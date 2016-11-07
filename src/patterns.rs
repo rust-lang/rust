@@ -12,7 +12,7 @@ use Indent;
 use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, format_mutability};
-use lists::{format_item_list, itemize_list};
+use lists::{format_item_list, itemize_list, ListItem};
 use expr::{rewrite_unary_prefix, rewrite_pair};
 use types::rewrite_path;
 use super::Spanned;
@@ -226,16 +226,28 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
         let width = try_opt!(width.checked_sub(path_len + if add_comma { 3 } else { 2 }));
         // 1 = "(".len()
         let offset = offset + path_len + 1;
-        let items = itemize_list(context.codemap,
-                                 pat_vec.iter(),
-                                 if add_comma { ",)" } else { ")" },
-                                 |item| item.span().lo,
-                                 |item| item.span().hi,
-                                 |item| item.rewrite(context, width, offset),
-                                 context.codemap.span_after(span, "("),
-                                 span.hi - BytePos(1));
+        let mut items: Vec<_> = itemize_list(context.codemap,
+                                             pat_vec.iter(),
+                                             if add_comma { ",)" } else { ")" },
+                                             |item| item.span().lo,
+                                             |item| item.span().hi,
+                                             |item| item.rewrite(context, width, offset),
+                                             context.codemap.span_after(span, "("),
+                                             span.hi - BytePos(1))
+            .collect();
 
-        let list = try_opt!(format_item_list(items, width, offset, context.config));
+        // Condense wildcard string suffix into a single ..
+        let wildcard_suffix_len = count_wildcard_suffix_len(&items);
+
+        let list = if context.config.condense_wildcard_suffices && wildcard_suffix_len >= 2 {
+            let new_item_count = 1 + pats.len() - wildcard_suffix_len;
+            items[new_item_count - 1].item = Some("..".to_owned());
+
+            let da_iter = items.into_iter().take(new_item_count);
+            try_opt!(format_item_list(da_iter, width, offset, context.config))
+        } else {
+            try_opt!(format_item_list(items.into_iter(), width, offset, context.config))
+        };
 
         match path_str {
             Some(path_str) => {
@@ -255,4 +267,21 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
             }
         }
     }
+}
+
+fn count_wildcard_suffix_len(items: &[ListItem]) -> usize {
+    let mut suffix_len = 0;
+
+    for item in items.iter().rev().take_while(|i| match i.item {
+        Some(ref internal_string) if internal_string == "_" => true,
+        _ => false,
+    }) {
+        suffix_len += 1;
+
+        if item.pre_comment.is_some() || item.post_comment.is_some() {
+            break;
+        }
+    }
+
+    suffix_len
 }
