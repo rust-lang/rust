@@ -156,7 +156,7 @@ pub fn first_var_add(a: i32, b: i32) -> i32 {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn first_var_add(a: i32, b: i32) -> i32 {
-    b + 3
+    b + 2
 }
 
 
@@ -471,8 +471,8 @@ pub fn lvalue() -> i32 {
 pub fn lvalue() -> i32 {
     let mut x = 10;
     let mut y = 11;
-    x = 9;
-    y
+    y = 9;
+    x
 }
 
 
@@ -481,7 +481,6 @@ pub fn lvalue() -> i32 {
 #[cfg(cfail1)]
 pub fn rvalue() -> i32 {
     let mut x = 10;
-    let mut y = 11;
     x = 9;
     x
 }
@@ -493,7 +492,6 @@ pub fn rvalue() -> i32 {
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn rvalue() -> i32 {
     let mut x = 10;
-    let mut y = 11;
     x = 8;
     x
 }
