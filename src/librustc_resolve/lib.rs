@@ -1115,7 +1115,7 @@ pub struct Resolver<'a> {
     pub exported_macros: Vec<ast::MacroDef>,
     crate_loader: &'a mut CrateLoader,
     macro_names: FxHashSet<Name>,
-    builtin_macros: FxHashMap<Name, DefId>,
+    builtin_macros: FxHashMap<Name, &'a NameBinding<'a>>,
     lexical_macro_resolutions: Vec<(Name, LegacyScope<'a>)>,
     macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
     macro_exports: Vec<Export>,
