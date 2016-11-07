@@ -701,22 +701,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local_ccxs[self.index]
     }
 
-    /// Get a (possibly) different `CrateContext` from the same
-    /// `SharedCrateContext`.
-    pub fn rotate(&'b self) -> CrateContext<'b, 'tcx> {
-        let (_, index) =
-            self.local_ccxs
-                .iter()
-                .zip(0..self.local_ccxs.len())
-                .min_by_key(|&(local_ccx, _idx)| local_ccx.n_llvm_insns.get())
-                .unwrap();
-        CrateContext {
-            shared: self.shared,
-            index: index,
-            local_ccxs: &self.local_ccxs[..],
-        }
-    }
-
     /// Either iterate over only `self`, or iterate over all `CrateContext`s in
     /// the `SharedCrateContext`.  The iterator produces `(ccx, is_origin)`
     /// pairs, where `is_origin` is `true` if `ccx` is `self` and `false`
