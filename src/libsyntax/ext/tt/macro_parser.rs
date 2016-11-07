@@ -287,15 +287,8 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
         let mut next_eis = Vec::new(); // or proceed normally
         let mut eof_eis = Vec::new();
 
-        let (sp, tok) = (parser.span, parser.token.clone());
-
-        /* we append new items to this while we go */
-        loop {
-            let mut ei = match cur_eis.pop() {
-                None => break, /* for each Earley Item */
-                Some(ei) => ei,
-            };
-
+        // for each Earley item
+        while let Some(mut ei) = cur_eis.pop() {
             // When unzipped trees end, remove them
             while ei.idx >= ei.top_elts.len() {
                 match ei.stack.pop() {
@@ -317,7 +310,6 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
                     // hack: a matcher sequence is repeating iff it has a
                     // parent (the top level is just a container)
 
-
                     // disregard separator, try to go up
                     // (remove this condition to make trailing seps ok)
                     if idx == len {
@@ -334,10 +326,10 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
 
                         // Only touch the binders we have actually bound
                         for idx in ei.match_lo..ei.match_hi {
-                            let sub = (ei.matches[idx]).clone();
-                            (&mut new_pos.matches[idx])
+                            let sub = ei.matches[idx].clone();
+                            new_pos.matches[idx]
                                    .push(Rc::new(MatchedSeq(sub, mk_sp(ei.sp_lo,
-                                                                       sp.hi))));
+                                                                       parser.span.hi))));
                         }
 
                         new_pos.match_cur = ei.match_hi;
@@ -347,25 +339,21 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
 
                     // can we go around again?
 
-                    // the *_t vars are workarounds for the lack of unary move
-                    match ei.sep {
-                        Some(ref t) if idx == len => { // we need a separator
-                            // i'm conflicted about whether this should be hygienic....
-                            // though in this case, if the separators are never legal
-                            // idents, it shouldn't matter.
-                            if token_name_eq(&tok, t) { //pass the separator
-                                let mut ei_t = ei.clone();
-                                // ei_t.match_cur = ei_t.match_lo;
-                                ei_t.idx += 1;
-                                next_eis.push(ei_t);
-                            }
+                    // Check if we need a separator
+                    if idx == len && ei.sep.is_some() {
+                        if ei.sep.as_ref().map(|ref sep| token_name_eq(&parser.token, sep))
+                            .unwrap_or(false) {
+                            // i'm conflicted about whether this should be hygienic....  though in
+                            // this case, if the separators are never legal idents, it shouldn't
+                            // matter.
+                            // ei.match_cur = ei.match_lo;
+                            ei.idx += 1;
+                            next_eis.push(ei);
                         }
-                        _ => { // we don't need a separator
-                            let mut ei_t = ei;
-                            ei_t.match_cur = ei_t.match_lo;
-                            ei_t.idx = 0;
-                            cur_eis.push(ei_t);
-                        }
+                    } else { // we don't need a separator
+                        ei.match_cur = ei.match_lo;
+                        ei.idx = 0;
+                        cur_eis.push(ei);
                     }
                 } else {
                     eof_eis.push(ei);
@@ -380,7 +368,7 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
                             new_ei.idx += 1;
                             //we specifically matched zero repeats.
                             for idx in ei.match_cur..ei.match_cur + seq.num_captures {
-                                (&mut new_ei.matches[idx]).push(Rc::new(MatchedSeq(vec![], sp)));
+                                new_ei.matches[idx].push(Rc::new(MatchedSeq(vec![], sp)));
                             }
 
                             cur_eis.push(new_ei);
@@ -388,16 +376,15 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
 
                         let matches: Vec<_> = (0..ei.matches.len())
                             .map(|_| Vec::new()).collect();
-                        let ei_t = ei;
                         cur_eis.push(Box::new(MatcherPos {
                             stack: vec![],
                             sep: seq.separator.clone(),
                             idx: 0,
                             matches: matches,
-                            match_lo: ei_t.match_cur,
-                            match_cur: ei_t.match_cur,
-                            match_hi: ei_t.match_cur + seq.num_captures,
-                            up: Some(ei_t),
+                            match_lo: ei.match_cur,
+                            match_cur: ei.match_cur,
+                            match_hi: ei.match_cur + seq.num_captures,
+                            up: Some(ei),
                             sp_lo: sp.lo,
                             top_elts: Tt(TokenTree::Sequence(sp, seq)),
                         }));
@@ -405,7 +392,7 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
                     TokenTree::Token(_, MatchNt(..)) => {
                         // Built-in nonterminals never start with these tokens,
                         // so we can eliminate them from consideration.
-                        match tok {
+                        match parser.token {
                             token::CloseDelim(_) => {},
                             _ => bb_eis.push(ei),
                         }
@@ -424,10 +411,9 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
                         cur_eis.push(ei);
                     }
                     TokenTree::Token(_, ref t) => {
-                        if token_name_eq(t,&tok) {
-                            let mut ei_t = ei.clone();
-                            ei_t.idx += 1;
-                            next_eis.push(ei_t);
+                        if token_name_eq(t, &parser.token) {
+                            ei.idx += 1;
+                            next_eis.push(ei);
                         }
                     }
                 }
@@ -435,17 +421,15 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
         }
 
         /* error messages here could be improved with links to orig. rules */
-        if token_name_eq(&tok, &token::Eof) {
+        if token_name_eq(&parser.token, &token::Eof) {
             if eof_eis.len() == 1 {
-                let mut v = Vec::new();
-                for dv in &mut (&mut eof_eis[0]).matches {
-                    v.push(dv.pop().unwrap());
-                }
+                let v = eof_eis[0].matches.iter_mut()
+                    .map(|dv| dv.pop().unwrap()).collect::<Vec<_>>();
                 return nameize(sess, ms, &v[..]);
             } else if eof_eis.len() > 1 {
-                return Error(sp, "ambiguity: multiple successful parses".to_string());
+                return Error(parser.span, "ambiguity: multiple successful parses".to_string());
             } else {
-                return Failure(sp, token::Eof);
+                return Failure(parser.span, token::Eof);
             }
         } else {
             if (!bb_eis.is_empty() && !next_eis.is_empty())
@@ -457,7 +441,7 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
                     _ => panic!()
                 }).collect::<Vec<String>>().join(" or ");
 
-                return Error(sp, format!(
+                return Error(parser.span, format!(
                     "local ambiguity: multiple parsing options: {}",
                     match next_eis.len() {
                         0 => format!("built-in NTs {}.", nts),
@@ -466,7 +450,7 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
                     }
                 ))
             } else if bb_eis.is_empty() && next_eis.is_empty() {
-                return Failure(sp, tok);
+                return Failure(parser.span, parser.token);
             } else if !next_eis.is_empty() {
                 /* Now process the next token */
                 while !next_eis.is_empty() {
