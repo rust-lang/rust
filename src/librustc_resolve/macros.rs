@@ -73,10 +73,10 @@ impl<'a> LegacyScope<'a> {
 }
 
 pub struct LegacyBinding<'a> {
-    parent: LegacyScope<'a>,
-    name: ast::Name,
+    pub parent: LegacyScope<'a>,
+    pub name: ast::Name,
     ext: Rc<SyntaxExtension>,
-    span: Span,
+    pub span: Span,
 }
 
 impl<'a> base::Resolver for Resolver<'a> {
@@ -171,7 +171,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         if let LegacyScope::Expansion(parent) = invocation.legacy_scope.get() {
             invocation.legacy_scope.set(LegacyScope::simplify_expansion(parent));
         }
-        self.resolve_macro_name(invocation.legacy_scope.get(), name, true).ok_or_else(|| {
+        self.resolve_macro_name(invocation.legacy_scope.get(), name).ok_or_else(|| {
             if force {
                 let msg = format!("macro undefined: '{}!'", name);
                 let mut err = self.session.struct_span_err(path.span, &msg);
@@ -186,17 +186,18 @@ impl<'a> base::Resolver for Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    pub fn resolve_macro_name(&mut self,
-                              mut scope: LegacyScope<'a>,
-                              name: ast::Name,
-                              record_used: bool)
+    pub fn resolve_macro_name(&mut self, mut scope: LegacyScope<'a>, name: ast::Name)
                               -> Option<Rc<SyntaxExtension>> {
+        let mut possible_time_travel = None;
         let mut relative_depth: u32 = 0;
         loop {
             scope = match scope {
                 LegacyScope::Empty => break,
                 LegacyScope::Expansion(invocation) => {
                     if let LegacyScope::Empty = invocation.expansion.get() {
+                        if possible_time_travel.is_none() {
+                            possible_time_travel = Some(scope);
+                        }
                         invocation.legacy_scope.get()
                     } else {
                         relative_depth += 1;
@@ -209,8 +210,11 @@ impl<'a> Resolver<'a> {
                 }
                 LegacyScope::Binding(binding) => {
                     if binding.name == name {
-                        if record_used && relative_depth > 0 {
-                            self.disallowed_shadowing.push((name, binding.span, binding.parent));
+                        if let Some(scope) = possible_time_travel {
+                            // Check for disallowed shadowing later
+                            self.lexical_macro_resolutions.push((name, scope));
+                        } else if relative_depth > 0 {
+                            self.disallowed_shadowing.push(binding);
                         }
                         return Some(binding.ext.clone());
                     }
@@ -219,6 +223,9 @@ impl<'a> Resolver<'a> {
             };
         }
 
+        if let Some(scope) = possible_time_travel {
+            self.lexical_macro_resolutions.push((name, scope));
+        }
         self.builtin_macros.get(&name).cloned()
     }
 

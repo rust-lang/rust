@@ -1067,7 +1067,7 @@ pub struct Resolver<'a> {
 
     privacy_errors: Vec<PrivacyError<'a>>,
     ambiguity_errors: Vec<AmbiguityError<'a>>,
-    disallowed_shadowing: Vec<(Name, Span, LegacyScope<'a>)>,
+    disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
@@ -1077,6 +1077,7 @@ pub struct Resolver<'a> {
     crate_loader: &'a mut CrateLoader,
     macro_names: FnvHashSet<Name>,
     builtin_macros: FnvHashMap<Name, Rc<SyntaxExtension>>,
+    lexical_macro_resolutions: Vec<(Name, LegacyScope<'a>)>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
     invocations: FnvHashMap<Mark, &'a InvocationData<'a>>,
@@ -1267,6 +1268,7 @@ impl<'a> Resolver<'a> {
             crate_loader: crate_loader,
             macro_names: FnvHashSet(),
             builtin_macros: FnvHashMap(),
+            lexical_macro_resolutions: Vec::new(),
             invocations: invocations,
         }
     }
@@ -3363,12 +3365,16 @@ impl<'a> Resolver<'a> {
     }
 
     fn report_shadowing_errors(&mut self) {
+        for (name, scope) in replace(&mut self.lexical_macro_resolutions, Vec::new()) {
+            self.resolve_macro_name(scope, name);
+        }
+
         let mut reported_errors = FnvHashSet();
-        for (name, span, scope) in replace(&mut self.disallowed_shadowing, Vec::new()) {
-            if self.resolve_macro_name(scope, name, false).is_some() &&
-               reported_errors.insert((name, span)) {
-                let msg = format!("`{}` is already in scope", name);
-                self.session.struct_span_err(span, &msg)
+        for binding in replace(&mut self.disallowed_shadowing, Vec::new()) {
+            if self.resolve_macro_name(binding.parent, binding.name).is_some() &&
+               reported_errors.insert((binding.name, binding.span)) {
+                let msg = format!("`{}` is already in scope", binding.name);
+                self.session.struct_span_err(binding.span, &msg)
                     .note("macro-expanded `macro_rules!`s may not shadow \
                            existing macros (see RFC 1560)")
                     .emit();
