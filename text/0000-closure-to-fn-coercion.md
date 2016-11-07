@@ -6,19 +6,19 @@
 # Summary
 [summary]: #summary
 
-A non-capturing (that is, does not `Clone` or `move` any local variables) should be
-coercable to a function pointer (`fn`).
+A non-capturing (that is, does not `Clone` or `move` any local variables) closure
+should be coercable to a function pointer (`fn`).
 
 # Motivation
 [motivation]: #motivation
 
-Currently in rust, it is impossible to bind anything but a pre-defined function
+Currently in Rust, it is impossible to bind anything but a pre-defined function
 as a function pointer. When dealing with closures, one must either rely upon
-rust's type-inference capabilities, or use the `Fn` trait to abstract for any
+Rust's type-inference capabilities, or use the `Fn` trait to abstract for any
 closure with a certain type signature.
 
-What is not possible, though, is to define a function while at the same time
-binding it to a function pointer.
+It is not possible to define a function while at the same time binding it to a
+function pointer.
 
 This is mainly used for convenience purposes, but in certain situations
 the lack of ability to do so creates a significant amount of boilerplate code.
@@ -107,19 +107,66 @@ const foo: [fn(&mut u32); 4] = [
 ];
 ```
 
+Note that once explicitly assigned to an `Fn` trait, the closure can no longer be
+coerced into `fn`, even if it has no captures. Just as we cannot do:
+
+```rust
+let a: u32 = 0; // Coercion
+let b: i32 = a; // Can't re-coerce
+let x: *const u32 = &a; // Coercion
+let y: &u32 = x; // Can't re-coerce
+```
+
+We can't similarly re-coerce a `Fn` trait.
+```rust
+let a: &Fn(u32) -> u32 = |foo: u32| { foo + 1 };
+let b: fn(u32) -> u32 = *a; // Can't re-coerce
+```
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
-To a rust user, there is no drawback to this new coercion from closures to `fn` types.
+This proposal could potentially allow Rust users to accidentally constrain their APIs.
+In the case of a crate, a user accidentally returning `fn` instead of `Fn` may find
+that their code compiles at first, but breaks when the user later needs to capture variables:
 
-The only drawback is that it would add some amount of complexity to the type system.
+```rust
+// The specific syntax is more convenient to use
+fn func_specific(&self) -> (fn() -> u32) {
+  || return 0
+}
+
+fn func_general<'a>(&'a self) -> impl Fn() -> u32 {
+  move || return self.field
+}
+```
+
+In the above example, the API author could start off with the specific version of the function,
+and by circumstance later need to capture a variable. The required change from `fn` to `Fn` could
+be a breaking change.
+
+We do expect crate authors to measure their API's flexibility in other areas, however, as when
+determining whether to take `&self` or `&mut self`. Taking a similar situation to the above: 
+
+```rust
+fn func_specific<'a>(&'a self) -> impl Fn() -> u32 {
+  move || return self.field
+}
+    
+fn func_general<'a>(&'a mut self) -> impl FnMut() -> u32 {
+  move || { self.field += 1; return self.field; }
+}
+```
+
+This drawback is probably outweighed by convenience, simplicity, and the potential for optimization
+that comes with the proposed changes, however.
 
 # Alternatives
 [alternatives]: #alternatives
 
 ## Anonymous function syntax
 
-With this alternative, rust users would be able to directly bind a function
+With this alternative, Rust users would be able to directly bind a function
 to a variable, without needing to give the function a name.
 
 ```rust
