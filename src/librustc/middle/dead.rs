@@ -89,13 +89,16 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn lookup_and_handle_definition(&mut self, id: ast::NodeId) {
         let def = self.tcx.expect_def(id);
 
-        // If `bar` is a trait item, make sure to mark Foo as alive in `Foo::bar`
+        // If it is an associated item, mark the type as alive
         match def {
-            Def::AssociatedTy(..) | Def::Method(_) | Def::AssociatedConst(_)
-            if self.tcx.trait_of_item(def.def_id()).is_some() => {
-                if let Some(substs) = self.tcx.tables().item_substs.get(&id) {
-                    if let ty::TyAdt(tyid, _) = substs.substs.type_at(0).sty {
-                        self.check_def_id(tyid.did);
+            Def::AssociatedTy(..) | Def::Method(_) | Def::AssociatedConst(_) => {
+                if let Some(resolution) = self.tcx.assoc_map.get(&id) {
+                    let base_def = resolution.base_def;
+                    match base_def {
+                        Def::Struct(..) | Def::Enum(..) | Def::TyAlias(..) => {
+                            self.check_def_id(base_def.def_id());
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -430,6 +433,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             hir::ItemStatic(..)
             | hir::ItemConst(..)
             | hir::ItemFn(..)
+            | hir::ItemTy(..)
             | hir::ItemEnum(..)
             | hir::ItemStruct(..)
             | hir::ItemUnion(..) => true,
