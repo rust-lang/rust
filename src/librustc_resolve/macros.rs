@@ -184,6 +184,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             kind: NameBindingKind::Def(Def::Macro(def_id)),
             span: DUMMY_SP,
             vis: ty::Visibility::PrivateExternal,
+            expansion: Mark::root(),
         });
         self.builtin_macros.insert(ident.name, binding);
     }

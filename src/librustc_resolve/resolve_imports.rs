@@ -26,6 +26,7 @@ use rustc::hir::def::*;
 
 use syntax::ast::{Ident, NodeId, Name};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
+use syntax::ext::hygiene::Mark;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 
@@ -70,6 +71,7 @@ pub struct ImportDirective<'a> {
     pub subclass: ImportDirectiveSubclass<'a>,
     pub span: Span,
     pub vis: Cell<ty::Visibility>,
+    pub expansion: Mark,
 }
 
 impl<'a> ImportDirective<'a> {
@@ -257,7 +259,8 @@ impl<'a> Resolver<'a> {
                                 subclass: ImportDirectiveSubclass<'a>,
                                 span: Span,
                                 id: NodeId,
-                                vis: ty::Visibility) {
+                                vis: ty::Visibility,
+                                expansion: Mark) {
         let current_module = self.current_module;
         let directive = self.arenas.alloc_import_directive(ImportDirective {
             parent: current_module,
@@ -267,6 +270,7 @@ impl<'a> Resolver<'a> {
             span: span,
             id: id,
             vis: Cell::new(vis),
+            expansion: expansion,
         });
 
         self.indeterminate_imports.push(directive);
@@ -310,6 +314,7 @@ impl<'a> Resolver<'a> {
             },
             span: directive.span,
             vis: vis,
+            expansion: directive.expansion,
         }
     }
 
@@ -336,6 +341,7 @@ impl<'a> Resolver<'a> {
                                 binding.vis
                             },
                             span: old_binding.span,
+                            expansion: Mark::root(),
                         }));
                     } else if !old_binding.vis.is_at_least(binding.vis, this) {
                         // We are glob-importing the same item but with greater visibility.
