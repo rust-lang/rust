@@ -1089,6 +1089,7 @@ pub struct Resolver<'a> {
     primitive_type_table: PrimitiveTypeTable,
 
     pub def_map: DefMap,
+    pub assoc_map: AssocMap,
     pub freevars: FreevarMap,
     freevars_seen: NodeMap<NodeMap<usize>>,
     pub export_map: ExportMap,
@@ -1223,12 +1224,12 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         }
     }
 
-    fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
+    fn get_resolution(&mut self, id: NodeId) -> Option<Def> {
         self.def_map.get(&id).cloned()
     }
 
     fn record_resolution(&mut self, id: NodeId, def: Def) {
-        self.def_map.insert(id, PathResolution::new(def));
+        self.def_map.insert(id, def);
     }
 
     fn definitions(&mut self) -> &mut Definitions {
@@ -1306,6 +1307,7 @@ impl<'a> Resolver<'a> {
             primitive_type_table: PrimitiveTypeTable::new(),
 
             def_map: NodeMap(),
+            assoc_map: NodeMap(),
             freevars: NodeMap(),
             freevars_seen: NodeMap(),
             export_map: NodeMap(),
@@ -2141,7 +2143,7 @@ impl<'a> Resolver<'a> {
         pat.walk(&mut |pat| {
             if let PatKind::Ident(binding_mode, ident, ref sub_pat) = pat.node {
                 if sub_pat.is_some() || match self.def_map.get(&pat.id) {
-                    Some(&PathResolution { base_def: Def::Local(..), .. }) => true,
+                    Some(&Def::Local(..)) => true,
                     _ => false,
                 } {
                     let binding_info = BindingInfo { span: ident.span, binding_mode: binding_mode };
@@ -2849,9 +2851,9 @@ impl<'a> Resolver<'a> {
 
         if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
             // Look for a field with the same name in the current self_type.
-            if let Some(resolution) = self.def_map.get(&node_id) {
-                match resolution.base_def {
-                    Def::Struct(did) | Def::Union(did) if resolution.depth == 0 => {
+            if let Some(def) = self.def_map.get(&node_id) {
+                match *def {
+                    Def::Struct(did) | Def::Union(did) => {
                         if let Some(field_names) = self.field_names.get(&did) {
                             if field_names.iter().any(|&field_name| name == field_name) {
                                 return Field;
@@ -3327,8 +3329,20 @@ impl<'a> Resolver<'a> {
 
     fn record_def(&mut self, node_id: NodeId, resolution: PathResolution) {
         debug!("(recording def) recording {:?} for {}", resolution, node_id);
-        if let Some(prev_res) = self.def_map.insert(node_id, resolution) {
-            panic!("path resolved multiple times ({:?} before, {:?} now)", prev_res, resolution);
+
+        if resolution.depth != 0 {
+            // partial resolution
+            if let Some(prev_res) = self.assoc_map.insert(node_id, resolution) {
+                panic!("path resolved multiple times ({:?} before, {:?} now)",
+                       prev_res,
+                       resolution);
+            }
+            return;
+        }
+
+        let def = resolution.base_def;
+        if let Some(prev_def) = self.def_map.insert(node_id, def) {
+            panic!("path resolved multiple times ({:?} before, {:?} now)", prev_def, def);
         }
     }
 
@@ -3343,10 +3357,10 @@ impl<'a> Resolver<'a> {
         };
 
         let segments: Vec<_> = path.segments.iter().map(|seg| seg.identifier).collect();
-        let mut path_resolution = err_path_resolution();
+        let mut def = Def::Err;
         let vis = match self.resolve_module_path(&segments, DontUseLexicalScope, Some(path.span)) {
             Success(module) => {
-                path_resolution = PathResolution::new(module.def().unwrap());
+                def = module.def().unwrap();
                 ty::Visibility::Restricted(module.normal_ancestor_id.unwrap())
             }
             Indeterminate => unreachable!(),
@@ -3357,7 +3371,7 @@ impl<'a> Resolver<'a> {
                 ty::Visibility::Public
             }
         };
-        self.def_map.insert(id, path_resolution);
+        self.def_map.insert(id, def);
         if !self.is_accessible(vis) {
             let msg = format!("visibilities can only be restricted to ancestor modules");
             self.session.span_err(path.span, &msg);

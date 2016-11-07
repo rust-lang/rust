@@ -83,7 +83,7 @@ use self::TupleArgumentsFlag::*;
 use astconv::{AstConv, ast_region_to_region, PathParamMode};
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
-use hir::def::{Def, CtorKind, PathResolution};
+use hir::def::{Def, CtorKind};
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin,
@@ -3893,7 +3893,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                             true);
         // Write back the new resolution.
         if path_res.depth != 0 {
-            self.tcx.def_map.borrow_mut().insert(node_id, PathResolution::new(def));
+            self.tcx.def_map.borrow_mut().insert(node_id, def);
         }
         (def, ty)
     }
@@ -3942,7 +3942,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             // Write back the new resolution.
-            self.tcx.def_map.borrow_mut().insert(node_id, PathResolution::new(def));
+            self.tcx.def_map.borrow_mut().insert(node_id, def);
             (def, Some(ty), slice::ref_slice(item_segment))
         }
     }

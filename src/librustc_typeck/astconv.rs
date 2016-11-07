@@ -50,7 +50,7 @@
 
 use rustc_const_eval::eval_length;
 use hir::{self, SelfKind};
-use hir::def::{Def, PathResolution};
+use hir::def::Def;
 use hir::def_id::DefId;
 use hir::print as pprust;
 use middle::resolve_lifetime as rl;
@@ -1759,7 +1759,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
                 // Write back the new resolution.
                 if path_res.depth != 0 {
-                    tcx.def_map.borrow_mut().insert(ast_ty.id, PathResolution::new(def));
+                    tcx.def_map.borrow_mut().insert(ast_ty.id, def);
                 }
 
                 ty

@@ -10,7 +10,7 @@
 
 use rustc::hir;
 use rustc::hir::{map as hir_map, FreevarMap, TraitMap};
-use rustc::hir::def::DefMap;
+use rustc::hir::def::{AssocMap, DefMap};
 use rustc::hir::lowering::lower_crate;
 use rustc_data_structures::blake2b::Blake2bHasher;
 use rustc_data_structures::fmt_wrap::FmtWrap;
@@ -64,6 +64,7 @@ use derive_registrar;
 #[derive(Clone)]
 pub struct Resolutions {
     pub def_map: DefMap,
+    pub assoc_map: AssocMap,
     pub freevars: FreevarMap,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
@@ -790,6 +791,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         },
         resolutions: Resolutions {
             def_map: resolver.def_map,
+            assoc_map: resolver.assoc_map,
             freevars: resolver.freevars,
             trait_map: resolver.trait_map,
             maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
@@ -866,6 +868,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     TyCtxt::create_and_enter(sess,
                              arenas,
                              resolutions.def_map,
+                             resolutions.assoc_map,
                              resolutions.trait_map,
                              named_region_map,
                              hir_map,

@@ -802,7 +802,12 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
 
         if let Some(def) = self.tcx.def_map.borrow().get(&id) {
             debug!("hash_resolve: id={:?} def={:?} st={:?}", id, def, self.st);
-            self.hash_partial_def(def);
+            self.hash_def(*def);
+        }
+
+        if let Some(partial_def) = self.tcx.assoc_map.get(&id) {
+            debug!("hash_resolve: id={:?} partial_def={:?} st={:?}", id, partial_def, self.st);
+            self.hash_partial_def(partial_def);
         }
 
         if let Some(traits) = self.tcx.trait_map.get(&id) {

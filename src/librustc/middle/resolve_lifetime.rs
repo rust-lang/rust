@@ -247,8 +247,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::TyPath(None, ref path) => {
                 // if this path references a trait, then this will resolve to
                 // a trait ref, which introduces a binding scope.
-                match self.def_map.get(&ty.id).map(|d| (d.base_def, d.depth)) {
-                    Some((Def::Trait(..), 0)) => {
+                match self.def_map.get(&ty.id).cloned() {
+                    Some(Def::Trait(..)) => {
                         self.with(LateScope(&[], self.scope), |_, this| {
                             this.visit_path(path, ty.id);
                         });
