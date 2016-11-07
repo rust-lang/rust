@@ -92,21 +92,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn cast_ptr(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
-        use primval::PrimValKind::*;
         use rustc::ty::TypeVariants::*;
         match ty.sty {
             TyRef(..) | TyRawPtr(_) => Ok(PrimVal::from_ptr(ptr)),
             TyFnPtr(_) => Ok(PrimVal::from_fn_ptr(ptr)),
 
-            TyInt(IntTy::I8)  => Ok(PrimVal::new(ptr.to_int()? as u64, I8)),
-            TyInt(IntTy::I16) => Ok(PrimVal::new(ptr.to_int()? as u64, I16)),
-            TyInt(IntTy::I32) => Ok(PrimVal::new(ptr.to_int()? as u64, I32)),
-            TyInt(IntTy::I64) => Ok(PrimVal::new(ptr.to_int()? as u64, I64)),
-
-            TyUint(UintTy::U8)  => Ok(PrimVal::new(ptr.to_int()? as u64, U8)),
-            TyUint(UintTy::U16) => Ok(PrimVal::new(ptr.to_int()? as u64, U16)),
-            TyUint(UintTy::U32) => Ok(PrimVal::new(ptr.to_int()? as u64, U32)),
-            TyUint(UintTy::U64) => Ok(PrimVal::new(ptr.to_int()? as u64, U64)),
+            TyInt(IntTy::I8) |
+            TyInt(IntTy::I16) |
+            TyInt(IntTy::I32) |
+            TyInt(IntTy::I64) |
+            TyInt(IntTy::Is) |
+            TyUint(UintTy::U8) |
+            TyUint(UintTy::U16) |
+            TyUint(UintTy::U32) |
+            TyUint(UintTy::U64) |
+            TyUint(UintTy::Us) => {
+                let val = PrimVal::from_ptr(ptr);
+                self.transmute_primval(val, ty)
+            }
 
             _ => Err(EvalError::Unimplemented(format!("ptr to {:?} cast", ty))),
         }

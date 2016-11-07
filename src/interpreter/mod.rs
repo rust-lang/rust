@@ -1699,13 +1699,13 @@ pub fn run_mir_passes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut passes = ::rustc::mir::transform::Passes::new();
     passes.push_hook(Box::new(::rustc_mir::transform::dump_mir::DumpMir));
     passes.push_pass(Box::new(::rustc_mir::transform::no_landing_pads::NoLandingPads));
-    passes.push_pass(Box::new(::rustc_mir::transform::simplify_cfg::SimplifyCfg::new("no-landing-pads")));
+    passes.push_pass(Box::new(::rustc_mir::transform::simplify::SimplifyCfg::new("no-landing-pads")));
 
     passes.push_pass(Box::new(::rustc_mir::transform::erase_regions::EraseRegions));
 
     passes.push_pass(Box::new(::rustc_borrowck::ElaborateDrops));
     passes.push_pass(Box::new(::rustc_mir::transform::no_landing_pads::NoLandingPads));
-    passes.push_pass(Box::new(::rustc_mir::transform::simplify_cfg::SimplifyCfg::new("elaborate-drops")));
+    passes.push_pass(Box::new(::rustc_mir::transform::simplify::SimplifyCfg::new("elaborate-drops")));
     passes.push_pass(Box::new(::rustc_mir::transform::dump_mir::Marker("PreMiri")));
 
     passes.run_passes(tcx);
