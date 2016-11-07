@@ -518,10 +518,12 @@ impl<'b> Resolver<'b> {
         module.populated.set(true)
     }
 
-    fn legacy_import_macro(&mut self, name: Name, def: Def, span: Span, allow_shadowing: bool) {
-        self.used_crates.insert(def.def_id().krate);
+    fn legacy_import_macro(
+        &mut self, name: Name, binding: &'b NameBinding<'b>, span: Span, allow_shadowing: bool,
+    ) {
+        self.used_crates.insert(binding.def().def_id().krate);
         self.macro_names.insert(name);
-        if self.builtin_macros.insert(name, def.def_id()).is_some() && !allow_shadowing {
+        if self.builtin_macros.insert(name, binding).is_some() && !allow_shadowing {
             let msg = format!("`{}` is already in scope", name);
             let note =
                 "macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)";
@@ -548,13 +550,13 @@ impl<'b> Resolver<'b> {
 
         if let Some(span) = legacy_imports.import_all {
             module.for_each_child(|name, ns, binding| if ns == MacroNS {
-                self.legacy_import_macro(name, binding.def(), span, allow_shadowing);
+                self.legacy_import_macro(name, binding, span, allow_shadowing);
             });
         } else {
             for (name, span) in legacy_imports.imports {
                 let result = self.resolve_name_in_module(module, name, MacroNS, false, None);
                 if let Success(binding) = result {
-                    self.legacy_import_macro(name, binding.def(), span, allow_shadowing);
+                    self.legacy_import_macro(name, binding, span, allow_shadowing);
                 } else {
                     span_err!(self.session, span, E0469, "imported macro not found");
                 }

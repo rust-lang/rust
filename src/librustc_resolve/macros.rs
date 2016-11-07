@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {Module, ModuleKind, Resolver};
+use {Module, ModuleKind, NameBinding, NameBindingKind, Resolver};
 use build_reduced_graph::BuildReducedGraphVisitor;
 use resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex};
 use rustc::hir::def::{Def, Export};
 use rustc::hir::map::{self, DefCollector};
+use rustc::ty;
 use std::cell::Cell;
 use std::rc::Rc;
 use syntax::ast;
@@ -28,7 +29,7 @@ use syntax::parse::token::intern;
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::Visitor;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Clone)]
 pub struct InvocationData<'a> {
@@ -179,7 +180,12 @@ impl<'a> base::Resolver for Resolver<'a> {
             index: DefIndex::new(self.macro_map.len()),
         };
         self.macro_map.insert(def_id, ext);
-        self.builtin_macros.insert(ident.name, def_id);
+        let binding = self.arenas.alloc_name_binding(NameBinding {
+            kind: NameBindingKind::Def(Def::Macro(def_id)),
+            span: DUMMY_SP,
+            vis: ty::Visibility::PrivateExternal,
+        });
+        self.builtin_macros.insert(ident.name, binding);
     }
 
     fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>) {
@@ -193,8 +199,8 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn find_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
             let name = intern(&attrs[i].name());
-            match self.builtin_macros.get(&name) {
-                Some(&def_id) => match *self.get_macro(Def::Macro(def_id)) {
+            match self.builtin_macros.get(&name).cloned() {
+                Some(binding) => match *self.get_macro(binding.def()) {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))
                     }
@@ -273,7 +279,7 @@ impl<'a> Resolver<'a> {
         if let Some(scope) = possible_time_travel {
             self.lexical_macro_resolutions.push((name, scope));
         }
-        self.builtin_macros.get(&name).cloned().map(|def_id| self.get_macro(Def::Macro(def_id)))
+        self.builtin_macros.get(&name).cloned().map(|binding| self.get_macro(binding.def()))
     }
 
     fn suggest_macro_name(&mut self, name: &str, err: &mut DiagnosticBuilder<'a>) {
