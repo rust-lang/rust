@@ -10,7 +10,7 @@
 
 
 // This test case tests the incremental compilation hash (ICH) implementation
-// for struct definitions.
+// for unary and binary expressions.
 
 // The general pattern followed here is: Change one thing between rev1 and rev2
 // and make sure that the hash has changed, then change nothing between rev2 and
@@ -41,6 +41,7 @@ pub fn const_negation() -> i32 {
 }
 
 
+
 // Change constant operand of bitwise not --------------------------------------
 #[cfg(cfail1)]
 pub fn const_bitwise_not() -> i32 {
@@ -57,9 +58,10 @@ pub fn const_bitwise_not() -> i32 {
 }
 
 
+
 // Change variable operand of negation -----------------------------------------
 #[cfg(cfail1)]
-pub fn var_negation(x: i32) -> i32 {
+pub fn var_negation(x: i32, y: i32) -> i32 {
     -x
 }
 
@@ -68,14 +70,15 @@ pub fn var_negation(x: i32) -> i32 {
 #[rustc_clean(label="Hir", cfg="cfails3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-pub fn var_negation(y: i32) -> i32 {
+pub fn var_negation(x: i32, y: i32) -> i32 {
     -y
 }
 
 
+
 // Change variable operand of bitwise not --------------------------------------
 #[cfg(cfail1)]
-pub fn var_bitwise_not(x: i32) -> i32 {
+pub fn var_bitwise_not(x: i32, y: i32) -> i32 {
     !x
 }
 
@@ -84,14 +87,15 @@ pub fn var_bitwise_not(x: i32) -> i32 {
 #[rustc_clean(label="Hir", cfg="cfails3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-pub fn var_bitwise_not(y: i32) -> i32 {
+pub fn var_bitwise_not(x: i32, y: i32) -> i32 {
     !y
 }
 
 
+
 // Change variable operand of deref --------------------------------------------
 #[cfg(cfail1)]
-pub fn var_deref(x: &i32) -> i32 {
+pub fn var_deref(x: &i32, y: &i32) -> i32 {
     *x
 }
 
@@ -100,9 +104,10 @@ pub fn var_deref(x: &i32) -> i32 {
 #[rustc_clean(label="Hir", cfg="cfails3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-pub fn var_deref(y: &i32) -> i32 {
+pub fn var_deref(x: &i32, y: &i32) -> i32 {
     *y
 }
+
 
 
 // Change first constant operand of addition -----------------------------------
@@ -121,6 +126,7 @@ pub fn first_const_add() -> i32 {
 }
 
 
+
 // Change second constant operand of addition -----------------------------------
 #[cfg(cfail1)]
 pub fn second_const_add() -> i32 {
@@ -137,9 +143,10 @@ pub fn second_const_add() -> i32 {
 }
 
 
+
 // Change first variable operand of addition -----------------------------------
 #[cfg(cfail1)]
-pub fn first_var_add(a: i32) -> i32 {
+pub fn first_var_add(a: i32, b: i32) -> i32 {
     a + 2
 }
 
@@ -148,14 +155,15 @@ pub fn first_var_add(a: i32) -> i32 {
 #[rustc_clean(label="Hir", cfg="cfails3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-pub fn first_var_add(b: i32) -> i32 {
+pub fn first_var_add(a: i32, b: i32) -> i32 {
     b + 3
 }
 
 
+
 // Change second variable operand of addition ----------------------------------
 #[cfg(cfail1)]
-pub fn second_var_add(a: i32) -> i32 {
+pub fn second_var_add(a: i32, b: i32) -> i32 {
     1 + a
 }
 
@@ -164,9 +172,10 @@ pub fn second_var_add(a: i32) -> i32 {
 #[rustc_clean(label="Hir", cfg="cfails3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-pub fn second_var_add(b: i32) -> i32 {
+pub fn second_var_add(a: i32, b: i32) -> i32 {
     1 + b
 }
+
 
 
 // Change operator from + to - -------------------------------------------------
@@ -185,6 +194,7 @@ pub fn plus_to_minus(a: i32) -> i32 {
 }
 
 
+
 // Change operator from + to * -------------------------------------------------
 #[cfg(cfail1)]
 pub fn plus_to_mult(a: i32) -> i32 {
@@ -199,6 +209,7 @@ pub fn plus_to_mult(a: i32) -> i32 {
 pub fn plus_to_mult(a: i32) -> i32 {
     1 * a
 }
+
 
 
 // Change operator from + to / -------------------------------------------------
@@ -217,6 +228,7 @@ pub fn plus_to_div(a: i32) -> i32 {
 }
 
 
+
 // Change operator from + to % -------------------------------------------------
 #[cfg(cfail1)]
 pub fn plus_to_mod(a: i32) -> i32 {
@@ -231,6 +243,7 @@ pub fn plus_to_mod(a: i32) -> i32 {
 pub fn plus_to_mod(a: i32) -> i32 {
     1 % a
 }
+
 
 
 // Change operator from && to || -----------------------------------------------
@@ -444,7 +457,9 @@ pub fn value_cast(a: u32) -> i32 {
 // Change l-value in assignment ------------------------------------------------
 #[cfg(cfail1)]
 pub fn lvalue() -> i32 {
-    let x = 10;
+    let mut x = 10;
+    let mut y = 11;
+    x = 9;
     x
 }
 
@@ -454,7 +469,9 @@ pub fn lvalue() -> i32 {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn lvalue() -> i32 {
-    let y = 10;
+    let mut x = 10;
+    let mut y = 11;
+    x = 9;
     y
 }
 
@@ -463,7 +480,9 @@ pub fn lvalue() -> i32 {
 // Change r-value in assignment ------------------------------------------------
 #[cfg(cfail1)]
 pub fn rvalue() -> i32 {
-    let x = 10;
+    let mut x = 10;
+    let mut y = 11;
+    x = 9;
     x
 }
 
@@ -473,7 +492,9 @@ pub fn rvalue() -> i32 {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn rvalue() -> i32 {
-    let x = 11;
+    let mut x = 10;
+    let mut y = 11;
+    x = 8;
     x
 }
 
@@ -481,9 +502,8 @@ pub fn rvalue() -> i32 {
 
 // Change index into slice -----------------------------------------------------
 #[cfg(cfail1)]
-pub fn index_to_slice() -> i32 {
-    let xs = [1,2,3,4,5];
-    xs[1]
+pub fn index_to_slice(s: &[u8], i: usize, j: usize) -> u8 {
+    s[i]
 }
 
 #[cfg(not(cfail1))]
@@ -491,7 +511,6 @@ pub fn index_to_slice() -> i32 {
 #[rustc_clean(label="Hir", cfg="cfails3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-pub fn index_to_slice() -> i32 {
-    let xs = &[1,2,3,4,5];
-    xs[1]
+pub fn index_to_slice(s: &[u8], i: usize, j: usize) -> u8 {
+    s[j]
 }
