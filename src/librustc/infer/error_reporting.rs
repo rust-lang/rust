@@ -80,8 +80,9 @@ use hir::print as pprust;
 use lint;
 use hir::def::Def;
 use hir::def_id::DefId;
-use infer::{self, TypeOrigin};
+use infer;
 use middle::region;
+use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::{Region, ReFree};
 use ty::error::TypeError;
@@ -524,10 +525,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     fn note_error_origin(&self,
                          err: &mut DiagnosticBuilder<'tcx>,
-                         origin: &TypeOrigin)
+                         cause: &ObligationCause<'tcx>)
     {
-        match origin {
-            &TypeOrigin::MatchExpressionArm(_, arm_span, source) => match source {
+        match cause.code {
+            ObligationCauseCode::MatchExpressionArm { arm_span, source } => match source {
                 hir::MatchSource::IfLetDesugar {..} => {
                     err.span_note(arm_span, "`if let` arm with an incompatible type");
                 }
@@ -541,7 +542,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn note_type_err(&self,
                          diag: &mut DiagnosticBuilder<'tcx>,
-                         origin: TypeOrigin,
+                         cause: &ObligationCause<'tcx>,
                          secondary_span: Option<(Span, String)>,
                          values: Option<ValuePairs<'tcx>>,
                          terr: &TypeError<'tcx>)
@@ -558,7 +559,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let span = origin.span();
+        let span = cause.span;
 
         if let Some((expected, found)) = expected_found {
             let is_simple_error = if let &TypeError::Sorts(ref values) = terr {
@@ -588,7 +589,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             diag.span_label(sp, &msg);
         }
 
-        self.note_error_origin(diag, &origin);
+        self.note_error_origin(diag, &cause);
         self.check_and_note_conflicting_crates(diag, terr, span);
         self.tcx.note_and_explain_type_err(diag, terr, span);
     }
@@ -598,17 +599,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                          terr: &TypeError<'tcx>)
                                          -> DiagnosticBuilder<'tcx>
     {
-        let span = trace.origin.span();
-        let failure_str = trace.origin.as_failure_str();
-        let mut diag = match trace.origin {
-            TypeOrigin::IfExpressionWithNoElse(_) => {
+        let span = trace.cause.span;
+        let failure_str = trace.cause.as_failure_str();
+        let mut diag = match trace.cause.code {
+            ObligationCauseCode::IfExpressionWithNoElse => {
                 struct_span_err!(self.tcx.sess, span, E0317, "{}", failure_str)
             },
             _ => {
                 struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str)
             },
         };
-        self.note_type_err(&mut diag, trace.origin, None, Some(trace.values), terr);
+        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr);
         diag
     }
 
@@ -1695,18 +1696,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 if let Some((expected, found)) = self.values_str(&trace.values) {
                     // FIXME: do we want a "the" here?
                     err.span_note(
-                        trace.origin.span(),
+                        trace.cause.span,
                         &format!("...so that {} (expected {}, found {})",
-                                 trace.origin.as_requirement_str(), expected, found));
+                                 trace.cause.as_requirement_str(), expected, found));
                 } else {
                     // FIXME: this really should be handled at some earlier stage. Our
                     // handling of region checking when type errors are present is
                     // *terrible*.
 
                     err.span_note(
-                        trace.origin.span(),
+                        trace.cause.span,
                         &format!("...so that {}",
-                                 trace.origin.as_requirement_str()));
+                                 trace.cause.as_requirement_str()));
                 }
             }
             infer::Reborrow(span) => {
@@ -1961,3 +1962,45 @@ fn name_to_dummy_lifetime(name: ast::Name) -> hir::Lifetime {
                     span: syntax_pos::DUMMY_SP,
                     name: name }
 }
+
+impl<'tcx> ObligationCause<'tcx> {
+    fn as_failure_str(&self) -> &'static str {
+        use traits::ObligationCauseCode::*;
+        match self.code {
+            CompareImplMethodObligation { .. } => "method not compatible with trait",
+            MatchExpressionArm { source, .. } => match source {
+                hir::MatchSource::IfLetDesugar{..} => "`if let` arms have incompatible types",
+                _ => "match arms have incompatible types",
+            },
+            IfExpression => "if and else have incompatible types",
+            IfExpressionWithNoElse => "if may be missing an else clause",
+            EquatePredicate => "equality predicate not satisfied",
+            MainFunctionType => "main function has wrong type",
+            StartFunctionType => "start function has wrong type",
+            IntrinsicType => "intrinsic has wrong type",
+            MethodReceiver => "mismatched method receiver",
+            _ => "mismatched types",
+        }
+    }
+
+    fn as_requirement_str(&self) -> &'static str {
+        use traits::ObligationCauseCode::*;
+        match self.code {
+            CompareImplMethodObligation { .. } => "method type is compatible with trait",
+            ExprAssignable => "expression is assignable",
+            MatchExpressionArm { source, .. } => match source {
+                hir::MatchSource::IfLetDesugar{..} => "`if let` arms have compatible types",
+                _ => "match arms have compatible types",
+            },
+            IfExpression => "if and else have compatible types",
+            IfExpressionWithNoElse => "if missing an else returns ()",
+            EquatePredicate => "equality where clause is satisfied",
+            MainFunctionType => "`main` function has the correct type",
+            StartFunctionType => "`start` function has the correct type",
+            IntrinsicType => "intrinsic has the correct type",
+            MethodReceiver => "method receiver has the correct type",
+            _ => "types are compatible",
+        }
+    }
+}
+

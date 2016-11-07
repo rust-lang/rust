@@ -87,9 +87,9 @@ use hir::def::{Def, CtorKind, PathResolution};
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin,
-                   TypeOrigin, TypeTrace, type_variable};
+                   TypeTrace, type_variable};
 use rustc::ty::subst::{Kind, Subst, Substs};
-use rustc::traits::{self, Reveal};
+use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, Visibility};
@@ -1521,6 +1521,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn cause(&self,
+                 span: Span,
+                 code: ObligationCauseCode<'tcx>)
+                 -> ObligationCause<'tcx> {
+        ObligationCause::new(span, self.body_id, code)
+    }
+
+    pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
+        self.cause(span, ObligationCauseCode::MiscObligation)
+    }
+
     /// Resolves type variables in `ty` if possible. Unlike the infcx
     /// version (resolve_type_vars_if_possible), this version will
     /// also select obligations if it seems useful, in an effort
@@ -2096,8 +2107,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 if let Some(default) = default_map.get(ty) {
                                     let default = default.clone();
                                     match self.eq_types(false,
-                                            TypeOrigin::Misc(default.origin_span),
-                                            ty, default.ty) {
+                                                        &self.misc(default.origin_span),
+                                                        ty,
+                                                        default.ty) {
                                         Ok(InferOk { obligations, .. }) => {
                                             // FIXME(#32730) propagate obligations
                                             assert!(obligations.is_empty())
@@ -2146,6 +2158,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     self.report_conflicting_default_types(
                         first_default.origin_span,
+                        self.body_id,
                         first_default,
                         second_default)
                 }
@@ -2194,8 +2207,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(default) = default_map.get(ty) {
                             let default = default.clone();
                             match self.eq_types(false,
-                                    TypeOrigin::Misc(default.origin_span),
-                                    ty, default.ty) {
+                                                &self.misc(default.origin_span),
+                                                ty,
+                                                default.ty) {
                                 // FIXME(#32730) propagate obligations
                                 Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
                                 Err(_) => {
@@ -2765,8 +2779,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // return type (likely containing type variables if the function
                 // is polymorphic) and the expected return type.
                 // No argument expectations are produced if unification fails.
-                let origin = TypeOrigin::Misc(call_span);
-                let ures = self.sub_types(false, origin, formal_ret, ret_ty);
+                let origin = self.misc(call_span);
+                let ures = self.sub_types(false, &origin, formal_ret, ret_ty);
                 // FIXME(#15760) can't use try! here, FromError doesn't default
                 // to identity so the resulting type is not constrained.
                 match ures {
@@ -2852,16 +2866,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.diverges.set(Diverges::Maybe);
 
         let unit = self.tcx.mk_nil();
-        let (origin, expected, found, result) =
+        let (cause, expected_ty, found_ty, result);
         if let Some(else_expr) = opt_else_expr {
             let else_ty = self.check_expr_with_expectation(else_expr, expected);
             let else_diverges = self.diverges.get();
+            cause = self.cause(sp, ObligationCauseCode::IfExpression);
 
             // Only try to coerce-unify if we have a then expression
             // to assign coercions to, otherwise it's () or diverging.
-            let origin = TypeOrigin::IfExpression(sp);
-            let result = if let Some(ref then) = then_blk.expr {
-                let res = self.try_find_coercion_lub(origin, || Some(&**then),
+            expected_ty = then_ty;
+            found_ty = else_ty;
+            result = if let Some(ref then) = then_blk.expr {
+                let res = self.try_find_coercion_lub(&cause, || Some(&**then),
                                                      then_ty, else_expr, else_ty);
 
                 // In case we did perform an adjustment, we have to update
@@ -2876,7 +2892,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 res
             } else {
                 self.commit_if_ok(|_| {
-                    let trace = TypeTrace::types(origin, true, then_ty, else_ty);
+                    let trace = TypeTrace::types(&cause, true, then_ty, else_ty);
                     self.lub(true, trace, &then_ty, &else_ty)
                         .map(|InferOk { value, obligations }| {
                             // FIXME(#32730) propagate obligations
@@ -2888,21 +2904,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // We won't diverge unless both branches do (or the condition does).
             self.diverges.set(cond_diverges | then_diverges & else_diverges);
-
-            (origin, then_ty, else_ty, result)
         } else {
             // If the condition is false we can't diverge.
             self.diverges.set(cond_diverges);
 
-            let origin = TypeOrigin::IfExpressionWithNoElse(sp);
-            (origin, unit, then_ty,
-             self.eq_types(true, origin, unit, then_ty)
-                 .map(|InferOk { obligations, .. }| {
-                     // FIXME(#32730) propagate obligations
-                     assert!(obligations.is_empty());
-                     unit
-                 }))
-        };
+            cause = self.cause(sp, ObligationCauseCode::IfExpressionWithNoElse);
+            expected_ty = unit;
+            found_ty = then_ty;
+            result = self.eq_types(true, &cause, unit, then_ty)
+                         .map(|InferOk { obligations, .. }| {
+                             // FIXME(#32730) propagate obligations
+                             assert!(obligations.is_empty());
+                             unit
+                         });
+        }
 
         match result {
             Ok(ty) => {
@@ -2913,7 +2928,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             Err(e) => {
-                self.report_mismatched_types(origin, expected, found, e);
+                self.report_mismatched_types(&cause, expected_ty, found_ty, e);
                 self.tcx.types.err
             }
         }
@@ -3565,7 +3580,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.check_expr_coercable_to_type(&e, self.ret_ty);
             } else {
                 let eq_result = self.eq_types(false,
-                                              TypeOrigin::Misc(expr.span),
+                                              &self.misc(expr.span),
                                               self.ret_ty,
                                               tcx.mk_nil())
                     // FIXME(#32730) propagate obligations
@@ -3695,20 +3710,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             for (i, e) in args.iter().enumerate() {
                 let e_ty = self.check_expr_with_hint(e, coerce_to);
-                let origin = TypeOrigin::Misc(e.span);
+                let cause = self.misc(e.span);
 
                 // Special-case the first element, as it has no "previous expressions".
                 let result = if i == 0 {
                     self.try_coerce(e, e_ty, coerce_to)
                 } else {
                     let prev_elems = || args[..i].iter().map(|e| &**e);
-                    self.try_find_coercion_lub(origin, prev_elems, unified, e, e_ty)
+                    self.try_find_coercion_lub(&cause, prev_elems, unified, e, e_ty)
                 };
 
                 match result {
                     Ok(ty) => unified = ty,
                     Err(e) => {
-                        self.report_mismatched_types(origin, unified, e_ty, e);
+                        self.report_mismatched_types(&cause, unified, e_ty, e);
                     }
                 }
             }
@@ -4064,9 +4079,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // We're not diverging and there's an expected type, which,
                 // in case it's not `()`, could result in an error higher-up.
                 // We have a chance to error here early and be more helpful.
-                let origin = TypeOrigin::Misc(blk.span);
-                let trace = TypeTrace::types(origin, false, ty, ety);
-                match self.sub_types(false, origin, ty, ety) {
+                let cause = self.misc(blk.span);
+                let trace = TypeTrace::types(&cause, false, ty, ety);
+                match self.sub_types(false, &cause, ty, ety) {
                     Ok(InferOk { obligations, .. }) => {
                         // FIXME(#32730) propagate obligations
                         assert!(obligations.is_empty());
@@ -4367,7 +4382,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let ty = self.tcx.item_type(impl_def_id);
 
             let impl_ty = self.instantiate_type_scheme(span, &substs, &ty);
-            match self.sub_types(false, TypeOrigin::Misc(span), self_ty, impl_ty) {
+            match self.sub_types(false, &self.misc(span), self_ty, impl_ty) {
                 Ok(InferOk { obligations, .. }) => {
                     // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty());

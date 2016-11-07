@@ -35,7 +35,7 @@ use super::util;
 
 use hir::def_id::DefId;
 use infer;
-use infer::{InferCtxt, InferOk, TypeFreshener, TypeOrigin};
+use infer::{InferCtxt, InferOk, TypeFreshener};
 use ty::subst::{Kind, Subst, Substs};
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use traits;
@@ -521,7 +521,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::Predicate::Equate(ref p) => {
                 // does this code ever run?
-                match self.infcx.equality_predicate(obligation.cause.span, p) {
+                match self.infcx.equality_predicate(&obligation.cause, p) {
                     Ok(InferOk { obligations, .. }) => {
                         self.inferred_obligations.extend(obligations);
                         EvaluatedToOk
@@ -1247,9 +1247,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         -> bool
     {
         assert!(!skol_trait_ref.has_escaping_regions());
-        let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
+        let cause = obligation.cause.clone();
         match self.infcx.sub_poly_trait_refs(false,
-                                             origin,
+                                             cause,
                                              trait_bound.clone(),
                                              ty::Binder(skol_trait_ref.clone())) {
             Ok(InferOk { obligations, .. }) => {
@@ -2439,16 +2439,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// selection of the impl. Therefore, if there is a mismatch, we
     /// report an error to the user.
     fn confirm_poly_trait_refs(&mut self,
-                               obligation_cause: ObligationCause,
+                               obligation_cause: ObligationCause<'tcx>,
                                obligation_trait_ref: ty::PolyTraitRef<'tcx>,
                                expected_trait_ref: ty::PolyTraitRef<'tcx>)
                                -> Result<(), SelectionError<'tcx>>
     {
-        let origin = TypeOrigin::RelateOutputImplTypes(obligation_cause.span);
-
         let obligation_trait_ref = obligation_trait_ref.clone();
         self.infcx.sub_poly_trait_refs(false,
-                                       origin,
+                                       obligation_cause.clone(),
                                        expected_trait_ref.clone(),
                                        obligation_trait_ref.clone())
             .map(|InferOk { obligations, .. }| self.inferred_obligations.extend(obligations))
@@ -2482,9 +2480,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     builtin_bounds: data_b.builtin_bounds,
                     projection_bounds: data_a.projection_bounds.clone(),
                 });
-                let origin = TypeOrigin::Misc(obligation.cause.span);
                 let InferOk { obligations, .. } =
-                    self.infcx.sub_types(false, origin, new_trait, target)
+                    self.infcx.sub_types(false, &obligation.cause, new_trait, target)
                     .map_err(|_| Unimplemented)?;
                 self.inferred_obligations.extend(obligations);
 
@@ -2553,9 +2550,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             // [T; n] -> [T].
             (&ty::TyArray(a, _), &ty::TySlice(b)) => {
-                let origin = TypeOrigin::Misc(obligation.cause.span);
                 let InferOk { obligations, .. } =
-                    self.infcx.sub_types(false, origin, a, b)
+                    self.infcx.sub_types(false, &obligation.cause, a, b)
                     .map_err(|_| Unimplemented)?;
                 self.inferred_obligations.extend(obligations);
             }
@@ -2617,9 +2613,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     }
                 });
                 let new_struct = tcx.mk_adt(def, tcx.mk_substs(params));
-                let origin = TypeOrigin::Misc(obligation.cause.span);
                 let InferOk { obligations, .. } =
-                    self.infcx.sub_types(false, origin, new_struct, target)
+                    self.infcx.sub_types(false, &obligation.cause, new_struct, target)
                     .map_err(|_| Unimplemented)?;
                 self.inferred_obligations.extend(obligations);
 
@@ -2705,10 +2700,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                impl_trait_ref,
                skol_obligation_trait_ref);
 
-        let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
         let InferOk { obligations, .. } =
             self.infcx.eq_trait_refs(false,
-                                     origin,
+                                     &obligation.cause,
                                      impl_trait_ref.value.clone(),
                                      skol_obligation_trait_ref)
             .map_err(|e| {
@@ -2780,9 +2774,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                obligation,
                poly_trait_ref);
 
-        let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
         self.infcx.sub_poly_trait_refs(false,
-                                       origin,
+                                       obligation.cause.clone(),
                                        poly_trait_ref,
                                        obligation.predicate.to_poly_trait_ref())
             .map(|InferOk { obligations, .. }| self.inferred_obligations.extend(obligations))

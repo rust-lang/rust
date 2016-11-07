@@ -17,7 +17,7 @@ use rustc::infer::{self, InferOk};
 use middle::region;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
-use rustc::traits::{self, Reveal};
+use rustc::traits::{self, ObligationCause, Reveal};
 use util::nodemap::FxHashSet;
 
 use syntax::ast;
@@ -93,8 +93,8 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
             infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did);
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
-        match infcx.eq_types(true, infer::TypeOrigin::Misc(drop_impl_span),
-                             named_type, fresh_impl_self_ty) {
+        let cause = &ObligationCause::misc(drop_impl_span, drop_impl_node_id);
+        match infcx.eq_types(true, cause, named_type, fresh_impl_self_ty) {
             Ok(InferOk { obligations, .. }) => {
                 // FIXME(#32730) propagate obligations
                 assert!(obligations.is_empty());

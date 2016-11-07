@@ -12,7 +12,7 @@
 //! intrinsics that the compiler exposes.
 
 use intrinsics;
-use rustc::infer::TypeOrigin;
+use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::Substs;
 use rustc::ty::FnSig;
 use rustc::ty::{self, Ty};
@@ -63,7 +63,9 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             .emit();
     } else {
         require_same_types(ccx,
-                           TypeOrigin::IntrinsicType(it.span),
+                           &ObligationCause::new(it.span,
+                                                 it.id,
+                                                 ObligationCauseCode::IntrinsicType),
                            tcx.item_type(def_id),
                            fty);
     }

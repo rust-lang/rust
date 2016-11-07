@@ -306,22 +306,28 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 pub struct TypeChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     fulfillment_cx: traits::FulfillmentContext<'tcx>,
-    last_span: Span
+    last_span: Span,
+    body_id: ast::NodeId,
 }
 
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
-    fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+    fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, body_id: ast::NodeId) -> Self {
         TypeChecker {
             infcx: infcx,
             fulfillment_cx: traits::FulfillmentContext::new(),
-            last_span: DUMMY_SP
+            last_span: DUMMY_SP,
+            body_id: body_id,
         }
+    }
+
+    fn misc(&self, span: Span) -> traits::ObligationCause<'tcx> {
+        traits::ObligationCause::misc(span, self.body_id)
     }
 
     fn sub_types(&self, span: Span, sup: Ty<'tcx>, sub: Ty<'tcx>)
                  -> infer::UnitResult<'tcx>
     {
-        self.infcx.sub_types(false, infer::TypeOrigin::Misc(span), sup, sub)
+        self.infcx.sub_types(false, &self.misc(span), sup, sub)
             // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
@@ -329,7 +335,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn eq_types(&self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
                 -> infer::UnitResult<'tcx>
     {
-        self.infcx.eq_types(false, infer::TypeOrigin::Misc(span), a, b)
+        self.infcx.eq_types(false, &self.misc(span), a, b)
             // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
@@ -715,7 +721,7 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
         }
         let param_env = ty::ParameterEnvironment::for_item(tcx, src.item_id());
         tcx.infer_ctxt(None, Some(param_env), Reveal::NotSpecializable).enter(|infcx| {
-            let mut checker = TypeChecker::new(&infcx);
+            let mut checker = TypeChecker::new(&infcx, src.item_id());
             {
                 let mut verifier = TypeVerifier::new(&mut checker, mir);
                 verifier.visit_mir(mir);
