@@ -96,21 +96,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match ty.sty {
             TyRef(..) | TyRawPtr(_) => Ok(PrimVal::from_ptr(ptr)),
             TyFnPtr(_) => Ok(PrimVal::from_fn_ptr(ptr)),
-
-            TyInt(IntTy::I8) |
-            TyInt(IntTy::I16) |
-            TyInt(IntTy::I32) |
-            TyInt(IntTy::I64) |
-            TyInt(IntTy::Is) |
-            TyUint(UintTy::U8) |
-            TyUint(UintTy::U16) |
-            TyUint(UintTy::U32) |
-            TyUint(UintTy::U64) |
-            TyUint(UintTy::Us) => {
-                let val = PrimVal::from_ptr(ptr);
-                self.transmute_primval(val, ty)
-            }
-
+            TyInt(_) | TyUint(_) => self.transmute_primval(PrimVal::from_ptr(ptr), ty),
             _ => Err(EvalError::Unimplemented(format!("ptr to {:?} cast", ty))),
         }
     }
