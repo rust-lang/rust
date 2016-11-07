@@ -11,8 +11,6 @@
 use graph::*;
 use std::fmt::Debug;
 
-type TestNode = Node<&'static str>;
-type TestEdge = Edge<&'static str>;
 type TestGraph = Graph<&'static str, &'static str>;
 
 fn create_graph() -> TestGraph {
