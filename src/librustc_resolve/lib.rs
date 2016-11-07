@@ -881,6 +881,7 @@ impl<'a> fmt::Debug for ModuleS<'a> {
 #[derive(Clone, Debug)]
 pub struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
+    expansion: Mark,
     span: Span,
     vis: ty::Visibility,
 }
@@ -1304,6 +1305,7 @@ impl<'a> Resolver<'a> {
             arenas: arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Def(Def::Err),
+                expansion: Mark::root(),
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             }),
