@@ -96,12 +96,12 @@ macro_rules! step_impl_unsigned {
 
             #[inline]
             fn add_one(&self) -> Self {
-                *self + 1
+                Add::add(*self, 1)
             }
 
             #[inline]
             fn sub_one(&self) -> Self {
-                *self - 1
+                Sub::sub(*self, 1)
             }
 
             #[inline]
@@ -167,12 +167,12 @@ macro_rules! step_impl_signed {
 
             #[inline]
             fn add_one(&self) -> Self {
-                *self + 1
+                Add::add(*self, 1)
             }
 
             #[inline]
             fn sub_one(&self) -> Self {
-                *self - 1
+                Sub::sub(*self, 1)
             }
 
             #[inline]
@@ -216,12 +216,12 @@ macro_rules! step_impl_no_between {
 
             #[inline]
             fn add_one(&self) -> Self {
-                *self + 1
+                Add::add(*self, 1)
             }
 
             #[inline]
             fn sub_one(&self) -> Self {
-                *self - 1
+                Sub::sub(*self, 1)
             }
 
             #[inline]
