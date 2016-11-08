@@ -42,6 +42,7 @@ pub struct Name(pub u32);
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ident {
     pub name: Name,
+    pub span: Span,
     pub ctxt: SyntaxContext
 }
 
@@ -76,8 +77,8 @@ impl Decodable for Name {
 }
 
 impl Ident {
-    pub const fn with_empty_ctxt(name: Name) -> Ident {
-        Ident { name: name, ctxt: SyntaxContext::empty() }
+    pub const fn with_empty_ctxt(name: Name, span: Span) -> Ident {
+        Ident { name: name, span: span, ctxt: SyntaxContext::empty() }
     }
 }
 
