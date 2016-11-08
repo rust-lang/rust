@@ -1149,7 +1149,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     autoderefs: usize,
                     autoref: &adjustment::AutoBorrow<'tcx>)
     {
-        debug!("link_autoref(autoref={:?})", autoref);
+        debug!("link_autoref(autoderefs={}, autoref={:?})", autoderefs, autoref);
         let mc = mc::MemCategorizationContext::new(self);
         let expr_cmt = ignore_err!(mc.cat_expr_autoderefd(expr, autoderefs));
         debug!("expr_cmt={:?}", expr_cmt);

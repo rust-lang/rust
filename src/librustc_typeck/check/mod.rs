@@ -86,7 +86,8 @@ use fmt_macros::{Parser, Piece, Position};
 use hir::def::{Def, CtorKind, PathResolution};
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::pat_util;
-use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
+use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin,
+                   TypeOrigin, TypeTrace, type_variable};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, Reveal};
 use rustc::ty::{ParamTy, ParameterEnvironment};
@@ -2752,7 +2753,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   formal_args: &[Ty<'tcx>])
                                   -> Vec<Ty<'tcx>> {
         let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {
-            self.commit_regions_if_ok(|| {
+            self.fudge_regions_if_ok(&RegionVariableOrigin::Coercion(call_span), || {
                 // Attempt to apply a subtyping relationship between the formal
                 // return type (likely containing type variables if the function
                 // is polymorphic) and the expected return type.
