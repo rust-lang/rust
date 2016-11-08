@@ -459,7 +459,7 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
                 let mut ei = bb_eis.pop().unwrap();
                 if let TokenTree::Token(span, MatchNt(_, ident)) = ei.top_elts.get_tt(ei.idx) {
                     let match_cur = ei.match_cur;
-                    (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
+                    ei.matches[match_cur].push(Rc::new(MatchedNonterminal(
                         Rc::new(parse_nt(&mut parser, span, &ident.name.as_str())))));
                     ei.idx += 1;
                     ei.match_cur += 1;
