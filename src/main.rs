@@ -149,23 +149,6 @@ pub fn main() {
 
     let dep_path = env::current_dir().expect("current dir is not readable").join("target").join("debug").join("deps");
 
-    let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
-    let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-    let sys_root = if let (Some(home), Some(toolchain)) = (home, toolchain) {
-        format!("{}/toolchains/{}", home, toolchain)
-    } else {
-        option_env!("SYSROOT")
-            .map(|s| s.to_owned())
-            .or(Command::new("rustc")
-                .arg("--print")
-                .arg("sysroot")
-                .output()
-                .ok()
-                .and_then(|out| String::from_utf8(out.stdout).ok())
-                .map(|s| s.trim().to_owned()))
-            .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust")
-    };
-
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // this arm is executed on the initial call to `cargo clippy`
 
@@ -201,11 +184,11 @@ pub fn main() {
             let args = std::env::args().skip(2);
             if let Some(first) = target.kind.get(0) {
                 if target.kind.len() > 1 || first.ends_with("lib") {
-                    if let Err(code) = process(std::iter::once("--lib".to_owned()).chain(args), &dep_path, &sys_root) {
+                    if let Err(code) = process(std::iter::once("--lib".to_owned()).chain(args), &dep_path) {
                         std::process::exit(code);
                     }
                 } else if ["bin", "example", "test", "bench"].contains(&&**first) {
-                    if let Err(code) = process(vec![format!("--{}", first), target.name].into_iter().chain(args), &dep_path, &sys_root) {
+                    if let Err(code) = process(vec![format!("--{}", first), target.name].into_iter().chain(args), &dep_path) {
                         std::process::exit(code);
                     }
                 }
@@ -215,6 +198,23 @@ pub fn main() {
         }
     } else {
         // this arm is executed when cargo-clippy runs `cargo rustc` with the `RUSTC` env var set to itself
+
+        let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
+        let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
+        let sys_root = if let (Some(home), Some(toolchain)) = (home, toolchain) {
+            format!("{}/toolchains/{}", home, toolchain)
+        } else {
+            option_env!("SYSROOT")
+                .map(|s| s.to_owned())
+                .or(Command::new("rustc")
+                    .arg("--print")
+                    .arg("sysroot")
+                    .output()
+                    .ok()
+                    .and_then(|out| String::from_utf8(out.stdout).ok())
+                    .map(|s| s.trim().to_owned()))
+                .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust")
+        };
 
         // this conditional check for the --sysroot flag is there so users can call `cargo-clippy` directly
         // without having to pass --sysroot or anything
@@ -239,7 +239,7 @@ pub fn main() {
     }
 }
 
-fn process<P, I>(old_args: I, dep_path: P, sysroot: &str) -> Result<(), i32>
+fn process<P, I>(old_args: I, dep_path: P) -> Result<(), i32>
     where P: AsRef<Path>,
           I: Iterator<Item = String>
 {
@@ -256,8 +256,6 @@ fn process<P, I>(old_args: I, dep_path: P, sysroot: &str) -> Result<(), i32>
     }
     args.push("-L".to_owned());
     args.push(dep_path.as_ref().to_string_lossy().into_owned());
-    args.push(String::from("--sysroot"));
-    args.push(sysroot.to_owned());
     args.push("-Zno-trans".to_owned());
     args.push("--cfg".to_owned());
     args.push(r#"feature="cargo-clippy""#.to_owned());
