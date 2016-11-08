@@ -1,0 +1,11 @@
+error: cannot borrow immutable borrowed content `*x` as mutable
+  --> $DIR/borrowck-call-method-from-mut-aliasable.rs:27:5
+   |
+25 | fn b(x: &Foo) {
+   |         ---- use `&mut Foo` here to make mutable
+26 |     x.f();
+27 |     x.h(); //~ ERROR cannot borrow
+   |     ^
+
+error: aborting due to previous error
+
