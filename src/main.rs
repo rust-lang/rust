@@ -17,8 +17,9 @@ use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 use rustc::session::{config, Session};
 use rustc::session::config::{Input, ErrorOutputType};
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{self, Command};
 use syntax::ast;
+use std::io::{self, Write};
 
 use clippy_lints::utils::cargo;
 
@@ -141,6 +142,12 @@ fn show_help() {
     println!("{}", CARGO_CLIPPY_HELP);
 }
 
+#[allow(print_stdout)]
+fn show_version() {
+    println!("{}", env!("CARGO_PKG_VERSION"));
+}
+
+#[cfg_attr(feature = "cargo-clippy", allow(print_stdout))]
 pub fn main() {
     use std::env;
 
@@ -154,7 +161,7 @@ pub fn main() {
         return;
     }
     if std::env::args().any(|a| a == "--version" || a == "-V") {
-        println!("{}", env!("CARGO_PKG_VERSION"));
+        show_version();
         return;
     }
 
@@ -165,7 +172,12 @@ pub fn main() {
 
         let manifest_path_arg = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
 
-        let mut metadata = cargo::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)).expect("could not obtain cargo metadata");
+        let mut metadata = if let Ok(metadata) = cargo::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
+            metadata
+        } else {
+            let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata."));
+            process::exit(101);
+        };
 
         assert_eq!(metadata.version, 1);
 
