@@ -14,12 +14,10 @@ use errors::FatalError;
 use proc_macro::{TokenStream, __internal};
 use syntax::ast::{self, ItemKind, Attribute};
 use syntax::attr::{mark_used, mark_known};
-use syntax::codemap::{ExpnInfo, MacroAttribute, NameAndSpan, Span};
+use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::fold::Folder;
 use syntax::parse::token::InternedString;
-use syntax::parse::token::intern;
-use syntax::print::pprust;
 use syntax::visit::Visitor;
 
 struct MarkAttrs<'a>(&'a [InternedString]);
@@ -50,7 +48,7 @@ impl MultiItemModifier for CustomDerive {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
-              meta_item: &ast::MetaItem,
+              _meta_item: &ast::MetaItem,
               item: Annotatable)
               -> Vec<Annotatable> {
         let item = match item {
@@ -74,18 +72,6 @@ impl MultiItemModifier for CustomDerive {
 
         // Mark attributes as known, and used.
         MarkAttrs(&self.attrs).visit_item(&item);
-
-        let input_span = Span {
-            expn_id: ecx.codemap().record_expansion(ExpnInfo {
-                call_site: span,
-                callee: NameAndSpan {
-                    format: MacroAttribute(intern(&pprust::meta_item_to_string(meta_item))),
-                    span: Some(span),
-                    allow_internal_unstable: true,
-                },
-            }),
-            ..item.span
-        };
 
         let input = __internal::new_token_stream(item.clone());
         let res = __internal::set_parse_sess(&ecx.parse_sess, || {
@@ -113,7 +99,7 @@ impl MultiItemModifier for CustomDerive {
         // Reassign spans of all expanded items to the input `item`
         // for better errors here.
         res.extend(new_items.into_iter().flat_map(|item| {
-            ChangeSpan { span: input_span }.fold_item(item)
+            ChangeSpan { span: span }.fold_item(item)
         }).map(Annotatable::Item));
         res
     }
