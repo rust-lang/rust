@@ -27,7 +27,7 @@ use session::Session;
 use hir::def_id::DefId;
 use ty;
 use middle::weak_lang_items;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 
 use syntax::ast;
 use syntax::parse::token::InternedString;
@@ -146,7 +146,7 @@ struct LanguageItemCollector<'a, 'tcx: 'a> {
 
     session: &'a Session,
 
-    item_refs: FnvHashMap<&'static str, usize>,
+    item_refs: FxHashMap<&'static str, usize>,
 }
 
 impl<'a, 'v, 'tcx> Visitor<'v> for LanguageItemCollector<'a, 'tcx> {
@@ -169,7 +169,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for LanguageItemCollector<'a, 'tcx> {
 impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     pub fn new(session: &'a Session, ast_map: &'a hir_map::Map<'tcx>)
                -> LanguageItemCollector<'a, 'tcx> {
-        let mut item_refs = FnvHashMap();
+        let mut item_refs = FxHashMap();
 
         $( item_refs.insert($name, $variant as usize); )*
 

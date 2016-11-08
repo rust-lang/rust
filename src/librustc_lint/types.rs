@@ -18,7 +18,7 @@ use rustc::traits::Reveal;
 use middle::const_val::ConstVal;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
-use util::nodemap::FnvHashSet;
+use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
 
@@ -428,7 +428,7 @@ fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
-    fn check_type_for_ffi(&self, cache: &mut FnvHashSet<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult {
+    fn check_type_for_ffi(&self, cache: &mut FxHashSet<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult {
         use self::FfiResult::*;
         let cx = self.cx.tcx;
 
@@ -639,7 +639,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // any generic types right now:
         let ty = self.cx.tcx.normalize_associated_type(&ty);
 
-        match self.check_type_for_ffi(&mut FnvHashSet(), ty) {
+        match self.check_type_for_ffi(&mut FxHashSet(), ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiUnsafe(s) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp, s);

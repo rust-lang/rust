@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use std::fmt::Write;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
@@ -22,7 +22,7 @@ use util::nodemap::NodeMap;
 #[derive(Clone)]
 pub struct Definitions {
     data: Vec<DefData>,
-    key_map: FnvHashMap<DefKey, DefIndex>,
+    key_map: FxHashMap<DefKey, DefIndex>,
     node_map: NodeMap<DefIndex>,
 }
 
@@ -219,7 +219,7 @@ impl Definitions {
     pub fn new() -> Definitions {
         Definitions {
             data: vec![],
-            key_map: FnvHashMap(),
+            key_map: FxHashMap(),
             node_map: NodeMap(),
         }
     }

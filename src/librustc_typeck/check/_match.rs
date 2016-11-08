@@ -14,7 +14,7 @@ use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{FnCtxt, Expectation};
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
@@ -633,10 +633,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let field_map = variant.fields
             .iter()
             .map(|field| (field.name, field))
-            .collect::<FnvHashMap<_, _>>();
+            .collect::<FxHashMap<_, _>>();
 
         // Keep track of which fields have already appeared in the pattern.
-        let mut used_fields = FnvHashMap();
+        let mut used_fields = FxHashMap();
 
         // Typecheck each field.
         for &Spanned { node: ref field, span } in fields {

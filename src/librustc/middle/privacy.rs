@@ -12,7 +12,7 @@
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
 
-use util::nodemap::{DefIdSet, FnvHashMap};
+use util::nodemap::{DefIdSet, FxHashMap};
 
 use std::hash::Hash;
 use std::fmt;
@@ -35,7 +35,7 @@ pub enum AccessLevel {
 // Accessibility levels for reachable HIR nodes
 #[derive(Clone)]
 pub struct AccessLevels<Id = NodeId> {
-    pub map: FnvHashMap<Id, AccessLevel>
+    pub map: FxHashMap<Id, AccessLevel>
 }
 
 impl<Id: Hash + Eq> AccessLevels<Id> {

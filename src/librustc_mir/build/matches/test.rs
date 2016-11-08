@@ -18,7 +18,7 @@
 use build::Builder;
 use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
@@ -54,7 +54,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         // these maps are empty to start; cases are
                         // added below in add_cases_to_switch
                         options: vec![],
-                        indices: FnvHashMap(),
+                        indices: FxHashMap(),
                     }
                 }
             }
@@ -110,7 +110,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      candidate: &Candidate<'pat, 'tcx>,
                                      switch_ty: Ty<'tcx>,
                                      options: &mut Vec<ConstVal>,
-                                     indices: &mut FnvHashMap<ConstVal, usize>)
+                                     indices: &mut FxHashMap<ConstVal, usize>)
                                      -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {

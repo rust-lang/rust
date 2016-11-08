@@ -17,7 +17,7 @@ use traits::{self, Reveal};
 use ty::{self, TyCtxt, ImplOrTraitItem, TraitDef, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
 use syntax::ast::Name;
-use util::nodemap::{DefIdMap, FnvHashMap};
+use util::nodemap::{DefIdMap, FxHashMap};
 
 /// A per-trait graph of impls in specialization order. At the moment, this
 /// graph forms a tree rooted with the trait itself, with all other nodes
@@ -57,7 +57,7 @@ struct Children {
     // the specialization graph.
 
     /// Impls of the trait.
-    nonblanket_impls: FnvHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
+    nonblanket_impls: FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
 
     /// Blanket impls associated with the trait.
     blanket_impls: Vec<DefId>,
@@ -78,7 +78,7 @@ enum Inserted {
 impl<'a, 'gcx, 'tcx> Children {
     fn new() -> Children {
         Children {
-            nonblanket_impls: FnvHashMap(),
+            nonblanket_impls: FxHashMap(),
             blanket_impls: vec![],
         }
     }

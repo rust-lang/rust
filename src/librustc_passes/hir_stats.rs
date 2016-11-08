@@ -15,7 +15,7 @@
 use rustc::hir;
 use rustc::hir::intravisit as hir_visit;
 use rustc::util::common::to_readable_str;
-use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use syntax::ast::{self, NodeId, AttrId};
 use syntax::visit as ast_visit;
 use syntax_pos::Span;
@@ -34,15 +34,15 @@ struct NodeData {
 
 struct StatCollector<'k> {
     krate: Option<&'k hir::Crate>,
-    data: FnvHashMap<&'static str, NodeData>,
-    seen: FnvHashSet<Id>,
+    data: FxHashMap<&'static str, NodeData>,
+    seen: FxHashSet<Id>,
 }
 
 pub fn print_hir_stats(krate: &hir::Crate) {
     let mut collector = StatCollector {
         krate: Some(krate),
-        data: FnvHashMap(),
-        seen: FnvHashSet(),
+        data: FxHashMap(),
+        seen: FxHashSet(),
     };
     hir_visit::walk_crate(&mut collector, krate);
     collector.print("HIR STATS");
@@ -51,8 +51,8 @@ pub fn print_hir_stats(krate: &hir::Crate) {
 pub fn print_ast_stats(krate: &ast::Crate, title: &str) {
     let mut collector = StatCollector {
         krate: None,
-        data: FnvHashMap(),
-        seen: FnvHashSet(),
+        data: FxHashMap(),
+        seen: FxHashSet(),
     };
     ast_visit::walk_crate(&mut collector, krate);
     collector.print(title);

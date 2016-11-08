@@ -211,7 +211,7 @@ use context::SharedCrateContext;
 use common::{fulfill_obligation, type_is_sized};
 use glue::{self, DropGlueKind};
 use monomorphize::{self, Instance};
-use util::nodemap::{FnvHashSet, FnvHashMap, DefIdMap};
+use util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
 use trans_item::{TransItem, type_to_string, def_id_to_string};
 
@@ -228,7 +228,7 @@ pub struct InliningMap<'tcx> {
     // that are potentially inlined by LLVM into the source.
     // The two numbers in the tuple are the start (inclusive) and
     // end index (exclusive) within the `targets` vecs.
-    index: FnvHashMap<TransItem<'tcx>, (usize, usize)>,
+    index: FxHashMap<TransItem<'tcx>, (usize, usize)>,
     targets: Vec<TransItem<'tcx>>,
 }
 
@@ -236,7 +236,7 @@ impl<'tcx> InliningMap<'tcx> {
 
     fn new() -> InliningMap<'tcx> {
         InliningMap {
-            index: FnvHashMap(),
+            index: FxHashMap(),
             targets: Vec::new(),
         }
     }
@@ -269,7 +269,7 @@ impl<'tcx> InliningMap<'tcx> {
 
 pub fn collect_crate_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                                  mode: TransItemCollectionMode)
-                                                 -> (FnvHashSet<TransItem<'tcx>>,
+                                                 -> (FxHashSet<TransItem<'tcx>>,
                                                      InliningMap<'tcx>) {
     // We are not tracking dependencies of this pass as it has to be re-executed
     // every time no matter what.
@@ -277,7 +277,7 @@ pub fn collect_crate_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
         let roots = collect_roots(scx, mode);
 
         debug!("Building translation item graph, beginning at roots");
-        let mut visited = FnvHashSet();
+        let mut visited = FxHashSet();
         let mut recursion_depths = DefIdMap();
         let mut inlining_map = InliningMap::new();
 
@@ -318,7 +318,7 @@ fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 // Collect all monomorphized translation items reachable from `starting_point`
 fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
                                    starting_point: TransItem<'tcx>,
-                                   visited: &mut FnvHashSet<TransItem<'tcx>>,
+                                   visited: &mut FxHashSet<TransItem<'tcx>>,
                                    recursion_depths: &mut DefIdMap<usize>,
                                    inlining_map: &mut InliningMap<'tcx>) {
     if !visited.insert(starting_point.clone()) {
@@ -1179,9 +1179,9 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
                 let callee_substs = tcx.erase_regions(&trait_ref.substs);
-                let overridden_methods: FnvHashSet<_> = items.iter()
-                                                             .map(|item| item.name)
-                                                             .collect();
+                let overridden_methods: FxHashSet<_> = items.iter()
+                                                            .map(|item| item.name)
+                                                            .collect();
                 for method in tcx.provided_trait_methods(trait_ref.def_id) {
                     if overridden_methods.contains(&method.name) {
                         continue;

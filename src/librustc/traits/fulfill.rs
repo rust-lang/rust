@@ -18,7 +18,7 @@ use std::marker::PhantomData;
 use std::mem;
 use syntax::ast;
 use util::common::ErrorReported;
-use util::nodemap::{FnvHashSet, NodeMap};
+use util::nodemap::{FxHashSet, NodeMap};
 
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
@@ -37,7 +37,7 @@ impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
 }
 
 pub struct GlobalFulfilledPredicates<'tcx> {
-    set: FnvHashSet<ty::PolyTraitPredicate<'tcx>>,
+    set: FxHashSet<ty::PolyTraitPredicate<'tcx>>,
     dep_graph: DepGraph,
 }
 
@@ -673,7 +673,7 @@ fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
 impl<'a, 'gcx, 'tcx> GlobalFulfilledPredicates<'gcx> {
     pub fn new(dep_graph: DepGraph) -> GlobalFulfilledPredicates<'gcx> {
         GlobalFulfilledPredicates {
-            set: FnvHashSet(),
+            set: FxHashSet(),
             dep_graph: dep_graph,
         }
     }

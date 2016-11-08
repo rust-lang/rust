@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::{Direction, INCOMING, Graph, NodeIndex, OUTGOING};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -17,7 +17,7 @@ use super::DepNode;
 
 pub struct DepGraphQuery<D: Clone + Debug + Hash + Eq> {
     pub graph: Graph<DepNode<D>, ()>,
-    pub indices: FnvHashMap<DepNode<D>, NodeIndex>,
+    pub indices: FxHashMap<DepNode<D>, NodeIndex>,
 }
 
 impl<D: Clone + Debug + Hash + Eq> DepGraphQuery<D> {
@@ -25,7 +25,7 @@ impl<D: Clone + Debug + Hash + Eq> DepGraphQuery<D> {
                edges: &[(DepNode<D>, DepNode<D>)])
                -> DepGraphQuery<D> {
         let mut graph = Graph::new();
-        let mut indices = FnvHashMap();
+        let mut indices = FxHashMap();
         for node in nodes {
             indices.insert(node.clone(), graph.next_node_index());
             graph.add_node(node.clone());
