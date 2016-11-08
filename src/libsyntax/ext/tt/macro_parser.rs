@@ -200,20 +200,20 @@ pub enum NamedMatch {
     MatchedNonterminal(Rc<Nonterminal>)
 }
 
-pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
+fn nameize(ms: &[TokenTree], res: &[Rc<NamedMatch>])
             -> ParseResult<HashMap<Ident, Rc<NamedMatch>>> {
-    fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
+    fn n_rec(m: &TokenTree, res: &[Rc<NamedMatch>],
              ret_val: &mut HashMap<Ident, Rc<NamedMatch>>, idx: &mut usize)
              -> Result<(), (syntax_pos::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {
-                    n_rec(p_s, next_m, res, ret_val, idx)?
+                    n_rec(next_m, res, ret_val, idx)?
                 }
             }
             TokenTree::Delimited(_, ref delim) => {
                 for next_m in &delim.tts {
-                    n_rec(p_s, next_m, res, ret_val, idx)?;
+                    n_rec(next_m, res, ret_val, idx)?;
                 }
             }
             TokenTree::Token(sp, MatchNt(bind_name, _)) => {
@@ -239,7 +239,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
     let mut ret_val = HashMap::new();
     let mut idx = 0;
     for m in ms {
-        match n_rec(p_s, m, res, &mut ret_val, &mut idx) {
+        match n_rec(m, res, &mut ret_val, &mut idx) {
             Ok(_) => {},
             Err((sp, msg)) => return Error(sp, msg),
         }
@@ -425,7 +425,7 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
             if eof_eis.len() == 1 {
                 let v = eof_eis[0].matches.iter_mut()
                     .map(|dv| dv.pop().unwrap()).collect::<Vec<_>>();
-                return nameize(sess, ms, &v[..]);
+                return nameize(ms, &v[..]);
             } else if eof_eis.len() > 1 {
                 return Error(parser.span, "ambiguity: multiple successful parses".to_string());
             } else {
