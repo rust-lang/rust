@@ -8,25 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
+// aux-build:derive-b.rs
+// ignore-stage1
 
-#![crate_type = "proc-macro"]
 #![feature(proc_macro)]
-#![feature(proc_macro_lib)]
 
-extern crate proc_macro;
+#[macro_use]
+extern crate derive_b;
 
-use proc_macro::TokenStream;
+#[derive(Debug, PartialEq, B, Eq, Copy, Clone)]
+#[B]
+struct B {
+    #[C]
+    a: u64
+}
 
-#[proc_macro_derive(AddImpl)]
-// #[cfg(proc_macro)]
-pub fn derive(input: TokenStream) -> TokenStream {
-    "impl B {
-            fn foo(&self) {}
-        }
-
-        fn foo() {}
-
-        mod bar { pub fn foo() {} }
-    ".parse().unwrap()
+fn main() {
+    B { a: 3 };
+    assert_eq!(B { a: 3 }, B { a: 3 });
+    let b = B { a: 3 };
+    let _d = b;
+    let _e = b;
 }

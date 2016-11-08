@@ -95,7 +95,8 @@ pub mod __internal {
     pub trait Registry {
         fn register_custom_derive(&mut self,
                                   trait_name: &str,
-                                  expand: fn(TokenStream) -> TokenStream);
+                                  expand: fn(TokenStream) -> TokenStream,
+                                  attributes: &[&'static str]);
     }
 
     // Emulate scoped_thread_local!() here essentially

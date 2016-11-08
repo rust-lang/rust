@@ -15,7 +15,7 @@
 #[macro_use]
 extern crate derive_same_struct;
 
-#[derive(AToB, BToC)]
+#[derive(AToB)]
 struct A;
 
 fn main() {
