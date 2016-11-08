@@ -503,10 +503,8 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         // Each item is hashed independently; ignore nested items.
     }
 
-    fn visit_nested_impl_item(&mut self, impl_item_id: ImplItemId) {
-        // For now, we hash impl items as part of the containing impl.
-        let impl_item = self.tcx.map.impl_item(impl_item_id);
-        self.visit_impl_item(impl_item);
+    fn visit_nested_impl_item(&mut self, _: ImplItemId) {
+        // Impl items are hashed independently; ignore nested impl items.
     }
 
     fn visit_variant_data(&mut self,
