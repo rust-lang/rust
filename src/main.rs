@@ -226,9 +226,13 @@ pub fn main() {
 
         // this check ensures that dependencies are built but not linted and the final crate is
         // linted but not built
-        args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
+        let clippy_enabled = env::args().any(|s| s == "-Zno-trans");
 
-        let mut ccc = ClippyCompilerCalls::new(env::args().any(|s| s == "-Zno-trans"));
+        if clippy_enabled {
+            args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
+        }
+
+        let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
         let (result, _) = rustc_driver::run_compiler(&args, &mut ccc, None, None);
 
         if let Err(err_count) = result {
