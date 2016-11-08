@@ -8,25 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
+// aux-build:derive-b.rs
 
-#![crate_type = "proc-macro"]
 #![feature(proc_macro)]
-#![feature(proc_macro_lib)]
+#![allow(warnings)]
 
-extern crate proc_macro;
+#[macro_use]
+extern crate derive_b;
 
-use proc_macro::TokenStream;
+#[derive(B)]
+struct A {
+    a: &u64
+//~^ ERROR: missing lifetime specifier
+}
 
-#[proc_macro_derive(AddImpl)]
-// #[cfg(proc_macro)]
-pub fn derive(input: TokenStream) -> TokenStream {
-    "impl B {
-            fn foo(&self) {}
-        }
-
-        fn foo() {}
-
-        mod bar { pub fn foo() {} }
-    ".parse().unwrap()
+fn main() {
 }
