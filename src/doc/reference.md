@@ -21,6 +21,11 @@ separately by extracting documentation attributes from their source code. Many
 of the features that one might expect to be language features are library
 features in Rust, so what you're looking for may be there, not here.
 
+Finally, this document is not normative. It may include details that are
+specific to `rustc` itself, and should not be taken as a specification for
+the Rust language. We intend to produce such a document someday, but this
+is what we have for now.
+
 You may also be interested in the [grammar].
 
 [book]: book/index.html
