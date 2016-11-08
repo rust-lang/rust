@@ -453,9 +453,7 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
                 return Failure(parser.span, parser.token);
             } else if !next_eis.is_empty() {
                 /* Now process the next token */
-                while !next_eis.is_empty() {
-                    cur_eis.push(next_eis.pop().unwrap());
-                }
+                cur_eis.extend(next_eis.drain(..));
                 parser.bump();
             } else /* bb_eis.len() == 1 */ {
                 let mut ei = bb_eis.pop().unwrap();
