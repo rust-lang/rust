@@ -364,6 +364,68 @@ impl<T> Rc<T> {
     pub fn would_unwrap(this: &Self) -> bool {
         Rc::strong_count(&this) == 1
     }
+
+    /// Consumes the `Rc`, returning the wrapped pointer.
+    ///
+    /// To avoid a memory leak the pointer must be converted back to an `Rc` using
+    /// [`Rc::from_raw`][from_raw].
+    ///
+    /// [from_raw]: struct.Rc.html#method.from_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(rc_raw)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x = Rc::new(10);
+    /// let x_ptr = Rc::into_raw(x);
+    /// assert_eq!(unsafe { *x_ptr }, 10);
+    /// ```
+    #[unstable(feature = "rc_raw", issue = "37197")]
+    pub fn into_raw(this: Self) -> *mut T {
+        let ptr = unsafe { &mut (**this.ptr).value as *mut _ };
+        mem::forget(this);
+        ptr
+    }
+
+    /// Constructs an `Rc` from a raw pointer.
+    ///
+    /// The raw pointer must have been previously returned by a call to a
+    /// [`Rc::into_raw`][into_raw].
+    ///
+    /// This function is unsafe because improper use may lead to memory problems. For example, a
+    /// double-free may occur if the function is called twice on the same raw pointer.
+    ///
+    /// [into_raw]: struct.Rc.html#method.into_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(rc_raw)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x = Rc::new(10);
+    /// let x_ptr = Rc::into_raw(x);
+    ///
+    /// unsafe {
+    ///     // Convert back to an `Rc` to prevent leak.
+    ///     let x = Rc::from_raw(x_ptr);
+    ///     assert_eq!(*x, 10);
+    ///
+    ///     // Further calls to `Rc::from_raw(x_ptr)` would be memory unsafe.
+    /// }
+    ///
+    /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
+    /// ```
+    #[unstable(feature = "rc_raw", issue = "37197")]
+    pub unsafe fn from_raw(ptr: *mut T) -> Self {
+        // To find the corresponding pointer to the `RcBox` we need to subtract the offset of the
+        // `value` field from the pointer.
+        Rc { ptr: Shared::new((ptr as *mut u8).offset(-offset_of!(RcBox<T>, value)) as *mut _) }
+    }
 }
 
 impl Rc<str> {
@@ -1285,6 +1347,23 @@ mod tests {
         let x = Rc::new(5);
         let _w = Rc::downgrade(&x);
         assert_eq!(Rc::try_unwrap(x), Ok(5));
+    }
+
+    #[test]
+    fn into_from_raw() {
+        let x = Rc::new(box "hello");
+        let y = x.clone();
+
+        let x_ptr = Rc::into_raw(x);
+        drop(y);
+        unsafe {
+            assert_eq!(**x_ptr, "hello");
+
+            let x = Rc::from_raw(x_ptr);
+            assert_eq!(**x, "hello");
+
+            assert_eq!(Rc::try_unwrap(x).map(|x| *x), Ok("hello"));
+        }
     }
 
     #[test]

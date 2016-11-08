@@ -99,6 +99,10 @@
 #[macro_use]
 extern crate std;
 
+// Module with internal macros used by other modules (needs to be included before other modules).
+#[macro_use]
+mod macros;
+
 // Heaps provided for low-level allocation strategies
 
 pub mod heap;
