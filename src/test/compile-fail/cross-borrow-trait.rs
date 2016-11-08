@@ -20,4 +20,6 @@ pub fn main() {
     let _y: &Trait = x; //~  ERROR mismatched types
                         //~| expected type `&Trait`
                         //~| found type `std::boxed::Box<Trait>`
+                        //~| expected &Trait, found box
+                        //~| ERROR the trait bound `Box<Trait>: Trait` is not satisfied
 }
