@@ -605,7 +605,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // Create a fn pointer with the substituted signature.
             tcx.mk_fn_ptr(fty)
         }
-        _ => bug!("expected fn item type, found {}", fn_ty)
+        _ => bug!("expected fn item type for {:?}, found {}", def_id, fn_ty)
     };
     let llptrty = type_of::type_of(ccx, fn_ptr_ty);
 
