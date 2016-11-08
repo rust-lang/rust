@@ -2479,8 +2479,6 @@ The currently implemented features of the reference compiler are:
 * - `abi_vectorcall` - Allows the usage of the vectorcall calling convention
                              (e.g. `extern "vectorcall" func fn_();`)
 
-* - `dotdot_in_tuple_patterns` - Allows `..` in tuple (struct) patterns.
-
 * - `abi_sysv64` - Allows the usage of the system V AMD64 calling convention
                              (e.g. `extern "sysv64" func fn_();`)
 

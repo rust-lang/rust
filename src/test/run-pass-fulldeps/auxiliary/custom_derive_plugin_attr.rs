@@ -12,7 +12,6 @@
 
 #![feature(plugin_registrar)]
 #![feature(box_syntax)]
-#![feature(dotdot_in_tuple_patterns)]
 #![feature(rustc_private)]
 
 extern crate syntax;
