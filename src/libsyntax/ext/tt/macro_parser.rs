@@ -143,6 +143,8 @@ pub struct MatcherPos {
     sp_lo: BytePos,
 }
 
+pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
+
 pub fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
         count + match *elt {
@@ -200,8 +202,7 @@ pub enum NamedMatch {
     MatchedNonterminal(Rc<Nonterminal>)
 }
 
-fn nameize(ms: &[TokenTree], res: &[Rc<NamedMatch>])
-            -> ParseResult<HashMap<Ident, Rc<NamedMatch>>> {
+fn nameize(ms: &[TokenTree], res: &[Rc<NamedMatch>]) -> NamedParseResult {
     fn n_rec(m: &TokenTree, res: &[Rc<NamedMatch>],
              ret_val: &mut HashMap<Ident, Rc<NamedMatch>>, idx: &mut usize)
              -> Result<(), (syntax_pos::Span, String)> {
@@ -264,8 +265,6 @@ pub fn parse_failure_msg(tok: Token) -> String {
         _ => format!("no rules expected the token `{}`", pprust::token_to_string(&tok)),
     }
 }
-
-pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
 
 /// Perform a token equality check, ignoring syntax context (that is, an
 /// unhygienic comparison)
