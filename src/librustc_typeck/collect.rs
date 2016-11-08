@@ -150,8 +150,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
         intravisit::walk_ty(self, ty);
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
         // handled in `visit_item` above; we may want to break this out later
+        intravisit::walk_impl_item(self, impl_item);
     }
 }
 
@@ -782,43 +783,10 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                         entry.insert(impl_item.span);
                     }
                 }
-
-                if let hir::ImplItemKind::Const(ref ty, _) = impl_item.node {
-                    let const_def_id = ccx.tcx.map.local_def_id(impl_item.id);
-                    generics_of_def_id(ccx, const_def_id);
-                    let ty = ccx.icx(&ty_predicates)
-                                .to_ty(&ExplicitRscope, &ty);
-                    tcx.item_types.borrow_mut().insert(const_def_id, ty);
-                    convert_associated_const(ccx, ImplContainer(def_id),
-                                             impl_item.id, ty);
-                }
-            }
-
-            // Convert all the associated types.
-            for &impl_item_id in impl_item_ids {
-                let impl_item = tcx.map.impl_item(impl_item_id);
-                if let hir::ImplItemKind::Type(ref ty) = impl_item.node {
-                    let type_def_id = ccx.tcx.map.local_def_id(impl_item.id);
-                    generics_of_def_id(ccx, type_def_id);
-
-                    if opt_trait_ref.is_none() {
-                        span_err!(tcx.sess, impl_item.span, E0202,
-                                  "associated types are not allowed in inherent impls");
-                    }
-
-                    let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
-
-                    convert_associated_type(ccx, ImplContainer(def_id), impl_item.id, Some(typ));
-                }
             }
 
             for &impl_item_id in impl_item_ids {
-                let impl_item = tcx.map.impl_item(impl_item_id);
-                if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
-                    convert_method(ccx, ImplContainer(def_id),
-                                   impl_item.id, sig, selfty,
-                                   &ty_predicates);
-                }
+                convert_impl_item(ccx, impl_item_id);
             }
 
             enforce_impl_lifetimes_are_constrained(ccx, generics, def_id, impl_item_ids);
@@ -904,6 +872,47 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             generics_of_def_id(ccx, def_id);
             predicates_of_item(ccx, it);
         },
+    }
+}
+
+fn convert_impl_item(ccx: &CrateCtxt, impl_item_id: hir::ImplItemId) {
+    let tcx = ccx.tcx;
+    let impl_item = tcx.map.impl_item(impl_item_id);
+    let impl_def_id = tcx.map.get_parent_did(impl_item_id.id);
+    let impl_predicates = tcx.item_predicates(impl_def_id);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
+    let impl_self_ty = tcx.item_type(impl_def_id);
+
+    match impl_item.node {
+        hir::ImplItemKind::Const(ref ty, _) => {
+            let const_def_id = ccx.tcx.map.local_def_id(impl_item.id);
+            generics_of_def_id(ccx, const_def_id);
+            let ty = ccx.icx(&impl_predicates)
+                        .to_ty(&ExplicitRscope, &ty);
+            tcx.item_types.borrow_mut().insert(const_def_id, ty);
+            convert_associated_const(ccx, ImplContainer(impl_def_id),
+                                     impl_item.id, ty);
+        }
+
+        hir::ImplItemKind::Type(ref ty) => {
+            let type_def_id = ccx.tcx.map.local_def_id(impl_item.id);
+            generics_of_def_id(ccx, type_def_id);
+
+            if impl_trait_ref.is_none() {
+                span_err!(tcx.sess, impl_item.span, E0202,
+                          "associated types are not allowed in inherent impls");
+            }
+
+            let typ = ccx.icx(&impl_predicates).to_ty(&ExplicitRscope, ty);
+
+            convert_associated_type(ccx, ImplContainer(impl_def_id), impl_item.id, Some(typ));
+        }
+
+        hir::ImplItemKind::Method(ref sig, _) => {
+            convert_method(ccx, ImplContainer(impl_def_id),
+                           impl_item.id, sig, impl_self_ty,
+                           &impl_predicates);
+        }
     }
 }
 
