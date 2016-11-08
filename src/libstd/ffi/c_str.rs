@@ -686,7 +686,7 @@ impl ToOwned for CStr {
     type Owned = CString;
 
     fn to_owned(&self) -> CString {
-        unsafe { CString::from_vec_unchecked(self.to_bytes().to_vec()) }
+        CString { inner: self.to_bytes_with_nul().to_vec().into_boxed_slice() }
     }
 }
 
