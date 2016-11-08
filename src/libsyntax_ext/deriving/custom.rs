@@ -73,7 +73,7 @@ impl MultiItemModifier for CustomDerive {
         // Mark attributes as known, and used.
         MarkAttrs(&self.attrs).visit_item(&item);
 
-        let input = __internal::new_token_stream(item.clone());
+        let input = __internal::new_token_stream(ecx.resolver.eliminate_crate_var(item.clone()));
         let res = __internal::set_parse_sess(&ecx.parse_sess, || {
             let inner = self.inner;
             panic::catch_unwind(panic::AssertUnwindSafe(|| inner(input)))
