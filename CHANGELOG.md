@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.98 — 2016-11-08
+* Fixes a an issue due to a change in how cargo handles `--sysroot`, which broke `cargo clippy`
+
 ## 0.0.97 — 2016-11-03
 * For convenience, `cargo clippy` defines a `cargo-clippy` feature. This was
   previously added for a short time under the name `clippy` but removed for
