@@ -15,7 +15,7 @@ use llvm::{TypeRef, Bool, False, True, TypeKind};
 use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use context::CrateContext;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 
 use syntax::ast;
 use rustc::ty::layout;
@@ -325,13 +325,13 @@ impl Type {
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
-    named_types: RefCell<FnvHashMap<String, TypeRef>>,
+    named_types: RefCell<FxHashMap<String, TypeRef>>,
 }
 
 impl TypeNames {
     pub fn new() -> TypeNames {
         TypeNames {
-            named_types: RefCell::new(FnvHashMap())
+            named_types: RefCell::new(FxHashMap())
         }
     }
 

@@ -11,7 +11,7 @@
 use hir::def_id::{DefId};
 use ty::{self, Ty, TyCtxt};
 use util::common::MemoizationMap;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 
 use std::fmt;
 use std::ops;
@@ -141,11 +141,11 @@ impl fmt::Debug for TypeContents {
 
 impl<'a, 'tcx> ty::TyS<'tcx> {
     pub fn type_contents(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> TypeContents {
-        return tcx.tc_cache.memoize(self, || tc_ty(tcx, self, &mut FnvHashMap()));
+        return tcx.tc_cache.memoize(self, || tc_ty(tcx, self, &mut FxHashMap()));
 
         fn tc_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            ty: Ty<'tcx>,
-                           cache: &mut FnvHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
+                           cache: &mut FxHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
         {
             // Subtle: Note that we are *not* using tcx.tc_cache here but rather a
             // private cache for this walk.  This is needed in the case of cyclic

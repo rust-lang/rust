@@ -19,7 +19,7 @@ use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::hir::print as pprust;
 use rustc::ty::{self, TyCtxt};
-use rustc::util::nodemap::FnvHashSet;
+use rustc::util::nodemap::FxHashSet;
 
 use rustc_const_eval::lookup_const_by_id;
 
@@ -460,7 +460,7 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                 .into_iter()
                 .map(|meth| meth.name.to_string())
                 .collect()
-    }).unwrap_or(FnvHashSet());
+    }).unwrap_or(FxHashSet());
 
     ret.push(clean::Item {
         inner: clean::ImplItem(clean::Impl {
@@ -496,7 +496,7 @@ fn build_module<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // If we're reexporting a reexport it may actually reexport something in
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
-        let mut visited = FnvHashSet();
+        let mut visited = FxHashSet();
         for item in tcx.sess.cstore.item_children(did) {
             let def_id = item.def.def_id();
             if tcx.sess.cstore.visibility(def_id) == ty::Visibility::Public {

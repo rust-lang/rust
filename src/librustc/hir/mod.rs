@@ -33,7 +33,7 @@ pub use self::PathParameters::*;
 
 use hir::def::Def;
 use hir::def_id::DefId;
-use util::nodemap::{NodeMap, FnvHashSet};
+use util::nodemap::{NodeMap, FxHashSet};
 
 use syntax_pos::{mk_sp, Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, respan, Spanned};
@@ -1605,4 +1605,4 @@ pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 
 // Map from the NodeId of a glob import to a list of items which are actually
 // imported.
-pub type GlobMap = NodeMap<FnvHashSet<Name>>;
+pub type GlobMap = NodeMap<FxHashSet<Name>>;

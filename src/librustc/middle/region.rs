@@ -19,7 +19,7 @@
 use dep_graph::DepNode;
 use hir::map as ast_map;
 use session::Session;
-use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+use util::nodemap::{FxHashMap, NodeMap, NodeSet};
 use ty;
 
 use std::cell::RefCell;
@@ -251,7 +251,7 @@ impl CodeExtent {
 /// The region maps encode information about region relationships.
 pub struct RegionMaps {
     code_extents: RefCell<Vec<CodeExtentData>>,
-    code_extent_interner: RefCell<FnvHashMap<CodeExtentData, CodeExtent>>,
+    code_extent_interner: RefCell<FxHashMap<CodeExtentData, CodeExtent>>,
     /// `scope_map` maps from a scope id to the enclosing scope id;
     /// this is usually corresponding to the lexical nesting, though
     /// in the case of closures the parent scope is the innermost
@@ -1217,7 +1217,7 @@ pub fn resolve_crate(sess: &Session, map: &ast_map::Map) -> RegionMaps {
 
     let maps = RegionMaps {
         code_extents: RefCell::new(vec![]),
-        code_extent_interner: RefCell::new(FnvHashMap()),
+        code_extent_interner: RefCell::new(FxHashMap()),
         scope_map: RefCell::new(vec![]),
         var_map: RefCell::new(NodeMap()),
         rvalue_scopes: RefCell::new(NodeMap()),

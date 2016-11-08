@@ -25,7 +25,7 @@ use rustc::middle::cstore::LoadedMacros;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::ty;
-use rustc::util::nodemap::FnvHashMap;
+use rustc::util::nodemap::FxHashMap;
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -539,7 +539,7 @@ impl<'b> Resolver<'b> {
                     self.invocations.insert(mark, invocation);
                 }
 
-                let mut macros: FnvHashMap<_, _> = macros.into_iter().map(|mut def| {
+                let mut macros: FxHashMap<_, _> = macros.into_iter().map(|mut def| {
                     def.body = mark_tts(&def.body, mark);
                     let ext = macro_rules::compile(&self.session.parse_sess, &def);
                     (def.ident.name, (def, Rc::new(ext)))

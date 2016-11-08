@@ -11,7 +11,7 @@
 
 use rustc::ty::{self, TyCtxt, ParameterEnvironment};
 use rustc::mir::*;
-use rustc::util::nodemap::FnvHashMap;
+use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
 
 use syntax::codemap::DUMMY_SP;
@@ -181,7 +181,7 @@ pub struct MovePathLookup<'tcx> {
     /// subsequent search so that it is solely relative to that
     /// base-lvalue). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
-    projections: FnvHashMap<(MovePathIndex, AbstractElem<'tcx>), MovePathIndex>
+    projections: FxHashMap<(MovePathIndex, AbstractElem<'tcx>), MovePathIndex>
 }
 
 struct MoveDataBuilder<'a, 'tcx: 'a> {
@@ -215,7 +215,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                     locals: mir.local_decls.indices().map(Lvalue::Local).map(|v| {
                         Self::new_move_path(&mut move_paths, &mut path_map, None, v)
                     }).collect(),
-                    projections: FnvHashMap(),
+                    projections: FxHashMap(),
                 },
                 move_paths: move_paths,
                 path_map: path_map,

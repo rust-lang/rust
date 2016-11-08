@@ -12,7 +12,7 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::svh::Svh;
 use rustc::ty::TyCtxt;
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::flock;
 use rustc_serialize::Decodable;
 use rustc_serialize::opaque::Decoder;
@@ -26,8 +26,8 @@ use super::file_format;
 pub struct HashContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     incremental_hashes_map: &'a IncrementalHashesMap,
-    item_metadata_hashes: FnvHashMap<DefId, Fingerprint>,
-    crate_hashes: FnvHashMap<CrateNum, Svh>,
+    item_metadata_hashes: FxHashMap<DefId, Fingerprint>,
+    crate_hashes: FxHashMap<CrateNum, Svh>,
 }
 
 impl<'a, 'tcx> HashContext<'a, 'tcx> {
@@ -37,8 +37,8 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         HashContext {
             tcx: tcx,
             incremental_hashes_map: incremental_hashes_map,
-            item_metadata_hashes: FnvHashMap(),
-            crate_hashes: FnvHashMap(),
+            item_metadata_hashes: FxHashMap(),
+            crate_hashes: FxHashMap(),
         }
     }
 

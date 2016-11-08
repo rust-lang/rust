@@ -19,7 +19,7 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir::map as hir_map;
 use rustc::lint;
-use rustc::util::nodemap::FnvHashMap;
+use rustc::util::nodemap::FxHashMap;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
@@ -48,7 +48,7 @@ pub enum MaybeTyped<'a, 'tcx: 'a> {
     NotTyped(&'a session::Session)
 }
 
-pub type ExternalPaths = FnvHashMap<DefId, (Vec<String>, clean::TypeKind)>;
+pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
 pub struct DocContext<'a, 'tcx: 'a> {
     pub map: &'a hir_map::Map<'tcx>,
@@ -65,15 +65,15 @@ pub struct DocContext<'a, 'tcx: 'a> {
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
-    pub external_traits: RefCell<FnvHashMap<DefId, clean::Trait>>,
+    pub external_traits: RefCell<FxHashMap<DefId, clean::Trait>>,
 
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
 
     /// Table type parameter definition -> substituted type
-    pub ty_substs: RefCell<FnvHashMap<Def, clean::Type>>,
+    pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
     /// Table node id of lifetime parameter definition -> substituted lifetime
-    pub lt_substs: RefCell<FnvHashMap<ast::NodeId, clean::Lifetime>>,
+    pub lt_substs: RefCell<FxHashMap<ast::NodeId, clean::Lifetime>>,
 }
 
 impl<'b, 'tcx> DocContext<'b, 'tcx> {
@@ -99,8 +99,8 @@ impl<'b, 'tcx> DocContext<'b, 'tcx> {
     /// Call the closure with the given parameters set as
     /// the substitutions for a type alias' RHS.
     pub fn enter_alias<F, R>(&self,
-                             ty_substs: FnvHashMap<Def, clean::Type>,
-                             lt_substs: FnvHashMap<ast::NodeId, clean::Lifetime>,
+                             ty_substs: FxHashMap<Def, clean::Type>,
+                             lt_substs: FxHashMap<ast::NodeId, clean::Lifetime>,
                              f: F) -> R
     where F: FnOnce() -> R {
         let (old_tys, old_lts) =

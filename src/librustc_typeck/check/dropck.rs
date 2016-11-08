@@ -18,7 +18,7 @@ use middle::region;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::traits::{self, Reveal};
-use util::nodemap::FnvHashSet;
+use util::nodemap::FxHashSet;
 
 use syntax::ast;
 use syntax_pos::{self, Span};
@@ -289,7 +289,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
             rcx: rcx,
             span: span,
             parent_scope: parent_scope,
-            breadcrumbs: FnvHashSet()
+            breadcrumbs: FxHashSet()
         },
         TypeContext::Root,
         typ,
@@ -347,7 +347,7 @@ enum TypeContext {
 struct DropckContext<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
     rcx: &'a mut RegionCtxt<'b, 'gcx, 'tcx>,
     /// types that have already been traversed
-    breadcrumbs: FnvHashSet<Ty<'tcx>>,
+    breadcrumbs: FxHashSet<Ty<'tcx>>,
     /// span for error reporting
     span: Span,
     /// the scope reachable dtorck types must outlive

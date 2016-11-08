@@ -38,7 +38,7 @@ use rustc::hir::print as pprust;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind};
 use rustc::middle::stability;
-use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 use rustc::hir;
 
@@ -116,7 +116,7 @@ pub struct Crate {
     pub access_levels: Arc<AccessLevels<DefId>>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
-    pub external_traits: FnvHashMap<DefId, Trait>,
+    pub external_traits: FxHashMap<DefId, Trait>,
 }
 
 struct CrateNum(def_id::CrateNum);
@@ -993,7 +993,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
         // Note that associated types also have a sized bound by default, but we
         // don't actually know the set of associated types right here so that's
         // handled in cleaning associated types
-        let mut sized_params = FnvHashSet();
+        let mut sized_params = FxHashSet();
         where_predicates.retain(|pred| {
             match *pred {
                 WP::BoundPredicate { ty: Generic(ref g), ref bounds } => {
@@ -1693,8 +1693,8 @@ impl Clean<Type> for hir::Ty {
                 });
                 if let Some((tcx, &hir::ItemTy(ref ty, ref generics))) = tcx_and_alias {
                     let provided_params = &path.segments.last().unwrap().parameters;
-                    let mut ty_substs = FnvHashMap();
-                    let mut lt_substs = FnvHashMap();
+                    let mut ty_substs = FxHashMap();
+                    let mut lt_substs = FxHashMap();
                     for (i, ty_param) in generics.ty_params.iter().enumerate() {
                         let ty_param_def = tcx.expect_def(ty_param.id);
                         if let Some(ty) = provided_params.types().get(i).cloned()
@@ -2368,7 +2368,7 @@ impl Clean<ImplPolarity> for hir::ImplPolarity {
 pub struct Impl {
     pub unsafety: hir::Unsafety,
     pub generics: Generics,
-    pub provided_trait_methods: FnvHashSet<String>,
+    pub provided_trait_methods: FxHashSet<String>,
     pub trait_: Option<Type>,
     pub for_: Type,
     pub items: Vec<Item>,
@@ -2394,7 +2394,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
                    .map(|meth| meth.name.to_string())
                    .collect()
             })
-        }).unwrap_or(FnvHashSet());
+        }).unwrap_or(FxHashSet());
 
         ret.push(Item {
             name: None,

@@ -103,7 +103,7 @@ use CrateCtxt;
 use TypeAndSubsts;
 use lint;
 use util::common::{block_query, ErrorReported, indenter, loop_query};
-use util::nodemap::{DefIdMap, FnvHashMap, FnvHashSet, NodeMap};
+use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{Cell, Ref, RefCell};
 use std::mem::replace;
@@ -1975,13 +1975,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // We must collect the defaults *before* we do any unification. Because we have
             // directly attached defaults to the type variables any unification that occurs
             // will erase defaults causing conflicting defaults to be completely ignored.
-            let default_map: FnvHashMap<_, _> =
+            let default_map: FxHashMap<_, _> =
                 unsolved_variables
                     .iter()
                     .filter_map(|t| self.default(t).map(|d| (t, d)))
                     .collect();
 
-            let mut unbound_tyvars = FnvHashSet();
+            let mut unbound_tyvars = FxHashSet();
 
             debug!("select_all_obligations_and_apply_defaults: defaults={:?}", default_map);
 
@@ -2129,8 +2129,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // table then apply defaults until we find a conflict. That default must be the one
     // that caused conflict earlier.
     fn find_conflicting_default(&self,
-                                unbound_vars: &FnvHashSet<Ty<'tcx>>,
-                                default_map: &FnvHashMap<&Ty<'tcx>, type_variable::Default<'tcx>>,
+                                unbound_vars: &FxHashSet<Ty<'tcx>>,
+                                default_map: &FxHashMap<&Ty<'tcx>, type_variable::Default<'tcx>>,
                                 conflict: Ty<'tcx>)
                                 -> Option<type_variable::Default<'tcx>> {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
@@ -3123,12 +3123,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
-        let mut remaining_fields = FnvHashMap();
+        let mut remaining_fields = FxHashMap();
         for field in &variant.fields {
             remaining_fields.insert(field.name, field);
         }
 
-        let mut seen_fields = FnvHashMap();
+        let mut seen_fields = FxHashMap();
 
         let mut error_happened = false;
 

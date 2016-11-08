@@ -20,7 +20,7 @@
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
 
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk, TypeOrigin};
 use middle::region;
@@ -270,13 +270,13 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 pub struct SpecializesCache {
-    map: FnvHashMap<(DefId, DefId), bool>
+    map: FxHashMap<(DefId, DefId), bool>
 }
 
 impl SpecializesCache {
     pub fn new() -> Self {
         SpecializesCache {
-            map: FnvHashMap()
+            map: FxHashMap()
         }
     }
 

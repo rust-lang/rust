@@ -13,7 +13,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
 use std::hash::Hash;
@@ -46,7 +46,7 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let query = tcx.dep_graph.query();
     let mut hcx = HashContext::new(tcx, incremental_hashes_map);
     let preds = Predecessors::new(&query, &mut hcx);
-    let mut current_metadata_hashes = FnvHashMap();
+    let mut current_metadata_hashes = FxHashMap();
 
     // IMPORTANT: We are saving the metadata hashes *before* the dep-graph,
     //            since metadata-encoding might add new entries to the
@@ -186,7 +186,7 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
                               svh: Svh,
                               preds: &Predecessors,
                               builder: &mut DefIdDirectoryBuilder,
-                              current_metadata_hashes: &mut FnvHashMap<DefId, Fingerprint>,
+                              current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
                               encoder: &mut Encoder)
                               -> io::Result<()> {
     // For each `MetaData(X)` node where `X` is local, accumulate a
@@ -198,10 +198,10 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
     // (I initially wrote this with an iterator, but it seemed harder to read.)
     let mut serialized_hashes = SerializedMetadataHashes {
         hashes: vec![],
-        index_map: FnvHashMap()
+        index_map: FxHashMap()
     };
 
-    let mut def_id_hashes = FnvHashMap();
+    let mut def_id_hashes = FxHashMap();
 
     for (&target, sources) in &preds.inputs {
         let def_id = match *target {

@@ -17,7 +17,7 @@ use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::DebugInfoLevel;
 use ty::tls;
-use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
+use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
 use util::common::duration_to_secs_str;
 use mir::transform as mir_pass;
 
@@ -78,7 +78,7 @@ pub struct Session {
     /// Set of (LintId, span, message) tuples tracking lint (sub)diagnostics
     /// that have been set once, but should not be set again, in order to avoid
     /// redundantly verbose output (Issue #24690).
-    pub one_time_diagnostics: RefCell<FnvHashSet<(lint::LintId, Span, String)>>,
+    pub one_time_diagnostics: RefCell<FxHashSet<(lint::LintId, Span, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub mir_passes: RefCell<mir_pass::Passes>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
@@ -603,12 +603,12 @@ pub fn build_session_(sopts: config::Options,
         working_dir: env::current_dir().unwrap(),
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(NodeMap()),
-        one_time_diagnostics: RefCell::new(FnvHashSet()),
+        one_time_diagnostics: RefCell::new(FxHashSet()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
         mir_passes: RefCell::new(mir_pass::Passes::new()),
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
-        dependency_formats: RefCell::new(FnvHashMap()),
+        dependency_formats: RefCell::new(FxHashMap()),
         crate_disambiguator: RefCell::new(token::intern("").as_str()),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),

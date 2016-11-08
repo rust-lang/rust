@@ -45,7 +45,7 @@ use ty::adjustment;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
 use std::fmt;
-use util::nodemap::{FnvHashMap, FnvHashSet};
+use util::nodemap::{FxHashMap, FxHashSet};
 
 /// The TypeFoldable trait is implemented for every type that can be folded.
 /// Basically, every type that has a corresponding method in TypeFolder.
@@ -225,7 +225,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// whether any late-bound regions were skipped
     pub fn collect_regions<T>(self,
         value: &T,
-        region_set: &mut FnvHashSet<&'tcx ty::Region>)
+        region_set: &mut FxHashSet<&'tcx ty::Region>)
         -> bool
         where T : TypeFoldable<'tcx>
     {
@@ -319,14 +319,14 @@ struct RegionReplacer<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     current_depth: u32,
     fld_r: &'a mut (FnMut(ty::BoundRegion) -> &'tcx ty::Region + 'a),
-    map: FnvHashMap<ty::BoundRegion, &'tcx ty::Region>
+    map: FxHashMap<ty::BoundRegion, &'tcx ty::Region>
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn replace_late_bound_regions<T,F>(self,
         value: &Binder<T>,
         mut f: F)
-        -> (T, FnvHashMap<ty::BoundRegion, &'tcx ty::Region>)
+        -> (T, FxHashMap<ty::BoundRegion, &'tcx ty::Region>)
         where F : FnMut(ty::BoundRegion) -> &'tcx ty::Region,
               T : TypeFoldable<'tcx>,
     {
@@ -390,7 +390,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// variables and equate `value` with something else, those
     /// variables will also be equated.
     pub fn collect_constrained_late_bound_regions<T>(&self, value: &Binder<T>)
-                                                     -> FnvHashSet<ty::BoundRegion>
+                                                     -> FxHashSet<ty::BoundRegion>
         where T : TypeFoldable<'tcx>
     {
         self.collect_late_bound_regions(value, true)
@@ -398,14 +398,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Returns a set of all late-bound regions that appear in `value` anywhere.
     pub fn collect_referenced_late_bound_regions<T>(&self, value: &Binder<T>)
-                                                    -> FnvHashSet<ty::BoundRegion>
+                                                    -> FxHashSet<ty::BoundRegion>
         where T : TypeFoldable<'tcx>
     {
         self.collect_late_bound_regions(value, false)
     }
 
     fn collect_late_bound_regions<T>(&self, value: &Binder<T>, just_constraint: bool)
-                                     -> FnvHashSet<ty::BoundRegion>
+                                     -> FxHashSet<ty::BoundRegion>
         where T : TypeFoldable<'tcx>
     {
         let mut collector = LateBoundRegionsCollector::new(just_constraint);
@@ -450,7 +450,7 @@ impl<'a, 'gcx, 'tcx> RegionReplacer<'a, 'gcx, 'tcx> {
             tcx: tcx,
             current_depth: 1,
             fld_r: fld_r,
-            map: FnvHashMap()
+            map: FxHashMap()
         }
     }
 }
@@ -650,7 +650,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
 /// Collects all the late-bound regions it finds into a hash set.
 struct LateBoundRegionsCollector {
     current_depth: u32,
-    regions: FnvHashSet<ty::BoundRegion>,
+    regions: FxHashSet<ty::BoundRegion>,
     just_constrained: bool,
 }
 
@@ -658,7 +658,7 @@ impl LateBoundRegionsCollector {
     fn new(just_constrained: bool) -> Self {
         LateBoundRegionsCollector {
             current_depth: 1,
-            regions: FnvHashSet(),
+            regions: FxHashSet(),
             just_constrained: just_constrained,
         }
     }
