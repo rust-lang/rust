@@ -299,6 +299,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             ast_map::NodeForeignItem(_) |
             ast_map::NodeVariant(_) |
             ast_map::NodeStructCtor(_) |
+            ast_map::NodeField(_) |
             ast_map::NodeTy(_) => {}
             _ => {
                 bug!("found unexpected thingy in worklist: {}",
