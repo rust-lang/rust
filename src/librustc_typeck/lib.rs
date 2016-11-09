@@ -205,7 +205,7 @@ fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 true
             }
             Err(err) => {
-                infcx.report_mismatched_types(origin, expected, actual, err);
+                infcx.report_mismatched_types(origin, expected, actual, err).emit();
                 false
             }
         }

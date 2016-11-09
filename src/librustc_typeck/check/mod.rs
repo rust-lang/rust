@@ -2893,7 +2893,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             Err(e) => {
-                self.report_mismatched_types(origin, expected, found, e);
+                self.report_mismatched_types(origin, expected, found, e).emit();
                 self.tcx.types.err
             }
         }
@@ -3663,7 +3663,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 match result {
                     Ok(ty) => unified = ty,
                     Err(e) => {
-                        self.report_mismatched_types(origin, unified, e_ty, e);
+                        self.report_mismatched_types(origin, unified, e_ty, e).emit();
                     }
                 }
             }
