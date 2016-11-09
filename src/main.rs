@@ -147,7 +147,6 @@ fn show_version() {
     println!("{}", env!("CARGO_PKG_VERSION"));
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(print_stdout))]
 pub fn main() {
     use std::env;
 
