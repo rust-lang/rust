@@ -17,8 +17,9 @@ use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 use rustc::session::{config, Session};
 use rustc::session::config::{Input, ErrorOutputType};
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{self, Command};
 use syntax::ast;
+use std::io::{self, Write};
 
 use clippy_lints::utils::cargo;
 
@@ -118,6 +119,7 @@ Usage:
 Common options:
     -h, --help               Print this message
     --features               Features to compile for the package
+    -V, --version            Print version info and exit
 
 Other options are the same as `cargo rustc`.
 
@@ -140,11 +142,26 @@ fn show_help() {
     println!("{}", CARGO_CLIPPY_HELP);
 }
 
+#[allow(print_stdout)]
+fn show_version() {
+    println!("{}", env!("CARGO_PKG_VERSION"));
+}
+
 pub fn main() {
     use std::env;
 
     if env::var("CLIPPY_DOGFOOD").map(|_| true).unwrap_or(false) {
         panic!("yummy");
+    }
+    
+    // Check for version and help flags even when invoked as 'cargo-clippy'
+    if std::env::args().any(|a| a == "--help" || a == "-h") {
+        show_help();
+        return;
+    }
+    if std::env::args().any(|a| a == "--version" || a == "-V") {
+        show_version();
+        return;
     }
 
     let dep_path = env::current_dir().expect("current dir is not readable").join("target").join("debug").join("deps");
@@ -152,14 +169,14 @@ pub fn main() {
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // this arm is executed on the initial call to `cargo clippy`
 
-        if std::env::args().any(|a| a == "--help" || a == "-h") {
-            show_help();
-            return;
-        }
-
         let manifest_path_arg = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
 
-        let mut metadata = cargo::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)).expect("could not obtain cargo metadata");
+        let mut metadata = if let Ok(metadata) = cargo::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
+            metadata
+        } else {
+            let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata."));
+            process::exit(101);
+        };
 
         assert_eq!(metadata.version, 1);
 
