@@ -383,6 +383,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::CLONE_ON_COPY,
         methods::EXTEND_FROM_SLICE,
         methods::FILTER_NEXT,
+        methods::GET_UNWRAP,
         methods::ITER_NTH,
         methods::ITER_SKIP_NEXT,
         methods::NEW_RET_NO_SELF,
