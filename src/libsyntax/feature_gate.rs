@@ -271,7 +271,6 @@ declare_features! (
     // Allows `impl Trait` in function return types.
     (active, conservative_impl_trait, "1.12.0", Some(34511)),
 
-    // Allows tuple structs and variants in more contexts,
     // Permits numeric fields in struct expressions and patterns.
     (active, relaxed_adts, "1.12.0", Some(35626)),
 
@@ -996,6 +995,10 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
     }
 }
 
+fn starts_with_digit(s: &str) -> bool {
+    s.as_bytes().first().cloned().map_or(false, |b| b >= b'0' && b <= b'9')
+}
+
 impl<'a> Visitor for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         if !self.context.cm.span_allows_unstable(attr.span) {
@@ -1175,6 +1178,11 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                         gate_feature_post!(&self, field_init_shorthand, field.span,
                                            "struct field shorthands are unstable");
                     }
+                    if starts_with_digit(&field.ident.node.name.as_str()) {
+                        gate_feature_post!(&self, relaxed_adts,
+                                          field.span,
+                                          "numeric fields in struct expressions are unstable");
+                    }
                 }
             }
             _ => {}
@@ -1201,10 +1209,14 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                                   pattern.span,
                                   "box pattern syntax is experimental");
             }
-            PatKind::TupleStruct(_, ref fields, ddpos)
-                    if ddpos.is_none() && fields.is_empty() => {
-                gate_feature_post!(&self, relaxed_adts, pattern.span,
-                                   "empty tuple structs patterns are unstable");
+            PatKind::Struct(_, ref fields, _) => {
+                for field in fields {
+                    if starts_with_digit(&field.node.ident.name.as_str()) {
+                        gate_feature_post!(&self, relaxed_adts,
+                                          field.span,
+                                          "numeric fields in struct patterns are unstable");
+                    }
+                }
             }
             _ => {}
         }
@@ -1285,19 +1297,6 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_impl_item(self, ii);
-    }
-
-    fn visit_variant_data(&mut self, vdata: &ast::VariantData, _: ast::Ident,
-                          _: &ast::Generics, _: NodeId, span: Span) {
-        if vdata.fields().is_empty() {
-            if vdata.is_tuple() {
-                gate_feature_post!(&self, relaxed_adts, span,
-                                   "empty tuple structs and enum variants are unstable, \
-                                    use unit structs and enum variants instead");
-            }
-        }
-
-        visit::walk_struct_def(self, vdata)
     }
 
     fn visit_vis(&mut self, vis: &ast::Visibility) {
