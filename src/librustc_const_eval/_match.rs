@@ -39,7 +39,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use arena::TypedArena;
 
-use std::cmp::Ordering;
+use std::cmp::{self, Ordering};
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
 
@@ -419,6 +419,99 @@ fn all_constructors(_cx: &mut MatchCheckCtxt, pcx: PatternContext) -> Vec<Constr
     }
 }
 
+fn max_slice_length<'a, 'tcx, I>(
+    _cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    patterns: I) -> usize
+    where I: Iterator<Item=&'a Pattern<'tcx>>
+{
+    // The exhaustiveness-checking paper does not include any details on
+    // checking variable-length slice patterns. However, they are matched
+    // by an infinite collection of fixed-length array patterns.
+    //
+    // Checking the infinite set directly would take an infinite amount
+    // of time. However, it turns out that for each finite set of
+    // patterns `P`, all sufficiently large array lengths are equivalent:
+    //
+    // Each slice `s` with a "sufficiently-large" length `l ≥ L` that applies
+    // to exactly the subset `Pₜ` of `P` can be transformed to a slice
+    // `sₘ` for each sufficiently-large length `m` that applies to exactly
+    // the same subset of `P`.
+    //
+    // Because of that, each witness for reachability-checking from one
+    // of the sufficiently-large lengths can be transformed to an
+    // equally-valid witness from any other length, so we only have
+    // to check slice lengths from the "minimal sufficiently-large length"
+    // and below.
+    //
+    // Note that the fact that there is a *single* `sₘ` for each `m`
+    // not depending on the specific pattern in `P` is important: if
+    // you look at the pair of patterns
+    //     `[true, ..]`
+    //     `[.., false]`
+    // Then any slice of length ≥1 that matches one of these two
+    // patterns can be  be trivially turned to a slice of any
+    // other length ≥1 that matches them and vice-versa - for
+    // but the slice from length 2 `[false, true]` that matches neither
+    // of these patterns can't be turned to a slice from length 1 that
+    // matches neither of these patterns, so we have to consider
+    // slices from length 2 there.
+    //
+    // Now, to see that that length exists and find it, observe that slice
+    // patterns are either "fixed-length" patterns (`[_, _, _]`) or
+    // "variable-length" patterns (`[_, .., _]`).
+    //
+    // For fixed-length patterns, all slices with lengths *longer* than
+    // the pattern's length have the same outcome (of not matching), so
+    // as long as `L` is greater than the pattern's length we can pick
+    // any `sₘ` from that length and get the same result.
+    //
+    // For variable-length patterns, the situation is more complicated,
+    // because as seen above the precise value of `sₘ` matters.
+    //
+    // However, for each variable-length pattern `p` with a prefix of length
+    // `plₚ` and suffix of length `slₚ`, only the first `plₚ` and the last
+    // `slₚ` elements are examined.
+    //
+    // Therefore, as long as `L` is positive (to avoid concerns about empty
+    // types), all elements after the maximum prefix length and before
+    // the maximum suffix length are not examined by any variable-length
+    // pattern, and therefore can be added/removed without affecting
+    // them - creating equivalent patterns from any sufficiently-large
+    // length.
+    //
+    // Of course, if fixed-length patterns exist, we must be sure
+    // that our length is large enough to miss them all, so
+    // we can pick `L = max(FIXED_LEN+1 ∪ {max(PREFIX_LEN) + max(SUFFIX_LEN)})`
+    //
+    // for example, with the above pair of patterns, all elements
+    // but the first and last can be added/removed, so any
+    // witness of length ≥2 (say, `[false, false, true]`) can be
+    // turned to a witness from any other length ≥2.
+
+    let mut max_prefix_len = 0;
+    let mut max_suffix_len = 0;
+    let mut max_fixed_len = 0;
+
+    for row in patterns {
+        match *row.kind {
+            PatternKind::Constant { value: ConstVal::ByteStr(ref data) } => {
+                max_fixed_len = cmp::max(max_fixed_len, data.len());
+            }
+            PatternKind::Slice { ref prefix, slice: None, ref suffix } => {
+                let fixed_len = prefix.len() + suffix.len();
+                max_fixed_len = cmp::max(max_fixed_len, fixed_len);
+            }
+            PatternKind::Slice { ref prefix, slice: Some(_), ref suffix } => {
+                max_prefix_len = cmp::max(max_prefix_len, prefix.len());
+                max_suffix_len = cmp::max(max_suffix_len, suffix.len());
+            }
+            _ => {}
+        }
+    }
+
+    cmp::max(max_fixed_len + 1, max_prefix_len + max_suffix_len)
+}
+
 /// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html
 ///
 /// Whether a vector `v` of patterns is 'useful' in relation to a set of such
@@ -453,16 +546,12 @@ pub fn is_useful<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
     let &Matrix(ref rows) = matrix;
     assert!(rows.iter().all(|r| r.len() == v.len()));
+
+
     let pcx = PatternContext {
         ty: rows.iter().map(|r| r[0].ty).find(|ty| !ty.references_error())
             .unwrap_or(v[0].ty),
-        max_slice_length: rows.iter().filter_map(|row| match *row[0].kind {
-            PatternKind::Slice { ref prefix, slice: _, ref suffix } =>
-                Some(prefix.len() + suffix.len()),
-            PatternKind::Constant { value: ConstVal::ByteStr(ref data) } =>
-                Some(data.len()),
-            _ => None
-        }).max().map_or(0, |v| v + 1)
+        max_slice_length: max_slice_length(cx, rows.iter().map(|r| r[0]).chain(Some(v[0])))
     };
 
     debug!("is_useful_expand_first_col: pcx={:?}, expanding {:?}", pcx, v[0]);
