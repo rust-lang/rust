@@ -10,16 +10,14 @@
 
 
 use check::FnCtxt;
-use rustc::ty::Ty;
-use rustc::infer::{InferOk, TypeOrigin};
+use rustc::infer::InferOk;
 use rustc::traits::ObligationCause;
-use rustc::ty;
 
 use syntax::ast;
 use syntax_pos::{self, Span};
 use rustc::hir;
 use rustc::hir::def::Def;
-use rustc::ty::{self, AssociatedItem};
+use rustc::ty::{self, Ty, AssociatedItem};
 use errors::DiagnosticBuilder;
 
 use super::method::probe;
@@ -81,24 +79,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Err(e) = self.try_coerce(expr, checked_ty, self.diverges.get(), expected) {
             let cause = self.misc(expr.span);
             let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
-            let suggestions = if let Some(suggestions) = self.check_ref(expr,
-                                                                        checked_ty,
-                                                                        expected) {
-                suggestions
+            let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
+            if let Some(suggestion) = self.check_ref(expr,
+                                                     checked_ty,
+                                                     expected) {
+                err.help(&suggestion);
             } else {
                 let mode = probe::Mode::MethodCall;
-                self.probe_for_return_type(syntax_pos::DUMMY_SP,
-                                           mode,
-                                           expected,
-                                           checked_ty,
-                                           ast::DUMMY_NODE_ID)
+                let suggestions = self.probe_for_return_type(syntax_pos::DUMMY_SP,
+                                                             mode,
+                                                             expected,
+                                                             checked_ty,
+                                                             ast::DUMMY_NODE_ID);
+                if suggestions.len() > 0 {
+                    err.help(&format!("here are some functions which \
+                                       might fulfill your needs:\n - {}",
+                                      self.get_best_match(&suggestions).join("\n")));
+                }
             }
-            let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
-            if suggestions.len() > 0 {
-                err.help(&format!("here are some functions which \
-                                   might fulfill your needs:\n{}",
-                                  self.get_best_match(&suggestions).join("\n")));
-            };
             err.emit();
         }
     }
@@ -188,7 +186,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                        self.tcx.mk_region(ty::ReStatic),
                                                        checked_ty),
                 };
-                if self.try_coerce(expr, ref_ty, expected).is_ok() {
+                if self.can_coerce(ref_ty, expected) {
                     if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
                         return Some(format!("try with `{}{}`",
                                             match mutability.mutbl {

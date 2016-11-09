@@ -65,8 +65,8 @@ use check::{Diverges, FnCtxt};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{Coercion, InferResult, InferOk, TypeTrace};
-use rustc::infer::type_variable::TypeVariableOrigin;
-use rustc::traits::{self, ObligationCause, ObligationCauseCode};
+use rustc::infer::type_variable::{TypeVariableOrigin};
+use rustc::traits::{self, /*FulfillmentContext,*/ ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::ty::{self, LvaluePreference, TypeAndMut,
                 Ty, ClosureSubsts};
@@ -78,6 +78,7 @@ use errors::DiagnosticBuilder;
 use syntax::abi;
 use syntax::feature_gate;
 use syntax::ptr::P;
+use syntax_pos;
 
 use std::collections::VecDeque;
 use std::ops::Deref;
@@ -720,6 +721,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // ensure that the type of expression, post-adjustment, is
         // a subtype of target.
         Ok(target)
+    }
+
+    /// Same as `try_coerce()`, but without side-effects.
+    pub fn can_coerce(&self,
+                      expr_ty: Ty<'tcx>,
+                      target: Ty<'tcx>)
+                      -> bool {
+        // FIXME: This is a hack, but coercion wasn't made to be run
+        // in a probe. It leaks obligations and bounds and things out
+        // into the environment. For now we just save-and-restore the
+        // fulfillment context.
+        /*let saved_fulfillment_cx =
+            mem::replace(
+                &mut *self.inh.fulfillment_cx.borrow_mut(),
+                FulfillmentContext::new());*/
+        let source = self.resolve_type_vars_with_obligations(expr_ty);
+        debug!("coercion::can({:?} -> {:?})", source, target);
+
+        let cause = self.cause(syntax_pos::DUMMY_SP, ObligationCauseCode::ExprAssignable);
+        let coerce = Coerce::new(self, cause);
+        let result = self.probe(|_| coerce.coerce::<hir::Expr>(&[], source, target)).is_ok();
+
+        //*self.inh.fulfillment_cx.borrow_mut() = saved_fulfillment_cx;
+
+        result
     }
 
     /// Given some expressions, their known unified type and another expression,
