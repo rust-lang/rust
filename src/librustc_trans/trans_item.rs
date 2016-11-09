@@ -166,6 +166,11 @@ impl<'a, 'tcx> TransItem<'tcx> {
             llvm::SetUniqueComdat(ccx.llmod(), lldecl);
         }
 
+        if let ty::TyClosure(..) = mono_ty.sty {
+            // set an inline hint for all closures
+            attributes::inline(lldecl, attributes::InlineAttr::Hint);
+        }
+
         attributes::from_fn_attrs(ccx, &attrs, lldecl);
 
         ccx.instances().borrow_mut().insert(instance, lldecl);

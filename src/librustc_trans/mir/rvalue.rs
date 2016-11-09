@@ -133,15 +133,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                     },
                     _ => {
-                        // FIXME Shouldn't need to manually trigger closure instantiations.
-                        if let mir::AggregateKind::Closure(def_id, substs) = *kind {
-                            use closure;
-
-                            closure::trans_closure_body_via_mir(bcx.ccx(),
-                                                                def_id,
-                                                                bcx.monomorphize(&substs));
-                        }
-
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.

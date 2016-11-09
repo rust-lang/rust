@@ -25,6 +25,7 @@ use rustc::ty;
 use abi::{Abi, FnType};
 use attributes;
 use context::CrateContext;
+use common;
 use type_::Type;
 use value::Value;
 
@@ -103,8 +104,8 @@ pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type) -> ValueRef {
 pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                             fn_type: ty::Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
-    let abi = fn_type.fn_abi();
-    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(fn_type.fn_sig());
+    let ty::BareFnTy { abi, ref sig, .. } = *common::ty_fn_ty(ccx, fn_type);
+    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
     let fty = FnType::new(ccx, abi, &sig, &[]);

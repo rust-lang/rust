@@ -1003,34 +1003,41 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     }
 }
 
-/// Builds an LLVM function out of a source function.
-///
-/// If the function closes over its environment a closure will be returned.
-pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               llfndecl: ValueRef,
-                               instance: Instance<'tcx>,
-                               sig: &ty::FnSig<'tcx>,
-                               abi: Abi) {
-    ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
-
-    let _icx = push_ctxt("trans_closure");
-    if !ccx.sess().no_landing_pads() {
-        attributes::emit_uwtable(llfndecl, true);
-    }
-
+pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
+    let _s = StatRecorder::new(ccx, ccx.tcx().item_path_str(instance.def));
     // this is an info! to allow collecting monomorphization statistics
     // and to allow finding the last function before LLVM aborts from
     // release builds.
-    info!("trans_closure(..., {})", instance);
+    info!("trans_instance({})", instance);
 
-    let fn_ty = FnType::new(ccx, abi, sig, &[]);
+    let _icx = push_ctxt("trans_instance");
+
+    let fn_ty = ccx.tcx().item_type(instance.def);
+    let fn_ty = ccx.tcx().erase_regions(&fn_ty);
+    let fn_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &fn_ty);
+
+    let ty::BareFnTy { abi, ref sig, .. } = *common::ty_fn_ty(ccx, fn_ty);
+    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(sig);
+
+    let lldecl = match ccx.instances().borrow().get(&instance) {
+        Some(&val) => val,
+        None => bug!("Instance `{:?}` not already declared", instance)
+    };
+
+    ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
+
+    if !ccx.sess().no_landing_pads() {
+        attributes::emit_uwtable(lldecl, true);
+    }
+
+    let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
     fcx = FunctionContext::new(ccx,
-                               llfndecl,
+                               lldecl,
                                fn_ty,
-                               Some((instance, sig, abi)),
+                               Some((instance, &sig, abi)),
                                &arena);
 
     if fcx.mir.is_none() {
@@ -1038,26 +1045,6 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     mir::trans_mir(&fcx);
-}
-
-pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
-    let _s = StatRecorder::new(ccx, ccx.tcx().item_path_str(instance.def));
-    debug!("trans_instance(instance={:?})", instance);
-    let _icx = push_ctxt("trans_instance");
-
-    let fn_ty = ccx.tcx().item_type(instance.def);
-    let fn_ty = ccx.tcx().erase_regions(&fn_ty);
-    let fn_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &fn_ty);
-
-    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(fn_ty.fn_sig());
-    let abi = fn_ty.fn_abi();
-
-    let lldecl = match ccx.instances().borrow().get(&instance) {
-        Some(&val) => val,
-        None => bug!("Instance `{:?}` not already declared", instance)
-    };
-
-    trans_closure(ccx, lldecl, instance, &sig, abi);
 }
 
 pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
