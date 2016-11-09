@@ -15,7 +15,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc_data_structures::fnv::{FnvHashSet, FnvHashMap};
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
 use std::fs;
@@ -30,7 +30,7 @@ use super::hash::*;
 use super::fs::*;
 use super::file_format;
 
-pub type DirtyNodes = FnvHashSet<DepNode<DefPathIndex>>;
+pub type DirtyNodes = FxHashSet<DepNode<DefPathIndex>>;
 
 /// If we are in incremental mode, and a previous dep-graph exists,
 /// then load up those nodes/edges that are still valid into the
@@ -183,7 +183,7 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Compute which work-products have an input that has changed or
     // been removed. Put the dirty ones into a set.
-    let mut dirty_target_nodes = FnvHashSet();
+    let mut dirty_target_nodes = FxHashSet();
     for &(raw_source_node, ref target_node) in &retraced_edges {
         if dirty_raw_source_nodes.contains(raw_source_node) {
             if !dirty_target_nodes.contains(target_node) {
@@ -239,7 +239,7 @@ fn dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          retraced: &RetracedDefIdDirectory)
                          -> DirtyNodes {
     let mut hcx = HashContext::new(tcx, incremental_hashes_map);
-    let mut dirty_nodes = FnvHashSet();
+    let mut dirty_nodes = FxHashSet();
 
     for hash in serialized_hashes {
         if let Some(dep_node) = retraced.map(&hash.dep_node) {
@@ -270,7 +270,7 @@ fn dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// otherwise no longer applicable.
 fn reconcile_work_products<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      work_products: Vec<SerializedWorkProduct>,
-                                     dirty_target_nodes: &FnvHashSet<DepNode<DefId>>) {
+                                     dirty_target_nodes: &FxHashSet<DepNode<DefId>>) {
     debug!("reconcile_work_products({:?})", work_products);
     for swp in work_products {
         if dirty_target_nodes.contains(&DepNode::WorkProduct(swp.id.clone())) {
@@ -314,7 +314,7 @@ fn delete_dirty_work_product(tcx: TyCtxt,
 
 fn load_prev_metadata_hashes(tcx: TyCtxt,
                              retraced: &RetracedDefIdDirectory,
-                             output: &mut FnvHashMap<DefId, Fingerprint>) {
+                             output: &mut FxHashMap<DefId, Fingerprint>) {
     if !tcx.sess.opts.debugging_opts.query_dep_graph {
         return
     }

@@ -39,7 +39,7 @@ use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::{self, Span, DUMMY_SP};
-use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
+use util::nodemap::{FxHashMap, FxHashSet, NodeMap};
 
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
@@ -134,7 +134,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     // the set of predicates on which errors have been reported, to
     // avoid reporting the same error twice.
-    pub reported_trait_errors: RefCell<FnvHashSet<traits::TraitErrorKey<'tcx>>>,
+    pub reported_trait_errors: RefCell<FxHashSet<traits::TraitErrorKey<'tcx>>>,
 
     // Sadly, the behavior of projection varies a bit depending on the
     // stage of compilation. The specifics are given in the
@@ -170,7 +170,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
 /// region that each late-bound region was replaced with.
-pub type SkolemizationMap<'tcx> = FnvHashMap<ty::BoundRegion, &'tcx ty::Region>;
+pub type SkolemizationMap<'tcx> = FxHashMap<ty::BoundRegion, &'tcx ty::Region>;
 
 /// Why did we require that the two types be related?
 ///
@@ -492,7 +492,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
-            reported_trait_errors: RefCell::new(FnvHashSet()),
+            reported_trait_errors: RefCell::new(FxHashSet()),
             projection_mode: Reveal::NotSpecializable,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
@@ -531,7 +531,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             parameter_environment: param_env,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
-            reported_trait_errors: RefCell::new(FnvHashSet()),
+            reported_trait_errors: RefCell::new(FxHashSet()),
             projection_mode: projection_mode,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),
@@ -1530,7 +1530,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: &ty::Binder<T>)
-        -> (T, FnvHashMap<ty::BoundRegion, &'tcx ty::Region>)
+        -> (T, FxHashMap<ty::BoundRegion, &'tcx ty::Region>)
         where T : TypeFoldable<'tcx>
     {
         self.tcx.replace_late_bound_regions(

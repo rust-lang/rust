@@ -11,7 +11,7 @@
 use rustc::hir::pat_util;
 use rustc::ty;
 use rustc::ty::adjustment;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};
 
@@ -19,7 +19,7 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use syntax::ast;
 use syntax::attr;
-use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
+use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
 use syntax::parse::token::keywords;
 use syntax::ptr::P;
 use syntax_pos::Span;
@@ -42,7 +42,7 @@ impl UnusedMut {
         // collect all mutable pattern and group their NodeIDs by their Identifier to
         // avoid false warnings in match arms with multiple patterns
 
-        let mut mutables = FnvHashMap();
+        let mut mutables = FxHashMap();
         for p in pats {
             pat_util::pat_bindings(p, |mode, id, _, path1| {
                 let name = path1.node;
@@ -245,7 +245,7 @@ impl LateLintPass for UnusedAttributes {
         debug!("checking attribute: {:?}", attr);
 
         // Note that check_name() marks the attribute as used if it matches.
-        for &(ref name, ty, _) in KNOWN_ATTRIBUTES {
+        for &(ref name, ty, _) in BUILTIN_ATTRIBUTES {
             match ty {
                 AttributeType::Whitelisted if attr.check_name(name) => {
                     debug!("{:?} is Whitelisted", name);
@@ -267,7 +267,7 @@ impl LateLintPass for UnusedAttributes {
             debug!("Emitting warning for: {:?}", attr);
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
-            let known_crate = KNOWN_ATTRIBUTES.iter()
+            let known_crate = BUILTIN_ATTRIBUTES.iter()
                 .find(|&&(name, ty, _)| attr.name() == name && ty == AttributeType::CrateLevel)
                 .is_some();
 

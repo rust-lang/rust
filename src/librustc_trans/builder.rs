@@ -19,7 +19,7 @@ use common::*;
 use machine::llalign_of_pref;
 use type_::Type;
 use value::Value;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 use libc::{c_uint, c_char};
 
 use std::borrow::Cow;
@@ -62,7 +62,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Build version of path with cycles removed.
 
                 // Pass 1: scan table mapping str -> rightmost pos.
-                let mut mm = FnvHashMap();
+                let mut mm = FxHashMap();
                 let len = v.len();
                 let mut i = 0;
                 while i < len {

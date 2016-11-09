@@ -259,9 +259,11 @@ class RustBuild(object):
         env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib")
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
                       os.pathsep + env["PATH"]
-        self.run([self.cargo(), "build", "--manifest-path",
-                  os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")],
-                 env)
+        args = [self.cargo(), "build", "--manifest-path",
+                os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
+        if self.use_vendored_sources:
+            args.append("--frozen")
+        self.run(args, env)
 
     def run(self, args, env):
         proc = subprocess.Popen(args, env=env)
@@ -400,6 +402,25 @@ def main():
     except:
         pass
 
+    rb.use_vendored_sources = '\nvendor = true' in rb.config_toml or \
+                              'CFG_ENABLE_VENDOR' in rb.config_mk
+
+    if rb.use_vendored_sources:
+        if not os.path.exists('.cargo'):
+            os.makedirs('.cargo')
+        f = open('.cargo/config','w')
+        f.write("""
+            [source.crates-io]
+            replace-with = 'vendored-sources'
+            registry = 'https://example.com'
+
+            [source.vendored-sources]
+            directory = '{}/src/vendor'
+        """.format(rb.rust_root))
+        f.close()
+    else:
+        if os.path.exists('.cargo'):
+            shutil.rmtree('.cargo')
     data = stage0_data(rb.rust_root)
     rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
     rb._cargo_channel, rb._cargo_date = data['cargo'].split('-', 1)

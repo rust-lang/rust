@@ -29,7 +29,7 @@ use type_of;
 use glue;
 use type_::Type;
 
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use syntax::parse::token;
 
 use super::{MirContext, LocalRef};
@@ -144,7 +144,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     adt::trans_get_discr(bcx, ty, discr_lvalue.llval, None, true)
                 );
 
-                let mut bb_hist = FnvHashMap();
+                let mut bb_hist = FxHashMap();
                 for target in targets {
                     *bb_hist.entry(target).or_insert(0) += 1;
                 }

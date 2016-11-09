@@ -13,7 +13,7 @@ use ty::subst::{Subst, Substs};
 use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use ty::outlives::Component;
 use util::common::ErrorReported;
-use util::nodemap::FnvHashSet;
+use util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
@@ -50,12 +50,12 @@ fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
 struct PredicateSet<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    set: FnvHashSet<ty::Predicate<'tcx>>,
+    set: FxHashSet<ty::Predicate<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> PredicateSet<'a, 'gcx, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PredicateSet<'a, 'gcx, 'tcx> {
-        PredicateSet { tcx: tcx, set: FnvHashSet() }
+        PredicateSet { tcx: tcx, set: FxHashSet() }
     }
 
     fn insert(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
@@ -272,7 +272,7 @@ pub fn transitive_bounds<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
 pub struct SupertraitDefIds<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     stack: Vec<DefId>,
-    visited: FnvHashSet<DefId>,
+    visited: FxHashSet<DefId>,
 }
 
 pub fn supertrait_def_ids<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,

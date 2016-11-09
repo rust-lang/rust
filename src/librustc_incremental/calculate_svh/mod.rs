@@ -35,7 +35,7 @@ use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::intravisit as visit;
 use rustc::ty::TyCtxt;
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc::util::common::record_time;
 use rustc::session::config::DebugInfoLevel::NoDebugInfo;
 
@@ -51,21 +51,21 @@ mod caching_codemap_view;
 pub mod hasher;
 
 pub struct IncrementalHashesMap {
-    hashes: FnvHashMap<DepNode<DefId>, Fingerprint>,
+    hashes: FxHashMap<DepNode<DefId>, Fingerprint>,
 
     // These are the metadata hashes for the current crate as they were stored
     // during the last compilation session. They are only loaded if
     // -Z query-dep-graph was specified and are needed for auto-tests using
     // the #[rustc_metadata_dirty] and #[rustc_metadata_clean] attributes to
     // check whether some metadata hash has changed in between two revisions.
-    pub prev_metadata_hashes: RefCell<FnvHashMap<DefId, Fingerprint>>,
+    pub prev_metadata_hashes: RefCell<FxHashMap<DefId, Fingerprint>>,
 }
 
 impl IncrementalHashesMap {
     pub fn new() -> IncrementalHashesMap {
         IncrementalHashesMap {
-            hashes: FnvHashMap(),
-            prev_metadata_hashes: RefCell::new(FnvHashMap()),
+            hashes: FxHashMap(),
+            prev_metadata_hashes: RefCell::new(FxHashMap()),
         }
     }
 

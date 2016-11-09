@@ -963,20 +963,22 @@
         }
     }
 
-    $("#toggle-all-docs").on("click", toggleAllDocs);
-
-    $(document).on("click", ".collapse-toggle", function() {
-        var toggle = $(this);
+    function collapseDocs(toggle, animate) {
         var relatedDoc = toggle.parent().next();
         if (relatedDoc.is(".stability")) {
             relatedDoc = relatedDoc.next();
         }
         if (relatedDoc.is(".docblock")) {
             if (relatedDoc.is(":visible")) {
-                relatedDoc.slideUp({duration: 'fast', easing: 'linear'});
+                if (animate === true) {
+                    relatedDoc.slideUp({duration: 'fast', easing: 'linear'});
+                    toggle.children(".toggle-label").fadeIn();
+                } else {
+                    relatedDoc.hide();
+                    toggle.children(".toggle-label").show();
+                }
                 toggle.parent(".toggle-wrapper").addClass("collapsed");
                 toggle.children(".inner").text(labelForToggleButton(true));
-                toggle.children(".toggle-label").fadeIn();
             } else {
                 relatedDoc.slideDown({duration: 'fast', easing: 'linear'});
                 toggle.parent(".toggle-wrapper").removeClass("collapsed");
@@ -984,6 +986,12 @@
                 toggle.children(".toggle-label").hide();
             }
         }
+    }
+
+    $("#toggle-all-docs").on("click", toggleAllDocs);
+
+    $(document).on("click", ".collapse-toggle", function() {
+        collapseDocs($(this), true)
     });
 
     $(function() {
@@ -999,12 +1007,22 @@
         });
 
         var mainToggle =
-            $(toggle).append(
+            $(toggle.clone()).append(
                 $('<span/>', {'class': 'toggle-label'})
                     .css('display', 'none')
                     .html('&nbsp;Expand&nbsp;description'));
         var wrapper = $("<div class='toggle-wrapper'>").append(mainToggle);
         $("#main > .docblock").before(wrapper);
+        var mainToggle =
+            $(toggle).append(
+                $('<span/>', {'class': 'toggle-label'})
+                    .css('display', 'none')
+                    .html('&nbsp;Expand&nbsp;attributes'));
+        var wrapper = $("<div class='toggle-wrapper toggle-attributes'>").append(mainToggle);
+        $("#main > pre > .attributes").each(function() {
+            $(this).before(wrapper);
+            collapseDocs($($(this).prev().children()[0]), false);
+        });
     });
 
     $('pre.line-numbers').on('click', 'span', function() {

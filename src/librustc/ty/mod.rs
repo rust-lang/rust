@@ -31,7 +31,7 @@ use ty::subst::{Subst, Substs};
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
 use util::nodemap::NodeSet;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
@@ -418,7 +418,7 @@ impl MethodCall {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type MethodMap<'tcx> = FnvHashMap<MethodCall, MethodCallee<'tcx>>;
+pub type MethodMap<'tcx> = FxHashMap<MethodCall, MethodCallee<'tcx>>;
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
@@ -650,7 +650,7 @@ pub struct UpvarBorrow<'tcx> {
     pub region: &'tcx ty::Region,
 }
 
-pub type UpvarCaptureMap<'tcx> = FnvHashMap<UpvarId, UpvarCapture<'tcx>>;
+pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
 
 #[derive(Copy, Clone)]
 pub struct ClosureUpvar<'tcx> {
@@ -1251,10 +1251,10 @@ pub struct ParameterEnvironment<'tcx> {
     pub free_id_outlive: CodeExtent,
 
     /// A cache for `moves_by_default`.
-    pub is_copy_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
+    pub is_copy_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
 
     /// A cache for `type_is_sized`
-    pub is_sized_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
+    pub is_sized_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
 }
 
 impl<'a, 'tcx> ParameterEnvironment<'tcx> {
@@ -1267,8 +1267,8 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             implicit_region_bound: self.implicit_region_bound,
             caller_bounds: caller_bounds,
             free_id_outlive: self.free_id_outlive,
-            is_copy_cache: RefCell::new(FnvHashMap()),
-            is_sized_cache: RefCell::new(FnvHashMap()),
+            is_copy_cache: RefCell::new(FxHashMap()),
+            is_sized_cache: RefCell::new(FxHashMap()),
         }
     }
 
@@ -2752,8 +2752,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             caller_bounds: Vec::new(),
             implicit_region_bound: self.mk_region(ty::ReEmpty),
             free_id_outlive: free_id_outlive,
-            is_copy_cache: RefCell::new(FnvHashMap()),
-            is_sized_cache: RefCell::new(FnvHashMap()),
+            is_copy_cache: RefCell::new(FxHashMap()),
+            is_sized_cache: RefCell::new(FxHashMap()),
         }
     }
 
@@ -2824,8 +2824,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             implicit_region_bound: tcx.mk_region(ty::ReScope(free_id_outlive)),
             caller_bounds: predicates,
             free_id_outlive: free_id_outlive,
-            is_copy_cache: RefCell::new(FnvHashMap()),
-            is_sized_cache: RefCell::new(FnvHashMap()),
+            is_copy_cache: RefCell::new(FxHashMap()),
+            is_sized_cache: RefCell::new(FxHashMap()),
         };
 
         let cause = traits::ObligationCause::misc(span, free_id_outlive.node_id(&self.region_maps));

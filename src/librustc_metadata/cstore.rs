@@ -21,7 +21,7 @@ use rustc::hir::svh::Svh;
 use rustc::middle::cstore::ExternCrate;
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
+use rustc::util::nodemap::{FxHashMap, NodeMap, NodeSet, DefIdMap};
 
 use std::cell::{RefCell, Cell};
 use std::rc::Rc;
@@ -76,7 +76,7 @@ pub struct CrateMetadata {
     /// hashmap, which gives the reverse mapping.  This allows us to
     /// quickly retrace a `DefPath`, which is needed for incremental
     /// compilation support.
-    pub key_map: FnvHashMap<DefKey, DefIndex>,
+    pub key_map: FxHashMap<DefKey, DefIndex>,
 
     /// Flag if this crate is required by an rlib version of this crate, or in
     /// other words whether it was explicitly linked to. An example of a crate
@@ -94,7 +94,7 @@ pub struct CachedInlinedItem {
 
 pub struct CStore {
     pub dep_graph: DepGraph,
-    metas: RefCell<FnvHashMap<CrateNum, Rc<CrateMetadata>>>,
+    metas: RefCell<FxHashMap<CrateNum, Rc<CrateMetadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
     used_crate_sources: RefCell<Vec<CrateSource>>,
@@ -110,15 +110,15 @@ impl CStore {
     pub fn new(dep_graph: &DepGraph) -> CStore {
         CStore {
             dep_graph: dep_graph.clone(),
-            metas: RefCell::new(FnvHashMap()),
-            extern_mod_crate_map: RefCell::new(FnvHashMap()),
+            metas: RefCell::new(FxHashMap()),
+            extern_mod_crate_map: RefCell::new(FxHashMap()),
             used_crate_sources: RefCell::new(Vec::new()),
             used_libraries: RefCell::new(Vec::new()),
             used_link_args: RefCell::new(Vec::new()),
             statically_included_foreign_items: RefCell::new(NodeSet()),
-            visible_parent_map: RefCell::new(FnvHashMap()),
-            inlined_item_cache: RefCell::new(FnvHashMap()),
-            defid_for_inlined_node: RefCell::new(FnvHashMap()),
+            visible_parent_map: RefCell::new(FxHashMap()),
+            inlined_item_cache: RefCell::new(FxHashMap()),
+            defid_for_inlined_node: RefCell::new(FxHashMap()),
         }
     }
 

@@ -24,8 +24,6 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let input = input.to_string();
     assert!(input.contains("struct A;"));
     r#"
-        struct A;
-
         impl A {
             fn a(&self) {
                 panic!("hello");
