@@ -143,6 +143,7 @@ mod closure;
 mod callee;
 mod compare_method;
 mod intrinsic;
+mod impl_parameters_used;
 mod op;
 
 /// closures defined within the function.  For example:
@@ -815,7 +816,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                             it.id);
       }
       hir::ItemFn(..) => {} // entirely within check_item_body
-      hir::ItemImpl(.., ref impl_item_ids) => {
+      hir::ItemImpl(_, _, ref hir_generics, _, _, ref impl_item_ids) => {
           debug!("ItemImpl {} with id {}", it.name, it.id);
           let impl_def_id = ccx.tcx.map.local_def_id(it.id);
           if let Some(impl_trait_ref) = ccx.tcx.impl_trait_ref(impl_def_id) {
@@ -827,6 +828,12 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
               let trait_def_id = impl_trait_ref.def_id;
               check_on_unimplemented(ccx, trait_def_id, it);
           }
+
+          impl_parameters_used::enforce_impl_params_are_constrained(ccx,
+                                                                    hir_generics,
+                                                                    impl_def_id,
+                                                                    impl_item_ids);
+
       }
       hir::ItemTrait(..) => {
         let def_id = ccx.tcx.map.local_def_id(it.id);
