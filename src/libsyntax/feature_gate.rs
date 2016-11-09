@@ -355,7 +355,7 @@ declare_features! (
     // Allows `#[deprecated]` attribute
     (accepted, deprecated, "1.9.0", Some(29935)),
     // `expr?`
-    (accepted, question_mark, "1.14.0", Some(31436)),
+    (accepted, question_mark, "1.13.0", Some(31436)),
     // Allows `..` in tuple (struct) patterns
     (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627)),
 );
