@@ -65,7 +65,8 @@ PKG_FILES := \
       stage0.txt                               \
       rust-installer                           \
       tools                                    \
-      test)                                    \
+      test                                     \
+      vendor)                                  \
     $(PKG_GITMODULES)                          \
     $(filter-out config.stamp, \
                  $(MKFILES_FOR_TARBALL))

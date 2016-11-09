@@ -460,6 +460,9 @@ impl Build {
         if self.config.rust_optimize {
             cargo.arg("--release");
         }
+        if self.config.vendor {
+            cargo.arg("--frozen");
+        }
         return cargo
     }
 

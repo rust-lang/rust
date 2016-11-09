@@ -1,0 +1,16 @@
+[package]
+
+name = "getopts"
+version = "0.2.14"
+authors = ["The Rust Project Developers"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/rust-lang/getopts"
+documentation = "http://doc.rust-lang.org/getopts"
+homepage = "https://github.com/rust-lang/getopts"
+description = """
+getopts-like option parsing.
+"""
+
+[dev-dependencies]
+log = "0.3"

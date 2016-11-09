@@ -1,0 +1,20 @@
+language: rust
+rust:
+  - 1.0.0
+  - beta
+  - nightly
+sudo: false
+before_script:
+  - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+script:
+  - cargo build --verbose
+  - cargo test --verbose
+  - cargo doc --no-deps
+after_success:
+  - travis-cargo --only nightly doc-upload
+env:
+  global:
+    secure: by+Jo/boBPbcF5c1N6RNCA008oJm2aRFE5T0SUc3OIfTXxY08dZc0WCBJCHrplp44VjpeKRp/89Y+k1CKncIeU8LiS6ZgsKqaQcCglE2O1KS90B6FYB7+rBqT3ib25taq1nW38clnBHYHV9nz4gOElSdKGRxCcBy+efQ5ZXr2tY=
+notifications:
+  email:
+    on_success: never
