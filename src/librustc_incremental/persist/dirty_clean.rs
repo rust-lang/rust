@@ -47,7 +47,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::Visitor;
 use syntax::ast::{self, Attribute, NestedMetaItem};
-use rustc_data_structures::fnv::{FnvHashSet, FnvHashMap};
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use syntax::parse::token::InternedString;
 use syntax_pos::Span;
 use rustc::ty::TyCtxt;
@@ -67,7 +67,7 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let _ignore = tcx.dep_graph.in_ignore();
-    let dirty_inputs: FnvHashSet<DepNode<DefId>> =
+    let dirty_inputs: FxHashSet<DepNode<DefId>> =
         dirty_inputs.iter()
                    .filter_map(|d| retraced.map(d))
                    .collect();
@@ -84,7 +84,7 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     query: &'a DepGraphQuery<DefId>,
-    dirty_inputs: FnvHashSet<DepNode<DefId>>,
+    dirty_inputs: FxHashSet<DepNode<DefId>>,
 }
 
 impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
@@ -187,8 +187,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
 }
 
 pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  prev_metadata_hashes: &FnvHashMap<DefId, Fingerprint>,
-                                  current_metadata_hashes: &FnvHashMap<DefId, Fingerprint>) {
+                                  prev_metadata_hashes: &FxHashMap<DefId, Fingerprint>,
+                                  current_metadata_hashes: &FxHashMap<DefId, Fingerprint>) {
     if !tcx.sess.opts.debugging_opts.query_dep_graph {
         return;
     }
@@ -205,8 +205,8 @@ pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub struct DirtyCleanMetadataVisitor<'a, 'tcx:'a, 'm> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    prev_metadata_hashes: &'m FnvHashMap<DefId, Fingerprint>,
-    current_metadata_hashes: &'m FnvHashMap<DefId, Fingerprint>,
+    prev_metadata_hashes: &'m FxHashMap<DefId, Fingerprint>,
+    current_metadata_hashes: &'m FxHashMap<DefId, Fingerprint>,
 }
 
 impl<'a, 'tcx, 'm> Visitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {

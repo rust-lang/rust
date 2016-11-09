@@ -60,6 +60,7 @@ pub mod snapshot_vec;
 pub mod transitive_relation;
 pub mod unify;
 pub mod fnv;
+pub mod fx;
 pub mod tuple_slice;
 pub mod veccell;
 pub mod control_flow_graph;

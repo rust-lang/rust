@@ -19,7 +19,7 @@ pub use self::VarValue::*;
 use super::{RegionVariableOrigin, SubregionOrigin, MiscVariable};
 use super::unify_key;
 
-use rustc_data_structures::fnv::{FnvHashMap, FnvHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::{self, Direction, NodeIndex, OUTGOING};
 use rustc_data_structures::unify::{self, UnificationTable};
 use middle::free_region::FreeRegionMap;
@@ -213,7 +213,7 @@ impl SameRegions {
     }
 }
 
-pub type CombineMap<'tcx> = FnvHashMap<TwoRegions<'tcx>, RegionVid>;
+pub type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
 pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -222,7 +222,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // Constraints of the form `A <= B` introduced by the region
     // checker.  Here at least one of `A` and `B` must be a region
     // variable.
-    constraints: RefCell<FnvHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>>,
+    constraints: RefCell<FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>>,
 
     // A "verify" is something that we need to verify after inference is
     // done, but which does not directly affect inference in any way.
@@ -248,7 +248,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // record the fact that `'a <= 'b` is implied by the fn signature,
     // and then ignore the constraint when solving equations. This is
     // a bit of a hack but seems to work.
-    givens: RefCell<FnvHashSet<(ty::FreeRegion, ty::RegionVid)>>,
+    givens: RefCell<FxHashSet<(ty::FreeRegion, ty::RegionVid)>>,
 
     lubs: RefCell<CombineMap<'tcx>>,
     glbs: RefCell<CombineMap<'tcx>>,
@@ -305,14 +305,14 @@ impl TaintDirections {
 
 struct TaintSet<'tcx> {
     directions: TaintDirections,
-    regions: FnvHashSet<&'tcx ty::Region>
+    regions: FxHashSet<&'tcx ty::Region>
 }
 
 impl<'a, 'gcx, 'tcx> TaintSet<'tcx> {
     fn new(directions: TaintDirections,
            initial_region: &'tcx ty::Region)
            -> Self {
-        let mut regions = FnvHashSet();
+        let mut regions = FxHashSet();
         regions.insert(initial_region);
         TaintSet { directions: directions, regions: regions }
     }
@@ -362,7 +362,7 @@ impl<'a, 'gcx, 'tcx> TaintSet<'tcx> {
         }
     }
 
-    fn into_set(self) -> FnvHashSet<&'tcx ty::Region> {
+    fn into_set(self) -> FxHashSet<&'tcx ty::Region> {
         self.regions
     }
 
@@ -393,11 +393,11 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             tcx: tcx,
             var_origins: RefCell::new(Vec::new()),
             values: RefCell::new(None),
-            constraints: RefCell::new(FnvHashMap()),
+            constraints: RefCell::new(FxHashMap()),
             verifys: RefCell::new(Vec::new()),
-            givens: RefCell::new(FnvHashSet()),
-            lubs: RefCell::new(FnvHashMap()),
-            glbs: RefCell::new(FnvHashMap()),
+            givens: RefCell::new(FxHashSet()),
+            lubs: RefCell::new(FxHashMap()),
+            glbs: RefCell::new(FxHashMap()),
             skolemization_count: Cell::new(0),
             bound_count: Cell::new(0),
             undo_log: RefCell::new(Vec::new()),
@@ -547,7 +547,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// completes to remove all trace of the skolemized regions
     /// created in that time.
     pub fn pop_skolemized(&self,
-                          skols: &FnvHashSet<&'tcx ty::Region>,
+                          skols: &FxHashSet<&'tcx ty::Region>,
                           snapshot: &RegionSnapshot) {
         debug!("pop_skolemized_regions(skols={:?})", skols);
 
@@ -601,7 +601,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         self.skolemization_count.set(snapshot.skolemization_count);
         return;
 
-        fn kill_constraint<'tcx>(skols: &FnvHashSet<&'tcx ty::Region>,
+        fn kill_constraint<'tcx>(skols: &FxHashSet<&'tcx ty::Region>,
                                  undo_entry: &UndoLogEntry<'tcx>)
                                  -> bool {
             match undo_entry {
@@ -905,7 +905,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                    mark: &RegionSnapshot,
                    r0: &'tcx Region,
                    directions: TaintDirections)
-                   -> FnvHashSet<&'tcx ty::Region> {
+                   -> FxHashSet<&'tcx ty::Region> {
         debug!("tainted(mark={:?}, r0={:?}, directions={:?})",
                mark, r0, directions);
 
@@ -1414,13 +1414,13 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                                 dup_vec: &mut [u32])
                                 -> (Vec<RegionAndOrigin<'tcx>>, bool) {
         struct WalkState<'tcx> {
-            set: FnvHashSet<RegionVid>,
+            set: FxHashSet<RegionVid>,
             stack: Vec<RegionVid>,
             result: Vec<RegionAndOrigin<'tcx>>,
             dup_found: bool,
         }
         let mut state = WalkState {
-            set: FnvHashSet(),
+            set: FxHashSet(),
             stack: vec![orig_node_idx],
             result: Vec::new(),
             dup_found: false,

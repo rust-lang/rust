@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
 use std::ops::Index;
 use std::hash::Hash;
@@ -24,7 +24,7 @@ use super::{DepNode, DepGraph};
 pub struct DepTrackingMap<M: DepTrackingMapConfig> {
     phantom: PhantomData<M>,
     graph: DepGraph,
-    map: FnvHashMap<M::Key, M::Value>,
+    map: FxHashMap<M::Key, M::Value>,
 }
 
 pub trait DepTrackingMapConfig {
@@ -38,7 +38,7 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
         DepTrackingMap {
             phantom: PhantomData,
             graph: graph,
-            map: FnvHashMap()
+            map: FxHashMap()
         }
     }
 

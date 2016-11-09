@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use session::config::OutputType;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
@@ -34,10 +34,10 @@ struct DepGraphData {
     /// things available to us. If we find that they are not dirty, we
     /// load the path to the file storing those work-products here into
     /// this map. We can later look for and extract that data.
-    previous_work_products: RefCell<FnvHashMap<Arc<WorkProductId>, WorkProduct>>,
+    previous_work_products: RefCell<FxHashMap<Arc<WorkProductId>, WorkProduct>>,
 
     /// Work-products that we generate in this run.
-    work_products: RefCell<FnvHashMap<Arc<WorkProductId>, WorkProduct>>,
+    work_products: RefCell<FxHashMap<Arc<WorkProductId>, WorkProduct>>,
 }
 
 impl DepGraph {
@@ -45,8 +45,8 @@ impl DepGraph {
         DepGraph {
             data: Rc::new(DepGraphData {
                 thread: DepGraphThreadData::new(enabled),
-                previous_work_products: RefCell::new(FnvHashMap()),
-                work_products: RefCell::new(FnvHashMap()),
+                previous_work_products: RefCell::new(FxHashMap()),
+                work_products: RefCell::new(FxHashMap()),
             })
         }
     }
@@ -117,7 +117,7 @@ impl DepGraph {
 
     /// Access the map of work-products created during this run. Only
     /// used during saving of the dep-graph.
-    pub fn work_products(&self) -> Ref<FnvHashMap<Arc<WorkProductId>, WorkProduct>> {
+    pub fn work_products(&self) -> Ref<FxHashMap<Arc<WorkProductId>, WorkProduct>> {
         self.data.work_products.borrow()
     }
 }

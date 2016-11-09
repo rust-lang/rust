@@ -66,7 +66,7 @@ use hir::def_id::CrateNum;
 use session;
 use session::config;
 use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 use rustc_back::PanicStrategy;
 
 /// A list of dependencies for a certain crate type.
@@ -80,7 +80,7 @@ pub type DependencyList = Vec<Linkage>;
 /// A mapping of all required dependencies for a particular flavor of output.
 ///
 /// This is local to the tcx, and is generally relevant to one session.
-pub type Dependencies = FnvHashMap<config::CrateType, DependencyList>;
+pub type Dependencies = FxHashMap<config::CrateType, DependencyList>;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Linkage {
@@ -149,7 +149,7 @@ fn calculate_type(sess: &session::Session,
         config::CrateTypeProcMacro => {},
     }
 
-    let mut formats = FnvHashMap();
+    let mut formats = FxHashMap();
 
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a
@@ -240,7 +240,7 @@ fn calculate_type(sess: &session::Session,
 fn add_library(sess: &session::Session,
                cnum: CrateNum,
                link: LinkagePreference,
-               m: &mut FnvHashMap<CrateNum, LinkagePreference>) {
+               m: &mut FxHashMap<CrateNum, LinkagePreference>) {
     match m.get(&cnum) {
         Some(&link2) => {
             // If the linkages differ, then we'd have two copies of the library

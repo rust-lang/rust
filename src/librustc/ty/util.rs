@@ -20,7 +20,7 @@ use ty::{Disr, ParameterEnvironment};
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 
@@ -594,7 +594,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     fn impls_bound(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    param_env: &ParameterEnvironment<'tcx>,
                    bound: ty::BuiltinBound,
-                   cache: &RefCell<FnvHashMap<Ty<'tcx>, bool>>,
+                   cache: &RefCell<FxHashMap<Ty<'tcx>, bool>>,
                    span: Span) -> bool
     {
         if self.has_param_types() || self.has_self_ty() {

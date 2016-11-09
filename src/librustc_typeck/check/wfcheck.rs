@@ -16,7 +16,7 @@ use middle::region::{CodeExtent};
 use rustc::infer::TypeOrigin;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::util::nodemap::{FnvHashSet, FnvHashMap};
+use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -529,7 +529,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         assert_eq!(ty_predicates.parent, None);
         let variances = self.tcx().item_variances(item_def_id);
 
-        let mut constrained_parameters: FnvHashSet<_> =
+        let mut constrained_parameters: FxHashSet<_> =
             variances.iter().enumerate()
                      .filter(|&(_, &variance)| variance != ty::Bivariant)
                      .map(|(index, _)| Parameter(index as u32))
@@ -580,10 +580,10 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
 fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, generics: &ty::Generics) {
     let parent = tcx.lookup_generics(generics.parent.unwrap());
-    let impl_params: FnvHashMap<_, _> = parent.types
-                                        .iter()
-                                        .map(|tp| (tp.name, tp.def_id))
-                                        .collect();
+    let impl_params: FxHashMap<_, _> = parent.types
+                                       .iter()
+                                       .map(|tp| (tp.name, tp.def_id))
+                                       .collect();
 
     for method_param in &generics.types {
         if impl_params.contains_key(&method_param.name) {

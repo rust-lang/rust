@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use fnv::FnvHashMap;
+use fx::FxHashMap;
 use std::hash::Hash;
 use std::ops;
 use std::mem;
@@ -19,7 +19,7 @@ mod test;
 pub struct SnapshotMap<K, V>
     where K: Hash + Clone + Eq
 {
-    map: FnvHashMap<K, V>,
+    map: FxHashMap<K, V>,
     undo_log: Vec<UndoLog<K, V>>,
 }
 
@@ -40,7 +40,7 @@ impl<K, V> SnapshotMap<K, V>
 {
     pub fn new() -> Self {
         SnapshotMap {
-            map: FnvHashMap(),
+            map: FxHashMap(),
             undo_log: vec![],
         }
     }

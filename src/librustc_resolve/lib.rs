@@ -51,7 +51,7 @@ use rustc::hir::def::*;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
-use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
+use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet};
 
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast::{self, FloatTy};
@@ -498,7 +498,7 @@ struct BindingInfo {
 }
 
 // Map from the name in a pattern to its binding mode.
-type BindingMap = FnvHashMap<Ident, BindingInfo>;
+type BindingMap = FxHashMap<Ident, BindingInfo>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum PatternSource {
@@ -703,14 +703,14 @@ enum ModulePrefixResult<'a> {
 /// One local scope.
 #[derive(Debug)]
 struct Rib<'a> {
-    bindings: FnvHashMap<Ident, Def>,
+    bindings: FxHashMap<Ident, Def>,
     kind: RibKind<'a>,
 }
 
 impl<'a> Rib<'a> {
     fn new(kind: RibKind<'a>) -> Rib<'a> {
         Rib {
-            bindings: FnvHashMap(),
+            bindings: FxHashMap(),
             kind: kind,
         }
     }
@@ -769,7 +769,7 @@ pub struct ModuleS<'a> {
     // is the NodeId of the local `extern crate` item (otherwise, `extern_crate_id` is None).
     extern_crate_id: Option<NodeId>,
 
-    resolutions: RefCell<FnvHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
+    resolutions: RefCell<FxHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
 
     no_implicit_prelude: bool,
 
@@ -794,7 +794,7 @@ impl<'a> ModuleS<'a> {
             kind: kind,
             normal_ancestor_id: None,
             extern_crate_id: None,
-            resolutions: RefCell::new(FnvHashMap()),
+            resolutions: RefCell::new(FxHashMap()),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
@@ -950,12 +950,12 @@ impl<'a> NameBinding<'a> {
 
 /// Interns the names of the primitive types.
 struct PrimitiveTypeTable {
-    primitive_types: FnvHashMap<Name, PrimTy>,
+    primitive_types: FxHashMap<Name, PrimTy>,
 }
 
 impl PrimitiveTypeTable {
     fn new() -> PrimitiveTypeTable {
-        let mut table = PrimitiveTypeTable { primitive_types: FnvHashMap() };
+        let mut table = PrimitiveTypeTable { primitive_types: FxHashMap() };
 
         table.intern("bool", TyBool);
         table.intern("char", TyChar);
@@ -989,17 +989,17 @@ pub struct Resolver<'a> {
 
     // Maps the node id of a statement to the expansions of the `macro_rules!`s
     // immediately above the statement (if appropriate).
-    macros_at_scope: FnvHashMap<NodeId, Vec<Mark>>,
+    macros_at_scope: FxHashMap<NodeId, Vec<Mark>>,
 
     graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
 
-    trait_item_map: FnvHashMap<(Name, DefId), bool /* is static method? */>,
+    trait_item_map: FxHashMap<(Name, DefId), bool /* is static method? */>,
 
     // Names of fields of an item `DefId` accessible with dot syntax.
     // Used for hints during error reporting.
-    field_names: FnvHashMap<DefId, Vec<Name>>,
+    field_names: FxHashMap<DefId, Vec<Name>>,
 
     // All imports known to succeed or fail.
     determined_imports: Vec<&'a ImportDirective<'a>>,
@@ -1061,8 +1061,8 @@ pub struct Resolver<'a> {
     // all imports, but only glob imports are actually interesting).
     pub glob_map: GlobMap,
 
-    used_imports: FnvHashSet<(NodeId, Namespace)>,
-    used_crates: FnvHashSet<CrateNum>,
+    used_imports: FxHashSet<(NodeId, Namespace)>,
+    used_crates: FxHashSet<CrateNum>,
     pub maybe_unused_trait_imports: NodeSet,
 
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -1075,12 +1075,12 @@ pub struct Resolver<'a> {
 
     pub exported_macros: Vec<ast::MacroDef>,
     crate_loader: &'a mut CrateLoader,
-    macro_names: FnvHashSet<Name>,
-    builtin_macros: FnvHashMap<Name, Rc<SyntaxExtension>>,
+    macro_names: FxHashSet<Name>,
+    builtin_macros: FxHashMap<Name, Rc<SyntaxExtension>>,
     lexical_macro_resolutions: Vec<(Name, LegacyScope<'a>)>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
-    invocations: FnvHashMap<Mark, &'a InvocationData<'a>>,
+    invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1206,7 +1206,7 @@ impl<'a> Resolver<'a> {
         let mut definitions = Definitions::new();
         DefCollector::new(&mut definitions).collect_root();
 
-        let mut invocations = FnvHashMap();
+        let mut invocations = FxHashMap();
         invocations.insert(Mark::root(),
                            arenas.alloc_invocation_data(InvocationData::root(graph_root)));
 
@@ -1214,15 +1214,15 @@ impl<'a> Resolver<'a> {
             session: session,
 
             definitions: definitions,
-            macros_at_scope: FnvHashMap(),
+            macros_at_scope: FxHashMap(),
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
             graph_root: graph_root,
             prelude: None,
 
-            trait_item_map: FnvHashMap(),
-            field_names: FnvHashMap(),
+            trait_item_map: FxHashMap(),
+            field_names: FxHashMap(),
 
             determined_imports: Vec::new(),
             indeterminate_imports: Vec::new(),
@@ -1248,8 +1248,8 @@ impl<'a> Resolver<'a> {
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
             glob_map: NodeMap(),
 
-            used_imports: FnvHashSet(),
-            used_crates: FnvHashSet(),
+            used_imports: FxHashSet(),
+            used_crates: FxHashSet(),
             maybe_unused_trait_imports: NodeSet(),
 
             privacy_errors: Vec::new(),
@@ -1266,8 +1266,8 @@ impl<'a> Resolver<'a> {
 
             exported_macros: Vec::new(),
             crate_loader: crate_loader,
-            macro_names: FnvHashSet(),
-            builtin_macros: FnvHashMap(),
+            macro_names: FxHashSet(),
+            builtin_macros: FxHashMap(),
             lexical_macro_resolutions: Vec::new(),
             invocations: invocations,
         }
@@ -1340,7 +1340,7 @@ impl<'a> Resolver<'a> {
 
     fn add_to_glob_map(&mut self, id: NodeId, name: Name) {
         if self.make_glob_map {
-            self.glob_map.entry(id).or_insert_with(FnvHashSet).insert(name);
+            self.glob_map.entry(id).or_insert_with(FxHashSet).insert(name);
         }
     }
 
@@ -1803,7 +1803,7 @@ impl<'a> Resolver<'a> {
         match type_parameters {
             HasTypeParameters(generics, rib_kind) => {
                 let mut function_type_rib = Rib::new(rib_kind);
-                let mut seen_bindings = FnvHashMap();
+                let mut seen_bindings = FxHashMap();
                 for type_parameter in &generics.ty_params {
                     let name = type_parameter.ident.name;
                     debug!("with_type_parameter_rib: {}", type_parameter.id);
@@ -1867,7 +1867,7 @@ impl<'a> Resolver<'a> {
         self.label_ribs.push(Rib::new(rib_kind));
 
         // Add each argument to the rib.
-        let mut bindings_list = FnvHashMap();
+        let mut bindings_list = FxHashMap();
         for argument in &declaration.inputs {
             self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
 
@@ -2069,7 +2069,7 @@ impl<'a> Resolver<'a> {
         walk_list!(self, visit_expr, &local.init);
 
         // Resolve the pattern.
-        self.resolve_pattern(&local.pat, PatternSource::Let, &mut FnvHashMap());
+        self.resolve_pattern(&local.pat, PatternSource::Let, &mut FxHashMap());
     }
 
     // build a map from pattern identifiers to binding-info's.
@@ -2077,7 +2077,7 @@ impl<'a> Resolver<'a> {
     // that expands into an or-pattern where one 'x' was from the
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
-        let mut binding_map = FnvHashMap();
+        let mut binding_map = FxHashMap();
 
         pat.walk(&mut |pat| {
             if let PatKind::Ident(binding_mode, ident, ref sub_pat) = pat.node {
@@ -2137,7 +2137,7 @@ impl<'a> Resolver<'a> {
     fn resolve_arm(&mut self, arm: &Arm) {
         self.value_ribs.push(Rib::new(NormalRibKind));
 
-        let mut bindings_list = FnvHashMap();
+        let mut bindings_list = FxHashMap();
         for pattern in &arm.pats {
             self.resolve_pattern(&pattern, PatternSource::Match, &mut bindings_list);
         }
@@ -2278,7 +2278,7 @@ impl<'a> Resolver<'a> {
                      pat_id: NodeId,
                      outer_pat_id: NodeId,
                      pat_src: PatternSource,
-                     bindings: &mut FnvHashMap<Ident, NodeId>)
+                     bindings: &mut FxHashMap<Ident, NodeId>)
                      -> PathResolution {
         // Add the binding to the local ribs, if it
         // doesn't already exist in the bindings map. (We
@@ -2391,7 +2391,7 @@ impl<'a> Resolver<'a> {
                        pat_src: PatternSource,
                        // Maps idents to the node ID for the
                        // outermost pattern that binds them.
-                       bindings: &mut FnvHashMap<Ident, NodeId>) {
+                       bindings: &mut FxHashMap<Ident, NodeId>) {
         // Visit all direct subpatterns of this pattern.
         let outer_pat_id = pat.id;
         pat.walk(&mut |pat| {
@@ -3048,7 +3048,7 @@ impl<'a> Resolver<'a> {
                 self.visit_expr(subexpression);
 
                 self.value_ribs.push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, PatternSource::IfLet, &mut FnvHashMap());
+                self.resolve_pattern(pattern, PatternSource::IfLet, &mut FxHashMap());
                 self.visit_block(if_block);
                 self.value_ribs.pop();
 
@@ -3065,7 +3065,7 @@ impl<'a> Resolver<'a> {
             ExprKind::WhileLet(ref pattern, ref subexpression, ref block, label) => {
                 self.visit_expr(subexpression);
                 self.value_ribs.push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, PatternSource::WhileLet, &mut FnvHashMap());
+                self.resolve_pattern(pattern, PatternSource::WhileLet, &mut FxHashMap());
 
                 self.resolve_labeled_block(label, expr.id, block);
 
@@ -3075,7 +3075,7 @@ impl<'a> Resolver<'a> {
             ExprKind::ForLoop(ref pattern, ref subexpression, ref block, label) => {
                 self.visit_expr(subexpression);
                 self.value_ribs.push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, PatternSource::For, &mut FnvHashMap());
+                self.resolve_pattern(pattern, PatternSource::For, &mut FxHashMap());
 
                 self.resolve_labeled_block(label, expr.id, block);
 
@@ -3337,7 +3337,7 @@ impl<'a> Resolver<'a> {
 
     fn report_errors(&mut self) {
         self.report_shadowing_errors();
-        let mut reported_spans = FnvHashSet();
+        let mut reported_spans = FxHashSet();
 
         for &AmbiguityError { span, name, b1, b2 } in &self.ambiguity_errors {
             if !reported_spans.insert(span) { continue }
@@ -3369,7 +3369,7 @@ impl<'a> Resolver<'a> {
             self.resolve_macro_name(scope, name);
         }
 
-        let mut reported_errors = FnvHashSet();
+        let mut reported_errors = FxHashSet();
         for binding in replace(&mut self.disallowed_shadowing, Vec::new()) {
             if self.resolve_macro_name(binding.parent, binding.name).is_some() &&
                reported_errors.insert((binding.name, binding.span)) {

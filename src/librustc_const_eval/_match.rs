@@ -17,7 +17,7 @@ use eval::{compare_const_vals};
 
 use rustc_const_math::ConstInt;
 
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
 use pattern::{FieldPattern, Pattern, PatternKind};
@@ -160,7 +160,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     /// associated types to get field types.
     pub wild_pattern: &'a Pattern<'tcx>,
     pub pattern_arena: &'a TypedArena<Pattern<'tcx>>,
-    pub byte_array_map: FnvHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
+    pub byte_array_map: FxHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
@@ -181,7 +181,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
             tcx: tcx,
             wild_pattern: &wild_pattern,
             pattern_arena: &pattern_arena,
-            byte_array_map: FnvHashMap(),
+            byte_array_map: FxHashMap(),
         })
     }
 
