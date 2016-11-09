@@ -1394,13 +1394,16 @@ impl<'a, 'gcx, 'tcx> AdtDefData<'tcx, 'static> {
     #[inline]
     pub fn is_uninhabited_recurse(&'tcx self,
                                   visited: &mut HashMap<(DefId, &'tcx Substs<'tcx>), ()>,
+                                  block: Option<NodeId>,
                                   cx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>) -> bool {
         match visited.entry((self.did, substs)) {
             hash_map::Entry::Occupied(_) => return false,
             hash_map::Entry::Vacant(ve) => ve.insert(()),
         };
-        self.variants.iter().all(|v| v.is_uninhabited_recurse(visited, cx, substs, self.is_union()))
+        self.variants.iter().all(|v| {
+            v.is_uninhabited_recurse(visited, block, cx, substs, self.is_union())
+        })
     }
 }
 
@@ -1809,13 +1812,14 @@ impl<'a, 'gcx, 'tcx> VariantDefData<'tcx, 'static> {
     #[inline]
     pub fn is_uninhabited_recurse(&'tcx self,
                                   visited: &mut HashMap<(DefId, &'tcx Substs<'tcx>), ()>,
+                                  block: Option<NodeId>,
                                   cx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>,
                                   is_union: bool) -> bool {
         if is_union {
-            self.fields.iter().all(|f| f.is_uninhabited_recurse(visited, cx, substs))
+            self.fields.iter().all(|f| f.is_uninhabited_recurse(visited, block, cx, substs))
         } else {
-            self.fields.iter().any(|f| f.is_uninhabited_recurse(visited, cx, substs))
+            self.fields.iter().any(|f| f.is_uninhabited_recurse(visited, block, cx, substs))
         }
     }
 }
@@ -1849,9 +1853,11 @@ impl<'a, 'gcx, 'tcx> FieldDefData<'tcx, 'static> {
     #[inline]
     pub fn is_uninhabited_recurse(&'tcx self,
                                   visited: &mut HashMap<(DefId, &'tcx Substs<'tcx>), ()>,
+                                  block: Option<NodeId>,
                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>) -> bool {
-        self.ty(tcx, substs).is_uninhabited_recurse(visited, tcx)
+        block.map_or(true, |b| self.vis.is_accessible_from(b, &tcx.map)) &&
+        self.ty(tcx, substs).is_uninhabited_recurse(visited, block, tcx)
     }
 }
 
