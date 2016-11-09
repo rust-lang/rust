@@ -2492,17 +2492,54 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     Ok(())
 }
 
-fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
-    for attr in &it.attrs {
-        match *attr {
-            clean::Word(ref s) if *s == "must_use" => {
-                write!(w, "#[{}]\n", s)?;
-            }
-            clean::NameValue(ref k, ref v) if *k == "must_use" => {
-                write!(w, "#[{} = \"{}\"]\n", k, v)?;
-            }
-            _ => ()
+fn attribute_without_value(s: &str) -> bool {
+    ["must_use", "no_mangle", "unsafe_destructor_blind_to_params"].iter().any(|x| x == &s)
+}
+
+fn attribute_with_value(s: &str) -> bool {
+    ["export_name", "lang", "link_section", "must_use"].iter().any(|x| x == &s)
+}
+
+fn attribute_with_values(s: &str) -> bool {
+    ["repr"].iter().any(|x| x == &s)
+}
+
+fn render_attribute(attr: &clean::Attribute, recurse: bool) -> Option<String> {
+    match *attr {
+        clean::Word(ref s) if attribute_without_value(&*s) || recurse => {
+            Some(format!("{}", s))
         }
+        clean::NameValue(ref k, ref v) if attribute_with_value(&*k) => {
+            Some(format!("{} = \"{}\"", k, v))
+        }
+        clean::List(ref k, ref values) if attribute_with_values(&*k) => {
+            let display: Vec<_> = values.iter()
+                                        .filter_map(|value| render_attribute(value, true))
+                                        .map(|entry| format!("{}", entry))
+                                        .collect();
+
+            if display.len() > 0 {
+                Some(format!("{}({})", k, display.join(", ")))
+            } else {
+                None
+            }
+        }
+        _ => {
+            None
+        }
+    }
+}
+
+fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
+    let mut attrs = String::new();
+
+    for attr in &it.attrs {
+        if let Some(s) = render_attribute(attr, false) {
+            attrs.push_str(&format!("#[{}]\n", s));
+        }
+    }
+    if attrs.len() > 0 {
+        write!(w, "<div class=\"docblock attributes\">{}</div>", &attrs)?;
     }
     Ok(())
 }
