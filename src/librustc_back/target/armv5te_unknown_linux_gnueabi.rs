@@ -24,7 +24,8 @@ pub fn target() -> TargetResult {
 
         options: TargetOptions {
             features: "+soft-float".to_string(),
-            max_atomic_width: Some(64),
+            // No atomic instructions on ARMv5
+            max_atomic_width: Some(0),
             abi_blacklist: super::arm_base::abi_blacklist(),
             .. base
         }
