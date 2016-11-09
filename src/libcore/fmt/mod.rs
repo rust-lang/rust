@@ -166,7 +166,9 @@ pub struct Formatter<'a> {
 // NB. Argument is essentially an optimized partially applied formatting function,
 // equivalent to `exists T.(&T, fn(&T, &mut Formatter) -> Result`.
 
-enum Void {}
+struct Void {
+    _private: (),
+}
 
 /// This struct represents the generic "argument" which is taken by the Xprintf
 /// family of functions. It contains a function to format the given value. At
@@ -178,9 +180,8 @@ enum Void {}
            issue = "0")]
 #[doc(hidden)]
 pub struct ArgumentV1<'a> {
-    _ph: PhantomData<&'a ()>,
-    value: *const Void,
-    formatter: fn(*const Void, &mut Formatter) -> Result,
+    value: &'a Void,
+    formatter: fn(&Void, &mut Formatter) -> Result,
 }
 
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
@@ -204,7 +205,6 @@ impl<'a> ArgumentV1<'a> {
                       f: fn(&T, &mut Formatter) -> Result) -> ArgumentV1<'b> {
         unsafe {
             ArgumentV1 {
-                _ph: PhantomData,
                 formatter: mem::transmute(f),
                 value: mem::transmute(x)
             }
@@ -220,7 +220,7 @@ impl<'a> ArgumentV1<'a> {
 
     fn as_usize(&self) -> Option<usize> {
         if self.formatter as usize == ArgumentV1::show_usize as usize {
-            Some(unsafe { *(self.value as *const usize) })
+            Some(unsafe { *(self.value as *const _ as *const usize) })
         } else {
             None
         }
