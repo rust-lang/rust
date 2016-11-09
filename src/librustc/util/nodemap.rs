@@ -15,17 +15,17 @@
 use hir::def_id::DefId;
 use syntax::ast;
 
-pub use rustc_data_structures::fnv::FnvHashMap;
-pub use rustc_data_structures::fnv::FnvHashSet;
+pub use rustc_data_structures::fx::FxHashMap;
+pub use rustc_data_structures::fx::FxHashSet;
 
-pub type NodeMap<T> = FnvHashMap<ast::NodeId, T>;
-pub type DefIdMap<T> = FnvHashMap<DefId, T>;
+pub type NodeMap<T> = FxHashMap<ast::NodeId, T>;
+pub type DefIdMap<T> = FxHashMap<DefId, T>;
 
-pub type NodeSet = FnvHashSet<ast::NodeId>;
-pub type DefIdSet = FnvHashSet<DefId>;
+pub type NodeSet = FxHashSet<ast::NodeId>;
+pub type DefIdSet = FxHashSet<DefId>;
 
-pub fn NodeMap<T>() -> NodeMap<T> { FnvHashMap() }
-pub fn DefIdMap<T>() -> DefIdMap<T> { FnvHashMap() }
-pub fn NodeSet() -> NodeSet { FnvHashSet() }
-pub fn DefIdSet() -> DefIdSet { FnvHashSet() }
+pub fn NodeMap<T>() -> NodeMap<T> { FxHashMap() }
+pub fn DefIdMap<T>() -> DefIdMap<T> { FxHashMap() }
+pub fn NodeSet() -> NodeSet { FxHashSet() }
+pub fn DefIdSet() -> DefIdSet { FxHashSet() }
 

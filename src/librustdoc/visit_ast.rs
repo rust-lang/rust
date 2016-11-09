@@ -22,7 +22,7 @@ use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::privacy::AccessLevel;
-use rustc::util::nodemap::FnvHashSet;
+use rustc::util::nodemap::FxHashSet;
 
 use rustc::hir;
 
@@ -42,14 +42,14 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx>,
-    view_item_stack: FnvHashSet<ast::NodeId>,
+    view_item_stack: FxHashSet<ast::NodeId>,
     inlining_from_glob: bool,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn new(cx: &'a core::DocContext<'a, 'tcx>) -> RustdocVisitor<'a, 'tcx> {
         // If the root is reexported, terminate all recursion.
-        let mut stack = FnvHashSet();
+        let mut stack = FxHashSet();
         stack.insert(ast::CRATE_NODE_ID);
         RustdocVisitor {
             module: Module::new(None),

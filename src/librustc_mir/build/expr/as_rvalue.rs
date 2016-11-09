@@ -13,7 +13,7 @@
 use std;
 
 use rustc_const_math::{ConstMathErr, Op};
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
 use build::{BlockAnd, BlockAndExtension, Builder};
@@ -190,7 +190,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 // first process the set of fields that were provided
                 // (evaluating them in order given by user)
-                let fields_map: FnvHashMap<_, _> =
+                let fields_map: FxHashMap<_, _> =
                     fields.into_iter()
                           .map(|f| (f.name, unpack!(block = this.as_operand(block, f.expr))))
                           .collect();

@@ -20,7 +20,7 @@ use rustc::ty::subst::{Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::infer::{InferOk, TypeOrigin};
-use rustc::util::nodemap::FnvHashSet;
+use rustc::util::nodemap::FxHashSet;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::hir;
@@ -40,7 +40,7 @@ struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     opt_simplified_steps: Option<Vec<ty::fast_reject::SimplifiedType>>,
     inherent_candidates: Vec<Candidate<'tcx>>,
     extension_candidates: Vec<Candidate<'tcx>>,
-    impl_dups: FnvHashSet<DefId>,
+    impl_dups: FxHashSet<DefId>,
     import_id: Option<ast::NodeId>,
 
     /// Collects near misses when the candidate functions are missing a `self` keyword and is only
@@ -263,7 +263,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             item_name: item_name,
             inherent_candidates: Vec::new(),
             extension_candidates: Vec::new(),
-            impl_dups: FnvHashSet(),
+            impl_dups: FxHashSet(),
             import_id: None,
             steps: Rc::new(steps),
             opt_simplified_steps: opt_simplified_steps,
@@ -568,7 +568,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn assemble_extension_candidates_for_traits_in_scope(&mut self,
                                                          expr_id: ast::NodeId)
                                                          -> Result<(), MethodError<'tcx>> {
-        let mut duplicates = FnvHashSet();
+        let mut duplicates = FxHashSet();
         let opt_applicable_traits = self.tcx.trait_map.get(&expr_id);
         if let Some(applicable_traits) = opt_applicable_traits {
             for trait_candidate in applicable_traits {
@@ -585,7 +585,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn assemble_extension_candidates_for_all_traits(&mut self) -> Result<(), MethodError<'tcx>> {
-        let mut duplicates = FnvHashSet();
+        let mut duplicates = FxHashSet();
         for trait_info in suggest::all_traits(self.ccx) {
             if duplicates.insert(trait_info.def_id) {
                 self.assemble_extension_candidates_for_trait(trait_info.def_id)?;

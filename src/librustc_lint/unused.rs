@@ -11,7 +11,7 @@
 use rustc::hir::pat_util;
 use rustc::ty;
 use rustc::ty::adjustment;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};
 
@@ -42,7 +42,7 @@ impl UnusedMut {
         // collect all mutable pattern and group their NodeIDs by their Identifier to
         // avoid false warnings in match arms with multiple patterns
 
-        let mut mutables = FnvHashMap();
+        let mut mutables = FxHashMap();
         for p in pats {
             pat_util::pat_bindings(p, |mode, id, _, path1| {
                 let name = path1.node;

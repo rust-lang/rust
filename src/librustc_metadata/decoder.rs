@@ -17,7 +17,7 @@ use schema::*;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::map::{DefKey, DefPathData};
-use rustc::util::nodemap::FnvHashMap;
+use rustc::util::nodemap::FxHashMap;
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
@@ -432,7 +432,7 @@ impl<'a, 'tcx> MetadataBlob {
 
     /// Go through each item in the metadata and create a map from that
     /// item's def-key to the item's DefIndex.
-    pub fn load_key_map(&self, index: LazySeq<Index>) -> FnvHashMap<DefKey, DefIndex> {
+    pub fn load_key_map(&self, index: LazySeq<Index>) -> FxHashMap<DefKey, DefIndex> {
         index.iter_enumerated(self.raw_bytes())
             .map(|(index, item)| (item.decode(self).def_key.decode(self), index))
             .collect()

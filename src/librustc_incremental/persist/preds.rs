@@ -10,7 +10,7 @@
 
 use rustc::dep_graph::{DepGraphQuery, DepNode};
 use rustc::hir::def_id::DefId;
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::{DepthFirstTraversal, INCOMING, NodeIndex};
 
 use super::hash::*;
@@ -23,11 +23,11 @@ pub struct Predecessors<'query> {
     //   nodes.
     // - Values: transitive predecessors of the key that are hashable
     //   (e.g., HIR nodes, input meta-data nodes)
-    pub inputs: FnvHashMap<&'query DepNode<DefId>, Vec<&'query DepNode<DefId>>>,
+    pub inputs: FxHashMap<&'query DepNode<DefId>, Vec<&'query DepNode<DefId>>>,
 
     // - Keys: some hashable node
     // - Values: the hash thereof
-    pub hashes: FnvHashMap<&'query DepNode<DefId>, Fingerprint>,
+    pub hashes: FxHashMap<&'query DepNode<DefId>, Fingerprint>,
 }
 
 impl<'q> Predecessors<'q> {
@@ -37,7 +37,7 @@ impl<'q> Predecessors<'q> {
         let all_nodes = query.graph.all_nodes();
         let tcx = hcx.tcx;
 
-        let inputs: FnvHashMap<_, _> = all_nodes.iter()
+        let inputs: FxHashMap<_, _> = all_nodes.iter()
             .enumerate()
             .filter(|&(_, node)| match node.data {
                 DepNode::WorkProduct(_) => true,
@@ -60,7 +60,7 @@ impl<'q> Predecessors<'q> {
             })
             .collect();
 
-        let mut hashes = FnvHashMap();
+        let mut hashes = FxHashMap();
         for input in inputs.values().flat_map(|v| v.iter().cloned()) {
             hashes.entry(input)
                   .or_insert_with(|| hcx.hash(input).unwrap());

@@ -16,7 +16,7 @@ use rustc::infer::TypeOrigin;
 use rustc::ty::subst::Substs;
 use rustc::ty::FnSig;
 use rustc::ty::{self, Ty};
-use rustc::util::nodemap::FnvHashMap;
+use rustc::util::nodemap::FxHashMap;
 use {CrateCtxt, require_same_types};
 
 use syntax::abi::Abi;
@@ -372,7 +372,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                         return
                     }
 
-                    let mut structural_to_nomimal = FnvHashMap();
+                    let mut structural_to_nomimal = FxHashMap();
 
                     let sig = tcx.no_late_bound_regions(i_ty.ty.fn_sig()).unwrap();
                     if intr.inputs.len() != sig.inputs.len() {
@@ -412,7 +412,7 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
         ccx: &CrateCtxt<'a, 'tcx>,
         position: &str,
         span: Span,
-        structural_to_nominal: &mut FnvHashMap<&'a intrinsics::Type, ty::Ty<'tcx>>,
+        structural_to_nominal: &mut FxHashMap<&'a intrinsics::Type, ty::Ty<'tcx>>,
         expected: &'a intrinsics::Type, t: ty::Ty<'tcx>)
 {
     use intrinsics::Type::*;

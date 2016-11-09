@@ -23,7 +23,7 @@ use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt};
 
 use rustc::session::config::{self, CrateTypeProcMacro};
-use rustc::util::nodemap::{FnvHashMap, NodeSet};
+use rustc::util::nodemap::{FxHashMap, NodeSet};
 
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
 use std::hash::Hash;
@@ -52,8 +52,8 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     reachable: &'a NodeSet,
 
     lazy_state: LazyState,
-    type_shorthands: FnvHashMap<Ty<'tcx>, usize>,
-    predicate_shorthands: FnvHashMap<ty::Predicate<'tcx>, usize>,
+    type_shorthands: FxHashMap<Ty<'tcx>, usize>,
+    predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
 }
 
 macro_rules! encoder_methods {
@@ -200,7 +200,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                                       variant: &U,
                                       map: M)
                                       -> Result<(), <Self as Encoder>::Error>
-        where M: for<'b> Fn(&'b mut Self) -> &'b mut FnvHashMap<T, usize>,
+        where M: for<'b> Fn(&'b mut Self) -> &'b mut FxHashMap<T, usize>,
               T: Clone + Eq + Hash,
               U: Encodable
     {
@@ -1143,7 +1143,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
 struct ImplVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    impls: FnvHashMap<DefId, Vec<DefIndex>>,
+    impls: FxHashMap<DefId, Vec<DefIndex>>,
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
@@ -1165,7 +1165,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_impls(&mut self) -> LazySeq<TraitImpls> {
         let mut visitor = ImplVisitor {
             tcx: self.tcx,
-            impls: FnvHashMap(),
+            impls: FxHashMap(),
         };
         self.tcx.map.krate().visit_all_items(&mut visitor);
 

@@ -33,7 +33,7 @@ use lint::{Level, LevelSource, Lint, LintId, LintPass, LintSource};
 use lint::{EarlyLintPassObject, LateLintPassObject};
 use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
 use lint::builtin;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 
 use std::cmp;
 use std::default::Default as StdDefault;
@@ -64,18 +64,18 @@ pub struct LintStore {
     late_passes: Option<Vec<LateLintPassObject>>,
 
     /// Lints indexed by name.
-    by_name: FnvHashMap<String, TargetLint>,
+    by_name: FxHashMap<String, TargetLint>,
 
     /// Current levels of each lint, and where they were set.
-    levels: FnvHashMap<LintId, LevelSource>,
+    levels: FxHashMap<LintId, LevelSource>,
 
     /// Map of registered lint groups to what lints they expand to. The bool
     /// is true if the lint group was added by a plugin.
-    lint_groups: FnvHashMap<&'static str, (Vec<LintId>, bool)>,
+    lint_groups: FxHashMap<&'static str, (Vec<LintId>, bool)>,
 
     /// Extra info for future incompatibility lints, descibing the
     /// issue or RFC that caused the incompatibility.
-    future_incompatible: FnvHashMap<LintId, FutureIncompatibleInfo>,
+    future_incompatible: FxHashMap<LintId, FutureIncompatibleInfo>,
 
     /// Maximum level a lint can be
     lint_cap: Option<Level>,
@@ -171,10 +171,10 @@ impl LintStore {
             lints: vec![],
             early_passes: Some(vec![]),
             late_passes: Some(vec![]),
-            by_name: FnvHashMap(),
-            levels: FnvHashMap(),
-            future_incompatible: FnvHashMap(),
-            lint_groups: FnvHashMap(),
+            by_name: FxHashMap(),
+            levels: FxHashMap(),
+            future_incompatible: FxHashMap(),
+            lint_groups: FxHashMap(),
             lint_cap: None,
         }
     }
@@ -304,8 +304,8 @@ impl LintStore {
                 Err(FindLintError::Removed) => { }
                 Err(_) => {
                     match self.lint_groups.iter().map(|(&x, pair)| (x, pair.0.clone()))
-                                                 .collect::<FnvHashMap<&'static str,
-                                                                       Vec<LintId>>>()
+                                                 .collect::<FxHashMap<&'static str,
+                                                                      Vec<LintId>>>()
                                                  .get(&lint_name[..]) {
                         Some(v) => {
                             v.iter()
