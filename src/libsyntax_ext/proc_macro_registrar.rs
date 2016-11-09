@@ -30,6 +30,7 @@ struct CustomDerive {
     trait_name: InternedString,
     function_name: Ident,
     span: Span,
+    attrs: Vec<InternedString>,
 }
 
 struct CollectCustomDerives<'a> {
@@ -144,7 +145,8 @@ impl<'a> Visitor for CollectCustomDerives<'a> {
         }
 
         // Once we've located the `#[proc_macro_derive]` attribute, verify
-        // that it's of the form `#[proc_macro_derive(Foo)]`
+        // that it's of the form `#[proc_macro_derive(Foo)]` or
+        // `#[proc_macro_derive(Foo, attributes(A, ..))]`
         let list = match attr.meta_item_list() {
             Some(list) => list,
             None => {
@@ -154,38 +156,69 @@ impl<'a> Visitor for CollectCustomDerives<'a> {
                 return
             }
         };
-        if list.len() != 1 {
+        if list.len() != 1 && list.len() != 2 {
             self.handler.span_err(attr.span(),
-                                  "attribute must only have one argument");
+                                  "attribute must have either one or two arguments");
             return
         }
-        let attr = &list[0];
-        let trait_name = match attr.name() {
+        let trait_attr = &list[0];
+        let attributes_attr = list.get(1);
+        let trait_name = match trait_attr.name() {
             Some(name) => name,
             _ => {
-                self.handler.span_err(attr.span(), "not a meta item");
+                self.handler.span_err(trait_attr.span(), "not a meta item");
                 return
             }
         };
-        if !attr.is_word() {
-            self.handler.span_err(attr.span(), "must only be one word");
+        if !trait_attr.is_word() {
+            self.handler.span_err(trait_attr.span(), "must only be one word");
         }
 
         if deriving::is_builtin_trait(&trait_name) {
-            self.handler.span_err(attr.span(),
+            self.handler.span_err(trait_attr.span(),
                                   "cannot override a built-in #[derive] mode");
         }
 
         if self.derives.iter().any(|d| d.trait_name == trait_name) {
-            self.handler.span_err(attr.span(),
+            self.handler.span_err(trait_attr.span(),
                                   "derive mode defined twice in this crate");
         }
+
+        let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
+            if !attr.check_name("attributes") {
+                self.handler.span_err(attr.span(), "second argument must be `attributes`")
+            }
+            attr.meta_item_list().unwrap_or_else(|| {
+                self.handler.span_err(attr.span(),
+                                      "attribute must be of form: \
+                                       `attributes(foo, bar)`");
+                &[]
+            }).into_iter().filter_map(|attr| {
+                let name = match attr.name() {
+                    Some(name) => name,
+                    _ => {
+                        self.handler.span_err(attr.span(), "not a meta item");
+                        return None;
+                    },
+                };
+
+                if !attr.is_word() {
+                    self.handler.span_err(attr.span(), "must only be one word");
+                    return None;
+                }
+
+                Some(name)
+            }).collect()
+        } else {
+            Vec::new()
+        };
 
         if self.in_root {
             self.derives.push(CustomDerive {
                 span: item.span,
                 trait_name: trait_name,
                 function_name: item.ident,
+                attrs: proc_attrs,
             });
         } else {
             let msg = "functions tagged with `#[proc_macro_derive]` must \
@@ -219,8 +252,8 @@ impl<'a> Visitor for CollectCustomDerives<'a> {
 //
 //          #[plugin_registrar]
 //          fn registrar(registrar: &mut Registry) {
-//              registrar.register_custom_derive($name_trait1, ::$name1);
-//              registrar.register_custom_derive($name_trait2, ::$name2);
+//              registrar.register_custom_derive($name_trait1, ::$name1, &[]);
+//              registrar.register_custom_derive($name_trait2, ::$name2, &["attribute_name"]);
 //              // ...
 //          }
 //      }
@@ -249,14 +282,18 @@ fn mk_registrar(cx: &mut ExtCtxt,
     let stmts = custom_derives.iter().map(|cd| {
         let path = cx.path_global(cd.span, vec![cd.function_name]);
         let trait_name = cx.expr_str(cd.span, cd.trait_name.clone());
-        (path, trait_name)
-    }).map(|(path, trait_name)| {
+        let attrs = cx.expr_vec_slice(
+            span,
+            cd.attrs.iter().map(|s| cx.expr_str(cd.span, s.clone())).collect::<Vec<_>>()
+        );
+        (path, trait_name, attrs)
+    }).map(|(path, trait_name, attrs)| {
         let registrar = cx.expr_ident(span, registrar);
         let ufcs_path = cx.path(span, vec![proc_macro, __internal, registry,
                                            register_custom_derive]);
         cx.expr_call(span,
                      cx.expr_path(ufcs_path),
-                     vec![registrar, trait_name, cx.expr_path(path)])
+                     vec![registrar, trait_name, cx.expr_path(path), attrs])
     }).map(|expr| {
         cx.stmt_expr(expr)
     }).collect::<Vec<_>>();
