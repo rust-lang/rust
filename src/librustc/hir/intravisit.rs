@@ -38,6 +38,7 @@ use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
 use syntax::codemap::Spanned;
 use syntax_pos::Span;
 use hir::*;
+use hir::map::Map;
 use super::itemlikevisit::DeepVisitor;
 
 use std::cmp;
@@ -85,23 +86,52 @@ pub trait Visitor<'v> : Sized {
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
-    /// Invoked when a nested item is encountered. By default, does
-    /// nothing. If you want a deep walk, you need to override to
-    /// fetch the item contents. But most of the time, it is easier to
-    /// use either the "shallow" or "deep" visit patterns described on
-    /// `itemlikevisit::ItemLikeVisitor`.
-    #[allow(unused_variables)]
-    fn visit_nested_item(&mut self, id: ItemId) {
+    /// The default versions of the `visit_nested_XXX` routines invoke
+    /// this method to get a map to use; if they get back `None`, they
+    /// just skip nested things. Otherwise, they will lookup the
+    /// nested item-like things in the map and visit it. So the best
+    /// way to implement a nested visitor is to override this method
+    /// to return a `Map`; one advantage of this is that if we add
+    /// more types of nested things in the future, they will
+    /// automatically work.
+    ///
+    /// **If for some reason you want the nested behavior, but don't
+    /// have a `Map` are your disposal:** then you should override the
+    /// `visit_nested_XXX` methods, and override this method to
+    /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
+    /// added in the future, we will see the panic in your code and
+    /// fix it appropriately.
+    fn nested_visit_map(&mut self) -> Option<&Map<'v>> {
+        None
     }
 
-    /// Invoked when a nested impl item is encountered. By default, does
-    /// nothing. If you want a deep walk, you need to override to
-    /// fetch the item contents. But most of the time, it is easier
-    /// (and better) to invoke `Crate::visit_all_item_likes`, which visits
-    /// all items in the crate in some order (but doesn't respect
-    /// nesting).
+    /// Invoked when a nested item is encountered. By default does
+    /// nothing unless you override `nested_visit_map` to return
+    /// `Some(_)`, in which case it will walk the item. **You probably
+    /// don't want to override this method** -- instead, override
+    /// `nested_visit_map` or use the "shallow" or "deep" visit
+    /// patterns described on `itemlikevisit::ItemLikeVisitor`. The only
+    /// reason to override this method is if you want a nested pattern
+    /// but cannot supply a `Map`; see `nested_visit_map` for advice.
+    #[allow(unused_variables)]
+    fn visit_nested_item(&mut self, id: ItemId) {
+        let opt_item = self.nested_visit_map()
+                           .map(|map| map.expect_item(id.id));
+        if let Some(item) = opt_item {
+            self.visit_item(item);
+        }
+    }
+
+    /// Like `visit_nested_item()`, but for impl items. See
+    /// `visit_nested_item()` for advice on when to override this
+    /// method.
     #[allow(unused_variables)]
     fn visit_nested_impl_item(&mut self, id: ImplItemId) {
+        let opt_item = self.nested_visit_map()
+                           .map(|map| map.impl_item(id));
+        if let Some(item) = opt_item {
+            self.visit_impl_item(item);
+        }
     }
 
     /// Visit the top-level item and (optionally) nested items / impl items. See
