@@ -753,7 +753,15 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             });
             tcx.impl_trait_refs.borrow_mut().insert(def_id, trait_ref);
 
-            enforce_impl_params_are_constrained(ccx, generics, &mut ty_predicates, def_id);
+            // Subtle: before we store the predicates into the tcx, we
+            // sort them so that predicates like `T: Foo<Item=U>` come
+            // before uses of `U`.  This avoids false ambiguity errors
+            // in trait checking. See `setup_constraining_predicates`
+            // for details.
+            ctp::setup_constraining_predicates(&mut ty_predicates.predicates,
+                                               trait_ref,
+                                               &mut ctp::parameters_for_impl(selfty, trait_ref));
+
             tcx.predicates.borrow_mut().insert(def_id, ty_predicates.clone());
 
 
@@ -788,8 +796,6 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             for &impl_item_id in impl_item_ids {
                 convert_impl_item(ccx, impl_item_id);
             }
-
-            enforce_impl_lifetimes_are_constrained(ccx, generics, def_id, impl_item_ids);
         },
         hir::ItemTrait(.., ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);
@@ -2083,111 +2089,4 @@ pub fn mk_item_substs<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     Substs::for_item(tcx, def_id,
                      |def, _| tcx.mk_region(def.to_early_bound_region()),
                      |def, _| tcx.mk_param_from_def(def))
-}
-
-/// Checks that all the type parameters on an impl
-fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                                 generics: &hir::Generics,
-                                                 impl_predicates: &mut ty::GenericPredicates<'tcx>,
-                                                 impl_def_id: DefId)
-{
-    let impl_ty = ccx.tcx.item_type(impl_def_id);
-    let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
-
-    // The trait reference is an input, so find all type parameters
-    // reachable from there, to start (if this is an inherent impl,
-    // then just examine the self type).
-    let mut input_parameters: FxHashSet<_> =
-        ctp::parameters_for(&impl_ty, false).into_iter().collect();
-    if let Some(ref trait_ref) = impl_trait_ref {
-        input_parameters.extend(ctp::parameters_for(trait_ref, false));
-    }
-
-    ctp::setup_constraining_predicates(&mut impl_predicates.predicates,
-                                       impl_trait_ref,
-                                       &mut input_parameters);
-
-    let ty_generics = generics_of_def_id(ccx, impl_def_id);
-    for (ty_param, param) in ty_generics.types.iter().zip(&generics.ty_params) {
-        let param_ty = ty::ParamTy::for_def(ty_param);
-        if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
-            report_unused_parameter(ccx, param.span, "type", &param_ty.to_string());
-        }
-    }
-}
-
-fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                                    ast_generics: &hir::Generics,
-                                                    impl_def_id: DefId,
-                                                    impl_item_ids: &[hir::ImplItemId])
-{
-    // Every lifetime used in an associated type must be constrained.
-    let impl_ty = ccx.tcx.item_type(impl_def_id);
-    let impl_predicates = ccx.tcx.item_predicates(impl_def_id);
-    let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
-
-    let mut input_parameters: FxHashSet<_> =
-        ctp::parameters_for(&impl_ty, false).into_iter().collect();
-    if let Some(ref trait_ref) = impl_trait_ref {
-        input_parameters.extend(ctp::parameters_for(trait_ref, false));
-    }
-    ctp::identify_constrained_type_params(
-        &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
-
-    let lifetimes_in_associated_types: FxHashSet<_> = impl_item_ids.iter()
-        .map(|item_id|  ccx.tcx.map.local_def_id(item_id.id))
-        .filter(|&def_id| {
-            let item = ccx.tcx.associated_item(def_id);
-            item.kind == ty::AssociatedKind::Type && item.has_value
-        })
-        .flat_map(|def_id| {
-            ctp::parameters_for(&ccx.tcx.item_type(def_id), true)
-        }).collect();
-
-    for (ty_lifetime, lifetime) in ccx.tcx.item_generics(impl_def_id).regions.iter()
-        .zip(&ast_generics.lifetimes)
-    {
-        let param = ctp::Parameter::from(ty_lifetime.to_early_bound_region_data());
-
-        if
-            lifetimes_in_associated_types.contains(&param) && // (*)
-            !input_parameters.contains(&param)
-        {
-            report_unused_parameter(ccx, lifetime.lifetime.span,
-                                    "lifetime", &lifetime.lifetime.name.to_string());
-        }
-    }
-
-    // (*) This is a horrible concession to reality. I think it'd be
-    // better to just ban unconstrianed lifetimes outright, but in
-    // practice people do non-hygenic macros like:
-    //
-    // ```
-    // macro_rules! __impl_slice_eq1 {
-    //     ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
-    //         impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
-    //            ....
-    //         }
-    //     }
-    // }
-    // ```
-    //
-    // In a concession to backwards compatbility, we continue to
-    // permit those, so long as the lifetimes aren't used in
-    // associated types. I believe this is sound, because lifetimes
-    // used elsewhere are not projected back out.
-}
-
-fn report_unused_parameter(ccx: &CrateCtxt,
-                           span: Span,
-                           kind: &str,
-                           name: &str)
-{
-    struct_span_err!(
-        ccx.tcx.sess, span, E0207,
-        "the {} parameter `{}` is not constrained by the \
-        impl trait, self type, or predicates",
-        kind, name)
-        .span_label(span, &format!("unconstrained {} parameter", kind))
-        .emit();
 }

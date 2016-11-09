@@ -95,6 +95,7 @@ extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
+extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 
 pub use rustc::dep_graph;
