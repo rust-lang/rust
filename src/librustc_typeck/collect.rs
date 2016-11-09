@@ -151,7 +151,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
-        // handled in `visit_item` above; we may want to break this out later
+        convert_impl_item(self.ccx, impl_item);
         intravisit::walk_impl_item(self, impl_item);
     }
 }
@@ -792,10 +792,6 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                     }
                 }
             }
-
-            for &impl_item_id in impl_item_ids {
-                convert_impl_item(ccx, impl_item_id);
-            }
         },
         hir::ItemTrait(.., ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);
@@ -881,10 +877,12 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
     }
 }
 
-fn convert_impl_item(ccx: &CrateCtxt, impl_item_id: hir::ImplItemId) {
+fn convert_impl_item(ccx: &CrateCtxt, impl_item: &hir::ImplItem) {
     let tcx = ccx.tcx;
-    let impl_item = tcx.map.impl_item(impl_item_id);
-    let impl_def_id = tcx.map.get_parent_did(impl_item_id.id);
+
+    // we can lookup details about the impl because items are visited
+    // before impl-items
+    let impl_def_id = tcx.map.get_parent_did(impl_item.id);
     let impl_predicates = tcx.item_predicates(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
     let impl_self_ty = tcx.item_type(impl_def_id);
