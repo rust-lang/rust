@@ -1,0 +1,12 @@
+error[E0404]: `Add` is not a trait
+  --> $DIR/issue-35987.rs:15:21
+   |
+15 | impl<T: Clone, Add> Add for Foo<T> {
+   |                ---  ^^^ expected trait, found type parameter
+   |                |
+   |                type parameter defined here
+
+error: main function not found
+
+error: cannot continue compilation due to previous error
+
