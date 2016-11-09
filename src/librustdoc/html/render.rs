@@ -1828,11 +1828,19 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 } else {
                     String::new()
                 };
+
+                let mut unsafety_flag = "";
+                if let clean::FunctionItem(ref func) = myitem.inner {
+                    if func.unsafety == hir::Unsafety::Unsafe {
+                        unsafety_flag = "<a title='unsafe function' href='#'><sup>⚠</sup></a>";
+                    }
+                }
+
                 let doc_value = myitem.doc_value().unwrap_or("");
                 write!(w, "
                        <tr class='{stab} module-item'>
                            <td><a class='{class}' href='{href}'
-                                  title='{title}'>{name}</a></td>
+                                  title='{title}'>{name}</a>{unsafety_flag}</td>
                            <td class='docblock-short'>
                                {stab_docs} {docs}
                            </td>
@@ -1842,6 +1850,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        docs = shorter(Some(&Markdown(doc_value).to_string())),
                        class = myitem.type_(),
                        stab = myitem.stability_class(),
+                       unsafety_flag = unsafety_flag,
                        href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
                        title = full_path(cx, myitem))?;
             }
