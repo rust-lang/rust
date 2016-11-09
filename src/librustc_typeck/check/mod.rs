@@ -1131,7 +1131,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         if !is_implemented {
             if !is_provided {
-                missing_items.push(trait_item.name());
+                missing_items.push(trait_item);
             } else if associated_type_overridden {
                 invalidated_items.push(trait_item.name());
             }
@@ -1139,16 +1139,25 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 
     if !missing_items.is_empty() {
-        struct_span_err!(tcx.sess, impl_span, E0046,
+        let mut err = struct_span_err!(tcx.sess, impl_span, E0046,
             "not all trait items implemented, missing: `{}`",
             missing_items.iter()
-                  .map(|name| name.to_string())
-                  .collect::<Vec<_>>().join("`, `"))
-            .span_label(impl_span, &format!("missing `{}` in implementation",
+                  .map(|trait_item| trait_item.name().to_string())
+                  .collect::<Vec<_>>().join("`, `"));
+        err.span_label(impl_span, &format!("missing `{}` in implementation",
                 missing_items.iter()
-                    .map(|name| name.to_string())
-                    .collect::<Vec<_>>().join("`, `"))
-            ).emit();
+                    .map(|trait_item| trait_item.name().to_string())
+                    .collect::<Vec<_>>().join("`, `")));
+        for trait_item in missing_items {
+            if let Some(span) = tcx.map.span_if_local(trait_item.def_id()) {
+                err.span_label(span, &format!("`{}` from trait", trait_item.name()));
+            } else {
+                err.note(&format!("`{}` from trait: `{}`",
+                                  trait_item.name(),
+                                  signature(trait_item)));
+            }
+        }
+        err.emit();
     }
 
     if !invalidated_items.is_empty() {
@@ -1160,6 +1169,14 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                   invalidated_items.iter()
                                    .map(|name| name.to_string())
                                    .collect::<Vec<_>>().join("`, `"))
+    }
+}
+
+fn signature<'a, 'tcx>(item: &ty::ImplOrTraitItem) -> String {
+    match *item {
+        ty::MethodTraitItem(ref item) => format!("{}", item.fty.sig.0),
+        ty::TypeTraitItem(ref item) => format!("type {};", item.name.to_string()),
+        ty::ConstTraitItem(ref item) => format!("const {}: {:?};", item.name.to_string(), item.ty),
     }
 }
 
