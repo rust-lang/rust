@@ -242,4 +242,11 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
         self.insert_entry(macro_def.id, NotPresent);
     }
+
+    fn visit_struct_field(&mut self, field: &'ast StructField) {
+        self.insert(field.id, NodeField(field));
+        self.with_parent(field.id, |this| {
+            intravisit::walk_struct_field(this, field);
+        });
+    }
 }
