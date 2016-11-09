@@ -77,7 +77,6 @@ use CrateCtxt;
 use rustc_const_math::ConstInt;
 
 use std::cell::RefCell;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use syntax::{abi, ast, attr};
 use syntax::parse::token::{self, keywords};
@@ -732,7 +731,11 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                       ref generics,
                       ref opt_trait_ref,
                       ref selfty,
-                      ref impl_item_ids) => {
+                      ref _impl_item_ids /* [1] */) => {
+            // [1]: We really don't want to be inspecting the details
+            // of impl-items here; it creates bad edges in the
+            // incr. comp. graph.
+
             // Create generics from the generics specified in the impl head.
             debug!("convert: ast_generics={:?}", generics);
             let def_id = ccx.tcx.map.local_def_id(it.id);
@@ -763,35 +766,6 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                                &mut ctp::parameters_for_impl(selfty, trait_ref));
 
             tcx.predicates.borrow_mut().insert(def_id, ty_predicates.clone());
-
-
-            // Convert all the associated consts.
-            // Also, check if there are any duplicate associated items
-            let mut seen_type_items = FxHashMap();
-            let mut seen_value_items = FxHashMap();
-
-            for &impl_item_id in impl_item_ids {
-                let impl_item = tcx.map.impl_item(impl_item_id);
-                let seen_items = match impl_item.node {
-                    hir::ImplItemKind::Type(_) => &mut seen_type_items,
-                    _                    => &mut seen_value_items,
-                };
-                match seen_items.entry(impl_item.name) {
-                    Occupied(entry) => {
-                        let mut err = struct_span_err!(tcx.sess, impl_item.span, E0201,
-                                                       "duplicate definitions with name `{}`:",
-                                                       impl_item.name);
-                        err.span_label(*entry.get(),
-                                   &format!("previous definition of `{}` here",
-                                        impl_item.name));
-                        err.span_label(impl_item.span, &format!("duplicate definition"));
-                        err.emit();
-                    }
-                    Vacant(entry) => {
-                        entry.insert(impl_item.span);
-                    }
-                }
-            }
         },
         hir::ItemTrait(.., ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);

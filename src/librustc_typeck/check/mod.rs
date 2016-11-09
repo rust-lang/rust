@@ -143,6 +143,7 @@ mod closure;
 mod callee;
 mod compare_method;
 mod intrinsic;
+mod impl_item_duplicate;
 mod impl_parameters_used;
 mod op;
 
@@ -834,6 +835,8 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                                                                     impl_def_id,
                                                                     impl_item_ids);
 
+          impl_item_duplicate::enforce_impl_items_are_distinct(ccx,
+                                                               impl_item_ids);
       }
       hir::ItemTrait(..) => {
         let def_id = ccx.tcx.map.local_def_id(it.id);
