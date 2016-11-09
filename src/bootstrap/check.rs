@@ -242,7 +242,9 @@ pub fn docs(build: &Build, compiler: &Compiler) {
 pub fn error_index(build: &Build, compiler: &Compiler) {
     println!("Testing error-index stage{}", compiler.stage);
 
-    let output = testdir(build, compiler.host).join("error-index.md");
+    let dir = testdir(build, compiler.host);
+    t!(fs::create_dir_all(&dir));
+    let output = dir.join("error-index.md");
     build.run(build.tool_cmd(compiler, "error_index_generator")
                    .arg("markdown")
                    .arg(&output)
