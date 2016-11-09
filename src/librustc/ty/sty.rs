@@ -23,7 +23,7 @@ use std::fmt;
 use std::ops;
 use std::collections::HashMap;
 use syntax::abi;
-use syntax::ast::{self, Name};
+use syntax::ast::{self, Name, NodeId};
 use syntax::symbol::{keywords, InternedString};
 
 use serialize;
@@ -930,25 +930,26 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_uninhabited(&self, cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+    /// Checks whether a type is uninhabited.
+    /// If `block` is `Some(id)` it also checks that the uninhabited-ness is visible from `id`.
+    pub fn is_uninhabited(&self, block: Option<NodeId>, cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         let mut visited = HashMap::new();
-        self.is_uninhabited_recurse(&mut visited, cx)
+        self.is_uninhabited_recurse(&mut visited, block, cx)
     }
 
     pub fn is_uninhabited_recurse(&self,
                                   visited: &mut HashMap<(DefId, &'tcx Substs<'tcx>), ()>,
+                                  block: Option<NodeId>,
                                   cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        // FIXME(#24885): be smarter here, the AdtDefData::is_empty method could easily be made
-        // more complete.
         match self.sty {
             TyAdt(def, substs) => {
-                def.is_uninhabited_recurse(visited, cx, substs)
+                def.is_uninhabited_recurse(visited, block, cx, substs)
             },
 
             TyNever => true,
-            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited_recurse(visited, cx)),
-            TyArray(ty, len) => len > 0 && ty.is_uninhabited_recurse(visited, cx),
-            TyRef(_, ref tm) => tm.ty.is_uninhabited_recurse(visited, cx),
+            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited_recurse(visited, block, cx)),
+            TyArray(ty, len) => len > 0 && ty.is_uninhabited_recurse(visited, block, cx),
+            TyRef(_, ref tm) => tm.ty.is_uninhabited_recurse(visited, block, cx),
 
             _ => false,
         }
