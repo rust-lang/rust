@@ -10,11 +10,11 @@
 
 #![feature(associated_consts)]
 
+use std::fmt::Debug;
+
 trait Foo {
     fn bar(&self);
-    //~^ NOTE item in trait
-    //~| NOTE item in trait
-    const MY_CONST: u32; //~ NOTE item in trait
+    const MY_CONST: u32;
 }
 
 pub struct FooConstForMethod;
@@ -48,6 +48,9 @@ impl Foo for FooTypeForMethod {
     //~^ ERROR E0325
     //~| NOTE does not match trait
     const MY_CONST: u32 = 1;
+}
+
+impl Debug for FooTypeForMethod {
 }
 
 fn main () {}
