@@ -26,11 +26,11 @@ use attributes;
 use base;
 use base::*;
 use build::*;
-use closure;
 use common::{self, Block, Result, CrateContext, FunctionContext, SharedCrateContext};
 use consts;
 use debuginfo::DebugLoc;
 use declare;
+use value::Value;
 use meth;
 use monomorphize::{self, Instance};
 use trans_item::TransItem;
@@ -147,11 +147,12 @@ impl<'tcx> Callee<'tcx> {
                 // after passing through fulfill_obligation
                 let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
                 let instance = Instance::new(def_id, substs);
-                let llfn = closure::trans_closure_method(ccx,
-                                                         vtable_closure.closure_def_id,
-                                                         vtable_closure.substs,
-                                                         instance,
-                                                         trait_closure_kind);
+                let llfn = trans_closure_method(
+                    ccx,
+                    vtable_closure.closure_def_id,
+                    vtable_closure.substs,
+                    instance,
+                    trait_closure_kind);
 
                 let method_ty = def_ty(ccx.shared(), def_id, substs);
                 Callee::ptr(llfn, method_ty)
@@ -248,6 +249,170 @@ fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
                     -> Ty<'tcx> {
     let ty = shared.tcx().item_type(def_id);
     monomorphize::apply_param_substs(shared, substs, &ty)
+}
+
+
+fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
+                                  def_id: DefId,
+                                  substs: ty::ClosureSubsts<'tcx>,
+                                  method_instance: Instance<'tcx>,
+                                  trait_closure_kind: ty::ClosureKind)
+                                  -> ValueRef
+{
+    // If this is a closure, redirect to it.
+    let (llfn, _) = get_fn(ccx, def_id, substs.substs);
+
+    // If the closure is a Fn closure, but a FnOnce is needed (etc),
+    // then adapt the self type
+    let llfn_closure_kind = ccx.tcx().closure_kind(def_id);
+
+    let _icx = push_ctxt("trans_closure_adapter_shim");
+
+    debug!("trans_closure_adapter_shim(llfn_closure_kind={:?}, \
+           trait_closure_kind={:?}, llfn={:?})",
+           llfn_closure_kind, trait_closure_kind, Value(llfn));
+
+    match (llfn_closure_kind, trait_closure_kind) {
+        (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
+        (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
+        (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
+            // No adapter needed.
+            llfn
+        }
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
+            // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
+            // `fn(&mut self, ...)`. In fact, at trans time, these are
+            // basically the same thing, so we can just return llfn.
+            llfn
+        }
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
+        (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
+            // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
+            // self, ...)`.  We want a `fn(self, ...)`. We can produce
+            // this by doing something like:
+            //
+            //     fn call_once(self, ...) { call_mut(&self, ...) }
+            //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
+            //
+            // These are both the same at trans time.
+            trans_fn_once_adapter_shim(ccx, def_id, substs, method_instance, llfn)
+        }
+        _ => {
+            bug!("trans_closure_adapter_shim: cannot convert {:?} to {:?}",
+                 llfn_closure_kind,
+                 trait_closure_kind);
+        }
+    }
+}
+
+fn trans_fn_once_adapter_shim<'a, 'tcx>(
+    ccx: &'a CrateContext<'a, 'tcx>,
+    def_id: DefId,
+    substs: ty::ClosureSubsts<'tcx>,
+    method_instance: Instance<'tcx>,
+    llreffn: ValueRef)
+    -> ValueRef
+{
+    if let Some(&llfn) = ccx.instances().borrow().get(&method_instance) {
+        return llfn;
+    }
+
+    debug!("trans_fn_once_adapter_shim(def_id={:?}, substs={:?}, llreffn={:?})",
+           def_id, substs, Value(llreffn));
+
+    let tcx = ccx.tcx();
+
+    // Find a version of the closure type. Substitute static for the
+    // region since it doesn't really matter.
+    let closure_ty = tcx.mk_closure_from_closure_substs(def_id, substs);
+    let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReErased), closure_ty);
+
+    // Make a version with the type of by-ref closure.
+    let ty::ClosureTy { unsafety, abi, mut sig } = tcx.closure_type(def_id, substs);
+    sig.0.inputs.insert(0, ref_closure_ty); // sig has no self type as of yet
+    let llref_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
+        unsafety: unsafety,
+        abi: abi,
+        sig: sig.clone()
+    }));
+    debug!("trans_fn_once_adapter_shim: llref_fn_ty={:?}",
+           llref_fn_ty);
+
+
+    // Make a version of the closure type with the same arguments, but
+    // with argument #0 being by value.
+    assert_eq!(abi, Abi::RustCall);
+    sig.0.inputs[0] = closure_ty;
+
+    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
+    let fn_ty = FnType::new(ccx, abi, &sig, &[]);
+
+    let llonce_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
+        unsafety: unsafety,
+        abi: abi,
+        sig: ty::Binder(sig)
+    }));
+
+    // Create the by-value helper.
+    let function_name = method_instance.symbol_name(ccx.shared());
+    let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
+    attributes::set_frame_pointer_elimination(ccx, lloncefn);
+
+    let (block_arena, fcx): (TypedArena<_>, FunctionContext);
+    block_arena = TypedArena::new();
+    fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None, &block_arena);
+    let mut bcx = fcx.init(false);
+
+
+    // the first argument (`self`) will be the (by value) closure env.
+
+    let mut llargs = get_params(fcx.llfn);
+    let mut self_idx = fcx.fn_ty.ret.is_indirect() as usize;
+    let env_arg = &fcx.fn_ty.args[0];
+    let llenv = if env_arg.is_indirect() {
+        llargs[self_idx]
+    } else {
+        let scratch = alloc_ty(bcx, closure_ty, "self");
+        let mut llarg_idx = self_idx;
+        env_arg.store_fn_arg(&bcx.build(), &mut llarg_idx, scratch);
+        scratch
+    };
+
+    debug!("trans_fn_once_adapter_shim: env={:?}", Value(llenv));
+    // Adjust llargs such that llargs[self_idx..] has the call arguments.
+    // For zero-sized closures that means sneaking in a new argument.
+    if env_arg.is_ignore() {
+        if self_idx > 0 {
+            self_idx -= 1;
+            llargs[self_idx] = llenv;
+        } else {
+            llargs.insert(0, llenv);
+        }
+    } else {
+        llargs[self_idx] = llenv;
+    }
+
+    let dest = fcx.llretslotptr.get();
+
+    let callee = Callee {
+        data: Fn(llreffn),
+        ty: llref_fn_ty
+    };
+
+    // Call the by-ref closure body with `self` in a cleanup scope,
+    // to drop `self` when the body returns, or in case it unwinds.
+    let self_scope = fcx.push_custom_cleanup_scope();
+    fcx.schedule_drop_mem(self_scope, llenv, closure_ty);
+
+    bcx = callee.call(bcx, DebugLoc::None, &llargs[self_idx..], dest).bcx;
+
+    fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
+
+    fcx.finish(bcx, DebugLoc::None);
+
+    ccx.instances().borrow_mut().insert(method_instance, lloncefn);
+
+    lloncefn
 }
 
 /// Translates an adapter that implements the `Fn` trait for a fn
