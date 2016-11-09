@@ -4,112 +4,25 @@ This first chapter of the book will get us going with Rust and its tooling.
 First, we’ll install Rust. Then, the classic ‘Hello World’ program. Finally,
 we’ll talk about Cargo, Rust’s build system and package manager.
 
-# Installing Rust
-
-The first step to using Rust is to install it. Generally speaking, you’ll need
-an Internet connection to run the commands in this section, as we’ll be
-downloading Rust from the Internet.
-
 We’ll be showing off a number of commands using a terminal, and those lines all
 start with `$`. You don't need to type in the `$`s, they are there to indicate
 the start of each command. We’ll see many tutorials and examples around the web
 that follow this convention: `$` for commands run as our regular user, and `#`
 for commands we should be running as an administrator.
 
-## Platform support
+# Installing Rust
 
-The Rust compiler runs on, and compiles to, a great number of platforms, though
-not all platforms are equally supported. Rust's support levels are organized
-into three tiers, each with a different set of guarantees.
+The first step to using Rust is to install it. Generally speaking, you’ll need
+an Internet connection to run the commands in this section, as we’ll be
+downloading Rust from the Internet.
 
-Platforms are identified by their "target triple" which is the string to inform
-the compiler what kind of output should be produced. The columns below indicate
-whether the corresponding component works on the specified platform.
+The Rust compiler runs on, and compiles to, a great number of platforms, but is
+best supported on Linux, Mac, and Windows, on the x86 and x86-64 CPU
+architecture. There are official builds of the Rust compiler and standard
+library for these platforms and more. [For full details on Rust platform support
+see the website][platform-support].
 
-### Tier 1
-
-Tier 1 platforms can be thought of as "guaranteed to build and work".
-Specifically they will each satisfy the following requirements:
-
-* Automated testing is set up to run tests for the platform.
-* Landing changes to the `rust-lang/rust` repository's master branch is gated on
-  tests passing.
-* Official release artifacts are provided for the platform.
-* Documentation for how to use and how to build the platform is available.
-
-|  Target                       | std |rustc|cargo| notes                      |
-|-------------------------------|-----|-----|-----|----------------------------|
-| `i686-apple-darwin`           |  ✓  |  ✓  |  ✓  | 32-bit OSX (10.7+, Lion+)  |
-| `i686-pc-windows-gnu`         |  ✓  |  ✓  |  ✓  | 32-bit MinGW (Windows 7+)  |
-| `i686-pc-windows-msvc`        |  ✓  |  ✓  |  ✓  | 32-bit MSVC (Windows 7+)   |
-| `i686-unknown-linux-gnu`      |  ✓  |  ✓  |  ✓  | 32-bit Linux (2.6.18+)     |
-| `x86_64-apple-darwin`         |  ✓  |  ✓  |  ✓  | 64-bit OSX (10.7+, Lion+)  |
-| `x86_64-pc-windows-gnu`       |  ✓  |  ✓  |  ✓  | 64-bit MinGW (Windows 7+)  |
-| `x86_64-pc-windows-msvc`      |  ✓  |  ✓  |  ✓  | 64-bit MSVC (Windows 7+)   |
-| `x86_64-unknown-linux-gnu`    |  ✓  |  ✓  |  ✓  | 64-bit Linux (2.6.18+)     |
-
-### Tier 2
-
-Tier 2 platforms can be thought of as "guaranteed to build". Automated tests
-are not run so it's not guaranteed to produce a working build, but platforms
-often work to quite a good degree and patches are always welcome! Specifically,
-these platforms are required to have each of the following:
-
-* Automated building is set up, but may not be running tests.
-* Landing changes to the `rust-lang/rust` repository's master branch is gated on
-  platforms **building**. Note that this means for some platforms only the
-  standard library is compiled, but for others the full bootstrap is run.
-* Official release artifacts are provided for the platform.
-
-|  Target                       | std |rustc|cargo| notes                      |
-|-------------------------------|-----|-----|-----|----------------------------|
-| `aarch64-apple-ios`           |  ✓  |     |     | ARM64 iOS                  |
-| `aarch64-unknown-linux-gnu`   |  ✓  |  ✓  |  ✓  | ARM64 Linux (2.6.18+)      |
-| `arm-linux-androideabi`       |  ✓  |     |     | ARM Android                |
-| `arm-unknown-linux-gnueabi`   |  ✓  |  ✓  |  ✓  | ARM Linux (2.6.18+)        |
-| `arm-unknown-linux-gnueabihf` |  ✓  |  ✓  |  ✓  | ARM Linux (2.6.18+)        |
-| `armv7-apple-ios`             |  ✓  |     |     | ARM iOS                    |
-|`armv7-unknown-linux-gnueabihf`|  ✓  |  ✓  |  ✓  | ARMv7 Linux (2.6.18+)      |
-| `armv7s-apple-ios`            |  ✓  |     |     | ARM iOS                    |
-| `i386-apple-ios`              |  ✓  |     |     | 32-bit x86 iOS             |
-| `i586-pc-windows-msvc`        |  ✓  |     |     | 32-bit Windows w/o SSE     |
-| `mips-unknown-linux-gnu`      |  ✓  |     |     | MIPS Linux (2.6.18+)       |
-| `mips-unknown-linux-musl`     |  ✓  |     |     | MIPS Linux with MUSL       |
-| `mipsel-unknown-linux-gnu`    |  ✓  |     |     | MIPS (LE) Linux (2.6.18+)  |
-| `mipsel-unknown-linux-musl`   |  ✓  |     |     | MIPS (LE) Linux with MUSL  |
-| `powerpc-unknown-linux-gnu`   |  ✓  |     |     | PowerPC Linux (2.6.18+)    |
-| `powerpc64-unknown-linux-gnu` |  ✓  |     |     | PPC64 Linux (2.6.18+)      |
-|`powerpc64le-unknown-linux-gnu`|  ✓  |     |     | PPC64LE Linux (2.6.18+)    |
-| `x86_64-apple-ios`            |  ✓  |     |     | 64-bit x86 iOS             |
-| `x86_64-rumprun-netbsd`       |  ✓  |     |     | 64-bit NetBSD Rump Kernel  |
-| `x86_64-unknown-freebsd`      |  ✓  |  ✓  |  ✓  | 64-bit FreeBSD             |
-| `x86_64-unknown-linux-musl`   |  ✓  |     |     | 64-bit Linux with MUSL     |
-| `x86_64-unknown-netbsd`       |  ✓  |  ✓  |  ✓  | 64-bit NetBSD              |
-
-### Tier 3
-
-Tier 3 platforms are those which Rust has support for, but landing changes is
-not gated on the platform either building or passing tests. Working builds for
-these platforms may be spotty as their reliability is often defined in terms of
-community contributions. Additionally, release artifacts and installers are not
-provided, but there may be community infrastructure producing these in
-unofficial locations.
-
-|  Target                       | std |rustc|cargo| notes                      |
-|-------------------------------|-----|-----|-----|----------------------------|
-| `aarch64-linux-android`       |  ✓  |     |     | ARM64 Android              |
-| `armv7-linux-androideabi`     |  ✓  |     |     | ARM-v7a Android            |
-| `i686-linux-android`          |  ✓  |     |     | 32-bit x86 Android         |
-| `i686-pc-windows-msvc` (XP)   |  ✓  |     |     | Windows XP support         |
-| `i686-unknown-freebsd`        |  ✓  |  ✓  |  ✓  | 32-bit FreeBSD             |
-| `x86_64-pc-windows-msvc` (XP) |  ✓  |     |     | Windows XP support         |
-| `x86_64-sun-solaris`          |  ✓  |  ✓  |     | 64-bit Solaris/SunOS       |
-| `x86_64-unknown-bitrig`       |  ✓  |  ✓  |     | 64-bit Bitrig              |
-| `x86_64-unknown-dragonfly`    |  ✓  |  ✓  |     | 64-bit DragonFlyBSD        |
-| `x86_64-unknown-openbsd`      |  ✓  |  ✓  |     | 64-bit OpenBSD             |
-
-Note that this table can be expanded over time, this isn't the exhaustive set of
-tier 3 platforms that will ever be!
+[platform-support]: https://forge.rust-lang.org/platform-support.html
 
 ## Installing on Linux or Mac
 

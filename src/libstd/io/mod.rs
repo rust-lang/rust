@@ -21,7 +21,7 @@
 //! of other types, and you can implement them for your types too. As such,
 //! you'll see a few different types of I/O throughout the documentation in
 //! this module: [`File`]s, [`TcpStream`]s, and sometimes even [`Vec<T>`]s. For
-//! example, `Read` adds a `read()` method, which we can use on `File`s:
+//! example, [`Read`] adds a [`read()`] method, which we can use on `File`s:
 //!
 //! ```
 //! use std::io;
@@ -251,6 +251,7 @@
 //! [`Lines`]: struct.Lines.html
 //! [`io::Result`]: type.Result.html
 //! [`try!`]: ../macro.try.html
+//! [`read()`]: trait.Read.html#tymethod.read
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -814,18 +815,22 @@ pub trait Read {
 ///
 /// Implementors of the `Write` trait are sometimes called 'writers'.
 ///
-/// Writers are defined by two required methods, `write()` and `flush()`:
+/// Writers are defined by two required methods, [`write()`] and [`flush()`]:
 ///
-/// * The `write()` method will attempt to write some data into the object,
+/// * The [`write()`] method will attempt to write some data into the object,
 ///   returning how many bytes were successfully written.
 ///
-/// * The `flush()` method is useful for adaptors and explicit buffers
+/// * The [`flush()`] method is useful for adaptors and explicit buffers
 ///   themselves for ensuring that all buffered data has been pushed out to the
 ///   'true sink'.
 ///
 /// Writers are intended to be composable with one another. Many implementors
-/// throughout `std::io` take and provide types which implement the `Write`
+/// throughout [`std::io`] take and provide types which implement the `Write`
 /// trait.
+///
+/// [`write()`]: #tymethod.write
+/// [`flush()`]: #tymethod.flush
+/// [`std::io`]: index.html
 ///
 /// # Examples
 ///
@@ -1475,10 +1480,10 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
 
 /// Reader adaptor which limits the bytes read from an underlying reader.
 ///
-/// This struct is generally created by calling [`take()`][take] on a reader.
-/// Please see the documentation of `take()` for more details.
+/// This struct is generally created by calling [`take()`] on a reader.
+/// Please see the documentation of [`take()`] for more details.
 ///
-/// [take]: trait.Read.html#method.take
+/// [`take()`]: trait.Read.html#method.take
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Take<T> {
     inner: T,
@@ -1491,8 +1496,10 @@ impl<T> Take<T> {
     ///
     /// # Note
     ///
-    /// This instance may reach EOF after reading fewer bytes than indicated by
-    /// this method if the underlying `Read` instance reaches EOF.
+    /// This instance may reach `EOF` after reading fewer bytes than indicated by
+    /// this method if the underlying [`Read`] instance reaches EOF.
+    ///
+    /// [`Read`]: ../../std/io/trait.Read.html
     ///
     /// # Examples
     ///

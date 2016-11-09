@@ -381,10 +381,13 @@ impl<T: ?Sized> Arc<T> {
 
     /// Gets the number of [`Weak`][weak] pointers to this value.
     ///
-    /// Be careful how you use this information, because another thread
-    /// may change the weak count at any time.
-    ///
     /// [weak]: struct.Weak.html
+    ///
+    /// # Safety
+    ///
+    /// This method by itself is safe, but using it correctly requires extra care.
+    /// Another thread can change the weak count at any time,
+    /// including potentially between calling this method and acting on the result.
     ///
     /// # Examples
     ///
@@ -409,8 +412,11 @@ impl<T: ?Sized> Arc<T> {
 
     /// Gets the number of strong (`Arc`) pointers to this value.
     ///
-    /// Be careful how you use this information, because another thread
-    /// may change the strong count at any time.
+    /// # Safety
+    ///
+    /// This method by itself is safe, but using it correctly requires extra care.
+    /// Another thread can change the strong count at any time,
+    /// including potentially between calling this method and acting on the result.
     ///
     /// # Examples
     ///

@@ -19,6 +19,7 @@ has a command that does that for us. Let’s give it a shot:
 ```bash
 $ cd ~/projects
 $ cargo new guessing_game --bin
+     Created binary (application) `guessing_game` project
 $ cd guessing_game
 ```
 
@@ -51,6 +52,7 @@ Let’s try compiling what Cargo gave us:
 ```{bash}
 $ cargo build
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.53 secs
 ```
 
 Excellent! Open up your `src/main.rs` again. We’ll be writing all of
@@ -61,6 +63,7 @@ Remember the `run` command from last chapter? Try it out again here:
 ```bash
 $ cargo run
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.0 secs
      Running `target/debug/guessing_game`
 Hello, world!
 ```
@@ -282,10 +285,13 @@ we’ll get a warning:
 ```bash
 $ cargo build
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
-src/main.rs:10:5: 10:39 warning: unused result which must be used,
-#[warn(unused_must_use)] on by default
-src/main.rs:10     io::stdin().read_line(&mut guess);
-                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+warning: unused result which must be used, #[warn(unused_must_use)] on by default
+  --> src/main.rs:10:5
+   |
+10 |     io::stdin().read_line(&mut guess);
+   |     ^
+
+    Finished debug [unoptimized + debuginfo] target(s) in 0.42 secs
 ```
 
 Rust warns us that we haven’t used the `Result` value. This warning comes from
@@ -321,6 +327,7 @@ Anyway, that’s the tour. We can run what we have with `cargo run`:
 ```bash
 $ cargo run
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.44 secs
      Running `target/debug/guessing_game`
 Guess the number!
 Please input your guess.
@@ -373,11 +380,12 @@ Now, without changing any of our code, let’s build our project:
 ```bash
 $ cargo build
     Updating registry `https://github.com/rust-lang/crates.io-index`
- Downloading rand v0.3.8
- Downloading libc v0.1.6
-   Compiling libc v0.1.6
-   Compiling rand v0.3.8
+ Downloading rand v0.3.14
+ Downloading libc v0.2.17
+   Compiling libc v0.2.17
+   Compiling rand v0.3.14
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+    Finished debug [unoptimized + debuginfo] target(s) in 5.88 secs
 ```
 
 (You may see different versions, of course.)
@@ -399,22 +407,24 @@ If we run `cargo build` again, we’ll get different output:
 
 ```bash
 $ cargo build
+    Finished debug [unoptimized + debuginfo] target(s) in 0.0 secs
 ```
 
-That’s right, no output! Cargo knows that our project has been built, and that
+That’s right, nothing was done! Cargo knows that our project has been built, and that
 all of its dependencies are built, and so there’s no reason to do all that
 stuff. With nothing to do, it simply exits. If we open up `src/main.rs` again,
-make a trivial change, and then save it again, we’ll only see one line:
+make a trivial change, and then save it again, we’ll only see two lines:
 
 ```bash
 $ cargo build
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.45 secs
 ```
 
 So, we told Cargo we wanted any `0.3.x` version of `rand`, and so it fetched the latest
-version at the time this was written, `v0.3.8`. But what happens when next
-week, version `v0.3.9` comes out, with an important bugfix? While getting
-bugfixes is important, what if `0.3.9` contains a regression that breaks our
+version at the time this was written, `v0.3.14`. But what happens when next
+week, version `v0.3.15` comes out, with an important bugfix? While getting
+bugfixes is important, what if `0.3.15` contains a regression that breaks our
 code?
 
 The answer to this problem is the `Cargo.lock` file you’ll now find in your
@@ -423,11 +433,11 @@ figures out all of the versions that fit your criteria, and then writes them
 to the `Cargo.lock` file. When you build your project in the future, Cargo
 will see that the `Cargo.lock` file exists, and then use that specific version
 rather than do all the work of figuring out versions again. This lets you
-have a repeatable build automatically. In other words, we’ll stay at `0.3.8`
+have a repeatable build automatically. In other words, we’ll stay at `0.3.14`
 until we explicitly upgrade, and so will anyone who we share our code with,
 thanks to the lock file.
 
-What about when we _do_ want to use `v0.3.9`? Cargo has another command,
+What about when we _do_ want to use `v0.3.15`? Cargo has another command,
 `update`, which says ‘ignore the lock, figure out all the latest versions that
 fit what we’ve specified. If that works, write those versions out to the lock
 file’. But, by default, Cargo will only look for versions larger than `0.3.0`
@@ -510,6 +520,7 @@ Try running our new program a few times:
 ```bash
 $ cargo run
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.55 secs
      Running `target/debug/guessing_game`
 Guess the number!
 The secret number is: 7
@@ -517,6 +528,7 @@ Please input your guess.
 4
 You guessed: 4
 $ cargo run
+    Finished debug [unoptimized + debuginfo] target(s) in 0.0 secs
      Running `target/debug/guessing_game`
 Guess the number!
 The secret number is: 83
@@ -618,15 +630,20 @@ I did mention that this won’t quite compile yet, though. Let’s try it:
 ```bash
 $ cargo build
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
-src/main.rs:28:21: 28:35 error: mismatched types:
- expected `&collections::string::String`,
-    found `&_`
-(expected struct `collections::string::String`,
-    found integral variable) [E0308]
-src/main.rs:28     match guess.cmp(&secret_number) {
-                                   ^~~~~~~~~~~~~~
+error[E0308]: mismatched types
+  --> src/main.rs:23:21
+   |
+23 |     match guess.cmp(&secret_number) {
+   |                     ^^^^^^^^^^^^^^ expected struct `std::string::String`, found integral variable
+   |
+   = note: expected type `&std::string::String`
+   = note:    found type `&{integer}`
+
 error: aborting due to previous error
-Could not compile `guessing_game`.
+
+error: Could not compile `guessing_game`.
+
+To learn more, run the command again with --verbose.
 ```
 
 Whew! This is a big error. The core of it is that we have ‘mismatched types’.
@@ -722,6 +739,7 @@ Let’s try our program out!
 ```bash
 $ cargo run
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.57 secs
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 58
@@ -785,6 +803,7 @@ and quit. Observe:
 ```bash
 $ cargo run
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.58 secs
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 59
@@ -919,6 +938,7 @@ Now we should be good! Let’s try:
 ```bash
 $ cargo run
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
+    Finished debug [unoptimized + debuginfo] target(s) in 0.57 secs
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 61
