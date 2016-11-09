@@ -18,15 +18,12 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
-#[proc_macro_derive(AddImpl)]
-// #[cfg(proc_macro)]
+#[proc_macro_derive(B, attributes(B, C))]
 pub fn derive(input: TokenStream) -> TokenStream {
-    "impl B {
-            fn foo(&self) {}
-        }
-
-        fn foo() {}
-
-        mod bar { pub fn foo() {} }
-    ".parse().unwrap()
+    let input = input.to_string();
+    assert!(input.contains("#[B]"));
+    assert!(input.contains("struct B {"));
+    assert!(input.contains("#[C]"));
+    assert!(input.contains("#[derive(Debug, PartialEq, Eq, Copy, Clone)]"));
+    "".parse().unwrap()
 }

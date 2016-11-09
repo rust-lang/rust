@@ -421,11 +421,11 @@ macro_rules! cfg_fn {
 }
 
 pub fn deprecated_attributes() -> Vec<&'static (&'static str, AttributeType, AttributeGate)> {
-    KNOWN_ATTRIBUTES.iter().filter(|a| a.2.is_deprecated()).collect()
+    BUILTIN_ATTRIBUTES.iter().filter(|a| a.2.is_deprecated()).collect()
 }
 
 // Attributes that have a special meaning to rustc or rustdoc
-pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGate)] = &[
+pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGate)] = &[
     // Normal attributes
 
     ("warn", Normal, Ungated),
@@ -800,12 +800,12 @@ impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
         let name = &*attr.name();
-        for &(n, ty, ref gateage) in KNOWN_ATTRIBUTES {
+        for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
             if n == name {
                 if let &Gated(_, ref name, ref desc, ref has_feature) = gateage {
                     gate_feature_fn!(self, has_feature, attr.span, name, desc);
                 }
-                debug!("check_attribute: {:?} is known, {:?}, {:?}", name, ty, gateage);
+                debug!("check_attribute: {:?} is builtin, {:?}, {:?}", name, ty, gateage);
                 return;
             }
         }
@@ -825,6 +825,8 @@ impl<'a> Context<'a> {
                            are reserved for internal compiler diagnostics");
         } else if name.starts_with("derive_") {
             gate_feature!(self, custom_derive, attr.span, EXPLAIN_DERIVE_UNDERSCORE);
+        } else if attr::is_known(attr) {
+            debug!("check_attribute: {:?} is known", name);
         } else {
             // Only run the custom attribute lint during regular
             // feature gate checking. Macro gating runs

@@ -624,8 +624,12 @@ impl<'a> CrateLoader<'a> {
         impl Registry for MyRegistrar {
             fn register_custom_derive(&mut self,
                                       trait_name: &str,
-                                      expand: fn(TokenStream) -> TokenStream) {
-                let derive = SyntaxExtension::CustomDerive(Box::new(CustomDerive::new(expand)));
+                                      expand: fn(TokenStream) -> TokenStream,
+                                      attributes: &[&'static str]) {
+                let attrs = attributes.iter().map(|s| InternedString::new(s)).collect();
+                let derive = SyntaxExtension::CustomDerive(
+                    Box::new(CustomDerive::new(expand, attrs))
+                );
                 self.0.push((intern(trait_name), derive));
             }
         }
