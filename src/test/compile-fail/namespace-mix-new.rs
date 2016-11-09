@@ -10,7 +10,7 @@
 
 // aux-build:namespace-mix-new.rs
 
-#![feature(item_like_imports, relaxed_adts)]
+#![feature(item_like_imports)]
 
 extern crate namespace_mix_new;
 use namespace_mix_new::*;

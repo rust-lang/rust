@@ -3261,13 +3261,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         if let Some((variant, did, substs)) = variant {
-            if variant.ctor_kind == CtorKind::Fn &&
-                    !self.tcx.sess.features.borrow().relaxed_adts {
-                emit_feature_err(&self.tcx.sess.parse_sess,
-                                 "relaxed_adts", path.span, GateIssue::Language,
-                                 "tuple structs and variants in struct patterns are unstable");
-            }
-
             // Check bounds on type arguments used in the path.
             let type_predicates = self.tcx.lookup_predicates(did);
             let bounds = self.instantiate_bounds(path.span, substs, &type_predicates);

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(item_like_imports, relaxed_adts)]
+#![feature(item_like_imports)]
 
 pub mod c {
     pub struct S {}
