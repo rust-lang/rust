@@ -1166,12 +1166,21 @@ extern "rust-intrinsic" {
     pub fn bswap<T>(x: T) -> T;
 
     /// Performs checked integer addition.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `overflowing_add` method. For example,
+    /// [`std::u32::overflowing_add`](../../std/primitive.u32.html#method.overflowing_add)
     pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer subtraction
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `overflowing_sub` method. For example,
+    /// [`std::u32::overflowing_sub`](../../std/primitive.u32.html#method.overflowing_sub)
     pub fn sub_with_overflow<T>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer multiplication
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `overflowing_mul` method. For example,
+    /// [`std::u32::overflowing_mul`](../../std/primitive.u32.html#method.overflowing_mul)
     pub fn mul_with_overflow<T>(x: T, y: T) -> (T, bool);
 
     /// Performs an unchecked division, resulting in undefined behavior
@@ -1182,10 +1191,19 @@ extern "rust-intrinsic" {
     pub fn unchecked_rem<T>(x: T, y: T) -> T;
 
     /// Returns (a + b) mod 2^N, where N is the width of T in bits.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `wrapping_add` method. For example,
+    /// [`std::u32::wrapping_add`](../../std/primitive.u32.html#method.wrapping_add)
     pub fn overflowing_add<T>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2^N, where N is the width of T in bits.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `wrapping_sub` method. For example,
+    /// [`std::u32::wrapping_sub`](../../std/primitive.u32.html#method.wrapping_sub)
     pub fn overflowing_sub<T>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2^N, where N is the width of T in bits.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `wrapping_mul` method. For example,
+    /// [`std::u32::wrapping_mul`](../../std/primitive.u32.html#method.wrapping_mul)
     pub fn overflowing_mul<T>(a: T, b: T) -> T;
 
     /// Returns the value of the discriminant for the variant in 'v',
