@@ -499,14 +499,6 @@ macro_rules! hash_span {
 }
 
 impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'hash, 'tcx> {
-    fn visit_nested_item(&mut self, _: ItemId) {
-        // Each item is hashed independently; ignore nested items.
-    }
-
-    fn visit_nested_impl_item(&mut self, _: ImplItemId) {
-        // Impl items are hashed independently; ignore nested impl items.
-    }
-
     fn visit_variant_data(&mut self,
                           s: &'tcx VariantData,
                           name: Name,
