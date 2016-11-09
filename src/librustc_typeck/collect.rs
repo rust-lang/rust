@@ -72,7 +72,7 @@ use rustc::ty::util::IntTypeExt;
 use rscope::*;
 use rustc::dep_graph::DepNode;
 use util::common::{ErrorReported, MemoizationMap};
-use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
+use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
 use {CrateCtxt, write_ty_to_tcx};
 
 use rustc_const_math::ConstInt;
@@ -786,8 +786,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             // Convert all the associated consts.
             // Also, check if there are any duplicate associated items
-            let mut seen_type_items = FnvHashMap();
-            let mut seen_value_items = FnvHashMap();
+            let mut seen_type_items = FxHashMap();
+            let mut seen_value_items = FxHashMap();
 
             for impl_item in impl_items {
                 let seen_items = match impl_item.node {
@@ -1038,7 +1038,7 @@ fn convert_struct_variant<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     disr_val: ty::Disr,
                                     def: &hir::VariantData)
                                     -> ty::VariantDefData<'tcx, 'tcx> {
-    let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
+    let mut seen_fields: FxHashMap<ast::Name, Span> = FxHashMap();
     let node_id = ccx.tcx.map.as_local_node_id(did).unwrap();
     let fields = def.fields().iter().map(|f| {
         let fid = ccx.tcx.map.local_def_id(f.id);
@@ -1952,9 +1952,9 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 {
     let inline_bounds = from_bounds(ccx, param_bounds);
     let where_bounds = from_predicates(ccx, param_id, &where_clause.predicates);
-    let all_bounds: FnvHashSet<_> = inline_bounds.into_iter()
-                                                 .chain(where_bounds)
-                                                 .collect();
+    let all_bounds: FxHashSet<_> = inline_bounds.into_iter()
+                                                .chain(where_bounds)
+                                                .collect();
     return if all_bounds.len() > 1 {
         ty::ObjectLifetimeDefault::Ambiguous
     } else if all_bounds.len() == 0 {
@@ -2171,7 +2171,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // The trait reference is an input, so find all type parameters
     // reachable from there, to start (if this is an inherent impl,
     // then just examine the self type).
-    let mut input_parameters: FnvHashSet<_> =
+    let mut input_parameters: FxHashSet<_> =
         ctp::parameters_for(&impl_scheme.ty, false).into_iter().collect();
     if let Some(ref trait_ref) = impl_trait_ref {
         input_parameters.extend(ctp::parameters_for(trait_ref, false));
@@ -2200,7 +2200,7 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let impl_predicates = ccx.tcx.lookup_predicates(impl_def_id);
     let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
 
-    let mut input_parameters: FnvHashSet<_> =
+    let mut input_parameters: FxHashSet<_> =
         ctp::parameters_for(&impl_scheme.ty, false).into_iter().collect();
     if let Some(ref trait_ref) = impl_trait_ref {
         input_parameters.extend(ctp::parameters_for(trait_ref, false));
@@ -2208,7 +2208,7 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     ctp::identify_constrained_type_params(
         &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
 
-    let lifetimes_in_associated_types: FnvHashSet<_> = impl_items.iter()
+    let lifetimes_in_associated_types: FxHashSet<_> = impl_items.iter()
         .map(|item| ccx.tcx.impl_or_trait_item(ccx.tcx.map.local_def_id(item.id)))
         .filter_map(|item| match item {
             ty::TypeTraitItem(ref assoc_ty) => assoc_ty.ty,

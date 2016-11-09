@@ -66,7 +66,7 @@ use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
              ElisionFailureInfo, ElidedLifetime};
 use rscope::{AnonTypeScope, MaybeWithAnonTypes};
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
-use util::nodemap::{NodeMap, FnvHashSet};
+use util::nodemap::{NodeMap, FxHashSet};
 
 use std::cell::RefCell;
 use syntax::{abi, ast};
@@ -569,7 +569,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let mut possible_implied_output_region = None;
 
         for input_type in input_tys.iter() {
-            let mut regions = FnvHashSet();
+            let mut regions = FxHashSet();
             let have_bound_regions = tcx.collect_regions(input_type, &mut regions);
 
             debug!("find_implied_output_regions: collected {:?} from {:?} \
@@ -1142,7 +1142,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             return tcx.types.err;
         }
 
-        let mut associated_types = FnvHashSet::default();
+        let mut associated_types = FxHashSet::default();
         for tr in traits::supertraits(tcx, principal) {
             if let Some(trait_id) = tcx.map.as_local_node_id(tr.def_id()) {
                 use collect::trait_associated_type_names;

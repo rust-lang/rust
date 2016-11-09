@@ -51,7 +51,7 @@ use std::mem;
 use std::rc::Rc;
 use syntax::abi::Abi;
 use hir;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 
 struct InferredObligationsSnapshotVecDelegate<'tcx> {
     phantom: PhantomData<&'tcx i32>,
@@ -104,8 +104,8 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
 
 #[derive(Clone)]
 pub struct SelectionCache<'tcx> {
-    hashmap: RefCell<FnvHashMap<ty::TraitRef<'tcx>,
-                                SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
+    hashmap: RefCell<FxHashMap<ty::TraitRef<'tcx>,
+                               SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
 }
 
 pub enum MethodMatchResult {
@@ -306,7 +306,7 @@ enum EvaluationResult {
 
 #[derive(Clone)]
 pub struct EvaluationCache<'tcx> {
-    hashmap: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, EvaluationResult>>
+    hashmap: RefCell<FxHashMap<ty::PolyTraitRef<'tcx>, EvaluationResult>>
 }
 
 impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
@@ -2937,7 +2937,7 @@ impl<'tcx> TraitObligation<'tcx> {
 impl<'tcx> SelectionCache<'tcx> {
     pub fn new() -> SelectionCache<'tcx> {
         SelectionCache {
-            hashmap: RefCell::new(FnvHashMap())
+            hashmap: RefCell::new(FxHashMap())
         }
     }
 }
@@ -2945,7 +2945,7 @@ impl<'tcx> SelectionCache<'tcx> {
 impl<'tcx> EvaluationCache<'tcx> {
     pub fn new() -> EvaluationCache<'tcx> {
         EvaluationCache {
-            hashmap: RefCell::new(FnvHashMap())
+            hashmap: RefCell::new(FxHashMap())
         }
     }
 }

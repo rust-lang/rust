@@ -36,7 +36,7 @@ use common::CrateContext;
 use type_::Type;
 use rustc::ty::{self, AdtKind, Ty, layout};
 use session::config;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 use util::common::path2cstr;
 
 use libc::{c_uint, c_longlong};
@@ -84,20 +84,20 @@ pub struct TypeMap<'tcx> {
     // The UniqueTypeIds created so far
     unique_id_interner: Interner,
     // A map from UniqueTypeId to debuginfo metadata for that type. This is a 1:1 mapping.
-    unique_id_to_metadata: FnvHashMap<UniqueTypeId, DIType>,
+    unique_id_to_metadata: FxHashMap<UniqueTypeId, DIType>,
     // A map from types to debuginfo metadata. This is a N:1 mapping.
-    type_to_metadata: FnvHashMap<Ty<'tcx>, DIType>,
+    type_to_metadata: FxHashMap<Ty<'tcx>, DIType>,
     // A map from types to UniqueTypeId. This is a N:1 mapping.
-    type_to_unique_id: FnvHashMap<Ty<'tcx>, UniqueTypeId>
+    type_to_unique_id: FxHashMap<Ty<'tcx>, UniqueTypeId>
 }
 
 impl<'tcx> TypeMap<'tcx> {
     pub fn new() -> TypeMap<'tcx> {
         TypeMap {
             unique_id_interner: Interner::new(),
-            type_to_metadata: FnvHashMap(),
-            unique_id_to_metadata: FnvHashMap(),
-            type_to_unique_id: FnvHashMap(),
+            type_to_metadata: FxHashMap(),
+            unique_id_to_metadata: FxHashMap(),
+            type_to_unique_id: FxHashMap(),
         }
     }
 

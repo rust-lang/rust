@@ -14,7 +14,7 @@
 //! details.
 
 use build::{BlockAnd, BlockAndExtension, Builder};
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{AdtDef, Ty};
@@ -309,7 +309,7 @@ enum TestKind<'tcx> {
     SwitchInt {
         switch_ty: Ty<'tcx>,
         options: Vec<ConstVal>,
-        indices: FnvHashMap<ConstVal, usize>,
+        indices: FxHashMap<ConstVal, usize>,
     },
 
     // test for equality

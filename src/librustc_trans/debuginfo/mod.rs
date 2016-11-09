@@ -34,7 +34,7 @@ use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
 use rustc::mir;
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
-use util::nodemap::{DefIdMap, FnvHashMap, FnvHashSet};
+use util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 
 use libc::c_uint;
 use std::cell::{Cell, RefCell};
@@ -68,15 +68,15 @@ pub struct CrateDebugContext<'tcx> {
     llcontext: ContextRef,
     builder: DIBuilderRef,
     current_debug_location: Cell<InternalDebugLocation>,
-    created_files: RefCell<FnvHashMap<String, DIFile>>,
-    created_enum_disr_types: RefCell<FnvHashMap<(DefId, layout::Integer), DIType>>,
+    created_files: RefCell<FxHashMap<String, DIFile>>,
+    created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Integer), DIType>>,
 
     type_map: RefCell<TypeMap<'tcx>>,
     namespace_map: RefCell<DefIdMap<DIScope>>,
 
     // This collection is used to assert that composite types (structs, enums,
     // ...) have their members only set once:
-    composite_types_completed: RefCell<FnvHashSet<DIType>>,
+    composite_types_completed: RefCell<FxHashSet<DIType>>,
 }
 
 impl<'tcx> CrateDebugContext<'tcx> {
@@ -89,11 +89,11 @@ impl<'tcx> CrateDebugContext<'tcx> {
             llcontext: llcontext,
             builder: builder,
             current_debug_location: Cell::new(InternalDebugLocation::UnknownLocation),
-            created_files: RefCell::new(FnvHashMap()),
-            created_enum_disr_types: RefCell::new(FnvHashMap()),
+            created_files: RefCell::new(FxHashMap()),
+            created_enum_disr_types: RefCell::new(FxHashMap()),
             type_map: RefCell::new(TypeMap::new()),
             namespace_map: RefCell::new(DefIdMap()),
-            composite_types_completed: RefCell::new(FnvHashSet()),
+            composite_types_completed: RefCell::new(FxHashSet()),
         };
     }
 }

@@ -22,7 +22,7 @@ use hir::def_id::DefId;
 use ty::{self, TyCtxt};
 use middle::privacy;
 use session::config;
-use util::nodemap::{NodeSet, FnvHashSet};
+use util::nodemap::{NodeSet, FxHashSet};
 
 use syntax::abi::Abi;
 use syntax::ast;
@@ -204,7 +204,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     fn propagate(&mut self) {
-        let mut scanned = FnvHashSet();
+        let mut scanned = FxHashSet();
         loop {
             let search_item = match self.worklist.pop() {
                 Some(item) => item,

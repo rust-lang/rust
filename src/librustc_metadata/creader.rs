@@ -22,7 +22,7 @@ use rustc_back::PanicStrategy;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
 use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
-use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc::hir::map::Definitions;
 
 use std::cell::{RefCell, Cell};
@@ -50,7 +50,7 @@ pub struct CrateLoader<'a> {
     pub sess: &'a Session,
     cstore: &'a CStore,
     next_crate_num: CrateNum,
-    foreign_item_map: FnvHashMap<String, Vec<ast::NodeId>>,
+    foreign_item_map: FxHashMap<String, Vec<ast::NodeId>>,
     local_crate_name: String,
 }
 
@@ -148,7 +148,7 @@ impl<'a> CrateLoader<'a> {
             sess: sess,
             cstore: cstore,
             next_crate_num: cstore.next_crate_num(),
-            foreign_item_map: FnvHashMap(),
+            foreign_item_map: FxHashMap(),
             local_crate_name: local_crate_name.to_owned(),
         }
     }
@@ -401,7 +401,7 @@ impl<'a> CrateLoader<'a> {
     fn update_extern_crate(&mut self,
                            cnum: CrateNum,
                            mut extern_crate: ExternCrate,
-                           visited: &mut FnvHashSet<(CrateNum, bool)>)
+                           visited: &mut FxHashSet<(CrateNum, bool)>)
     {
         if !visited.insert((cnum, extern_crate.direct)) { return }
 
@@ -442,7 +442,7 @@ impl<'a> CrateLoader<'a> {
         // The map from crate numbers in the crate we're resolving to local crate
         // numbers
         let deps = crate_root.crate_deps.decode(metadata);
-        let map: FnvHashMap<_, _> = deps.enumerate().map(|(crate_num, dep)| {
+        let map: FxHashMap<_, _> = deps.enumerate().map(|(crate_num, dep)| {
             debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
             let (local_cnum, ..) = self.resolve_crate(root,
                                                         &dep.name.as_str(),
@@ -624,8 +624,12 @@ impl<'a> CrateLoader<'a> {
         impl Registry for MyRegistrar {
             fn register_custom_derive(&mut self,
                                       trait_name: &str,
-                                      expand: fn(TokenStream) -> TokenStream) {
-                let derive = SyntaxExtension::CustomDerive(Box::new(CustomDerive::new(expand)));
+                                      expand: fn(TokenStream) -> TokenStream,
+                                      attributes: &[&'static str]) {
+                let attrs = attributes.iter().map(|s| InternedString::new(s)).collect();
+                let derive = SyntaxExtension::CustomDerive(
+                    Box::new(CustomDerive::new(expand, attrs))
+                );
                 self.0.push((intern(trait_name), derive));
             }
         }
@@ -1021,7 +1025,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
 
         let extern_crate =
             ExternCrate { def_id: def_id, span: item.span, direct: true, path_len: len };
-        self.update_extern_crate(cnum, extern_crate, &mut FnvHashSet());
+        self.update_extern_crate(cnum, extern_crate, &mut FxHashSet());
         self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
 
         loaded_macros

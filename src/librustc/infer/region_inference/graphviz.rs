@@ -23,7 +23,7 @@ use middle::region::CodeExtent;
 use super::Constraint;
 use infer::SubregionOrigin;
 use infer::region_inference::RegionVarBindings;
-use util::nodemap::{FnvHashMap, FnvHashSet};
+use util::nodemap::{FxHashMap, FxHashSet};
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::Vacant;
@@ -122,8 +122,8 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
 struct ConstraintGraph<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     graph_name: String,
-    map: &'a FnvHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
-    node_ids: FnvHashMap<Node, usize>,
+    map: &'a FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
+    node_ids: FxHashMap<Node, usize>,
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug, Copy)]
@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
            map: &'a ConstraintMap<'tcx>)
            -> ConstraintGraph<'a, 'gcx, 'tcx> {
         let mut i = 0;
-        let mut node_ids = FnvHashMap();
+        let mut node_ids = FxHashMap();
         {
             let mut add_node = |node| {
                 if let Vacant(e) = node_ids.entry(node) {
@@ -235,7 +235,7 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     type Node = Node;
     type Edge = Edge<'tcx>;
     fn nodes(&self) -> dot::Nodes<Node> {
-        let mut set = FnvHashSet();
+        let mut set = FxHashSet();
         for node in self.node_ids.keys() {
             set.insert(*node);
         }
@@ -261,7 +261,7 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     }
 }
 
-pub type ConstraintMap<'tcx> = FnvHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>;
+pub type ConstraintMap<'tcx> = FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>;
 
 fn dump_region_constraints_to<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                               map: &ConstraintMap<'tcx>,

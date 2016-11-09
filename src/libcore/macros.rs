@@ -350,6 +350,21 @@ macro_rules! try {
 ///
 /// assert_eq!(w, b"testformatted arguments");
 /// ```
+///
+/// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
+/// implementing either, as objects do not typically implement both. However, the module must
+/// import the traits qualified so their names do not conflict:
+///
+/// ```
+/// use std::fmt::Write as FmtWrite;
+/// use std::io::Write as IoWrite;
+///
+/// let mut s = String::new();
+/// let mut v = Vec::new();
+/// write!(&mut s, "{} {}", "abc", 123).unwrap(); // uses fmt::Write::write_fmt
+/// write!(&mut v, "s = {:?}", s).unwrap(); // uses io::Write::write_fmt
+/// assert_eq!(v, b"s = \"abc 123\"");
+/// ```
 #[macro_export]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! write {
@@ -393,6 +408,21 @@ macro_rules! write {
 /// writeln!(&mut w, "formatted {}", "arguments").unwrap();
 ///
 /// assert_eq!(&w[..], "test\nformatted arguments\n".as_bytes());
+/// ```
+///
+/// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
+/// implementing either, as objects do not typically implement both. However, the module must
+/// import the traits qualified so their names do not conflict:
+///
+/// ```
+/// use std::fmt::Write as FmtWrite;
+/// use std::io::Write as IoWrite;
+///
+/// let mut s = String::new();
+/// let mut v = Vec::new();
+/// writeln!(&mut s, "{} {}", "abc", 123).unwrap(); // uses fmt::Write::write_fmt
+/// writeln!(&mut v, "s = {:?}", s).unwrap(); // uses io::Write::write_fmt
+/// assert_eq!(v, b"s = \"abc 123\\n\"\n");
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]

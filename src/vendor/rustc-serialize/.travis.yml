@@ -1,0 +1,26 @@
+language: rust
+rust:
+  - 1.0.0
+  - beta
+  - nightly
+sudo: false
+script:
+  - cargo build --verbose
+  - cargo test --verbose
+  - |
+    [ $TRAVIS_RUST_VERSION != nightly ] || cargo bench --verbose
+  - cargo doc
+after_success: |
+  [ $TRAVIS_BRANCH = master ] &&
+  [ $TRAVIS_PULL_REQUEST = false ] &&
+  [ $TRAVIS_RUST_VERSION = nightly ] &&
+  echo '<meta http-equiv=refresh content=0;url=/rustc-serialize/rustc_serialize/index.html>' > target/doc/index.html &&
+  pip install ghp-import --user $USER &&
+  $HOME/.local/bin/ghp-import -n target/doc &&
+  git push -qf https://${TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+env:
+  global:
+    secure: f0CwX+CnvRbEqK3H6zhBQe4u0t14OQvyd6nUhq/oXkJ6LdtrSx+qQtLSmAU7L8p1IXyP8csxv37bTdEB7/U1c6bJcN2OXHrw9nD0NDvZEs1zSZvFQBm+YBwV7EaposPHCeqee3X9b00g7+bObywMYtEkk7yD2NiOY9SjMRcjTLQ=
+notifications:
+  email:
+    on_success: never

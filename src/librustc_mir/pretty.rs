@@ -14,7 +14,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::ty::TyCtxt;
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx};
 use std::fmt::Display;
 use std::fs;
@@ -122,10 +122,10 @@ enum Annotation {
 }
 
 fn scope_entry_exit_annotations(auxiliary: Option<&ScopeAuxiliaryVec>)
-                                -> FnvHashMap<Location, Vec<Annotation>>
+                                -> FxHashMap<Location, Vec<Annotation>>
 {
     // compute scope/entry exit annotations
-    let mut annotations = FnvHashMap();
+    let mut annotations = FxHashMap();
     if let Some(auxiliary) = auxiliary {
         for (scope_id, auxiliary) in auxiliary.iter_enumerated() {
             annotations.entry(auxiliary.dom)
@@ -166,7 +166,7 @@ fn write_basic_block(tcx: TyCtxt,
                      block: BasicBlock,
                      mir: &Mir,
                      w: &mut Write,
-                     annotations: &FnvHashMap<Location, Vec<Annotation>>)
+                     annotations: &FxHashMap<Location, Vec<Annotation>>)
                      -> io::Result<()> {
     let data = &mir[block];
 
@@ -217,7 +217,7 @@ fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {
 /// Returns the total number of variables printed.
 fn write_scope_tree(tcx: TyCtxt,
                     mir: &Mir,
-                    scope_tree: &FnvHashMap<VisibilityScope, Vec<VisibilityScope>>,
+                    scope_tree: &FxHashMap<VisibilityScope, Vec<VisibilityScope>>,
                     w: &mut Write,
                     parent: VisibilityScope,
                     depth: usize)
@@ -283,7 +283,7 @@ fn write_mir_intro<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     writeln!(w, " {{")?;
 
     // construct a scope tree and write it out
-    let mut scope_tree: FnvHashMap<VisibilityScope, Vec<VisibilityScope>> = FnvHashMap();
+    let mut scope_tree: FxHashMap<VisibilityScope, Vec<VisibilityScope>> = FxHashMap();
     for (index, scope_data) in mir.visibility_scopes.iter().enumerate() {
         if let Some(parent) = scope_data.parent_scope {
             scope_tree.entry(parent)

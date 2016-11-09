@@ -31,7 +31,7 @@ use syntax::parse::token::keywords;
 use syntax_pos::Span;
 use util::nodemap::NodeMap;
 
-use rustc_data_structures::fnv::FnvHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use hir;
 use hir::print::lifetime_to_string;
 use hir::intravisit::{self, Visitor, FnKind};
@@ -847,13 +847,13 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
                                generics: &hir::Generics) {
     debug!("insert_late_bound_lifetimes(decl={:?}, generics={:?})", decl, generics);
 
-    let mut constrained_by_input = ConstrainedCollector { regions: FnvHashSet() };
+    let mut constrained_by_input = ConstrainedCollector { regions: FxHashSet() };
     for arg in &decl.inputs {
         constrained_by_input.visit_ty(&arg.ty);
     }
 
     let mut appears_in_output = AllCollector {
-        regions: FnvHashSet(),
+        regions: FxHashSet(),
         impl_trait: false
     };
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &decl.output);
@@ -866,7 +866,7 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     // Subtle point: because we disallow nested bindings, we can just
     // ignore binders here and scrape up all names we see.
     let mut appears_in_where_clause = AllCollector {
-        regions: FnvHashSet(),
+        regions: FxHashSet(),
         impl_trait: false
     };
     for ty_param in generics.ty_params.iter() {
@@ -926,7 +926,7 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     return;
 
     struct ConstrainedCollector {
-        regions: FnvHashSet<ast::Name>,
+        regions: FxHashSet<ast::Name>,
     }
 
     impl<'v> Visitor<'v> for ConstrainedCollector {
@@ -961,7 +961,7 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     }
 
     struct AllCollector {
-        regions: FnvHashSet<ast::Name>,
+        regions: FxHashSet<ast::Name>,
         impl_trait: bool
     }
 

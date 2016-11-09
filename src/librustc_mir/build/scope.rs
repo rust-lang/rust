@@ -94,7 +94,7 @@ use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::*;
 use syntax_pos::Span;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 
 pub struct Scope<'tcx> {
     /// the scope-id within the scope_auxiliary
@@ -140,7 +140,7 @@ pub struct Scope<'tcx> {
     free: Option<FreeData<'tcx>>,
 
     /// The cache for drop chain on “normal” exit into a particular BasicBlock.
-    cached_exits: FnvHashMap<(BasicBlock, CodeExtent), BasicBlock>,
+    cached_exits: FxHashMap<(BasicBlock, CodeExtent), BasicBlock>,
 }
 
 struct DropData<'tcx> {
@@ -298,7 +298,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             needs_cleanup: false,
             drops: vec![],
             free: None,
-            cached_exits: FnvHashMap()
+            cached_exits: FxHashMap()
         });
         self.scope_auxiliary.push(ScopeAuxiliary {
             extent: extent,

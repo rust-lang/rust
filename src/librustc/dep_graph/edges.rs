@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_data_structures::fnv::{FnvHashMap, FnvHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 use super::{DepGraphQuery, DepNode};
 
 pub struct DepGraphEdges<D: Clone + Debug + Eq + Hash> {
     nodes: Vec<DepNode<D>>,
-    indices: FnvHashMap<DepNode<D>, IdIndex>,
-    edges: FnvHashSet<(IdIndex, IdIndex)>,
+    indices: FxHashMap<DepNode<D>, IdIndex>,
+    edges: FxHashSet<(IdIndex, IdIndex)>,
     open_nodes: Vec<OpenNode>,
 }
 
@@ -46,8 +46,8 @@ impl<D: Clone + Debug + Eq + Hash> DepGraphEdges<D> {
     pub fn new() -> DepGraphEdges<D> {
         DepGraphEdges {
             nodes: vec![],
-            indices: FnvHashMap(),
-            edges: FnvHashSet(),
+            indices: FxHashMap(),
+            edges: FxHashSet(),
             open_nodes: Vec::new()
         }
     }

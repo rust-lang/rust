@@ -23,7 +23,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::expr_use_visitor::MutateMode;
 use rustc::middle::mem_categorization as mc;
 use rustc::ty::{self, TyCtxt};
-use rustc::util::nodemap::{FnvHashMap, NodeSet};
+use rustc::util::nodemap::{FxHashMap, NodeSet};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -41,7 +41,7 @@ pub struct MoveData<'tcx> {
     pub paths: RefCell<Vec<MovePath<'tcx>>>,
 
     /// Cache of loan path to move path index, for easy lookup.
-    pub path_map: RefCell<FnvHashMap<Rc<LoanPath<'tcx>>, MovePathIndex>>,
+    pub path_map: RefCell<FxHashMap<Rc<LoanPath<'tcx>>, MovePathIndex>>,
 
     /// Each move or uninitialized variable gets an entry here.
     pub moves: RefCell<Vec<Move>>,
@@ -217,7 +217,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
     pub fn new() -> MoveData<'tcx> {
         MoveData {
             paths: RefCell::new(Vec::new()),
-            path_map: RefCell::new(FnvHashMap()),
+            path_map: RefCell::new(FxHashMap()),
             moves: RefCell::new(Vec::new()),
             path_assignments: RefCell::new(Vec::new()),
             var_assignments: RefCell::new(Vec::new()),

@@ -12,20 +12,35 @@ use std::panic;
 
 use errors::FatalError;
 use proc_macro::{TokenStream, __internal};
-use syntax::ast::{self, ItemKind};
-use syntax::codemap::{ExpnInfo, MacroAttribute, NameAndSpan, Span};
+use syntax::ast::{self, ItemKind, Attribute};
+use syntax::attr::{mark_used, mark_known};
+use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::fold::Folder;
-use syntax::parse::token::intern;
-use syntax::print::pprust;
+use syntax::parse::token::InternedString;
+use syntax::visit::Visitor;
+
+struct MarkAttrs<'a>(&'a [InternedString]);
+
+impl<'a> Visitor for MarkAttrs<'a> {
+    fn visit_attribute(&mut self, attr: &Attribute) {
+        if self.0.contains(&attr.name()) {
+            mark_used(attr);
+            mark_known(attr);
+        }
+    }
+}
 
 pub struct CustomDerive {
     inner: fn(TokenStream) -> TokenStream,
+    attrs: Vec<InternedString>,
 }
 
 impl CustomDerive {
-    pub fn new(inner: fn(TokenStream) -> TokenStream) -> CustomDerive {
-        CustomDerive { inner: inner }
+    pub fn new(inner: fn(TokenStream) -> TokenStream,
+               attrs: Vec<InternedString>)
+               -> CustomDerive {
+        CustomDerive { inner: inner, attrs: attrs }
     }
 }
 
@@ -33,7 +48,7 @@ impl MultiItemModifier for CustomDerive {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
-              meta_item: &ast::MetaItem,
+              _meta_item: &ast::MetaItem,
               item: Annotatable)
               -> Vec<Annotatable> {
         let item = match item {
@@ -47,7 +62,7 @@ impl MultiItemModifier for CustomDerive {
         };
         match item.node {
             ItemKind::Struct(..) |
-            ItemKind::Enum(..) => {}
+            ItemKind::Enum(..) => {},
             _ => {
                 ecx.span_err(span, "custom derive attributes may only be \
                                     applied to struct/enum items");
@@ -55,23 +70,15 @@ impl MultiItemModifier for CustomDerive {
             }
         }
 
-        let input_span = Span {
-            expn_id: ecx.codemap().record_expansion(ExpnInfo {
-                call_site: span,
-                callee: NameAndSpan {
-                    format: MacroAttribute(intern(&pprust::meta_item_to_string(meta_item))),
-                    span: Some(span),
-                    allow_internal_unstable: true,
-                },
-            }),
-            ..item.span
-        };
-        let input = __internal::new_token_stream(item);
+        // Mark attributes as known, and used.
+        MarkAttrs(&self.attrs).visit_item(&item);
+
+        let input = __internal::new_token_stream(item.clone());
         let res = __internal::set_parse_sess(&ecx.parse_sess, || {
             let inner = self.inner;
             panic::catch_unwind(panic::AssertUnwindSafe(|| inner(input)))
         });
-        let item = match res {
+        let new_items = match res {
             Ok(stream) => __internal::token_stream_items(stream),
             Err(e) => {
                 let msg = "custom derive attribute panicked";
@@ -88,12 +95,13 @@ impl MultiItemModifier for CustomDerive {
             }
         };
 
-        // Right now we have no knowledge of spans at all in custom derive
-        // macros, everything is just parsed as a string. Reassign all spans to
-        // the input `item` for better errors here.
-        item.into_iter().flat_map(|item| {
-            ChangeSpan { span: input_span }.fold_item(item)
-        }).map(Annotatable::Item).collect()
+        let mut res = vec![Annotatable::Item(item)];
+        // Reassign spans of all expanded items to the input `item`
+        // for better errors here.
+        res.extend(new_items.into_iter().flat_map(|item| {
+            ChangeSpan { span: span }.fold_item(item)
+        }).map(Annotatable::Item));
+        res
     }
 }
 

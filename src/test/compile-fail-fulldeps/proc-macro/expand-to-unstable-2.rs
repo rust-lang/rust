@@ -17,8 +17,8 @@
 extern crate derive_unstable_2;
 
 #[derive(Unstable)]
-struct A;
 //~^ ERROR: reserved for internal compiler
+struct A;
 
 fn main() {
     foo();

@@ -14,7 +14,7 @@ use rustc::ty::TyCtxt;
 use std::borrow::Cow;
 use syntax::codemap::Span;
 use trans_item::TransItem;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 
 // In the SymbolMap we collect the symbol names of all translation items of
 // the current crate. This map exists as a performance optimization. Symbol
@@ -22,7 +22,7 @@ use util::nodemap::FnvHashMap;
 // Thus they could also always be recomputed if needed.
 
 pub struct SymbolMap<'tcx> {
-    index: FnvHashMap<TransItem<'tcx>, (usize, usize)>,
+    index: FxHashMap<TransItem<'tcx>, (usize, usize)>,
     arena: String,
 }
 
@@ -78,7 +78,7 @@ impl<'tcx> SymbolMap<'tcx> {
         }
 
         let mut symbol_map = SymbolMap {
-            index: FnvHashMap(),
+            index: FxHashMap(),
             arena: String::with_capacity(1024),
         };
 

@@ -20,7 +20,7 @@ use hir::def::Def;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::lang_items::FnOnceTraitLangItem;
 use rustc::traits::{Obligation, SelectionContext};
-use util::nodemap::FnvHashSet;
+use util::nodemap::FxHashSet;
 
 use syntax::ast;
 use errors::DiagnosticBuilder;
@@ -470,10 +470,10 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
         });
 
         // Cross-crate:
-        let mut external_mods = FnvHashSet();
+        let mut external_mods = FxHashSet();
         fn handle_external_def(ccx: &CrateCtxt,
                                traits: &mut AllTraitsVec,
-                               external_mods: &mut FnvHashSet<DefId>,
+                               external_mods: &mut FxHashSet<DefId>,
                                def: Def) {
             let def_id = def.def_id();
             match def {

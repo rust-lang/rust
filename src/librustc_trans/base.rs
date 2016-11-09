@@ -79,7 +79,7 @@ use type_::Type;
 use type_of;
 use value::Value;
 use Disr;
-use util::nodemap::{NodeSet, FnvHashMap, FnvHashSet};
+use util::nodemap::{NodeSet, FxHashMap, FxHashSet};
 
 use arena::TypedArena;
 use libc::c_uint;
@@ -1318,7 +1318,7 @@ fn write_metadata(cx: &SharedCrateContext,
 fn internalize_symbols<'a, 'tcx>(sess: &Session,
                                  ccxs: &CrateContextList<'a, 'tcx>,
                                  symbol_map: &SymbolMap<'tcx>,
-                                 reachable: &FnvHashSet<&str>) {
+                                 reachable: &FxHashSet<&str>) {
     let scx = ccxs.shared();
     let tcx = scx.tcx();
 
@@ -1332,7 +1332,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
     // 'unsafe' because we are holding on to CStr's from the LLVM module within
     // this block.
     unsafe {
-        let mut referenced_somewhere = FnvHashSet();
+        let mut referenced_somewhere = FxHashSet();
 
         // Collect all symbols that need to stay externally visible because they
         // are referenced via a declaration in some other codegen unit.
@@ -1353,7 +1353,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
 
         // Also collect all symbols for which we cannot adjust linkage, because
         // it is fixed by some directive in the source code (e.g. #[no_mangle]).
-        let linkage_fixed_explicitly: FnvHashSet<_> = scx
+        let linkage_fixed_explicitly: FxHashSet<_> = scx
             .translation_items()
             .borrow()
             .iter()
@@ -1862,7 +1862,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
     }
 
     if scx.sess().opts.debugging_opts.print_trans_items.is_some() {
-        let mut item_to_cgus = FnvHashMap();
+        let mut item_to_cgus = FxHashMap();
 
         for cgu in &codegen_units {
             for (&trans_item, &linkage) in cgu.items() {
