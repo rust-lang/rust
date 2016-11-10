@@ -155,6 +155,7 @@ macro_rules! unpack {
 pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                        fn_id: ast::NodeId,
                                        arguments: A,
+                                       abi: Abi,
                                        return_ty: Ty<'gcx>,
                                        ast_body: &'gcx hir::Expr)
                                        -> (Mir<'tcx>, ScopeAuxiliaryVec)
@@ -191,12 +192,9 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     assert_eq!(block, builder.return_block());
 
     let mut spread_arg = None;
-    match tcx.tables().node_id_to_type(fn_id).sty {
-        ty::TyFnDef(_, _, f) if f.abi == Abi::RustCall => {
-            // RustCall pseudo-ABI untuples the last argument.
-            spread_arg = Some(Local::new(arguments.len()));
-        }
-        _ => {}
+    if abi == Abi::RustCall {
+        // RustCall pseudo-ABI untuples the last argument.
+        spread_arg = Some(Local::new(arguments.len()));
     }
 
     // Gather the upvars of a closure, if any.
