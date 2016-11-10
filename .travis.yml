@@ -21,7 +21,7 @@ matrix:
     - env: IMAGE=x86_64-gnu-debug
     - env: IMAGE=x86_64-gnu-nopt
     - env: IMAGE=x86_64-gnu-rustbuild
-    - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1
+    - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
     - env: IMAGE=x86_64-musl
 
     # OSX builders
