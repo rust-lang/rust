@@ -34,6 +34,7 @@ use session::Session;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeSet, DefIdMap};
 use std::path::PathBuf;
+use std::rc::Rc;
 use syntax::ast;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
@@ -104,6 +105,11 @@ pub enum InlinedItemRef<'a> {
     Item(DefId, &'a hir::Item),
     TraitItem(DefId, &'a hir::TraitItem),
     ImplItem(DefId, &'a hir::ImplItem)
+}
+
+pub enum LoadedMacro {
+    MacroRules(ast::MacroDef),
+    ProcMacro(Rc<SyntaxExtension>),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -211,7 +217,7 @@ pub trait CrateStore<'tcx> {
     fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath>;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
-    fn load_macro(&self, did: DefId, sess: &Session) -> ast::MacroDef;
+    fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
 
     // misc. metadata
     fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
@@ -383,7 +389,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
     fn item_children(&self, did: DefId) -> Vec<def::Export> { bug!("item_children") }
-    fn load_macro(&self, did: DefId, sess: &Session) -> ast::MacroDef { bug!("load_macro") }
+    fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
 
     // misc. metadata
     fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
@@ -424,7 +430,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
 }
 
 pub trait CrateLoader {
-    fn process_item(&mut self, item: &ast::Item, defs: &Definitions, load_macros: bool)
-                    -> Vec<(ast::Name, SyntaxExtension)>;
+    fn process_item(&mut self, item: &ast::Item, defs: &Definitions);
     fn postprocess(&mut self, krate: &ast::Crate);
 }

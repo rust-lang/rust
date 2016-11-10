@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:derive-a.rs
+// ignore-test
 
+#![feature(macro_reexport, proc_macro)]
+
+#[macro_reexport(A)]
 extern crate derive_a;
-//~^ ERROR: crates of the `proc-macro` crate type cannot be linked at runtime
-
-fn main() {}

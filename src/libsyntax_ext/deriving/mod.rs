@@ -12,10 +12,10 @@
 
 use syntax::ast::{self, MetaItem};
 use syntax::attr::HasAttrs;
+use syntax::codemap;
 use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxExtension};
 use syntax::ext::build::AstBuilder;
-use syntax::feature_gate;
-use syntax::codemap;
+use syntax::feature_gate::{self, emit_feature_err};
 use syntax::parse::token::{intern, intern_and_get_ident};
 use syntax::ptr::P;
 use syntax_pos::Span;
@@ -220,6 +220,12 @@ pub fn expand_derive(cx: &mut ExtCtxt,
                                  .filter(|&(_, ref name)| !is_builtin_trait(&name.name().unwrap()))
                                  .next();
     if let Some((i, titem)) = macros_11_derive {
+        if !cx.ecfg.features.unwrap().proc_macro {
+            let issue = feature_gate::GateIssue::Language;
+            let msg = "custom derive macros are experimentally supported";
+            emit_feature_err(cx.parse_sess, "proc_macro", titem.span, issue, msg);
+        }
+
         let tname = ast::Ident::with_empty_ctxt(intern(&titem.name().unwrap()));
         let path = ast::Path::from_ident(titem.span, tname);
         let ext = cx.resolver.resolve_macro(cx.current_expansion.mark, &path, false).unwrap();
