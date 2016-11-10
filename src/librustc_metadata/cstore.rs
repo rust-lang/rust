@@ -18,7 +18,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex, DefId};
 use rustc::hir::map::DefKey;
 use rustc::hir::svh::Svh;
-use rustc::middle::cstore::ExternCrate;
+use rustc::middle::cstore::{DepKind, ExternCrate};
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, NodeMap, NodeSet, DefIdMap};
@@ -78,11 +78,8 @@ pub struct CrateMetadata {
     /// compilation support.
     pub key_map: FxHashMap<DefKey, DefIndex>,
 
-    /// Flag if this crate is required by an rlib version of this crate, or in
-    /// other words whether it was explicitly linked to. An example of a crate
-    /// where this is false is when an allocator crate is injected into the
-    /// dependency list, and therefore isn't actually needed to link an rlib.
-    pub explicitly_linked: Cell<bool>,
+    pub dep_kind: Cell<DepKind>,
+    pub source: CrateSource,
 }
 
 pub struct CachedInlinedItem {
@@ -97,7 +94,6 @@ pub struct CStore {
     metas: RefCell<FxHashMap<CrateNum, Rc<CrateMetadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
-    used_crate_sources: RefCell<Vec<CrateSource>>,
     used_libraries: RefCell<Vec<(String, NativeLibraryKind)>>,
     used_link_args: RefCell<Vec<String>>,
     statically_included_foreign_items: RefCell<NodeSet>,
@@ -112,7 +108,6 @@ impl CStore {
             dep_graph: dep_graph.clone(),
             metas: RefCell::new(FxHashMap()),
             extern_mod_crate_map: RefCell::new(FxHashMap()),
-            used_crate_sources: RefCell::new(Vec::new()),
             used_libraries: RefCell::new(Vec::new()),
             used_link_args: RefCell::new(Vec::new()),
             statically_included_foreign_items: RefCell::new(NodeSet()),
@@ -146,38 +141,9 @@ impl CStore {
         }
     }
 
-    /// Like `iter_crate_data`, but passes source paths (if available) as well.
-    pub fn iter_crate_data_origins<I>(&self, mut i: I)
-        where I: FnMut(CrateNum, &CrateMetadata, Option<CrateSource>)
-    {
-        for (&k, v) in self.metas.borrow().iter() {
-            let origin = self.opt_used_crate_source(k);
-            origin.as_ref().map(|cs| {
-                assert!(k == cs.cnum);
-            });
-            i(k, &v, origin);
-        }
-    }
-
-    pub fn add_used_crate_source(&self, src: CrateSource) {
-        let mut used_crate_sources = self.used_crate_sources.borrow_mut();
-        if !used_crate_sources.contains(&src) {
-            used_crate_sources.push(src);
-        }
-    }
-
-    pub fn opt_used_crate_source(&self, cnum: CrateNum) -> Option<CrateSource> {
-        self.used_crate_sources
-            .borrow_mut()
-            .iter()
-            .find(|source| source.cnum == cnum)
-            .cloned()
-    }
-
     pub fn reset(&self) {
         self.metas.borrow_mut().clear();
         self.extern_mod_crate_map.borrow_mut().clear();
-        self.used_crate_sources.borrow_mut().clear();
         self.used_libraries.borrow_mut().clear();
         self.used_link_args.borrow_mut().clear();
         self.statically_included_foreign_items.borrow_mut().clear();
@@ -223,15 +189,16 @@ impl CStore {
         }
         info!("topological ordering: {:?}", ordering);
         ordering.reverse();
-        let mut libs = self.used_crate_sources
+        let mut libs = self.metas
             .borrow()
             .iter()
-            .map(|src| {
-                (src.cnum,
-                 match prefer {
-                     LinkagePreference::RequireDynamic => src.dylib.clone().map(|p| p.0),
-                     LinkagePreference::RequireStatic => src.rlib.clone().map(|p| p.0),
-                 })
+            .filter_map(|(&cnum, data)| {
+                if data.dep_kind.get() == DepKind::MacrosOnly { return None; }
+                let path = match prefer {
+                    LinkagePreference::RequireDynamic => data.source.dylib.clone().map(|p| p.0),
+                    LinkagePreference::RequireStatic => data.source.rlib.clone().map(|p| p.0),
+                };
+                Some((cnum, path))
             })
             .collect::<Vec<_>>();
         libs.sort_by(|&(a, _), &(b, _)| {

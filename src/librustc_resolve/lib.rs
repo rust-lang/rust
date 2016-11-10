@@ -76,7 +76,7 @@ use std::fmt;
 use std::mem::replace;
 use std::rc::Rc;
 
-use resolve_imports::{ImportDirective, NameResolution};
+use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution};
 use macros::{InvocationData, LegacyBinding, LegacyScope};
 
 // NB: This module needs to be declared first so diagnostics are
@@ -533,6 +533,7 @@ impl PatternSource {
 pub enum Namespace {
     TypeNS,
     ValueNS,
+    MacroNS,
 }
 
 impl<'a> Visitor for Resolver<'a> {
@@ -796,10 +797,6 @@ pub struct ModuleS<'a> {
     // The node id of the closest normal module (`mod`) ancestor (including this module).
     normal_ancestor_id: Option<NodeId>,
 
-    // If the module is an extern crate, `def` is root of the external crate and `extern_crate_id`
-    // is the NodeId of the local `extern crate` item (otherwise, `extern_crate_id` is None).
-    extern_crate_id: Option<NodeId>,
-
     resolutions: RefCell<FxHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
 
     no_implicit_prelude: bool,
@@ -824,7 +821,6 @@ impl<'a> ModuleS<'a> {
             parent: parent,
             kind: kind,
             normal_ancestor_id: None,
-            extern_crate_id: None,
             resolutions: RefCell::new(FxHashMap()),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
@@ -953,7 +949,14 @@ impl<'a> NameBinding<'a> {
     }
 
     fn is_extern_crate(&self) -> bool {
-        self.module().ok().and_then(|module| module.extern_crate_id).is_some()
+        match self.kind {
+            NameBindingKind::Import {
+                directive: &ImportDirective {
+                    subclass: ImportDirectiveSubclass::ExternCrate, ..
+                }, ..
+            } => true,
+            _ => false,
+        }
     }
 
     fn is_import(&self) -> bool {
@@ -1081,6 +1084,7 @@ pub struct Resolver<'a> {
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
     module_map: NodeMap<Module<'a>>,
+    extern_crate_roots: FxHashMap<(CrateNum, bool /* MacrosOnly? */), Module<'a>>,
 
     // Whether or not to print error messages. Can be set to true
     // when getting additional info for error message suggestions,
@@ -1107,8 +1111,10 @@ pub struct Resolver<'a> {
     pub exported_macros: Vec<ast::MacroDef>,
     crate_loader: &'a mut CrateLoader,
     macro_names: FxHashSet<Name>,
-    builtin_macros: FxHashMap<Name, Rc<SyntaxExtension>>,
+    builtin_macros: FxHashMap<Name, DefId>,
     lexical_macro_resolutions: Vec<(Name, LegacyScope<'a>)>,
+    macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
+    macro_exports: Vec<Export>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
     invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
@@ -1274,6 +1280,7 @@ impl<'a> Resolver<'a> {
             export_map: NodeMap(),
             trait_map: NodeMap(),
             module_map: module_map,
+            extern_crate_roots: FxHashMap(),
 
             emit_errors: true,
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
@@ -1300,6 +1307,8 @@ impl<'a> Resolver<'a> {
             macro_names: FxHashSet(),
             builtin_macros: FxHashMap(),
             lexical_macro_resolutions: Vec::new(),
+            macro_map: FxHashMap(),
+            macro_exports: Vec::new(),
             invocations: invocations,
         }
     }
@@ -1318,13 +1327,6 @@ impl<'a> Resolver<'a> {
 
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
-        // Collect `DefId`s for exported macro defs.
-        for def in &krate.exported_macros {
-            DefCollector::new(&mut self.definitions).with_parent(CRATE_DEF_INDEX, |collector| {
-                collector.visit_macro_def(def)
-            })
-        }
-
         self.current_module = self.graph_root;
         visit::walk_crate(self, krate);
 
@@ -1342,7 +1344,11 @@ impl<'a> Resolver<'a> {
     }
 
     fn get_ribs<'b>(&'b mut self, ns: Namespace) -> &'b mut Vec<Rib<'a>> {
-        match ns { ValueNS => &mut self.value_ribs, TypeNS => &mut self.type_ribs }
+        match ns {
+            ValueNS => &mut self.value_ribs,
+            TypeNS => &mut self.type_ribs,
+            MacroNS => panic!("The macro namespace has no ribs"),
+        }
     }
 
     fn record_use(&mut self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
@@ -3233,7 +3239,7 @@ impl<'a> Resolver<'a> {
             in_module.for_each_child(|name, ns, name_binding| {
 
                 // avoid imports entirely
-                if name_binding.is_import() { return; }
+                if name_binding.is_import() && !name_binding.is_extern_crate() { return; }
 
                 // collect results based on the filter function
                 if name == lookup_name && ns == namespace {
@@ -3269,21 +3275,11 @@ impl<'a> Resolver<'a> {
                 // collect submodules to explore
                 if let Ok(module) = name_binding.module() {
                     // form the path
-                    let path_segments = match module.kind {
-                        _ if module.parent.is_none() => path_segments.clone(),
-                        ModuleKind::Def(_, name) => {
-                            let mut paths = path_segments.clone();
-                            let ident = Ident::with_empty_ctxt(name);
-                            let params = PathParameters::none();
-                            let segm = PathSegment {
-                                identifier: ident,
-                                parameters: params,
-                            };
-                            paths.push(segm);
-                            paths
-                        }
-                        _ => bug!(),
-                    };
+                    let mut path_segments = path_segments.clone();
+                    path_segments.push(PathSegment {
+                        identifier: Ident::with_empty_ctxt(name),
+                        parameters: PathParameters::none(),
+                    });
 
                     if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup
@@ -3369,7 +3365,10 @@ impl<'a> Resolver<'a> {
             if !reported_spans.insert(span) { continue }
             if binding.is_extern_crate() {
                 // Warn when using an inaccessible extern crate.
-                let node_id = binding.module().unwrap().extern_crate_id.unwrap();
+                let node_id = match binding.kind {
+                    NameBindingKind::Import { directive, .. } => directive.id,
+                    _ => unreachable!(),
+                };
                 let msg = format!("extern crate `{}` is private", name);
                 self.session.add_lint(lint::builtin::INACCESSIBLE_EXTERN_CRATE, node_id, span, msg);
             } else {
@@ -3415,7 +3414,7 @@ impl<'a> Resolver<'a> {
             _ => "enum",
         };
 
-        let (participle, noun) = match old_binding.is_import() || old_binding.is_extern_crate() {
+        let (participle, noun) = match old_binding.is_import() {
             true => ("imported", "import"),
             false => ("defined", "definition"),
         };
@@ -3424,7 +3423,8 @@ impl<'a> Resolver<'a> {
         let msg = {
             let kind = match (ns, old_binding.module()) {
                 (ValueNS, _) => "a value",
-                (TypeNS, Ok(module)) if module.extern_crate_id.is_some() => "an extern crate",
+                (MacroNS, _) => "a macro",
+                (TypeNS, _) if old_binding.is_extern_crate() => "an extern crate",
                 (TypeNS, Ok(module)) if module.is_normal() => "a module",
                 (TypeNS, Ok(module)) if module.is_trait() => "a trait",
                 (TypeNS, _) => "a type",
@@ -3439,7 +3439,7 @@ impl<'a> Resolver<'a> {
                 e.span_label(span, &format!("`{}` was already imported", name));
                 e
             },
-            (true, _) | (_, true) if binding.is_import() || old_binding.is_import() => {
+            (true, _) | (_, true) if binding.is_import() && old_binding.is_import() => {
                 let mut e = struct_span_err!(self.session, span, E0254, "{}", msg);
                 e.span_label(span, &"already imported");
                 e

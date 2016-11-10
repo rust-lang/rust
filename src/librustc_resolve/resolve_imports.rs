@@ -30,6 +30,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 
 use std::cell::{Cell, RefCell};
+use std::mem;
 
 impl<'a> Resolver<'a> {
     pub fn resolve_imports(&mut self) {
@@ -51,6 +52,7 @@ pub enum ImportDirectiveSubclass<'a> {
         max_vis: Cell<ty::Visibility>, // The visibility of the greatest reexport.
         // n.b. `max_vis` is only used in `finalize_import` to check for reexport errors.
     },
+    ExternCrate,
 }
 
 impl<'a> ImportDirectiveSubclass<'a> {
@@ -68,12 +70,12 @@ impl<'a> ImportDirectiveSubclass<'a> {
 #[derive(Debug,Clone)]
 pub struct ImportDirective<'a> {
     pub id: NodeId,
-    parent: Module<'a>,
-    module_path: Vec<Ident>,
-    imported_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
-    subclass: ImportDirectiveSubclass<'a>,
-    span: Span,
-    vis: Cell<ty::Visibility>,
+    pub parent: Module<'a>,
+    pub module_path: Vec<Ident>,
+    pub imported_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
+    pub subclass: ImportDirectiveSubclass<'a>,
+    pub span: Span,
+    pub vis: Cell<ty::Visibility>,
 }
 
 impl<'a> ImportDirective<'a> {
@@ -169,7 +171,8 @@ impl<'a> Resolver<'a> {
         let new_import_semantics = self.new_import_semantics;
         let is_disallowed_private_import = |binding: &NameBinding| {
             !new_import_semantics && !allow_private_imports && // disallowed
-            binding.vis != ty::Visibility::Public && binding.is_import() // non-`pub` import
+            binding.vis != ty::Visibility::Public && binding.is_import() && // non-`pub` import
+            !binding.is_extern_crate() // not an `extern crate`
         };
 
         if let Some(span) = record_used {
@@ -237,7 +240,7 @@ impl<'a> Resolver<'a> {
                 };
                 let name = match directive.subclass {
                     SingleImport { source, .. } => source,
-                    GlobImport { .. } => unreachable!(),
+                    _ => unreachable!(),
                 };
                 match self.resolve_name_in_module(module, name, ns, true, None) {
                     Failed(_) => {}
@@ -280,13 +283,14 @@ impl<'a> Resolver<'a> {
             // which are not relevant to import resolution.
             GlobImport { is_prelude: true, .. } => {}
             GlobImport { .. } => self.current_module.globs.borrow_mut().push(directive),
+            _ => unreachable!(),
         }
     }
 
     // Given a binding and an import directive that resolves to it,
     // return the corresponding binding defined by the import directive.
-    fn import(&mut self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
-              -> NameBinding<'a> {
+    pub fn import(&mut self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
+                  -> NameBinding<'a> {
         let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) ||
                      !directive.is_glob() && binding.is_extern_crate() { // c.f. `PRIVATE_IN_PUBLIC`
             directive.vis.get()
@@ -529,6 +533,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 self.resolve_glob_import(directive);
                 return Success(());
             }
+            _ => unreachable!(),
         };
 
         let mut indeterminate = false;
@@ -616,6 +621,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 }
                 return Success(());
             }
+            _ => unreachable!(),
         };
 
         for &(ns, result) in &[(ValueNS, value_result), (TypeNS, type_result)] {
@@ -767,6 +773,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         *module.globs.borrow_mut() = Vec::new();
 
         let mut reexports = Vec::new();
+        if module as *const _ == self.graph_root as *const _ {
+            reexports = mem::replace(&mut self.macro_exports, Vec::new());
+        }
+
         for (&(name, ns), resolution) in module.resolutions.borrow().iter() {
             let resolution = resolution.borrow();
             let binding = match resolution.binding {
@@ -831,5 +841,6 @@ fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass) -> St
     match *subclass {
         SingleImport { source, .. } => source.to_string(),
         GlobImport { .. } => "*".to_string(),
+        ExternCrate => "<extern crate>".to_string(),
     }
 }
