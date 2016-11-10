@@ -10,6 +10,7 @@
 
 use {Module, ModuleKind, Resolver};
 use build_reduced_graph::BuildReducedGraphVisitor;
+use resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex};
 use rustc::hir::def::{Def, Export};
 use rustc::hir::map::{self, DefCollector};
@@ -183,6 +184,10 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>) {
         self.macros_at_scope.insert(id, macros);
+    }
+
+    fn resolve_imports(&mut self) {
+        ImportResolver { resolver: self }.resolve_imports()
     }
 
     fn find_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {

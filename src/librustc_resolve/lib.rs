@@ -76,7 +76,7 @@ use std::fmt;
 use std::mem::replace;
 use std::rc::Rc;
 
-use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution};
+use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
 use macros::{InvocationData, LegacyBinding, LegacyScope};
 
 // NB: This module needs to be declared first so diagnostics are
@@ -1335,6 +1335,7 @@ impl<'a> Resolver<'a> {
 
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
+        ImportResolver { resolver: self }.finalize_imports();
         self.current_module = self.graph_root;
         visit::walk_crate(self, krate);
 
