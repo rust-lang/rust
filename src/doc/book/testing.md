@@ -78,7 +78,7 @@ those later. For now, see this line:
 test it_works ... ok
 ```
 
-Note the `it_works`. This comes from the name of our module and function:
+Note the `it_works`. This comes from the name of our function:
 
 ```rust
 fn it_works() {
