@@ -36,6 +36,18 @@ mod tests {
 }
 ```
 
+For now, let's remove the `mod` bit, and focus on just the function:
+
+```rust
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
+#[test]
+fn it_works() {
+}
+```
+
 Note the `#[test]`. This attribute indicates that this is a test function. It
 currently has no body. That's good enough to pass! We can run the tests with
 `cargo test`:
@@ -47,7 +59,7 @@ $ cargo test
      Running target/debug/deps/adder-941f01916ca4a642
 
 running 1 test
-test tests::it_works ... ok
+test it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
@@ -63,10 +75,10 @@ for the test we wrote, and another for documentation tests. We'll talk about
 those later. For now, see this line:
 
 ```text
-test tests::it_works ... ok
+test it_works ... ok
 ```
 
-Note the `tests::it_works`. This comes from the name of our module and function:
+Note the `it_works`. This comes from the name of our module and function:
 
 ```rust
 fn it_works() {
@@ -87,12 +99,9 @@ and any test that does `panic!` fails. Let's make our test fail:
 # // test:
 # // fn main
 #
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert!(false);
-    }
+#[test]
+fn it_works() {
+    assert!(false);
 }
 ```
 
@@ -107,17 +116,17 @@ $ cargo test
      Running target/debug/deps/adder-941f01916ca4a642
 
 running 1 test
-test tests::it_works ... FAILED
+test it_works ... FAILED
 
 failures:
 
----- tests::it_works stdout ----
-        thread 'tests::it_works' panicked at 'assertion failed: false', src/lib.rs:5
+---- it_works stdout ----
+        thread 'it_works' panicked at 'assertion failed: false', src/lib.rs:5
 note: Run with `RUST_BACKTRACE=1` for a backtrace.
 
 
 failures:
-    tests::it_works
+    it_works
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
 
@@ -127,7 +136,7 @@ error: test failed
 Rust indicates that our test failed:
 
 ```text
-test tests::it_works ... FAILED
+test it_works ... FAILED
 ```
 
 And that's reflected in the summary line:
@@ -165,15 +174,11 @@ We can invert our test's failure with another attribute: `should_panic`:
 # // test:
 # // fn main
 #
-#[cfg(test)]
-mod tests {
-    #[test]
-    #[should_panic]
-    fn it_works() {
-        assert!(false);
-    }
+#[test]
+#[should_panic]
+fn it_works() {
+    assert!(false);
 }
-
 ```
 
 This test will now succeed if we `panic!` and fail if we complete. Let's try it:
@@ -185,7 +190,7 @@ $ cargo test
      Running target/debug/deps/adder-941f01916ca4a642
 
 running 1 test
-test tests::it_works ... ok
+test it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
@@ -204,13 +209,10 @@ equality:
 # // test:
 # // fn main
 #
-#[cfg(test)]
-mod tests {
-    #[test]
-    #[should_panic]
-    fn it_works() {
-        assert_eq!("Hello", "world");
-    }
+#[test]
+#[should_panic]
+fn it_works() {
+    assert_eq!("Hello", "world");
 }
 ```
 
@@ -224,7 +226,7 @@ $ cargo test
      Running target/debug/deps/adder-941f01916ca4a642
 
 running 1 test
-test tests::it_works ... ok
+test it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
@@ -246,13 +248,10 @@ of the example above would be:
 # // test:
 # // fn main
 #
-#[cfg(test)]
-mod tests {
-    #[test]
-    #[should_panic(expected = "assertion failed")]
-    fn it_works() {
-        assert_eq!("Hello", "world");
-    }
+#[test]
+#[should_panic(expected = "assertion failed")]
+fn it_works() {
+    assert_eq!("Hello", "world");
 }
 ```
 
@@ -267,14 +266,9 @@ pub fn add_two(a: i32) -> i32 {
     a + 2
 }
 
-#[cfg(test)]
-mod tests {
-    use super::add_two;
-    
-    #[test]
-    fn it_works() {
-        assert_eq!(4, add_two(2));
-    }
+#[test]
+fn it_works() {
+    assert_eq!(4, add_two(2));
 }
 ```
 
@@ -295,20 +289,15 @@ pub fn add_two(a: i32) -> i32 {
     a + 2
 }
 
-#[cfg(test)]
-mod tests {
-    use super::add_two;
-    
-    #[test]
-    fn it_works() {
-        assert_eq!(4, add_two(2));
-    }
+#[test]
+fn it_works() {
+    assert_eq!(4, add_two(2));
+}
 
-    #[test]
-    #[ignore]
-    fn expensive_test() {
-        // code that takes an hour to run
-    }
+#[test]
+#[ignore]
+fn expensive_test() {
+    // code that takes an hour to run
 }
 ```
 
@@ -322,8 +311,8 @@ $ cargo test
      Running target/debug/deps/adder-941f01916ca4a642
 
 running 2 tests
-test tests::expensive_test ... ignored
-test tests::it_works ... ok
+test expensive_test ... ignored
+test it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured
 
@@ -342,7 +331,7 @@ $ cargo test -- --ignored
      Running target/debug/deps/adder-941f01916ca4a642
 
 running 1 test
-test tests::expensive_test ... ok
+test expensive_test ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
