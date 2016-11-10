@@ -147,7 +147,7 @@ pub trait CrateStore<'tcx> {
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
 
     // impl info
-    fn impl_or_trait_items(&self, def_id: DefId) -> Vec<DefId>;
+    fn associated_item_def_ids(&self, def_id: DefId) -> Vec<DefId>;
     fn impl_trait_ref<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                           -> Option<ty::TraitRef<'tcx>>;
     fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity;
@@ -157,8 +157,8 @@ pub trait CrateStore<'tcx> {
 
     // trait/impl-item info
     fn trait_of_item(&self, def_id: DefId) -> Option<DefId>;
-    fn impl_or_trait_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                              -> Option<ty::ImplOrTraitItem<'tcx>>;
+    fn associated_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                           -> Option<ty::AssociatedItem>;
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool;
@@ -311,8 +311,8 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     }
 
     // impl info
-    fn impl_or_trait_items(&self, def_id: DefId) -> Vec<DefId>
-        { bug!("impl_or_trait_items") }
+    fn associated_item_def_ids(&self, def_id: DefId) -> Vec<DefId>
+        { bug!("associated_items") }
     fn impl_trait_ref<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                           -> Option<ty::TraitRef<'tcx>> { bug!("impl_trait_ref") }
     fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity { bug!("impl_polarity") }
@@ -323,8 +323,8 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
 
     // trait/impl-item info
     fn trait_of_item(&self, def_id: DefId) -> Option<DefId> { bug!("trait_of_item") }
-    fn impl_or_trait_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                              -> Option<ty::ImplOrTraitItem<'tcx>> { bug!("impl_or_trait_item") }
+    fn associated_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                           -> Option<ty::AssociatedItem> { bug!("associated_item") }
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool { bug!("is_const_fn") }

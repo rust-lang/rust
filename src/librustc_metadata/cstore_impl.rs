@@ -144,7 +144,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         result
     }
 
-    fn impl_or_trait_items(&self, def_id: DefId) -> Vec<DefId> {
+    fn associated_item_def_ids(&self, def_id: DefId) -> Vec<DefId> {
         self.dep_graph.read(DepNode::MetaData(def_id));
         let mut result = vec![];
         self.get_crate_data(def_id.krate)
@@ -182,11 +182,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(def_id.krate).get_trait_of_item(def_id.index)
     }
 
-    fn impl_or_trait_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                              -> Option<ty::ImplOrTraitItem<'tcx>>
+    fn associated_item<'a>(&self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                           -> Option<ty::AssociatedItem>
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).get_impl_or_trait_item(def.index, tcx)
+        self.get_crate_data(def.krate).get_associated_item(def.index)
     }
 
     fn is_const_fn(&self, did: DefId) -> bool
@@ -427,9 +427,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                 // the logic to do that already exists in `middle`. In order to
                 // reuse that code, it needs to be able to look up the traits for
                 // inlined items.
-                let ty_trait_item = tcx.impl_or_trait_item(def_id).clone();
+                let ty_trait_item = tcx.associated_item(def_id).clone();
                 let trait_item_def_id = tcx.map.local_def_id(trait_item.id);
-                tcx.impl_or_trait_items.borrow_mut()
+                tcx.associated_items.borrow_mut()
                    .insert(trait_item_def_id, ty_trait_item);
             }
             Some(&InlinedItem::ImplItem(_, ref impl_item)) => {

@@ -578,18 +578,14 @@ pub fn get_vtable_methods<'a, 'tcx>(
     supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
         tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
 
-        let trait_item_def_ids = tcx.impl_or_trait_items(trait_ref.def_id());
-        let trait_methods = (0..trait_item_def_ids.len()).filter_map(move |i| {
-            match tcx.impl_or_trait_item(trait_item_def_ids[i]) {
-                ty::MethodTraitItem(m) => Some(m),
-                _ => None
-            }
-        });
+        let trait_methods = tcx.associated_items(trait_ref.def_id())
+            .filter(|item| item.kind == ty::AssociatedKind::Method);
 
         // Now list each method's DefId and Substs (for within its trait).
         // If the method can never be called from this object, produce None.
         trait_methods.map(move |trait_method| {
             debug!("get_vtable_methods: trait_method={:?}", trait_method);
+            let def_id = trait_method.def_id;
 
             // Some methods cannot be called on an object; skip those.
             if !tcx.is_vtable_safe_method(trait_ref.def_id(), &trait_method) {
@@ -599,21 +595,21 @@ pub fn get_vtable_methods<'a, 'tcx>(
 
             // the method may have some early-bound lifetimes, add
             // regions for those
-            let substs = Substs::for_item(tcx, trait_method.def_id,
-                                            |_, _| tcx.mk_region(ty::ReErased),
-                                            |def, _| trait_ref.substs().type_for_def(def));
+            let substs = Substs::for_item(tcx, def_id,
+                                          |_, _| tcx.mk_region(ty::ReErased),
+                                          |def, _| trait_ref.substs().type_for_def(def));
 
             // It's possible that the method relies on where clauses that
             // do not hold for this particular set of type parameters.
             // Note that this method could then never be called, so we
             // do not want to try and trans it, in that case (see #23435).
-            let predicates = trait_method.predicates.instantiate_own(tcx, substs);
+            let predicates = tcx.lookup_predicates(def_id).instantiate_own(tcx, substs);
             if !normalize_and_test_predicates(tcx, predicates.predicates) {
                 debug!("get_vtable_methods: predicates do not hold");
                 return None;
             }
 
-            Some((trait_method.def_id, substs))
+            Some((def_id, substs))
         })
     })
 }

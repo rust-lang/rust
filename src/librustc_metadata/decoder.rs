@@ -36,7 +36,6 @@ use std::borrow::Cow;
 use std::cell::Ref;
 use std::io;
 use std::mem;
-use std::rc::Rc;
 use std::str;
 use std::u32;
 
@@ -792,10 +791,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(id).mir.map(|mir| mir.decode((self, tcx)))
     }
 
-    pub fn get_impl_or_trait_item(&self,
-                                  id: DefIndex,
-                                  tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                  -> Option<ty::ImplOrTraitItem<'tcx>> {
+    pub fn get_associated_item(&self, id: DefIndex) -> Option<ty::AssociatedItem> {
         let item = self.entry(id);
         let parent_and_name = || {
             let def_key = item.def_key.decode(self);
@@ -806,52 +802,43 @@ impl<'a, 'tcx> CrateMetadata {
         Some(match item.kind {
             EntryKind::AssociatedConst(container) => {
                 let (parent, name) = parent_and_name();
-                ty::ConstTraitItem(Rc::new(ty::AssociatedConst {
+                ty::AssociatedItem {
                     name: name,
-                    ty: item.ty.unwrap().decode((self, tcx)),
+                    kind: ty::AssociatedKind::Const,
                     vis: item.visibility,
                     defaultness: container.defaultness(),
+                    has_value: container.has_value(),
                     def_id: self.local_def_id(id),
                     container: container.with_def_id(parent),
-                    has_value: container.has_body(),
-                }))
+                    method_has_self_argument: false
+                }
             }
             EntryKind::Method(data) => {
                 let (parent, name) = parent_and_name();
-                let ity = item.ty.unwrap().decode((self, tcx));
-                let fty = match ity.sty {
-                    ty::TyFnDef(.., fty) => fty,
-                    _ => {
-                        bug!("the type {:?} of the method {:?} is not a function?",
-                             ity,
-                             name)
-                    }
-                };
-
                 let data = data.decode(self);
-                ty::MethodTraitItem(Rc::new(ty::Method {
+                ty::AssociatedItem {
                     name: name,
-                    generics: tcx.lookup_generics(self.local_def_id(id)),
-                    predicates: item.predicates.unwrap().decode((self, tcx)),
-                    fty: fty,
-                    explicit_self: data.explicit_self.decode((self, tcx)),
+                    kind: ty::AssociatedKind::Method,
                     vis: item.visibility,
                     defaultness: data.container.defaultness(),
-                    has_body: data.container.has_body(),
+                    has_value: data.container.has_value(),
                     def_id: self.local_def_id(id),
                     container: data.container.with_def_id(parent),
-                }))
+                    method_has_self_argument: data.has_self
+                }
             }
             EntryKind::AssociatedType(container) => {
                 let (parent, name) = parent_and_name();
-                ty::TypeTraitItem(Rc::new(ty::AssociatedType {
+                ty::AssociatedItem {
                     name: name,
-                    ty: item.ty.map(|ty| ty.decode((self, tcx))),
+                    kind: ty::AssociatedKind::Type,
                     vis: item.visibility,
                     defaultness: container.defaultness(),
+                    has_value: container.has_value(),
                     def_id: self.local_def_id(id),
                     container: container.with_def_id(parent),
-                }))
+                    method_has_self_argument: false
+                }
             }
             _ => return None,
         })
