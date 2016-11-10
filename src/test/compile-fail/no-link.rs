@@ -12,6 +12,7 @@
 
 #[no_link]
 extern crate empty_struct;
+//~^ WARN custom derive crates and `#[no_link]` crates have no effect without `#[macro_use]`
 
 fn main() {
     empty_struct::XEmpty1; //~ ERROR unresolved name

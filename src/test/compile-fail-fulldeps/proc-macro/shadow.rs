@@ -15,6 +15,6 @@
 #[macro_use]
 extern crate derive_a;
 #[macro_use]
-extern crate derive_a; //~ ERROR `derive_a` has already been defined
+extern crate derive_a; //~ ERROR `derive_a` has already been imported
 
 fn main() {}

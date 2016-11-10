@@ -262,6 +262,7 @@ pub struct Context<'a> {
     pub rejected_via_kind: Vec<CrateMismatch>,
     pub rejected_via_version: Vec<CrateMismatch>,
     pub should_match_name: bool,
+    pub is_proc_macro: Option<bool>,
 }
 
 pub struct ArchiveMetadata {
@@ -623,6 +624,12 @@ impl<'a> Context<'a> {
 
     fn crate_matches(&mut self, metadata: &MetadataBlob, libpath: &Path) -> Option<Svh> {
         let root = metadata.get_root();
+        if let Some(is_proc_macro) = self.is_proc_macro {
+            if root.macro_derive_registrar.is_some() != is_proc_macro {
+                return None;
+            }
+        }
+
         let rustc_version = rustc_version();
         if root.rustc_version != rustc_version {
             info!("Rejecting via version: expected {} got {}",

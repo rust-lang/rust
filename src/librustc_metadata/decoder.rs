@@ -691,7 +691,15 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F)
         where F: FnMut(def::Export)
     {
-        let macros_only = self.dep_kind.get() == DepKind::MacrosOnly;
+        if let Some(ref proc_macros) = self.proc_macros {
+            for (id, &(name, _)) in proc_macros.iter().enumerate() {
+                callback(def::Export {
+                    name: name,
+                    def: Def::Macro(DefId { krate: self.cnum, index: DefIndex::new(id), }),
+                })
+            }
+            return
+        }
 
         // Find the item.
         let item = match self.maybe_entry(id) {
@@ -700,6 +708,7 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         // Iterate over all children.
+        let macros_only = self.dep_kind.get() == DepKind::MacrosOnly;
         for child_index in item.children.decode(self) {
             if macros_only {
                 continue

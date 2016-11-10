@@ -9,9 +9,14 @@
 // except according to those terms.
 
 // aux-build:derive-a.rs
+// aux-build:derive-reexport.rs
+
+#![feature(proc_macro)]
 
 #[macro_use]
-extern crate derive_a;
+extern crate derive_reexport;
 
-#[derive(A)] //~ ERROR custom derive macros are experimentally supported
-struct S;
+#[derive(Debug, PartialEq, A, Eq, Copy, Clone)]
+struct A;
+
+fn main() {}

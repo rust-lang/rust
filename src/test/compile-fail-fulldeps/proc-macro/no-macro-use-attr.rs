@@ -10,8 +10,10 @@
 
 // aux-build:derive-a.rs
 
-#[macro_use]
-extern crate derive_a;
+#![feature(rustc_attrs)]
 
-#[derive(A)] //~ ERROR custom derive macros are experimentally supported
-struct S;
+extern crate derive_a;
+//~^ WARN custom derive crates and `#[no_link]` crates have no effect without `#[macro_use]`
+
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful
