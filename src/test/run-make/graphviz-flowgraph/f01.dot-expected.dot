@@ -4,8 +4,10 @@ digraph block {
     N2[label="expr 1"];
     N3[label="stmt 1;"];
     N4[label="block { 1; }"];
+    N5[label="expr { 1; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
-    N4 -> N1;
+    N4 -> N5;
+    N5 -> N1;
 }

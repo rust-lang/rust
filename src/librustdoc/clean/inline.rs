@@ -163,7 +163,7 @@ pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
 pub fn build_external_trait<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       did: DefId) -> clean::Trait {
     let def = tcx.lookup_trait_def(did);
-    let trait_items = tcx.trait_items(did).clean(cx);
+    let trait_items = tcx.associated_items(did).map(|item| item.clean(cx)).collect();
     let predicates = tcx.lookup_predicates(did);
     let generics = (def.generics, &predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
@@ -307,7 +307,6 @@ pub fn build_impls<'a, 'tcx>(cx: &DocContext,
 
     for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {
         if !def_id.is_local() {
-            tcx.populate_implementations_for_primitive_if_necessary(def_id);
             build_impl(cx, tcx, def_id, &mut impls);
         }
     }
@@ -367,21 +366,18 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
     }
 
     let predicates = tcx.lookup_predicates(did);
-    let trait_items = tcx.sess.cstore.impl_or_trait_items(did)
-            .iter()
-            .filter_map(|&did| {
-        match tcx.impl_or_trait_item(did) {
-            ty::ConstTraitItem(ref assoc_const) => {
-                let did = assoc_const.def_id;
-                let type_scheme = tcx.lookup_item_type(did);
-                let default = if assoc_const.has_value {
+    let trait_items = tcx.associated_items(did).filter_map(|item| {
+        match item.kind {
+            ty::AssociatedKind::Const => {
+                let type_scheme = tcx.lookup_item_type(item.def_id);
+                let default = if item.has_value {
                     Some(pprust::expr_to_string(
-                        lookup_const_by_id(tcx, did, None).unwrap().0))
+                        lookup_const_by_id(tcx, item.def_id, None).unwrap().0))
                 } else {
                     None
                 };
                 Some(clean::Item {
-                    name: Some(assoc_const.name.clean(cx)),
+                    name: Some(item.name.clean(cx)),
                     inner: clean::AssociatedConstItem(
                         type_scheme.ty.clean(cx),
                         default,
@@ -389,21 +385,21 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                     source: clean::Span::empty(),
                     attrs: vec![],
                     visibility: None,
-                    stability: tcx.lookup_stability(did).clean(cx),
-                    deprecation: tcx.lookup_deprecation(did).clean(cx),
-                    def_id: did
+                    stability: tcx.lookup_stability(item.def_id).clean(cx),
+                    deprecation: tcx.lookup_deprecation(item.def_id).clean(cx),
+                    def_id: item.def_id
                 })
             }
-            ty::MethodTraitItem(method) => {
-                if method.vis != ty::Visibility::Public && associated_trait.is_none() {
+            ty::AssociatedKind::Method => {
+                if item.vis != ty::Visibility::Public && associated_trait.is_none() {
                     return None
                 }
-                let mut item = method.clean(cx);
-                item.inner = match item.inner.clone() {
+                let mut cleaned = item.clean(cx);
+                cleaned.inner = match cleaned.inner.clone() {
                     clean::TyMethodItem(clean::TyMethod {
                         unsafety, decl, generics, abi
                     }) => {
-                        let constness = if tcx.sess.cstore.is_const_fn(did) {
+                        let constness = if tcx.sess.cstore.is_const_fn(item.def_id) {
                             hir::Constness::Const
                         } else {
                             hir::Constness::NotConst
@@ -419,12 +415,11 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                     }
                     _ => panic!("not a tymethod"),
                 };
-                Some(item)
+                Some(cleaned)
             }
-            ty::TypeTraitItem(ref assoc_ty) => {
-                let did = assoc_ty.def_id;
+            ty::AssociatedKind::Type => {
                 let typedef = clean::Typedef {
-                    type_: assoc_ty.ty.unwrap().clean(cx),
+                    type_: tcx.lookup_item_type(item.def_id).ty.clean(cx),
                     generics: clean::Generics {
                         lifetimes: vec![],
                         type_params: vec![],
@@ -432,14 +427,14 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                     }
                 };
                 Some(clean::Item {
-                    name: Some(assoc_ty.name.clean(cx)),
+                    name: Some(item.name.clean(cx)),
                     inner: clean::TypedefItem(typedef, true),
                     source: clean::Span::empty(),
                     attrs: vec![],
                     visibility: None,
-                    stability: tcx.lookup_stability(did).clean(cx),
-                    deprecation: tcx.lookup_deprecation(did).clean(cx),
-                    def_id: did
+                    stability: tcx.lookup_stability(item.def_id).clean(cx),
+                    deprecation: tcx.lookup_deprecation(item.def_id).clean(cx),
+                    def_id: item.def_id
                 })
             }
         }

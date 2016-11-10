@@ -2863,8 +2863,8 @@ assert_eq!(x, y);
 
 ### Unary operator expressions
 
-Rust defines the following unary operators. They are all written as prefix operators,
-before the expression they apply to.
+Rust defines the following unary operators. With the exception of `?`, they are
+all written as prefix operators, before the expression they apply to.
 
 * `-`
   : Negation. Signed integer types and floating-point types support negation. It
@@ -2893,6 +2893,10 @@ before the expression they apply to.
     If the `&` or `&mut` operators are applied to an rvalue, a
     temporary value is created; the lifetime of this temporary value
     is defined by [syntactic rules](#temporary-lifetimes).
+* `?`
+  : Propagating errors if applied to `Err(_)` and unwrapping if
+    applied to `Ok(_)`. Only works on the `Result<T, E>` type,
+    and written in postfix notation.
 
 ### Binary operator expressions
 

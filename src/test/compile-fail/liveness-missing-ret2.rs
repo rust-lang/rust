@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: not all control paths return a value
-
-fn f() -> isize {
+fn f() -> isize { //~ ERROR mismatched types
     // Make sure typestate doesn't interpret this match expression as
     // the function result
    match true { true => { } _ => {} };

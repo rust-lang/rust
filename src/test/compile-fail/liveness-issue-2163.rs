@@ -13,6 +13,6 @@ use std::vec::Vec;
 fn main() {
     let a: Vec<isize> = Vec::new();
     a.iter().all(|_| -> bool {
-        //~^ ERROR not all control paths return a value
+        //~^ ERROR mismatched types
     });
 }

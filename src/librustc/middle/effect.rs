@@ -94,7 +94,7 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
     fn visit_fn(&mut self, fn_kind: FnKind<'v>, fn_decl: &'v hir::FnDecl,
-                block: &'v hir::Block, span: Span, id: ast::NodeId) {
+                block: &'v hir::Expr, span: Span, id: ast::NodeId) {
 
         let (is_item_fn, is_unsafe_fn) = match fn_kind {
             FnKind::ItemFn(_, _, unsafety, ..) =>

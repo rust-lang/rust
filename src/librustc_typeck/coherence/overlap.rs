@@ -48,25 +48,23 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
             Value,
         }
 
-        fn name_and_namespace<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        def_id: DefId)
-                                        -> (ast::Name, Namespace) {
-            let item = tcx.impl_or_trait_item(def_id);
-            (item.name(),
-             match item {
-                 ty::TypeTraitItem(..) => Namespace::Type,
-                 ty::ConstTraitItem(..) => Namespace::Value,
-                 ty::MethodTraitItem(..) => Namespace::Value,
-             })
-        }
+        let name_and_namespace = |def_id| {
+            let item = self.tcx.associated_item(def_id);
+            (item.name, match item.kind {
+                ty::AssociatedKind::Type => Namespace::Type,
+                ty::AssociatedKind::Const |
+                ty::AssociatedKind::Method => Namespace::Value,
+            })
+        };
 
-        let impl_items = self.tcx.impl_or_trait_item_def_ids.borrow();
+        let impl_items1 = self.tcx.associated_item_def_ids(impl1);
+        let impl_items2 = self.tcx.associated_item_def_ids(impl2);
 
-        for &item1 in &impl_items[&impl1][..] {
-            let (name, namespace) = name_and_namespace(self.tcx, item1);
+        for &item1 in &impl_items1[..] {
+            let (name, namespace) = name_and_namespace(item1);
 
-            for &item2 in &impl_items[&impl2][..] {
-                if (name, namespace) == name_and_namespace(self.tcx, item2) {
+            for &item2 in &impl_items2[..] {
+                if (name, namespace) == name_and_namespace(item2) {
                     let msg = format!("duplicate definitions with name `{}`", name);
                     let node_id = self.tcx.map.as_local_node_id(item1).unwrap();
                     self.tcx.sess.add_lint(lint::builtin::OVERLAPPING_INHERENT_IMPLS,

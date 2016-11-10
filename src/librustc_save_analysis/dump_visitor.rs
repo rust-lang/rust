@@ -32,7 +32,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::map::{Node, NodeItem};
 use rustc::session::Session;
-use rustc::ty::{self, TyCtxt, ImplOrTraitItem, ImplOrTraitItemContainer};
+use rustc::ty::{self, TyCtxt, AssociatedItemContainer};
 
 use std::collections::HashSet;
 use std::collections::hash_map::DefaultHasher;
@@ -402,19 +402,19 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             // with the right name.
             if !self.span.filter_generated(Some(method_data.span), span) {
                 let container =
-                    self.tcx.impl_or_trait_item(self.tcx.map.local_def_id(id)).container();
+                    self.tcx.associated_item(self.tcx.map.local_def_id(id)).container;
                 let mut trait_id;
                 let mut decl_id = None;
                 match container {
-                    ImplOrTraitItemContainer::ImplContainer(id) => {
+                    AssociatedItemContainer::ImplContainer(id) => {
                         trait_id = self.tcx.trait_id_of_impl(id);
 
                         match trait_id {
                             Some(id) => {
-                                for item in &**self.tcx.trait_items(id) {
-                                    if let &ImplOrTraitItem::MethodTraitItem(ref m) = item {
-                                        if m.name == name {
-                                            decl_id = Some(m.def_id);
+                                for item in self.tcx.associated_items(id) {
+                                    if item.kind == ty::AssociatedKind::Method {
+                                        if item.name == name {
+                                            decl_id = Some(item.def_id);
                                             break;
                                         }
                                     }
@@ -429,7 +429,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             }
                         }
                     }
-                    ImplOrTraitItemContainer::TraitContainer(id) => {
+                    AssociatedItemContainer::TraitContainer(id) => {
                         trait_id = Some(id);
                     }
                 }
@@ -916,11 +916,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         // Modules or types in the path prefix.
         match self.tcx.expect_def(id) {
             Def::Method(did) => {
-                let ti = self.tcx.impl_or_trait_item(did);
-                if let ty::MethodTraitItem(m) = ti {
-                    if m.explicit_self == ty::ExplicitSelfCategory::Static {
-                        self.write_sub_path_trait_truncated(path);
-                    }
+                let ti = self.tcx.associated_item(did);
+                if ti.kind == ty::AssociatedKind::Method && ti.method_has_self_argument {
+                    self.write_sub_path_trait_truncated(path);
                 }
             }
             Def::Fn(..) |
@@ -1414,7 +1412,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                 }
 
                 // walk the body
-                self.nest(ex.id, |v| v.visit_block(&body));
+                self.nest(ex.id, |v| v.visit_expr(body));
             }
             ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) |
             ast::ExprKind::WhileLet(ref pattern, ref subexpression, ref block, _) => {

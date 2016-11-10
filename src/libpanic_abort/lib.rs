@@ -53,7 +53,7 @@ pub unsafe extern fn __rust_maybe_catch_panic(f: fn(*mut u8),
 // now hopefully.
 #[no_mangle]
 pub unsafe extern fn __rust_start_panic(_data: usize, _vtable: usize) -> u32 {
-    return abort();
+    abort();
 
     #[cfg(unix)]
     unsafe fn abort() -> ! {

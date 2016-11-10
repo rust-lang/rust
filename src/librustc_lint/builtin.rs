@@ -222,7 +222,7 @@ impl LateLintPass for UnsafeCode {
                 cx: &LateContext,
                 fk: FnKind,
                 _: &hir::FnDecl,
-                _: &hir::Block,
+                _: &hir::Expr,
                 span: Span,
                 _: ast::NodeId) {
         match fk {
@@ -812,13 +812,13 @@ impl LateLintPass for UnconditionalRecursion {
                 cx: &LateContext,
                 fn_kind: FnKind,
                 _: &hir::FnDecl,
-                blk: &hir::Block,
+                blk: &hir::Expr,
                 sp: Span,
                 id: ast::NodeId) {
         let method = match fn_kind {
             FnKind::ItemFn(..) => None,
             FnKind::Method(..) => {
-                cx.tcx.impl_or_trait_item(cx.tcx.map.local_def_id(id)).as_opt_method()
+                Some(cx.tcx.associated_item(cx.tcx.map.local_def_id(id)))
             }
             // closures can't recur, so they don't matter.
             FnKind::Closure(_) => return,
@@ -937,7 +937,7 @@ impl LateLintPass for UnconditionalRecursion {
 
         // Check if the expression `id` performs a call to `method`.
         fn expr_refers_to_this_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                method: &ty::Method,
+                                                method: &ty::AssociatedItem,
                                                 id: ast::NodeId)
                                                 -> bool {
             use rustc::ty::adjustment::*;
@@ -986,14 +986,14 @@ impl LateLintPass for UnconditionalRecursion {
         // Check if the method call to the method with the ID `callee_id`
         // and instantiated with `callee_substs` refers to method `method`.
         fn method_call_refers_to_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                  method: &ty::Method,
+                                                  method: &ty::AssociatedItem,
                                                   callee_id: DefId,
                                                   callee_substs: &Substs<'tcx>,
                                                   expr_id: ast::NodeId)
                                                   -> bool {
-            let callee_item = tcx.impl_or_trait_item(callee_id);
+            let callee_item = tcx.associated_item(callee_id);
 
-            match callee_item.container() {
+            match callee_item.container {
                 // This is an inherent method, so the `def_id` refers
                 // directly to the method definition.
                 ty::ImplContainer(_) => callee_id == method.def_id,
@@ -1034,7 +1034,7 @@ impl LateLintPass for UnconditionalRecursion {
                                 let container = ty::ImplContainer(vtable_impl.impl_def_id);
                                 // It matches if it comes from the same impl,
                                 // and has the same method name.
-                                container == method.container && callee_item.name() == method.name
+                                container == method.container && callee_item.name == method.name
                             }
 
                             // There's no way to know if this call is

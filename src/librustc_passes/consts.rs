@@ -134,7 +134,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     fn fn_like(&mut self,
                fk: FnKind,
                fd: &hir::FnDecl,
-               b: &hir::Block,
+               b: &hir::Expr,
                s: Span,
                fn_id: ast::NodeId)
                -> ConstQualif {
@@ -265,7 +265,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fk: FnKind<'v>,
                 fd: &'v hir::FnDecl,
-                b: &'v hir::Block,
+                b: &'v hir::Expr,
                 s: Span,
                 fn_id: ast::NodeId) {
         self.fn_like(fk, fd, b, s, fn_id);
@@ -542,7 +542,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                     v.handle_const_fn_call(e, did, node_ty)
                 }
                 Some(Def::Method(did)) => {
-                    match v.tcx.impl_or_trait_item(did).container() {
+                    match v.tcx.associated_item(did).container {
                         ty::ImplContainer(_) => {
                             v.handle_const_fn_call(e, did, node_ty)
                         }
@@ -557,7 +557,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         }
         hir::ExprMethodCall(..) => {
             let method = v.tcx.tables().method_map[&method_call];
-            let is_const = match v.tcx.impl_or_trait_item(method.def_id).container() {
+            let is_const = match v.tcx.associated_item(method.def_id).container {
                 ty::ImplContainer(_) => v.handle_const_fn_call(e, method.def_id, node_ty),
                 ty::TraitContainer(_) => false
             };

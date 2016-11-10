@@ -52,6 +52,7 @@ digraph block {
     N50[label="block { y -= 1; while z > 0 { z -= 1; } if x > 10 { return; \"unreachable\"; } }"];
     N51[label="block {\l    x -= 1;\l    while y > 0 {\l        y -= 1;\l        while z > 0 { z -= 1; }\l        if x > 10 { return; \"unreachable\"; }\l    }\l}\l"];
     N52[label="block {\l    let mut x = 23;\l    let mut y = 23;\l    let mut z = 23;\l    while x > 0 {\l        x -= 1;\l        while y > 0 {\l            y -= 1;\l            while z > 0 { z -= 1; }\l            if x > 10 { return; \"unreachable\"; }\l        }\l    }\l}\l"];
+    N53[label="expr {\l    let mut x = 23;\l    let mut y = 23;\l    let mut z = 23;\l    while x > 0 {\l        x -= 1;\l        while y > 0 {\l            y -= 1;\l            while z > 0 { z -= 1; }\l            if x > 10 { return; \"unreachable\"; }\l        }\l    }\l}\l"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -107,5 +108,6 @@ digraph block {
     N24 -> N51;
     N51 -> N11;
     N15 -> N52;
-    N52 -> N1;
+    N52 -> N53;
+    N53 -> N1;
 }

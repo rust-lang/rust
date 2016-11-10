@@ -1201,7 +1201,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::Closure(capture_clause, decl, body, span) => {
                 ExprKind::Closure(capture_clause,
                                   folder.fold_fn_decl(decl),
-                                  folder.fold_block(body),
+                                  folder.fold_expr(body),
                                   folder.new_span(span))
             }
             ExprKind::Block(blk) => ExprKind::Block(folder.fold_block(blk)),

@@ -138,7 +138,7 @@ pub trait Visitor<'v> : Sized {
     fn visit_where_predicate(&mut self, predicate: &'v WherePredicate) {
         walk_where_predicate(self, predicate)
     }
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: &'v Block, s: Span, id: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: &'v Expr, s: Span, id: NodeId) {
         walk_fn(self, fk, fd, b, s, id)
     }
     fn visit_trait_item(&mut self, ti: &'v TraitItem) {
@@ -635,13 +635,13 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'
 pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
                                    function_kind: FnKind<'v>,
                                    function_declaration: &'v FnDecl,
-                                   function_body: &'v Block,
+                                   function_body: &'v Expr,
                                    _span: Span,
                                    id: NodeId) {
     visitor.visit_id(id);
     walk_fn_decl(visitor, function_declaration);
     walk_fn_kind(visitor, function_kind);
-    visitor.visit_block(function_body)
+    visitor.visit_expr(function_body)
 }
 
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem) {
@@ -925,7 +925,7 @@ impl<'v> Visitor<'v> for IdRangeComputingVisitor {
 /// Computes the id range for a single fn body, ignoring nested items.
 pub fn compute_id_range_for_fn_body(fk: FnKind,
                                     decl: &FnDecl,
-                                    body: &Block,
+                                    body: &Expr,
                                     sp: Span,
                                     id: NodeId)
                                     -> IdRange {
