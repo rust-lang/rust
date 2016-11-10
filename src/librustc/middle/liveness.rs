@@ -112,7 +112,7 @@ use self::VarKind::*;
 use dep_graph::DepNode;
 use hir::def::*;
 use hir::pat_util;
-use ty::{self, Ty, TyCtxt, ParameterEnvironment};
+use ty::{self, TyCtxt, ParameterEnvironment};
 use traits::{self, Reveal};
 use ty::subst::Subst;
 use lint;
@@ -1440,28 +1440,30 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn fn_ret(&self, id: NodeId) -> ty::Binder<Ty<'tcx>> {
-        let fn_ty = self.ir.tcx.tables().node_id_to_type(id);
-        match fn_ty.sty {
-            ty::TyClosure(closure_def_id, substs) =>
-                self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
-            _ => fn_ty.fn_ret()
-        }
-    }
-
     fn check_ret(&self,
                  id: NodeId,
                  sp: Span,
-                 _fk: FnKind,
+                 fk: FnKind,
                  entry_ln: LiveNode,
                  body: &hir::Expr)
     {
+        let fn_ty = if let FnKind::Closure(_) = fk {
+            self.ir.tcx.tables().node_id_to_type(id)
+        } else {
+            self.ir.tcx.item_type(self.ir.tcx.map.local_def_id(id))
+        };
+        let fn_ret = match fn_ty.sty {
+            ty::TyClosure(closure_def_id, substs) =>
+                self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
+            _ => fn_ty.fn_ret()
+        };
+
         // within the fn body, late-bound regions are liberated
         // and must outlive the *call-site* of the function.
         let fn_ret =
             self.ir.tcx.liberate_late_bound_regions(
                 self.ir.tcx.region_maps.call_site_extent(id, body.id),
-                &self.fn_ret(id));
+                &fn_ret);
 
         if !fn_ret.is_never() && self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             let param_env = ParameterEnvironment::for_item(self.ir.tcx, id);

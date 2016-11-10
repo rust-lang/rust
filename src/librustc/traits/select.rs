@@ -1200,7 +1200,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 def_id={:?}, substs={:?}",
                def_id, substs);
 
-        let item_predicates = self.tcx().lookup_predicates(def_id);
+        let item_predicates = self.tcx().item_predicates(def_id);
         let bounds = item_predicates.instantiate(self.tcx(), substs);
         debug!("match_projection_obligation_against_definition_bounds: \
                 bounds={:?}",
@@ -2884,7 +2884,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // obligation will normalize to `<$0 as Iterator>::Item = $1` and
         // `$1: Copy`, so we must ensure the obligations are emitted in
         // that order.
-        let predicates = tcx.lookup_predicates(def_id);
+        let predicates = tcx.item_predicates(def_id);
         assert_eq!(predicates.parent, None);
         let predicates = predicates.predicates.iter().flat_map(|predicate| {
             let predicate = normalize_with_depth(self, cause.clone(), recursion_depth,

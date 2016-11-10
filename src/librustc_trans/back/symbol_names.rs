@@ -231,7 +231,7 @@ impl<'a, 'tcx> Instance<'tcx> {
             match key.disambiguated_data.data {
                 DefPathData::TypeNs(_) |
                 DefPathData::ValueNs(_) => {
-                    instance_ty = scx.tcx().lookup_item_type(ty_def_id);
+                    instance_ty = scx.tcx().item_type(ty_def_id);
                     break;
                 }
                 _ => {
@@ -248,7 +248,7 @@ impl<'a, 'tcx> Instance<'tcx> {
 
         // Erase regions because they may not be deterministic when hashed
         // and should not matter anyhow.
-        let instance_ty = scx.tcx().erase_regions(&instance_ty.ty);
+        let instance_ty = scx.tcx().erase_regions(&instance_ty);
 
         let hash = get_symbol_hash(scx, &def_path, instance_ty, Some(substs));
 

@@ -603,7 +603,7 @@ pub fn get_vtable_methods<'a, 'tcx>(
             // do not hold for this particular set of type parameters.
             // Note that this method could then never be called, so we
             // do not want to try and trans it, in that case (see #23435).
-            let predicates = tcx.lookup_predicates(def_id).instantiate_own(tcx, substs);
+            let predicates = tcx.item_predicates(def_id).instantiate_own(tcx, substs);
             if !normalize_and_test_predicates(tcx, predicates.predicates) {
                 debug!("get_vtable_methods: predicates do not hold");
                 return None;
