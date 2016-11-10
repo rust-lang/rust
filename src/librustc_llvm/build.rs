@@ -136,7 +136,7 @@ fn main() {
     let mut parts = version_output.split('.');
     if let (Some(major), Some(minor)) = (parts.next().and_then(|s| s.parse::<u32>().ok()),
                                          parts.next().and_then(|s| s.parse::<u32>().ok())) {
-        if major > 3 || (major == 3 && minor >= 8) {
+        if major > 3 || (major == 3 && minor >= 9) {
             cmd.arg("--link-static");
         }
     }
