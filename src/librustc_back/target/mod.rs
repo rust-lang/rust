@@ -359,6 +359,10 @@ pub struct TargetOptions {
     // will 'just work'.
     pub obj_is_bitcode: bool,
 
+    // LLVM can't produce object files for MSP430. Instead, we'll make LLVM emit
+    // assembly and then use `msp430-as` to turn that assembly into an object file
+    pub obj_needs_as: bool,
+
     /// Don't use this field; instead use the `.max_atomic_width()` method.
     pub max_atomic_width: Option<u64>,
 
@@ -416,6 +420,7 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
+            obj_needs_as: false,
             max_atomic_width: None,
             panic_strategy: PanicStrategy::Unwind,
             abi_blacklist: vec![],
@@ -576,6 +581,7 @@ impl Target {
         key!(exe_allocation_crate);
         key!(has_elf_tls, bool);
         key!(obj_is_bitcode, bool);
+        key!(obj_needs_as, bool);
         key!(max_atomic_width, Option<u64>);
         try!(key!(panic_strategy, PanicStrategy));
 
@@ -735,6 +741,7 @@ impl ToJson for Target {
         target_option_val!(exe_allocation_crate);
         target_option_val!(has_elf_tls);
         target_option_val!(obj_is_bitcode);
+        target_option_val!(obj_needs_as);
         target_option_val!(max_atomic_width);
         target_option_val!(panic_strategy);
 

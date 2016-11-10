@@ -26,6 +26,9 @@ use errors::emitter::Emitter;
 use syntax_pos::MultiSpan;
 use context::{is_pie_binary, get_reloc_model};
 
+use std::ascii;
+use std::char;
+use std::process::Command;
 use std::ffi::{CStr, CString};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -262,6 +265,9 @@ pub struct ModuleConfig {
     // make the object file bitcode. Provides easy compatibility with
     // emscripten's ecc compiler, when used as the linker.
     obj_is_bitcode: bool,
+    // LLVM can't produce object files for MSP430. Instead, we'll make LLVM emit
+    // assembly and then use `msp430-as` to turn that assembly into an object file
+    obj_needs_as: bool,
 }
 
 unsafe impl Send for ModuleConfig { }
@@ -281,6 +287,7 @@ impl ModuleConfig {
             emit_asm: false,
             emit_obj: false,
             obj_is_bitcode: false,
+            obj_needs_as: false,
 
             no_verify: false,
             no_prepopulate_passes: false,
@@ -300,6 +307,7 @@ impl ModuleConfig {
         self.time_passes = sess.time_passes();
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode;
+        self.obj_needs_as = sess.target.target.options.obj_needs_as;
 
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3. Otherwise configure other optimization aspects
@@ -557,10 +565,13 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     // machine code, instead copy the .o file from the .bc
     let write_bc = config.emit_bc || config.obj_is_bitcode;
     let rm_bc = !config.emit_bc && config.obj_is_bitcode;
+    let write_asm = config.emit_asm || config.obj_needs_as;
+    let rm_asm = !config.emit_obj && config.obj_needs_as;
     let write_obj = config.emit_obj && !config.obj_is_bitcode;
     let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode;
 
     let bc_out = output_names.temp_path(OutputType::Bitcode, module_name);
+    let asm_out = output_names.temp_path(OutputType::Assembly, module_name);
     let obj_out = output_names.temp_path(OutputType::Object, module_name);
 
     if write_bc {
@@ -578,27 +589,25 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             })
         }
 
-        if config.emit_asm {
-            let path = output_names.temp_path(OutputType::Assembly, module_name);
-
+        if write_asm {
             // We can't use the same module for asm and binary output, because that triggers
             // various errors like invalid IR or broken binaries, so we might have to clone the
             // module to produce the asm output
-            let llmod = if config.emit_obj {
+            let llmod = if config.emit_obj && !config.obj_needs_as {
                 llvm::LLVMCloneModule(llmod)
             } else {
                 llmod
             };
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path,
+                write_output_file(cgcx.handler, tm, cpm, llmod, &asm_out,
                                   llvm::FileType::AssemblyFile);
             });
-            if config.emit_obj {
+            if config.emit_obj && !config.obj_needs_as {
                 llvm::LLVMDisposeModule(llmod);
             }
         }
 
-        if write_obj {
+        if write_obj && !config.obj_needs_as {
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(cgcx.handler, tm, cpm, llmod, &obj_out,
                                   llvm::FileType::ObjectFile);
@@ -613,10 +622,70 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         }
     }
 
+    if config.obj_needs_as {
+        // XXX most of the logic here has been copied from the link_natively
+        // function (src/librustc_trans/back/link.rs)
+        // TODO don't hardcode, maybe expose as a `as` field in the target
+        // specification
+        // TODO how to properly access `sess` here?
+        let mut cmd = Command::new("msp430-as");
+        cmd.arg("-o");
+        cmd.arg(obj_out);
+        cmd.arg(&asm_out);
+
+        info!("{:?}", &cmd);
+        // let prog = time(sess.time_passes(), "running assembler",
+        //                 || cmd.output());
+        let prog = cmd.output();
+        match prog {
+            Ok(prog) => {
+                fn escape_string(s: &[u8]) -> String {
+                    str::from_utf8(s).map(|s| s.to_owned())
+                        .unwrap_or_else(|_| {
+                            let mut x = "Non-UTF-8 output: ".to_string();
+                            x.extend(s.iter()
+                                     .flat_map(|&b| ascii::escape_default(b))
+                                     .map(|b| char::from_u32(b as u32).unwrap()));
+                            x
+                        })
+                }
+                if !prog.status.success() {
+                    let mut output = prog.stderr.clone();
+                    output.extend_from_slice(&prog.stdout);
+                    // sess.struct_err(&format!("assembling with `msp430-as` failed: {}",
+                    //                          prog.status))
+                    //     .note(&format!("{:?}", &cmd))
+                    //     .note(&escape_string(&output[..]))
+                    //     .emit();
+                    // sess.abort_if_errors();
+                }
+                info!("linker stderr:\n{}", escape_string(&prog.stderr[..]));
+                info!("linker stdout:\n{}", escape_string(&prog.stdout[..]));
+            },
+            Err(_) => {
+                // sess.struct_err(&format!("could not exec the assembler `msp430-as`: {}", e))
+                //     .note(&format!("{:?}", &cmd))
+                //     .emit();
+                // if e.kind() == io::ErrorKind::NotFound {
+                //     sess.note_without_error("MSP430 targets depend on the MSP430 assembler \
+                //                              but `msp430-as` was not found");
+                // }
+                // sess.abort_if_errors();
+            },
+        }
+    }
+
     if rm_bc {
         debug!("removing_bitcode {:?}", bc_out);
         if let Err(e) = fs::remove_file(&bc_out) {
             cgcx.handler.err(&format!("failed to remove bitcode: {}", e));
+        }
+    }
+
+    if rm_asm {
+        debug!("removing_assembly {:?}", bc_out);
+        if let Err(e) = fs::remove_file(&asm_out) {
+            cgcx.handler.err(&format!("failed to remove assembly: {}", e));
         }
     }
 
