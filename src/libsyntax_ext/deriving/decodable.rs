@@ -133,7 +133,7 @@ fn decodable_substructure(cx: &mut ExtCtxt,
                                 cx.ident_of("read_struct"),
                                 vec![cx.expr_str(trait_span, substr.type_ident.name.as_str()),
                                      cx.expr_usize(trait_span, nfields),
-                                     cx.lambda_expr_1(trait_span, result, blkarg)])
+                                     cx.lambda1(trait_span, result, blkarg)])
         }
         StaticEnum(_, ref fields) => {
             let variant = cx.ident_of("i");
@@ -165,7 +165,7 @@ fn decodable_substructure(cx: &mut ExtCtxt,
             let result =
                 cx.expr_ok(trait_span,
                            cx.expr_match(trait_span, cx.expr_ident(trait_span, variant), arms));
-            let lambda = cx.lambda_expr(trait_span, vec![blkarg, variant], result);
+            let lambda = cx.lambda(trait_span, vec![blkarg, variant], result);
             let variant_vec = cx.expr_vec(trait_span, variants);
             let variant_vec = cx.expr_addr_of(trait_span, variant_vec);
             let result = cx.expr_method_call(trait_span,
@@ -176,7 +176,7 @@ fn decodable_substructure(cx: &mut ExtCtxt,
                                 decoder,
                                 cx.ident_of("read_enum"),
                                 vec![cx.expr_str(trait_span, substr.type_ident.name.as_str()),
-                                     cx.lambda_expr_1(trait_span, result, blkarg)])
+                                     cx.lambda1(trait_span, result, blkarg)])
         }
         _ => cx.bug("expected StaticEnum or StaticStruct in derive(Decodable)"),
     };

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn _converge() -> ! { //~ ERROR computation may converge
-    42
+fn _converge() -> ! {
+    42 //~ ERROR mismatched types
 }
 
 fn main() { }

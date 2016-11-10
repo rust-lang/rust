@@ -904,7 +904,7 @@ pub enum Expr_ {
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
-    ExprClosure(CaptureClause, P<FnDecl>, P<Block>, Span),
+    ExprClosure(CaptureClause, P<FnDecl>, P<Expr>, Span),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
@@ -1035,7 +1035,7 @@ pub enum TraitItem_ {
     /// must contain a value)
     ConstTraitItem(P<Ty>, Option<P<Expr>>),
     /// A method with an optional body
-    MethodTraitItem(MethodSig, Option<P<Block>>),
+    MethodTraitItem(MethodSig, Option<P<Expr>>),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type
     TypeTraitItem(TyParamBounds, Option<P<Ty>>),
@@ -1060,7 +1060,7 @@ pub enum ImplItemKind {
     /// of the expression
     Const(P<Ty>, P<Expr>),
     /// A method implementation with the given signature and body
-    Method(MethodSig, P<Block>),
+    Method(MethodSig, P<Expr>),
     /// An associated type
     Type(P<Ty>),
 }
@@ -1501,7 +1501,7 @@ pub enum Item_ {
     /// A `const` item
     ItemConst(P<Ty>, P<Expr>),
     /// A function declaration
-    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Block>),
+    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Expr>),
     /// A module
     ItemMod(Mod),
     /// An external module

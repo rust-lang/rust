@@ -13,6 +13,6 @@ pub trait Tr<'a> {
 }
 
 pub fn f<'a, T: Tr<'a>>() -> <T as Tr<'a>>::Out {}
-//~^ ERROR not all control paths return a value
+//~^ ERROR mismatched types
 
 pub fn main() {}

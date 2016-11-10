@@ -198,14 +198,20 @@ fn _11() {
                 };
     let _ = #[attr] || #[attr] ();
     let _ = #[attr] move || #[attr] ();
-    let _ = #[attr] || {
-        #![attr]
-        #[attr]
-        () };
-    let _ = #[attr] move || {
-        #![attr]
-        #[attr]
-        () };
+    let _ =
+        #[attr] ||
+                    {
+                        #![attr]
+                        #[attr]
+                        ()
+                    };
+    let _ =
+        #[attr] move ||
+                    {
+                        #![attr]
+                        #[attr]
+                        ()
+                    };
     let _ =
         #[attr] {
                     #![attr]

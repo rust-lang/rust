@@ -65,7 +65,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for OuterVisitor<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Block, s: Span, id: ast::NodeId) {
+                b: &'v hir::Expr, s: Span, id: ast::NodeId) {
         if let FnKind::Closure(..) = fk {
             span_bug!(s, "check_match: closure outside of function")
         }
@@ -113,7 +113,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchVisitor<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Block, s: Span, n: ast::NodeId) {
+                b: &'v hir::Expr, s: Span, n: ast::NodeId) {
         intravisit::walk_fn(self, fk, fd, b, s, n);
 
         for input in &fd.inputs {

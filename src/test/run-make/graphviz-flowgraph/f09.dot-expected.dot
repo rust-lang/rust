@@ -24,6 +24,7 @@ digraph block {
     N22[label="expr { _y = 94 + 95; }"];
     N23[label="expr if x > 92 { _y = 93; } else { _y = 94 + 95; }"];
     N24[label="block { let x = 91; let _y; if x > 92 { _y = 93; } else { _y = 94 + 95; } }"];
+    N25[label="expr { let x = 91; let _y; if x > 92 { _y = 93; } else { _y = 94 + 95; } }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -48,5 +49,6 @@ digraph block {
     N14 -> N23;
     N22 -> N23;
     N23 -> N24;
-    N24 -> N1;
+    N24 -> N25;
+    N25 -> N1;
 }

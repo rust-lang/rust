@@ -15,6 +15,7 @@ digraph block {
     N13[label="block { return; \"unreachable\"; }"];
     N14[label="expr if x > 1 { return; \"unreachable\"; }"];
     N15[label="block { let x = 14; if x > 1 { return; \"unreachable\"; } }"];
+    N16[label="expr { let x = 14; if x > 1 { return; \"unreachable\"; } }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -30,5 +31,6 @@ digraph block {
     N7 -> N14;
     N13 -> N14;
     N14 -> N15;
-    N15 -> N1;
+    N15 -> N16;
+    N16 -> N1;
 }

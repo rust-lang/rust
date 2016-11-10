@@ -838,7 +838,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: hir_visit::FnKind<'v>, decl: &'v hir::FnDecl,
-                body: &'v hir::Block, span: Span, id: ast::NodeId) {
+                body: &'v hir::Expr, span: Span, id: ast::NodeId) {
         run_lints!(self, check_fn, late_passes, fk, decl, body, span, id);
         hir_visit::walk_fn(self, fk, decl, body, span, id);
         run_lints!(self, check_fn_post, late_passes, fk, decl, body, span, id);
@@ -994,10 +994,10 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
     }
 
     fn visit_fn(&mut self, fk: ast_visit::FnKind, decl: &ast::FnDecl,
-                body: &ast::Block, span: Span, id: ast::NodeId) {
-        run_lints!(self, check_fn, early_passes, fk, decl, body, span, id);
-        ast_visit::walk_fn(self, fk, decl, body, span);
-        run_lints!(self, check_fn_post, early_passes, fk, decl, body, span, id);
+                span: Span, id: ast::NodeId) {
+        run_lints!(self, check_fn, early_passes, fk, decl, span, id);
+        ast_visit::walk_fn(self, fk, decl, span);
+        run_lints!(self, check_fn_post, early_passes, fk, decl, span, id);
     }
 
     fn visit_variant_data(&mut self,

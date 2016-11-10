@@ -24,7 +24,7 @@ fn diverge_first() {
          get_u8()); //~ ERROR unreachable expression
 }
 fn diverge_second() {
-    call( //~ ERROR unreachable call
+    call( //~ ERROR unreachable expression
         get_u8(),
         diverge());
 }

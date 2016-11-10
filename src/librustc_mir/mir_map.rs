@@ -209,7 +209,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fk: FnKind<'tcx>,
                 decl: &'tcx hir::FnDecl,
-                body: &'tcx hir::Block,
+                body: &'tcx hir::Expr,
                 span: Span,
                 id: ast::NodeId) {
         // fetch the fully liberated fn signature (that is, all bound

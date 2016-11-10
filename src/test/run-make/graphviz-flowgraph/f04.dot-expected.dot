@@ -5,9 +5,11 @@ digraph block {
     N3[label="local _x"];
     N4[label="stmt let _x = 4;"];
     N5[label="block { let _x = 4; }"];
+    N6[label="expr { let _x = 4; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
     N4 -> N5;
-    N5 -> N1;
+    N5 -> N6;
+    N6 -> N1;
 }

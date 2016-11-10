@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: not all control paths return a value
-
 fn god_exists(a: isize) -> bool { return god_exists(a); }
 
 fn f(a: isize) -> isize { if god_exists(a) { return 5; }; }
+//~^ ERROR mismatched types
 
 fn main() { f(12); }

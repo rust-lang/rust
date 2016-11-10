@@ -1017,10 +1017,10 @@ pub enum ExprKind {
     Loop(P<Block>, Option<SpannedIdent>),
     /// A `match` block.
     Match(P<Expr>, Vec<Arm>),
-    /// A closure (for example, `move |a, b, c| {a + b + c}`)
+    /// A closure (for example, `move |a, b, c| a + b + c`)
     ///
     /// The final span is the span of the argument block `|...|`
-    Closure(CaptureBy, P<FnDecl>, P<Block>, Span),
+    Closure(CaptureBy, P<FnDecl>, P<Expr>, Span),
     /// A block (`{ ... }`)
     Block(P<Block>),
 

@@ -566,7 +566,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
                     self.warn_dead_code(impl_item.id, impl_item.span,
                                         impl_item.name, "method");
                 }
-                intravisit::walk_block(self, body)
+                intravisit::walk_expr(self, body)
             }
             hir::ImplItemKind::Type(..) => {}
         }
@@ -575,11 +575,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     // Overwrite so that we don't warn the trait item itself.
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
         match trait_item.node {
-            hir::ConstTraitItem(_, Some(ref expr)) => {
-                intravisit::walk_expr(self, expr)
-            }
+            hir::ConstTraitItem(_, Some(ref body))|
             hir::MethodTraitItem(_, Some(ref body)) => {
-                intravisit::walk_block(self, body)
+                intravisit::walk_expr(self, body)
             }
             hir::ConstTraitItem(_, None) |
             hir::MethodTraitItem(_, None) |

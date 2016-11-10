@@ -250,7 +250,7 @@ impl LateLintPass for NonSnakeCase {
                 cx: &LateContext,
                 fk: FnKind,
                 _: &hir::FnDecl,
-                _: &hir::Block,
+                _: &hir::Expr,
                 span: Span,
                 id: ast::NodeId) {
         match fk {
