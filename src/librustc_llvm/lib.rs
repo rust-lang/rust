@@ -29,6 +29,7 @@
 #![feature(staged_api)]
 #![feature(linked_from)]
 #![feature(concat_idents)]
+#![cfg_attr(not(stage0), feature(rustc_private))]
 
 extern crate libc;
 #[macro_use]

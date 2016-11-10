@@ -830,6 +830,34 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             },
         }
     }
+
+    /// Serialize the text of exported macros
+    fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef) -> Entry<'tcx> {
+        let def_id = self.tcx.map.local_def_id(macro_def.id);
+        let macro_def = MacroDef {
+            name: macro_def.name,
+            attrs: macro_def.attrs.to_vec(),
+            span: macro_def.span,
+            body: ::syntax::print::pprust::tts_to_string(&macro_def.body)
+        };
+        Entry {
+            kind: EntryKind::MacroDef(self.lazy(&macro_def)),
+            visibility: ty::Visibility::Public,
+            def_key: self.encode_def_key(def_id),
+
+            attributes: LazySeq::empty(),
+            children: LazySeq::empty(),
+            stability: None,
+            deprecation: None,
+            ty: None,
+            inherent_impls: LazySeq::empty(),
+            variances: LazySeq::empty(),
+            generics: None,
+            predicates: None,
+            ast: None,
+            mir: None,
+        }
+    }
 }
 
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
@@ -964,6 +992,10 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
         intravisit::walk_ty(self, ty);
         self.index.encode_info_for_ty(ty);
     }
+    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef) {
+        let def_id = self.index.tcx.map.local_def_id(macro_def.id);
+        self.index.record(def_id, EncodeContext::encode_info_for_macro_def, macro_def);
+    }
 }
 
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
@@ -1043,6 +1075,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                      FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &hir::Public)));
         let mut visitor = EncodeVisitor { index: index };
         krate.visit_all_items(&mut visitor);
+        for macro_def in &krate.exported_macros {
+            visitor.visit_macro_def(macro_def);
+        }
         visitor.index.into_items()
     }
 
@@ -1080,7 +1115,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             CrateDep {
                 name: syntax::parse::token::intern(dep.name()),
                 hash: dep.hash(),
-                explicitly_linked: dep.explicitly_linked.get(),
+                kind: dep.dep_kind.get(),
             }
         }))
     }
@@ -1121,19 +1156,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 !filemap.lines.borrow().is_empty() && !filemap.is_imported()
             })
             .map(|filemap| &**filemap))
-    }
-
-    /// Serialize the text of the exported macros
-    fn encode_macro_defs(&mut self) -> LazySeq<MacroDef> {
-        let tcx = self.tcx;
-        self.lazy_seq(tcx.map.krate().exported_macros.iter().map(|def| {
-            MacroDef {
-                name: def.name,
-                attrs: def.attrs.to_vec(),
-                span: def.span,
-                body: ::syntax::print::pprust::tts_to_string(&def.body),
-            }
-        }))
     }
 }
 
@@ -1228,11 +1250,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let codemap = self.encode_codemap();
         let codemap_bytes = self.position() - i;
 
-        // Encode macro definitions
-        i = self.position();
-        let macro_defs = self.encode_macro_defs();
-        let macro_defs_bytes = self.position() - i;
-
         // Encode the def IDs of impls, for coherence checking.
         i = self.position();
         let impls = self.encode_impls();
@@ -1279,7 +1296,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             lang_items_missing: lang_items_missing,
             native_libraries: native_libraries,
             codemap: codemap,
-            macro_defs: macro_defs,
             impls: impls,
             reachable_ids: reachable_ids,
             index: index,
@@ -1300,7 +1316,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("       lang item bytes: {}", lang_item_bytes);
             println!("          native bytes: {}", native_lib_bytes);
             println!("         codemap bytes: {}", codemap_bytes);
-            println!("       macro def bytes: {}", macro_defs_bytes);
             println!("            impl bytes: {}", impl_bytes);
             println!("       reachable bytes: {}", reachable_bytes);
             println!("            item bytes: {}", item_bytes);
