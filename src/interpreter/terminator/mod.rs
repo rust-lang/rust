@@ -639,7 +639,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 let drop_fn = self.memory.read_ptr(vtable)?;
                 // some values don't need to call a drop impl, so the value is null
-                if !drop_fn.points_to_zst() {
+                if drop_fn != Pointer::from_int(0) {
                     let (def_id, substs, ty) = self.memory.get_fn(drop_fn.alloc_id)?;
                     let fn_sig = self.tcx.erase_late_bound_regions_and_normalize(&ty.sig);
                     let real_ty = fn_sig.inputs[0];

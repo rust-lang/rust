@@ -61,7 +61,7 @@ impl<'tcx> Error for EvalError<'tcx> {
             EvalError::DanglingPointerDeref =>
                 "dangling pointer was dereferenced",
             EvalError::InvalidFunctionPointer =>
-                "tried to use a pointer as a function pointer",
+                "tried to use an integer pointer as a function pointer",
             EvalError::InvalidBool =>
                 "invalid boolean value read",
             EvalError::InvalidDiscriminant =>

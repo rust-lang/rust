@@ -73,7 +73,7 @@ impl Pointer {
     // FIXME(solson): Integer pointers should use u64, not usize. Target pointers can be larger
     // than host usize.
     pub fn from_int(i: usize) -> Self {
-        Pointer::new(ZST_ALLOC_ID, i)
+        Pointer::new(NEVER_ALLOC_ID, i)
     }
 
     pub fn zst_ptr() -> Self {
@@ -290,7 +290,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
-                None if id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
+                None if id == NEVER_ALLOC_ID || id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
                 None => Err(EvalError::DanglingPointerDeref),
             }
         }
@@ -302,7 +302,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
-                None if id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
+                None if id == NEVER_ALLOC_ID || id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
                 None => Err(EvalError::DanglingPointerDeref),
             }
         }
