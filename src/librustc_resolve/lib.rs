@@ -540,6 +540,7 @@ pub enum Namespace {
 pub struct PerNS<T> {
     value_ns: T,
     type_ns: T,
+    macro_ns: Option<T>,
 }
 
 impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
@@ -548,7 +549,7 @@ impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
         match ns {
             ValueNS => &self.value_ns,
             TypeNS => &self.type_ns,
-            MacroNS => unreachable!(),
+            MacroNS => self.macro_ns.as_ref().unwrap(),
         }
     }
 }
@@ -558,7 +559,7 @@ impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
         match ns {
             ValueNS => &mut self.value_ns,
             TypeNS => &mut self.type_ns,
-            MacroNS => unreachable!(),
+            MacroNS => self.macro_ns.as_mut().unwrap(),
         }
     }
 }
@@ -675,7 +676,7 @@ impl<'a> Visitor for Resolver<'a> {
 
 pub type ErrorMessage = Option<(Span, String)>;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum ResolveResult<T> {
     Failed(ErrorMessage), // Failed to resolve the name, optional helpful error message.
     Indeterminate, // Couldn't determine due to unresolved globs.
@@ -683,14 +684,6 @@ pub enum ResolveResult<T> {
 }
 
 impl<T> ResolveResult<T> {
-    fn and_then<U, F: FnOnce(T) -> ResolveResult<U>>(self, f: F) -> ResolveResult<U> {
-        match self {
-            Failed(msg) => Failed(msg),
-            Indeterminate => Indeterminate,
-            Success(t) => f(t),
-        }
-    }
-
     fn success(self) -> Option<T> {
         match self {
             Success(t) => Some(t),
@@ -825,6 +818,7 @@ pub struct ModuleS<'a> {
     normal_ancestor_id: Option<NodeId>,
 
     resolutions: RefCell<FxHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
+    legacy_macro_resolutions: RefCell<Vec<(Mark, Name, Span)>>,
 
     // Macro invocations that can expand into items in this module.
     unresolved_invocations: RefCell<FxHashSet<Mark>>,
@@ -852,6 +846,7 @@ impl<'a> ModuleS<'a> {
             kind: kind,
             normal_ancestor_id: None,
             resolutions: RefCell::new(FxHashMap()),
+            legacy_macro_resolutions: RefCell::new(Vec::new()),
             unresolved_invocations: RefCell::new(FxHashSet()),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
@@ -943,6 +938,7 @@ struct PrivacyError<'a>(Span, Name, &'a NameBinding<'a>);
 struct AmbiguityError<'a> {
     span: Span,
     name: Name,
+    lexical: bool,
     b1: &'a NameBinding<'a>,
     b2: &'a NameBinding<'a>,
 }
@@ -1001,7 +997,7 @@ impl<'a> NameBinding<'a> {
     fn is_glob_import(&self) -> bool {
         match self.kind {
             NameBindingKind::Import { directive, .. } => directive.is_glob(),
-            NameBindingKind::Ambiguity { .. } => true,
+            NameBindingKind::Ambiguity { b1, .. } => b1.is_glob_import(),
             _ => false,
         }
     }
@@ -1136,6 +1132,7 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
     new_import_semantics: bool, // true if `#![feature(item_like_imports)]`
+    use_extern_macros: bool, // true if `#![feature(use_extern_macros)]`
 
     pub exported_macros: Vec<ast::MacroDef>,
     crate_loader: &'a mut CrateLoader,
@@ -1300,6 +1297,7 @@ impl<'a> Resolver<'a> {
             ribs: PerNS {
                 value_ns: vec![Rib::new(ModuleRibKind(graph_root))],
                 type_ns: vec![Rib::new(ModuleRibKind(graph_root))],
+                macro_ns: None,
             },
             label_ribs: Vec::new(),
 
@@ -1336,6 +1334,7 @@ impl<'a> Resolver<'a> {
                 vis: ty::Visibility::Public,
             }),
             new_import_semantics: session.features.borrow().item_like_imports,
+            use_extern_macros: session.features.borrow().use_extern_macros,
 
             exported_macros: Vec::new(),
             crate_loader: crate_loader,
@@ -1365,6 +1364,10 @@ impl<'a> Resolver<'a> {
         PerNS {
             type_ns: f(self, TypeNS),
             value_ns: f(self, ValueNS),
+            macro_ns: match self.use_extern_macros {
+                true => Some(f(self, MacroNS)),
+                false => None,
+            },
         }
     }
 
@@ -1403,8 +1406,9 @@ impl<'a> Resolver<'a> {
             }
             NameBindingKind::Import { .. } => false,
             NameBindingKind::Ambiguity { b1, b2 } => {
-                let ambiguity_error = AmbiguityError { span: span, name: name, b1: b1, b2: b2 };
-                self.ambiguity_errors.push(ambiguity_error);
+                self.ambiguity_errors.push(AmbiguityError {
+                    span: span, name: name, lexical: false, b1: b1, b2: b2,
+                });
                 true
             }
             _ => false
@@ -1438,7 +1442,7 @@ impl<'a> Resolver<'a> {
                                      -> ResolveResult<Module<'a>> {
         fn search_parent_externals<'a>(this: &mut Resolver<'a>, needle: Name, module: Module<'a>)
                                        -> Option<Module<'a>> {
-            match this.resolve_name_in_module(module, needle, TypeNS, false, None) {
+            match this.resolve_name_in_module(module, needle, TypeNS, false, false, None) {
                 Success(binding) if binding.is_extern_crate() => Some(module),
                 _ => if let (&ModuleKind::Def(..), Some(parent)) = (&module.kind, module.parent) {
                     search_parent_externals(this, needle, parent)
@@ -1456,7 +1460,7 @@ impl<'a> Resolver<'a> {
         // modules as we go.
         while index < module_path_len {
             let name = module_path[index].name;
-            match self.resolve_name_in_module(search_module, name, TypeNS, false, span) {
+            match self.resolve_name_in_module(search_module, name, TypeNS, false, false, span) {
                 Failed(_) => {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
@@ -1613,7 +1617,7 @@ impl<'a> Resolver<'a> {
 
             if let ModuleRibKind(module) = self.ribs[ns][i].kind {
                 let name = ident.name;
-                let item = self.resolve_name_in_module(module, name, ns, true, record_used);
+                let item = self.resolve_name_in_module(module, name, ns, true, false, record_used);
                 if let Success(binding) = item {
                     // The ident resolves to an item.
                     return Some(LexicalScopeBinding::Item(binding));
@@ -1622,7 +1626,7 @@ impl<'a> Resolver<'a> {
                 if let ModuleKind::Block(..) = module.kind { // We can see through blocks
                 } else if !module.no_implicit_prelude {
                     return self.prelude.and_then(|prelude| {
-                        self.resolve_name_in_module(prelude, name, ns, false, None).success()
+                        self.resolve_name_in_module(prelude, name, ns, false, false, None).success()
                     }).map(LexicalScopeBinding::Item)
                 } else {
                     return None;
@@ -1717,6 +1721,7 @@ impl<'a> Resolver<'a> {
             self.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
 
+            self.finalize_current_module_macro_resolutions();
             f(self);
 
             self.current_module = orig_module;
@@ -2221,6 +2226,7 @@ impl<'a> Resolver<'a> {
             self.ribs[ValueNS].push(Rib::new(ModuleRibKind(anonymous_module)));
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(anonymous_module)));
             self.current_module = anonymous_module;
+            self.finalize_current_module_macro_resolutions();
         } else {
             self.ribs[ValueNS].push(Rib::new(NormalRibKind));
         }
@@ -2754,8 +2760,7 @@ impl<'a> Resolver<'a> {
         let module_path =
             segments.split_last().unwrap().1.iter().map(|ps| ps.identifier).collect::<Vec<_>>();
 
-        let containing_module;
-        match self.resolve_module_path(&module_path, UseLexicalScope, Some(span)) {
+        let module = match self.resolve_module_path(&module_path, UseLexicalScope, Some(span)) {
             Failed(err) => {
                 if let Some((span, msg)) = err {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
@@ -2763,14 +2768,11 @@ impl<'a> Resolver<'a> {
                 return Err(true);
             }
             Indeterminate => return Err(false),
-            Success(resulting_module) => {
-                containing_module = resulting_module;
-            }
-        }
+            Success(module) => module,
+        };
 
         let name = segments.last().unwrap().identifier.name;
-        let result =
-            self.resolve_name_in_module(containing_module, name, namespace, false, Some(span));
+        let result = self.resolve_name_in_module(module, name, namespace, false, false, Some(span));
         result.success().ok_or(false)
     }
 
@@ -2782,10 +2784,9 @@ impl<'a> Resolver<'a> {
         where T: Named,
     {
         let module_path = segments.split_last().unwrap().1.iter().map(T::ident).collect::<Vec<_>>();
-        let root_module = self.graph_root;
+        let root = self.graph_root;
 
-        let containing_module;
-        match self.resolve_module_path_from_root(root_module, &module_path, 0, Some(span)) {
+        let module = match self.resolve_module_path_from_root(root, &module_path, 0, Some(span)) {
             Failed(err) => {
                 if let Some((span, msg)) = err {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
@@ -2795,14 +2796,11 @@ impl<'a> Resolver<'a> {
 
             Indeterminate => return Err(false),
 
-            Success(resulting_module) => {
-                containing_module = resulting_module;
-            }
-        }
+            Success(module) => module,
+        };
 
         let name = segments.last().unwrap().ident().name;
-        let result =
-            self.resolve_name_in_module(containing_module, name, namespace, false, Some(span));
+        let result = self.resolve_name_in_module(module, name, namespace, false, false, Some(span));
         result.success().ok_or(false)
     }
 
@@ -3383,14 +3381,18 @@ impl<'a> Resolver<'a> {
         self.report_shadowing_errors();
         let mut reported_spans = FxHashSet();
 
-        for &AmbiguityError { span, name, b1, b2 } in &self.ambiguity_errors {
+        for &AmbiguityError { span, name, b1, b2, lexical } in &self.ambiguity_errors {
             if !reported_spans.insert(span) { continue }
             let msg1 = format!("`{}` could resolve to the name imported here", name);
             let msg2 = format!("`{}` could also resolve to the name imported here", name);
             self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
                 .span_note(b1.span, &msg1)
                 .span_note(b2.span, &msg2)
-                .note(&format!("Consider adding an explicit import of `{}` to disambiguate", name))
+                .note(&if lexical || !b1.is_glob_import() {
+                    "macro-expanded macro imports do not shadow".to_owned()
+                } else {
+                    format!("consider adding an explicit import of `{}` to disambiguate", name)
+                })
                 .emit();
         }
 
@@ -3413,12 +3415,12 @@ impl<'a> Resolver<'a> {
 
     fn report_shadowing_errors(&mut self) {
         for (name, scope) in replace(&mut self.lexical_macro_resolutions, Vec::new()) {
-            self.resolve_macro_name(scope, name);
+            self.resolve_legacy_scope(scope, name, true);
         }
 
         let mut reported_errors = FxHashSet();
         for binding in replace(&mut self.disallowed_shadowing, Vec::new()) {
-            if self.resolve_macro_name(binding.parent, binding.name).is_some() &&
+            if self.resolve_legacy_scope(binding.parent, binding.name, false).is_some() &&
                reported_errors.insert((binding.name, binding.span)) {
                 let msg = format!("`{}` is already in scope", binding.name);
                 self.session.struct_span_err(binding.span, &msg)

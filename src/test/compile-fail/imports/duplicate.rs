@@ -46,9 +46,9 @@ mod g {
 fn main() {
     e::foo();
     f::foo(); //~ ERROR `foo` is ambiguous
-              //~| NOTE Consider adding an explicit import of `foo` to disambiguate
+              //~| NOTE consider adding an explicit import of `foo` to disambiguate
     g::foo(); //~ ERROR `foo` is ambiguous
-              //~| NOTE Consider adding an explicit import of `foo` to disambiguate
+              //~| NOTE consider adding an explicit import of `foo` to disambiguate
 }
 
 mod ambiguous_module_errors {

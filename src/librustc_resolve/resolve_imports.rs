@@ -11,7 +11,7 @@
 use self::ImportDirectiveSubclass::*;
 
 use {Module, PerNS};
-use Namespace::{self, TypeNS};
+use Namespace::{self, TypeNS, MacroNS};
 use {NameBinding, NameBindingKind, PrivacyError, ToNameBinding};
 use ResolveResult;
 use ResolveResult::*;
@@ -142,6 +142,7 @@ impl<'a> Resolver<'a> {
                                   name: Name,
                                   ns: Namespace,
                                   allow_private_imports: bool,
+                                  ignore_unresolved_invocations: bool,
                                   record_used: Option<Span>)
                                   -> ResolveResult<&'a NameBinding<'a>> {
         self.populate_module_if_necessary(module);
@@ -175,23 +176,55 @@ impl<'a> Resolver<'a> {
             return resolution.binding.map(Success).unwrap_or(Failed(None));
         }
 
-        // If the resolution doesn't depend on glob definability, check privacy and return.
-        if let Some(result) = self.try_result(&resolution, module, ns) {
-            return result.and_then(|binding| {
-                if self.is_accessible(binding.vis) && !is_disallowed_private_import(binding) ||
-                   binding.is_extern_crate() { // c.f. issue #37020
-                    Success(binding)
-                } else {
-                    Failed(None)
+        let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
+            let usable =
+                this.is_accessible(binding.vis) && !is_disallowed_private_import(binding) ||
+                binding.is_extern_crate(); // c.f. issue #37020
+            if usable { Success(binding) } else { Failed(None) }
+        };
+
+        // Items and single imports are not shadowable.
+        if let Some(binding) = resolution.binding {
+            if !binding.is_glob_import() {
+                return check_usable(self, binding);
+            }
+        }
+
+        // Check if a single import can still define the name.
+        match resolution.single_imports {
+            SingleImports::AtLeastOne => return Indeterminate,
+            SingleImports::MaybeOne(directive) if self.is_accessible(directive.vis.get()) => {
+                let module = match directive.imported_module.get() {
+                    Some(module) => module,
+                    None => return Indeterminate,
+                };
+                let name = match directive.subclass {
+                    SingleImport { source, .. } => source,
+                    _ => unreachable!(),
+                };
+                match self.resolve_name_in_module(module, name, ns, true, false, None) {
+                    Failed(_) => {}
+                    _ => return Indeterminate,
                 }
-            });
+            }
+            SingleImports::MaybeOne(_) | SingleImports::None => {},
+        }
+
+        let no_unresolved_invocations =
+            ignore_unresolved_invocations || module.unresolved_invocations.borrow().is_empty();
+        match resolution.binding {
+            // In `MacroNS`, expanded bindings do not shadow (enforced in `try_define`).
+            Some(binding) if no_unresolved_invocations || ns == MacroNS =>
+                return check_usable(self, binding),
+            None if no_unresolved_invocations => {}
+            _ => return Indeterminate,
         }
 
         // Check if the globs are determined
         for directive in module.globs.borrow().iter() {
             if self.is_accessible(directive.vis.get()) {
                 if let Some(module) = directive.imported_module.get() {
-                    let result = self.resolve_name_in_module(module, name, ns, true, None);
+                    let result = self.resolve_name_in_module(module, name, ns, true, false, None);
                     if let Indeterminate = result {
                         return Indeterminate;
                     }
@@ -202,43 +235,6 @@ impl<'a> Resolver<'a> {
         }
 
         Failed(None)
-    }
-
-    // Returns Some(the resolution of the name), or None if the resolution depends
-    // on whether more globs can define the name.
-    fn try_result(&mut self, resolution: &NameResolution<'a>, module: Module<'a>, ns: Namespace)
-                  -> Option<ResolveResult<&'a NameBinding<'a>>> {
-        match resolution.binding {
-            Some(binding) if !binding.is_glob_import() =>
-                return Some(Success(binding)), // Items and single imports are not shadowable.
-            _ => {}
-        };
-
-        // Check if a single import can still define the name.
-        match resolution.single_imports {
-            SingleImports::AtLeastOne => return Some(Indeterminate),
-            SingleImports::MaybeOne(directive) if self.is_accessible(directive.vis.get()) => {
-                let module = match directive.imported_module.get() {
-                    Some(module) => module,
-                    None => return Some(Indeterminate),
-                };
-                let name = match directive.subclass {
-                    SingleImport { source, .. } => source,
-                    _ => unreachable!(),
-                };
-                match self.resolve_name_in_module(module, name, ns, true, None) {
-                    Failed(_) => {}
-                    _ => return Some(Indeterminate),
-                }
-            }
-            SingleImports::MaybeOne(_) | SingleImports::None => {},
-        }
-
-        if !module.unresolved_invocations.borrow().is_empty() {
-            return Some(Indeterminate);
-        }
-
-        resolution.binding.map(Success)
     }
 
     // Add an import directive to the current module.
@@ -315,29 +311,26 @@ impl<'a> Resolver<'a> {
         self.update_resolution(module, name, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {
-                    if !this.new_import_semantics || !old_binding.is_glob_import() {
+                    if !this.new_import_semantics {
                         resolution.duplicate_globs.push(binding);
+                    } else if !old_binding.is_glob_import() &&
+                              !(ns == MacroNS && old_binding.expansion != Mark::root()) {
                     } else if binding.def() != old_binding.def() {
-                        resolution.binding = Some(this.arenas.alloc_name_binding(NameBinding {
-                            kind: NameBindingKind::Ambiguity {
-                                b1: old_binding,
-                                b2: binding,
-                            },
-                            vis: if old_binding.vis.is_at_least(binding.vis, this) {
-                                old_binding.vis
-                            } else {
-                                binding.vis
-                            },
-                            span: old_binding.span,
-                            expansion: Mark::root(),
-                        }));
+                        resolution.binding = Some(this.ambiguity(old_binding, binding));
                     } else if !old_binding.vis.is_at_least(binding.vis, this) {
                         // We are glob-importing the same item but with greater visibility.
                         resolution.binding = Some(binding);
                     }
                 } else if old_binding.is_glob_import() {
-                    resolution.duplicate_globs.push(old_binding);
-                    resolution.binding = Some(binding);
+                    if !this.new_import_semantics {
+                        resolution.duplicate_globs.push(old_binding);
+                        resolution.binding = Some(binding);
+                    } else if ns == MacroNS && binding.expansion != Mark::root() &&
+                              binding.def() != old_binding.def() {
+                        resolution.binding = Some(this.ambiguity(binding, old_binding));
+                    } else {
+                        resolution.binding = Some(binding);
+                    }
                 } else {
                     return Err(old_binding);
                 }
@@ -346,6 +339,16 @@ impl<'a> Resolver<'a> {
             }
 
             Ok(())
+        })
+    }
+
+    pub fn ambiguity(&mut self, b1: &'a NameBinding<'a>, b2: &'a NameBinding<'a>)
+                 -> &'a NameBinding<'a> {
+        self.arenas.alloc_name_binding(NameBinding {
+            kind: NameBindingKind::Ambiguity { b1: b1, b2: b2 },
+            vis: if b1.vis.is_at_least(b2.vis, self) { b1.vis } else { b2.vis },
+            span: b1.span,
+            expansion: Mark::root(),
         })
     }
 
@@ -525,7 +528,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.per_ns(|this, ns| {
             if let Err(Undetermined) = result[ns].get() {
                 result[ns].set({
-                    match this.resolve_name_in_module(module, source, ns, false, None) {
+                    match this.resolve_name_in_module(module, source, ns, false, false, None) {
                         Success(binding) => Ok(binding),
                         Indeterminate => Err(Undetermined),
                         Failed(_) => Err(Determined),
@@ -621,7 +624,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if all_ns_err {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| {
-                match this.resolve_name_in_module(module, name, ns, false, Some(span)) {
+                match this.resolve_name_in_module(module, name, ns, false, false, Some(span)) {
                     Success(_) => all_ns_failed = false,
                     _ => {}
                 }

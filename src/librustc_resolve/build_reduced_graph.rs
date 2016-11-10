@@ -504,9 +504,11 @@ impl<'b> Resolver<'b> {
         })
     }
 
-    pub fn get_macro(&mut self, def: Def) -> Rc<SyntaxExtension> {
-        let def_id = match def {
-            Def::Macro(def_id) => def_id,
+    pub fn get_macro(&mut self, binding: &'b NameBinding<'b>) -> Rc<SyntaxExtension> {
+        let def_id = match binding.kind {
+            NameBindingKind::Def(Def::Macro(def_id)) => def_id,
+            NameBindingKind::Import { binding, .. } => return self.get_macro(binding),
+            NameBindingKind::Ambiguity { b1, .. } => return self.get_macro(b1),
             _ => panic!("Expected Def::Macro(..)"),
         };
         if let Some(ext) = self.macro_map.get(&def_id) {
@@ -579,7 +581,7 @@ impl<'b> Resolver<'b> {
             });
         } else {
             for (name, span) in legacy_imports.imports {
-                let result = self.resolve_name_in_module(module, name, MacroNS, false, None);
+                let result = self.resolve_name_in_module(module, name, MacroNS, false, false, None);
                 if let Success(binding) = result {
                     self.legacy_import_macro(name, binding, span, allow_shadowing);
                 } else {
@@ -589,7 +591,7 @@ impl<'b> Resolver<'b> {
         }
         for (name, span) in legacy_imports.reexports {
             self.used_crates.insert(module.def_id().unwrap().krate);
-            let result = self.resolve_name_in_module(module, name, MacroNS, false, None);
+            let result = self.resolve_name_in_module(module, name, MacroNS, false, false, None);
             if let Success(binding) = result {
                 self.macro_exports.push(Export { name: name, def: binding.def() });
             } else {
