@@ -19,7 +19,7 @@ use session::config::{OutputFilenames, Input, OutputType};
 use session::filesearch;
 use session::search_paths::PathKind;
 use session::Session;
-use middle::cstore::{self, LinkMeta, NativeLibrary};
+use middle::cstore::{self, LinkMeta, NativeLibrary, LibSource};
 use middle::cstore::{LinkagePreference, NativeLibraryKind};
 use middle::dependency_format::Linkage;
 use CrateTranslation;
@@ -123,7 +123,6 @@ pub fn find_crate_name(sess: Option<&Session>,
     }
 
     "rust_out".to_string()
-
 }
 
 pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap,
@@ -302,7 +301,7 @@ pub fn each_linked_rlib(sess: &Session,
                    .or_else(|| fmts.get(&config::CrateTypeCdylib))
                    .or_else(|| fmts.get(&config::CrateTypeProcMacro));
     let fmts = fmts.unwrap_or_else(|| {
-        bug!("could not find formats for rlibs")
+        bug!("could not find formats for rlibs");
     });
     for (cnum, path) in crates {
         match fmts[cnum.as_usize() - 1] {
@@ -311,8 +310,11 @@ pub fn each_linked_rlib(sess: &Session,
         }
         let name = sess.cstore.crate_name(cnum).clone();
         let path = match path {
-            Some(p) => p,
-            None => {
+            LibSource::Some(p) => p,
+            LibSource::MetadataOnly => {
+                sess.fatal(&format!("could not find rlib for: `{}`, found rmeta (metadata) file", name));
+            }
+            LibSource::None => {
                 sess.fatal(&format!("could not find rlib for: `{}`", name));
             }
         };
@@ -326,7 +328,6 @@ fn link_binary_output(sess: &Session,
                       outputs: &OutputFilenames,
                       crate_name: &str) -> PathBuf {
     let objects = object_filenames(trans, outputs);
-    println!("objects: {:?}", objects);
     let default_filename = filename_for_input(sess, crate_type, crate_name,
                                               outputs);
     let out_filename = outputs.outputs.get(&OutputType::Exe)

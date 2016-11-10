@@ -14,9 +14,10 @@ use std::path::{Path, PathBuf};
 use std::fs;
 
 use rustc::hir::def_id::CrateNum;
+use rustc::middle::cstore::LibSource;
 
 pub struct RPathConfig<'a> {
-    pub used_crates: Vec<(CrateNum, Option<PathBuf>)>,
+    pub used_crates: Vec<(CrateNum, LibSource)>,
     pub out_filename: PathBuf,
     pub is_like_osx: bool,
     pub has_rpath: bool,
@@ -35,7 +36,7 @@ pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
     debug!("preparing the RPATH!");
 
     let libs = config.used_crates.clone();
-    let libs = libs.into_iter().filter_map(|(_, l)| l).collect::<Vec<_>>();
+    let libs = libs.into_iter().filter_map(|(_, l)| l.option()).collect::<Vec<_>>();
     let rpaths = get_rpaths(config, &libs[..]);
     flags.extend_from_slice(&rpaths_to_flags(&rpaths[..]));
 
