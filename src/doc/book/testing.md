@@ -54,7 +54,7 @@ currently has no body. That's good enough to pass! We can run the tests with
 
 ```bash
 $ cargo test
-   Compiling adder v0.1.0 (file:///private/tmp/adder)
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
     Finished debug [unoptimized + debuginfo] target(s) in 0.15 secs
      Running target/debug/deps/adder-941f01916ca4a642
 
@@ -111,7 +111,7 @@ run our tests again:
 
 ```bash
 $ cargo test
-   Compiling adder v0.1.0 (file:///private/tmp/adder)
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
     Finished debug [unoptimized + debuginfo] target(s) in 0.17 secs
      Running target/debug/deps/adder-941f01916ca4a642
 
@@ -185,7 +185,7 @@ This test will now succeed if we `panic!` and fail if we complete. Let's try it:
 
 ```bash
 $ cargo test
-   Compiling adder v0.1.0 (file:///private/tmp/adder)
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
     Finished debug [unoptimized + debuginfo] target(s) in 0.17 secs
      Running target/debug/deps/adder-941f01916ca4a642
 
@@ -221,7 +221,7 @@ passes:
 
 ```bash
 $ cargo test
-   Compiling adder v0.1.0 (file:///private/tmp/adder)
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
     Finished debug [unoptimized + debuginfo] target(s) in 0.21 secs
      Running target/debug/deps/adder-941f01916ca4a642
 
@@ -306,7 +306,7 @@ not:
 
 ```bash
 $ cargo test
-   Compiling adder v0.1.0 (file:///private/tmp/adder)
+   Compiling adder v0.1.0 (file:///home/you/projects/adder)
     Finished debug [unoptimized + debuginfo] target(s) in 0.20 secs
      Running target/debug/deps/adder-941f01916ca4a642
 
