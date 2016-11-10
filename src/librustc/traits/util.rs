@@ -477,8 +477,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let mut entries = 0;
         // Count number of methods and add them to the total offset.
         // Skip over associated types and constants.
-        for trait_item in &self.trait_items(trait_ref.def_id())[..] {
-            if let ty::MethodTraitItem(_) = *trait_item {
+        for trait_item in self.associated_items(trait_ref.def_id()) {
+            if trait_item.kind == ty::AssociatedKind::Method {
                 entries += 1;
             }
         }
@@ -495,17 +495,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // add them to the total offset.
         // Skip over associated types and constants.
         let mut entries = object.vtable_base;
-        for trait_item in &self.trait_items(object.upcast_trait_ref.def_id())[..] {
-            if trait_item.def_id() == method_def_id {
+        for trait_item in self.associated_items(object.upcast_trait_ref.def_id()) {
+            if trait_item.def_id == method_def_id {
                 // The item with the ID we were given really ought to be a method.
-                assert!(match *trait_item {
-                    ty::MethodTraitItem(_) => true,
-                    _ => false
-                });
-
+                assert_eq!(trait_item.kind, ty::AssociatedKind::Method);
                 return entries;
             }
-            if let ty::MethodTraitItem(_) = *trait_item {
+            if trait_item.kind == ty::AssociatedKind::Method {
                 entries += 1;
             }
         }

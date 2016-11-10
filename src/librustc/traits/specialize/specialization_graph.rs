@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::rc::Rc;
-
 use super::{OverlapError, specializes};
 
 use hir::def_id::DefId;
 use traits::{self, Reveal};
-use ty::{self, TyCtxt, ImplOrTraitItem, TraitDef, TypeFoldable};
+use ty::{self, TyCtxt, TraitDef, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
 use syntax::ast::Name;
 use util::nodemap::{DefIdMap, FxHashMap};
@@ -285,40 +283,16 @@ impl<'a, 'gcx, 'tcx> Node {
     }
 
     /// Iterate over the items defined directly by the given (impl or trait) node.
-    pub fn items(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> NodeItems<'a, 'gcx> {
-        NodeItems {
-            tcx: tcx.global_tcx(),
-            items: tcx.impl_or_trait_items(self.def_id()),
-            idx: 0,
-        }
+    #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
+    pub fn items(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                 -> impl Iterator<Item = ty::AssociatedItem> + 'a {
+        tcx.associated_items(self.def_id())
     }
 
     pub fn def_id(&self) -> DefId {
         match *self {
             Node::Impl(did) => did,
             Node::Trait(did) => did,
-        }
-    }
-}
-
-/// An iterator over the items defined within a trait or impl.
-pub struct NodeItems<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    items: Rc<Vec<DefId>>,
-    idx: usize
-}
-
-impl<'a, 'tcx> Iterator for NodeItems<'a, 'tcx> {
-    type Item = ImplOrTraitItem<'tcx>;
-    fn next(&mut self) -> Option<ImplOrTraitItem<'tcx>> {
-        if self.idx < self.items.len() {
-            let item_def_id = self.items[self.idx];
-            let items_table = self.tcx.impl_or_trait_items.borrow();
-            let item = items_table[&item_def_id].clone();
-            self.idx += 1;
-            Some(item)
-        } else {
-            None
         }
     }
 }
@@ -358,104 +332,16 @@ impl<T> NodeItem<T> {
     }
 }
 
-pub struct TypeDefs<'a, 'tcx: 'a> {
-    // generally only invoked once or twice, so the box doesn't hurt
-    iter: Box<Iterator<Item = NodeItem<Rc<ty::AssociatedType<'tcx>>>> + 'a>,
-}
-
-impl<'a, 'tcx> Iterator for TypeDefs<'a, 'tcx> {
-    type Item = NodeItem<Rc<ty::AssociatedType<'tcx>>>;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
-
-pub struct FnDefs<'a, 'tcx: 'a> {
-    // generally only invoked once or twice, so the box doesn't hurt
-    iter: Box<Iterator<Item = NodeItem<Rc<ty::Method<'tcx>>>> + 'a>,
-}
-
-impl<'a, 'tcx> Iterator for FnDefs<'a, 'tcx> {
-    type Item = NodeItem<Rc<ty::Method<'tcx>>>;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
-
-pub struct ConstDefs<'a, 'tcx: 'a> {
-    // generally only invoked once or twice, so the box doesn't hurt
-    iter: Box<Iterator<Item = NodeItem<Rc<ty::AssociatedConst<'tcx>>>> + 'a>,
-}
-
-impl<'a, 'tcx> Iterator for ConstDefs<'a, 'tcx> {
-    type Item = NodeItem<Rc<ty::AssociatedConst<'tcx>>>;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
-
 impl<'a, 'gcx, 'tcx> Ancestors<'a, 'tcx> {
-    /// Search the items from the given ancestors, returning each type definition
-    /// with the given name.
-    pub fn type_defs(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, name: Name) -> TypeDefs<'a, 'gcx> {
-        let iter = self.flat_map(move |node| {
-            node.items(tcx)
-                .filter_map(move |item| {
-                    if let ty::TypeTraitItem(assoc_ty) = item {
-                        if assoc_ty.name == name {
-                            return Some(NodeItem {
-                                node: node,
-                                item: assoc_ty,
-                            });
-                        }
-                    }
-                    None
-                })
-
-        });
-        TypeDefs { iter: Box::new(iter) }
-    }
-
-    /// Search the items from the given ancestors, returning each fn definition
-    /// with the given name.
-    pub fn fn_defs(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, name: Name) -> FnDefs<'a, 'gcx> {
-        let iter = self.flat_map(move |node| {
-            node.items(tcx)
-                .filter_map(move |item| {
-                    if let ty::MethodTraitItem(method) = item {
-                        if method.name == name {
-                            return Some(NodeItem {
-                                node: node,
-                                item: method,
-                            });
-                        }
-                    }
-                    None
-                })
-
-        });
-        FnDefs { iter: Box::new(iter) }
-    }
-
-    /// Search the items from the given ancestors, returning each const
-    /// definition with the given name.
-    pub fn const_defs(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, name: Name) -> ConstDefs<'a, 'gcx> {
-        let iter = self.flat_map(move |node| {
-            node.items(tcx)
-                .filter_map(move |item| {
-                    if let ty::ConstTraitItem(konst) = item {
-                        if konst.name == name {
-                            return Some(NodeItem {
-                                node: node,
-                                item: konst,
-                            });
-                        }
-                    }
-                    None
-                })
-
-        });
-        ConstDefs { iter: Box::new(iter) }
+    /// Search the items from the given ancestors, returning each definition
+    /// with the given name and the given kind.
+    #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
+    pub fn defs(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, name: Name, kind: ty::AssociatedKind)
+                -> impl Iterator<Item = NodeItem<ty::AssociatedItem>> + 'a {
+        self.flat_map(move |node| {
+            node.items(tcx).filter(move |item| item.kind == kind && item.name == name)
+                           .map(move |item| NodeItem { node: node, item: item })
+        })
     }
 }
 

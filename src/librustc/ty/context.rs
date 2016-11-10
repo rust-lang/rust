@@ -403,14 +403,10 @@ pub struct GlobalCtxt<'tcx> {
     pub tables: RefCell<Tables<'tcx>>,
 
     /// Maps from a trait item to the trait item "descriptor"
-    pub impl_or_trait_items: RefCell<DepTrackingMap<maps::ImplOrTraitItems<'tcx>>>,
+    pub associated_items: RefCell<DepTrackingMap<maps::AssociatedItems<'tcx>>>,
 
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
-    pub impl_or_trait_item_def_ids: RefCell<DepTrackingMap<maps::ImplOrTraitItemDefIds<'tcx>>>,
-
-    /// A cache for the trait_items() routine; note that the routine
-    /// itself pushes the `TraitItems` dependency node.
-    trait_items_cache: RefCell<DepTrackingMap<maps::TraitItems<'tcx>>>,
+    pub associated_item_def_ids: RefCell<DepTrackingMap<maps::AssociatedItemDefIds<'tcx>>>,
 
     pub impl_trait_refs: RefCell<DepTrackingMap<maps::ImplTraitRefs<'tcx>>>,
     pub trait_defs: RefCell<DepTrackingMap<maps::TraitDefs<'tcx>>>,
@@ -822,9 +818,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             tcache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             rcache: RefCell::new(FxHashMap()),
             tc_cache: RefCell::new(FxHashMap()),
-            impl_or_trait_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            impl_or_trait_item_def_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            trait_items_cache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            associated_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            associated_item_def_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             ty_param_defs: RefCell::new(NodeMap()),
             normalized_cache: RefCell::new(FxHashMap()),
             lang_items: lang_items,
@@ -1537,15 +1532,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     -> &'tcx Substs<'tcx>
     {
         self.mk_substs(iter::once(s).chain(t.into_iter().cloned()).map(Kind::from))
-    }
-
-    pub fn trait_items(self, trait_did: DefId) -> Rc<Vec<ty::ImplOrTraitItem<'gcx>>> {
-        self.trait_items_cache.memoize(trait_did, || {
-            let def_ids = self.impl_or_trait_items(trait_did);
-            Rc::new(def_ids.iter()
-                           .map(|&def_id| self.impl_or_trait_item(def_id))
-                           .collect())
-        })
     }
 
     /// Obtain the representation annotation for a struct definition.
