@@ -87,7 +87,7 @@ pub fn run(input: &str,
         config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
 
     let krate = panictry!(driver::phase_1_parse_input(&sess, &input));
-    let driver::ExpansionResult { defs, mut hir_forest, .. } = {
+    let driver::ExpansionResult { defs, mut hir_forest, analysis, .. } = {
         phase_2_configure_and_expand(
             &sess, &cstore, krate, None, "rustdoc-test", None, MakeGlobMap::No, |_| Ok(())
         ).expect("phase_2_configure_and_expand aborted in rustdoc!")
@@ -110,6 +110,7 @@ pub fn run(input: &str,
         renderinfo: Default::default(),
         ty_substs: Default::default(),
         lt_substs: Default::default(),
+        export_map: analysis.export_map,
     };
 
     let mut v = RustdocVisitor::new(&ctx);

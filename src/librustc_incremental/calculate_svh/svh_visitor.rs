@@ -834,7 +834,8 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             Def::Const(..) |
             Def::AssociatedConst(..) |
             Def::Local(..) |
-            Def::Upvar(..) => {
+            Def::Upvar(..) |
+            Def::Macro(..) => {
                 DefHash::SawDefId.hash(self.st);
                 self.hash_def_id(def.def_id());
             }
