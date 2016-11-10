@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(reflect_marker)]
+
 // Test that there is no way to get a generic type `T` to be
 // considered as `Reflect` (or accessible via something that is
 // considered `Reflect`) without a reflect bound, but that any

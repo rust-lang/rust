@@ -508,7 +508,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.
-        self.check_struct_pat_fields(pat_ty, pat.span, variant, fields, etc);
+        self.check_struct_pat_fields(pat_ty, pat.id, pat.span, variant, fields, etc);
         pat_ty
     }
 
@@ -603,6 +603,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
                 self.check_pat(&subpat, field_ty);
+
+                self.tcx.check_stability(variant.fields[i].did, pat.id, subpat.span);
             }
         } else {
             let subpats_ending = if subpats.len() == 1 { "" } else { "s" };
@@ -622,6 +624,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_struct_pat_fields(&self,
                                adt_ty: Ty<'tcx>,
+                               pat_id: ast::NodeId,
                                span: Span,
                                variant: ty::VariantDef<'tcx>,
                                fields: &'gcx [Spanned<hir::FieldPat>],
@@ -659,7 +662,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Vacant(vacant) => {
                     vacant.insert(span);
                     field_map.get(&field.name)
-                        .map(|f| self.field_ty(span, f, substs))
+                        .map(|f| {
+                            self.tcx.check_stability(f.did, pat_id, span);
+
+                            self.field_ty(span, f, substs)
+                        })
                         .unwrap_or_else(|| {
                             struct_span_err!(tcx.sess, span, E0026,
                                              "{} `{}` does not have a field named `{}`",

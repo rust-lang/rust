@@ -1258,6 +1258,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     // Will fail except for T::A and Self::A; i.e., if ty/ty_path_def are not a type
     // parameter or Self.
     pub fn associated_path_def_to_ty(&self,
+                                     ref_id: ast::NodeId,
                                      span: Span,
                                      ty: Ty<'tcx>,
                                      ty_path_def: Def,
@@ -1339,7 +1340,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let ty = self.projected_ty_from_poly_trait_ref(span, bound, assoc_name);
 
         let item = tcx.associated_items(trait_did).find(|i| i.name == assoc_name);
-        (ty, Def::AssociatedTy(item.expect("missing associated type").def_id))
+        let def_id = item.expect("missing associated type").def_id;
+        tcx.check_stability(def_id, ref_id, span);
+        (ty, Def::AssociatedTy(def_id))
     }
 
     fn qpath_to_ty(&self,
@@ -1659,7 +1662,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 } else {
                     Def::Err
                 };
-                let (ty, def) = self.associated_path_def_to_ty(ast_ty.span, ty, def, segment);
+                let (ty, def) = self.associated_path_def_to_ty(ast_ty.id, ast_ty.span,
+                                                               ty, def, segment);
 
                 // Write back the new resolution.
                 tcx.tables.borrow_mut().type_relative_path_defs.insert(ast_ty.id, def);

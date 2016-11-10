@@ -11,13 +11,12 @@
 // compile-flags: -F unused_features
 // aux-build:lint_output_format.rs
 
-#![feature(foo)] //~ ERROR unused or unknown feature
+#![allow(deprecated)]
 
 extern crate lint_output_format; //~ ERROR use of unstable library feature
 use lint_output_format::{foo, bar}; //~ ERROR use of unstable library feature
-//~^ WARNING use of deprecated item: text,
 
 fn main() {
-    let _x = foo(); //~ WARNING #[warn(deprecated)] on by default
+    let _x = foo();
     let _y = bar(); //~ ERROR use of unstable library feature
 }

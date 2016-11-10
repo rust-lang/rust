@@ -886,6 +886,14 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "load_dep_graph",
              || rustc_incremental::load_dep_graph(tcx, &incremental_hashes_map));
 
+        time(time_passes, "stability index", || {
+            tcx.stability.borrow_mut().build(tcx)
+        });
+
+        time(time_passes,
+             "stability checking",
+             || stability::check_unstable_api_usage(tcx));
+
         // passes are timed inside typeck
         analysis.hir_ty_to_ty =
             try_with_f!(typeck::check_crate(tcx), (tcx, analysis, incremental_hashes_map));
@@ -898,11 +906,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             time(time_passes, "privacy checking", || {
                 rustc_privacy::check_crate(tcx, &analysis.export_map)
             });
-
-        // Do not move this check past lint
-        time(time_passes, "stability index", || {
-            tcx.stability.borrow_mut().build(tcx, &analysis.access_levels)
-        });
 
         time(time_passes,
              "intrinsic checking",
@@ -972,14 +975,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             middle::dead::check_crate(tcx, &analysis.access_levels);
         });
 
-        let ref lib_features_used =
-            time(time_passes,
-                 "stability checking",
-                 || stability::check_unstable_api_usage(tcx));
-
         time(time_passes, "unused lib feature checking", || {
-            stability::check_unused_or_stable_features(&tcx.sess,
-                                                       lib_features_used)
+            stability::check_unused_or_stable_features(tcx, &analysis.access_levels)
         });
 
         time(time_passes,

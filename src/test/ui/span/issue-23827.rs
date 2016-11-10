@@ -10,7 +10,7 @@
 
 // Regression test for #23827
 
-#![feature(core, unboxed_closures)]
+#![feature(core, fn_traits, unboxed_closures)]
 
 pub struct Prototype {
     pub target: u32

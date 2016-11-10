@@ -136,6 +136,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tcx.used_trait_imports.borrow_mut().insert(import_id);
         }
 
+        self.tcx.check_stability(pick.item.def_id, call_expr.id, span);
+
         Ok(self.confirm_method(span,
                                self_expr,
                                call_expr,
@@ -340,6 +342,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         let def = pick.item.def();
+
+        self.tcx.check_stability(def.def_id(), expr_id, span);
+
         if let probe::InherentImplPick = pick.kind {
             if !pick.item.vis.is_accessible_from(self.body_id, &self.tcx.map) {
                 let msg = format!("{} `{}` is private", def.kind_name(), method_name);

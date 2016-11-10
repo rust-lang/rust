@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rand)]
+
 // ensure that the ThreadRng isn't/doesn't become accidentally sendable.
 
 use std::__rand::ThreadRng;

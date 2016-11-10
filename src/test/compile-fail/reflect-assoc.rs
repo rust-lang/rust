@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(reflect_marker)]
+
 // Test that types that appear in assoc bindings in an object
 // type are subject to the reflect check.
 

@@ -307,7 +307,7 @@ fn generate_test_harness(sess: &ParseSess,
 /// The expanded code calls some unstable functions in the test crate.
 fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
     let info = ExpnInfo {
-        call_site: DUMMY_SP,
+        call_site: sp,
         callee: NameAndSpan {
             format: MacroAttribute(Symbol::intern("test")),
             span: None,
@@ -460,6 +460,7 @@ mod __test {
 
 fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     let id_test = Ident::from_str("test");
+    let sp = ignored_span(cx, DUMMY_SP);
     let (vi, vis, ident) = if cx.is_test_crate {
         (ast::ItemKind::Use(
             P(nospan(ast::ViewPathSimple(id_test,
@@ -474,7 +475,7 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
         node: vi,
         attrs: vec![],
         vis: vis,
-        span: DUMMY_SP
+        span: sp
     })
 }
 
@@ -598,7 +599,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     // FIXME #15962: should be using quote_item, but that stringifies
     // __test_reexports, causing it to be reinterned, losing the
     // gensym information.
-    let sp = DUMMY_SP;
+    let sp = ignored_span(cx, DUMMY_SP);
     let ecx = &cx.ext_cx;
     let struct_type = ecx.ty_path(ecx.path(sp, vec![ecx.ident_of("self"),
                                                     ecx.ident_of("test"),
