@@ -10,8 +10,6 @@
 
 #![feature(box_syntax)]
 
-extern crate collections;
-
 use std::collections::HashMap;
 
 trait Map<K, V>

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:lint_stability_fields.rs
-#![deny(deprecated)]
+#![allow(deprecated)]
 #![allow(dead_code)]
 #![feature(staged_api)]
 
@@ -24,23 +24,17 @@ mod cross_crate {
         let x = Stable {
             inherit: 1,
             override1: 2, //~ ERROR use of unstable
-            override2: 3,
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
+            override2: 3, //~ ERROR use of unstable
         };
 
         let _ = x.inherit;
         let _ = x.override1; //~ ERROR use of unstable
-        let _ = x.override2;
-        //~^ ERROR use of deprecated item
-        //~^^ ERROR use of unstable
+        let _ = x.override2; //~ ERROR use of unstable
 
         let Stable {
             inherit: _,
             override1: _, //~ ERROR use of unstable
-            override2: _
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
+            override2: _ //~ ERROR use of unstable
         } = x;
         // all fine
         let Stable { .. } = x;
@@ -49,15 +43,11 @@ mod cross_crate {
 
         let _ = x.0;
         let _ = x.1; //~ ERROR use of unstable
-        let _ = x.2;
-        //~^ ERROR use of deprecated item
-        //~^^ ERROR use of unstable
+        let _ = x.2; //~ ERROR use of unstable
 
         let Stable2(_,
                    _, //~ ERROR use of unstable
-                   _)
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
+                   _) //~ ERROR use of unstable
             = x;
         // all fine
         let Stable2(..) = x;
@@ -66,23 +56,17 @@ mod cross_crate {
         let x = Unstable { //~ ERROR use of unstable
             inherit: 1, //~ ERROR use of unstable
             override1: 2,
-            override2: 3,
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
+            override2: 3, //~ ERROR use of unstable
         };
 
         let _ = x.inherit; //~ ERROR use of unstable
         let _ = x.override1;
-        let _ = x.override2;
-        //~^ ERROR use of deprecated item
-        //~^^ ERROR use of unstable
+        let _ = x.override2; //~ ERROR use of unstable
 
         let Unstable { //~ ERROR use of unstable
             inherit: _, //~ ERROR use of unstable
             override1: _,
-            override2: _
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
+            override2: _ //~ ERROR use of unstable
         } = x;
 
         let Unstable  //~ ERROR use of unstable
@@ -94,91 +78,50 @@ mod cross_crate {
 
         let _ = x.0; //~ ERROR use of unstable
         let _ = x.1;
-        let _ = x.2;
-        //~^ ERROR use of deprecated item
-        //~^^ ERROR use of unstable
+        let _ = x.2; //~ ERROR use of unstable
 
         let Unstable2  //~ ERROR use of unstable
             (_, //~ ERROR use of unstable
              _,
-             _)
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
+             _) //~ ERROR use of unstable
             = x;
         let Unstable2 //~ ERROR use of unstable
             // the patterns are all fine:
             (..) = x;
 
 
-        let x = Deprecated {
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
-            inherit: 1,
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
+        let x = Deprecated { //~ ERROR use of unstable
+            inherit: 1, //~ ERROR use of unstable
             override1: 2,
-            //~^ ERROR use of deprecated item
-            override2: 3,
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
+            override2: 3, //~ ERROR use of unstable
         };
 
-        let _ = x.inherit;
-        //~^ ERROR use of deprecated item
-        //~^^ ERROR use of unstable
+        let _ = x.inherit; //~ ERROR use of unstable
         let _ = x.override1;
-        //~^ ERROR use of deprecated item
-        let _ = x.override2;
-        //~^ ERROR use of deprecated item
-        //~^^ ERROR use of unstable
+        let _ = x.override2; //~ ERROR use of unstable
 
-        let Deprecated {
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
-            inherit: _,
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
+        let Deprecated { //~ ERROR use of unstable
+            inherit: _, //~ ERROR use of unstable
             override1: _,
-            //~^ ERROR use of deprecated item
-            override2: _
-            //~^ ERROR use of unstable
-            //~^^ ERROR use of deprecated item
+            override2: _ //~ ERROR use of unstable
         } = x;
 
-        let Deprecated
-            //~^ ERROR use of deprecated item
-            //~^^ ERROR use of unstable
+        let Deprecated //~ ERROR use of unstable
             // the patterns are all fine:
             { .. } = x;
 
-        let x = Deprecated2(1, 2, 3);
-        //~^ ERROR use of deprecated item
-        //~^^ ERROR use of unstable
+        let x = Deprecated2(1, 2, 3); //~ ERROR use of unstable
 
-        let _ = x.0;
-        //~^ ERROR use of deprecated item
-        //~^^ ERROR use of unstable
+        let _ = x.0; //~ ERROR use of unstable
         let _ = x.1;
-        //~^ ERROR use of deprecated item
-        let _ = x.2;
-        //~^ ERROR use of deprecated item
-        //~^^ ERROR use of unstable
+        let _ = x.2; //~ ERROR use of unstable
 
-        let Deprecated2
-        //~^ ERROR use of deprecated item
-        //~^^ ERROR use of unstable
-            (_,
-             //~^ ERROR use of deprecated item
-             //~^^ ERROR use of unstable
+        let Deprecated2 //~ ERROR use of unstable
+            (_, //~ ERROR use of unstable
              _,
-             //~^ ERROR use of deprecated item
-             _)
-             //~^ ERROR use of deprecated item
-             //~^^ ERROR use of unstable
+             _) //~ ERROR use of unstable
             = x;
-        let Deprecated2
-        //~^ ERROR use of deprecated item
-        //~^^ ERROR use of unstable
+        let Deprecated2 //~ ERROR use of unstable
             // the patterns are all fine:
             (..) = x;
     }
@@ -238,19 +181,16 @@ mod this_crate {
             inherit: 1,
             override1: 2,
             override2: 3,
-            //~^ ERROR use of deprecated item
         };
 
         let _ = x.inherit;
         let _ = x.override1;
         let _ = x.override2;
-        //~^ ERROR use of deprecated item
 
         let Stable {
             inherit: _,
             override1: _,
             override2: _
-            //~^ ERROR use of deprecated item
         } = x;
         // all fine
         let Stable { .. } = x;
@@ -260,12 +200,10 @@ mod this_crate {
         let _ = x.0;
         let _ = x.1;
         let _ = x.2;
-        //~^ ERROR use of deprecated item
 
         let Stable2(_,
                    _,
                    _)
-            //~^ ERROR use of deprecated item
             = x;
         // all fine
         let Stable2(..) = x;
@@ -275,19 +213,16 @@ mod this_crate {
             inherit: 1,
             override1: 2,
             override2: 3,
-            //~^ ERROR use of deprecated item
         };
 
         let _ = x.inherit;
         let _ = x.override1;
         let _ = x.override2;
-        //~^ ERROR use of deprecated item
 
         let Unstable {
             inherit: _,
             override1: _,
             override2: _
-            //~^ ERROR use of deprecated item
         } = x;
 
         let Unstable
@@ -300,13 +235,11 @@ mod this_crate {
         let _ = x.0;
         let _ = x.1;
         let _ = x.2;
-        //~^ ERROR use of deprecated item
 
         let Unstable2
             (_,
              _,
              _)
-            //~^ ERROR use of deprecated item
             = x;
         let Unstable2
             // the patterns are all fine:
@@ -314,58 +247,37 @@ mod this_crate {
 
 
         let x = Deprecated {
-            //~^ ERROR use of deprecated item
             inherit: 1,
-            //~^ ERROR use of deprecated item
             override1: 2,
-            //~^ ERROR use of deprecated item
             override2: 3,
-            //~^ ERROR use of deprecated item
         };
 
         let _ = x.inherit;
-        //~^ ERROR use of deprecated item
         let _ = x.override1;
-        //~^ ERROR use of deprecated item
         let _ = x.override2;
-        //~^ ERROR use of deprecated item
 
         let Deprecated {
-            //~^ ERROR use of deprecated item
             inherit: _,
-            //~^ ERROR use of deprecated item
             override1: _,
-            //~^ ERROR use of deprecated item
             override2: _
-            //~^ ERROR use of deprecated item
         } = x;
 
         let Deprecated
-            //~^ ERROR use of deprecated item
             // the patterns are all fine:
             { .. } = x;
 
         let x = Deprecated2(1, 2, 3);
-        //~^ ERROR use of deprecated item
 
         let _ = x.0;
-        //~^ ERROR use of deprecated item
         let _ = x.1;
-        //~^ ERROR use of deprecated item
         let _ = x.2;
-        //~^ ERROR use of deprecated item
 
         let Deprecated2
-        //~^ ERROR use of deprecated item
             (_,
-             //~^ ERROR use of deprecated item
              _,
-             //~^ ERROR use of deprecated item
              _)
-            //~^ ERROR use of deprecated item
             = x;
         let Deprecated2
-        //~^ ERROR use of deprecated item
             // the patterns are all fine:
             (..) = x;
     }

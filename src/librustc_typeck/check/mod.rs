@@ -2998,6 +2998,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
                             autoderef.finalize(lvalue_pref, Some(base));
                             self.write_autoderef_adjustment(base.id, autoderefs, base_t);
+
+                            self.tcx.check_stability(field.did, expr.id, expr.span);
+
                             return field_ty;
                         }
                         private_candidate = Some((base_def.did, field_ty));
@@ -3100,6 +3103,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let field_ty = self.field_ty(expr.span, field, substs);
                         private_candidate = Some((base_def.did, field_ty));
                         if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
+                            self.tcx.check_stability(field.did, expr.id, expr.span);
                             Some(field_ty)
                         } else {
                             None
@@ -3192,13 +3196,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_expr_struct_fields(&self,
                                 adt_ty: Ty<'tcx>,
+                                expr_id: ast::NodeId,
                                 span: Span,
                                 variant: ty::VariantDef<'tcx>,
                                 ast_fields: &'gcx [hir::Field],
                                 check_completeness: bool) {
         let tcx = self.tcx;
-        let (substs, kind_name) = match adt_ty.sty {
-            ty::TyAdt(adt, substs) => (substs, adt.variant_descr()),
+        let (substs, adt_kind, kind_name) = match adt_ty.sty {
+            ty::TyAdt(adt, substs) => (substs, adt.adt_kind(), adt.variant_descr()),
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
@@ -3219,6 +3224,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 expected_field_type = self.field_ty(field.span, v_field, substs);
 
                 seen_fields.insert(field.name.node, field.span);
+
+                // we don't look at stability attributes on
+                // struct-like enums (yet...), but it's definitely not
+                // a bug to have construct one.
+                if adt_kind != ty::AdtKind::Enum {
+                    tcx.check_stability(v_field.did, expr_id, field.span);
+                }
             } else {
                 error_happened = true;
                 expected_field_type = tcx.types.err;
@@ -3381,7 +3393,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::QPath::TypeRelative(ref qself, _) => qself.span
         };
 
-        self.check_expr_struct_fields(struct_ty, path_span, variant, fields,
+        self.check_expr_struct_fields(struct_ty, expr.id, path_span, variant, fields,
                                       base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
             self.check_expr_has_type(base_expr, struct_ty);
@@ -4012,7 +4024,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     Def::Err
                 };
-                let (ty, def) = AstConv::associated_path_def_to_ty(self, path_span,
+                let (ty, def) = AstConv::associated_path_def_to_ty(self, node_id, path_span,
                                                                    ty, def, segment);
 
                 // Write back the new resolution.

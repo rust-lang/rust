@@ -1362,7 +1362,8 @@ impl<'a> LoweringContext<'a> {
                         } else {
                             let fields = fields.into_iter().map(|&(s, e)| {
                                 let expr = P(this.lower_expr(&e));
-                                this.field(Symbol::intern(s), expr, e.span)
+                                let unstable_span = this.allow_internal_unstable("...", e.span);
+                                this.field(Symbol::intern(s), expr, unstable_span)
                             }).collect();
                             let attrs = ast_expr.attrs.clone();
 
