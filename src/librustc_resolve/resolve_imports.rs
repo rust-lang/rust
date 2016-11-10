@@ -10,8 +10,8 @@
 
 use self::ImportDirectiveSubclass::*;
 
-use Module;
-use Namespace::{self, TypeNS, ValueNS};
+use {Module, PerNS};
+use Namespace::{self, TypeNS};
 use {NameBinding, NameBindingKind, PrivacyError, ToNameBinding};
 use ResolveResult;
 use ResolveResult::*;
@@ -39,8 +39,7 @@ pub enum ImportDirectiveSubclass<'a> {
     SingleImport {
         target: Name,
         source: Name,
-        value_result: Cell<Result<&'a NameBinding<'a>, Determinacy>>,
-        type_result: Cell<Result<&'a NameBinding<'a>, Determinacy>>,
+        result: PerNS<Cell<Result<&'a NameBinding<'a>, Determinacy>>>,
     },
     GlobImport {
         is_prelude: bool,
@@ -48,17 +47,6 @@ pub enum ImportDirectiveSubclass<'a> {
         // n.b. `max_vis` is only used in `finalize_import` to check for reexport errors.
     },
     ExternCrate,
-}
-
-impl<'a> ImportDirectiveSubclass<'a> {
-    pub fn single(target: Name, source: Name) -> Self {
-        SingleImport {
-            target: target,
-            source: source,
-            type_result: Cell::new(Err(Undetermined)),
-            value_result: Cell::new(Err(Undetermined)),
-        }
-    }
 }
 
 /// One import directive.
@@ -276,10 +264,10 @@ impl<'a> Resolver<'a> {
         self.indeterminate_imports.push(directive);
         match directive.subclass {
             SingleImport { target, .. } => {
-                for &ns in &[ValueNS, TypeNS] {
-                    let mut resolution = self.resolution(current_module, target, ns).borrow_mut();
+                self.per_ns(|this, ns| {
+                    let mut resolution = this.resolution(current_module, target, ns).borrow_mut();
                     resolution.single_imports.add_directive(directive);
-                }
+                });
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
             // which are not relevant to import resolution.
@@ -397,6 +385,18 @@ impl<'a> Resolver<'a> {
 
         t
     }
+
+    // Define a "dummy" resolution containing a Def::Err as a placeholder for a
+    // failed resolution
+    fn import_dummy_binding(&mut self, directive: &'a ImportDirective<'a>) {
+        if let SingleImport { target, .. } = directive.subclass {
+            let dummy_binding = self.dummy_binding;
+            let dummy_binding = self.import(dummy_binding, directive);
+            self.per_ns(|this, ns| {
+                let _ = this.try_define(directive.parent, target, ns, dummy_binding.clone());
+            });
+        }
+    }
 }
 
 pub struct ImportResolver<'a, 'b: 'a> {
@@ -481,17 +481,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
     }
 
-    // Define a "dummy" resolution containing a Def::Err as a placeholder for a
-    // failed resolution
-    fn import_dummy_binding(&mut self, directive: &'b ImportDirective<'b>) {
-        if let SingleImport { target, .. } = directive.subclass {
-            let dummy_binding = self.dummy_binding;
-            let dummy_binding = self.import(dummy_binding, directive);
-            let _ = self.try_define(directive.parent, target, ValueNS, dummy_binding.clone());
-            let _ = self.try_define(directive.parent, target, TypeNS, dummy_binding);
-        }
-    }
-
     /// Attempts to resolve the given import. The return value indicates
     /// failure if we're certain the name does not exist, indeterminate if we
     /// don't know whether the name exists at the moment due to other
@@ -523,9 +512,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         };
 
         directive.imported_module.set(Some(module));
-        let (source, target, value_result, type_result) = match directive.subclass {
-            SingleImport { source, target, ref value_result, ref type_result } =>
-                (source, target, value_result, type_result),
+        let (source, target, result) = match directive.subclass {
+            SingleImport { source, target, ref result } => (source, target, result),
             GlobImport { .. } => {
                 self.resolve_glob_import(directive);
                 return Success(());
@@ -534,46 +522,45 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         };
 
         let mut indeterminate = false;
-        for &(ns, result) in &[(ValueNS, value_result), (TypeNS, type_result)] {
-            if let Err(Undetermined) = result.get() {
-                result.set({
-                    match self.resolve_name_in_module(module, source, ns, false, None) {
+        self.per_ns(|this, ns| {
+            if let Err(Undetermined) = result[ns].get() {
+                result[ns].set({
+                    match this.resolve_name_in_module(module, source, ns, false, None) {
                         Success(binding) => Ok(binding),
                         Indeterminate => Err(Undetermined),
                         Failed(_) => Err(Determined),
                     }
                 });
             } else {
-                continue
+                return
             };
 
-            match result.get() {
+            match result[ns].get() {
                 Err(Undetermined) => indeterminate = true,
                 Err(Determined) => {
-                    self.update_resolution(directive.parent, target, ns, |_, resolution| {
+                    this.update_resolution(directive.parent, target, ns, |_, resolution| {
                         resolution.single_imports.directive_failed()
                     });
                 }
                 Ok(binding) if !binding.is_importable() => {
                     let msg = format!("`{}` is not directly importable", target);
-                    struct_span_err!(self.session, directive.span, E0253, "{}", &msg)
+                    struct_span_err!(this.session, directive.span, E0253, "{}", &msg)
                         .span_label(directive.span, &format!("cannot be imported directly"))
                         .emit();
                     // Do not import this illegal binding. Import a dummy binding and pretend
                     // everything is fine
-                    self.import_dummy_binding(directive);
-                    return Success(());
+                    this.import_dummy_binding(directive);
                 }
                 Ok(binding) => {
-                    let imported_binding = self.import(binding, directive);
-                    let conflict = self.try_define(directive.parent, target, ns, imported_binding);
+                    let imported_binding = this.import(binding, directive);
+                    let conflict = this.try_define(directive.parent, target, ns, imported_binding);
                     if let Err(old_binding) = conflict {
-                        let binding = &self.import(binding, directive);
-                        self.report_conflict(directive.parent, target, ns, binding, old_binding);
+                        let binding = &this.import(binding, directive);
+                        this.report_conflict(directive.parent, target, ns, binding, old_binding);
                     }
                 }
             }
-        }
+        });
 
         if indeterminate { Indeterminate } else { Success(()) }
     }
@@ -601,9 +588,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             },
         };
 
-        let (name, value_result, type_result) = match directive.subclass {
-            SingleImport { source, ref value_result, ref type_result, .. } =>
-                (source, value_result.get(), type_result.get()),
+        let (name, result) = match directive.subclass {
+            SingleImport { source, ref result, .. } => (source, result),
             GlobImport { .. } if module.def_id() == directive.parent.def_id() => {
                 // Importing a module into itself is not allowed.
                 let msg = "Cannot glob-import a module into itself.".into();
@@ -621,21 +607,27 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             _ => unreachable!(),
         };
 
-        for &(ns, result) in &[(ValueNS, value_result), (TypeNS, type_result)] {
-            if let Ok(binding) = result {
-                if self.record_use(name, ns, binding, directive.span) {
-                    self.resolution(module, name, ns).borrow_mut().binding =
-                        Some(self.dummy_binding);
+        let mut all_ns_err = true;
+        self.per_ns(|this, ns| {
+            if let Ok(binding) = result[ns].get() {
+                all_ns_err = false;
+                if this.record_use(name, ns, binding, directive.span) {
+                    this.resolution(module, name, ns).borrow_mut().binding =
+                        Some(this.dummy_binding);
                 }
             }
-        }
+        });
 
-        if value_result.is_err() && type_result.is_err() {
-            let (value_result, type_result);
-            value_result = self.resolve_name_in_module(module, name, ValueNS, false, Some(span));
-            type_result = self.resolve_name_in_module(module, name, TypeNS, false, Some(span));
+        if all_ns_err {
+            let mut all_ns_failed = true;
+            self.per_ns(|this, ns| {
+                match this.resolve_name_in_module(module, name, ns, false, Some(span)) {
+                    Success(_) => all_ns_failed = false,
+                    _ => {}
+                }
+            });
 
-            return if let (Failed(_), Failed(_)) = (value_result, type_result) {
+            return if all_ns_failed {
                 let resolutions = module.resolutions.borrow();
                 let names = resolutions.iter().filter_map(|(&(ref n, _), resolution)| {
                     if *n == name { return None; } // Never suggest the same name
@@ -663,64 +655,49 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
         }
 
-        let session = self.session;
-        let reexport_error = || {
-            let msg = format!("`{}` is private, and cannot be reexported", name);
-            let note_msg =
-                format!("consider marking `{}` as `pub` in the imported module", name);
-            struct_span_err!(session, directive.span, E0364, "{}", &msg)
-                .span_note(directive.span, &note_msg)
-                .emit();
-        };
-
-        let extern_crate_lint = || {
-            let msg = format!("extern crate `{}` is private, and cannot be reexported \
-                               (error E0364), consider declaring with `pub`",
-                               name);
-            session.add_lint(PRIVATE_IN_PUBLIC, directive.id, directive.span, msg);
-        };
-
-        match (value_result, type_result) {
-            // All namespaces must be re-exported with extra visibility for an error to occur.
-            (Ok(value_binding), Ok(type_binding)) => {
+        let mut reexport_error = None;
+        let mut any_successful_reexport = false;
+        self.per_ns(|this, ns| {
+            if let Ok(binding) = result[ns].get() {
                 let vis = directive.vis.get();
-                if !value_binding.pseudo_vis().is_at_least(vis, self) &&
-                   !type_binding.pseudo_vis().is_at_least(vis, self) {
-                    reexport_error();
-                } else if type_binding.is_extern_crate() &&
-                          !type_binding.vis.is_at_least(vis, self) {
-                    extern_crate_lint();
-                }
-            }
-
-            (Ok(binding), _) if !binding.pseudo_vis().is_at_least(directive.vis.get(), self) => {
-                reexport_error();
-            }
-
-            (_, Ok(binding)) if !binding.pseudo_vis().is_at_least(directive.vis.get(), self) => {
-                if binding.is_extern_crate() {
-                    extern_crate_lint();
+                if !binding.pseudo_vis().is_at_least(vis, this) {
+                    reexport_error = Some((ns, binding));
                 } else {
-                    struct_span_err!(self.session, directive.span, E0365,
-                                     "`{}` is private, and cannot be reexported", name)
-                        .span_label(directive.span, &format!("reexport of private `{}`", name))
-                        .note(&format!("consider declaring type or module `{}` with `pub`", name))
-                        .emit();
+                    any_successful_reexport = true;
                 }
             }
+        });
 
-            _ => {}
+        // All namespaces must be re-exported with extra visibility for an error to occur.
+        if !any_successful_reexport {
+            let (ns, binding) = reexport_error.unwrap();
+            if ns == TypeNS && binding.is_extern_crate() {
+                let msg = format!("extern crate `{}` is private, and cannot be reexported \
+                                   (error E0364), consider declaring with `pub`",
+                                   name);
+                self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, directive.span, msg);
+            } else if ns == TypeNS {
+                struct_span_err!(self.session, directive.span, E0365,
+                                 "`{}` is private, and cannot be reexported", name)
+                    .span_label(directive.span, &format!("reexport of private `{}`", name))
+                    .note(&format!("consider declaring type or module `{}` with `pub`", name))
+                    .emit();
+            } else {
+                let msg = format!("`{}` is private, and cannot be reexported", name);
+                let note_msg =
+                    format!("consider marking `{}` as `pub` in the imported module", name);
+                struct_span_err!(self.session, directive.span, E0364, "{}", &msg)
+                    .span_note(directive.span, &note_msg)
+                    .emit();
+            }
         }
 
         // Record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
-        let def = match type_result.ok().map(NameBinding::def) {
-            Some(def) => def,
-            None => value_result.ok().map(NameBinding::def).unwrap(),
-        };
-        let path_resolution = PathResolution::new(def);
-        self.def_map.insert(directive.id, path_resolution);
+        self.per_ns(|this, ns| if let Some(binding) = result[ns].get().ok() {
+            this.def_map.entry(directive.id).or_insert(PathResolution::new(binding.def()));
+        });
 
         debug!("(resolving single import) successfully resolved import");
         return Success(());

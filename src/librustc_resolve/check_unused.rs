@@ -22,7 +22,6 @@
 use std::ops::{Deref, DerefMut};
 
 use Resolver;
-use Namespace::{TypeNS, ValueNS};
 
 use rustc::lint;
 use rustc::util::nodemap::NodeMap;
@@ -56,8 +55,9 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     // We have information about whether `use` (import) directives are actually
     // used now. If an import is not used at all, we signal a lint error.
     fn check_import(&mut self, item_id: ast::NodeId, id: ast::NodeId, span: Span) {
-        if !self.used_imports.contains(&(id, TypeNS)) &&
-           !self.used_imports.contains(&(id, ValueNS)) {
+        let mut used = false;
+        self.per_ns(|this, ns| used |= this.used_imports.contains(&(id, ns)));
+        if !used {
             if self.maybe_unused_trait_imports.contains(&id) {
                 // Check later.
                 return;

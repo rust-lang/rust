@@ -15,7 +15,7 @@
 
 use macros::{InvocationData, LegacyScope};
 use resolve_imports::ImportDirective;
-use resolve_imports::ImportDirectiveSubclass::{self, GlobImport};
+use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use {Resolver, Module, ModuleS, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
 use Namespace::{self, TypeNS, ValueNS, MacroNS};
 use ResolveResult::Success;
@@ -37,6 +37,7 @@ use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ext::base::SyntaxExtension;
+use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::expand::mark_tts;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
@@ -157,7 +158,11 @@ impl<'b> Resolver<'b> {
                                 .emit();
                         }
 
-                        let subclass = ImportDirectiveSubclass::single(binding.name, source.name);
+                        let subclass = SingleImport {
+                            target: binding.name,
+                            source: source.name,
+                            result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
+                        };
                         self.add_import_directive(
                             module_path, subclass, view_path.span, item.id, vis, expansion,
                         );
@@ -206,7 +211,11 @@ impl<'b> Resolver<'b> {
                                     (module_path.to_vec(), name, rename)
                                 }
                             };
-                            let subclass = ImportDirectiveSubclass::single(rename, name);
+                            let subclass = SingleImport {
+                                target: rename,
+                                source: name,
+                                result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
+                            };
                             let id = source_item.node.id;
                             self.add_import_directive(
                                 module_path, subclass, source_item.span, id, vis, expansion,
