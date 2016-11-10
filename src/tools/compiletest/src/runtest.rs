@@ -396,8 +396,7 @@ actual:\n\
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec!["-".to_owned(),
-                            "--emit".to_owned(),
-                            "metadata".to_owned(),
+                            "-Zno-trans".to_owned(),
                             "--out-dir".to_owned(),
                             out_dir.to_str().unwrap().to_owned(),
                             format!("--target={}", target),
