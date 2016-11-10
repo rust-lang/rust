@@ -158,17 +158,17 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     }
                 }
             }
-            hir::ItemImpl(.., None, _, ref impl_item_ids) => {
-                for &impl_item_id in impl_item_ids {
-                    let impl_item = self.tcx.map.impl_item(impl_item_id);
+            hir::ItemImpl(.., None, _, ref impl_item_refs) => {
+                for impl_item_ref in impl_item_refs {
+                    let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
                     if impl_item.vis == hir::Public {
                         self.update(impl_item.id, item_level);
                     }
                 }
             }
-            hir::ItemImpl(.., Some(_), _, ref impl_item_ids) => {
-                for &impl_item_id in impl_item_ids {
-                    let impl_item = self.tcx.map.impl_item(impl_item_id);
+            hir::ItemImpl(.., Some(_), _, ref impl_item_refs) => {
+                for impl_item_ref in impl_item_refs {
+                    let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
                     self.update(impl_item.id, item_level);
                 }
             }
@@ -251,12 +251,12 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             // The interface is empty
             hir::ItemDefaultImpl(..) => {}
             // Visit everything except for private impl items
-            hir::ItemImpl(.., ref generics, None, _, ref impl_item_ids) => {
+            hir::ItemImpl(.., ref generics, None, _, ref impl_item_refs) => {
                 if item_level.is_some() {
                     self.reach().visit_generics(generics);
-                    for &impl_item_id in impl_item_ids {
-                        if self.get(impl_item_id.id).is_some() {
-                            let impl_item = self.tcx.map.impl_item(impl_item_id);
+                    for impl_item_ref in impl_item_refs {
+                        if self.get(impl_item_ref.id.node_id).is_some() {
+                            let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
                             self.reach().visit_impl_item(impl_item);
                         }
                     }
@@ -656,7 +656,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             // (i.e. we could just return here to not check them at
             // all, or some worse estimation of whether an impl is
             // publicly visible).
-            hir::ItemImpl(.., ref g, ref trait_ref, ref self_, ref impl_item_ids) => {
+            hir::ItemImpl(.., ref g, ref trait_ref, ref self_, ref impl_item_refs) => {
                 // `impl [... for] Private` is never visible.
                 let self_contains_private;
                 // impl [... for] Public<...>, but not `impl [... for]
@@ -701,9 +701,9 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 // are private (because `T` won't be visible externally).
                 let trait_or_some_public_method =
                     trait_ref.is_some() ||
-                    impl_item_ids.iter()
-                                 .any(|&impl_item_id| {
-                                     let impl_item = self.tcx.map.impl_item(impl_item_id);
+                    impl_item_refs.iter()
+                                 .any(|impl_item_ref| {
+                                     let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
                                      match impl_item.node {
                                          hir::ImplItemKind::Const(..) |
                                          hir::ImplItemKind::Method(..) => {
@@ -721,13 +721,13 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 
                     match *trait_ref {
                         None => {
-                            for &impl_item_id in impl_item_ids {
+                            for impl_item_ref in impl_item_refs {
                                 // This is where we choose whether to walk down
                                 // further into the impl to check its items. We
                                 // should only walk into public items so that we
                                 // don't erroneously report errors for private
                                 // types in private items.
-                                let impl_item = self.tcx.map.impl_item(impl_item_id);
+                                let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
                                 match impl_item.node {
                                     hir::ImplItemKind::Const(..) |
                                     hir::ImplItemKind::Method(..)
@@ -759,8 +759,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             intravisit::walk_path(self, &tr.path);
 
                             // Those in 3. are warned with this call.
-                            for &impl_item_id in impl_item_ids {
-                                let impl_item = self.tcx.map.impl_item(impl_item_id);
+                            for impl_item_ref in impl_item_refs {
+                                let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
                                 if let hir::ImplItemKind::Type(ref ty) = impl_item.node {
                                     self.visit_ty(ty);
                                 }
@@ -771,8 +771,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     // impl Public<Private> { ... }. Any public static
                     // methods will be visible as `Public::foo`.
                     let mut found_pub_static = false;
-                    for &impl_item_id in impl_item_ids {
-                        let impl_item = self.tcx.map.impl_item(impl_item_id);
+                    for impl_item_ref in impl_item_refs {
+                        let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
                         match impl_item.node {
                             hir::ImplItemKind::Const(..) => {
                                 if self.item_is_public(&impl_item.id, &impl_item.vis) {
@@ -1099,13 +1099,13 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for PrivateItemsInPublicInterfacesVisitor
             hir::ItemDefaultImpl(..) => {}
             // An inherent impl is public when its type is public
             // Subitems of inherent impls have their own publicity
-            hir::ItemImpl(.., ref generics, None, ref ty, ref impl_item_ids) => {
+            hir::ItemImpl(.., ref generics, None, ref ty, ref impl_item_refs) => {
                 let ty_vis = self.ty_visibility(ty);
                 check.required_visibility = ty_vis;
                 check.visit_generics(generics);
 
-                for &impl_item_id in impl_item_ids {
-                    let impl_item = self.tcx.map.impl_item(impl_item_id);
+                for impl_item_ref in impl_item_refs {
+                    let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
                     let impl_item_vis =
                         ty::Visibility::from_hir(&impl_item.vis, item.id, self.tcx);
                     check.required_visibility = min(impl_item_vis, ty_vis);
@@ -1114,12 +1114,12 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for PrivateItemsInPublicInterfacesVisitor
             }
             // A trait impl is public when both its type and its trait are public
             // Subitems of trait impls have inherited publicity
-            hir::ItemImpl(.., ref generics, Some(ref trait_ref), ref ty, ref impl_item_ids) => {
+            hir::ItemImpl(.., ref generics, Some(ref trait_ref), ref ty, ref impl_item_refs) => {
                 let vis = min(self.ty_visibility(ty), self.trait_ref_visibility(trait_ref));
                 check.required_visibility = vis;
                 check.visit_generics(generics);
-                for &impl_item_id in impl_item_ids {
-                    let impl_item = self.tcx.map.impl_item(impl_item_id);
+                for impl_item_ref in impl_item_refs {
+                    let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
                     check.visit_impl_item(impl_item);
                 }
             }

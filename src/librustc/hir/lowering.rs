@@ -116,7 +116,7 @@ impl<'a> LoweringContext<'a> {
             }
 
             fn visit_impl_item(&mut self, item: &ImplItem) {
-                let id = self.lctx.lower_impl_item_id(item);
+                let id = self.lctx.lower_impl_item_ref(item).id;
                 self.impl_items.insert(id, self.lctx.lower_impl_item(item));
                 visit::walk_impl_item(self, item);
             }
@@ -641,7 +641,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Impl(unsafety, polarity, ref generics, ref ifce, ref ty, ref impl_items) => {
                 let new_impl_items = impl_items.iter()
-                                               .map(|item| self.lower_impl_item_id(item))
+                                               .map(|item| self.lower_impl_item_ref(item))
                                                .collect();
                 let ifce = ifce.as_ref().map(|trait_ref| self.lower_trait_ref(trait_ref));
                 hir::ItemImpl(self.lower_unsafety(unsafety),
@@ -717,8 +717,24 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn lower_impl_item_id(&mut self, i: &ImplItem) -> hir::ImplItemId {
-        hir::ImplItemId { id: i.id }
+    fn lower_impl_item_ref(&mut self, i: &ImplItem) -> hir::ImplItemRef {
+        hir::ImplItemRef {
+            id: hir::ImplItemId { node_id: i.id },
+            name: i.ident.name,
+            span: i.span,
+            vis: self.lower_visibility(&i.vis),
+            defaultness: self.lower_defaultness(i.defaultness),
+            kind: match i.node {
+                ImplItemKind::Const(..) => hir::AssociatedItemKind::Const,
+                ImplItemKind::Type(..) => hir::AssociatedItemKind::Type,
+                ImplItemKind::Method(ref sig, _) => hir::AssociatedItemKind::Method {
+                    has_self: sig.decl.get_self().is_some(),
+                },
+                ImplItemKind::Macro(..) => unimplemented!(),
+            },
+            // since `default impl` is not yet implemented, this is always true in impls
+            has_value: true,
+        }
     }
 
     fn lower_mod(&mut self, m: &Mod) -> hir::Mod {

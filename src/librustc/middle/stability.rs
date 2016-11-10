@@ -525,10 +525,10 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // For implementations of traits, check the stability of each item
         // individually as it's possible to have a stable trait with unstable
         // items.
-        hir::ItemImpl(.., Some(ref t), _, ref impl_item_ids) => {
+        hir::ItemImpl(.., Some(ref t), _, ref impl_item_refs) => {
             let trait_did = tcx.expect_def(t.ref_id).def_id();
-            for &impl_item_id in impl_item_ids {
-                let impl_item = tcx.map.impl_item(impl_item_id);
+            for impl_item_ref in impl_item_refs {
+                let impl_item = tcx.map.impl_item(impl_item_ref.id);
                 let item = tcx.associated_items(trait_did)
                     .find(|item| item.name == impl_item.name).unwrap();
                 if warn_about_defns {

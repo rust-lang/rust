@@ -2190,9 +2190,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         self.map.local_def_id(trait_item.id)
                     }).collect())
                 }
-                hir::ItemImpl(.., ref impl_items) => {
-                    Rc::new(impl_items.iter().map(|impl_item| {
-                        self.map.local_def_id(impl_item.id)
+                hir::ItemImpl(.., ref impl_item_refs) => {
+                    Rc::new(impl_item_refs.iter().map(|impl_item_ref| {
+                        self.map.local_def_id(impl_item_ref.id.node_id)
                     }).collect())
                 }
                 _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait")

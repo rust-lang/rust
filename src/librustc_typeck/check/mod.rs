@@ -817,7 +817,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                             it.id);
       }
       hir::ItemFn(..) => {} // entirely within check_item_body
-      hir::ItemImpl(_, _, ref hir_generics, _, _, ref impl_item_ids) => {
+      hir::ItemImpl(_, _, ref hir_generics, _, _, ref impl_item_refs) => {
           debug!("ItemImpl {} with id {}", it.name, it.id);
           let impl_def_id = ccx.tcx.map.local_def_id(it.id);
           if let Some(impl_trait_ref) = ccx.tcx.impl_trait_ref(impl_def_id) {
@@ -825,7 +825,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                                              it.span,
                                              impl_def_id,
                                              impl_trait_ref,
-                                             impl_item_ids);
+                                             impl_item_refs);
               let trait_def_id = impl_trait_ref.def_id;
               check_on_unimplemented(ccx, trait_def_id, it);
           }
@@ -833,10 +833,10 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
           impl_parameters_used::enforce_impl_params_are_constrained(ccx,
                                                                     hir_generics,
                                                                     impl_def_id,
-                                                                    impl_item_ids);
+                                                                    impl_item_refs);
 
           impl_item_duplicate::enforce_impl_items_are_distinct(ccx,
-                                                               impl_item_ids);
+                                                               impl_item_refs);
       }
       hir::ItemTrait(..) => {
         let def_id = ccx.tcx.map.local_def_id(it.id);
@@ -895,11 +895,11 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       hir::ItemFn(ref decl, .., ref body) => {
         check_bare_fn(ccx, &decl, &body, it.id, it.span);
       }
-      hir::ItemImpl(.., ref impl_item_ids) => {
+      hir::ItemImpl(.., ref impl_item_refs) => {
         debug!("ItemImpl {} with id {}", it.name, it.id);
 
-        for &impl_item_id in impl_item_ids {
-            let impl_item = ccx.tcx.map.impl_item(impl_item_id);
+        for impl_item_ref in impl_item_refs {
+            let impl_item = ccx.tcx.map.impl_item(impl_item_ref.id);
             match impl_item.node {
                 hir::ImplItemKind::Const(_, ref expr) => {
                     check_const(ccx, &expr, impl_item.id)
@@ -1036,7 +1036,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_span: Span,
                                             impl_id: DefId,
                                             impl_trait_ref: ty::TraitRef<'tcx>,
-                                            impl_item_ids: &[hir::ImplItemId]) {
+                                            impl_item_refs: &[hir::ImplItemRef]) {
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
     // isn't populated for such impls.
@@ -1047,7 +1047,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let trait_def = tcx.lookup_trait_def(impl_trait_ref.def_id);
     let mut overridden_associated_type = None;
 
-    let impl_items = || impl_item_ids.iter().map(|&id| ccx.tcx.map.impl_item(id));
+    let impl_items = || impl_item_refs.iter().map(|iiref| ccx.tcx.map.impl_item(iiref.id));
 
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature

@@ -51,7 +51,7 @@ use CrateCtxt;
 pub fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                      impl_hir_generics: &hir::Generics,
                                                      impl_def_id: DefId,
-                                                     impl_item_ids: &[hir::ImplItemId])
+                                                     impl_item_refs: &[hir::ImplItemRef])
 {
     // Every lifetime used in an associated type must be constrained.
     let impl_scheme = ccx.tcx.lookup_item_type(impl_def_id);
@@ -71,8 +71,8 @@ pub fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
-    let lifetimes_in_associated_types: FxHashSet<_> = impl_item_ids.iter()
-        .map(|item_id|  ccx.tcx.map.local_def_id(item_id.id))
+    let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs.iter()
+        .map(|item_ref|  ccx.tcx.map.local_def_id(item_ref.id.node_id))
         .filter(|&def_id| {
             let item = ccx.tcx.associated_item(def_id);
             item.kind == ty::AssociatedKind::Type && item.has_value

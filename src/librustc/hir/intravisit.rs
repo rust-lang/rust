@@ -205,6 +205,9 @@ pub trait Visitor<'v> : Sized {
     fn visit_impl_item(&mut self, ii: &'v ImplItem) {
         walk_impl_item(self, ii)
     }
+    fn visit_impl_item_ref(&mut self, ii: &'v ImplItemRef) {
+        walk_impl_item_ref(self, ii)
+    }
     fn visit_trait_ref(&mut self, t: &'v TraitRef) {
         walk_trait_ref(self, t)
     }
@@ -399,13 +402,13 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemImpl(.., ref type_parameters, ref opt_trait_reference, ref typ, ref impl_item_ids) => {
+        ItemImpl(.., ref type_parameters, ref opt_trait_reference, ref typ, ref impl_item_refs) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(type_parameters);
             walk_list!(visitor, visit_trait_ref, opt_trait_reference);
             visitor.visit_ty(typ);
-            for &impl_item_id in impl_item_ids {
-                visitor.visit_nested_impl_item(impl_item_id);
+            for impl_item_ref in impl_item_refs {
+                visitor.visit_impl_item_ref(impl_item_ref);
             }
         }
         ItemStruct(ref struct_definition, ref generics) |
@@ -762,6 +765,12 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         }
     }
 }
+
+pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, impl_item_ref: &'v ImplItemRef) {
+    visitor.visit_nested_impl_item(impl_item_ref.id);
+    visitor.visit_name(impl_item_ref.span, impl_item_ref.name);
+}
+
 
 pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V, struct_definition: &'v VariantData) {
     visitor.visit_id(struct_definition.id());

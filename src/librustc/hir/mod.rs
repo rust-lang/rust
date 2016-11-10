@@ -1057,7 +1057,7 @@ pub enum TraitItem_ {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ImplItemId {
-    pub id: NodeId,
+    pub node_id: NodeId,
 }
 
 /// Represents anything within an `impl` block
@@ -1546,7 +1546,7 @@ pub enum Item_ {
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
-             HirVec<ImplItemId>),
+             HirVec<ImplItemRef>),
 }
 
 impl Item_ {
@@ -1568,6 +1568,30 @@ impl Item_ {
             ItemDefaultImpl(..) => "item",
         }
     }
+}
+
+/// A reference from an impl to one of its associated items. This
+/// contains the item's id, naturally, but also the item's name and
+/// some other high-level details (like whether it is an associated
+/// type or method, and whether it is public). This allows other
+/// passes to find the impl they want without loading the id (which
+/// means fewer edges in the incremental compilation graph).
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct ImplItemRef {
+    pub id: ImplItemId,
+    pub name: Name,
+    pub kind: AssociatedItemKind,
+    pub span: Span,
+    pub vis: Visibility,
+    pub defaultness: Defaultness,
+    pub has_value: bool,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum AssociatedItemKind {
+    Const,
+    Method { has_self: bool },
+    Type,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
