@@ -52,6 +52,9 @@ pub enum Def {
           ast::NodeId), // expr node that creates the closure
     Label(ast::NodeId),
 
+    // Macro namespace
+    Macro(DefId),
+
     // Both namespaces
     Err,
 }
@@ -133,7 +136,7 @@ impl Def {
             Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) | Def::TyAlias(id) |
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
-            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) => {
+            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) | Def::Macro(id) => {
                 id
             }
 
@@ -173,6 +176,7 @@ impl Def {
             Def::Upvar(..) => "closure capture",
             Def::Label(..) => "label",
             Def::SelfTy(..) => "self type",
+            Def::Macro(..) => "macro",
             Def::Err => "unresolved item",
         }
     }

@@ -226,4 +226,8 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
         self.insert(lifetime.id, NodeLifetime(lifetime));
     }
+
+    fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
+        self.insert_entry(macro_def.id, NotPresent);
+    }
 }

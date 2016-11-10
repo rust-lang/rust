@@ -195,6 +195,7 @@ read_hir!(hir::Item);
 read_hir!(hir::ImplItem);
 read_hir!(hir::TraitItem);
 read_hir!(hir::ForeignItem);
+read_hir!(hir::MacroDef);
 
 /// Leaks access to a value of type T without any tracking. This is
 /// suitable for ambiguous types like `usize`, which *could* represent
