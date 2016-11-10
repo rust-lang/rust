@@ -3162,25 +3162,12 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_span.hi;
         let body = match decl.output {
-            FunctionRetTy::Default(_) => {
-                // If no explicit return type is given, parse any
-                // expr and wrap it up in a dummy block:
-                let body_expr = self.parse_expr()?;
-                P(ast::Block {
-                    id: ast::DUMMY_NODE_ID,
-                    span: body_expr.span,
-                    stmts: vec![Stmt {
-                        span: body_expr.span,
-                        node: StmtKind::Expr(body_expr),
-                        id: ast::DUMMY_NODE_ID,
-                    }],
-                    rules: BlockCheckMode::Default,
-                })
-            }
+            FunctionRetTy::Default(_) => self.parse_expr()?,
             _ => {
                 // If an explicit return type is given, require a
                 // block to appear (RFC 968).
-                self.parse_block()?
+                let body_lo = self.span.lo;
+                self.parse_block_expr(body_lo, BlockCheckMode::Default, ThinVec::new())?
             }
         };
 

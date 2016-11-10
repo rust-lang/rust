@@ -1412,7 +1412,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                 }
 
                 // walk the body
-                self.nest(ex.id, |v| v.visit_block(&body));
+                self.nest(ex.id, |v| v.visit_expr(body));
             }
             ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) |
             ast::ExprKind::WhileLet(ref pattern, ref subexpression, ref block, _) => {

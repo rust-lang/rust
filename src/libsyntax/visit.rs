@@ -31,13 +31,13 @@ use codemap::Spanned;
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
-    ItemFn(Ident, &'a Generics, Unsafety, Spanned<Constness>, Abi, &'a Visibility),
+    ItemFn(Ident, &'a Generics, Unsafety, Spanned<Constness>, Abi, &'a Visibility, &'a Block),
 
     /// fn foo(&self)
-    Method(Ident, &'a MethodSig, Option<&'a Visibility>),
+    Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a Block),
 
-    /// |x, y| {}
-    Closure,
+    /// |x, y| body
+    Closure(&'a Expr),
 }
 
 /// Each method of the Visitor trait is a hook to be potentially
@@ -68,8 +68,8 @@ pub trait Visitor: Sized {
     fn visit_expr_post(&mut self, _ex: &Expr) { }
     fn visit_ty(&mut self, t: &Ty) { walk_ty(self, t) }
     fn visit_generics(&mut self, g: &Generics) { walk_generics(self, g) }
-    fn visit_fn(&mut self, fk: FnKind, fd: &FnDecl, b: &Block, s: Span, _: NodeId) {
-        walk_fn(self, fk, fd, b, s)
+    fn visit_fn(&mut self, fk: FnKind, fd: &FnDecl, s: Span, _: NodeId) {
+        walk_fn(self, fk, fd, s)
     }
     fn visit_trait_item(&mut self, ti: &TraitItem) { walk_trait_item(self, ti) }
     fn visit_impl_item(&mut self, ii: &ImplItem) { walk_impl_item(self, ii) }
@@ -246,9 +246,8 @@ pub fn walk_item<V: Visitor>(visitor: &mut V, item: &Item) {
         }
         ItemKind::Fn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
             visitor.visit_fn(FnKind::ItemFn(item.ident, generics, unsafety,
-                                            constness, abi, &item.vis),
+                                            constness, abi, &item.vis, body),
                              declaration,
-                             body,
                              item.span,
                              item.id)
         }
@@ -519,24 +518,25 @@ pub fn walk_fn_decl<V: Visitor>(visitor: &mut V, function_declaration: &FnDecl) 
     visitor.visit_fn_ret_ty(&function_declaration.output)
 }
 
-pub fn walk_fn_kind<V: Visitor>(visitor: &mut V, function_kind: FnKind) {
-    match function_kind {
-        FnKind::ItemFn(_, generics, _, _, _, _) => {
-            visitor.visit_generics(generics);
-        }
-        FnKind::Method(_, ref sig, _) => {
-            visitor.visit_generics(&sig.generics);
-        }
-        FnKind::Closure => {}
-    }
-}
-
-pub fn walk_fn<V>(visitor: &mut V, kind: FnKind, declaration: &FnDecl, body: &Block, _span: Span)
+pub fn walk_fn<V>(visitor: &mut V, kind: FnKind, declaration: &FnDecl, _span: Span)
     where V: Visitor,
 {
-    walk_fn_kind(visitor, kind);
-    walk_fn_decl(visitor, declaration);
-    visitor.visit_block(body)
+    match kind {
+        FnKind::ItemFn(_, generics, _, _, _, _, body) => {
+            visitor.visit_generics(generics);
+            walk_fn_decl(visitor, declaration);
+            visitor.visit_block(body);
+        }
+        FnKind::Method(_, ref sig, _, body) => {
+            visitor.visit_generics(&sig.generics);
+            walk_fn_decl(visitor, declaration);
+            visitor.visit_block(body);
+        }
+        FnKind::Closure(body) => {
+            walk_fn_decl(visitor, declaration);
+            visitor.visit_expr(body);
+        }
+    }
 }
 
 pub fn walk_trait_item<V: Visitor>(visitor: &mut V, trait_item: &TraitItem) {
@@ -552,8 +552,8 @@ pub fn walk_trait_item<V: Visitor>(visitor: &mut V, trait_item: &TraitItem) {
             walk_fn_decl(visitor, &sig.decl);
         }
         TraitItemKind::Method(ref sig, Some(ref body)) => {
-            visitor.visit_fn(FnKind::Method(trait_item.ident, sig, None), &sig.decl,
-                             body, trait_item.span, trait_item.id);
+            visitor.visit_fn(FnKind::Method(trait_item.ident, sig, None, body),
+                             &sig.decl, trait_item.span, trait_item.id);
         }
         TraitItemKind::Type(ref bounds, ref default) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
@@ -575,8 +575,8 @@ pub fn walk_impl_item<V: Visitor>(visitor: &mut V, impl_item: &ImplItem) {
             visitor.visit_expr(expr);
         }
         ImplItemKind::Method(ref sig, ref body) => {
-            visitor.visit_fn(FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis)), &sig.decl,
-                             body, impl_item.span, impl_item.id);
+            visitor.visit_fn(FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis), body),
+                             &sig.decl, impl_item.span, impl_item.id);
         }
         ImplItemKind::Type(ref ty) => {
             visitor.visit_ty(ty);
@@ -711,9 +711,8 @@ pub fn walk_expr<V: Visitor>(visitor: &mut V, expression: &Expr) {
             walk_list!(visitor, visit_arm, arms);
         }
         ExprKind::Closure(_, ref function_declaration, ref body, _decl_span) => {
-            visitor.visit_fn(FnKind::Closure,
+            visitor.visit_fn(FnKind::Closure(body),
                              function_declaration,
-                             body,
                              expression.span,
                              expression.id)
         }

@@ -156,7 +156,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                        fn_id: ast::NodeId,
                                        arguments: A,
                                        return_ty: Ty<'gcx>,
-                                       ast_block: &'gcx hir::Block)
+                                       ast_body: &'gcx hir::Expr)
                                        -> (Mir<'tcx>, ScopeAuxiliaryVec)
     where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
 {
@@ -166,7 +166,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let span = tcx.map.span(fn_id);
     let mut builder = Builder::new(hir, span, arguments.len(), return_ty);
 
-    let body_id = ast_block.id;
+    let body_id = ast_body.id;
     let call_site_extent =
         tcx.region_maps.lookup_code_extent(
             CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body_id });
@@ -176,7 +176,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let mut block = START_BLOCK;
     unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
         unpack!(block = builder.in_scope(arg_extent, block, |builder| {
-            builder.args_and_body(block, return_ty, &arguments, arg_extent, ast_block)
+            builder.args_and_body(block, &arguments, arg_extent, ast_body)
         }));
         // Attribute epilogue to function's closing brace
         let fn_end = Span { lo: span.hi, ..span };
@@ -310,10 +310,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn args_and_body(&mut self,
                      mut block: BasicBlock,
-                     return_ty: Ty<'tcx>,
                      arguments: &[(Ty<'gcx>, Option<&'gcx hir::Pat>)],
                      argument_extent: CodeExtent,
-                     ast_block: &'gcx hir::Block)
+                     ast_body: &'gcx hir::Expr)
                      -> BlockAnd<()>
     {
         // Allocate locals for the function arguments
@@ -342,12 +341,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             if let Some(pattern) = pattern {
                 let pattern = Pattern::from_hir(self.hir.tcx(), pattern);
-                scope = self.declare_bindings(scope, ast_block.span, &pattern);
+                scope = self.declare_bindings(scope, ast_body.span, &pattern);
                 unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
             }
 
             // Make sure we drop (parts of) the argument even when not matched on.
-            self.schedule_drop(pattern.as_ref().map_or(ast_block.span, |pat| pat.span),
+            self.schedule_drop(pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
                                argument_extent, &lvalue, ty);
 
         }
@@ -357,13 +356,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.visibility_scope = visibility_scope;
         }
 
-        // FIXME(#32959): temporary hack for the issue at hand
-        let return_is_unit = return_ty.is_nil();
-        // start the first basic block and translate the body
-        unpack!(block = self.ast_block(&Lvalue::Local(RETURN_POINTER),
-                return_is_unit, block, ast_block));
-
-        block.unit()
+        let body = self.hir.mirror(ast_body);
+        self.into(&Lvalue::Local(RETURN_POINTER), block, body)
     }
 
     fn get_unit_temp(&mut self) -> Lvalue<'tcx> {

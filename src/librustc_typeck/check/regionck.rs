@@ -142,13 +142,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn regionck_fn(&self,
                        fn_id: ast::NodeId,
                        decl: &hir::FnDecl,
-                       blk: &hir::Block) {
+                       body: &hir::Expr) {
         debug!("regionck_fn(id={})", fn_id);
-        let mut rcx = RegionCtxt::new(self, RepeatingScope(blk.id), blk.id, Subject(fn_id));
+        let mut rcx = RegionCtxt::new(self, RepeatingScope(body.id), body.id, Subject(fn_id));
 
         if self.err_count_since_creation() == 0 {
             // regionck assumes typeck succeeded
-            rcx.visit_fn_body(fn_id, decl, blk, self.tcx.map.span(fn_id));
+            rcx.visit_fn_body(fn_id, decl, body, self.tcx.map.span(fn_id));
         }
 
         rcx.free_region_map.relate_free_regions_from_predicates(
@@ -268,7 +268,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn visit_fn_body(&mut self,
                      id: ast::NodeId, // the id of the fn itself
                      fn_decl: &hir::FnDecl,
-                     body: &hir::Block,
+                     body: &hir::Expr,
                      span: Span)
     {
         // When we enter a function, we can derive
@@ -305,7 +305,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         self.relate_free_regions(&fn_sig_tys[..], body.id, span);
         self.link_fn_args(self.tcx.region_maps.node_extent(body.id),
                           &fn_decl.inputs[..]);
-        self.visit_block(body);
+        self.visit_expr(body);
         self.visit_region_obligations(body.id);
 
         let call_site_scope = self.call_site_scope.unwrap();
@@ -480,7 +480,7 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
     // regions, until regionck, as described in #3238.
 
     fn visit_fn(&mut self, _fk: intravisit::FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Block, span: Span, id: ast::NodeId) {
+                b: &'v hir::Expr, span: Span, id: ast::NodeId) {
         self.visit_fn_body(id, fd, b, span)
     }
 
@@ -825,7 +825,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
     fn check_expr_fn_block(&mut self,
                            expr: &hir::Expr,
-                           body: &hir::Block) {
+                           body: &hir::Expr) {
         let repeating_scope = self.set_repeating_scope(body.id);
         intravisit::walk_expr(self, expr);
         self.set_repeating_scope(repeating_scope);

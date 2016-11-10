@@ -21,11 +21,9 @@
 //! nested within a uniquely determined `FnLike`), and users can ask
 //! for the `Code` associated with a particular NodeId.
 
-pub use self::Code::*;
-
 use hir as ast;
 use hir::map::{self, Node};
-use hir::{Block, FnDecl};
+use hir::{Expr, FnDecl};
 use hir::intravisit::FnKind;
 use syntax::abi;
 use syntax::ast::{Attribute, Name, NodeId};
@@ -50,7 +48,7 @@ pub trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
 /// Components shared by fn-like things (fn items, methods, closures).
 pub struct FnParts<'a> {
     pub decl: &'a FnDecl,
-    pub body: &'a Block,
+    pub body: &'a Expr,
     pub kind: FnKind<'a>,
     pub span: Span,
     pub id:   NodeId,
@@ -77,29 +75,32 @@ impl MaybeFnLike for ast::Expr {
     }
 }
 
-/// Carries either an FnLikeNode or a Block, as these are the two
+/// Carries either an FnLikeNode or a Expr, as these are the two
 /// constructs that correspond to "code" (as in, something from which
 /// we can construct a control-flow graph).
 #[derive(Copy, Clone)]
 pub enum Code<'a> {
-    FnLikeCode(FnLikeNode<'a>),
-    BlockCode(&'a Block),
+    FnLike(FnLikeNode<'a>),
+    Expr(&'a Expr),
 }
 
 impl<'a> Code<'a> {
     pub fn id(&self) -> NodeId {
         match *self {
-            FnLikeCode(node) => node.id(),
-            BlockCode(block) => block.id,
+            Code::FnLike(node) => node.id(),
+            Code::Expr(block) => block.id,
         }
     }
 
-    /// Attempts to construct a Code from presumed FnLike or Block node input.
-    pub fn from_node(node: Node) -> Option<Code> {
-        if let map::NodeBlock(block) = node {
-            Some(BlockCode(block))
-        } else {
-            FnLikeNode::from_node(node).map(|fn_like| FnLikeCode(fn_like))
+    /// Attempts to construct a Code from presumed FnLike or Expr node input.
+    pub fn from_node(map: &map::Map<'a>, id: NodeId) -> Option<Code<'a>> {
+        match map.get(id) {
+            map::NodeBlock(_) => {
+                //  Use the parent, hopefully an expression node.
+                Code::from_node(map, map.get_parent_node(id))
+            }
+            map::NodeExpr(expr) => Some(Code::Expr(expr)),
+            node => FnLikeNode::from_node(node).map(Code::FnLike)
         }
     }
 }
@@ -114,7 +115,7 @@ struct ItemFnParts<'a> {
     abi:      abi::Abi,
     vis:      &'a ast::Visibility,
     generics: &'a ast::Generics,
-    body:     &'a Block,
+    body:     &'a Expr,
     id:       NodeId,
     span:     Span,
     attrs:    &'a [Attribute],
@@ -124,14 +125,14 @@ struct ItemFnParts<'a> {
 /// for use when implementing FnLikeNode operations.
 struct ClosureParts<'a> {
     decl: &'a FnDecl,
-    body: &'a Block,
+    body: &'a Expr,
     id: NodeId,
     span: Span,
     attrs: &'a [Attribute],
 }
 
 impl<'a> ClosureParts<'a> {
-    fn new(d: &'a FnDecl, b: &'a Block, id: NodeId, s: Span, attrs: &'a [Attribute]) -> Self {
+    fn new(d: &'a FnDecl, b: &'a Expr, id: NodeId, s: Span, attrs: &'a [Attribute]) -> Self {
         ClosureParts {
             decl: d,
             body: b,
@@ -171,9 +172,9 @@ impl<'a> FnLikeNode<'a> {
         }
     }
 
-    pub fn body(self) -> &'a Block {
+    pub fn body(self) -> &'a Expr {
         self.handle(|i: ItemFnParts<'a>|  &*i.body,
-                    |_, _, _: &'a ast::MethodSig, _, body: &'a ast::Block, _, _|  body,
+                    |_, _, _: &'a ast::MethodSig, _, body: &'a ast::Expr, _, _|  body,
                     |c: ClosureParts<'a>| c.body)
     }
 
@@ -214,7 +215,7 @@ impl<'a> FnLikeNode<'a> {
                   Name,
                   &'a ast::MethodSig,
                   Option<&'a ast::Visibility>,
-                  &'a ast::Block,
+                  &'a ast::Expr,
                   Span,
                   &'a [Attribute])
                   -> A,

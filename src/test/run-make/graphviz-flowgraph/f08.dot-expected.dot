@@ -16,6 +16,7 @@ digraph block {
     N14[label="block { _y = 888; }"];
     N15[label="expr if x > 88 { _y = 888; }"];
     N16[label="block { let x = 8; let _y; if x > 88 { _y = 888; } }"];
+    N17[label="expr { let x = 8; let _y; if x > 88 { _y = 888; } }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -32,5 +33,6 @@ digraph block {
     N9 -> N15;
     N14 -> N15;
     N15 -> N16;
-    N16 -> N1;
+    N16 -> N17;
+    N17 -> N1;
 }

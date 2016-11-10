@@ -23,7 +23,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               expr: &hir::Expr,
                               _capture: hir::CaptureClause,
                               decl: &'gcx hir::FnDecl,
-                              body: &'gcx hir::Block,
+                              body: &'gcx hir::Expr,
                               expected: Expectation<'tcx>)
                               -> Ty<'tcx> {
         debug!("check_expr_closure(expr={:?},expected={:?})",
@@ -44,7 +44,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                      expr: &hir::Expr,
                      opt_kind: Option<ty::ClosureKind>,
                      decl: &'gcx hir::FnDecl,
-                     body: &'gcx hir::Block,
+                     body: &'gcx hir::Expr,
                      expected_sig: Option<ty::FnSig<'tcx>>)
                      -> Ty<'tcx> {
         let expr_def_id = self.tcx.map.local_def_id(expr.id);

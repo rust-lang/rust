@@ -99,7 +99,7 @@ impl LateLintPass for UnusedMut {
                 cx: &LateContext,
                 _: FnKind,
                 decl: &hir::FnDecl,
-                _: &hir::Block,
+                _: &hir::Expr,
                 _: Span,
                 _: ast::NodeId) {
         for a in &decl.inputs {

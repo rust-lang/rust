@@ -52,6 +52,7 @@ digraph block {
     N50[label="expr \"unreachable\""];
     N51[label="stmt \"unreachable\";"];
     N52[label="block {\l    let mut x = 16;\l    let mut y = 16;\l    \'outer:\l        loop  {\l            \'inner:\l                loop  {\l                    if x == 1 { continue \'outer ; \"unreachable\"; }\l                    if y >= 1 { break ; \"unreachable\"; }\l                    y -= 1;\l                }\l            y -= 1;\l            x -= 1;\l        }\l    \"unreachable\";\l}\l"];
+    N53[label="expr {\l    let mut x = 16;\l    let mut y = 16;\l    \'outer:\l        loop  {\l            \'inner:\l                loop  {\l                    if x == 1 { continue \'outer ; \"unreachable\"; }\l                    if y >= 1 { break ; \"unreachable\"; }\l                    y -= 1;\l                }\l            y -= 1;\l            x -= 1;\l        }\l    \"unreachable\";\l}\l"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -105,5 +106,6 @@ digraph block {
     N49 -> N50;
     N50 -> N51;
     N51 -> N52;
-    N52 -> N1;
+    N52 -> N53;
+    N53 -> N1;
 }

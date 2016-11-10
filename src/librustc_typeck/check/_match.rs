@@ -13,7 +13,7 @@ use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
-use check::{FnCtxt, Expectation};
+use check::{FnCtxt, Expectation, Diverges};
 use util::nodemap::FxHashMap;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -360,9 +360,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
         true
     }
-}
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_match(&self,
                        expr: &'gcx hir::Expr,
                        discrim: &'gcx hir::Expr,
@@ -390,14 +388,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             discrim_ty = self.next_ty_var();
             self.check_expr_has_type(discrim, discrim_ty);
         };
+        let discrim_diverges = self.diverges.get();
+        self.diverges.set(Diverges::Maybe);
 
         // Typecheck the patterns first, so that we get types for all the
         // bindings.
-        for arm in arms {
+        let all_arm_pats_diverge: Vec<_> = arms.iter().map(|arm| {
+            let mut all_pats_diverge = Diverges::WarnedAlways;
             for p in &arm.pats {
+                self.diverges.set(Diverges::Maybe);
                 self.check_pat(&p, discrim_ty);
+                all_pats_diverge &= self.diverges.get();
             }
-        }
+            all_pats_diverge
+        }).collect();
 
         // Now typecheck the blocks.
         //
@@ -410,6 +414,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // type in that case)
         let expected = expected.adjust_for_branches(self);
         let mut result_ty = self.next_diverging_ty_var();
+        let mut all_arms_diverge = Diverges::WarnedAlways;
         let coerce_first = match expected {
             // We don't coerce to `()` so that if the match expression is a
             // statement it's branches can have any consistent type. That allows
@@ -422,11 +427,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => result_ty
         };
 
-        for (i, arm) in arms.iter().enumerate() {
+        for (i, (arm, pats_diverge)) in arms.iter().zip(all_arm_pats_diverge).enumerate() {
             if let Some(ref e) = arm.guard {
+                self.diverges.set(pats_diverge);
                 self.check_expr_has_type(e, tcx.types.bool);
             }
+
+            self.diverges.set(pats_diverge);
             let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
+            all_arms_diverge &= self.diverges.get();
 
             if result_ty.references_error() || arm_ty.references_error() {
                 result_ty = tcx.types.err;
@@ -476,11 +485,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
         }
 
+        // We won't diverge unless the discriminant or all arms diverge.
+        self.diverges.set(discrim_diverges | all_arms_diverge);
+
         result_ty
     }
-}
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_pat_struct(&self,
                         pat: &'gcx hir::Pat,
                         path: &hir::Path,

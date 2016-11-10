@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn equal<T>(_: &T, _: &T) -> bool where T : Eq {
-}
+fn equal<T>(a: &T, b: &T) -> bool where T : Eq { a == b }
 
 struct Struct;
 

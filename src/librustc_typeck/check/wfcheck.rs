@@ -348,7 +348,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
     fn check_item_fn(&mut self,
                      item: &hir::Item,
-                     body: &hir::Block)
+                     body: &hir::Expr)
     {
         self.for_item(item).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
