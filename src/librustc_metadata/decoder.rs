@@ -88,8 +88,9 @@ pub trait Metadata<'a, 'tcx>: Copy {
 impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a MetadataBlob {
     fn raw_bytes(self) -> &'a [u8] {
         match *self {
-            MetadataBlob::Inflated(ref vec) => &vec[..],
+            MetadataBlob::Inflated(ref vec) => vec,
             MetadataBlob::Archive(ref ar) => ar.as_slice(),
+            MetadataBlob::Raw(ref vec) => vec,
         }
     }
 }

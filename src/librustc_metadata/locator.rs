@@ -53,8 +53,8 @@
 //! is a platform-defined dynamic library. Each library has a metadata somewhere
 //! inside of it.
 //!
-//! A third kind of dependency is an rmeta file. These are rlibs, which contain
-//! metadata, but no code. To a first approximation, these are treated in the
+//! A third kind of dependency is an rmeta file. These are metadata files and do
+//! not contain any code, etc. To a first approximation, these are treated in the
 //! same way as rlibs. Where there is both an rlib and an rmeta file, the rlib
 //! gets priority (even if the rmeta file is newer). An rmeta file is only
 //! useful for checking a downstream crate, attempting to link one will cause an
@@ -239,8 +239,8 @@ use rustc_back::target::Target;
 
 use std::cmp;
 use std::fmt;
-use std::fs;
-use std::io;
+use std::fs::{self, File};
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::ptr;
 use std::slice;
@@ -462,22 +462,23 @@ impl<'a> Context<'a> {
                 None => return FileDoesntMatch,
                 Some(file) => file,
             };
-            let (hash, found_kind) = if file.starts_with(&rlib_prefix[..]) && file.ends_with(".rlib") {
-                (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], CrateFlavor::Rlib)
-            } else if file.starts_with(&rlib_prefix[..]) && file.ends_with(".rmeta") {
-                (&file[(rlib_prefix.len())..(file.len() - ".rmeta".len())], CrateFlavor::Rmeta)
-            } else if file.starts_with(&dylib_prefix) &&
-                                         file.ends_with(&dypair.1) {
-                (&file[(dylib_prefix.len())..(file.len() - dypair.1.len())], CrateFlavor::Dylib)
-            } else {
-                if file.starts_with(&staticlib_prefix[..]) && file.ends_with(&staticpair.1) {
-                    staticlibs.push(CrateMismatch {
-                        path: path.to_path_buf(),
-                        got: "static".to_string(),
-                    });
-                }
-                return FileDoesntMatch;
-            };
+            let (hash, found_kind) =
+                if file.starts_with(&rlib_prefix[..]) && file.ends_with(".rlib") {
+                    (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], CrateFlavor::Rlib)
+                } else if file.starts_with(&rlib_prefix[..]) && file.ends_with(".rmeta") {
+                    (&file[(rlib_prefix.len())..(file.len() - ".rmeta".len())], CrateFlavor::Rmeta)
+                } else if file.starts_with(&dylib_prefix) &&
+                                             file.ends_with(&dypair.1) {
+                    (&file[(dylib_prefix.len())..(file.len() - dypair.1.len())], CrateFlavor::Dylib)
+                } else {
+                    if file.starts_with(&staticlib_prefix[..]) && file.ends_with(&staticpair.1) {
+                        staticlibs.push(CrateMismatch {
+                            path: path.to_path_buf(),
+                            got: "static".to_string(),
+                        });
+                    }
+                    return FileDoesntMatch;
+                };
             info!("lib candidate: {}", path.display());
 
             let hash_str = hash.to_string();
@@ -731,7 +732,8 @@ impl<'a> Context<'a> {
                         return false;
                     }
                 };
-                if file.starts_with("lib") && file.ends_with(".rlib") {
+                if file.starts_with("lib") &&
+                   (file.ends_with(".rlib") || file.ends_with(".rmeta")) {
                     return true;
                 } else {
                     let (ref prefix, ref suffix) = dylibname;
@@ -846,7 +848,7 @@ fn get_metadata_section_imp(target: &Target,
     if !filename.exists() {
         return Err(format!("no such file: '{}'", filename.display()));
     }
-    if flavor == CrateFlavor::Rlib || flavor == CrateFlavor::Rmeta {
+    if flavor == CrateFlavor::Rlib {
         // Use ArchiveRO for speed here, it's backed by LLVM and uses mmap
         // internally to read the file. We also avoid even using a memcpy by
         // just keeping the archive along while the metadata is in use.
@@ -864,6 +866,15 @@ fn get_metadata_section_imp(target: &Target,
                 Ok(blob)
             }
         };
+    } else if flavor == CrateFlavor::Rmeta {
+        let mut file = File::open(filename).map_err(|_|
+            format!("could not open file: '{}'", filename.display()))?;
+        let mut buf = vec![];
+        file.read_to_end(&mut buf).map_err(|_|
+            format!("failed to read rlib metadata: '{}'", filename.display()))?;
+        let blob = MetadataBlob::Raw(buf);
+        verify_decompressed_encoding_version(&blob, filename)?;
+        return Ok(blob);
     }
     unsafe {
         let buf = common::path2cstr(filename);

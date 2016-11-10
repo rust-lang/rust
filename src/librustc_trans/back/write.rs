@@ -691,12 +691,10 @@ pub fn run_passes(sess: &Session,
     // Whenever an rlib is created, the bitcode is inserted into the
     // archive in order to allow LTO against it.
     let needs_crate_bitcode =
-            (sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
-             sess.opts.output_types.contains_key(&OutputType::Exe)) ||
-            sess.crate_types.borrow().contains(&config::CrateTypeMetadata);
+            sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
+            sess.opts.output_types.contains_key(&OutputType::Exe);
     let needs_crate_object =
-            sess.opts.output_types.contains_key(&OutputType::Exe) ||
-            sess.crate_types.borrow().contains(&config::CrateTypeMetadata);
+            sess.opts.output_types.contains_key(&OutputType::Exe);
     if needs_crate_bitcode {
         modules_config.emit_bc = true;
     }

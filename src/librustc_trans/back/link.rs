@@ -190,7 +190,6 @@ pub fn link_binary(sess: &Session,
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-trans, as they will error.
-        // TODO do we need to check for CrateTypeMetadata here?
         if sess.opts.debugging_opts.no_trans &&
            crate_type == config::CrateTypeExecutable {
             continue;
@@ -312,7 +311,8 @@ pub fn each_linked_rlib(sess: &Session,
         let path = match path {
             LibSource::Some(p) => p,
             LibSource::MetadataOnly => {
-                sess.fatal(&format!("could not find rlib for: `{}`, found rmeta (metadata) file", name));
+                sess.fatal(&format!("could not find rlib for: `{}`, found rmeta (metadata) file",
+                                    name));
             }
             LibSource::None => {
                 sess.fatal(&format!("could not find rlib for: `{}`", name));
@@ -351,12 +351,15 @@ fn link_binary_output(sess: &Session,
     };
 
     match crate_type {
-        config::CrateTypeRlib | config::CrateTypeMetadata => {
+        config::CrateTypeRlib => {
             link_rlib(sess, Some(trans), &objects, &out_filename,
                       tmpdir.path()).build();
         }
         config::CrateTypeStaticlib => {
             link_staticlib(sess, &objects, &out_filename, tmpdir.path());
+        }
+        config::CrateTypeMetadata => {
+            emit_metadata(sess, trans, &out_filename);
         }
         _ => {
             link_natively(sess, crate_type, &objects, &out_filename, trans,
@@ -393,6 +396,13 @@ fn archive_config<'a>(sess: &'a Session,
         lib_search_paths: archive_search_paths(sess),
         ar_prog: get_ar_prog(sess),
         command_path: command_path(sess, None),
+    }
+}
+
+fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, out_filename: &Path) {
+    let result = fs::File::create(out_filename).and_then(|mut f| f.write_all(&trans.metadata));
+    if let Err(e) = result {
+        sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
     }
 }
 
@@ -471,15 +481,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // here so concurrent builds in the same directory don't try to use
             // the same filename for metadata (stomping over one another)
             let metadata = tmpdir.join(sess.cstore.metadata_filename());
-            match fs::File::create(&metadata).and_then(|mut f| {
-                f.write_all(&trans.metadata)
-            }) {
-                Ok(..) => {}
-                Err(e) => {
-                    sess.fatal(&format!("failed to write {}: {}",
-                                        metadata.display(), e));
-                }
-            }
+            emit_metadata(sess, trans, &metadata);
             ab.add_file(&metadata);
 
             // For LTO purposes, the bytecode of this library is also inserted
