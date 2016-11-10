@@ -107,11 +107,6 @@ pub trait AstConv<'gcx, 'tcx> {
     fn get_type_parameter_bounds(&self, span: Span, def_id: ast::NodeId)
                                  -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>;
 
-    /// Returns true if the trait with id `trait_def_id` defines an
-    /// associated type with the name `name`.
-    fn trait_defines_associated_type_named(&self, trait_def_id: DefId, name: ast::Name)
-                                           -> bool;
-
     /// Return an (optional) substitution to convert bound type parameters that
     /// are in scope into free ones. This function should only return Some
     /// within a fn body.
@@ -831,6 +826,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                         Some(self_ty))
     }
 
+    fn trait_defines_associated_type_named(&self,
+                                           trait_def_id: DefId,
+                                           assoc_name: ast::Name)
+                                           -> bool
+    {
+        self.tcx().associated_items(trait_def_id).any(|item| {
+            item.kind == ty::AssociatedKind::Type && item.name == assoc_name
+        })
+    }
+
     fn ast_type_binding_to_poly_projection_predicate(
         &self,
         path_id: ast::NodeId,
@@ -1144,20 +1149,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let mut associated_types = FxHashSet::default();
         for tr in traits::supertraits(tcx, principal) {
-            if let Some(trait_id) = tcx.map.as_local_node_id(tr.def_id()) {
-                use collect::trait_associated_type_names;
-
-                associated_types.extend(trait_associated_type_names(tcx, trait_id)
-                    .map(|name| (tr.def_id(), name)))
-            } else {
-                let trait_items = tcx.impl_or_trait_items(tr.def_id());
-                associated_types.extend(trait_items.iter().filter_map(|&def_id| {
-                    match tcx.impl_or_trait_item(def_id) {
-                        ty::TypeTraitItem(ref item) => Some(item.name),
-                        _ => None
-                    }
-                }).map(|name| (tr.def_id(), name)));
-            }
+            associated_types.extend(tcx.associated_items(tr.def_id())
+                .filter(|item| item.kind == ty::AssociatedKind::Type)
+                .map(|item| (tr.def_id(), item.name)));
         }
 
         for projection_bound in &projection_bounds {
@@ -1260,14 +1254,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         if bounds.len() > 1 {
             let spans = bounds.iter().map(|b| {
-                self.tcx().impl_or_trait_items(b.def_id()).iter()
-                .find(|&&def_id| {
-                    match self.tcx().impl_or_trait_item(def_id) {
-                        ty::TypeTraitItem(ref item) => item.name.as_str() == assoc_name,
-                        _ => false
-                    }
+                self.tcx().associated_items(b.def_id()).find(|item| {
+                    item.kind == ty::AssociatedKind::Type && item.name.as_str() == assoc_name
                 })
-                .and_then(|&def_id| self.tcx().map.as_local_node_id(def_id))
+                .and_then(|item| self.tcx().map.as_local_node_id(item.def_id))
                 .and_then(|node_id| self.tcx().map.opt_span(node_id))
             });
 
@@ -1383,25 +1373,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let trait_did = bound.0.def_id;
         let ty = self.projected_ty_from_poly_trait_ref(span, bound, assoc_name);
 
-        let item_did = if let Some(trait_id) = tcx.map.as_local_node_id(trait_did) {
-            // `ty::trait_items` used below requires information generated
-            // by type collection, which may be in progress at this point.
-            match tcx.map.expect_item(trait_id).node {
-                hir::ItemTrait(.., ref trait_items) => {
-                    let item = trait_items.iter()
-                                          .find(|i| i.name == assoc_name)
-                                          .expect("missing associated type");
-                    tcx.map.local_def_id(item.id)
-                }
-                _ => bug!()
-            }
-        } else {
-            let trait_items = tcx.trait_items(trait_did);
-            let item = trait_items.iter().find(|i| i.name() == assoc_name);
-            item.expect("missing associated type").def_id()
-        };
-
-        (ty, Def::AssociatedTy(item_did))
+        let item = tcx.associated_items(trait_did).find(|i| i.name == assoc_name);
+        (ty, Def::AssociatedTy(item.expect("missing associated type").def_id))
     }
 
     fn qpath_to_ty(&self,
@@ -1694,13 +1667,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TyBareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
                 let anon_scope = rscope.anon_type_scope();
-                let (bare_fn_ty, _) =
-                    self.ty_of_method_or_bare_fn(bf.unsafety,
-                                                 bf.abi,
-                                                 None,
-                                                 &bf.decl,
-                                                 anon_scope,
-                                                 anon_scope);
+                let bare_fn_ty = self.ty_of_method_or_bare_fn(bf.unsafety,
+                                                              bf.abi,
+                                                              None,
+                                                              &bf.decl,
+                                                              anon_scope,
+                                                              anon_scope);
 
                 // Find any late-bound regions declared in return type that do
                 // not appear in the arguments. These are not wellformed.
@@ -1842,7 +1814,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         sig: &hir::MethodSig,
                         untransformed_self_ty: Ty<'tcx>,
                         anon_scope: Option<AnonTypeScope>)
-                        -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory<'tcx>) {
+                        -> &'tcx ty::BareFnTy<'tcx> {
         self.ty_of_method_or_bare_fn(sig.unsafety,
                                      sig.abi,
                                      Some(untransformed_self_ty),
@@ -1857,7 +1829,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                          decl: &hir::FnDecl,
                          anon_scope: Option<AnonTypeScope>)
                          -> &'tcx ty::BareFnTy<'tcx> {
-        self.ty_of_method_or_bare_fn(unsafety, abi, None, decl, None, anon_scope).0
+        self.ty_of_method_or_bare_fn(unsafety, abi, None, decl, None, anon_scope)
     }
 
     fn ty_of_method_or_bare_fn(&self,
@@ -1867,7 +1839,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                decl: &hir::FnDecl,
                                arg_anon_scope: Option<AnonTypeScope>,
                                ret_anon_scope: Option<AnonTypeScope>)
-                               -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory<'tcx>)
+                               -> &'tcx ty::BareFnTy<'tcx>
     {
         debug!("ty_of_method_or_bare_fn");
 
@@ -1880,13 +1852,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // lifetime elision, we can determine it in two ways. First (determined
         // here), if self is by-reference, then the implied output region is the
         // region of the self parameter.
-        let (self_ty, explicit_self_category) = match (opt_untransformed_self_ty, decl.get_self()) {
+        let (self_ty, explicit_self) = match (opt_untransformed_self_ty, decl.get_self()) {
             (Some(untransformed_self_ty), Some(explicit_self)) => {
                 let self_type = self.determine_self_type(&rb, untransformed_self_ty,
                                                          &explicit_self);
-                (Some(self_type.0), self_type.1)
+                (Some(self_type), Some(ExplicitSelf::determine(untransformed_self_ty, self_type)))
             }
-            _ => (None, ty::ExplicitSelfCategory::Static),
+            _ => (None, None),
         };
 
         // HACK(eddyb) replace the fake self type in the AST with the actual type.
@@ -1901,8 +1873,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // Second, if there was exactly one lifetime (either a substitution or a
         // reference) in the arguments, then any anonymous regions in the output
         // have that lifetime.
-        let implied_output_region = match explicit_self_category {
-            ty::ExplicitSelfCategory::ByReference(region, _) => Ok(*region),
+        let implied_output_region = match explicit_self {
+            Some(ExplicitSelf::ByReference(region, _)) => Ok(*region),
             _ => {
                 // `pat_to_string` is expensive and
                 // `find_implied_output_region` only needs its result when
@@ -1928,7 +1900,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         debug!("ty_of_method_or_bare_fn: input_tys={:?}", input_tys);
         debug!("ty_of_method_or_bare_fn: output_ty={:?}", output_ty);
 
-        (self.tcx().mk_bare_fn(ty::BareFnTy {
+        self.tcx().mk_bare_fn(ty::BareFnTy {
             unsafety: unsafety,
             abi: abi,
             sig: ty::Binder(ty::FnSig {
@@ -1936,95 +1908,30 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 output: output_ty,
                 variadic: decl.variadic
             }),
-        }), explicit_self_category)
+        })
     }
 
     fn determine_self_type<'a>(&self,
                                rscope: &RegionScope,
                                untransformed_self_ty: Ty<'tcx>,
                                explicit_self: &hir::ExplicitSelf)
-                               -> (Ty<'tcx>, ty::ExplicitSelfCategory<'tcx>)
+                               -> Ty<'tcx>
     {
-        return match explicit_self.node {
-            SelfKind::Value(..) => {
-                (untransformed_self_ty, ty::ExplicitSelfCategory::ByValue)
-            }
+        match explicit_self.node {
+            SelfKind::Value(..) => untransformed_self_ty,
             SelfKind::Region(ref lifetime, mutability) => {
                 let region =
                     self.opt_ast_region_to_region(
                                              rscope,
                                              explicit_self.span,
                                              lifetime);
-                (self.tcx().mk_ref(region,
+                self.tcx().mk_ref(region,
                     ty::TypeAndMut {
                         ty: untransformed_self_ty,
                         mutbl: mutability
-                    }),
-                 ty::ExplicitSelfCategory::ByReference(region, mutability))
+                    })
             }
-            SelfKind::Explicit(ref ast_type, _) => {
-                let explicit_type = self.ast_ty_to_ty(rscope, &ast_type);
-
-                // We wish to (for now) categorize an explicit self
-                // declaration like `self: SomeType` into either `self`,
-                // `&self`, `&mut self`, or `Box<self>`. We do this here
-                // by some simple pattern matching. A more precise check
-                // is done later in `check_method_self_type()`.
-                //
-                // Examples:
-                //
-                // ```
-                // impl Foo for &T {
-                //     // Legal declarations:
-                //     fn method1(self: &&T); // ExplicitSelfCategory::ByReference
-                //     fn method2(self: &T); // ExplicitSelfCategory::ByValue
-                //     fn method3(self: Box<&T>); // ExplicitSelfCategory::ByBox
-                //
-                //     // Invalid cases will be caught later by `check_method_self_type`:
-                //     fn method_err1(self: &mut T); // ExplicitSelfCategory::ByReference
-                // }
-                // ```
-                //
-                // To do the check we just count the number of "modifiers"
-                // on each type and compare them. If they are the same or
-                // the impl has more, we call it "by value". Otherwise, we
-                // look at the outermost modifier on the method decl and
-                // call it by-ref, by-box as appropriate. For method1, for
-                // example, the impl type has one modifier, but the method
-                // type has two, so we end up with
-                // ExplicitSelfCategory::ByReference.
-
-                let impl_modifiers = count_modifiers(untransformed_self_ty);
-                let method_modifiers = count_modifiers(explicit_type);
-
-                debug!("determine_explicit_self_category(self_info.untransformed_self_ty={:?} \
-                       explicit_type={:?} \
-                       modifiers=({},{})",
-                       untransformed_self_ty,
-                       explicit_type,
-                       impl_modifiers,
-                       method_modifiers);
-
-                let category = if impl_modifiers >= method_modifiers {
-                    ty::ExplicitSelfCategory::ByValue
-                } else {
-                    match explicit_type.sty {
-                        ty::TyRef(r, mt) => ty::ExplicitSelfCategory::ByReference(r, mt.mutbl),
-                        ty::TyBox(_) => ty::ExplicitSelfCategory::ByBox,
-                        _ => ty::ExplicitSelfCategory::ByValue,
-                    }
-                };
-
-                (explicit_type, category)
-            }
-        };
-
-        fn count_modifiers(ty: Ty) -> usize {
-            match ty.sty {
-                ty::TyRef(_, mt) => count_modifiers(mt.ty) + 1,
-                ty::TyBox(t) => count_modifiers(t) + 1,
-                _ => 0,
-            }
+            SelfKind::Explicit(ref ast_type, _) => self.ast_ty_to_ty(rscope, &ast_type)
         }
     }
 
@@ -2332,5 +2239,66 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
         }
 
         vec
+    }
+}
+
+pub enum ExplicitSelf<'tcx> {
+    ByValue,
+    ByReference(&'tcx ty::Region, hir::Mutability),
+    ByBox
+}
+
+impl<'tcx> ExplicitSelf<'tcx> {
+    /// We wish to (for now) categorize an explicit self
+    /// declaration like `self: SomeType` into either `self`,
+    /// `&self`, `&mut self`, or `Box<self>`. We do this here
+    /// by some simple pattern matching. A more precise check
+    /// is done later in `check_method_self_type()`.
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// impl Foo for &T {
+    ///     // Legal declarations:
+    ///     fn method1(self: &&T); // ExplicitSelf::ByReference
+    ///     fn method2(self: &T); // ExplicitSelf::ByValue
+    ///     fn method3(self: Box<&T>); // ExplicitSelf::ByBox
+    ///
+    ///     // Invalid cases will be caught later by `check_method_self_type`:
+    ///     fn method_err1(self: &mut T); // ExplicitSelf::ByReference
+    /// }
+    /// ```
+    ///
+    /// To do the check we just count the number of "modifiers"
+    /// on each type and compare them. If they are the same or
+    /// the impl has more, we call it "by value". Otherwise, we
+    /// look at the outermost modifier on the method decl and
+    /// call it by-ref, by-box as appropriate. For method1, for
+    /// example, the impl type has one modifier, but the method
+    /// type has two, so we end up with
+    /// ExplicitSelf::ByReference.
+    pub fn determine(untransformed_self_ty: Ty<'tcx>,
+                     self_arg_ty: Ty<'tcx>)
+                     -> ExplicitSelf<'tcx> {
+        fn count_modifiers(ty: Ty) -> usize {
+            match ty.sty {
+                ty::TyRef(_, mt) => count_modifiers(mt.ty) + 1,
+                ty::TyBox(t) => count_modifiers(t) + 1,
+                _ => 0,
+            }
+        }
+
+        let impl_modifiers = count_modifiers(untransformed_self_ty);
+        let method_modifiers = count_modifiers(self_arg_ty);
+
+        if impl_modifiers >= method_modifiers {
+            ExplicitSelf::ByValue
+        } else {
+            match self_arg_ty.sty {
+                ty::TyRef(r, mt) => ExplicitSelf::ByReference(r, mt.mutbl),
+                ty::TyBox(_) => ExplicitSelf::ByBox,
+                _ => ExplicitSelf::ByValue,
+            }
+        }
     }
 }

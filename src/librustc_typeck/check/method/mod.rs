@@ -228,14 +228,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Trait must have a method named `m_name` and it should not have
         // type parameters or early-bound regions.
         let tcx = self.tcx;
-        let method_item = self.impl_or_trait_item(trait_def_id, m_name).unwrap();
-        let method_ty = method_item.as_opt_method().unwrap();
-        assert_eq!(method_ty.generics.types.len(), 0);
-        assert_eq!(method_ty.generics.regions.len(), 0);
+        let method_item = self.associated_item(trait_def_id, m_name).unwrap();
+        let def_id = method_item.def_id;
+        let generics = tcx.lookup_generics(def_id);
+        assert_eq!(generics.types.len(), 0);
+        assert_eq!(generics.regions.len(), 0);
 
-        debug!("lookup_in_trait_adjusted: method_item={:?} method_ty={:?}",
-               method_item,
-               method_ty);
+        debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
 
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.
@@ -243,22 +242,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // NB: Instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let fn_sig =
-            self.replace_late_bound_regions_with_fresh_var(span, infer::FnCall, &method_ty.fty.sig)
-                .0;
+        let original_method_ty = tcx.lookup_item_type(def_id).ty;
+        let fty = match original_method_ty.sty {
+            ty::TyFnDef(_, _, f) => f,
+            _ => bug!()
+        };
+        let fn_sig = self.replace_late_bound_regions_with_fresh_var(span,
+                                                                    infer::FnCall,
+                                                                    &fty.sig).0;
         let fn_sig = self.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
         let transformed_self_ty = fn_sig.inputs[0];
-        let def_id = method_item.def_id();
-        let fty = tcx.mk_fn_def(def_id,
-                                trait_ref.substs,
-                                tcx.mk_bare_fn(ty::BareFnTy {
-                                    sig: ty::Binder(fn_sig),
-                                    unsafety: method_ty.fty.unsafety,
-                                    abi: method_ty.fty.abi.clone(),
-                                }));
+        let method_ty = tcx.mk_fn_def(def_id, trait_ref.substs,
+                                      tcx.mk_bare_fn(ty::BareFnTy {
+            sig: ty::Binder(fn_sig),
+            unsafety: fty.unsafety,
+            abi: fty.abi
+        }));
 
-        debug!("lookup_in_trait_adjusted: matched method fty={:?} obligation={:?}",
-               fty,
+        debug!("lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
+               method_ty,
                obligation);
 
         // Register obligations for the parameters.  This will include the
@@ -269,13 +271,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //
         // Note that as the method comes from a trait, it should not have
         // any late-bound regions appearing in its bounds.
-        let method_bounds = self.instantiate_bounds(span, trait_ref.substs, &method_ty.predicates);
+        let method_bounds = self.instantiate_bounds(span, def_id, trait_ref.substs);
         assert!(!method_bounds.has_escaping_regions());
         self.add_obligations_for_parameters(traits::ObligationCause::misc(span, self.body_id),
                                             &method_bounds);
 
         // Also register an obligation for the method type being well-formed.
-        self.register_wf_obligation(fty, span, traits::MiscObligation);
+        self.register_wf_obligation(method_ty, span, traits::MiscObligation);
 
         // FIXME(#18653) -- Try to resolve obligations, giving us more
         // typing information, which can sometimes be needed to avoid
@@ -283,61 +285,39 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.select_obligations_where_possible();
 
         // Insert any adjustments needed (always an autoref of some mutability).
-        match self_expr {
-            None => {}
+        if let Some(self_expr) = self_expr {
+            debug!("lookup_in_trait_adjusted: inserting adjustment if needed \
+                    (self-id={}, autoderefs={}, unsize={}, fty={:?})",
+                    self_expr.id, autoderefs, unsize, original_method_ty);
 
-            Some(self_expr) => {
-                debug!("lookup_in_trait_adjusted: inserting adjustment if needed \
-                       (self-id={}, autoderefs={}, unsize={}, explicit_self={:?})",
-                       self_expr.id,
-                       autoderefs,
-                       unsize,
-                       method_ty.explicit_self);
+            let original_sig = original_method_ty.fn_sig();
+            let autoref = match (&original_sig.input(0).skip_binder().sty,
+                                 &transformed_self_ty.sty) {
+                (&ty::TyRef(..), &ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ })) => {
+                    // Trait method is fn(&self) or fn(&mut self), need an
+                    // autoref. Pull the region etc out of the type of first argument.
+                    Some(AutoBorrow::Ref(region, mutbl))
+                }
+                _ => {
+                    // Trait method is fn(self), no transformation needed.
+                    assert!(!unsize);
+                    None
+                }
+            };
 
-                let autoref = match method_ty.explicit_self {
-                    ty::ExplicitSelfCategory::ByValue => {
-                        // Trait method is fn(self), no transformation needed.
-                        assert!(!unsize);
-                        None
-                    }
-
-                    ty::ExplicitSelfCategory::ByReference(..) => {
-                        // Trait method is fn(&self) or fn(&mut self), need an
-                        // autoref. Pull the region etc out of the type of first argument.
-                        match transformed_self_ty.sty {
-                            ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ }) => {
-                                Some(AutoBorrow::Ref(region, mutbl))
-                            }
-
-                            _ => {
-                                span_bug!(span,
-                                          "trait method is &self but first arg is: {}",
-                                          transformed_self_ty);
-                            }
-                        }
-                    }
-
-                    _ => {
-                        span_bug!(span,
-                                  "unexpected explicit self type in operator method: {:?}",
-                                  method_ty.explicit_self);
-                    }
-                };
-
-                self.write_adjustment(self_expr.id, Adjustment {
-                    kind: Adjust::DerefRef {
-                        autoderefs: autoderefs,
-                        autoref: autoref,
-                        unsize: unsize
-                    },
-                    target: transformed_self_ty
-                });
-            }
+            self.write_adjustment(self_expr.id, Adjustment {
+                kind: Adjust::DerefRef {
+                    autoderefs: autoderefs,
+                    autoref: autoref,
+                    unsize: unsize
+                },
+                target: transformed_self_ty
+            });
         }
 
         let callee = ty::MethodCallee {
             def_id: def_id,
-            ty: fty,
+            ty: method_ty,
             substs: trait_ref.substs,
         };
 
@@ -361,7 +341,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let def = pick.item.def();
         if let probe::InherentImplPick = pick.kind {
-            if !pick.item.vis().is_accessible_from(self.body_id, &self.tcx.map) {
+            if !pick.item.vis.is_accessible_from(self.body_id, &self.tcx.map) {
                 let msg = format!("{} `{}` is private", def.kind_name(), &method_name.as_str());
                 self.tcx.sess.span_err(span, &msg);
             }
@@ -371,14 +351,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Find item with name `item_name` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
-    pub fn impl_or_trait_item(&self,
-                              def_id: DefId,
-                              item_name: ast::Name)
-                              -> Option<ty::ImplOrTraitItem<'tcx>> {
-        self.tcx
-            .impl_or_trait_items(def_id)
-            .iter()
-            .map(|&did| self.tcx.impl_or_trait_item(did))
-            .find(|m| m.name() == item_name)
+    pub fn associated_item(&self, def_id: DefId, item_name: ast::Name)
+                           -> Option<ty::AssociatedItem> {
+        self.tcx.associated_items(def_id).find(|item| item.name == item_name)
     }
 }

@@ -33,8 +33,6 @@ use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
 use util::common::FN_OUTPUT_NAME;
 
-use std::rc::Rc;
-
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -945,7 +943,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                         // an error when we confirm the candidate
                         // (which will ultimately lead to `normalize_to_error`
                         // being invoked).
-                        node_item.item.ty.is_some()
+                        node_item.item.has_value
                     } else {
                         node_item.item.defaultness.is_default()
                     };
@@ -1305,7 +1303,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
 
     match assoc_ty {
         Some(node_item) => {
-            let ty = node_item.item.ty.unwrap_or_else(|| {
+            let ty = if !node_item.item.has_value {
                 // This means that the impl is missing a definition for the
                 // associated type. This error will be reported by the type
                 // checker method `check_impl_items_against_trait`, so here we
@@ -1314,7 +1312,9 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
                        node_item.item.name,
                        obligation.predicate.trait_ref);
                 tcx.types.err
-            });
+            } else {
+                tcx.lookup_item_type(node_item.item.def_id).ty
+            };
             let substs = translate_substs(selcx.infcx(), impl_def_id, substs, node_item.node);
             Progress {
                 ty: ty.subst(tcx, substs),
@@ -1339,27 +1339,25 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     selcx: &SelectionContext<'cx, 'gcx, 'tcx>,
     impl_def_id: DefId,
     assoc_ty_name: ast::Name)
-    -> Option<specialization_graph::NodeItem<Rc<ty::AssociatedType<'tcx>>>>
+    -> Option<specialization_graph::NodeItem<ty::AssociatedItem>>
 {
     let trait_def_id = selcx.tcx().impl_trait_ref(impl_def_id).unwrap().def_id;
 
     if selcx.projection_mode() == Reveal::ExactMatch {
         let impl_node = specialization_graph::Node::Impl(impl_def_id);
         for item in impl_node.items(selcx.tcx()) {
-            if let ty::TypeTraitItem(assoc_ty) = item {
-                if assoc_ty.name == assoc_ty_name {
-                    return Some(specialization_graph::NodeItem {
-                        node: specialization_graph::Node::Impl(impl_def_id),
-                        item: assoc_ty,
-                    });
-                }
+            if item.kind == ty::AssociatedKind::Type && item.name == assoc_ty_name {
+                return Some(specialization_graph::NodeItem {
+                    node: specialization_graph::Node::Impl(impl_def_id),
+                    item: item,
+                });
             }
         }
         None
     } else {
         selcx.tcx().lookup_trait_def(trait_def_id)
             .ancestors(impl_def_id)
-            .type_defs(selcx.tcx(), assoc_ty_name)
+            .defs(selcx.tcx(), assoc_ty_name, ty::AssociatedKind::Type)
             .next()
     }
 }
