@@ -32,12 +32,6 @@ use syntax_pos::Span;
 use std::cell::{Cell, RefCell};
 use std::mem;
 
-impl<'a> Resolver<'a> {
-    pub fn resolve_imports(&mut self) {
-        ImportResolver { resolver: self }.resolve_imports();
-    }
-}
-
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
 pub enum ImportDirectiveSubclass<'a> {
@@ -399,8 +393,8 @@ impl<'a> Resolver<'a> {
     }
 }
 
-struct ImportResolver<'a, 'b: 'a> {
-    resolver: &'a mut Resolver<'b>,
+pub struct ImportResolver<'a, 'b: 'a> {
+    pub resolver: &'a mut Resolver<'b>,
 }
 
 impl<'a, 'b: 'a> ::std::ops::Deref for ImportResolver<'a, 'b> {
@@ -433,28 +427,21 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
-    fn resolve_imports(&mut self) {
-        let mut i = 0;
+    pub fn resolve_imports(&mut self) {
         let mut prev_num_indeterminates = self.indeterminate_imports.len() + 1;
-
         while self.indeterminate_imports.len() < prev_num_indeterminates {
             prev_num_indeterminates = self.indeterminate_imports.len();
-            debug!("(resolving imports) iteration {}, {} imports left", i, prev_num_indeterminates);
-
-            let mut imports = Vec::new();
-            ::std::mem::swap(&mut imports, &mut self.indeterminate_imports);
-
-            for import in imports {
+            for import in mem::replace(&mut self.indeterminate_imports, Vec::new()) {
                 match self.resolve_import(&import) {
                     Failed(_) => self.determined_imports.push(import),
                     Indeterminate => self.indeterminate_imports.push(import),
                     Success(()) => self.determined_imports.push(import),
                 }
             }
-
-            i += 1;
         }
+    }
 
+    pub fn finalize_imports(&mut self) {
         for module in self.arenas.local_modules().iter() {
             self.finalize_resolutions_in(module);
         }
