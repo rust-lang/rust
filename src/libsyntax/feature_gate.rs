@@ -314,6 +314,8 @@ declare_features! (
 
     // Allows #[link(..., cfg(..))]
     (active, link_cfg, "1.14.0", Some(37406)),
+
+    (active, use_extern_macros, "1.15.0", Some(35896)),
 );
 
 declare_features! (
