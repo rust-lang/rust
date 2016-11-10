@@ -808,8 +808,8 @@ impl<'a> State<'a> {
                 space(&mut self.s)?;
                 self.bopen()?;
                 self.print_inner_attributes(&item.attrs)?;
-                for &impl_item in impl_items {
-                    self.print_impl_item_id(impl_item)?;
+                for impl_item in impl_items {
+                    self.print_impl_item_ref(impl_item)?;
                 }
                 self.bclose(item.span)?;
             }
@@ -1020,10 +1020,10 @@ impl<'a> State<'a> {
         self.ann.post(self, NodeSubItem(ti.id))
     }
 
-    pub fn print_impl_item_id(&mut self, item_id: hir::ImplItemId) -> io::Result<()> {
+    pub fn print_impl_item_ref(&mut self, item_ref: &hir::ImplItemRef) -> io::Result<()> {
         if let Some(krate) = self.krate {
             // skip nested items if krate context was not provided
-            let item = &krate.impl_item(item_id);
+            let item = &krate.impl_item(item_ref.id);
             self.print_impl_item(item)
         } else {
             Ok(())

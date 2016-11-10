@@ -384,7 +384,7 @@ impl<'ast> Map<'ast> {
     }
 
     pub fn impl_item(&self, id: ImplItemId) -> &'ast ImplItem {
-        self.read(id.id);
+        self.read(id.node_id);
 
         // NB: intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here

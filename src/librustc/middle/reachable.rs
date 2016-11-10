@@ -328,10 +328,10 @@ struct CollectPrivateImplItemsVisitor<'a> {
 impl<'a, 'v> ItemLikeVisitor<'v> for CollectPrivateImplItemsVisitor<'a> {
     fn visit_item(&mut self, item: &hir::Item) {
         // We need only trait impls here, not inherent impls, and only non-exported ones
-        if let hir::ItemImpl(.., Some(_), _, ref impl_items) = item.node {
+        if let hir::ItemImpl(.., Some(_), _, ref impl_item_refs) = item.node {
             if !self.access_levels.is_reachable(item.id) {
-                for impl_item in impl_items {
-                    self.worklist.push(impl_item.id);
+                for impl_item_ref in impl_item_refs {
+                    self.worklist.push(impl_item_ref.id.node_id);
                 }
             }
         }

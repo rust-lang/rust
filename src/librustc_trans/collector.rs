@@ -1135,7 +1135,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                       _,
                       ref generics,
                       ..,
-                      ref items) => {
+                      ref impl_item_refs) => {
             if generics.is_type_parameterized() {
                 return
             }
@@ -1148,10 +1148,9 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
                 let callee_substs = tcx.erase_regions(&trait_ref.substs);
                 let overridden_methods: FxHashSet<_> =
-                    items.iter()
-                         .map(|&id| tcx.map.impl_item(id))
-                         .map(|item| item.name)
-                         .collect();
+                    impl_item_refs.iter()
+                                  .map(|iiref| iiref.name)
+                                  .collect();
                 for method in tcx.provided_trait_methods(trait_ref.def_id) {
                     if overridden_methods.contains(&method.name) {
                         continue;

@@ -359,12 +359,12 @@ impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
                     }
                 }
             }
-            hir::ItemImpl(.., ref opt_trait, _, ref impl_item_ids) => {
-                for &impl_item_id in impl_item_ids {
-                    let impl_item = self.krate.impl_item(impl_item_id);
+            hir::ItemImpl(.., ref opt_trait, _, ref impl_item_refs) => {
+                for impl_item_ref in impl_item_refs {
+                    let impl_item = self.krate.impl_item(impl_item_ref.id);
                     if opt_trait.is_some() ||
                             has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
-                        self.worklist.push(impl_item_id.id);
+                        self.worklist.push(impl_item_ref.id.node_id);
                     }
                 }
             }

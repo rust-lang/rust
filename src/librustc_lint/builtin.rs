@@ -387,7 +387,7 @@ impl LateLintPass for MissingDoc {
                 "a trait"
             }
             hir::ItemTy(..) => "a type alias",
-            hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_items) => {
+            hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_item_refs) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
                 let real_trait = cx.tcx.expect_def(trait_ref.ref_id).def_id();
@@ -395,8 +395,8 @@ impl LateLintPass for MissingDoc {
                     match cx.tcx.map.find(node_id) {
                         Some(hir_map::NodeItem(item)) => {
                             if item.vis == hir::Visibility::Inherited {
-                                for itm in impl_items {
-                                    self.private_traits.insert(itm.id);
+                                for impl_item_ref in impl_item_refs {
+                                    self.private_traits.insert(impl_item_ref.id.node_id);
                                 }
                             }
                         }

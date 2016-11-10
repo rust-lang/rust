@@ -16,13 +16,13 @@ use CrateCtxt;
 
 /// Enforce that we do not have two items in an impl with the same name.
 pub fn enforce_impl_items_are_distinct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                                 impl_item_ids: &[hir::ImplItemId])
+                                                 impl_item_refs: &[hir::ImplItemRef])
 {
     let tcx = ccx.tcx;
     let mut seen_type_items = FxHashMap();
     let mut seen_value_items = FxHashMap();
-    for &impl_item_id in impl_item_ids {
-        let impl_item = tcx.map.impl_item(impl_item_id);
+    for &impl_item_ref in impl_item_refs {
+        let impl_item = tcx.map.impl_item(impl_item_ref.id);
         let seen_items = match impl_item.node {
             hir::ImplItemKind::Type(_) => &mut seen_type_items,
             _                    => &mut seen_value_items,
