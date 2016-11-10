@@ -756,8 +756,12 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     }
 
     if !parser.errors.is_empty() {
-        cx.ecx.span_err(cx.fmtsp,
-                        &format!("invalid format string: {}", parser.errors.remove(0)));
+        let (err, note) = parser.errors.remove(0);
+        let mut e = cx.ecx.struct_span_err(cx.fmtsp, &format!("invalid format string: {}", err));
+        if let Some(note) = note {
+            e.note(&note);
+        }
+        e.emit();
         return DummyResult::raw_expr(sp);
     }
     if !cx.literal.is_empty() {
