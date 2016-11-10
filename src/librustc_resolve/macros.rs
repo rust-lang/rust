@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {Module, Resolver};
+use {Module, ModuleKind, Resolver};
 use build_reduced_graph::BuildReducedGraphVisitor;
 use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex};
 use rustc::hir::def::{Def, Export};
@@ -22,7 +22,9 @@ use syntax::ext::base::{NormalTT, SyntaxExtension};
 use syntax::ext::expand::Expansion;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
+use syntax::fold::Folder;
 use syntax::parse::token::intern;
+use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::Visitor;
 use syntax_pos::Span;
@@ -97,6 +99,31 @@ impl<'a> base::Resolver for Resolver<'a> {
             expansion: Cell::new(LegacyScope::Empty),
         }));
         mark
+    }
+
+    fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> {
+        struct EliminateCrateVar<'b, 'a: 'b>(&'b mut Resolver<'a>);
+
+        impl<'a, 'b> Folder for EliminateCrateVar<'a, 'b> {
+            fn fold_path(&mut self, mut path: ast::Path) -> ast::Path {
+                let ident = path.segments[0].identifier;
+                if &ident.name.as_str() == "$crate" {
+                    path.global = true;
+                    let module = self.0.resolve_crate_var(ident.ctxt);
+                    if module.is_local() {
+                        path.segments.remove(0);
+                    } else {
+                        path.segments[0].identifier = match module.kind {
+                            ModuleKind::Def(_, name) => ast::Ident::with_empty_ctxt(name),
+                            _ => unreachable!(),
+                        };
+                    }
+                }
+                path
+            }
+        }
+
+        EliminateCrateVar(self).fold_item(item).expect_one("")
     }
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion) {
