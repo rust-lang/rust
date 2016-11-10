@@ -1093,7 +1093,6 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
          "serialize work products",
          move || rustc_incremental::save_work_products(sess));
 
-    println!("finish phase 5: {}", sess.err_count());
     if sess.err_count() > 0 {
         Err(sess.err_count())
     } else {

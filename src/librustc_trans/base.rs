@@ -45,7 +45,7 @@ use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::dep_graph::{DepNode, WorkProduct};
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
-use session::config::{self, NoDebugInfo, OutputType};
+use session::config::{self, NoDebugInfo};
 use rustc_incremental::IncrementalHashesMap;
 use session::Session;
 use abi::{self, Abi, FnType};

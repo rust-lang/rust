@@ -192,7 +192,7 @@ fn calculate_type(sess: &session::Session,
         if src.dylib.is_none() &&
            !formats.contains_key(&cnum) &&
            sess.cstore.dep_kind(cnum) == DepKind::Explicit {
-            assert!(src.rlib.is_some());
+            assert!(src.rlib.is_some() || src.rmeta.is_some());
             info!("adding staticlib: {}", sess.cstore.crate_name(cnum));
             add_library(sess, cnum, RequireStatic, &mut formats);
             ret[cnum.as_usize() - 1] = Linkage::Static;
