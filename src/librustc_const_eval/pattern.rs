@@ -223,7 +223,8 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::Tuple(ref subpatterns, ddpos) => {
-                match self.tcx.tables().node_id_to_type(pat.id).sty {
+                let ty = self.tcx.tables().node_id_to_type(pat.id);
+                match ty.sty {
                     ty::TyTuple(ref tys) => {
                         let subpatterns =
                             subpatterns.iter()
