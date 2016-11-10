@@ -1634,7 +1634,7 @@ impl fmt::Display for CrateType {
             CrateTypeStaticlib => "staticlib".fmt(f),
             CrateTypeCdylib => "cdylib".fmt(f),
             CrateTypeProcMacro => "proc-macro".fmt(f),
-            CrateTypeMetadata => "rmeta".fmt(f),
+            CrateTypeMetadata => "metadata".fmt(f),
         }
     }
 }

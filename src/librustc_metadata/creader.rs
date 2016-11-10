@@ -67,8 +67,7 @@ fn dump_crates(cstore: &CStore) {
         dylib.map(|dl| info!("  dylib: {}", dl.0.display()));
         rlib.map(|rl|  info!("   rlib: {}", rl.0.display()));
         rmeta.map(|rl| info!("   rmeta: {}", rl.0.display()));
-        });
-    })
+    });
 }
 
 #[derive(Debug)]

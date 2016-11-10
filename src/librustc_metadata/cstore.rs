@@ -43,6 +43,7 @@ pub type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 pub enum MetadataBlob {
     Inflated(Bytes),
     Archive(locator::ArchiveMetadata),
+    Raw(Vec<u8>),
 }
 
 /// Holds information about a syntax_pos::FileMap imported from another crate.
@@ -203,7 +204,7 @@ impl CStore {
                 let path = match path {
                     Some(p) => LibSource::Some(p),
                     None => {
-                        if data.rmeta.is_some() {
+                        if data.source.rmeta.is_some() {
                             LibSource::MetadataOnly
                         } else {
                             LibSource::None
