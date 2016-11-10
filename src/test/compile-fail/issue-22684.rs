@@ -15,7 +15,7 @@ mod foo {
     }
 
     pub trait Baz {
-        fn bar(&self) -> bool {}
+        fn bar(&self) -> bool { true }
     }
     impl Baz for Foo {}
 }

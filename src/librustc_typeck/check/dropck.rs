@@ -553,9 +553,9 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             // attributes attached to the impl's generics.
             let dtor_method = adt_def.destructor()
                 .expect("dtorck type without destructor impossible");
-            let method = tcx.impl_or_trait_item(dtor_method);
-            let impl_id: DefId = method.container().id();
-            let revised_ty = revise_self_ty(tcx, adt_def, impl_id, substs);
+            let method = tcx.associated_item(dtor_method);
+            let impl_def_id = method.container.id();
+            let revised_ty = revise_self_ty(tcx, adt_def, impl_def_id, substs);
             return DropckKind::RevisedSelf(revised_ty);
         }
         ty::TyTrait(..) | ty::TyProjection(..) | ty::TyAnon(..) => {

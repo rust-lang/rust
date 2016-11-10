@@ -13,7 +13,7 @@ mod a {
 
     impl Default for A {
         pub fn default() -> A { //~ ERROR unnecessary visibility qualifier
-            A;
+            A
         }
     }
 }

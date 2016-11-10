@@ -151,9 +151,9 @@ pub trait LateLintPass: LintPass {
     fn check_ty(&mut self, _: &LateContext, _: &hir::Ty) { }
     fn check_generics(&mut self, _: &LateContext, _: &hir::Generics) { }
     fn check_fn(&mut self, _: &LateContext,
-        _: FnKind, _: &hir::FnDecl, _: &hir::Block, _: Span, _: ast::NodeId) { }
+        _: FnKind, _: &hir::FnDecl, _: &hir::Expr, _: Span, _: ast::NodeId) { }
     fn check_fn_post(&mut self, _: &LateContext,
-        _: FnKind, _: &hir::FnDecl, _: &hir::Block, _: Span, _: ast::NodeId) { }
+        _: FnKind, _: &hir::FnDecl, _: &hir::Expr, _: Span, _: ast::NodeId) { }
     fn check_trait_item(&mut self, _: &LateContext, _: &hir::TraitItem) { }
     fn check_trait_item_post(&mut self, _: &LateContext, _: &hir::TraitItem) { }
     fn check_impl_item(&mut self, _: &LateContext, _: &hir::ImplItem) { }
@@ -200,9 +200,9 @@ pub trait EarlyLintPass: LintPass {
     fn check_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }
     fn check_generics(&mut self, _: &EarlyContext, _: &ast::Generics) { }
     fn check_fn(&mut self, _: &EarlyContext,
-        _: ast_visit::FnKind, _: &ast::FnDecl, _: &ast::Block, _: Span, _: ast::NodeId) { }
+        _: ast_visit::FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
     fn check_fn_post(&mut self, _: &EarlyContext,
-        _: ast_visit::FnKind, _: &ast::FnDecl, _: &ast::Block, _: Span, _: ast::NodeId) { }
+        _: ast_visit::FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
     fn check_trait_item(&mut self, _: &EarlyContext, _: &ast::TraitItem) { }
     fn check_trait_item_post(&mut self, _: &EarlyContext, _: &ast::TraitItem) { }
     fn check_impl_item(&mut self, _: &EarlyContext, _: &ast::ImplItem) { }

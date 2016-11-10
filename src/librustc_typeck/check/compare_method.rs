@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::ty;
@@ -23,6 +24,7 @@ use syntax_pos::Span;
 use CrateCtxt;
 use super::assoc;
 use super::{Inherited, FnCtxt};
+use astconv::ExplicitSelf;
 
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
@@ -36,11 +38,11 @@ use super::{Inherited, FnCtxt};
 /// - impl_trait_ref: the TraitRef corresponding to the trait implementation
 
 pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                     impl_m: &ty::Method<'tcx>,
+                                     impl_m: &ty::AssociatedItem,
                                      impl_m_span: Span,
                                      impl_m_body_id: ast::NodeId,
-                                     trait_m: &ty::Method<'tcx>,
-                                     impl_trait_ref: &ty::TraitRef<'tcx>,
+                                     trait_m: &ty::AssociatedItem,
+                                     impl_trait_ref: ty::TraitRef<'tcx>,
                                      trait_item_span: Option<Span>,
                                      old_broken_mode: bool) {
     debug!("compare_impl_method(impl_trait_ref={:?})",
@@ -49,7 +51,8 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     if let Err(ErrorReported) = compare_self_type(ccx,
                                                   impl_m,
                                                   impl_m_span,
-                                                  trait_m) {
+                                                  trait_m,
+                                                  impl_trait_ref) {
         return;
     }
 
@@ -81,16 +84,16 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                          impl_m: &ty::Method<'tcx>,
+                                          impl_m: &ty::AssociatedItem,
                                           impl_m_span: Span,
                                           impl_m_body_id: ast::NodeId,
-                                          trait_m: &ty::Method<'tcx>,
-                                          impl_trait_ref: &ty::TraitRef<'tcx>,
+                                          trait_m: &ty::AssociatedItem,
+                                          impl_trait_ref: ty::TraitRef<'tcx>,
                                           old_broken_mode: bool)
                                           -> Result<(), ErrorReported> {
     let tcx = ccx.tcx;
 
-    let trait_to_impl_substs = &impl_trait_ref.substs;
+    let trait_to_impl_substs = impl_trait_ref.substs;
 
     // This code is best explained by example. Consider a trait:
     //
@@ -165,18 +168,23 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     // Create mapping from trait to skolemized.
     let trait_to_skol_substs = impl_to_skol_substs.rebase_onto(tcx,
-                                                               impl_m.container_id(),
+                                                               impl_m.container.id(),
                                                                trait_to_impl_substs.subst(tcx,
                                                                           impl_to_skol_substs));
     debug!("compare_impl_method: trait_to_skol_substs={:?}",
            trait_to_skol_substs);
 
+    let impl_m_generics = tcx.lookup_generics(impl_m.def_id);
+    let trait_m_generics = tcx.lookup_generics(trait_m.def_id);
+    let impl_m_predicates = tcx.lookup_predicates(impl_m.def_id);
+    let trait_m_predicates = tcx.lookup_predicates(trait_m.def_id);
+
     // Check region bounds.
     check_region_bounds_on_impl_method(ccx,
                                        impl_m_span,
                                        impl_m,
-                                       &trait_m.generics,
-                                       &impl_m.generics,
+                                       &trait_m_generics,
+                                       &impl_m_generics,
                                        trait_to_skol_substs,
                                        impl_to_skol_substs)?;
 
@@ -185,7 +193,7 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // environment. We can't just use `impl_env.caller_bounds`,
     // however, because we want to replace all late-bound regions with
     // region variables.
-    let impl_predicates = tcx.lookup_predicates(impl_m.predicates.parent.unwrap());
+    let impl_predicates = tcx.lookup_predicates(impl_m_predicates.parent.unwrap());
     let mut hybrid_preds = impl_predicates.instantiate(tcx, impl_to_skol_substs);
 
     debug!("compare_impl_method: impl_bounds={:?}", hybrid_preds);
@@ -198,7 +206,7 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // We then register the obligations from the impl_m and check to see
     // if all constraints hold.
     hybrid_preds.predicates
-                .extend(trait_m.predicates.instantiate_own(tcx, trait_to_skol_substs).predicates);
+                .extend(trait_m_predicates.instantiate_own(tcx, trait_to_skol_substs).predicates);
 
     // Construct trait parameter environment and then shift it into the skolemized viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
@@ -219,7 +227,7 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
-        let impl_m_own_bounds = impl_m.predicates.instantiate_own(tcx, impl_to_skol_substs);
+        let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_skol_substs);
         let (impl_m_own_bounds, _) = infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
                                                        infer::HigherRankedType,
                                                        &ty::Binder(impl_m_own_bounds.predicates));
@@ -260,10 +268,19 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let tcx = infcx.tcx;
         let origin = TypeOrigin::MethodCompatCheck(impl_m_span);
 
+        let m_fty = |method: &ty::AssociatedItem| {
+            match tcx.lookup_item_type(method.def_id).ty.sty {
+                ty::TyFnDef(_, _, f) => f,
+                _ => bug!()
+            }
+        };
+        let impl_m_fty = m_fty(impl_m);
+        let trait_m_fty = m_fty(trait_m);
+
         let (impl_sig, _) =
             infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
                                                             infer::HigherRankedType,
-                                                            &impl_m.fty.sig);
+                                                            &impl_m_fty.sig);
         let impl_sig =
             impl_sig.subst(tcx, impl_to_skol_substs);
         let impl_sig =
@@ -273,15 +290,15 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                  impl_m_body_id,
                                                  &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: impl_m.fty.unsafety,
-            abi: impl_m.fty.abi,
+            unsafety: impl_m_fty.unsafety,
+            abi: impl_m_fty.abi,
             sig: ty::Binder(impl_sig.clone()),
         }));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
         let trait_sig = tcx.liberate_late_bound_regions(
             infcx.parameter_environment.free_id_outlive,
-            &trait_m.fty.sig);
+            &trait_m_fty.sig);
         let trait_sig =
             trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
@@ -291,8 +308,8 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                  impl_m_body_id,
                                                  &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: trait_m.fty.unsafety,
-            abi: trait_m.fty.abi,
+            unsafety: trait_m_fty.unsafety,
+            abi: trait_m_fty.abi,
             sig: ty::Binder(trait_sig.clone()),
         }));
 
@@ -367,7 +384,7 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 fn check_region_bounds_on_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                 span: Span,
-                                                impl_m: &ty::Method<'tcx>,
+                                                impl_m: &ty::AssociatedItem,
                                                 trait_generics: &ty::Generics<'tcx>,
                                                 impl_generics: &ty::Generics<'tcx>,
                                                 trait_to_skol_substs: &Substs<'tcx>,
@@ -413,9 +430,9 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
                                                      terr: &TypeError,
                                                      origin: TypeOrigin,
-                                                     impl_m: &ty::Method,
+                                                     impl_m: &ty::AssociatedItem,
                                                      impl_sig: ty::FnSig<'tcx>,
-                                                     trait_m: &ty::Method,
+                                                     trait_m: &ty::AssociatedItem,
                                                      trait_sig: ty::FnSig<'tcx>)
                                                      -> (Span, Option<Span>) {
     let tcx = infcx.tcx;
@@ -505,9 +522,10 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
 }
 
 fn compare_self_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                               impl_m: &ty::Method<'tcx>,
+                               impl_m: &ty::AssociatedItem,
                                impl_m_span: Span,
-                               trait_m: &ty::Method<'tcx>)
+                               trait_m: &ty::AssociatedItem,
+                               impl_trait_ref: ty::TraitRef<'tcx>)
                                -> Result<(), ErrorReported>
 {
     let tcx = ccx.tcx;
@@ -518,43 +536,58 @@ fn compare_self_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // that the error messages you get out of this code are a bit more
     // inscrutable, particularly for cases where one method has no
     // self.
-    match (&trait_m.explicit_self, &impl_m.explicit_self) {
-        (&ty::ExplicitSelfCategory::Static, &ty::ExplicitSelfCategory::Static) => {}
-        (&ty::ExplicitSelfCategory::Static, _) => {
+
+    let self_string = |method: &ty::AssociatedItem| {
+        let untransformed_self_ty = match method.container {
+            ty::ImplContainer(_) => impl_trait_ref.self_ty(),
+            ty::TraitContainer(_) => tcx.mk_self_type()
+        };
+        let method_ty = tcx.lookup_item_type(method.def_id).ty;
+        let self_arg_ty = *method_ty.fn_sig().input(0).skip_binder();
+        match ExplicitSelf::determine(untransformed_self_ty, self_arg_ty) {
+            ExplicitSelf::ByValue => "self".to_string(),
+            ExplicitSelf::ByReference(_, hir::MutImmutable) => "&self".to_string(),
+            ExplicitSelf::ByReference(_, hir::MutMutable) => "&mut self".to_string(),
+            _ => format!("self: {}", self_arg_ty)
+        }
+    };
+
+    match (trait_m.method_has_self_argument, impl_m.method_has_self_argument) {
+        (false, false) | (true, true) => {}
+
+        (false, true) => {
+            let self_descr = self_string(impl_m);
             let mut err = struct_span_err!(tcx.sess,
                                            impl_m_span,
                                            E0185,
                                            "method `{}` has a `{}` declaration in the impl, but \
                                             not in the trait",
                                            trait_m.name,
-                                           impl_m.explicit_self);
-            err.span_label(impl_m_span,
-                           &format!("`{}` used in impl", impl_m.explicit_self));
+                                           self_descr);
+            err.span_label(impl_m_span, &format!("`{}` used in impl", self_descr));
             if let Some(span) = tcx.map.span_if_local(trait_m.def_id) {
-                err.span_label(span,
-                               &format!("trait declared without `{}`", impl_m.explicit_self));
+                err.span_label(span, &format!("trait declared without `{}`", self_descr));
             }
             err.emit();
             return Err(ErrorReported);
         }
-        (_, &ty::ExplicitSelfCategory::Static) => {
+
+        (true, false) => {
+            let self_descr = self_string(trait_m);
             let mut err = struct_span_err!(tcx.sess,
                                            impl_m_span,
                                            E0186,
                                            "method `{}` has a `{}` declaration in the trait, but \
                                             not in the impl",
                                            trait_m.name,
-                                           trait_m.explicit_self);
+                                           self_descr);
             err.span_label(impl_m_span,
-                           &format!("expected `{}` in impl", trait_m.explicit_self));
+                           &format!("expected `{}` in impl", self_descr));
             if let Some(span) = tcx.map.span_if_local(trait_m.def_id) {
-                err.span_label(span, &format!("`{}` used in trait", trait_m.explicit_self));
+                err.span_label(span, &format!("`{}` used in trait", self_descr));
             }
             err.emit();
             return Err(ErrorReported);
-        }
-        _ => {
-            // Let the type checker catch other errors below
         }
     }
 
@@ -562,14 +595,16 @@ fn compare_self_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 fn compare_number_of_generics<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                        impl_m: &ty::Method<'tcx>,
+                                        impl_m: &ty::AssociatedItem,
                                         impl_m_span: Span,
-                                        trait_m: &ty::Method<'tcx>,
+                                        trait_m: &ty::AssociatedItem,
                                         trait_item_span: Option<Span>)
                                         -> Result<(), ErrorReported> {
     let tcx = ccx.tcx;
-    let num_impl_m_type_params = impl_m.generics.types.len();
-    let num_trait_m_type_params = trait_m.generics.types.len();
+    let impl_m_generics = tcx.lookup_generics(impl_m.def_id);
+    let trait_m_generics = tcx.lookup_generics(trait_m.def_id);
+    let num_impl_m_type_params = impl_m_generics.types.len();
+    let num_trait_m_type_params = trait_m_generics.types.len();
     if num_impl_m_type_params != num_trait_m_type_params {
         let impl_m_node_id = tcx.map.as_local_node_id(impl_m.def_id).unwrap();
         let span = match tcx.map.expect_impl_item(impl_m_node_id).node {
@@ -630,15 +665,23 @@ fn compare_number_of_generics<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 fn compare_number_of_method_arguments<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                                impl_m: &ty::Method<'tcx>,
+                                                impl_m: &ty::AssociatedItem,
                                                 impl_m_span: Span,
-                                                trait_m: &ty::Method<'tcx>,
+                                                trait_m: &ty::AssociatedItem,
                                                 trait_item_span: Option<Span>)
                                                 -> Result<(), ErrorReported> {
     let tcx = ccx.tcx;
-    if impl_m.fty.sig.0.inputs.len() != trait_m.fty.sig.0.inputs.len() {
-        let trait_number_args = trait_m.fty.sig.0.inputs.len();
-        let impl_number_args = impl_m.fty.sig.0.inputs.len();
+    let m_fty = |method: &ty::AssociatedItem| {
+        match tcx.lookup_item_type(method.def_id).ty.sty {
+            ty::TyFnDef(_, _, f) => f,
+            _ => bug!()
+        }
+    };
+    let impl_m_fty = m_fty(impl_m);
+    let trait_m_fty = m_fty(trait_m);
+    if impl_m_fty.sig.0.inputs.len() != trait_m_fty.sig.0.inputs.len() {
+        let trait_number_args = trait_m_fty.sig.0.inputs.len();
+        let impl_number_args = impl_m_fty.sig.0.inputs.len();
         let trait_m_node_id = tcx.map.as_local_node_id(trait_m.def_id);
         let trait_span = if let Some(trait_id) = trait_m_node_id {
             match tcx.map.expect_trait_item(trait_id).node {
@@ -708,10 +751,10 @@ fn compare_number_of_method_arguments<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                    impl_c: &ty::AssociatedConst<'tcx>,
+                                    impl_c: &ty::AssociatedItem,
                                     impl_c_span: Span,
-                                    trait_c: &ty::AssociatedConst<'tcx>,
-                                    impl_trait_ref: &ty::TraitRef<'tcx>) {
+                                    trait_c: &ty::AssociatedItem,
+                                    impl_trait_ref: ty::TraitRef<'tcx>) {
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
     let tcx = ccx.tcx;
@@ -723,7 +766,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // because we shouldn't really have to deal with lifetimes or
         // predicates. In fact some of this should probably be put into
         // shared functions because of DRY violations...
-        let trait_to_impl_substs = &impl_trait_ref.substs;
+        let trait_to_impl_substs = impl_trait_ref.substs;
 
         // Create a parameter environment that represents the implementation's
         // method.
@@ -742,8 +785,8 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                trait_to_skol_substs);
 
         // Compute skolemized form of impl and trait const tys.
-        let impl_ty = impl_c.ty.subst(tcx, impl_to_skol_substs);
-        let trait_ty = trait_c.ty.subst(tcx, trait_to_skol_substs);
+        let impl_ty = tcx.lookup_item_type(impl_c.def_id).ty.subst(tcx, impl_to_skol_substs);
+        let trait_ty = tcx.lookup_item_type(trait_c.def_id).ty.subst(tcx, trait_to_skol_substs);
         let mut origin = TypeOrigin::Misc(impl_c_span);
 
         let err = infcx.commit_if_ok(|_| {

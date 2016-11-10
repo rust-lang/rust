@@ -663,25 +663,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                          in the supertrait listing"
                 }
 
-                ObjectSafetyViolation::Method(method,
+                ObjectSafetyViolation::Method(name,
                                               MethodViolationCode::StaticMethod) => {
-                    buf = format!("method `{}` has no receiver",
-                                  method.name);
+                    buf = format!("method `{}` has no receiver", name);
                     &buf
                 }
 
-                ObjectSafetyViolation::Method(method,
+                ObjectSafetyViolation::Method(name,
                                               MethodViolationCode::ReferencesSelf) => {
                     buf = format!("method `{}` references the `Self` type \
                                        in its arguments or return type",
-                                  method.name);
+                                  name);
                     &buf
                 }
 
-                ObjectSafetyViolation::Method(method,
+                ObjectSafetyViolation::Method(name,
                                               MethodViolationCode::Generic) => {
-                    buf = format!("method `{}` has generic type parameters",
-                                  method.name);
+                    buf = format!("method `{}` has generic type parameters", name);
                     &buf
                 }
             };

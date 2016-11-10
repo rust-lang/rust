@@ -164,7 +164,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_fn(&mut self,
                 fk: hir_visit::FnKind<'v>,
                 fd: &'v hir::FnDecl,
-                b: &'v hir::Block,
+                b: &'v hir::Expr,
                 s: Span,
                 id: NodeId) {
         self.record("FnDecl", Id::None, fd);
@@ -295,11 +295,10 @@ impl<'v> ast_visit::Visitor for StatCollector<'v> {
     fn visit_fn(&mut self,
                 fk: ast_visit::FnKind,
                 fd: &ast::FnDecl,
-                b: &ast::Block,
                 s: Span,
                 _: NodeId) {
         self.record("FnDecl", Id::None, fd);
-        ast_visit::walk_fn(self, fk, fd, b, s)
+        ast_visit::walk_fn(self, fk, fd, s)
     }
 
     fn visit_trait_item(&mut self, ti: &ast::TraitItem) {

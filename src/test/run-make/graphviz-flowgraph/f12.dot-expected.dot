@@ -22,6 +22,7 @@ digraph block {
     N20[label="expr if x == 2 { break ; \"unreachable\"; }"];
     N21[label="block { x -= 1; if x == 2 { break ; \"unreachable\"; } }"];
     N22[label="block { let mut x = 12; loop  { x -= 1; if x == 2 { break ; \"unreachable\"; } } }"];
+    N23[label="expr { let mut x = 12; loop  { x -= 1; if x == 2 { break ; \"unreachable\"; } } }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -44,5 +45,6 @@ digraph block {
     N20 -> N21;
     N21 -> N5;
     N6 -> N22;
-    N22 -> N1;
+    N22 -> N23;
+    N23 -> N1;
 }

@@ -595,12 +595,13 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemConst(self.lower_ty(t), self.lower_expr(e))
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
+                let body = self.lower_block(body);
                 hir::ItemFn(self.lower_fn_decl(decl),
                             self.lower_unsafety(unsafety),
                             self.lower_constness(constness),
                             abi,
                             self.lower_generics(generics),
-                            self.lower_block(body))
+                            self.expr_block(body, ThinVec::new()))
             }
             ItemKind::Mod(ref m) => hir::ItemMod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemForeignMod(self.lower_foreign_mod(nm)),
@@ -665,7 +666,10 @@ impl<'a> LoweringContext<'a> {
                     }
                     TraitItemKind::Method(ref sig, ref body) => {
                         hir::MethodTraitItem(this.lower_method_sig(sig),
-                                             body.as_ref().map(|x| this.lower_block(x)))
+                                             body.as_ref().map(|x| {
+                            let body = this.lower_block(x);
+                            this.expr_block(body, ThinVec::new())
+                        }))
                     }
                     TraitItemKind::Type(ref bounds, ref default) => {
                         hir::TypeTraitItem(this.lower_bounds(bounds),
@@ -691,8 +695,9 @@ impl<'a> LoweringContext<'a> {
                         hir::ImplItemKind::Const(this.lower_ty(ty), this.lower_expr(expr))
                     }
                     ImplItemKind::Method(ref sig, ref body) => {
+                        let body = this.lower_block(body);
                         hir::ImplItemKind::Method(this.lower_method_sig(sig),
-                                                  this.lower_block(body))
+                                                  this.expr_block(body, ThinVec::new()))
                     }
                     ImplItemKind::Type(ref ty) => hir::ImplItemKind::Type(this.lower_ty(ty)),
                     ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
@@ -1110,7 +1115,7 @@ impl<'a> LoweringContext<'a> {
                     self.with_parent_def(e.id, |this| {
                         hir::ExprClosure(this.lower_capture_clause(capture_clause),
                                          this.lower_fn_decl(decl),
-                                         this.lower_block(body),
+                                         this.lower_expr(body),
                                          fn_decl_span)
                     })
                 }

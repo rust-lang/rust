@@ -4,8 +4,10 @@ digraph block {
     N2[label="local _x"];
     N3[label="stmt let _x: isize;"];
     N4[label="block { let _x: isize; }"];
+    N5[label="expr { let _x: isize; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
-    N4 -> N1;
+    N4 -> N5;
+    N5 -> N1;
 }

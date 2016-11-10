@@ -49,11 +49,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn resolve_type_vars_in_fn(&self,
                                    decl: &hir::FnDecl,
-                                   blk: &hir::Block,
+                                   body: &hir::Expr,
                                    item_id: ast::NodeId) {
         assert_eq!(self.writeback_errors.get(), false);
         let mut wbcx = WritebackCx::new(self);
-        wbcx.visit_block(blk);
+        wbcx.visit_expr(body);
         for arg in &decl.inputs {
             wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.id);
             wbcx.visit_pat(&arg.pat);

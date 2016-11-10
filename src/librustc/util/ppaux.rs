@@ -670,18 +670,6 @@ impl<'tcx> fmt::Debug for ty::InstantiatedPredicates<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::ImplOrTraitItem<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ImplOrTraitItem(")?;
-        match *self {
-            ty::ImplOrTraitItem::MethodTraitItem(ref i) => write!(f, "{:?}", i),
-            ty::ImplOrTraitItem::ConstTraitItem(ref i) => write!(f, "{:?}", i),
-            ty::ImplOrTraitItem::TypeTraitItem(ref i) => write!(f, "{:?}", i),
-        }?;
-        write!(f, ")")
-    }
-}
-
 impl<'tcx> fmt::Display for ty::FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "fn")?;
@@ -992,20 +980,6 @@ impl fmt::Display for ty::InferTy {
             ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
             ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
         }
-    }
-}
-
-impl<'tcx> fmt::Display for ty::ExplicitSelfCategory<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(match *self {
-            ty::ExplicitSelfCategory::Static => "static",
-            ty::ExplicitSelfCategory::ByValue => "self",
-            ty::ExplicitSelfCategory::ByReference(_, hir::MutMutable) => {
-                "&mut self"
-            }
-            ty::ExplicitSelfCategory::ByReference(_, hir::MutImmutable) => "&self",
-            ty::ExplicitSelfCategory::ByBox => "Box<self>",
-        })
     }
 }
 

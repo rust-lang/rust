@@ -58,7 +58,7 @@ pub struct MoveDataParamEnv<'tcx> {
 pub fn borrowck_mir(bcx: &mut BorrowckCtxt,
                     fk: FnKind,
                     _decl: &hir::FnDecl,
-                    body: &hir::Block,
+                    body: &hir::Expr,
                     _sp: Span,
                     id: ast::NodeId,
                     attributes: &[ast::Attribute]) {

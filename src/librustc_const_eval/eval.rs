@@ -857,11 +857,10 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               callee => signal!(e, CallOn(callee)),
           };
           let (decl, result) = if let Some(fn_like) = lookup_const_fn_by_id(tcx, did) {
-              (fn_like.decl(), &fn_like.body().expr)
+              (fn_like.decl(), fn_like.body())
           } else {
               signal!(e, NonConstPath)
           };
-          let result = result.as_ref().expect("const fn has no result expression");
           assert_eq!(decl.inputs.len(), args.len());
 
           let mut call_args = DefIdMap();
@@ -1091,13 +1090,8 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // when constructing the inference context above.
         match selection {
             traits::VtableImpl(ref impl_data) => {
-                let ac = tcx.impl_or_trait_items(impl_data.impl_def_id)
-                    .iter().filter_map(|&def_id| {
-                        match tcx.impl_or_trait_item(def_id) {
-                            ty::ConstTraitItem(ic) => Some(ic),
-                            _ => None
-                        }
-                    }).find(|ic| ic.name == ti.name);
+                let ac = tcx.associated_items(impl_data.impl_def_id)
+                    .find(|item| item.kind == ty::AssociatedKind::Const && item.name == ti.name);
                 match ac {
                     Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
                     None => match ti.node {

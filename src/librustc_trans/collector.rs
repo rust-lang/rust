@@ -844,17 +844,12 @@ fn do_static_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
            param_substs);
 
     if let Some(trait_def_id) = scx.tcx().trait_of_item(fn_def_id) {
-        match scx.tcx().impl_or_trait_item(fn_def_id) {
-            ty::MethodTraitItem(ref method) => {
-                debug!(" => trait method, attempting to find impl");
-                do_static_trait_method_dispatch(scx,
-                                                method,
-                                                trait_def_id,
-                                                fn_substs,
-                                                param_substs)
-            }
-            _ => bug!()
-        }
+        debug!(" => trait method, attempting to find impl");
+        do_static_trait_method_dispatch(scx,
+                                        &scx.tcx().associated_item(fn_def_id),
+                                        trait_def_id,
+                                        fn_substs,
+                                        param_substs)
     } else {
         debug!(" => regular function");
         // The function is not part of an impl or trait, no dispatching
@@ -866,7 +861,7 @@ fn do_static_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 // Given a trait-method and substitution information, find out the actual
 // implementation of the trait method.
 fn do_static_trait_method_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                                             trait_method: &ty::Method,
+                                             trait_method: &ty::AssociatedItem,
                                              trait_id: DefId,
                                              callee_substs: &'tcx Substs<'tcx>,
                                              param_substs: &'tcx Substs<'tcx>)
@@ -1187,7 +1182,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                         continue;
                     }
 
-                    if !method.generics.types.is_empty() {
+                    if !tcx.lookup_generics(method.def_id).types.is_empty() {
                         continue;
                     }
 

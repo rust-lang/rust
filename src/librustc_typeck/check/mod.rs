@@ -106,17 +106,18 @@ use util::common::{block_query, ErrorReported, indenter, loop_query};
 use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{Cell, Ref, RefCell};
+use std::cmp;
 use std::mem::replace;
-use std::ops::Deref;
+use std::ops::{self, Deref};
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::{self, Spanned};
+use syntax::codemap::{self, original_sp, Spanned};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{self, Span};
+use syntax_pos::{self, BytePos, Span};
 
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::{self, PatKind};
@@ -351,6 +352,59 @@ impl UnsafetyState {
     }
 }
 
+/// Whether a node ever exits normally or not.
+/// Tracked semi-automatically (through type variables
+/// marked as diverging), with some manual adjustments
+/// for control-flow primitives (approximating a CFG).
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum Diverges {
+    /// Potentially unknown, some cases converge,
+    /// others require a CFG to determine them.
+    Maybe,
+
+    /// Definitely known to diverge and therefore
+    /// not reach the next sibling or its parent.
+    Always,
+
+    /// Same as `Always` but with a reachability
+    /// warning already emitted
+    WarnedAlways
+}
+
+// Convenience impls for combinig `Diverges`.
+
+impl ops::BitAnd for Diverges {
+    type Output = Self;
+    fn bitand(self, other: Self) -> Self {
+        cmp::min(self, other)
+    }
+}
+
+impl ops::BitOr for Diverges {
+    type Output = Self;
+    fn bitor(self, other: Self) -> Self {
+        cmp::max(self, other)
+    }
+}
+
+impl ops::BitAndAssign for Diverges {
+    fn bitand_assign(&mut self, other: Self) {
+        *self = *self & other;
+    }
+}
+
+impl ops::BitOrAssign for Diverges {
+    fn bitor_assign(&mut self, other: Self) {
+        *self = *self | other;
+    }
+}
+
+impl Diverges {
+    fn always(self) -> bool {
+        self >= Diverges::Always
+    }
+}
+
 #[derive(Clone)]
 pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
@@ -370,6 +424,12 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ret_ty: Ty<'tcx>,
 
     ps: RefCell<UnsafetyState>,
+
+    /// Whether the last checked node can ever exit.
+    diverges: Cell<Diverges>,
+
+    /// Whether any child nodes have any type errors.
+    has_errors: Cell<bool>,
 
     inh: &'a Inherited<'a, 'gcx, 'tcx>,
 }
@@ -534,7 +594,7 @@ pub fn check_drop_impls(ccx: &CrateCtxt) -> CompileResult {
 
 fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            decl: &'tcx hir::FnDecl,
-                           body: &'tcx hir::Block,
+                           body: &'tcx hir::Expr,
                            fn_id: ast::NodeId,
                            span: Span) {
     let raw_fty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(fn_id)).ty;
@@ -558,7 +618,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let fcx = check_fn(&inh, fn_ty.unsafety, fn_id, &fn_sig, decl, fn_id, body);
 
         fcx.select_all_obligations_and_apply_defaults();
-        fcx.closure_analyze_fn(body);
+        fcx.closure_analyze(body);
         fcx.select_obligations_where_possible();
         fcx.check_casts();
         fcx.select_all_obligations_or_error(); // Casts can introduce new obligations.
@@ -654,7 +714,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 
     // Don't descend into the bodies of nested closures
     fn visit_fn(&mut self, _: intravisit::FnKind<'gcx>, _: &'gcx hir::FnDecl,
-                _: &'gcx hir::Block, _: Span, _: ast::NodeId) { }
+                _: &'gcx hir::Expr, _: Span, _: ast::NodeId) { }
 }
 
 /// Helper used by check_bare_fn and check_expr_fn. Does the grungy work of checking a function
@@ -669,7 +729,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             fn_sig: &ty::FnSig<'tcx>,
                             decl: &'gcx hir::FnDecl,
                             fn_id: ast::NodeId,
-                            body: &'gcx hir::Block)
+                            body: &'gcx hir::Expr)
                             -> FnCtxt<'a, 'gcx, 'tcx>
 {
     let mut fn_sig = fn_sig.clone();
@@ -709,18 +769,12 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             fcx.write_ty(input.id, arg_ty);
         }
 
-        visit.visit_block(body);
+        visit.visit_expr(body);
     }
 
     inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
 
-    // FIXME(aburka) do we need this special case? and should it be is_uninhabited?
-    let expected = if fcx.ret_ty.is_never() {
-        NoExpectation
-    } else {
-        ExpectHasType(fcx.ret_ty)
-    };
-    fcx.check_block_with_expected(body, expected);
+    fcx.check_expr_coercable_to_type(body, fcx.ret_ty);
 
     fcx
 }
@@ -760,7 +814,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
               check_impl_items_against_trait(ccx,
                                              it.span,
                                              impl_def_id,
-                                             &impl_trait_ref,
+                                             impl_trait_ref,
                                              impl_items);
               let trait_def_id = impl_trait_ref.def_id;
               check_on_unimplemented(ccx, trait_def_id, it);
@@ -942,21 +996,13 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let ancestors = trait_def.ancestors(impl_id);
 
-    let parent = match impl_item.node {
-        hir::ImplItemKind::Const(..) => {
-            ancestors.const_defs(tcx, impl_item.name).skip(1).next()
-                .map(|node_item| node_item.map(|parent| parent.defaultness))
-        }
-        hir::ImplItemKind::Method(..) => {
-            ancestors.fn_defs(tcx, impl_item.name).skip(1).next()
-                .map(|node_item| node_item.map(|parent| parent.defaultness))
-
-        }
-        hir::ImplItemKind::Type(_) => {
-            ancestors.type_defs(tcx, impl_item.name).skip(1).next()
-                .map(|node_item| node_item.map(|parent| parent.defaultness))
-        }
+    let kind = match impl_item.node {
+        hir::ImplItemKind::Const(..) => ty::AssociatedKind::Const,
+        hir::ImplItemKind::Method(..) => ty::AssociatedKind::Method,
+        hir::ImplItemKind::Type(_) => ty::AssociatedKind::Type
     };
+    let parent = ancestors.defs(tcx, impl_item.name, kind).skip(1).next()
+        .map(|node_item| node_item.map(|parent| parent.defaultness));
 
     if let Some(parent) = parent {
         if parent.item.is_final() {
@@ -969,7 +1015,7 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_span: Span,
                                             impl_id: DefId,
-                                            impl_trait_ref: &ty::TraitRef<'tcx>,
+                                            impl_trait_ref: ty::TraitRef<'tcx>,
                                             impl_items: &[hir::ImplItem]) {
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
@@ -979,72 +1025,61 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Locate trait definition and items
     let tcx = ccx.tcx;
     let trait_def = tcx.lookup_trait_def(impl_trait_ref.def_id);
-    let trait_items = tcx.trait_items(impl_trait_ref.def_id);
     let mut overridden_associated_type = None;
 
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items {
-        let ty_impl_item = tcx.impl_or_trait_item(tcx.map.local_def_id(impl_item.id));
-        let ty_trait_item = trait_items.iter()
-            .find(|ac| ac.name() == ty_impl_item.name());
+        let ty_impl_item = tcx.associated_item(tcx.map.local_def_id(impl_item.id));
+        let ty_trait_item = tcx.associated_items(impl_trait_ref.def_id)
+            .find(|ac| ac.name == ty_impl_item.name);
 
         // Check that impl definition matches trait definition
         if let Some(ty_trait_item) = ty_trait_item {
             match impl_item.node {
                 hir::ImplItemKind::Const(..) => {
-                    let impl_const = match ty_impl_item {
-                        ty::ConstTraitItem(ref cti) => cti,
-                        _ => span_bug!(impl_item.span, "non-const impl-item for const")
-                    };
-
                     // Find associated const definition.
-                    if let &ty::ConstTraitItem(ref trait_const) = ty_trait_item {
+                    if ty_trait_item.kind == ty::AssociatedKind::Const {
                         compare_const_impl(ccx,
-                                           &impl_const,
+                                           &ty_impl_item,
                                            impl_item.span,
-                                           trait_const,
-                                           &impl_trait_ref);
+                                           &ty_trait_item,
+                                           impl_trait_ref);
                     } else {
                          let mut err = struct_span_err!(tcx.sess, impl_item.span, E0323,
                                   "item `{}` is an associated const, \
                                   which doesn't match its trait `{:?}`",
-                                  impl_const.name,
+                                  ty_impl_item.name,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
                          // We can only get the spans from local trait definition
                          // Same for E0324 and E0325
-                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
+                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id) {
                             err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
                     }
                 }
                 hir::ImplItemKind::Method(_, ref body) => {
-                    let impl_method = match ty_impl_item {
-                        ty::MethodTraitItem(ref mti) => mti,
-                        _ => span_bug!(impl_item.span, "non-method impl-item for method")
-                    };
-
-                    let trait_span = tcx.map.span_if_local(ty_trait_item.def_id());
-                    if let &ty::MethodTraitItem(ref trait_method) = ty_trait_item {
+                    let trait_span = tcx.map.span_if_local(ty_trait_item.def_id);
+                    if ty_trait_item.kind == ty::AssociatedKind::Method {
                         let err_count = tcx.sess.err_count();
                         compare_impl_method(ccx,
-                                            &impl_method,
+                                            &ty_impl_item,
                                             impl_item.span,
                                             body.id,
-                                            &trait_method,
-                                            &impl_trait_ref,
+                                            &ty_trait_item,
+                                            impl_trait_ref,
                                             trait_span,
                                             true); // start with old-broken-mode
                         if err_count == tcx.sess.err_count() {
                             // old broken mode did not report an error. Try with the new mode.
                             compare_impl_method(ccx,
-                                                &impl_method,
+                                                &ty_impl_item,
                                                 impl_item.span,
                                                 body.id,
-                                                &trait_method,
-                                                &impl_trait_ref,
+                                                &ty_trait_item,
+                                                impl_trait_ref,
                                                 trait_span,
                                                 false); // use the new mode
                         }
@@ -1052,33 +1087,28 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0324,
                                   "item `{}` is an associated method, \
                                   which doesn't match its trait `{:?}`",
-                                  impl_method.name,
+                                  ty_impl_item.name,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
-                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
+                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id) {
                             err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
                     }
                 }
                 hir::ImplItemKind::Type(_) => {
-                    let impl_type = match ty_impl_item {
-                        ty::TypeTraitItem(ref tti) => tti,
-                        _ => span_bug!(impl_item.span, "non-type impl-item for type")
-                    };
-
-                    if let &ty::TypeTraitItem(ref at) = ty_trait_item {
-                        if let Some(_) = at.ty {
+                    if ty_trait_item.kind == ty::AssociatedKind::Type {
+                        if ty_trait_item.has_value {
                             overridden_associated_type = Some(impl_item);
                         }
                     } else {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0325,
                                   "item `{}` is an associated type, \
                                   which doesn't match its trait `{:?}`",
-                                  impl_type.name,
+                                  ty_impl_item.name,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
-                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
+                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id) {
                             err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
@@ -1091,70 +1121,55 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 
     // Check for missing items from trait
-    let provided_methods = tcx.provided_trait_methods(impl_trait_ref.def_id);
     let mut missing_items = Vec::new();
     let mut invalidated_items = Vec::new();
     let associated_type_overridden = overridden_associated_type.is_some();
-    for trait_item in trait_items.iter() {
-        let is_implemented;
-        let is_provided;
-
-        match *trait_item {
-            ty::ConstTraitItem(ref associated_const) => {
-                is_provided = associated_const.has_value;
-                is_implemented = impl_items.iter().any(|ii| {
-                    match ii.node {
-                        hir::ImplItemKind::Const(..) => {
-                            ii.name == associated_const.name
-                        }
-                        _ => false,
-                    }
-                });
-            }
-            ty::MethodTraitItem(ref trait_method) => {
-                is_provided = provided_methods.iter().any(|m| m.name == trait_method.name);
-                is_implemented = trait_def.ancestors(impl_id)
-                    .fn_defs(tcx, trait_method.name)
-                    .next()
-                    .map(|node_item| !node_item.node.is_from_trait())
-                    .unwrap_or(false);
-            }
-            ty::TypeTraitItem(ref trait_assoc_ty) => {
-                is_provided = trait_assoc_ty.ty.is_some();
-                is_implemented = trait_def.ancestors(impl_id)
-                    .type_defs(tcx, trait_assoc_ty.name)
-                    .next()
-                    .map(|node_item| !node_item.node.is_from_trait())
-                    .unwrap_or(false);
-            }
-        }
+    for trait_item in tcx.associated_items(impl_trait_ref.def_id) {
+        let is_implemented = trait_def.ancestors(impl_id)
+            .defs(tcx, trait_item.name, trait_item.kind)
+            .next()
+            .map(|node_item| !node_item.node.is_from_trait())
+            .unwrap_or(false);
 
         if !is_implemented {
-            if !is_provided {
+            if !trait_item.has_value {
                 missing_items.push(trait_item);
             } else if associated_type_overridden {
-                invalidated_items.push(trait_item.name());
+                invalidated_items.push(trait_item.name);
             }
         }
     }
+
+    let signature = |item: &ty::AssociatedItem| {
+        match item.kind {
+            ty::AssociatedKind::Method => {
+                format!("{}", tcx.lookup_item_type(item.def_id).ty.fn_sig().0)
+            }
+            ty::AssociatedKind::Type => format!("type {};", item.name.to_string()),
+            ty::AssociatedKind::Const => {
+                format!("const {}: {:?};", item.name.to_string(),
+                        tcx.lookup_item_type(item.def_id).ty)
+            }
+        }
+    };
 
     if !missing_items.is_empty() {
         let mut err = struct_span_err!(tcx.sess, impl_span, E0046,
             "not all trait items implemented, missing: `{}`",
             missing_items.iter()
-                  .map(|trait_item| trait_item.name().to_string())
+                  .map(|trait_item| trait_item.name.to_string())
                   .collect::<Vec<_>>().join("`, `"));
         err.span_label(impl_span, &format!("missing `{}` in implementation",
                 missing_items.iter()
-                    .map(|trait_item| trait_item.name().to_string())
+                    .map(|trait_item| trait_item.name.to_string())
                     .collect::<Vec<_>>().join("`, `")));
         for trait_item in missing_items {
-            if let Some(span) = tcx.map.span_if_local(trait_item.def_id()) {
-                err.span_label(span, &format!("`{}` from trait", trait_item.name()));
+            if let Some(span) = tcx.map.span_if_local(trait_item.def_id) {
+                err.span_label(span, &format!("`{}` from trait", trait_item.name));
             } else {
                 err.note(&format!("`{}` from trait: `{}`",
-                                  trait_item.name(),
-                                  signature(trait_item)));
+                                  trait_item.name,
+                                  signature(&trait_item)));
             }
         }
         err.emit();
@@ -1169,14 +1184,6 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                   invalidated_items.iter()
                                    .map(|name| name.to_string())
                                    .collect::<Vec<_>>().join("`, `"))
-    }
-}
-
-fn signature<'a, 'tcx>(item: &ty::ImplOrTraitItem) -> String {
-    match *item {
-        ty::MethodTraitItem(ref item) => format!("{}", item.fty.sig.0),
-        ty::TypeTraitItem(ref item) => format!("type {};", item.name.to_string()),
-        ty::ConstTraitItem(ref item) => format!("const {}: {:?};", item.name.to_string(), item.ty),
     }
 }
 
@@ -1198,7 +1205,7 @@ fn check_const_with_type<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         fcx.check_expr_coercable_to_type(expr, expected_type);
 
         fcx.select_all_obligations_and_apply_defaults();
-        fcx.closure_analyze_const(expr);
+        fcx.closure_analyze(expr);
         fcx.select_obligations_where_possible();
         fcx.check_casts();
         fcx.select_all_obligations_or_error();
@@ -1385,19 +1392,6 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         Ok(r)
     }
 
-    fn trait_defines_associated_type_named(&self,
-                                           trait_def_id: DefId,
-                                           assoc_name: ast::Name)
-                                           -> bool
-    {
-        self.tcx().impl_or_trait_items(trait_def_id).iter().any(|&def_id| {
-            match self.tcx().impl_or_trait_item(def_id) {
-                ty::TypeTraitItem(ref item) => item.name == assoc_name,
-                _ => false
-            }
-        })
-    }
-
     fn ty_infer(&self, _span: Span) -> Ty<'tcx> {
         self.next_ty_var()
     }
@@ -1497,6 +1491,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ret_ty: rty,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
                                                      ast::CRATE_NODE_ID)),
+            diverges: Cell::new(Diverges::Maybe),
+            has_errors: Cell::new(false),
             inh: inh,
         }
     }
@@ -1511,6 +1507,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn err_count_since_creation(&self) -> usize {
         self.tcx.sess.err_count() - self.err_count_on_creation
+    }
+
+    /// Produce warning on the given node, if the current point in the
+    /// function is unreachable, and there hasn't been another warning.
+    fn warn_if_unreachable(&self, id: ast::NodeId, span: Span, kind: &str) {
+        if self.diverges.get() == Diverges::Always {
+            self.diverges.set(Diverges::WarnedAlways);
+
+            self.tcx.sess.add_lint(lint::builtin::UNREACHABLE_CODE,
+                                   id, span,
+                                   format!("unreachable {}", kind));
+        }
     }
 
     /// Resolves type variables in `ty` if possible. Unlike the infcx
@@ -1583,6 +1591,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("write_ty({}, {:?}) in fcx {}",
                node_id, ty, self.tag());
         self.tables.borrow_mut().node_types.insert(node_id, ty);
+
+        if ty.references_error() {
+            self.has_errors.set(true);
+        }
+
+        // FIXME(canndrew): This is_never should probably be an is_uninhabited
+        if ty.is_never() || self.type_var_diverges(ty) {
+            self.diverges.set(self.diverges.get() | Diverges::Always);
+        }
     }
 
     pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::ItemSubsts<'tcx>) {
@@ -1643,12 +1660,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// As `instantiate_type_scheme`, but for the bounds found in a
     /// generic type scheme.
-    fn instantiate_bounds(&self,
-                          span: Span,
-                          substs: &Substs<'tcx>,
-                          bounds: &ty::GenericPredicates<'tcx>)
-                          -> ty::InstantiatedPredicates<'tcx>
-    {
+    fn instantiate_bounds(&self, span: Span, def_id: DefId, substs: &Substs<'tcx>)
+                          -> ty::InstantiatedPredicates<'tcx> {
+        let bounds = self.tcx.lookup_predicates(def_id);
         let result = bounds.instantiate(self.tcx, substs);
         let result = self.normalize_associated_types_in(span, &result.predicates);
         debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}",
@@ -2518,21 +2532,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Check the arguments.
         // We do this in a pretty awful way: first we typecheck any arguments
-        // that are not anonymous functions, then we typecheck the anonymous
-        // functions. This is so that we have more information about the types
-        // of arguments when we typecheck the functions. This isn't really the
-        // right way to do this.
-        let xs = [false, true];
-        let mut any_diverges = false; // has any of the arguments diverged?
-        let mut warned = false; // have we already warned about unreachable code?
-        for check_blocks in &xs {
-            let check_blocks = *check_blocks;
-            debug!("check_blocks={}", check_blocks);
+        // that are not closures, then we typecheck the closures. This is so
+        // that we have more information about the types of arguments when we
+        // typecheck the functions. This isn't really the right way to do this.
+        for &check_closures in &[false, true] {
+            debug!("check_closures={}", check_closures);
 
             // More awful hacks: before we check argument types, try to do
             // an "opportunistic" vtable resolution of any trait bounds on
             // the call. This helps coercions.
-            if check_blocks {
+            if check_closures {
                 self.select_obligations_where_possible();
             }
 
@@ -2547,61 +2556,43 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 supplied_arg_count
             };
             for (i, arg) in args.iter().take(t).enumerate() {
-                if any_diverges && !warned {
-                    self.tcx
-                        .sess
-                        .add_lint(lint::builtin::UNREACHABLE_CODE,
-                                  arg.id,
-                                  arg.span,
-                                  "unreachable expression".to_string());
-                    warned = true;
+                // Warn only for the first loop (the "no closures" one).
+                // Closure arguments themselves can't be diverging, but
+                // a previous argument can, e.g. `foo(panic!(), || {})`.
+                if !check_closures {
+                    self.warn_if_unreachable(arg.id, arg.span, "expression");
                 }
-                let is_block = match arg.node {
+
+                let is_closure = match arg.node {
                     hir::ExprClosure(..) => true,
                     _ => false
                 };
 
-                if is_block == check_blocks {
-                    debug!("checking the argument");
-                    let formal_ty = formal_tys[i];
-
-                    // The special-cased logic below has three functions:
-                    // 1. Provide as good of an expected type as possible.
-                    let expected = expected_arg_tys.get(i).map(|&ty| {
-                        Expectation::rvalue_hint(self, ty)
-                    });
-
-                    let checked_ty = self.check_expr_with_expectation(&arg,
-                                            expected.unwrap_or(ExpectHasType(formal_ty)));
-                    // 2. Coerce to the most detailed type that could be coerced
-                    //    to, which is `expected_ty` if `rvalue_hint` returns an
-                    //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
-                    let coerce_ty = expected.and_then(|e| e.only_has_type(self));
-                    self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty));
-
-                    // 3. Relate the expected type and the formal one,
-                    //    if the expected type was used for the coercion.
-                    coerce_ty.map(|ty| self.demand_suptype(arg.span, formal_ty, ty));
+                if is_closure != check_closures {
+                    continue;
                 }
 
-                if let Some(&arg_ty) = self.tables.borrow().node_types.get(&arg.id) {
-                    // FIXME(canndrew): This is_never should probably be an is_uninhabited
-                    any_diverges = any_diverges ||
-                                   self.type_var_diverges(arg_ty) ||
-                                   arg_ty.is_never();
-                }
-            }
-            if any_diverges && !warned {
-                let parent = self.tcx.map.get_parent_node(args[0].id);
-                self.tcx
-                    .sess
-                    .add_lint(lint::builtin::UNREACHABLE_CODE,
-                              parent,
-                              sp,
-                              "unreachable call".to_string());
-                warned = true;
-            }
+                debug!("checking the argument");
+                let formal_ty = formal_tys[i];
 
+                // The special-cased logic below has three functions:
+                // 1. Provide as good of an expected type as possible.
+                let expected = expected_arg_tys.get(i).map(|&ty| {
+                    Expectation::rvalue_hint(self, ty)
+                });
+
+                let checked_ty = self.check_expr_with_expectation(&arg,
+                                        expected.unwrap_or(ExpectHasType(formal_ty)));
+                // 2. Coerce to the most detailed type that could be coerced
+                //    to, which is `expected_ty` if `rvalue_hint` returns an
+                //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
+                let coerce_ty = expected.and_then(|e| e.only_has_type(self));
+                self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty));
+
+                // 3. Relate the expected type and the formal one,
+                //    if the expected type was used for the coercion.
+                coerce_ty.map(|ty| self.demand_suptype(arg.span, formal_ty, ty));
+            }
         }
 
         // We also need to make sure we at least write the ty of the other
@@ -2852,18 +2843,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        sp: Span,
                        expected: Expectation<'tcx>) -> Ty<'tcx> {
         let cond_ty = self.check_expr_has_type(cond_expr, self.tcx.types.bool);
+        let cond_diverges = self.diverges.get();
+        self.diverges.set(Diverges::Maybe);
 
         let expected = expected.adjust_for_branches(self);
         let then_ty = self.check_block_with_expected(then_blk, expected);
+        let then_diverges = self.diverges.get();
+        self.diverges.set(Diverges::Maybe);
 
         let unit = self.tcx.mk_nil();
         let (origin, expected, found, result) =
         if let Some(else_expr) = opt_else_expr {
             let else_ty = self.check_expr_with_expectation(else_expr, expected);
-            let origin = TypeOrigin::IfExpression(sp);
+            let else_diverges = self.diverges.get();
 
             // Only try to coerce-unify if we have a then expression
             // to assign coercions to, otherwise it's () or diverging.
+            let origin = TypeOrigin::IfExpression(sp);
             let result = if let Some(ref then) = then_blk.expr {
                 let res = self.try_find_coercion_lub(origin, || Some(&**then),
                                                      then_ty, else_expr, else_ty);
@@ -2889,8 +2885,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         })
                 })
             };
+
+            // We won't diverge unless both branches do (or the condition does).
+            self.diverges.set(cond_diverges | then_diverges & else_diverges);
+
             (origin, then_ty, else_ty, result)
         } else {
+            // If the condition is false we can't diverge.
+            self.diverges.set(cond_diverges);
+
             let origin = TypeOrigin::IfExpressionWithNoElse(sp);
             (origin, unit, then_ty,
              self.eq_types(true, origin, unit, then_ty)
@@ -3279,8 +3282,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some((variant, did, substs)) = variant {
             // Check bounds on type arguments used in the path.
-            let type_predicates = self.tcx.lookup_predicates(did);
-            let bounds = self.instantiate_bounds(path.span, substs, &type_predicates);
+            let bounds = self.instantiate_bounds(path.span, did, substs);
             let cause = traits::ObligationCause::new(path.span, self.body_id,
                                                      traits::ItemObligation(did));
             self.add_obligations_for_parameters(cause, &bounds);
@@ -3352,9 +3354,35 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                    lvalue_pref: LvaluePreference) -> Ty<'tcx> {
         debug!(">> typechecking: expr={:?} expected={:?}",
                expr, expected);
+
+        // Warn for expressions after diverging siblings.
+        self.warn_if_unreachable(expr.id, expr.span, "expression");
+
+        // Hide the outer diverging and has_errors flags.
+        let old_diverges = self.diverges.get();
+        let old_has_errors = self.has_errors.get();
+        self.diverges.set(Diverges::Maybe);
+        self.has_errors.set(false);
+
         let ty = self.check_expr_kind(expr, expected, lvalue_pref);
 
+        // Warn for non-block expressions with diverging children.
+        match expr.node {
+            hir::ExprBlock(_) |
+            hir::ExprLoop(..) | hir::ExprWhile(..) |
+            hir::ExprIf(..) | hir::ExprMatch(..) => {}
+
+            _ => self.warn_if_unreachable(expr.id, expr.span, "expression")
+        }
+
+        // Record the type, which applies it effects.
+        // We need to do this after the warning above, so that
+        // we don't warn for the diverging expression itself.
         self.write_ty(expr.id, ty);
+
+        // Combine the diverging and has_error flags.
+        self.diverges.set(self.diverges.get() | old_diverges);
+        self.has_errors.set(self.has_errors.get() | old_has_errors);
 
         debug!("type of expr({}) {} is...", expr.id,
                pprust::expr_to_string(expr));
@@ -3580,22 +3608,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  expr.span, expected)
           }
           hir::ExprWhile(ref cond, ref body, _) => {
-            let cond_ty = self.check_expr_has_type(&cond, tcx.types.bool);
+            self.check_expr_has_type(&cond, tcx.types.bool);
+            let cond_diverging = self.diverges.get();
             self.check_block_no_value(&body);
-            let body_ty = self.node_ty(body.id);
-            if cond_ty.references_error() || body_ty.references_error() {
+
+            // We may never reach the body so it diverging means nothing.
+            self.diverges.set(cond_diverging);
+
+            if self.has_errors.get() {
                 tcx.types.err
-            }
-            else {
+            } else {
                 tcx.mk_nil()
             }
           }
           hir::ExprLoop(ref body, _) => {
             self.check_block_no_value(&body);
-            if !may_break(tcx, expr.id, &body) {
-                tcx.types.never
-            } else {
+            if may_break(tcx, expr.id, &body) {
+                // No way to know whether it's diverging because
+                // of a `break` or an outer `break` or `return.
+                self.diverges.set(Diverges::Maybe);
+
                 tcx.mk_nil()
+            } else {
+                tcx.types.never
             }
           }
           hir::ExprMatch(ref discrim, ref arms, match_src) => {
@@ -3928,55 +3963,66 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_stmt(&self, stmt: &'gcx hir::Stmt) {
-        let node_id;
-        let mut saw_bot = false;
-        let mut saw_err = false;
+        // Don't do all the complex logic below for DeclItem.
         match stmt.node {
-          hir::StmtDecl(ref decl, id) => {
-            node_id = id;
-            match decl.node {
-              hir::DeclLocal(ref l) => {
-                  self.check_decl_local(&l);
-                  let l_t = self.node_ty(l.id);
-                  saw_bot = saw_bot || self.type_var_diverges(l_t);
-                  saw_err = saw_err || l_t.references_error();
-              }
-              hir::DeclItem(_) => {/* ignore for now */ }
+            hir::StmtDecl(ref decl, id) => {
+                match decl.node {
+                    hir::DeclLocal(_) => {}
+                    hir::DeclItem(_) => {
+                        self.write_nil(id);
+                        return;
+                    }
+                }
             }
-          }
-          hir::StmtExpr(ref expr, id) => {
-            node_id = id;
-            // Check with expected type of ()
-            let ty = self.check_expr_has_type(&expr, self.tcx.mk_nil());
-            saw_bot = saw_bot || self.type_var_diverges(ty);
-            saw_err = saw_err || ty.references_error();
-          }
-          hir::StmtSemi(ref expr, id) => {
-            node_id = id;
-            let ty = self.check_expr(&expr);
-            saw_bot |= self.type_var_diverges(ty);
-            saw_err |= ty.references_error();
-          }
+            hir::StmtExpr(..) | hir::StmtSemi(..) => {}
         }
-        if saw_bot {
-            self.write_ty(node_id, self.next_diverging_ty_var());
-        }
-        else if saw_err {
+
+        self.warn_if_unreachable(stmt.node.id(), stmt.span, "statement");
+
+        // Hide the outer diverging and has_errors flags.
+        let old_diverges = self.diverges.get();
+        let old_has_errors = self.has_errors.get();
+        self.diverges.set(Diverges::Maybe);
+        self.has_errors.set(false);
+
+        let node_id = match stmt.node {
+            hir::StmtDecl(ref decl, id) => {
+                match decl.node {
+                    hir::DeclLocal(ref l) => {
+                        self.check_decl_local(&l);
+                    }
+                    hir::DeclItem(_) => {/* ignore for now */ }
+                }
+                id
+            }
+            hir::StmtExpr(ref expr, id) => {
+                // Check with expected type of ()
+                self.check_expr_has_type(&expr, self.tcx.mk_nil());
+                id
+            }
+            hir::StmtSemi(ref expr, id) => {
+                self.check_expr(&expr);
+                id
+            }
+        };
+
+        if self.has_errors.get() {
             self.write_error(node_id);
-        }
-        else {
+        } else if self.diverges.get().always() {
+            self.write_ty(node_id, self.next_diverging_ty_var());
+        } else {
             self.write_nil(node_id);
         }
+
+        // Combine the diverging and has_error flags.
+        self.diverges.set(self.diverges.get() | old_diverges);
+        self.has_errors.set(self.has_errors.get() | old_has_errors);
     }
 
     pub fn check_block_no_value(&self, blk: &'gcx hir::Block)  {
-        let blkty = self.check_block_with_expected(blk, ExpectHasType(self.tcx.mk_nil()));
-        if blkty.references_error() {
-            self.write_error(blk.id);
-        } else {
-            let nilty = self.tcx.mk_nil();
-            self.demand_suptype(blk.span, nilty, blkty);
-        }
+        let unit = self.tcx.mk_nil();
+        let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
+        self.demand_suptype(blk.span, unit, ty);
     }
 
     fn check_block_with_expected(&self,
@@ -3988,72 +4034,81 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             replace(&mut *fcx_ps, unsafety_state)
         };
 
-        let mut warned = false;
-        let mut any_diverges = false;
-        let mut any_err = false;
         for s in &blk.stmts {
             self.check_stmt(s);
-            let s_id = s.node.id();
-            let s_ty = self.node_ty(s_id);
-            if any_diverges && !warned && match s.node {
-                hir::StmtDecl(ref decl, _) => {
-                    match decl.node {
-                        hir::DeclLocal(_) => true,
-                        _ => false,
-                    }
-                }
-                hir::StmtExpr(..) | hir::StmtSemi(..) => true,
-            } {
-                self.tcx
-                    .sess
-                    .add_lint(lint::builtin::UNREACHABLE_CODE,
-                              s_id,
-                              s.span,
-                              "unreachable statement".to_string());
-                warned = true;
-            }
-            // FIXME(canndrew): This is_never should probably be an is_uninhabited
-            any_diverges = any_diverges ||
-                           self.type_var_diverges(s_ty) ||
-                           s_ty.is_never();
-            any_err = any_err || s_ty.references_error();
         }
-        let ty = match blk.expr {
-            None => if any_err {
-                self.tcx.types.err
-            } else if any_diverges {
-                self.next_diverging_ty_var()
-            } else {
-                self.tcx.mk_nil()
-            },
-            Some(ref e) => {
-                if any_diverges && !warned {
-                    self.tcx
-                        .sess
-                        .add_lint(lint::builtin::UNREACHABLE_CODE,
-                                  e.id,
-                                  e.span,
-                                  "unreachable expression".to_string());
-                }
-                let ety = match expected {
-                    ExpectHasType(ety) => {
-                        self.check_expr_coercable_to_type(&e, ety);
-                        ety
-                    }
-                    _ => {
-                        self.check_expr_with_expectation(&e, expected)
-                    }
-                };
 
-                if any_err {
-                    self.tcx.types.err
-                } else if any_diverges {
-                    self.next_diverging_ty_var()
-                } else {
-                    ety
+        let mut ty = match blk.expr {
+            Some(ref e) => self.check_expr_with_expectation(e, expected),
+            None => self.tcx.mk_nil()
+        };
+
+        if self.diverges.get().always() {
+            if let ExpectHasType(ety) = expected {
+                // Avoid forcing a type (only `!` for now) in unreachable code.
+                // FIXME(aburka) do we need this special case? and should it be is_uninhabited?
+                if !ety.is_never() {
+                    if let Some(ref e) = blk.expr {
+                        // Coerce the tail expression to the right type.
+                        self.demand_coerce(e, ty, ety);
+                    }
                 }
             }
-        };
+
+            ty = self.next_diverging_ty_var();
+        } else if let ExpectHasType(ety) = expected {
+            if let Some(ref e) = blk.expr {
+                // Coerce the tail expression to the right type.
+                self.demand_coerce(e, ty, ety);
+            } else {
+                // We're not diverging and there's an expected type, which,
+                // in case it's not `()`, could result in an error higher-up.
+                // We have a chance to error here early and be more helpful.
+                let origin = TypeOrigin::Misc(blk.span);
+                let trace = TypeTrace::types(origin, false, ty, ety);
+                match self.sub_types(false, origin, ty, ety) {
+                    Ok(InferOk { obligations, .. }) => {
+                        // FIXME(#32730) propagate obligations
+                        assert!(obligations.is_empty());
+                    },
+                    Err(err) => {
+                        let mut err = self.report_and_explain_type_error(trace, &err);
+
+                        // Be helpful when the user wrote `{... expr;}` and
+                        // taking the `;` off is enough to fix the error.
+                        let mut extra_semi = None;
+                        if let Some(stmt) = blk.stmts.last() {
+                            if let hir::StmtSemi(ref e, _) = stmt.node {
+                                if self.can_sub_types(self.node_ty(e.id), ety).is_ok() {
+                                    extra_semi = Some(stmt);
+                                }
+                            }
+                        }
+                        if let Some(last_stmt) = extra_semi {
+                            let original_span = original_sp(self.tcx.sess.codemap(),
+                                                            last_stmt.span, blk.span);
+                            let span_semi = Span {
+                                lo: original_span.hi - BytePos(1),
+                                hi: original_span.hi,
+                                expn_id: original_span.expn_id
+                            };
+                            err.span_help(span_semi, "consider removing this semicolon:");
+                        }
+
+                        err.emit();
+                    }
+                }
+            }
+
+            // We already applied the type (and potentially errored),
+            // use the expected type to avoid further errors out.
+            ty = ety;
+        }
+
+        if self.has_errors.get() || ty.references_error() {
+            ty = self.tcx.types.err
+        }
+
         self.write_ty(blk.id, ty);
 
         *self.ps.borrow_mut() = prev;
@@ -4149,7 +4204,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Case 3. Reference to a method or associated const.
             Def::Method(def_id) |
             Def::AssociatedConst(def_id) => {
-                let container = self.tcx.impl_or_trait_item(def_id).container();
+                let container = self.tcx.associated_item(def_id).container;
                 match container {
                     ty::TraitContainer(trait_did) => {
                         callee::check_legal_trait_for_method_call(self.ccx, span, trait_did)
@@ -4290,13 +4345,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
         let scheme = self.tcx.lookup_item_type(def.def_id());
-        let type_predicates = self.tcx.lookup_predicates(def.def_id());
         assert!(!substs.has_escaping_regions());
         assert!(!scheme.ty.has_escaping_regions());
 
         // Add all the obligations that are required, substituting and
         // normalized appropriately.
-        let bounds = self.instantiate_bounds(span, &substs, &type_predicates);
+        let bounds = self.instantiate_bounds(span, def.def_id(), &substs);
         self.add_obligations_for_parameters(
             traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def.def_id())),
             &bounds);

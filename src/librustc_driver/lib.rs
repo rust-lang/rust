@@ -455,8 +455,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             1 => panic!("make_input should have provided valid inputs"),
             _ => early_error(sopts.error_format, "multiple input filenames provided"),
         }
-
-        None
     }
 
     fn late_callback(&mut self,

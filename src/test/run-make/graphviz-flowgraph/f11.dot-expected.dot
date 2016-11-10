@@ -15,6 +15,7 @@ digraph block {
     N13[label="expr \"unreachable\""];
     N14[label="stmt \"unreachable\";"];
     N15[label="block { let mut _x = 11; loop  { _x -= 1; } \"unreachable\"; }"];
+    N16[label="expr { let mut _x = 11; loop  { _x -= 1; } \"unreachable\"; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -29,5 +30,6 @@ digraph block {
     N12 -> N13;
     N13 -> N14;
     N14 -> N15;
-    N15 -> N1;
+    N15 -> N16;
+    N16 -> N1;
 }

@@ -47,6 +47,7 @@ digraph block {
     N45[label="stmt \"unreachable\";"];
     N46[label="block {\l    \'inner:\l        loop  {\l            if x == 1 { break \'outer ; \"unreachable\"; }\l            if y >= 2 { return; \"unreachable\"; }\l            y -= 3;\l            x -= 5;\l        }\l    \"unreachable\";\l}\l"];
     N47[label="block {\l    let mut x = 15;\l    let mut y = 151;\l    \'outer:\l        loop  {\l            \'inner:\l                loop  {\l                    if x == 1 { break \'outer ; \"unreachable\"; }\l                    if y >= 2 { return; \"unreachable\"; }\l                    y -= 3;\l                    x -= 5;\l                }\l            \"unreachable\";\l        }\l}\l"];
+    N48[label="expr {\l    let mut x = 15;\l    let mut y = 151;\l    \'outer:\l        loop  {\l            \'inner:\l                loop  {\l                    if x == 1 { break \'outer ; \"unreachable\"; }\l                    if y >= 2 { return; \"unreachable\"; }\l                    y -= 3;\l                    x -= 5;\l                }\l            \"unreachable\";\l        }\l}\l"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -95,5 +96,6 @@ digraph block {
     N45 -> N46;
     N46 -> N8;
     N9 -> N47;
-    N47 -> N1;
+    N47 -> N48;
+    N48 -> N1;
 }
