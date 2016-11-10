@@ -24,6 +24,10 @@ Cargo will automatically generate a simple test when you make a new project.
 Here's the contents of `src/lib.rs`:
 
 ```rust
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
 #[cfg(test)]
 mod tests {
     #[test]
@@ -79,6 +83,10 @@ So why does our do-nothing test pass? Any test which doesn't `panic!` passes,
 and any test that does `panic!` fails. Let's make our test fail:
 
 ```rust
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
 #[cfg(test)]
 mod tests {
     #[test]
@@ -153,6 +161,10 @@ This is useful if you want to integrate `cargo test` into other tooling.
 We can invert our test's failure with another attribute: `should_panic`:
 
 ```rust
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
 #[cfg(test)]
 mod tests {
     #[test]
@@ -188,6 +200,10 @@ Rust provides another macro, `assert_eq!`, that compares two arguments for
 equality:
 
 ```rust
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
 #[cfg(test)]
 mod tests {
     #[test]
@@ -226,6 +242,10 @@ make sure that the failure message contains the provided text. A safer version
 of the example above would be:
 
 ```rust
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
 #[cfg(test)]
 mod tests {
     #[test]
@@ -239,6 +259,10 @@ mod tests {
 That's all there is to the basics! Let's write one 'real' test:
 
 ```rust,ignore
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
 pub fn add_two(a: i32) -> i32 {
     a + 2
 }
@@ -263,6 +287,10 @@ Sometimes a few specific tests can be very time-consuming to execute. These
 can be disabled by default by using the `ignore` attribute:
 
 ```rust
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
 pub fn add_two(a: i32) -> i32 {
     a + 2
 }
@@ -338,6 +366,10 @@ was missing from our last example. Let's explain what this does.
 The idiomatic way of writing our example looks like this:
 
 ```rust,ignore
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
 pub fn add_two(a: i32) -> i32 {
     a + 2
 }
@@ -366,6 +398,10 @@ a large module, and so this is a common use of globs. Let's change our
 `src/lib.rs` to make use of it:
 
 ```rust,ignore
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
 pub fn add_two(a: i32) -> i32 {
     a + 2
 }
@@ -415,9 +451,14 @@ To write an integration test, let's make a `tests` directory and
 put a `tests/integration_test.rs` file inside with this as its contents:
 
 ```rust,ignore
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
+# // Sadly, this code will not work in play.rust-lang.org, because we have no
+# // crate adder to import. You'll need to try this part on your own machine.
 extern crate adder;
 
-# fn main() {}
 #[test]
 fn it_works() {
     assert_eq!(4, adder::add_two(2));
@@ -478,7 +519,10 @@ running examples in your documentation (**note:** this only works in library
 crates, not binary crates). Here's a fleshed-out `src/lib.rs` with examples:
 
 ```rust,ignore
-# fn main() {}
+# // The next line exists to trick play.rust-lang.org into running our code as a
+# // test:
+# // fn main
+#
 //! The `adder` crate provides functions that add numbers to other numbers.
 //!
 //! # Examples
