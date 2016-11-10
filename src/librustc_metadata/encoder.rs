@@ -457,19 +457,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let node_id = tcx.map.as_local_node_id(def_id).unwrap();
         let ast_item = tcx.map.expect_trait_item(node_id);
-        let trait_item = tcx.impl_or_trait_item(def_id);
+        let trait_item = tcx.associated_item(def_id);
 
-        let container = |has_body| if has_body {
+        let container = if trait_item.has_value {
             AssociatedContainer::TraitWithDefault
         } else {
             AssociatedContainer::TraitRequired
         };
 
-        let kind = match trait_item {
-            ty::ConstTraitItem(ref associated_const) => {
-                EntryKind::AssociatedConst(container(associated_const.has_value))
-            }
-            ty::MethodTraitItem(ref method_ty) => {
+        let kind = match trait_item.kind {
+            ty::AssociatedKind::Const => EntryKind::AssociatedConst(container),
+            ty::AssociatedKind::Method => {
                 let fn_data = if let hir::MethodTraitItem(ref sig, _) = ast_item.node {
                     FnData {
                         constness: hir::Constness::NotConst,
@@ -478,30 +476,35 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 } else {
                     bug!()
                 };
-                let data = MethodData {
+                EntryKind::Method(self.lazy(&MethodData {
                     fn_data: fn_data,
-                    container: container(method_ty.has_body),
-                    explicit_self: self.lazy(&method_ty.explicit_self),
-                };
-                EntryKind::Method(self.lazy(&data))
+                    container: container,
+                    has_self: trait_item.method_has_self_argument,
+                }))
             }
-            ty::TypeTraitItem(_) => EntryKind::AssociatedType(container(false)),
+            ty::AssociatedKind::Type => EntryKind::AssociatedType(container),
         };
 
         Entry {
             kind: kind,
-            visibility: trait_item.vis().simplify(),
+            visibility: trait_item.vis.simplify(),
             def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&ast_item.attrs),
             children: LazySeq::empty(),
             stability: self.encode_stability(def_id),
             deprecation: self.encode_deprecation(def_id),
 
-            ty: match trait_item {
-                ty::ConstTraitItem(_) |
-                ty::MethodTraitItem(_) => Some(self.encode_item_type(def_id)),
-                ty::TypeTraitItem(ref associated_type) => {
-                    associated_type.ty.map(|ty| self.lazy(&ty))
+            ty: match trait_item.kind {
+                ty::AssociatedKind::Const |
+                ty::AssociatedKind::Method => {
+                    Some(self.encode_item_type(def_id))
+                }
+                ty::AssociatedKind::Type => {
+                    if trait_item.has_value {
+                        Some(self.encode_item_type(def_id))
+                    } else {
+                        None
+                    }
                 }
             },
             inherent_impls: LazySeq::empty(),
@@ -509,8 +512,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
-            ast: if let ty::ConstTraitItem(_) = trait_item {
-                let trait_def_id = trait_item.container().id();
+            ast: if trait_item.kind == ty::AssociatedKind::Const {
+                let trait_def_id = trait_item.container.id();
                 Some(self.encode_inlined_item(InlinedItemRef::TraitItem(trait_def_id, ast_item)))
             } else {
                 None
@@ -522,17 +525,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_impl_item(&mut self, def_id: DefId) -> Entry<'tcx> {
         let node_id = self.tcx.map.as_local_node_id(def_id).unwrap();
         let ast_item = self.tcx.map.expect_impl_item(node_id);
-        let impl_item = self.tcx.impl_or_trait_item(def_id);
-        let impl_def_id = impl_item.container().id();
+        let impl_item = self.tcx.associated_item(def_id);
+        let impl_def_id = impl_item.container.id();
 
-        let container = match ast_item.defaultness {
+        let container = match impl_item.defaultness {
             hir::Defaultness::Default => AssociatedContainer::ImplDefault,
             hir::Defaultness::Final => AssociatedContainer::ImplFinal,
         };
 
-        let kind = match impl_item {
-            ty::ConstTraitItem(_) => EntryKind::AssociatedConst(container),
-            ty::MethodTraitItem(ref method_ty) => {
+        let kind = match impl_item.kind {
+            ty::AssociatedKind::Const => EntryKind::AssociatedConst(container),
+            ty::AssociatedKind::Method => {
                 let fn_data = if let hir::ImplItemKind::Method(ref sig, _) = ast_item.node {
                     FnData {
                         constness: sig.constness,
@@ -541,17 +544,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 } else {
                     bug!()
                 };
-                let data = MethodData {
+                EntryKind::Method(self.lazy(&MethodData {
                     fn_data: fn_data,
                     container: container,
-                    explicit_self: self.lazy(&method_ty.explicit_self),
-                };
-                EntryKind::Method(self.lazy(&data))
+                    has_self: impl_item.method_has_self_argument,
+                }))
             }
-            ty::TypeTraitItem(_) => EntryKind::AssociatedType(container),
+            ty::AssociatedKind::Type => EntryKind::AssociatedType(container)
         };
 
-        let (ast, mir) = if let ty::ConstTraitItem(_) = impl_item {
+        let (ast, mir) = if impl_item.kind == ty::AssociatedKind::Const {
             (true, true)
         } else if let hir::ImplItemKind::Method(ref sig, _) = ast_item.node {
             let generics = self.tcx.lookup_generics(def_id);
@@ -565,20 +567,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         Entry {
             kind: kind,
-            visibility: impl_item.vis().simplify(),
+            visibility: impl_item.vis.simplify(),
             def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&ast_item.attrs),
             children: LazySeq::empty(),
             stability: self.encode_stability(def_id),
             deprecation: self.encode_deprecation(def_id),
 
-            ty: match impl_item {
-                ty::ConstTraitItem(_) |
-                ty::MethodTraitItem(_) => Some(self.encode_item_type(def_id)),
-                ty::TypeTraitItem(ref associated_type) => {
-                    associated_type.ty.map(|ty| self.lazy(&ty))
-                }
-            },
+            ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
             variances: LazySeq::empty(),
             generics: Some(self.encode_generics(def_id)),
@@ -758,7 +754,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
                 hir::ItemImpl(..) |
                 hir::ItemTrait(..) => {
-                    self.lazy_seq(tcx.impl_or_trait_items(def_id).iter().map(|&def_id| {
+                    self.lazy_seq(tcx.associated_item_def_ids(def_id).iter().map(|&def_id| {
                         assert!(def_id.is_local());
                         def_id.index
                     }))
@@ -880,14 +876,14 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                 self.encode_fields(def_id);
             }
             hir::ItemImpl(..) => {
-                for &trait_item_def_id in &self.tcx.impl_or_trait_items(def_id)[..] {
+                for &trait_item_def_id in &self.tcx.associated_item_def_ids(def_id)[..] {
                     self.record(trait_item_def_id,
                                 EncodeContext::encode_info_for_impl_item,
                                 trait_item_def_id);
                 }
             }
             hir::ItemTrait(..) => {
-                for &item_def_id in &self.tcx.impl_or_trait_items(def_id)[..] {
+                for &item_def_id in &self.tcx.associated_item_def_ids(def_id)[..] {
                     self.record(item_def_id,
                                 EncodeContext::encode_info_for_trait_item,
                                 item_def_id);

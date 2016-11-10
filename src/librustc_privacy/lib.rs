@@ -399,7 +399,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
 
     // Checks that a method is in scope.
     fn check_method(&mut self, span: Span, method_def_id: DefId) {
-        match self.tcx.impl_or_trait_item(method_def_id).container() {
+        match self.tcx.associated_item(method_def_id).container {
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
             ty::TraitContainer(trait_def_id) if !self.item_is_accessible(trait_def_id) => {
