@@ -146,16 +146,17 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         loop {
             let start = self.i;
-            while self.i < self.data.len() {
-                let i = self.i;
+            let mut i = self.i;
+            while i < self.data.len() {
                 self.i += 1;
                 if self.data[i] == b'\n' {
                     break;
                 }
+                i += 1;
             }
             if start < self.i {
                 let ret = DirEntry {
-                    name: self.data[start .. self.i].to_owned().into_boxed_slice(),
+                    name: self.data[start .. i].to_owned().into_boxed_slice(),
                     root: self.root.clone()
                 };
                 if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
@@ -182,7 +183,7 @@ impl DirEntry {
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        stat(&self.path()).map(|m| m.file_type())
+        lstat(&self.path()).map(|m| m.file_type())
     }
 
     fn name_bytes(&self) -> &[u8] {
@@ -367,7 +368,8 @@ impl fmt::Debug for File {
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = Arc::new(p.to_path_buf());
-    let options = OpenOptions::new();
+    let mut options = OpenOptions::new();
+    options.read(true);
     let fd = File::open(p, &options)?;
     let mut data = Vec::new();
     fd.read_to_end(&mut data)?;
@@ -431,7 +433,8 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let mut stat: stat = stat::default();
-    let options = OpenOptions::new();
+    let mut options = OpenOptions::new();
+    options.read(true);
     let file = File::open(p, &options)?;
     cvt(fstat(file.0.raw(), &mut stat))?;
     Ok(FileAttr { stat: stat })
@@ -442,7 +445,8 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-    let options = OpenOptions::new();
+    let mut options = OpenOptions::new();
+    options.read(true);
     let file = File::open(p, &options)?;
     file.path()
 }
