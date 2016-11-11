@@ -424,6 +424,7 @@ pub fn build_rules(build: &Build) -> Rules {
          .host(true)
          .run(move |_| dist::rust_src(build));
     rules.dist("dist-docs", "src/doc")
+         .default(true)
          .dep(|s| s.name("default:doc"))
          .run(move |s| dist::docs(build, s.stage, s.target));
     rules.dist("install", "src")
