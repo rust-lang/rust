@@ -23,7 +23,7 @@ $ cd adder
 Cargo will automatically generate a simple test when you make a new project.
 Here's the contents of `src/lib.rs`:
 
-```rust
+```rust,ignore
 # // The next line exists to trick play.rust-lang.org into running our code as a
 # // test:
 # // fn main
@@ -38,7 +38,7 @@ mod tests {
 
 For now, let's remove the `mod` bit, and focus on just the function:
 
-```rust
+```rust,ignore
 # // The next line exists to trick play.rust-lang.org into running our code as a
 # // test:
 # // fn main
@@ -81,8 +81,10 @@ test it_works ... ok
 Note the `it_works`. This comes from the name of our function:
 
 ```rust
+# fn main() {
 fn it_works() {
 }
+# }
 ```
 
 We also get a summary line:
@@ -94,7 +96,7 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 So why does our do-nothing test pass? Any test which doesn't `panic!` passes,
 and any test that does `panic!` fails. Let's make our test fail:
 
-```rust
+```rust,ignore
 # // The next line exists to trick play.rust-lang.org into running our code as a
 # // test:
 # // fn main
@@ -169,7 +171,7 @@ This is useful if you want to integrate `cargo test` into other tooling.
 
 We can invert our test's failure with another attribute: `should_panic`:
 
-```rust
+```rust,ignore
 # // The next line exists to trick play.rust-lang.org into running our code as a
 # // test:
 # // fn main
@@ -204,7 +206,7 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 Rust provides another macro, `assert_eq!`, that compares two arguments for
 equality:
 
-```rust
+```rust,ignore
 # // The next line exists to trick play.rust-lang.org into running our code as a
 # // test:
 # // fn main
@@ -243,7 +245,7 @@ parameter can be added to the `should_panic` attribute. The test harness will
 make sure that the failure message contains the provided text. A safer version
 of the example above would be:
 
-```rust
+```rust,ignore
 # // The next line exists to trick play.rust-lang.org into running our code as a
 # // test:
 # // fn main
@@ -280,7 +282,7 @@ some known arguments and compare it to the expected output.
 Sometimes a few specific tests can be very time-consuming to execute. These
 can be disabled by default by using the `ignore` attribute:
 
-```rust
+```rust,ignore
 # // The next line exists to trick play.rust-lang.org into running our code as a
 # // test:
 # // fn main
