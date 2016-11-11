@@ -9,10 +9,7 @@
 // except according to those terms.
 
 struct Bar; //~ previous definition of `Bar` here
-            //~| previous definition of `Bar` here
 struct Bar; //~ ERROR E0428
-            //~| NOTE already defined
-            //~| ERROR E0428
             //~| NOTE already defined
 
 fn main () {
