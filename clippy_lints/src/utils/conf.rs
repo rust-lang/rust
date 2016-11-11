@@ -161,7 +161,7 @@ macro_rules! define_Conf {
 
 define_Conf! {
     /// Lint: BLACKLISTED_NAME. The list of blacklisted names to lint about
-    ("blacklisted-names", blacklisted_names, ["foo", "bar", "baz"] => Vec<String>),
+    ("blacklisted-names", blacklisted_names, ["foo", "bar", "baz", "quux"] => Vec<String>),
     /// Lint: CYCLOMATIC_COMPLEXITY. The maximum cyclomatic complexity a function can have
     ("cyclomatic-complexity-threshold", cyclomatic_complexity_threshold, 25 => u64),
     /// Lint: DOC_MARKDOWN. The list of words this lint should not consider as identifiers needing ticks
