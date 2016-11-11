@@ -50,8 +50,7 @@ impl FileDesc {
 
     pub fn set_cloexec(&self) -> io::Result<()> {
         ::sys_common::util::dumb_print(format_args!("{}: set cloexec\n", self.fd));
-        //unimplemented!();
-        Ok(())
+        unimplemented!();
     }
 
     pub fn set_nonblocking(&self, _nonblocking: bool) -> io::Result<()> {

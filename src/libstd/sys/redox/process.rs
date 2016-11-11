@@ -264,7 +264,21 @@ impl Command {
             env::set_var(key, val);
         }
 
-        if let Err(err) = libc::exec(&self.program, &args) {
+        let program = if self.program.contains(':') || self.program.contains('/') {
+            self.program.to_owned()
+        } else {
+            let mut path_env = ::env::var("PATH").unwrap_or(".".to_string());
+
+            if ! path_env.ends_with('/') {
+                path_env.push('/');
+            }
+
+            path_env.push_str(&self.program);
+
+            path_env
+        };
+
+        if let Err(err) = libc::exec(&program, &args) {
             io::Error::from_raw_os_error(err.errno as i32)
         } else {
             panic!("return from exec without err");
