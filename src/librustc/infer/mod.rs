@@ -50,6 +50,7 @@ mod bivariate;
 mod combine;
 mod equate;
 pub mod error_reporting;
+mod fudge;
 mod glb;
 mod higher_ranked;
 pub mod lattice;
@@ -982,49 +983,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let snapshot = self.start_snapshot();
         let r = f(&snapshot);
         self.commit_from(snapshot);
-        r
-    }
-
-    /// Execute `f` and commit only the region bindings if successful.
-    /// The function f must be very careful not to leak any non-region
-    /// variables that get created.
-    pub fn commit_regions_if_ok<T, E, F>(&self, f: F) -> Result<T, E> where
-        F: FnOnce() -> Result<T, E>
-    {
-        debug!("commit_regions_if_ok()");
-        let CombinedSnapshot { projection_cache_snapshot,
-                               type_snapshot,
-                               int_snapshot,
-                               float_snapshot,
-                               region_vars_snapshot,
-                               obligations_in_snapshot } = self.start_snapshot();
-
-        let r = self.commit_if_ok(|_| f());
-
-        debug!("commit_regions_if_ok: rolling back everything but regions");
-
-        assert!(!self.obligations_in_snapshot.get());
-        self.obligations_in_snapshot.set(obligations_in_snapshot);
-
-        // Roll back any non-region bindings - they should be resolved
-        // inside `f`, with, e.g. `resolve_type_vars_if_possible`.
-        self.projection_cache
-            .borrow_mut()
-            .rollback_to(projection_cache_snapshot);
-        self.type_variables
-            .borrow_mut()
-            .rollback_to(type_snapshot);
-        self.int_unification_table
-            .borrow_mut()
-            .rollback_to(int_snapshot);
-        self.float_unification_table
-            .borrow_mut()
-            .rollback_to(float_snapshot);
-
-        // Commit region vars that may escape through resolved types.
-        self.region_vars
-            .commit(region_vars_snapshot);
-
         r
     }
 
