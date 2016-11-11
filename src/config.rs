@@ -154,19 +154,19 @@ configuration_option_enum! { ReportTactic:
 }
 
 configuration_option_enum! { WriteMode:
-    // Backsup the original file and overwrites the orignal.
+    // Backs the original file up and overwrites the original.
     Replace,
     // Overwrites original file without backup.
     Overwrite,
-    // Write the output to stdout.
+    // Writes the output to stdout.
     Display,
-    // Write the diff to stdout.
+    // Writes the diff to stdout.
     Diff,
-    // Display how much of the input file was processed
+    // Displays how much of the input file was processed
     Coverage,
     // Unfancy stdout
     Plain,
-    // Output a checkstyle XML file.
+    // Outputs a checkstyle XML file.
     Checkstyle,
 }
 
