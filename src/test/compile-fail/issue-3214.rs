@@ -15,7 +15,6 @@ fn foo<T>() {
 
     impl<T> Drop for foo<T> {
         //~^ ERROR wrong number of type arguments
-        //~^^ ERROR the type parameter `T` is not constrained
         fn drop(&mut self) {}
     }
 }
