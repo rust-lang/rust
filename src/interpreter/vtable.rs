@@ -78,7 +78,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
         }).collect();
 
-        let size = self.type_size(trait_ref.self_ty());
+        let size = self.type_size(trait_ref.self_ty()).expect("can't create a vtable for an unsized type");
         let align = self.type_align(trait_ref.self_ty());
 
         let ptr_size = self.memory.pointer_size();

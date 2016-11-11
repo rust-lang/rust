@@ -193,7 +193,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Abi::C => {
                 let ty = fn_ty.sig.0.output;
-                let size = self.type_size(ty);
+                let size = self.type_size(ty).expect("function return type cannot be unsized");
                 let (ret, target) = destination.unwrap();
                 self.call_c_abi(def_id, arg_operands, ret, size)?;
                 self.goto_block(target);
@@ -655,7 +655,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => (ptr, len as isize),
                     _ => bug!("expected an lvalue with a length"),
                 };
-                let size = self.type_size(elem_ty) as isize;
+                let size = self.type_size(elem_ty).expect("slice element must be sized") as isize;
                 // FIXME: this creates a lot of stack frames if the element type has
                 // a drop impl
                 for i in 0..len {
@@ -668,7 +668,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::Ptr { ptr, extra } => (ptr, extra),
                     _ => bug!("expected an lvalue with optional extra data"),
                 };
-                let size = self.type_size(elem_ty) as isize;
+                let size = self.type_size(elem_ty).expect("array element cannot be unsized") as isize;
                 // FIXME: this creates a lot of stack frames if the element type has
                 // a drop impl
                 for i in 0..len {
