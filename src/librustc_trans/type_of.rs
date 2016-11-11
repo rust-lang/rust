@@ -238,7 +238,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
               if let ty::TyStr = ty.sty {
                   // This means we get a nicer name in the output (str is always
                   // unsized).
-                  cx.tn().find_type("str_slice").unwrap()
+                  cx.str_slice_type()
               } else {
                   let ptr_ty = in_memory_type_of(cx, ty).ptr_to();
                   let info_ty = unsized_info_ty(cx, ty);

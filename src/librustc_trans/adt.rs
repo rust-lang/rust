@@ -245,8 +245,6 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // So we start with the discriminant, pad it up to the alignment with
             // more of its own type, then use alignment-sized ints to get the rest
             // of the size.
-            //
-            // FIXME #10604: this breaks when vector types are present.
             let size = size.bytes();
             let align = align.abi();
             let discr_ty = Type::from_integer(cx, discr);

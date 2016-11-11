@@ -184,7 +184,6 @@ pub enum TypeOrigin {
     MethodCompatCheck(Span),
 
     // Checking that this expression can be assigned where it needs to be
-    // FIXME(eddyb) #11161 is the original Expr required?
     ExprAssignable(Span),
 
     // Relating trait type parameters to those found in impl etc
