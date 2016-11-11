@@ -106,7 +106,7 @@ pub trait IntoEarlyLint {
     fn into_early_lint(self, id: LintId) -> EarlyLint;
 }
 
-impl<'a> IntoEarlyLint for (Span, &'a str) {
+impl<'a, S: Into<MultiSpan>> IntoEarlyLint for (S, &'a str) {
     fn into_early_lint(self, id: LintId) -> EarlyLint {
         let (span, msg) = self;
         let mut diagnostic = Diagnostic::new(errors::Level::Warning, msg);
@@ -530,7 +530,10 @@ pub trait LintContext: Sized {
         })
     }
 
-    fn lookup_and_emit(&self, lint: &'static Lint, span: Option<Span>, msg: &str) {
+    fn lookup_and_emit<S: Into<MultiSpan>>(&self,
+                                           lint: &'static Lint,
+                                           span: Option<S>,
+                                           msg: &str) {
         let (level, src) = match self.level_src(lint) {
             None => return,
             Some(pair) => pair,
@@ -553,7 +556,7 @@ pub trait LintContext: Sized {
     }
 
     /// Emit a lint at the appropriate level, for a particular span.
-    fn span_lint(&self, lint: &'static Lint, span: Span, msg: &str) {
+    fn span_lint<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: S, msg: &str) {
         self.lookup_and_emit(lint, Some(span), msg);
     }
 
@@ -601,7 +604,7 @@ pub trait LintContext: Sized {
 
     /// Emit a lint at the appropriate level, with no associated span.
     fn lint(&self, lint: &'static Lint, msg: &str) {
-        self.lookup_and_emit(lint, None, msg);
+        self.lookup_and_emit(lint, None as Option<Span>, msg);
     }
 
     /// Merge the lints specified by any lint attributes into the
