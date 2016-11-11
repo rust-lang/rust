@@ -57,6 +57,9 @@ else
 	$(Q)$(BOOTSTRAP) dist --install $(BOOTSTRAP_ARGS)
 endif
 tidy:
-	$(Q)$(BOOTSTRAP) test src/tools/tidy $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) test src/tools/tidy $(BOOTSTRAP_ARGS) --stage 0
+
+check-stage2-android:
+	$(Q)$(BOOTSTRAP) --step check-target --target arm-linux-androideabi
 
 .PHONY: dist
