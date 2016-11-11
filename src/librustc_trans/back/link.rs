@@ -19,7 +19,7 @@ use session::config::{OutputFilenames, Input, OutputType};
 use session::filesearch;
 use session::search_paths::PathKind;
 use session::Session;
-use middle::cstore::{self, LinkMeta};
+use middle::cstore::{self, LinkMeta, NativeLibrary};
 use middle::cstore::{LinkagePreference, NativeLibraryKind};
 use middle::dependency_format::Linkage;
 use CrateTranslation;
@@ -43,6 +43,7 @@ use std::process::Command;
 use std::str;
 use flate;
 use syntax::ast;
+use syntax::attr;
 use syntax_pos::Span;
 
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
@@ -406,12 +407,29 @@ fn link_rlib<'a>(sess: &'a Session,
         ab.add_file(obj);
     }
 
-    for (l, kind) in sess.cstore.used_libraries() {
-        match kind {
-            NativeLibraryKind::NativeStatic => ab.add_native_library(&l),
+    // Note that in this loop we are ignoring the value of `lib.cfg`. That is,
+    // we may not be configured to actually include a static library if we're
+    // adding it here. That's because later when we consume this rlib we'll
+    // decide whether we actually needed the static library or not.
+    //
+    // To do this "correctly" we'd need to keep track of which libraries added
+    // which object files to the archive. We don't do that here, however. The
+    // #[link(cfg(..))] feature is unstable, though, and only intended to get
+    // liblibc working. In that sense the check below just indicates that if
+    // there are any libraries we want to omit object files for at link time we
+    // just exclude all custom object files.
+    //
+    // Eventually if we want to stabilize or flesh out the #[link(cfg(..))]
+    // feature then we'll need to figure out how to record what objects were
+    // loaded from the libraries found here and then encode that into the
+    // metadata of the rlib we're generating somehow.
+    for lib in sess.cstore.used_libraries() {
+        match lib.kind {
+            NativeLibraryKind::NativeStatic => {}
             NativeLibraryKind::NativeFramework |
-            NativeLibraryKind::NativeUnknown => {}
+            NativeLibraryKind::NativeUnknown => continue,
         }
+        ab.add_native_library(&lib.name);
     }
 
     // After adding all files to the archive, we need to update the
@@ -578,10 +596,28 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
 
     each_linked_rlib(sess, &mut |cnum, path| {
         let name = sess.cstore.crate_name(cnum);
-        ab.add_rlib(path, &name, sess.lto()).unwrap();
-
         let native_libs = sess.cstore.native_libraries(cnum);
-        all_native_libs.extend(native_libs);
+
+        // Here when we include the rlib into our staticlib we need to make a
+        // decision whether to include the extra object files along the way.
+        // These extra object files come from statically included native
+        // libraries, but they may be cfg'd away with #[link(cfg(..))].
+        //
+        // This unstable feature, though, only needs liblibc to work. The only
+        // use case there is where musl is statically included in liblibc.rlib,
+        // so if we don't want the included version we just need to skip it. As
+        // a result the logic here is that if *any* linked library is cfg'd away
+        // we just skip all object files.
+        //
+        // Clearly this is not sufficient for a general purpose feature, and
+        // we'd want to read from the library's metadata to determine which
+        // object files come from where and selectively skip them.
+        let skip_object_files = native_libs.iter().any(|lib| {
+            lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
+        });
+        ab.add_rlib(path, &name, sess.lto(), skip_object_files).unwrap();
+
+        all_native_libs.extend(sess.cstore.native_libraries(cnum));
     });
 
     ab.update_symbols();
@@ -594,13 +630,14 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
                                  platforms, and so may need to be preserved");
     }
 
-    for &(kind, ref lib) in &all_native_libs {
-        let name = match kind {
-            NativeLibraryKind::NativeStatic => "static library",
+    for lib in all_native_libs.iter().filter(|l| relevant_lib(sess, l)) {
+        let name = match lib.kind {
             NativeLibraryKind::NativeUnknown => "library",
             NativeLibraryKind::NativeFramework => "framework",
+            // These are included, no need to print them
+            NativeLibraryKind::NativeStatic => continue,
         };
-        sess.note_without_error(&format!("{}: {}", name, *lib));
+        sess.note_without_error(&format!("{}: {}", name, lib.name));
     }
 }
 
@@ -876,14 +913,12 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         }
     });
 
-    let libs = sess.cstore.used_libraries();
-
-    let staticlibs = libs.iter().filter_map(|&(ref l, kind)| {
-        if kind == NativeLibraryKind::NativeStatic {Some(l)} else {None}
+    let pair = sess.cstore.used_libraries().into_iter().filter(|l| {
+        relevant_lib(sess, l)
+    }).partition(|lib| {
+        lib.kind == NativeLibraryKind::NativeStatic
     });
-    let others = libs.iter().filter(|&&(_, kind)| {
-        kind != NativeLibraryKind::NativeStatic
-    });
+    let (staticlibs, others): (Vec<_>, Vec<_>) = pair;
 
     // Some platforms take hints about whether a library is static or dynamic.
     // For those that support this, we ensure we pass the option if the library
@@ -899,15 +934,15 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         // don't otherwise explicitly reference them. This can occur for
         // libraries which are just providing bindings, libraries with generic
         // functions, etc.
-        cmd.link_whole_staticlib(l, &search_path);
+        cmd.link_whole_staticlib(&l.name, &search_path);
     }
 
     cmd.hint_dynamic();
 
-    for &(ref l, kind) in others {
-        match kind {
-            NativeLibraryKind::NativeUnknown => cmd.link_dylib(l),
-            NativeLibraryKind::NativeFramework => cmd.link_framework(l),
+    for lib in others {
+        match lib.kind {
+            NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name),
+            NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name),
             NativeLibraryKind::NativeStatic => bug!(),
         }
     }
@@ -1017,7 +1052,16 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                         cnum: CrateNum) {
         let src = sess.cstore.used_crate_source(cnum);
         let cratepath = &src.rlib.unwrap().0;
-        if !sess.lto() && crate_type != config::CrateTypeDylib {
+
+        // See the comment above in `link_staticlib` and `link_rlib` for why if
+        // there's a static library that's not relevant we skip all object
+        // files.
+        let native_libs = sess.cstore.native_libraries(cnum);
+        let skip_native = native_libs.iter().any(|lib| {
+            lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
+        });
+
+        if !sess.lto() && crate_type != config::CrateTypeDylib && !skip_native {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
             return
         }
@@ -1029,33 +1073,42 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         time(sess.time_passes(), &format!("altering {}.rlib", name), || {
             let cfg = archive_config(sess, &dst, Some(cratepath));
             let mut archive = ArchiveBuilder::new(cfg);
-            archive.remove_file(sess.cstore.metadata_filename());
             archive.update_symbols();
 
             let mut any_objects = false;
             for f in archive.src_files() {
-                if f.ends_with("bytecode.deflate") {
+                if f.ends_with("bytecode.deflate") ||
+                   f == sess.cstore.metadata_filename() {
                     archive.remove_file(&f);
                     continue
                 }
+
                 let canonical = f.replace("-", "_");
                 let canonical_name = name.replace("-", "_");
+
+                let is_rust_object =
+                    canonical.starts_with(&canonical_name) && {
+                        let num = &f[name.len()..f.len() - 2];
+                        num.len() > 0 && num[1..].parse::<u32>().is_ok()
+                    };
+
+                // If we've been requested to skip all native object files
+                // (those not generated by the rust compiler) then we can skip
+                // this file. See above for why we may want to do this.
+                let skip_because_cfg_say_so = skip_native && !is_rust_object;
 
                 // If we're performing LTO and this is a rust-generated object
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                if sess.lto() &&
-                   !sess.cstore.is_no_builtins(cnum) &&
-                   canonical.starts_with(&canonical_name) &&
-                   canonical.ends_with(".o") {
-                    let num = &f[name.len()..f.len() - 2];
-                    if num.len() > 0 && num[1..].parse::<u32>().is_ok() {
-                        archive.remove_file(&f);
-                        continue
-                    }
+                let skip_because_lto = sess.lto() && is_rust_object &&
+                                        !sess.cstore.is_no_builtins(cnum);
+
+                if skip_because_cfg_say_so || skip_because_lto {
+                    archive.remove_file(&f);
+                } else {
+                    any_objects = true;
                 }
-                any_objects = true;
             }
 
             if !any_objects {
@@ -1127,15 +1180,26 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
     // the paths.
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic);
     for (cnum, _) in crates {
-        let libs = sess.cstore.native_libraries(cnum);
-        for &(kind, ref lib) in &libs {
-            match kind {
-                NativeLibraryKind::NativeUnknown => cmd.link_dylib(lib),
-                NativeLibraryKind::NativeFramework => cmd.link_framework(lib),
-                NativeLibraryKind::NativeStatic => {
-                    bug!("statics shouldn't be propagated");
-                }
+        for lib in sess.cstore.native_libraries(cnum) {
+            if !relevant_lib(sess, &lib) {
+                continue
+            }
+            match lib.kind {
+                NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name),
+                NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name),
+
+                // ignore statically included native libraries here as we've
+                // already included them when we included the rust library
+                // previously
+                NativeLibraryKind::NativeStatic => {}
             }
         }
+    }
+}
+
+fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
+    match lib.cfg {
+        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
+        None => true,
     }
 }

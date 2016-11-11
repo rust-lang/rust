@@ -16,7 +16,6 @@ pub fn opts() -> TargetOptions {
     // Make sure that the linker/gcc really don't pull in anything, including
     // default objects, libs, etc.
     base.pre_link_args.push("-nostdlib".to_string());
-    base.pre_link_args.push("-static".to_string());
 
     // At least when this was tested, the linker would not add the
     // `GNU_EH_FRAME` program header to executables generated, which is required
@@ -66,6 +65,9 @@ pub fn opts() -> TargetOptions {
     base.dynamic_linking = false;
     base.has_rpath = false;
     base.position_independent_executables = false;
+
+    // These targets statically link libc by default
+    base.crt_static_default = true;
 
     base
 }
