@@ -277,7 +277,7 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
         match self.configure_stmt(stmt) {
             Some(stmt) => fold::noop_fold_stmt(stmt, self),
-            None => return SmallVector::zero(),
+            None => return SmallVector::new(),
         }
     }
 
