@@ -131,6 +131,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.collect_def_ids(invocation, expansion);
 
         self.current_module = invocation.module.get();
+        self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
         let mut visitor = BuildReducedGraphVisitor {
             resolver: self,
             legacy_scope: LegacyScope::Invocation(invocation),

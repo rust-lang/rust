@@ -192,7 +192,7 @@ impl<'a> Resolver<'a> {
         }
 
         // If the resolution doesn't depend on glob definability, check privacy and return.
-        if let Some(result) = self.try_result(&resolution, ns) {
+        if let Some(result) = self.try_result(&resolution, module, ns) {
             return result.and_then(|binding| {
                 if self.is_accessible(binding.vis) && !is_disallowed_private_import(binding) ||
                    binding.is_extern_crate() { // c.f. issue #37020
@@ -222,7 +222,7 @@ impl<'a> Resolver<'a> {
 
     // Returns Some(the resolution of the name), or None if the resolution depends
     // on whether more globs can define the name.
-    fn try_result(&mut self, resolution: &NameResolution<'a>, ns: Namespace)
+    fn try_result(&mut self, resolution: &NameResolution<'a>, module: Module<'a>, ns: Namespace)
                   -> Option<ResolveResult<&'a NameBinding<'a>>> {
         match resolution.binding {
             Some(binding) if !binding.is_glob_import() =>
@@ -248,6 +248,10 @@ impl<'a> Resolver<'a> {
                 }
             }
             SingleImports::MaybeOne(_) | SingleImports::None => {},
+        }
+
+        if !module.unresolved_invocations.borrow().is_empty() {
+            return Some(Indeterminate);
         }
 
         resolution.binding.map(Success)
