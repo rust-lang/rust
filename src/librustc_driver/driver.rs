@@ -37,7 +37,8 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{ast_validation, no_asm, loops, consts, rvalues, static_recursion};
+use rustc_passes::{ast_validation, no_asm, loops, consts, rvalues,
+                   static_recursion, hir_stats};
 use rustc_const_eval::check_match;
 use super::Compilation;
 
@@ -513,6 +514,10 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session, input: &Input) -> PResult<'a, 
         syntax::show_span::run(sess.diagnostic(), s, &krate);
     }
 
+    if sess.opts.debugging_opts.hir_stats {
+        hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS");
+    }
+
     Ok(krate)
 }
 
@@ -718,6 +723,10 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         println!("Post-expansion node count: {}", count_nodes(&krate));
     }
 
+    if sess.opts.debugging_opts.hir_stats {
+        hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS");
+    }
+
     if sess.opts.debugging_opts.ast_json {
         println!("{}", json::as_json(&krate));
     }
@@ -758,7 +767,13 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
 
     // Lower ast -> hir.
     let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
-        hir_map::Forest::new(lower_crate(sess, &krate, &mut resolver), &sess.dep_graph)
+        let hir_crate = lower_crate(sess, &krate, &mut resolver);
+
+        if sess.opts.debugging_opts.hir_stats {
+            hir_stats::print_hir_stats(&hir_crate);
+        }
+
+        hir_map::Forest::new(hir_crate, &sess.dep_graph)
     });
 
     // Discard hygiene data, which isn't required past lowering to HIR.
@@ -917,17 +932,19 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "MIR dump",
              || mir::mir_map::build_mir_for_crate(tcx));
 
-        time(time_passes, "MIR passes", || {
+        time(time_passes, "MIR cleanup and validation", || {
             let mut passes = sess.mir_passes.borrow_mut();
-            // Push all the built-in passes.
+            // Push all the built-in validation passes.
+            // NB: if you’re adding an *optimisation* it ought to go to another set of passes
+            // in stage 4 below.
             passes.push_hook(box mir::transform::dump_mir::DumpMir);
-            passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("initial"));
+            passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("initial"));
             passes.push_pass(
                 box mir::transform::qualify_consts::QualifyAndPromoteConstants::default());
             passes.push_pass(box mir::transform::type_check::TypeckMir);
             passes.push_pass(
                 box mir::transform::simplify_branches::SimplifyBranches::new("initial"));
-            passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("qualify-consts"));
+            passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
             // And run everything.
             passes.run_passes(tcx);
         });
@@ -989,13 +1006,13 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
          "resolving dependency formats",
          || dependency_format::calculate(&tcx.sess));
 
-    // Run the passes that transform the MIR into a more suitable for translation
-    // to LLVM code.
-    time(time_passes, "Prepare MIR codegen passes", || {
+    // Run the passes that transform the MIR into a more suitable form for translation to LLVM
+    // code.
+    time(time_passes, "MIR optimisations", || {
         let mut passes = ::rustc::mir::transform::Passes::new();
         passes.push_hook(box mir::transform::dump_mir::DumpMir);
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
-        passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("no-landing-pads"));
+        passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("no-landing-pads"));
 
         // From here on out, regions are gone.
         passes.push_pass(box mir::transform::erase_regions::EraseRegions);
@@ -1003,13 +1020,14 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box borrowck::ElaborateDrops);
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
-        passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("elaborate-drops"));
+        passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
 
         // No lifetime analysis based on borrowing can be done from here on out.
         passes.push_pass(box mir::transform::instcombine::InstCombine::new());
         passes.push_pass(box mir::transform::deaggregator::Deaggregator);
         passes.push_pass(box mir::transform::copy_prop::CopyPropagation);
 
+        passes.push_pass(box mir::transform::simplify::SimplifyLocals);
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box mir::transform::dump_mir::Marker("PreTrans"));
 

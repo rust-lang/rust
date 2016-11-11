@@ -221,7 +221,7 @@ use rustc::session::Session;
 use rustc::session::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
 use rustc::session::search_paths::PathKind;
 use rustc::util::common;
-use rustc::util::nodemap::FnvHashMap;
+use rustc::util::nodemap::FxHashMap;
 
 use rustc_llvm as llvm;
 use rustc_llvm::{False, ObjectFile, mk_section_iter};
@@ -262,6 +262,7 @@ pub struct Context<'a> {
     pub rejected_via_kind: Vec<CrateMismatch>,
     pub rejected_via_version: Vec<CrateMismatch>,
     pub should_match_name: bool,
+    pub is_proc_macro: Option<bool>,
 }
 
 pub struct ArchiveMetadata {
@@ -430,7 +431,7 @@ impl<'a> Context<'a> {
         let rlib_prefix = format!("lib{}", self.crate_name);
         let staticlib_prefix = format!("{}{}", staticpair.0, self.crate_name);
 
-        let mut candidates = FnvHashMap();
+        let mut candidates = FxHashMap();
         let mut staticlibs = vec![];
 
         // First, find all possible candidate rlibs and dylibs purely based on
@@ -469,7 +470,7 @@ impl<'a> Context<'a> {
 
             let hash_str = hash.to_string();
             let slot = candidates.entry(hash_str)
-                .or_insert_with(|| (FnvHashMap(), FnvHashMap()));
+                .or_insert_with(|| (FxHashMap(), FxHashMap()));
             let (ref mut rlibs, ref mut dylibs) = *slot;
             fs::canonicalize(path)
                 .map(|p| {
@@ -492,7 +493,7 @@ impl<'a> Context<'a> {
         // A Library candidate is created if the metadata for the set of
         // libraries corresponds to the crate id and hash criteria that this
         // search is being performed for.
-        let mut libraries = FnvHashMap();
+        let mut libraries = FxHashMap();
         for (_hash, (rlibs, dylibs)) in candidates {
             let mut slot = None;
             let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot);
@@ -544,7 +545,7 @@ impl<'a> Context<'a> {
     // be read, it is assumed that the file isn't a valid rust library (no
     // errors are emitted).
     fn extract_one(&mut self,
-                   m: FnvHashMap<PathBuf, PathKind>,
+                   m: FxHashMap<PathBuf, PathKind>,
                    flavor: CrateFlavor,
                    slot: &mut Option<(Svh, MetadataBlob)>)
                    -> Option<(PathBuf, PathKind)> {
@@ -623,6 +624,12 @@ impl<'a> Context<'a> {
 
     fn crate_matches(&mut self, metadata: &MetadataBlob, libpath: &Path) -> Option<Svh> {
         let root = metadata.get_root();
+        if let Some(is_proc_macro) = self.is_proc_macro {
+            if root.macro_derive_registrar.is_some() != is_proc_macro {
+                return None;
+            }
+        }
+
         let rustc_version = rustc_version();
         if root.rustc_version != rustc_version {
             info!("Rejecting via version: expected {} got {}",
@@ -690,8 +697,8 @@ impl<'a> Context<'a> {
         // rlibs/dylibs.
         let sess = self.sess;
         let dylibname = self.dylibname();
-        let mut rlibs = FnvHashMap();
-        let mut dylibs = FnvHashMap();
+        let mut rlibs = FxHashMap();
+        let mut dylibs = FxHashMap();
         {
             let locs = locs.map(|l| PathBuf::from(l)).filter(|loc| {
                 if !loc.exists() {

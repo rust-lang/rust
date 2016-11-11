@@ -447,32 +447,9 @@ impl<'tcx, 'container> fmt::Debug for ty::AdtDefData<'tcx, 'container> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::adjustment::AutoAdjustment<'tcx> {
+impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            ty::adjustment::AdjustNeverToAny(ref target) => {
-                write!(f, "AdjustNeverToAny({:?})", target)
-            }
-            ty::adjustment::AdjustReifyFnPointer => {
-                write!(f, "AdjustReifyFnPointer")
-            }
-            ty::adjustment::AdjustUnsafeFnPointer => {
-                write!(f, "AdjustUnsafeFnPointer")
-            }
-            ty::adjustment::AdjustMutToConstPointer => {
-                write!(f, "AdjustMutToConstPointer")
-            }
-            ty::adjustment::AdjustDerefRef(ref data) => {
-                write!(f, "{:?}", data)
-            }
-        }
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::adjustment::AutoDerefRef<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "AutoDerefRef({}, unsize={:?}, {:?})",
-               self.autoderefs, self.unsize, self.autoref)
+        write!(f, "{:?} -> {}", self.kind, self.target)
     }
 }
 
@@ -690,18 +667,6 @@ impl<'tcx> fmt::Debug for ty::InstantiatedPredicates<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "InstantiatedPredicates({:?})",
                self.predicates)
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::ImplOrTraitItem<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ImplOrTraitItem(")?;
-        match *self {
-            ty::ImplOrTraitItem::MethodTraitItem(ref i) => write!(f, "{:?}", i),
-            ty::ImplOrTraitItem::ConstTraitItem(ref i) => write!(f, "{:?}", i),
-            ty::ImplOrTraitItem::TypeTraitItem(ref i) => write!(f, "{:?}", i),
-        }?;
-        write!(f, ")")
     }
 }
 
@@ -1015,20 +980,6 @@ impl fmt::Display for ty::InferTy {
             ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
             ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
         }
-    }
-}
-
-impl<'tcx> fmt::Display for ty::ExplicitSelfCategory<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(match *self {
-            ty::ExplicitSelfCategory::Static => "static",
-            ty::ExplicitSelfCategory::ByValue => "self",
-            ty::ExplicitSelfCategory::ByReference(_, hir::MutMutable) => {
-                "&mut self"
-            }
-            ty::ExplicitSelfCategory::ByReference(_, hir::MutImmutable) => "&self",
-            ty::ExplicitSelfCategory::ByBox => "Box<self>",
-        })
     }
 }
 

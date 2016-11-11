@@ -517,6 +517,7 @@ pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 pub trait Resolver {
     fn next_node_id(&mut self) -> ast::NodeId;
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark;
+    fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item>;
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion);
     fn add_macro(&mut self, scope: Mark, def: ast::MacroDef, export: bool);
@@ -539,6 +540,7 @@ pub struct DummyResolver;
 impl Resolver for DummyResolver {
     fn next_node_id(&mut self) -> ast::NodeId { ast::DUMMY_NODE_ID }
     fn get_module_scope(&mut self, _id: ast::NodeId) -> Mark { Mark::root() }
+    fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> { item }
 
     fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion) {}
     fn add_macro(&mut self, _scope: Mark, _def: ast::MacroDef, _export: bool) {}
@@ -615,7 +617,9 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree])
         -> parser::Parser<'a> {
-        parse::tts_to_parser(self.parse_sess, tts.to_vec())
+        let mut parser = parse::tts_to_parser(self.parse_sess, tts.to_vec());
+        parser.allow_interpolated_tts = false; // FIXME(jseyfried) `quote!` can't handle these yet
+        parser
     }
     pub fn codemap(&self) -> &'a CodeMap { self.parse_sess.codemap() }
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }

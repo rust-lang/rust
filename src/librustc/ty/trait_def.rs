@@ -16,7 +16,7 @@ use ty::fast_reject;
 use ty::{Ty, TyCtxt, TraitRef};
 use std::cell::{Cell, RefCell};
 use hir;
-use util::nodemap::FnvHashMap;
+use util::nodemap::FxHashMap;
 
 /// As `TypeScheme` but for a trait ref.
 pub struct TraitDef<'tcx> {
@@ -55,7 +55,7 @@ pub struct TraitDef<'tcx> {
 
     /// Impls of the trait.
     nonblanket_impls: RefCell<
-        FnvHashMap<fast_reject::SimplifiedType, Vec<DefId>>
+        FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>
     >,
 
     /// Blanket impls associated with the trait.
@@ -84,7 +84,7 @@ impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
             unsafety: unsafety,
             generics: generics,
             trait_ref: trait_ref,
-            nonblanket_impls: RefCell::new(FnvHashMap()),
+            nonblanket_impls: RefCell::new(FxHashMap()),
             blanket_impls: RefCell::new(vec![]),
             flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS),
             specialization_graph: RefCell::new(traits::specialization_graph::Graph::new()),

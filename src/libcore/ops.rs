@@ -196,58 +196,6 @@ pub trait Drop {
     fn drop(&mut self);
 }
 
-// implements the unary operator "op &T"
-// based on "op T" where T is expected to be `Copy`able
-macro_rules! forward_ref_unop {
-    (impl $imp:ident, $method:ident for $t:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a> $imp for &'a $t {
-            type Output = <$t as $imp>::Output;
-
-            #[inline]
-            fn $method(self) -> <$t as $imp>::Output {
-                $imp::$method(*self)
-            }
-        }
-    }
-}
-
-// implements binary operators "&T op U", "T op &U", "&T op &U"
-// based on "T op U" where T and U are expected to be `Copy`able
-macro_rules! forward_ref_binop {
-    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a> $imp<$u> for &'a $t {
-            type Output = <$t as $imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: $u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(*self, other)
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a> $imp<&'a $u> for $t {
-            type Output = <$t as $imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(self, *other)
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, 'b> $imp<&'a $u> for &'b $t {
-            type Output = <$t as $imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(*self, *other)
-            }
-        }
-    }
-}
-
 /// The `Add` trait is used to specify the functionality of `+`.
 ///
 /// # Examples

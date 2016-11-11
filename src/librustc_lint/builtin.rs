@@ -34,7 +34,6 @@ use middle::stability;
 use rustc::cfg;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::adjustment;
 use rustc::traits::{self, Reveal};
 use rustc::hir::map as hir_map;
 use util::nodemap::NodeSet;
@@ -118,7 +117,9 @@ impl LateLintPass for BoxPointers {
             hir::ItemTy(..) |
             hir::ItemEnum(..) |
             hir::ItemStruct(..) |
-            hir::ItemUnion(..) => self.check_heap_type(cx, it.span, cx.tcx.node_id_to_type(it.id)),
+            hir::ItemUnion(..) => {
+                self.check_heap_type(cx, it.span, cx.tcx.tables().node_id_to_type(it.id))
+            }
             _ => (),
         }
 
@@ -129,7 +130,7 @@ impl LateLintPass for BoxPointers {
                 for struct_field in struct_def.fields() {
                     self.check_heap_type(cx,
                                          struct_field.span,
-                                         cx.tcx.node_id_to_type(struct_field.id));
+                                         cx.tcx.tables().node_id_to_type(struct_field.id));
                 }
             }
             _ => (),
@@ -137,7 +138,7 @@ impl LateLintPass for BoxPointers {
     }
 
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        let ty = cx.tcx.node_id_to_type(e.id);
+        let ty = cx.tcx.tables().node_id_to_type(e.id);
         self.check_heap_type(cx, e.span, ty);
     }
 }
@@ -221,7 +222,7 @@ impl LateLintPass for UnsafeCode {
                 cx: &LateContext,
                 fk: FnKind,
                 _: &hir::FnDecl,
-                _: &hir::Block,
+                _: &hir::Expr,
                 span: Span,
                 _: ast::NodeId) {
         match fk {
@@ -585,7 +586,7 @@ impl LateLintPass for MissingDebugImplementations {
             let mut impls = NodeSet();
             debug_def.for_each_impl(cx.tcx, |d| {
                 if let Some(n) = cx.tcx.map.as_local_node_id(d) {
-                    if let Some(ty_def) = cx.tcx.node_id_to_type(n).ty_to_def_id() {
+                    if let Some(ty_def) = cx.tcx.tables().node_id_to_type(n).ty_to_def_id() {
                         if let Some(node_id) = cx.tcx.map.as_local_node_id(ty_def) {
                             impls.insert(node_id);
                         }
@@ -811,13 +812,13 @@ impl LateLintPass for UnconditionalRecursion {
                 cx: &LateContext,
                 fn_kind: FnKind,
                 _: &hir::FnDecl,
-                blk: &hir::Block,
+                blk: &hir::Expr,
                 sp: Span,
                 id: ast::NodeId) {
         let method = match fn_kind {
             FnKind::ItemFn(..) => None,
             FnKind::Method(..) => {
-                cx.tcx.impl_or_trait_item(cx.tcx.map.local_def_id(id)).as_opt_method()
+                Some(cx.tcx.associated_item(cx.tcx.map.local_def_id(id)))
             }
             // closures can't recur, so they don't matter.
             FnKind::Closure(_) => return,
@@ -936,11 +937,13 @@ impl LateLintPass for UnconditionalRecursion {
 
         // Check if the expression `id` performs a call to `method`.
         fn expr_refers_to_this_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                method: &ty::Method,
+                                                method: &ty::AssociatedItem,
                                                 id: ast::NodeId)
                                                 -> bool {
+            use rustc::ty::adjustment::*;
+
             // Check for method calls and overloaded operators.
-            let opt_m = tcx.tables.borrow().method_map.get(&ty::MethodCall::expr(id)).cloned();
+            let opt_m = tcx.tables().method_map.get(&ty::MethodCall::expr(id)).cloned();
             if let Some(m) = opt_m {
                 if method_call_refers_to_method(tcx, method, m.def_id, m.substs, id) {
                     return true;
@@ -948,15 +951,12 @@ impl LateLintPass for UnconditionalRecursion {
             }
 
             // Check for overloaded autoderef method calls.
-            let opt_adj = tcx.tables.borrow().adjustments.get(&id).cloned();
-            if let Some(adjustment::AdjustDerefRef(adj)) = opt_adj {
-                for i in 0..adj.autoderefs {
+            let opt_adj = tcx.tables().adjustments.get(&id).cloned();
+            if let Some(Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) = opt_adj {
+                for i in 0..autoderefs {
                     let method_call = ty::MethodCall::autoderef(id, i as u32);
-                    if let Some(m) = tcx.tables
-                        .borrow()
-                        .method_map
-                        .get(&method_call)
-                        .cloned() {
+                    if let Some(m) = tcx.tables().method_map.get(&method_call)
+                                                            .cloned() {
                         if method_call_refers_to_method(tcx, method, m.def_id, m.substs, id) {
                             return true;
                         }
@@ -971,12 +971,10 @@ impl LateLintPass for UnconditionalRecursion {
                     // it doesn't necessarily have a definition.
                     match tcx.expect_def_or_none(callee.id) {
                         Some(Def::Method(def_id)) => {
-                            let item_substs = tcx.node_id_item_substs(callee.id);
-                            method_call_refers_to_method(tcx,
-                                                         method,
-                                                         def_id,
-                                                         &item_substs.substs,
-                                                         id)
+                            let substs = tcx.tables().node_id_item_substs(callee.id)
+                                .unwrap_or_else(|| tcx.intern_substs(&[]));
+                            method_call_refers_to_method(
+                                tcx, method, def_id, substs, id)
                         }
                         _ => false,
                     }
@@ -988,14 +986,14 @@ impl LateLintPass for UnconditionalRecursion {
         // Check if the method call to the method with the ID `callee_id`
         // and instantiated with `callee_substs` refers to method `method`.
         fn method_call_refers_to_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                  method: &ty::Method,
+                                                  method: &ty::AssociatedItem,
                                                   callee_id: DefId,
                                                   callee_substs: &Substs<'tcx>,
                                                   expr_id: ast::NodeId)
                                                   -> bool {
-            let callee_item = tcx.impl_or_trait_item(callee_id);
+            let callee_item = tcx.associated_item(callee_id);
 
-            match callee_item.container() {
+            match callee_item.container {
                 // This is an inherent method, so the `def_id` refers
                 // directly to the method definition.
                 ty::ImplContainer(_) => callee_id == method.def_id,
@@ -1036,7 +1034,7 @@ impl LateLintPass for UnconditionalRecursion {
                                 let container = ty::ImplContainer(vtable_impl.impl_def_id);
                                 // It matches if it comes from the same impl,
                                 // and has the same method name.
-                                container == method.container && callee_item.name() == method.name
+                                container == method.container && callee_item.name == method.name
                             }
 
                             // There's no way to know if this call is
@@ -1213,7 +1211,7 @@ impl LateLintPass for MutableTransmutes {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
-                let typ = cx.tcx.node_id_to_type(expr.id);
+                let typ = cx.tcx.tables().node_id_to_type(expr.id);
                 match typ.sty {
                     ty::TyFnDef(.., ref bare_fn) if bare_fn.abi == RustIntrinsic => {
                         let from = bare_fn.sig.0.inputs[0];
@@ -1284,7 +1282,7 @@ impl LateLintPass for UnionsWithDropFields {
         if let hir::ItemUnion(ref vdata, _) = item.node {
             let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);
             for field in vdata.fields() {
-                let field_ty = ctx.tcx.node_id_to_type(field.id);
+                let field_ty = ctx.tcx.tables().node_id_to_type(field.id);
                 if ctx.tcx.type_needs_drop_given_env(field_ty, param_env) {
                     ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
                                   field.span,

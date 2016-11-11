@@ -31,13 +31,12 @@
 #![cfg_attr(test, feature(test))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(dotdot_in_tuple_patterns)]
+#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
-#![feature(dotdot_in_tuple_patterns)]
 
 #[macro_use]
 extern crate syntax;
@@ -228,6 +227,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(PATTERNS_IN_FNS_WITHOUT_BODY),
             reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(EXTRA_REQUIREMENT_IN_IMPL),
+            reference: "issue #37166 <https://github.com/rust-lang/rust/issues/37166>",
         },
         ]);
 

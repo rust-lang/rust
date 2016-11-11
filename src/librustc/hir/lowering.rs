@@ -595,12 +595,13 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemConst(self.lower_ty(t), self.lower_expr(e))
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
+                let body = self.lower_block(body);
                 hir::ItemFn(self.lower_fn_decl(decl),
                             self.lower_unsafety(unsafety),
                             self.lower_constness(constness),
                             abi,
                             self.lower_generics(generics),
-                            self.lower_block(body))
+                            self.expr_block(body, ThinVec::new()))
             }
             ItemKind::Mod(ref m) => hir::ItemMod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemForeignMod(self.lower_foreign_mod(nm)),
@@ -665,7 +666,10 @@ impl<'a> LoweringContext<'a> {
                     }
                     TraitItemKind::Method(ref sig, ref body) => {
                         hir::MethodTraitItem(this.lower_method_sig(sig),
-                                             body.as_ref().map(|x| this.lower_block(x)))
+                                             body.as_ref().map(|x| {
+                            let body = this.lower_block(x);
+                            this.expr_block(body, ThinVec::new())
+                        }))
                     }
                     TraitItemKind::Type(ref bounds, ref default) => {
                         hir::TypeTraitItem(this.lower_bounds(bounds),
@@ -691,8 +695,9 @@ impl<'a> LoweringContext<'a> {
                         hir::ImplItemKind::Const(this.lower_ty(ty), this.lower_expr(expr))
                     }
                     ImplItemKind::Method(ref sig, ref body) => {
+                        let body = this.lower_block(body);
                         hir::ImplItemKind::Method(this.lower_method_sig(sig),
-                                                  this.lower_block(body))
+                                                  this.expr_block(body, ThinVec::new()))
                     }
                     ImplItemKind::Type(ref ty) => hir::ImplItemKind::Type(this.lower_ty(ty)),
                     ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
@@ -1110,7 +1115,7 @@ impl<'a> LoweringContext<'a> {
                     self.with_parent_def(e.id, |this| {
                         hir::ExprClosure(this.lower_capture_clause(capture_clause),
                                          this.lower_fn_decl(decl),
-                                         this.lower_block(body),
+                                         this.lower_expr(body),
                                          fn_decl_span)
                     })
                 }
@@ -1208,38 +1213,32 @@ impl<'a> LoweringContext<'a> {
                 ExprKind::Break(opt_ident) => hir::ExprBreak(self.lower_opt_sp_ident(opt_ident)),
                 ExprKind::Continue(opt_ident) => hir::ExprAgain(self.lower_opt_sp_ident(opt_ident)),
                 ExprKind::Ret(ref e) => hir::ExprRet(e.as_ref().map(|x| self.lower_expr(x))),
-                ExprKind::InlineAsm(InlineAsm {
-                        ref inputs,
-                        ref outputs,
-                        ref asm,
-                        asm_str_style,
-                        ref clobbers,
-                        volatile,
-                        alignstack,
-                        dialect,
-                        expn_id,
-                    }) => hir::ExprInlineAsm(P(hir::InlineAsm {
-                    inputs: inputs.iter().map(|&(ref c, _)| c.clone()).collect(),
-                    outputs: outputs.iter()
-                                    .map(|out| {
-                                        hir::InlineAsmOutput {
-                                            constraint: out.constraint.clone(),
-                                            is_rw: out.is_rw,
-                                            is_indirect: out.is_indirect,
-                                        }
-                                    })
-                                    .collect(),
-                    asm: asm.clone(),
-                    asm_str_style: asm_str_style,
-                    clobbers: clobbers.clone().into(),
-                    volatile: volatile,
-                    alignstack: alignstack,
-                    dialect: dialect,
-                    expn_id: expn_id,
-                }), outputs.iter().map(|out| self.lower_expr(&out.expr)).collect(),
-                   inputs.iter().map(|&(_, ref input)| self.lower_expr(input)).collect()),
+                ExprKind::InlineAsm(ref asm) => {
+                    let hir_asm = hir::InlineAsm {
+                        inputs: asm.inputs.iter().map(|&(ref c, _)| c.clone()).collect(),
+                        outputs: asm.outputs.iter().map(|out| {
+                            hir::InlineAsmOutput {
+                                constraint: out.constraint.clone(),
+                                is_rw: out.is_rw,
+                                is_indirect: out.is_indirect,
+                            }
+                        }).collect(),
+                        asm: asm.asm.clone(),
+                        asm_str_style: asm.asm_str_style,
+                        clobbers: asm.clobbers.clone().into(),
+                        volatile: asm.volatile,
+                        alignstack: asm.alignstack,
+                        dialect: asm.dialect,
+                        expn_id: asm.expn_id,
+                    };
+                    let outputs =
+                        asm.outputs.iter().map(|out| self.lower_expr(&out.expr)).collect();
+                    let inputs =
+                        asm.inputs.iter().map(|&(_, ref input)| self.lower_expr(input)).collect();
+                    hir::ExprInlineAsm(P(hir_asm), outputs, inputs)
+                }
                 ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
-                    hir::ExprStruct(self.lower_path(path),
+                    hir::ExprStruct(P(self.lower_path(path)),
                                     fields.iter().map(|x| self.lower_field(x)).collect(),
                                     maybe_expr.as_ref().map(|x| self.lower_expr(x)))
                 }
@@ -1743,7 +1742,7 @@ impl<'a> LoweringContext<'a> {
                    e: Option<P<hir::Expr>>,
                    attrs: ThinVec<Attribute>) -> P<hir::Expr> {
         let def = self.resolver.resolve_generated_global_path(&path, false);
-        let expr = self.expr(sp, hir::ExprStruct(path, fields, e), attrs);
+        let expr = self.expr(sp, hir::ExprStruct(P(path), fields, e), attrs);
         self.resolver.record_resolution(expr.id, def);
         expr
     }

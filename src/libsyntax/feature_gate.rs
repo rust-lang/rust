@@ -268,13 +268,9 @@ declare_features! (
     // Allows cfg(target_has_atomic = "...").
     (active, cfg_target_has_atomic, "1.9.0", Some(32976)),
 
-    // Allows `..` in tuple (struct) patterns
-    (active, dotdot_in_tuple_patterns, "1.10.0", Some(33627)),
-
     // Allows `impl Trait` in function return types.
     (active, conservative_impl_trait, "1.12.0", Some(34511)),
 
-    // Allows tuple structs and variants in more contexts,
     // Permits numeric fields in struct expressions and patterns.
     (active, relaxed_adts, "1.12.0", Some(35626)),
 
@@ -309,6 +305,12 @@ declare_features! (
 
     // Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
     (active, field_init_shorthand, "1.14.0", Some(37340)),
+
+    // The #![windows_subsystem] attribute
+    (active, windows_subsystem, "1.14.0", Some(37499)),
+
+    // Allows using `Self` and associated types in struct expressions and patterns.
+    (active, more_struct_aliases, "1.14.0", Some(37544)),
 );
 
 declare_features! (
@@ -352,7 +354,9 @@ declare_features! (
     // Allows `#[deprecated]` attribute
     (accepted, deprecated, "1.9.0", Some(29935)),
     // `expr?`
-    (accepted, question_mark, "1.14.0", Some(31436)),
+    (accepted, question_mark, "1.13.0", Some(31436)),
+    // Allows `..` in tuple (struct) patterns
+    (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -417,11 +421,11 @@ macro_rules! cfg_fn {
 }
 
 pub fn deprecated_attributes() -> Vec<&'static (&'static str, AttributeType, AttributeGate)> {
-    KNOWN_ATTRIBUTES.iter().filter(|a| a.2.is_deprecated()).collect()
+    BUILTIN_ATTRIBUTES.iter().filter(|a| a.2.is_deprecated()).collect()
 }
 
 // Attributes that have a special meaning to rustc or rustdoc
-pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGate)] = &[
+pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGate)] = &[
     // Normal attributes
 
     ("warn", Normal, Ungated),
@@ -713,6 +717,12 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                               "defining reflective traits is still evolving",
                                               cfg_fn!(reflect))),
 
+    ("windows_subsystem", Whitelisted, Gated(Stability::Unstable,
+                                             "windows_subsystem",
+                                             "the windows subsystem attribute \
+                                              is currently unstable",
+                                             cfg_fn!(windows_subsystem))),
+
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),
     ("crate_type", CrateLevel, Ungated),
@@ -790,12 +800,12 @@ impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
         let name = &*attr.name();
-        for &(n, ty, ref gateage) in KNOWN_ATTRIBUTES {
+        for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
             if n == name {
                 if let &Gated(_, ref name, ref desc, ref has_feature) = gateage {
                     gate_feature_fn!(self, has_feature, attr.span, name, desc);
                 }
-                debug!("check_attribute: {:?} is known, {:?}, {:?}", name, ty, gateage);
+                debug!("check_attribute: {:?} is builtin, {:?}, {:?}", name, ty, gateage);
                 return;
             }
         }
@@ -815,6 +825,8 @@ impl<'a> Context<'a> {
                            are reserved for internal compiler diagnostics");
         } else if name.starts_with("derive_") {
             gate_feature!(self, custom_derive, attr.span, EXPLAIN_DERIVE_UNDERSCORE);
+        } else if attr::is_known(attr) {
+            debug!("check_attribute: {:?} is known", name);
         } else {
             // Only run the custom attribute lint during regular
             // feature gate checking. Macro gating runs
@@ -983,6 +995,10 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
             }
         }),
     }
+}
+
+fn starts_with_digit(s: &str) -> bool {
+    s.as_bytes().first().cloned().map_or(false, |b| b >= b'0' && b <= b'9')
 }
 
 impl<'a> Visitor for PostExpansionVisitor<'a> {
@@ -1164,6 +1180,11 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                         gate_feature_post!(&self, field_init_shorthand, field.span,
                                            "struct field shorthands are unstable");
                     }
+                    if starts_with_digit(&field.ident.node.name.as_str()) {
+                        gate_feature_post!(&self, relaxed_adts,
+                                          field.span,
+                                          "numeric fields in struct expressions are unstable");
+                    }
                 }
             }
             _ => {}
@@ -1190,22 +1211,14 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                                   pattern.span,
                                   "box pattern syntax is experimental");
             }
-            PatKind::Tuple(_, ddpos)
-                    if ddpos.is_some() => {
-                gate_feature_post!(&self, dotdot_in_tuple_patterns,
-                                  pattern.span,
-                                  "`..` in tuple patterns is experimental");
-            }
-            PatKind::TupleStruct(_, ref fields, ddpos)
-                    if ddpos.is_some() && !fields.is_empty() => {
-                gate_feature_post!(&self, dotdot_in_tuple_patterns,
-                                  pattern.span,
-                                  "`..` in tuple struct patterns is experimental");
-            }
-            PatKind::TupleStruct(_, ref fields, ddpos)
-                    if ddpos.is_none() && fields.is_empty() => {
-                gate_feature_post!(&self, relaxed_adts, pattern.span,
-                                   "empty tuple structs patterns are unstable");
+            PatKind::Struct(_, ref fields, _) => {
+                for field in fields {
+                    if starts_with_digit(&field.node.ident.name.as_str()) {
+                        gate_feature_post!(&self, relaxed_adts,
+                                          field.span,
+                                          "numeric fields in struct patterns are unstable");
+                    }
+                }
             }
             _ => {}
         }
@@ -1215,12 +1228,11 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
     fn visit_fn(&mut self,
                 fn_kind: FnKind,
                 fn_decl: &ast::FnDecl,
-                block: &ast::Block,
                 span: Span,
                 _node_id: NodeId) {
         // check for const fn declarations
         match fn_kind {
-            FnKind::ItemFn(_, _, _, Spanned { node: ast::Constness::Const, .. }, _, _) => {
+            FnKind::ItemFn(_, _, _, Spanned { node: ast::Constness::Const, .. }, _, _, _) => {
                 gate_feature_post!(&self, const_fn, span, "const fn is unstable");
             }
             _ => {
@@ -1232,13 +1244,13 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
         }
 
         match fn_kind {
-            FnKind::ItemFn(_, _, _, _, abi, _) |
-            FnKind::Method(_, &ast::MethodSig { abi, .. }, _) => {
+            FnKind::ItemFn(_, _, _, _, abi, _, _) |
+            FnKind::Method(_, &ast::MethodSig { abi, .. }, _, _) => {
                 self.check_abi(abi, span);
             }
             _ => {}
         }
-        visit::walk_fn(self, fn_kind, fn_decl, block, span);
+        visit::walk_fn(self, fn_kind, fn_decl, span);
     }
 
     fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
@@ -1286,19 +1298,6 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_impl_item(self, ii);
-    }
-
-    fn visit_variant_data(&mut self, vdata: &ast::VariantData, _: ast::Ident,
-                          _: &ast::Generics, _: NodeId, span: Span) {
-        if vdata.fields().is_empty() {
-            if vdata.is_tuple() {
-                gate_feature_post!(&self, relaxed_adts, span,
-                                   "empty tuple structs and enum variants are unstable, \
-                                    use unit structs and enum variants instead");
-            }
-        }
-
-        visit::walk_struct_def(self, vdata)
     }
 
     fn visit_vis(&mut self, vis: &ast::Visibility) {

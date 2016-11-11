@@ -75,6 +75,26 @@ pub fn duration_to_secs_str(dur: Duration) -> String {
     format!("{:.3}", secs)
 }
 
+pub fn to_readable_str(mut val: usize) -> String {
+    let mut groups = vec![];
+    loop {
+        let group = val % 1000;
+
+        val /= 1000;
+
+        if val == 0 {
+            groups.push(format!("{}", group));
+            break
+        } else {
+            groups.push(format!("{:03}", group));
+        }
+    }
+
+    groups.reverse();
+
+    groups.join("_")
+}
+
 pub fn record_time<T, F>(accu: &Cell<Duration>, f: F) -> T where
     F: FnOnce() -> T,
 {
@@ -263,4 +283,18 @@ pub fn path2cstr(p: &Path) -> CString {
 #[cfg(windows)]
 pub fn path2cstr(p: &Path) -> CString {
     CString::new(p.to_str().unwrap()).unwrap()
+}
+
+
+#[test]
+fn test_to_readable_str() {
+    assert_eq!("0", to_readable_str(0));
+    assert_eq!("1", to_readable_str(1));
+    assert_eq!("99", to_readable_str(99));
+    assert_eq!("999", to_readable_str(999));
+    assert_eq!("1_000", to_readable_str(1_000));
+    assert_eq!("1_001", to_readable_str(1_001));
+    assert_eq!("999_999", to_readable_str(999_999));
+    assert_eq!("1_000_000", to_readable_str(1_000_000));
+    assert_eq!("1_234_567", to_readable_str(1_234_567));
 }

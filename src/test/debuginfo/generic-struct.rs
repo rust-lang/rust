@@ -18,13 +18,17 @@
 // gdb-command:run
 
 // gdb-command:print int_int
-// gdb-check:$1 = {key = 0, value = 1}
+// gdbg-check:$1 = {key = 0, value = 1}
+// gdbr-check:$1 = generic_struct::AGenericStruct<i32, i32> {key: 0, value: 1}
 // gdb-command:print int_float
-// gdb-check:$2 = {key = 2, value = 3.5}
+// gdbg-check:$2 = {key = 2, value = 3.5}
+// gdbr-check:$2 = generic_struct::AGenericStruct<i32, f64> {key: 2, value: 3.5}
 // gdb-command:print float_int
-// gdb-check:$3 = {key = 4.5, value = 5}
+// gdbg-check:$3 = {key = 4.5, value = 5}
+// gdbr-check:$3 = generic_struct::AGenericStruct<f64, i32> {key: 4.5, value: 5}
 // gdb-command:print float_int_float
-// gdb-check:$4 = {key = 6.5, value = {key = 7, value = 8.5}}
+// gdbg-check:$4 = {key = 6.5, value = {key = 7, value = 8.5}}
+// gdbr-check:$4 = generic_struct::AGenericStruct<f64, generic_struct::AGenericStruct<i32, f64>> {key: 6.5, value: generic_struct::AGenericStruct<i32, f64> {key: 7, value: 8.5}}
 
 // === LLDB TESTS ==================================================================================
 

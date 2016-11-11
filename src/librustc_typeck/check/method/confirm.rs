@@ -15,7 +15,7 @@ use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, LvaluePreference, NoPreference, PreferMutLvalue, Ty};
-use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use syntax_pos::Span;
@@ -35,16 +35,6 @@ impl<'a, 'gcx, 'tcx> Deref for ConfirmContext<'a, 'gcx, 'tcx> {
     fn deref(&self) -> &Self::Target {
         &self.fcx
     }
-}
-
-struct InstantiatedMethodSig<'tcx> {
-    /// Function signature of the method being invoked. The 0th
-    /// argument is the receiver.
-    method_sig: ty::FnSig<'tcx>,
-
-    /// Generic bounds on the method's parameters which must be added
-    /// as pending obligations.
-    method_predicates: ty::InstantiatedPredicates<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
@@ -98,31 +88,18 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         debug!("all_substs={:?}", all_substs);
 
         // Create the final signature for the method, replacing late-bound regions.
-        let InstantiatedMethodSig { method_sig, method_predicates } =
-            self.instantiate_method_sig(&pick, all_substs);
-        let method_self_ty = method_sig.inputs[0];
+        let (method_ty, method_predicates) = self.instantiate_method_sig(&pick, all_substs);
 
         // Unify the (adjusted) self type with what the method expects.
-        self.unify_receivers(self_ty, method_self_ty);
-
-        // Create the method type
-        let def_id = pick.item.def_id();
-        let method_ty = pick.item.as_opt_method().unwrap();
-        let fty = self.tcx.mk_fn_def(def_id,
-                                     all_substs,
-                                     self.tcx.mk_bare_fn(ty::BareFnTy {
-                                         sig: ty::Binder(method_sig),
-                                         unsafety: method_ty.fty.unsafety,
-                                         abi: method_ty.fty.abi.clone(),
-                                     }));
+        self.unify_receivers(self_ty, method_ty.fn_sig().input(0).skip_binder());
 
         // Add any trait/regions obligations specified on the method's type parameters.
-        self.add_obligations(fty, all_substs, &method_predicates);
+        self.add_obligations(method_ty, all_substs, &method_predicates);
 
         // Create the final `MethodCallee`.
         let callee = ty::MethodCallee {
-            def_id: def_id,
-            ty: fty,
+            def_id: pick.item.def_id,
+            ty: method_ty,
             substs: all_substs,
         };
 
@@ -140,19 +117,18 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                       unadjusted_self_ty: Ty<'tcx>,
                       pick: &probe::Pick<'tcx>)
                       -> Ty<'tcx> {
-        let (autoref, unsize) = if let Some(mutbl) = pick.autoref {
+        let autoref = if let Some(mutbl) = pick.autoref {
             let region = self.next_region_var(infer::Autoref(self.span));
-            let autoref = AutoPtr(region, mutbl);
-            (Some(autoref),
-             pick.unsize.map(|target| target.adjust_for_autoref(self.tcx, Some(autoref))))
+            Some(AutoBorrow::Ref(region, mutbl))
         } else {
             // No unsizing should be performed without autoref (at
             // least during method dispach). This is because we
             // currently only unsize `[T;N]` to `[T]`, and naturally
             // that must occur being a reference.
             assert!(pick.unsize.is_none());
-            (None, None)
+            None
         };
+
 
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various tables.
@@ -163,19 +139,20 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         autoderef.unambiguous_final_ty();
         autoderef.finalize(LvaluePreference::NoPreference, Some(self.self_expr));
 
-        // Write out the final adjustment.
-        self.write_adjustment(self.self_expr.id,
-                              AdjustDerefRef(AutoDerefRef {
-                                  autoderefs: pick.autoderefs,
-                                  autoref: autoref,
-                                  unsize: unsize,
-                              }));
+        let target = pick.unsize.unwrap_or(autoderefd_ty);
+        let target = target.adjust_for_autoref(self.tcx, autoref);
 
-        if let Some(target) = unsize {
-            target
-        } else {
-            autoderefd_ty.adjust_for_autoref(self.tcx, autoref)
-        }
+        // Write out the final adjustment.
+        self.write_adjustment(self.self_expr.id, Adjustment {
+            kind: Adjust::DerefRef {
+                autoderefs: pick.autoderefs,
+                autoref: autoref,
+                unsize: pick.unsize.is_some(),
+            },
+            target: target
+        });
+
+        target
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -193,7 +170,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                              -> &'tcx Substs<'tcx> {
         match pick.kind {
             probe::InherentImplPick => {
-                let impl_def_id = pick.item.container().id();
+                let impl_def_id = pick.item.container.id();
                 assert!(self.tcx.impl_trait_ref(impl_def_id).is_none(),
                         "impl {:?} is not an inherent impl",
                         impl_def_id);
@@ -201,7 +178,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             }
 
             probe::ObjectPick => {
-                let trait_def_id = pick.item.container().id();
+                let trait_def_id = pick.item.container.id();
                 self.extract_existential_trait_ref(self_ty, |this, object_ty, principal| {
                     // The object data has no entry for the Self
                     // Type. For the purposes of this method call, we
@@ -244,7 +221,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             }
 
             probe::TraitPick => {
-                let trait_def_id = pick.item.container().id();
+                let trait_def_id = pick.item.container.id();
 
                 // Make a trait reference `$0 : Trait<$1...$n>`
                 // consisting entirely of type variables. Later on in
@@ -299,8 +276,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let num_supplied_types = supplied_method_types.len();
-        let method = pick.item.as_opt_method().unwrap();
-        let num_method_types = method.generics.types.len();
+        let method_generics = self.tcx.lookup_generics(pick.item.def_id);
+        let num_method_types = method_generics.types.len();
 
         if num_supplied_types > 0 && num_supplied_types != num_method_types {
             if num_method_types == 0 {
@@ -332,18 +309,15 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // parameters from the type and those from the method.
         //
         // FIXME -- permit users to manually specify lifetimes
-        let supplied_start = substs.params().len() + method.generics.regions.len();
-        Substs::for_item(self.tcx,
-                         method.def_id,
-                         |def, _| {
+        let supplied_start = substs.params().len() + method_generics.regions.len();
+        Substs::for_item(self.tcx, pick.item.def_id, |def, _| {
             let i = def.index as usize;
             if i < substs.params().len() {
                 substs.region_at(i)
             } else {
                 self.region_var_for_def(self.span, def)
             }
-        },
-                         |def, cur_substs| {
+        }, |def, cur_substs| {
             let i = def.index as usize;
             if i < substs.params().len() {
                 substs.type_at(i)
@@ -376,7 +350,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn instantiate_method_sig(&mut self,
                               pick: &probe::Pick<'tcx>,
                               all_substs: &'tcx Substs<'tcx>)
-                              -> InstantiatedMethodSig<'tcx> {
+                              -> (Ty<'tcx>, ty::InstantiatedPredicates<'tcx>) {
         debug!("instantiate_method_sig(pick={:?}, all_substs={:?})",
                pick,
                all_substs);
@@ -384,14 +358,18 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // Instantiate the bounds on the method with the
         // type/early-bound-regions substitutions performed. There can
         // be no late-bound regions appearing here.
-        let method_predicates = pick.item
-            .as_opt_method()
-            .unwrap()
-            .predicates
-            .instantiate(self.tcx, all_substs);
-        let method_predicates = self.normalize_associated_types_in(self.span, &method_predicates);
+        let def_id = pick.item.def_id;
+        let method_predicates = self.tcx.lookup_predicates(def_id)
+                                    .instantiate(self.tcx, all_substs);
+        let method_predicates = self.normalize_associated_types_in(self.span,
+                                                                   &method_predicates);
 
         debug!("method_predicates after subst = {:?}", method_predicates);
+
+        let fty = match self.tcx.lookup_item_type(def_id).ty.sty {
+            ty::TyFnDef(_, _, f) => f,
+            _ => bug!()
+        };
 
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.
@@ -399,21 +377,21 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // NB: Instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let method_sig = self.replace_late_bound_regions_with_fresh_var(&pick.item
-            .as_opt_method()
-            .unwrap()
-            .fty
-            .sig);
+        let method_sig = self.replace_late_bound_regions_with_fresh_var(&fty.sig);
         debug!("late-bound lifetimes from method instantiated, method_sig={:?}",
                method_sig);
 
         let method_sig = self.instantiate_type_scheme(self.span, all_substs, &method_sig);
         debug!("type scheme substituted, method_sig={:?}", method_sig);
 
-        InstantiatedMethodSig {
-            method_sig: method_sig,
-            method_predicates: method_predicates,
-        }
+        let method_ty = self.tcx.mk_fn_def(def_id, all_substs,
+                                           self.tcx.mk_bare_fn(ty::BareFnTy {
+            sig: ty::Binder(method_sig),
+            unsafety: fty.unsafety,
+            abi: fty.abi,
+        }));
+
+        (method_ty, method_predicates)
     }
 
     fn add_obligations(&mut self,
@@ -463,29 +441,23 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Fix up autoderefs and derefs.
         for (i, &expr) in exprs.iter().rev().enumerate() {
+            debug!("convert_lvalue_derefs_to_mutable: i={} expr={:?}", i, expr);
+
             // Count autoderefs.
-            let autoderef_count = match self.tables
-                .borrow()
-                .adjustments
-                .get(&expr.id) {
-                Some(&AdjustDerefRef(ref adj)) => adj.autoderefs,
-                Some(_) | None => 0,
-            };
-
-            debug!("convert_lvalue_derefs_to_mutable: i={} expr={:?} \
-                                                      autoderef_count={}",
-                   i,
-                   expr,
-                   autoderef_count);
-
-            if autoderef_count > 0 {
-                let mut autoderef = self.autoderef(expr.span, self.node_ty(expr.id));
-                autoderef.nth(autoderef_count).unwrap_or_else(|| {
-                    span_bug!(expr.span,
-                              "expr was deref-able {} times but now isn't?",
-                              autoderef_count);
-                });
-                autoderef.finalize(PreferMutLvalue, Some(expr));
+            let adjustment = self.tables.borrow().adjustments.get(&expr.id).cloned();
+            match adjustment {
+                Some(Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) => {
+                    if autoderefs > 0 {
+                        let mut autoderef = self.autoderef(expr.span, self.node_ty(expr.id));
+                        autoderef.nth(autoderefs).unwrap_or_else(|| {
+                            span_bug!(expr.span,
+                                      "expr was deref-able {} times but now isn't?",
+                                      autoderefs);
+                        });
+                        autoderef.finalize(PreferMutLvalue, Some(expr));
+                    }
+                }
+                Some(_) | None => {}
             }
 
             // Don't retry the first one or we might infinite loop!
@@ -503,45 +475,55 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     // ought to recode this routine so it doesn't
                     // (ab)use the normal type checking paths.
                     let adj = self.tables.borrow().adjustments.get(&base_expr.id).cloned();
-                    let (autoderefs, unsize) = match adj {
-                        Some(AdjustDerefRef(adr)) => {
-                            match adr.autoref {
+                    let (autoderefs, unsize, adjusted_base_ty) = match adj {
+                        Some(Adjustment {
+                            kind: Adjust::DerefRef { autoderefs, autoref, unsize },
+                            target
+                        }) => {
+                            match autoref {
                                 None => {
-                                    assert!(adr.unsize.is_none());
-                                    (adr.autoderefs, None)
+                                    assert!(!unsize);
                                 }
-                                Some(AutoPtr(..)) => {
-                                    (adr.autoderefs,
-                                     adr.unsize.map(|target| {
-                                         target.builtin_deref(false, NoPreference)
-                                             .expect("fixup: AutoPtr is not &T")
-                                             .ty
-                                     }))
-                                }
+                                Some(AutoBorrow::Ref(..)) => {}
                                 Some(_) => {
                                     span_bug!(base_expr.span,
                                               "unexpected adjustment autoref {:?}",
-                                              adr);
+                                              adj);
                                 }
                             }
+
+                            (autoderefs, unsize, if unsize {
+                                target.builtin_deref(false, NoPreference)
+                                      .expect("fixup: AutoBorrow::Ref is not &T")
+                                      .ty
+                            } else {
+                                let ty = self.node_ty(base_expr.id);
+                                let mut ty = self.shallow_resolve(ty);
+                                let mut method_type = |method_call: ty::MethodCall| {
+                                    self.tables.borrow().method_map.get(&method_call).map(|m| {
+                                        self.resolve_type_vars_if_possible(&m.ty)
+                                    })
+                                };
+
+                                if !ty.references_error() {
+                                    for i in 0..autoderefs {
+                                        ty = ty.adjust_for_autoderef(self.tcx,
+                                                                     base_expr.id,
+                                                                     base_expr.span,
+                                                                     i as u32,
+                                                                     &mut method_type);
+                                    }
+                                }
+
+                                ty
+                            })
                         }
-                        None => (0, None),
+                        None => (0, false, self.node_ty(base_expr.id)),
                         Some(_) => {
                             span_bug!(base_expr.span, "unexpected adjustment type");
                         }
                     };
 
-                    let (adjusted_base_ty, unsize) = if let Some(target) = unsize {
-                        (target, true)
-                    } else {
-                        (self.adjust_expr_ty(base_expr,
-                                             Some(&AdjustDerefRef(AutoDerefRef {
-                                                 autoderefs: autoderefs,
-                                                 autoref: None,
-                                                 unsize: None,
-                                             }))),
-                         false)
-                    };
                     let index_expr_ty = self.node_ty(index_expr.id);
 
                     let result = self.try_index_step(ty::MethodCall::expr(expr.id),
@@ -583,7 +565,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
     fn enforce_illegal_method_limitations(&self, pick: &probe::Pick) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
-        match pick.item.container() {
+        match pick.item.container {
             ty::TraitContainer(trait_def_id) => {
                 callee::check_legal_trait_for_method_call(self.ccx, self.span, trait_def_id)
             }

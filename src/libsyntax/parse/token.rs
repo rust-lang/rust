@@ -123,7 +123,7 @@ pub enum Token {
     Lifetime(ast::Ident),
 
     /* For interpolation */
-    Interpolated(Nonterminal),
+    Interpolated(Rc<Nonterminal>),
     // Can be expanded into several tokens.
     /// Doc comment
     DocComment(ast::Name),
@@ -172,12 +172,15 @@ impl Token {
             DotDot | DotDotDot          => true, // range notation
             Lt | BinOp(Shl)             => true, // associated path
             ModSep                      => true,
-            Interpolated(NtExpr(..))    => true,
-            Interpolated(NtIdent(..))   => true,
-            Interpolated(NtBlock(..))   => true,
-            Interpolated(NtPath(..))    => true,
             Pound                       => true, // for expression attributes
-            _                           => false,
+            Interpolated(ref nt) => match **nt {
+                NtExpr(..) => true,
+                NtIdent(..) => true,
+                NtBlock(..) => true,
+                NtPath(..) => true,
+                _ => false,
+            },
+            _ => false,
         }
     }
 
@@ -215,10 +218,12 @@ impl Token {
 
     /// Returns `true` if the token is an interpolated path.
     pub fn is_path(&self) -> bool {
-        match *self {
-            Interpolated(NtPath(..))    => true,
-            _                           => false,
+        if let Interpolated(ref nt) = *self {
+            if let NtPath(..) = **nt {
+                return true;
+            }
         }
+        false
     }
 
     /// Returns `true` if the token is a lifetime.
@@ -290,19 +295,19 @@ impl Token {
 pub enum Nonterminal {
     NtItem(P<ast::Item>),
     NtBlock(P<ast::Block>),
-    NtStmt(P<ast::Stmt>),
+    NtStmt(ast::Stmt),
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    NtIdent(Box<ast::SpannedIdent>),
+    NtIdent(ast::SpannedIdent),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::MetaItem>),
-    NtPath(Box<ast::Path>),
-    NtTT(P<tokenstream::TokenTree>), // needs P'ed to break a circularity
+    NtPath(ast::Path),
+    NtTT(tokenstream::TokenTree),
     // These are not exposed to macros, but are used by quasiquote.
     NtArm(ast::Arm),
-    NtImplItem(P<ast::ImplItem>),
-    NtTraitItem(P<ast::TraitItem>),
+    NtImplItem(ast::ImplItem),
+    NtTraitItem(ast::TraitItem),
     NtGenerics(ast::Generics),
     NtWhereClause(ast::WhereClause),
     NtArg(ast::Arg),

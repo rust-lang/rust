@@ -57,8 +57,7 @@ pub fn cp_r(src: &Path, dst: &Path) {
         let name = path.file_name().unwrap();
         let dst = dst.join(name);
         if t!(f.file_type()).is_dir() {
-            let _ = fs::remove_dir_all(&dst);
-            t!(fs::create_dir(&dst));
+            t!(fs::create_dir_all(&dst));
             cp_r(&path, &dst);
         } else {
             let _ = fs::remove_file(&dst);
@@ -171,4 +170,22 @@ pub fn dylib_path_var() -> &'static str {
 pub fn dylib_path() -> Vec<PathBuf> {
     env::split_paths(&env::var_os(dylib_path_var()).unwrap_or(OsString::new()))
         .collect()
+}
+
+/// `push` all components to `buf`. On windows, append `.exe` to the last component.
+pub fn push_exe_path(mut buf: PathBuf, components: &[&str]) -> PathBuf {
+    let (&file, components) = components.split_last().expect("at least one component required");
+    let mut file = file.to_owned();
+
+    if cfg!(windows) {
+        file.push_str(".exe");
+    }
+
+    for c in components {
+        buf.push(c);
+    }
+
+    buf.push(file);
+
+    buf
 }

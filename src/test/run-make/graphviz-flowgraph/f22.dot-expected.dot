@@ -50,6 +50,7 @@ digraph block {
     N48[label="expr \"unreachable\""];
     N49[label="stmt \"unreachable\";"];
     N50[label="block {\l    let mut x = 15;\l    let mut y = 151;\l    \'outer:\l        loop  {\l            \'inner:\l                loop  {\l                    if x == 1 { continue \'outer ; \"unreachable\"; }\l                    if y >= 2 { return; \"unreachable\"; }\l                    x -= 1;\l                    y -= 3;\l                }\l            \"unreachable\";\l        }\l    \"unreachable\";\l}\l"];
+    N51[label="expr {\l    let mut x = 15;\l    let mut y = 151;\l    \'outer:\l        loop  {\l            \'inner:\l                loop  {\l                    if x == 1 { continue \'outer ; \"unreachable\"; }\l                    if y >= 2 { return; \"unreachable\"; }\l                    x -= 1;\l                    y -= 3;\l                }\l            \"unreachable\";\l        }\l    \"unreachable\";\l}\l"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -101,5 +102,6 @@ digraph block {
     N47 -> N48;
     N48 -> N49;
     N49 -> N50;
-    N50 -> N1;
+    N50 -> N51;
+    N51 -> N1;
 }

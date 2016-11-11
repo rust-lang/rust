@@ -18,7 +18,7 @@ use rustc::traits::Reveal;
 use middle::const_val::ConstVal;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
-use util::nodemap::FnvHashSet;
+use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
 
@@ -113,14 +113,14 @@ impl LateLintPass for TypeLimits {
                             forbid_unsigned_negation(cx, e.span);
                         }
                         ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
-                            if let ty::TyUint(_) = cx.tcx.node_id_to_type(e.id).sty {
+                            if let ty::TyUint(_) = cx.tcx.tables().node_id_to_type(e.id).sty {
                                 forbid_unsigned_negation(cx, e.span);
                             }
                         }
                         _ => (),
                     }
                 } else {
-                    let t = cx.tcx.node_id_to_type(expr.id);
+                    let t = cx.tcx.tables().node_id_to_type(expr.id);
                     if let ty::TyUint(_) = t.sty {
                         forbid_unsigned_negation(cx, e.span);
                     }
@@ -138,7 +138,7 @@ impl LateLintPass for TypeLimits {
                 }
 
                 if binop.node.is_shift() {
-                    let opt_ty_bits = match cx.tcx.node_id_to_type(l.id).sty {
+                    let opt_ty_bits = match cx.tcx.tables().node_id_to_type(l.id).sty {
                         ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
                         _ => None,
@@ -171,7 +171,7 @@ impl LateLintPass for TypeLimits {
                 }
             }
             hir::ExprLit(ref lit) => {
-                match cx.tcx.node_id_to_type(e.id).sty {
+                match cx.tcx.tables().node_id_to_type(e.id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
                             ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
@@ -324,7 +324,7 @@ impl LateLintPass for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match tcx.node_id_to_type(expr.id).sty {
+            match tcx.tables().node_id_to_type(expr.id).sty {
                 ty::TyInt(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i64 = match lit.node {
@@ -428,7 +428,7 @@ fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
-    fn check_type_for_ffi(&self, cache: &mut FnvHashSet<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult {
+    fn check_type_for_ffi(&self, cache: &mut FxHashSet<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult {
         use self::FfiResult::*;
         let cx = self.cx.tcx;
 
@@ -639,7 +639,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // any generic types right now:
         let ty = self.cx.tcx.normalize_associated_type(&ty);
 
-        match self.check_type_for_ffi(&mut FnvHashSet(), ty) {
+        match self.check_type_for_ffi(&mut FxHashSet(), ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiUnsafe(s) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp, s);
@@ -740,7 +740,7 @@ impl LateLintPass for VariantSizeDifferences {
         if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
             if gens.ty_params.is_empty() {
                 // sizes only make sense for non-generic types
-                let t = cx.tcx.node_id_to_type(it.id);
+                let t = cx.tcx.tables().node_id_to_type(it.id);
                 let layout = cx.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
                     let ty = cx.tcx.erase_regions(&t);
                     ty.layout(&infcx)

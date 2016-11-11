@@ -120,7 +120,7 @@ use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::fs as fs_util;
 use rustc_data_structures::flock;
-use rustc_data_structures::fnv::{FnvHashSet, FnvHashMap};
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 use std::ffi::OsString;
 use std::fs as std_fs;
@@ -195,7 +195,7 @@ pub fn prepare_session_directory(tcx: TyCtxt) -> Result<bool, ()> {
     debug!("crate-dir: {}", crate_dir.display());
     try!(create_dir(tcx.sess, &crate_dir, "crate"));
 
-    let mut source_directories_already_tried = FnvHashSet();
+    let mut source_directories_already_tried = FxHashSet();
 
     loop {
         // Generate a session directory of the form:
@@ -490,7 +490,7 @@ fn delete_session_dir_lock_file(sess: &Session,
 /// Find the most recent published session directory that is not in the
 /// ignore-list.
 fn find_source_directory(crate_dir: &Path,
-                         source_directories_already_tried: &FnvHashSet<PathBuf>)
+                         source_directories_already_tried: &FxHashSet<PathBuf>)
                          -> Option<PathBuf> {
     let iter = crate_dir.read_dir()
                         .unwrap() // FIXME
@@ -500,7 +500,7 @@ fn find_source_directory(crate_dir: &Path,
 }
 
 fn find_source_directory_in_iter<I>(iter: I,
-                                    source_directories_already_tried: &FnvHashSet<PathBuf>)
+                                    source_directories_already_tried: &FxHashSet<PathBuf>)
                                     -> Option<PathBuf>
     where I: Iterator<Item=PathBuf>
 {
@@ -704,8 +704,8 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
     // First do a pass over the crate directory, collecting lock files and
     // session directories
-    let mut session_directories = FnvHashSet();
-    let mut lock_files = FnvHashSet();
+    let mut session_directories = FxHashSet();
+    let mut lock_files = FxHashSet();
 
     for dir_entry in try!(crate_directory.read_dir()) {
         let dir_entry = match dir_entry {
@@ -731,7 +731,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     }
 
     // Now map from lock files to session directories
-    let lock_file_to_session_dir: FnvHashMap<String, Option<String>> =
+    let lock_file_to_session_dir: FxHashMap<String, Option<String>> =
         lock_files.into_iter()
                   .map(|lock_file_name| {
                         assert!(lock_file_name.ends_with(LOCK_FILE_EXT));
@@ -774,7 +774,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     }
 
     // Filter out `None` directories
-    let lock_file_to_session_dir: FnvHashMap<String, String> =
+    let lock_file_to_session_dir: FxHashMap<String, String> =
         lock_file_to_session_dir.into_iter()
                                 .filter_map(|(lock_file_name, directory_name)| {
                                     directory_name.map(|n| (lock_file_name, n))
@@ -898,7 +898,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 }
 
 fn all_except_most_recent(deletion_candidates: Vec<(SystemTime, PathBuf, Option<flock::Lock>)>)
-                          -> FnvHashMap<PathBuf, Option<flock::Lock>> {
+                          -> FxHashMap<PathBuf, Option<flock::Lock>> {
     let most_recent = deletion_candidates.iter()
                                          .map(|&(timestamp, ..)| timestamp)
                                          .max();
@@ -909,7 +909,7 @@ fn all_except_most_recent(deletion_candidates: Vec<(SystemTime, PathBuf, Option<
                            .map(|(_, path, lock)| (path, lock))
                            .collect()
     } else {
-        FnvHashMap()
+        FxHashMap()
     }
 }
 
@@ -946,19 +946,19 @@ fn test_all_except_most_recent() {
             (UNIX_EPOCH + Duration::new(5, 0), PathBuf::from("5"), None),
             (UNIX_EPOCH + Duration::new(3, 0), PathBuf::from("3"), None),
             (UNIX_EPOCH + Duration::new(2, 0), PathBuf::from("2"), None),
-        ]).keys().cloned().collect::<FnvHashSet<PathBuf>>(),
+        ]).keys().cloned().collect::<FxHashSet<PathBuf>>(),
         vec![
             PathBuf::from("1"),
             PathBuf::from("2"),
             PathBuf::from("3"),
             PathBuf::from("4"),
-        ].into_iter().collect::<FnvHashSet<PathBuf>>()
+        ].into_iter().collect::<FxHashSet<PathBuf>>()
     );
 
     assert_eq!(all_except_most_recent(
         vec![
-        ]).keys().cloned().collect::<FnvHashSet<PathBuf>>(),
-        FnvHashSet()
+        ]).keys().cloned().collect::<FxHashSet<PathBuf>>(),
+        FxHashSet()
     );
 }
 
@@ -973,7 +973,7 @@ fn test_timestamp_serialization() {
 
 #[test]
 fn test_find_source_directory_in_iter() {
-    let already_visited = FnvHashSet();
+    let already_visited = FxHashSet();
 
     // Find newest
     assert_eq!(find_source_directory_in_iter(

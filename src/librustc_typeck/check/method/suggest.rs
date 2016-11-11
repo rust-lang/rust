@@ -20,7 +20,7 @@ use hir::def::Def;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::lang_items::FnOnceTraitLangItem;
 use rustc::traits::{Obligation, SelectionContext};
-use util::nodemap::FnvHashSet;
+use util::nodemap::FxHashSet;
 
 use syntax::ast;
 use errors::DiagnosticBuilder;
@@ -89,20 +89,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     CandidateSource::ImplSource(impl_did) => {
                         // Provide the best span we can. Use the item, if local to crate, else
                         // the impl, if local to crate (item may be defaulted), else nothing.
-                        let item = self.impl_or_trait_item(impl_did, item_name)
+                        let item = self.associated_item(impl_did, item_name)
                             .or_else(|| {
-                                self.impl_or_trait_item(self.tcx
-                                                            .impl_trait_ref(impl_did)
-                                                            .unwrap()
-                                                            .def_id,
+                                self.associated_item(
+                                    self.tcx.impl_trait_ref(impl_did).unwrap().def_id,
 
-                                                        item_name)
-                            })
-                            .unwrap();
-                        let note_span = self.tcx
-                            .map
-                            .span_if_local(item.def_id())
-                            .or_else(|| self.tcx.map.span_if_local(impl_did));
+                                    item_name
+                                )
+                            }).unwrap();
+                        let note_span = self.tcx.map.span_if_local(item.def_id).or_else(|| {
+                            self.tcx.map.span_if_local(impl_did)
+                        });
 
                         let impl_ty = self.impl_self_ty(span, impl_did).ty;
 
@@ -127,8 +124,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                     CandidateSource::TraitSource(trait_did) => {
-                        let item = self.impl_or_trait_item(trait_did, item_name).unwrap();
-                        let item_span = self.tcx.map.def_id_span(item.def_id(), span);
+                        let item = self.associated_item(trait_did, item_name).unwrap();
+                        let item_span = self.tcx.map.def_id_span(item.def_id, span);
                         span_note!(err,
                                    item_span,
                                    "candidate #{} is defined in the trait `{}`",
@@ -334,8 +331,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // this isn't perfect (that is, there are cases when
                 // implementing a trait would be legal but is rejected
                 // here).
-                (type_is_local || info.def_id.is_local()) &&
-                self.impl_or_trait_item(info.def_id, item_name).is_some()
+                (type_is_local || info.def_id.is_local())
+                    && self.associated_item(info.def_id, item_name).is_some()
             })
             .collect::<Vec<_>>();
 
@@ -470,10 +467,10 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
         });
 
         // Cross-crate:
-        let mut external_mods = FnvHashSet();
+        let mut external_mods = FxHashSet();
         fn handle_external_def(ccx: &CrateCtxt,
                                traits: &mut AllTraitsVec,
-                               external_mods: &mut FnvHashSet<DefId>,
+                               external_mods: &mut FxHashSet<DefId>,
                                def: Def) {
             let def_id = def.def_id();
             match def {

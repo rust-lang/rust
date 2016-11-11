@@ -66,20 +66,19 @@ use middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::{eval_const_expr_partial, report_const_eval_err};
 use rustc::ty::subst::Substs;
-use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
+use rustc::ty::{ToPredicate, ImplContainer, AssociatedItemContainer, TraitContainer};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
 use rustc::ty::util::IntTypeExt;
 use rscope::*;
 use rustc::dep_graph::DepNode;
 use util::common::{ErrorReported, MemoizationMap};
-use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
+use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
 use {CrateCtxt, write_ty_to_tcx};
 
 use rustc_const_math::ConstInt;
 
 use std::cell::RefCell;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::rc::Rc;
 
 use syntax::{abi, ast, attr};
 use syntax::parse::token::keywords;
@@ -351,24 +350,6 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
         })
     }
 
-    fn trait_defines_associated_type_named(&self,
-                                           trait_def_id: DefId,
-                                           assoc_name: ast::Name)
-                                           -> bool
-    {
-        if let Some(trait_id) = self.tcx().map.as_local_node_id(trait_def_id) {
-            trait_associated_type_names(self.tcx(), trait_id)
-                .any(|name| name == assoc_name)
-        } else {
-            self.tcx().impl_or_trait_items(trait_def_id).iter().any(|&def_id| {
-                match self.tcx().impl_or_trait_item(def_id) {
-                    ty::TypeTraitItem(ref item) => item.name == assoc_name,
-                    _ => false
-                }
-            })
-        }
-    }
-
     fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
         None
     }
@@ -557,60 +538,6 @@ fn is_param<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                            container: ImplOrTraitItemContainer,
-                            name: ast::Name,
-                            id: ast::NodeId,
-                            vis: &hir::Visibility,
-                            sig: &hir::MethodSig,
-                            defaultness: hir::Defaultness,
-                            has_body: bool,
-                            untransformed_rcvr_ty: Ty<'tcx>,
-                            rcvr_ty_predicates: &ty::GenericPredicates<'tcx>) {
-    let def_id = ccx.tcx.map.local_def_id(id);
-    let ty_generics = generics_of_def_id(ccx, def_id);
-
-    let ty_generic_predicates =
-        ty_generic_predicates(ccx, &sig.generics, ty_generics.parent, vec![], false);
-
-    let (fty, explicit_self_category) = {
-        let anon_scope = match container {
-            ImplContainer(_) => Some(AnonTypeScope::new(def_id)),
-            TraitContainer(_) => None
-        };
-        AstConv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
-                              sig, untransformed_rcvr_ty, anon_scope)
-    };
-
-    let ty_method = ty::Method {
-        name: name,
-        generics: ty_generics,
-        predicates: ty_generic_predicates,
-        fty: fty,
-        explicit_self: explicit_self_category,
-        vis: ty::Visibility::from_hir(vis, id, ccx.tcx),
-        defaultness: defaultness,
-        has_body: has_body,
-        def_id: def_id,
-        container: container,
-    };
-
-    let substs = mk_item_substs(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
-                                ccx.tcx.map.span(id), def_id);
-    let fty = ccx.tcx.mk_fn_def(def_id, substs, ty_method.fty);
-    debug!("method {} (id {}) has type {:?}",
-            name, id, fty);
-    ccx.tcx.tcache.borrow_mut().insert(def_id, fty);
-    write_ty_to_tcx(ccx, id, fty);
-    ccx.tcx.predicates.borrow_mut().insert(def_id, ty_method.predicates.clone());
-
-    debug!("writing method type: def_id={:?} mty={:?}",
-            def_id, ty_method);
-
-    ccx.tcx.impl_or_trait_items.borrow_mut().insert(def_id,
-        ty::MethodTraitItem(Rc::new(ty_method)));
-}
-
 fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            struct_generics: &'tcx ty::Generics<'tcx>,
                            struct_predicates: &ty::GenericPredicates<'tcx>,
@@ -631,62 +558,65 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                            struct_predicates.clone());
 }
 
+fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                            container: AssociatedItemContainer,
+                            id: ast::NodeId,
+                            sig: &hir::MethodSig,
+                            untransformed_rcvr_ty: Ty<'tcx>,
+                            rcvr_ty_predicates: &ty::GenericPredicates<'tcx>) {
+    let def_id = ccx.tcx.map.local_def_id(id);
+    let ty_generics = generics_of_def_id(ccx, def_id);
+
+    let ty_generic_predicates =
+        ty_generic_predicates(ccx, &sig.generics, ty_generics.parent, vec![], false);
+
+    let anon_scope = match container {
+        ImplContainer(_) => Some(AnonTypeScope::new(def_id)),
+        TraitContainer(_) => None
+    };
+    let fty = AstConv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
+                                    sig, untransformed_rcvr_ty, anon_scope);
+
+    let substs = mk_item_substs(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
+                                ccx.tcx.map.span(id), def_id);
+    let fty = ccx.tcx.mk_fn_def(def_id, substs, fty);
+    ccx.tcx.tcache.borrow_mut().insert(def_id, fty);
+    write_ty_to_tcx(ccx, id, fty);
+    ccx.tcx.predicates.borrow_mut().insert(def_id, ty_generic_predicates);
+}
+
 fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                      container: ImplOrTraitItemContainer,
-                                      name: ast::Name,
+                                      container: AssociatedItemContainer,
                                       id: ast::NodeId,
-                                      vis: &hir::Visibility,
-                                      defaultness: hir::Defaultness,
-                                      ty: ty::Ty<'tcx>,
-                                      has_value: bool)
+                                      ty: ty::Ty<'tcx>)
 {
     let predicates = ty::GenericPredicates {
         parent: Some(container.id()),
         predicates: vec![]
     };
-    ccx.tcx.predicates.borrow_mut().insert(ccx.tcx.map.local_def_id(id),
-                                           predicates);
+    let def_id = ccx.tcx.map.local_def_id(id);
+    ccx.tcx.predicates.borrow_mut().insert(def_id, predicates);
+    ccx.tcx.tcache.borrow_mut().insert(def_id, ty);
 
     write_ty_to_tcx(ccx, id, ty);
-
-    let associated_const = Rc::new(ty::AssociatedConst {
-        name: name,
-        vis: ty::Visibility::from_hir(vis, id, ccx.tcx),
-        defaultness: defaultness,
-        def_id: ccx.tcx.map.local_def_id(id),
-        container: container,
-        ty: ty,
-        has_value: has_value
-    });
-    ccx.tcx.impl_or_trait_items.borrow_mut()
-       .insert(ccx.tcx.map.local_def_id(id), ty::ConstTraitItem(associated_const));
 }
 
 fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                     container: ImplOrTraitItemContainer,
-                                     name: ast::Name,
+                                     container: AssociatedItemContainer,
                                      id: ast::NodeId,
-                                     vis: &hir::Visibility,
-                                     defaultness: hir::Defaultness,
                                      ty: Option<Ty<'tcx>>)
 {
     let predicates = ty::GenericPredicates {
         parent: Some(container.id()),
         predicates: vec![]
     };
-    ccx.tcx.predicates.borrow_mut().insert(ccx.tcx.map.local_def_id(id),
-                                           predicates);
+    let def_id = ccx.tcx.map.local_def_id(id);
+    ccx.tcx.predicates.borrow_mut().insert(def_id, predicates);
 
-    let associated_type = Rc::new(ty::AssociatedType {
-        name: name,
-        vis: ty::Visibility::from_hir(vis, id, ccx.tcx),
-        defaultness: defaultness,
-        ty: ty,
-        def_id: ccx.tcx.map.local_def_id(id),
-        container: container
-    });
-    ccx.tcx.impl_or_trait_items.borrow_mut()
-       .insert(ccx.tcx.map.local_def_id(id), ty::TypeTraitItem(associated_type));
+    if let Some(ty) = ty {
+        ccx.tcx.tcache.borrow_mut().insert(def_id, ty);
+        write_ty_to_tcx(ccx, id, ty);
+    }
 }
 
 fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
@@ -786,8 +716,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             // Convert all the associated consts.
             // Also, check if there are any duplicate associated items
-            let mut seen_type_items = FnvHashMap();
-            let mut seen_value_items = FnvHashMap();
+            let mut seen_type_items = FxHashMap();
+            let mut seen_value_items = FxHashMap();
 
             for impl_item in impl_items {
                 let seen_items = match impl_item.node {
@@ -820,14 +750,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                                generics: ty_generics,
                                                ty: ty,
                                            });
-                    // Trait-associated constants are always public.
-                    let public = &hir::Public;
-                    let visibility = if opt_trait_ref.is_some() { public } else { &impl_item.vis };
                     convert_associated_const(ccx, ImplContainer(def_id),
-                                             impl_item.name, impl_item.id,
-                                             visibility,
-                                             impl_item.defaultness,
-                                             ty, true /* has_value */);
+                                             impl_item.id, ty);
                 }
             }
 
@@ -844,21 +768,14 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
                     let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
 
-                    convert_associated_type(ccx, ImplContainer(def_id),
-                                            impl_item.name, impl_item.id, &impl_item.vis,
-                                            impl_item.defaultness, Some(typ));
+                    convert_associated_type(ccx, ImplContainer(def_id), impl_item.id, Some(typ));
                 }
             }
 
             for impl_item in impl_items {
                 if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
-                    // Trait methods are always public.
-                    let public = &hir::Public;
-                    let method_vis = if opt_trait_ref.is_some() { public } else { &impl_item.vis };
-
                     convert_method(ccx, ImplContainer(def_id),
-                                   impl_item.name, impl_item.id, method_vis,
-                                   sig, impl_item.defaultness, true, selfty,
+                                   impl_item.id, sig, selfty,
                                    &ty_predicates);
                 }
             }
@@ -880,7 +797,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             // Convert all the associated constants.
             for trait_item in trait_items {
-                if let hir::ConstTraitItem(ref ty, ref default) = trait_item.node {
+                if let hir::ConstTraitItem(ref ty, _) = trait_item.node {
                     let const_def_id = ccx.tcx.map.local_def_id(trait_item.id);
                     let ty_generics = generics_of_def_id(ccx, const_def_id);
                     let ty = ccx.icx(&trait_predicates)
@@ -890,14 +807,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                                generics: ty_generics,
                                                ty: ty,
                                            });
-                    convert_associated_const(ccx,
-                                             container,
-                                             trait_item.name,
-                                             trait_item.id,
-                                             &hir::Public,
-                                             hir::Defaultness::Default,
-                                             ty,
-                                             default.is_some())
+                    convert_associated_const(ccx, container, trait_item.id, ty)
                 }
             }
 
@@ -911,39 +821,21 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                         |ty| ccx.icx(&trait_predicates).to_ty(&ExplicitRscope, &ty)
                     });
 
-                    convert_associated_type(ccx,
-                                            container,
-                                            trait_item.name,
-                                            trait_item.id,
-                                            &hir::Public,
-                                            hir::Defaultness::Default,
-                                            typ);
+                    convert_associated_type(ccx, container, trait_item.id, typ);
                 }
             }
 
             // Convert all the methods
             for trait_item in trait_items {
-                if let hir::MethodTraitItem(ref sig, ref body) = trait_item.node {
+                if let hir::MethodTraitItem(ref sig, _) = trait_item.node {
                     convert_method(ccx,
                                    container,
-                                   trait_item.name,
                                    trait_item.id,
-                                   &hir::Inherited,
                                    sig,
-                                   hir::Defaultness::Default,
-                                   body.is_some(),
                                    tcx.mk_self_type(),
                                    &trait_predicates);
-
                 }
             }
-
-            // Add an entry mapping
-            let trait_item_def_ids = Rc::new(trait_items.iter().map(|trait_item| {
-                ccx.tcx.map.local_def_id(trait_item.id)
-            }).collect());
-            tcx.impl_or_trait_item_def_ids.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
-                                                               trait_item_def_ids);
         },
         hir::ItemStruct(ref struct_def, _) |
         hir::ItemUnion(ref struct_def, _) => {
@@ -1038,7 +930,7 @@ fn convert_struct_variant<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     disr_val: ty::Disr,
                                     def: &hir::VariantData)
                                     -> ty::VariantDefData<'tcx, 'tcx> {
-    let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
+    let mut seen_fields: FxHashMap<ast::Name, Span> = FxHashMap();
     let node_id = ccx.tcx.map.as_local_node_id(did).unwrap();
     let fields = def.fields().iter().map(|f| {
         let fid = ccx.tcx.map.local_def_id(f.id);
@@ -1306,28 +1198,6 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                       def_path_hash);
 
     tcx.intern_trait_def(trait_def)
-}
-
-pub fn trait_associated_type_names<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                   trait_node_id: ast::NodeId)
-                                                   -> impl Iterator<Item=ast::Name> + 'a
-{
-    let item = match tcx.map.get(trait_node_id) {
-        hir_map::NodeItem(item) => item,
-        _ => bug!("trait_node_id {} is not an item", trait_node_id)
-    };
-
-    let trait_items = match item.node {
-        hir::ItemTrait(.., ref trait_items) => trait_items,
-        _ => bug!("trait_node_id {} is not a trait", trait_node_id)
-    };
-
-    trait_items.iter().filter_map(|trait_item| {
-        match trait_item.node {
-            hir::TypeTraitItem(..) => Some(trait_item.name),
-            _ => None,
-        }
-    })
 }
 
 fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item) {
@@ -1724,16 +1594,15 @@ fn add_unsized_bound<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     match unbound {
         Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.
-            let trait_def_id = tcx.expect_def(tpb.ref_id).def_id();
-            match kind_id {
-                Ok(kind_id) if trait_def_id != kind_id => {
+            if let Ok(kind_id) = kind_id {
+                let trait_def = tcx.expect_def(tpb.ref_id);
+                if trait_def != Def::Trait(kind_id) {
                     tcx.sess.span_warn(span,
                                        "default bound relaxed for a type parameter, but \
                                        this does nothing because the given bound is not \
                                        a default. Only `?Sized` is supported");
                     tcx.try_add_builtin_trait(kind_id, bounds);
                 }
-                _ => {}
             }
         }
         _ if kind_id.is_ok() => {
@@ -1953,9 +1822,9 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 {
     let inline_bounds = from_bounds(ccx, param_bounds);
     let where_bounds = from_predicates(ccx, param_id, &where_clause.predicates);
-    let all_bounds: FnvHashSet<_> = inline_bounds.into_iter()
-                                                 .chain(where_bounds)
-                                                 .collect();
+    let all_bounds: FxHashSet<_> = inline_bounds.into_iter()
+                                                .chain(where_bounds)
+                                                .collect();
     return if all_bounds.len() > 1 {
         ty::ObjectLifetimeDefault::Ambiguous
     } else if all_bounds.len() == 0 {
@@ -2172,7 +2041,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // The trait reference is an input, so find all type parameters
     // reachable from there, to start (if this is an inherent impl,
     // then just examine the self type).
-    let mut input_parameters: FnvHashSet<_> =
+    let mut input_parameters: FxHashSet<_> =
         ctp::parameters_for(&impl_scheme.ty, false).into_iter().collect();
     if let Some(ref trait_ref) = impl_trait_ref {
         input_parameters.extend(ctp::parameters_for(trait_ref, false));
@@ -2201,7 +2070,7 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let impl_predicates = ccx.tcx.lookup_predicates(impl_def_id);
     let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
 
-    let mut input_parameters: FnvHashSet<_> =
+    let mut input_parameters: FxHashSet<_> =
         ctp::parameters_for(&impl_scheme.ty, false).into_iter().collect();
     if let Some(ref trait_ref) = impl_trait_ref {
         input_parameters.extend(ctp::parameters_for(trait_ref, false));
@@ -2209,14 +2078,15 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     ctp::identify_constrained_type_params(
         &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
 
-    let lifetimes_in_associated_types: FnvHashSet<_> = impl_items.iter()
-        .map(|item| ccx.tcx.impl_or_trait_item(ccx.tcx.map.local_def_id(item.id)))
-        .filter_map(|item| match item {
-            ty::TypeTraitItem(ref assoc_ty) => assoc_ty.ty,
-            ty::ConstTraitItem(..) | ty::MethodTraitItem(..) => None
+    let lifetimes_in_associated_types: FxHashSet<_> = impl_items.iter()
+        .map(|item|  ccx.tcx.map.local_def_id(item.id))
+        .filter(|&def_id| {
+            let item = ccx.tcx.associated_item(def_id);
+            item.kind == ty::AssociatedKind::Type && item.has_value
         })
-        .flat_map(|ty| ctp::parameters_for(&ty, true))
-        .collect();
+        .flat_map(|def_id| {
+            ctp::parameters_for(&ccx.tcx.lookup_item_type(def_id).ty, true)
+        }).collect();
 
     for (ty_lifetime, lifetime) in impl_scheme.generics.regions.iter()
         .zip(&ast_generics.lifetimes)

@@ -245,6 +245,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         debug!("report_region_errors: {} errors after preprocessing", errors.len());
 
         for error in errors {
+            debug!("report_region_errors: error = {:?}", error);
             match error.clone() {
                 ConcreteFailure(origin, sub, sup) => {
                     self.report_concrete_failure(origin, sub, sup).emit();
@@ -299,44 +300,64 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut bound_failures = Vec::new();
 
         for error in errors {
+            // Check whether we can process this error into some other
+            // form; if not, fall through.
             match *error {
                 ConcreteFailure(ref origin, sub, sup) => {
                     debug!("processing ConcreteFailure");
-                    match free_regions_from_same_fn(self.tcx, sub, sup) {
-                        Some(ref same_frs) => {
-                            origins.push(
-                                ProcessedErrorOrigin::ConcreteFailure(
-                                    origin.clone(),
-                                    sub,
-                                    sup));
-                            append_to_same_regions(&mut same_regions, same_frs);
-                        }
-                        _ => {
-                            other_errors.push(error.clone());
-                        }
+                    if let SubregionOrigin::CompareImplMethodObligation { .. } = *origin {
+                        // When comparing an impl method against a
+                        // trait method, it is not helpful to suggest
+                        // changes to the impl method.  This is
+                        // because the impl method signature is being
+                        // checked using the trait's environment, so
+                        // usually the changes we suggest would
+                        // actually have to be applied to the *trait*
+                        // method (and it's not clear that the trait
+                        // method is even under the user's control).
+                    } else if let Some(same_frs) = free_regions_from_same_fn(self.tcx, sub, sup) {
+                        origins.push(
+                            ProcessedErrorOrigin::ConcreteFailure(
+                                origin.clone(),
+                                sub,
+                                sup));
+                        append_to_same_regions(&mut same_regions, &same_frs);
+                        continue;
                     }
                 }
-                SubSupConflict(ref var_origin, _, sub_r, _, sup_r) => {
-                    debug!("processing SubSupConflict sub: {:?} sup: {:?}", sub_r, sup_r);
-                    match free_regions_from_same_fn(self.tcx, sub_r, sup_r) {
-                        Some(ref same_frs) => {
-                            origins.push(
-                                ProcessedErrorOrigin::VariableFailure(
-                                    var_origin.clone()));
-                            append_to_same_regions(&mut same_regions, same_frs);
+                SubSupConflict(ref var_origin, ref sub_origin, sub, ref sup_origin, sup) => {
+                    debug!("processing SubSupConflict sub: {:?} sup: {:?}", sub, sup);
+                    match (sub_origin, sup_origin) {
+                        (&SubregionOrigin::CompareImplMethodObligation { .. }, _) => {
+                            // As above, when comparing an impl method
+                            // against a trait method, it is not helpful
+                            // to suggest changes to the impl method.
                         }
-                        None => {
-                            other_errors.push(error.clone());
+                        (_, &SubregionOrigin::CompareImplMethodObligation { .. }) => {
+                            // See above.
+                        }
+                        _ => {
+                            if let Some(same_frs) = free_regions_from_same_fn(self.tcx, sub, sup) {
+                                origins.push(
+                                    ProcessedErrorOrigin::VariableFailure(
+                                        var_origin.clone()));
+                                append_to_same_regions(&mut same_regions, &same_frs);
+                                continue;
+                            }
                         }
                     }
                 }
                 GenericBoundFailure(ref origin, ref kind, region) => {
                     bound_failures.push((origin.clone(), kind.clone(), region));
+                    continue;
                 }
                 ProcessedErrors(..) => {
                     bug!("should not encounter a `ProcessedErrors` yet: {:?}", error)
                 }
             }
+
+            // No changes to this error.
+            other_errors.push(error.clone());
         }
 
         // ok, let's pull together the errors, sorted in an order that
@@ -629,6 +650,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             GenericKind::Projection(ref p) =>
                 format!("the associated type `{}`", p),
         };
+
+        if let SubregionOrigin::CompareImplMethodObligation {
+            span, item_name, impl_item_def_id, trait_item_def_id, lint_id
+        } = origin {
+            self.report_extra_impl_obligation(span,
+                                              item_name,
+                                              impl_item_def_id,
+                                              trait_item_def_id,
+                                              &format!("`{}: {}`", bound_kind, sub),
+                                              lint_id)
+                .emit();
+            return;
+        }
 
         let mut err = match *sub {
             ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
@@ -946,6 +980,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     sup,
                     "");
                 err
+            }
+            infer::CompareImplMethodObligation { span,
+                                                 item_name,
+                                                 impl_item_def_id,
+                                                 trait_item_def_id,
+                                                 lint_id } => {
+                self.report_extra_impl_obligation(span,
+                                                  item_name,
+                                                  impl_item_def_id,
+                                                  trait_item_def_id,
+                                                  &format!("`{}: {}`", sup, sub),
+                                                  lint_id)
             }
         }
     }
@@ -1791,6 +1837,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     span,
                     "...so that references are valid when the destructor \
                      runs");
+            }
+            infer::CompareImplMethodObligation { span, .. } => {
+                err.span_note(
+                    span,
+                    "...so that the definition in impl matches the definition from the trait");
             }
         }
     }

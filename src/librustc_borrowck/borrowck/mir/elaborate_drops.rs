@@ -21,7 +21,7 @@ use rustc::mir::*;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items;
-use rustc::util::nodemap::FnvHashMap;
+use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
@@ -63,7 +63,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 env: &env,
                 flow_inits: flow_inits,
                 flow_uninits: flow_uninits,
-                drop_flags: FnvHashMap(),
+                drop_flags: FxHashMap(),
                 patch: MirPatch::new(mir),
             }.elaborate()
         };
@@ -118,7 +118,7 @@ struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
     env: &'a MoveDataParamEnv<'tcx>,
     flow_inits: DataflowResults<MaybeInitializedLvals<'a, 'tcx>>,
     flow_uninits:  DataflowResults<MaybeUninitializedLvals<'a, 'tcx>>,
-    drop_flags: FnvHashMap<MovePathIndex, Local>,
+    drop_flags: FxHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
 }
 

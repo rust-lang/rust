@@ -33,7 +33,7 @@ pub use self::PathParameters::*;
 
 use hir::def::Def;
 use hir::def_id::DefId;
-use util::nodemap::{NodeMap, FnvHashSet};
+use util::nodemap::{NodeMap, FxHashSet};
 
 use syntax_pos::{mk_sp, Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, respan, Spanned};
@@ -840,8 +840,8 @@ pub enum UnsafeSource {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Expr {
     pub id: NodeId,
-    pub node: Expr_,
     pub span: Span,
+    pub node: Expr_,
     pub attrs: ThinVec<Attribute>,
 }
 
@@ -904,7 +904,7 @@ pub enum Expr_ {
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
-    ExprClosure(CaptureClause, P<FnDecl>, P<Block>, Span),
+    ExprClosure(CaptureClause, P<FnDecl>, P<Expr>, Span),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
@@ -946,7 +946,7 @@ pub enum Expr_ {
     ///
     /// For example, `Foo {x: 1, y: 2}`, or
     /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
-    ExprStruct(Path, HirVec<Field>, Option<P<Expr>>),
+    ExprStruct(P<Path>, HirVec<Field>, Option<P<Expr>>),
 
     /// An array literal constructed from one repeated element.
     ///
@@ -1035,7 +1035,7 @@ pub enum TraitItem_ {
     /// must contain a value)
     ConstTraitItem(P<Ty>, Option<P<Expr>>),
     /// A method with an optional body
-    MethodTraitItem(MethodSig, Option<P<Block>>),
+    MethodTraitItem(MethodSig, Option<P<Expr>>),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type
     TypeTraitItem(TyParamBounds, Option<P<Ty>>),
@@ -1060,7 +1060,7 @@ pub enum ImplItemKind {
     /// of the expression
     Const(P<Ty>, P<Expr>),
     /// A method implementation with the given signature and body
-    Method(MethodSig, P<Block>),
+    Method(MethodSig, P<Expr>),
     /// An associated type
     Type(P<Ty>),
 }
@@ -1501,7 +1501,7 @@ pub enum Item_ {
     /// A `const` item
     ItemConst(P<Ty>, P<Expr>),
     /// A function declaration
-    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Block>),
+    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Expr>),
     /// A module
     ItemMod(Mod),
     /// An external module
@@ -1605,4 +1605,4 @@ pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 
 // Map from the NodeId of a glob import to a list of items which are actually
 // imported.
-pub type GlobMap = NodeMap<FnvHashSet<Name>>;
+pub type GlobMap = NodeMap<FxHashSet<Name>>;

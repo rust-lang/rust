@@ -77,7 +77,7 @@ This API is completely unstable and subject to change.
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
-#![feature(dotdot_in_tuple_patterns)]
+#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -106,7 +106,7 @@ pub use rustc::util;
 
 use dep_graph::DepNode;
 use hir::map as hir_map;
-use rustc::infer::TypeOrigin;
+use rustc::infer::{InferOk, TypeOrigin};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::traits::{self, Reveal};
@@ -198,11 +198,16 @@ fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 actual: Ty<'tcx>)
                                 -> bool {
     ccx.tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
-        if let Err(err) = infcx.eq_types(false, origin.clone(), expected, actual) {
-            infcx.report_mismatched_types(origin, expected, actual, err);
-            false
-        } else {
-            true
+        match infcx.eq_types(false, origin.clone(), expected, actual) {
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME(#32730) propagate obligations
+                assert!(obligations.is_empty());
+                true
+            }
+            Err(err) => {
+                infcx.report_mismatched_types(origin, expected, actual, err);
+                false
+            }
         }
     })
 }
@@ -211,7 +216,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     main_id: ast::NodeId,
                     main_span: Span) {
     let tcx = ccx.tcx;
-    let main_t = tcx.node_id_to_type(main_id);
+    let main_t = tcx.tables().node_id_to_type(main_id);
     match main_t.sty {
         ty::TyFnDef(..) => {
             match tcx.map.find(main_id) {
@@ -263,7 +268,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                      start_id: ast::NodeId,
                      start_span: Span) {
     let tcx = ccx.tcx;
-    let start_t = tcx.node_id_to_type(start_id);
+    let start_t = tcx.tables().node_id_to_type(start_id);
     match start_t.sty {
         ty::TyFnDef(..) => {
             match tcx.map.find(start_id) {

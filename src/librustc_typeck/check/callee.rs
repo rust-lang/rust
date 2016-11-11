@@ -13,6 +13,7 @@ use super::{DeferredCallResolution, Expectation, FnCtxt, TupleArgumentsFlag};
 use CrateCtxt;
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
+use hir::print;
 use rustc::{infer, traits};
 use rustc::ty::{self, LvaluePreference, Ty};
 use syntax::parse::token;
@@ -103,7 +104,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If the callee is a bare function or a closure, then we're all set.
         match self.structurally_resolved_type(callee_expr.span, adjusted_ty).sty {
             ty::TyFnDef(..) | ty::TyFnPtr(_) => {
-                self.write_autoderef_adjustment(callee_expr.id, autoderefs);
+                self.write_autoderef_adjustment(callee_expr.id, autoderefs, adjusted_ty);
                 return Some(CallStep::Builtin);
             }
 
@@ -194,15 +195,28 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let error_fn_sig;
 
         let fn_sig = match callee_ty.sty {
-            ty::TyFnDef(.., &ty::BareFnTy { ref sig, .. }) |
-            ty::TyFnPtr(&ty::BareFnTy { ref sig, .. }) => sig,
-            _ => {
-                let mut err = self.type_error_struct(call_expr.span,
-                                                     |actual| {
-                                                         format!("expected function, found `{}`",
-                                                                 actual)
-                                                     },
-                                                     callee_ty);
+            ty::TyFnDef(.., &ty::BareFnTy {ref sig, ..}) |
+            ty::TyFnPtr(&ty::BareFnTy {ref sig, ..}) => sig,
+            ref t => {
+                let mut unit_variant = None;
+                if let &ty::TyAdt(adt_def, ..) = t {
+                    if adt_def.is_enum() {
+                        if let hir::ExprCall(ref expr, _) = call_expr.node {
+                            unit_variant = Some(print::expr_to_string(expr))
+                        }
+                    }
+                }
+                let mut err = if let Some(path) = unit_variant {
+                    let mut err = self.type_error_struct(call_expr.span, |_| {
+                        format!("`{}` is being called, but it is not a function", path)
+                    }, callee_ty);
+                    err.help(&format!("did you mean to write `{}`?", path));
+                    err
+                } else {
+                    self.type_error_struct(call_expr.span, |actual| {
+                        format!("expected function, found `{}`", actual)
+                    }, callee_ty)
+                };
 
                 if let hir::ExprCall(ref expr, _) = call_expr.node {
                     let tcx = self.tcx;

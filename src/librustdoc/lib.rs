@@ -20,7 +20,7 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(dotdot_in_tuple_patterns)]
+#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]

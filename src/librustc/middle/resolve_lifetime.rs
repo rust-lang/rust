@@ -31,7 +31,7 @@ use syntax::parse::token::keywords;
 use syntax_pos::Span;
 use util::nodemap::NodeMap;
 
-use rustc_data_structures::fnv::FnvHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use hir;
 use hir::print::lifetime_to_string;
 use hir::intravisit::{self, Visitor, FnKind};
@@ -202,7 +202,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'v>, decl: &'v hir::FnDecl,
-                b: &'v hir::Block, s: Span, fn_id: ast::NodeId) {
+                b: &'v hir::Expr, s: Span, fn_id: ast::NodeId) {
         match fk {
             FnKind::ItemFn(_, generics, ..) => {
                 self.visit_early_late(fn_id,decl, generics, |this| {
@@ -403,7 +403,7 @@ fn signal_shadowing_problem(sess: &Session, name: ast::Name, orig: Original, sha
 
 // Adds all labels in `b` to `ctxt.labels_in_fn`, signalling a warning
 // if one of the label shadows a lifetime or another label.
-fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Block) {
+fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Expr) {
     struct GatherLabels<'a> {
         sess: &'a Session,
         scope: Scope<'a>,
@@ -415,7 +415,7 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Block) {
         scope: ctxt.scope,
         labels_in_fn: &mut ctxt.labels_in_fn,
     };
-    gather.visit_block(b);
+    gather.visit_expr(b);
     return;
 
     impl<'v, 'a> Visitor<'v> for GatherLabels<'a> {
@@ -493,7 +493,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn add_scope_and_walk_fn<'b>(&mut self,
                                  fk: FnKind,
                                  fd: &hir::FnDecl,
-                                 fb: &'b hir::Block,
+                                 fb: &'b hir::Expr,
                                  _span: Span,
                                  fn_id: ast::NodeId) {
 
@@ -516,7 +516,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         extract_labels(self, fb);
 
         self.with(FnScope { fn_id: fn_id, body_id: fb.id, s: self.scope },
-                  |_old_scope, this| this.visit_block(fb))
+                  |_old_scope, this| this.visit_expr(fb))
     }
 
     fn with<F>(&mut self, wrap_scope: ScopeChain, f: F) where
@@ -847,13 +847,13 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
                                generics: &hir::Generics) {
     debug!("insert_late_bound_lifetimes(decl={:?}, generics={:?})", decl, generics);
 
-    let mut constrained_by_input = ConstrainedCollector { regions: FnvHashSet() };
+    let mut constrained_by_input = ConstrainedCollector { regions: FxHashSet() };
     for arg in &decl.inputs {
         constrained_by_input.visit_ty(&arg.ty);
     }
 
     let mut appears_in_output = AllCollector {
-        regions: FnvHashSet(),
+        regions: FxHashSet(),
         impl_trait: false
     };
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &decl.output);
@@ -866,7 +866,7 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     // Subtle point: because we disallow nested bindings, we can just
     // ignore binders here and scrape up all names we see.
     let mut appears_in_where_clause = AllCollector {
-        regions: FnvHashSet(),
+        regions: FxHashSet(),
         impl_trait: false
     };
     for ty_param in generics.ty_params.iter() {
@@ -926,7 +926,7 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     return;
 
     struct ConstrainedCollector {
-        regions: FnvHashSet<ast::Name>,
+        regions: FxHashSet<ast::Name>,
     }
 
     impl<'v> Visitor<'v> for ConstrainedCollector {
@@ -961,7 +961,7 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     }
 
     struct AllCollector {
-        regions: FnvHashSet<ast::Name>,
+        regions: FxHashSet<ast::Name>,
         impl_trait: bool
     }
 

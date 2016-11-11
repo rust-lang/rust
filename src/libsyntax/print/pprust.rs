@@ -285,7 +285,7 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Comment              => "/* */".to_string(),
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
 
-        token::Interpolated(ref nt) => match *nt {
+        token::Interpolated(ref nt) => match **nt {
             token::NtExpr(ref e)        => expr_to_string(&e),
             token::NtMeta(ref e)        => meta_item_to_string(&e),
             token::NtTy(ref e)          => ty_to_string(&e),
@@ -2128,26 +2128,8 @@ impl<'a> State<'a> {
 
                 try!(self.print_fn_block_args(&decl));
                 try!(space(&mut self.s));
-
-                let default_return = match decl.output {
-                    ast::FunctionRetTy::Default(..) => true,
-                    _ => false
-                };
-
-                match body.stmts.last().map(|stmt| &stmt.node) {
-                    Some(&ast::StmtKind::Expr(ref i_expr)) if default_return &&
-                                                              body.stmts.len() == 1 => {
-                        // we extract the block, so as not to create another set of boxes
-                        if let ast::ExprKind::Block(ref blk) = i_expr.node {
-                            try!(self.print_block_unclosed_with_attrs(&blk, &i_expr.attrs));
-                        } else {
-                            // this is a bare expression
-                            try!(self.print_expr(&i_expr));
-                            try!(self.end()); // need to close a box
-                        }
-                    }
-                    _ => try!(self.print_block_unclosed(&body)),
-                }
+                try!(self.print_expr(body));
+                try!(self.end()); // need to close a box
 
                 // a box will be closed by print_expr, but we didn't want an overall
                 // wrapper so we closed the corresponding opening. so create an

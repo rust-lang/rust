@@ -17,18 +17,23 @@
 // gdb-command:run
 
 // gdb-command:print no_padding1
-// gdb-check:$1 = {x = {0, 1, 2}, y = -3, z = {4.5, 5.5}}
+// gdbg-check:$1 = {x = {0, 1, 2}, y = -3, z = {4.5, 5.5}}
+// gdbr-check:$1 = evec_in_struct::NoPadding1 {x: [0, 1, 2], y: -3, z: [4.5, 5.5]}
 // gdb-command:print no_padding2
-// gdb-check:$2 = {x = {6, 7, 8}, y = {{9, 10}, {11, 12}}}
+// gdbg-check:$2 = {x = {6, 7, 8}, y = {{9, 10}, {11, 12}}}
+// gdbr-check:$2 = evec_in_struct::NoPadding2 {x: [6, 7, 8], y: [[9, 10], [11, 12]]}
 
 // gdb-command:print struct_internal_padding
-// gdb-check:$3 = {x = {13, 14}, y = {15, 16}}
+// gdbg-check:$3 = {x = {13, 14}, y = {15, 16}}
+// gdbr-check:$3 = evec_in_struct::StructInternalPadding {x: [13, 14], y: [15, 16]}
 
 // gdb-command:print single_vec
-// gdb-check:$4 = {x = {17, 18, 19, 20, 21}}
+// gdbg-check:$4 = {x = {17, 18, 19, 20, 21}}
+// gdbr-check:$4 = evec_in_struct::SingleVec {x: [17, 18, 19, 20, 21]}
 
 // gdb-command:print struct_padded_at_end
-// gdb-check:$5 = {x = {22, 23}, y = {24, 25}}
+// gdbg-check:$5 = {x = {22, 23}, y = {24, 25}}
+// gdbr-check:$5 = evec_in_struct::StructPaddedAtEnd {x: [22, 23], y: [24, 25]}
 
 
 // === LLDB TESTS ==================================================================================

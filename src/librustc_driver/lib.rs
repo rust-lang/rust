@@ -24,7 +24,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(box_syntax)]
-#![feature(dotdot_in_tuple_patterns)]
+#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -75,7 +75,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::session::config::nightly_options;
-use rustc::session::early_error;
+use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc_metadata::locator;
@@ -455,8 +455,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             1 => panic!("make_input should have provided valid inputs"),
             _ => early_error(sopts.error_format, "multiple input filenames provided"),
         }
-
-        None
     }
 
     fn late_callback(&mut self,
@@ -1009,6 +1007,11 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     if cg_flags.iter().any(|x| *x == "help") {
         describe_codegen_flags();
         return None;
+    }
+
+    if cg_flags.iter().any(|x| *x == "no-stack-check") {
+        early_warn(ErrorOutputType::default(),
+                   "the --no-stack-check flag is deprecated and does nothing");
     }
 
     if cg_flags.contains(&"passes=list".to_string()) {

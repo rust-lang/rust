@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f() -> String {  //~ ERROR E0269
+fn f() -> String {  //~ ERROR mismatched types
     0u8;
     "bla".to_string();  //~ HELP consider removing this semicolon
 }
 
-fn g() -> String {  //~ ERROR E0269
+fn g() -> String {  //~ ERROR mismatched types
     "this won't work".to_string();
     "removeme".to_string(); //~ HELP consider removing this semicolon
 }

@@ -14,7 +14,7 @@ use index;
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
 use rustc::hir::def_id::{DefIndex, DefId};
-use rustc::middle::cstore::{LinkagePreference, NativeLibraryKind};
+use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibraryKind};
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::ty::{self, Ty};
@@ -177,7 +177,6 @@ pub struct CrateRoot {
     pub lang_items_missing: LazySeq<lang_items::LangItem>,
     pub native_libraries: LazySeq<(NativeLibraryKind, String)>,
     pub codemap: LazySeq<syntax_pos::FileMap>,
-    pub macro_defs: LazySeq<MacroDef>,
     pub impls: LazySeq<TraitImpls>,
     pub reachable_ids: LazySeq<DefIndex>,
     pub index: LazySeq<index::Index>,
@@ -187,7 +186,7 @@ pub struct CrateRoot {
 pub struct CrateDep {
     pub name: ast::Name,
     pub hash: hir::svh::Svh,
-    pub explicitly_linked: bool,
+    pub kind: DepKind,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -241,11 +240,12 @@ pub enum EntryKind<'tcx> {
     Fn(Lazy<FnData>),
     ForeignFn(Lazy<FnData>),
     Mod(Lazy<ModData>),
+    MacroDef(Lazy<MacroDef>),
     Closure(Lazy<ClosureData<'tcx>>),
     Trait(Lazy<TraitData<'tcx>>),
     Impl(Lazy<ImplData<'tcx>>),
     DefaultImpl(Lazy<ImplData<'tcx>>),
-    Method(Lazy<MethodData<'tcx>>),
+    Method(Lazy<MethodData>),
     AssociatedType(AssociatedContainer),
     AssociatedConst(AssociatedContainer),
 }
@@ -300,7 +300,7 @@ pub enum AssociatedContainer {
 }
 
 impl AssociatedContainer {
-    pub fn with_def_id(&self, def_id: DefId) -> ty::ImplOrTraitItemContainer {
+    pub fn with_def_id(&self, def_id: DefId) -> ty::AssociatedItemContainer {
         match *self {
             AssociatedContainer::TraitRequired |
             AssociatedContainer::TraitWithDefault => ty::TraitContainer(def_id),
@@ -310,7 +310,7 @@ impl AssociatedContainer {
         }
     }
 
-    pub fn has_body(&self) -> bool {
+    pub fn has_value(&self) -> bool {
         match *self {
             AssociatedContainer::TraitRequired => false,
 
@@ -332,10 +332,10 @@ impl AssociatedContainer {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct MethodData<'tcx> {
+pub struct MethodData {
     pub fn_data: FnData,
     pub container: AssociatedContainer,
-    pub explicit_self: Lazy<ty::ExplicitSelfCategory<'tcx>>,
+    pub has_self: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

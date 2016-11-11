@@ -17,7 +17,7 @@ use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::DebugInfoLevel;
 use ty::tls;
-use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
+use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
 use util::common::duration_to_secs_str;
 use mir::transform as mir_pass;
 
@@ -74,11 +74,11 @@ pub struct Session {
     pub local_crate_source_file: Option<PathBuf>,
     pub working_dir: PathBuf,
     pub lint_store: RefCell<lint::LintStore>,
-    pub lints: RefCell<NodeMap<Vec<(lint::LintId, Span, String)>>>,
+    pub lints: RefCell<NodeMap<Vec<lint::EarlyLint>>>,
     /// Set of (LintId, span, message) tuples tracking lint (sub)diagnostics
     /// that have been set once, but should not be set again, in order to avoid
     /// redundantly verbose output (Issue #24690).
-    pub one_time_diagnostics: RefCell<FnvHashSet<(lint::LintId, Span, String)>>,
+    pub one_time_diagnostics: RefCell<FxHashSet<(lint::LintId, Span, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub mir_passes: RefCell<mir_pass::Passes>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
@@ -262,17 +262,26 @@ impl Session {
                     lint: &'static lint::Lint,
                     id: ast::NodeId,
                     sp: Span,
-                    msg: String) {
+                    msg: String)
+    {
+        self.add_lint_diagnostic(lint, id, (sp, &msg[..]))
+    }
+    pub fn add_lint_diagnostic<M>(&self,
+                                  lint: &'static lint::Lint,
+                                  id: ast::NodeId,
+                                  msg: M)
+        where M: lint::IntoEarlyLint,
+    {
         let lint_id = lint::LintId::of(lint);
         let mut lints = self.lints.borrow_mut();
+        let early_lint = msg.into_early_lint(lint_id);
         if let Some(arr) = lints.get_mut(&id) {
-            let tuple = (lint_id, sp, msg);
-            if !arr.contains(&tuple) {
-                arr.push(tuple);
+            if !arr.contains(&early_lint) {
+                arr.push(early_lint);
             }
             return;
         }
-        lints.insert(id, vec![(lint_id, sp, msg)]);
+        lints.insert(id, vec![early_lint]);
     }
     pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
         let id = self.next_node_id.get();
@@ -594,12 +603,12 @@ pub fn build_session_(sopts: config::Options,
         working_dir: env::current_dir().unwrap(),
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(NodeMap()),
-        one_time_diagnostics: RefCell::new(FnvHashSet()),
+        one_time_diagnostics: RefCell::new(FxHashSet()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
         mir_passes: RefCell::new(mir_pass::Passes::new()),
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
-        dependency_formats: RefCell::new(FnvHashMap()),
+        dependency_formats: RefCell::new(FxHashMap()),
         crate_disambiguator: RefCell::new(token::intern("").as_str()),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),

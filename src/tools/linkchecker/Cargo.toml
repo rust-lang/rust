@@ -3,9 +3,6 @@ name = "linkchecker"
 version = "0.1.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
 
-[dependencies]
-url = "1.2"
-
 [[bin]]
 name = "linkchecker"
 path = "main.rs"

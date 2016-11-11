@@ -12,6 +12,7 @@ use error;
 use fmt;
 use result;
 use sys;
+use convert::From;
 
 /// A specialized [`Result`](../result/enum.Result.html) type for I/O
 /// operations.
@@ -62,6 +63,7 @@ pub struct Error {
 
 enum Repr {
     Os(i32),
+    Simple(ErrorKind),
     Custom(Box<Custom>),
 }
 
@@ -124,23 +126,28 @@ pub enum ErrorKind {
     InvalidInput,
     /// Data not valid for the operation were encountered.
     ///
-    /// Unlike `InvalidInput`, this typically means that the operation
+    /// Unlike [`InvalidInput`], this typically means that the operation
     /// parameters were valid, however the error was caused by malformed
     /// input data.
     ///
     /// For example, a function that reads a file into a string will error with
     /// `InvalidData` if the file's contents are not valid UTF-8.
+    ///
+    /// [`InvalidInput`]: #variant.InvalidInput
     #[stable(feature = "io_invalid_data", since = "1.2.0")]
     InvalidData,
     /// The I/O operation's timeout expired, causing it to be canceled.
     #[stable(feature = "rust1", since = "1.0.0")]
     TimedOut,
     /// An error returned when an operation could not be completed because a
-    /// call to `write` returned `Ok(0)`.
+    /// call to [`write()`] returned [`Ok(0)`].
     ///
     /// This typically means that an operation could only succeed if it wrote a
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
+    ///
+    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`Ok(0)`]: ../../std/io/type.Result.html
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
     /// This operation was interrupted.
@@ -169,6 +176,43 @@ pub enum ErrorKind {
                issue = "0")]
     #[doc(hidden)]
     __Nonexhaustive,
+}
+
+impl ErrorKind {
+    fn as_str(&self) -> &'static str {
+        match *self {
+            ErrorKind::NotFound => "entity not found",
+            ErrorKind::PermissionDenied => "permission denied",
+            ErrorKind::ConnectionRefused => "connection refused",
+            ErrorKind::ConnectionReset => "connection reset",
+            ErrorKind::ConnectionAborted => "connection aborted",
+            ErrorKind::NotConnected => "not connected",
+            ErrorKind::AddrInUse => "address in use",
+            ErrorKind::AddrNotAvailable => "address not available",
+            ErrorKind::BrokenPipe => "broken pipe",
+            ErrorKind::AlreadyExists => "entity already exists",
+            ErrorKind::WouldBlock => "operation would block",
+            ErrorKind::InvalidInput => "invalid input parameter",
+            ErrorKind::InvalidData => "invalid data",
+            ErrorKind::TimedOut => "timed out",
+            ErrorKind::WriteZero => "write zero",
+            ErrorKind::Interrupted => "operation interrupted",
+            ErrorKind::Other => "other os error",
+            ErrorKind::UnexpectedEof => "unexpected end of file",
+            ErrorKind::__Nonexhaustive => unreachable!()
+        }
+    }
+}
+
+/// Intended for use for errors not exposed to the user, where allocating onto
+/// the heap (for normal construction via Error::new) is too costly.
+#[stable(feature = "io_error_from_errorkind", since = "1.14.0")]
+impl From<ErrorKind> for Error {
+    fn from(kind: ErrorKind) -> Error {
+        Error {
+            repr: Repr::Simple(kind)
+        }
+    }
 }
 
 impl Error {
@@ -285,6 +329,7 @@ impl Error {
         match self.repr {
             Repr::Os(i) => Some(i),
             Repr::Custom(..) => None,
+            Repr::Simple(..) => None,
         }
     }
 
@@ -317,6 +362,7 @@ impl Error {
     pub fn get_ref(&self) -> Option<&(error::Error+Send+Sync+'static)> {
         match self.repr {
             Repr::Os(..) => None,
+            Repr::Simple(..) => None,
             Repr::Custom(ref c) => Some(&*c.error),
         }
     }
@@ -387,6 +433,7 @@ impl Error {
     pub fn get_mut(&mut self) -> Option<&mut (error::Error+Send+Sync+'static)> {
         match self.repr {
             Repr::Os(..) => None,
+            Repr::Simple(..) => None,
             Repr::Custom(ref mut c) => Some(&mut *c.error),
         }
     }
@@ -420,6 +467,7 @@ impl Error {
     pub fn into_inner(self) -> Option<Box<error::Error+Send+Sync>> {
         match self.repr {
             Repr::Os(..) => None,
+            Repr::Simple(..) => None,
             Repr::Custom(c) => Some(c.error)
         }
     }
@@ -447,6 +495,7 @@ impl Error {
         match self.repr {
             Repr::Os(code) => sys::decode_error_kind(code),
             Repr::Custom(ref c) => c.kind,
+            Repr::Simple(kind) => kind,
         }
     }
 }
@@ -458,6 +507,7 @@ impl fmt::Debug for Repr {
                 fmt.debug_struct("Os").field("code", code)
                    .field("message", &sys::os::error_string(*code)).finish(),
             Repr::Custom(ref c) => fmt.debug_tuple("Custom").field(c).finish(),
+            Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
         }
     }
 }
@@ -471,6 +521,7 @@ impl fmt::Display for Error {
                 write!(fmt, "{} (os error {})", detail, code)
             }
             Repr::Custom(ref c) => c.error.fmt(fmt),
+            Repr::Simple(kind) => write!(fmt, "{}", kind.as_str()),
         }
     }
 }
@@ -479,27 +530,7 @@ impl fmt::Display for Error {
 impl error::Error for Error {
     fn description(&self) -> &str {
         match self.repr {
-            Repr::Os(..) => match self.kind() {
-                ErrorKind::NotFound => "entity not found",
-                ErrorKind::PermissionDenied => "permission denied",
-                ErrorKind::ConnectionRefused => "connection refused",
-                ErrorKind::ConnectionReset => "connection reset",
-                ErrorKind::ConnectionAborted => "connection aborted",
-                ErrorKind::NotConnected => "not connected",
-                ErrorKind::AddrInUse => "address in use",
-                ErrorKind::AddrNotAvailable => "address not available",
-                ErrorKind::BrokenPipe => "broken pipe",
-                ErrorKind::AlreadyExists => "entity already exists",
-                ErrorKind::WouldBlock => "operation would block",
-                ErrorKind::InvalidInput => "invalid input parameter",
-                ErrorKind::InvalidData => "invalid data",
-                ErrorKind::TimedOut => "timed out",
-                ErrorKind::WriteZero => "write zero",
-                ErrorKind::Interrupted => "operation interrupted",
-                ErrorKind::Other => "other os error",
-                ErrorKind::UnexpectedEof => "unexpected end of file",
-                ErrorKind::__Nonexhaustive => unreachable!()
-            },
+            Repr::Os(..) | Repr::Simple(..) => self.kind().as_str(),
             Repr::Custom(ref c) => c.error.description(),
         }
     }
@@ -507,6 +538,7 @@ impl error::Error for Error {
     fn cause(&self) -> Option<&error::Error> {
         match self.repr {
             Repr::Os(..) => None,
+            Repr::Simple(..) => None,
             Repr::Custom(ref c) => c.error.cause(),
         }
     }

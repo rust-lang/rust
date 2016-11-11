@@ -42,7 +42,7 @@ mod move_error;
 pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     fn_id: NodeId,
                                     decl: &hir::FnDecl,
-                                    body: &hir::Block)
+                                    body: &hir::Expr)
                                     -> (Vec<Loan<'tcx>>,
                                         move_data::MoveData<'tcx>) {
     let mut glcx = GatherLoanCtxt {

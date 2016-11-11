@@ -32,7 +32,8 @@ use std::cell::{RefCell, Cell};
 use std::collections::HashSet;
 
 thread_local! {
-    static USED_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new())
+    static USED_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new());
+    static KNOWN_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new());
 }
 
 enum AttrError {
@@ -74,6 +75,29 @@ pub fn mark_used(attr: &Attribute) {
 pub fn is_used(attr: &Attribute) -> bool {
     let AttrId(id) = attr.node.id;
     USED_ATTRS.with(|slot| {
+        let idx = (id / 64) as usize;
+        let shift = id % 64;
+        slot.borrow().get(idx).map(|bits| bits & (1 << shift) != 0)
+            .unwrap_or(false)
+    })
+}
+
+pub fn mark_known(attr: &Attribute) {
+    debug!("Marking {:?} as known.", attr);
+    let AttrId(id) = attr.node.id;
+    KNOWN_ATTRS.with(|slot| {
+        let idx = (id / 64) as usize;
+        let shift = id % 64;
+        if slot.borrow().len() <= idx {
+            slot.borrow_mut().resize(idx + 1, 0);
+        }
+        slot.borrow_mut()[idx] |= 1 << shift;
+    });
+}
+
+pub fn is_known(attr: &Attribute) -> bool {
+    let AttrId(id) = attr.node.id;
+    KNOWN_ATTRS.with(|slot| {
         let idx = (id / 64) as usize;
         let shift = id % 64;
         slot.borrow().get(idx).map(|bits| bits & (1 << shift) != 0)

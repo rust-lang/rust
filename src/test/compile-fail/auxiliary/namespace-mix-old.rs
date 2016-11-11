@@ -10,8 +10,6 @@
 
 // FIXME: Remove when `item_like_imports` is stabilized.
 
-#![feature(relaxed_adts)]
-
 pub mod c {
     pub struct S {}
     pub struct TS();

@@ -17,13 +17,16 @@
 // gdb-command:run
 
 // gdb-command:print *the_a_ref
-// gdb-check:$1 = TheA
+// gdbg-check:$1 = TheA
+// gdbr-check:$1 = borrowed_c_style_enum::ABC::TheA
 
 // gdb-command:print *the_b_ref
-// gdb-check:$2 = TheB
+// gdbg-check:$2 = TheB
+// gdbr-check:$2 = borrowed_c_style_enum::ABC::TheB
 
 // gdb-command:print *the_c_ref
-// gdb-check:$3 = TheC
+// gdbg-check:$3 = TheC
+// gdbr-check:$3 = borrowed_c_style_enum::ABC::TheC
 
 
 // === LLDB TESTS ==================================================================================

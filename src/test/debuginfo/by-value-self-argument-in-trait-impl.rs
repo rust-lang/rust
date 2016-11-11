@@ -21,11 +21,13 @@
 // gdb-command:continue
 
 // gdb-command:print self
-// gdb-check:$2 = {x = 2222, y = 3333}
+// gdbg-check:$2 = {x = 2222, y = 3333}
+// gdbr-check:$2 = by_value_self_argument_in_trait_impl::Struct {x: 2222, y: 3333}
 // gdb-command:continue
 
 // gdb-command:print self
-// gdb-check:$3 = {__0 = 4444.5, __1 = 5555, __2 = 6666, __3 = 7777.5}
+// gdbg-check:$3 = {__0 = 4444.5, __1 = 5555, __2 = 6666, __3 = 7777.5}
+// gdbr-check:$3 = (4444.5, 5555, 6666, 7777.5)
 // gdb-command:continue
 
 

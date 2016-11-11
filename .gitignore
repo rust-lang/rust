@@ -98,3 +98,4 @@ tmp.*.rs
 version.md
 version.ml
 version.texi
+.cargo

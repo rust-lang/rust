@@ -64,8 +64,8 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     }
 
     build.run(&mut cargo);
-    update_mtime(&libstd_stamp(build, compiler, target));
-    std_link(build, target, compiler, compiler.host);
+    update_mtime(&libstd_stamp(build, &compiler, target));
+    std_link(build, target, compiler.stage, compiler.host);
 }
 
 /// Link all libstd rlibs/dylibs into the sysroot location.
@@ -74,11 +74,12 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
 /// by `compiler` into `host`'s sysroot.
 pub fn std_link(build: &Build,
                 target: &str,
-                compiler: &Compiler,
+                stage: u32,
                 host: &str) {
+    let compiler = Compiler::new(stage, &build.config.build);
     let target_compiler = Compiler::new(compiler.stage, host);
     let libdir = build.sysroot_libdir(&target_compiler, target);
-    let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
+    let out_dir = build.cargo_out(&compiler, Mode::Libstd, target);
 
     // If we're linking one compiler host's output into another, then we weren't
     // called from the `std` method above. In that case we clean out what's
@@ -146,7 +147,7 @@ pub fn test<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
          .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
     build.run(&mut cargo);
     update_mtime(&libtest_stamp(build, compiler, target));
-    test_link(build, target, compiler, compiler.host);
+    test_link(build, target, compiler.stage, compiler.host);
 }
 
 /// Link all libtest rlibs/dylibs into the sysroot location.
@@ -155,11 +156,12 @@ pub fn test<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
 /// by `compiler` into `host`'s sysroot.
 pub fn test_link(build: &Build,
                  target: &str,
-                 compiler: &Compiler,
+                 stage: u32,
                  host: &str) {
+    let compiler = Compiler::new(stage, &build.config.build);
     let target_compiler = Compiler::new(compiler.stage, host);
     let libdir = build.sysroot_libdir(&target_compiler, target);
-    let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
+    let out_dir = build.cargo_out(&compiler, Mode::Libtest, target);
     add_to_sysroot(&out_dir, &libdir);
 }
 
@@ -218,7 +220,7 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     }
     build.run(&mut cargo);
 
-    rustc_link(build, target, compiler, compiler.host);
+    rustc_link(build, target, compiler.stage, compiler.host);
 }
 
 /// Link all librustc rlibs/dylibs into the sysroot location.
@@ -227,11 +229,12 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
 /// by `compiler` into `host`'s sysroot.
 pub fn rustc_link(build: &Build,
                   target: &str,
-                  compiler: &Compiler,
+                  stage: u32,
                   host: &str) {
+    let compiler = Compiler::new(stage, &build.config.build);
     let target_compiler = Compiler::new(compiler.stage, host);
     let libdir = build.sysroot_libdir(&target_compiler, target);
-    let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
+    let out_dir = build.cargo_out(&compiler, Mode::Librustc, target);
     add_to_sysroot(&out_dir, &libdir);
 }
 
@@ -259,7 +262,10 @@ fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
 /// must have been previously produced by the `stage - 1` build.config.build
 /// compiler.
 pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
-    assert!(stage > 0, "the stage0 compiler isn't assembled, it's downloaded");
+    // nothing to do in stage0
+    if stage == 0 {
+        return
+    }
     // The compiler that we're assembling
     let target_compiler = Compiler::new(stage, host);
 

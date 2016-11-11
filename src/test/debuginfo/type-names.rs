@@ -20,160 +20,206 @@
 
 // STRUCTS
 // gdb-command:whatis simple_struct
-// gdb-check:type = struct Struct1
+// gdbg-check:type = struct Struct1
+// gdbr-check:type = type_names::Struct1
 
 // gdb-command:whatis generic_struct1
-// gdb-check:type = struct GenericStruct<type_names::mod1::Struct2, type_names::mod1::mod2::Struct3>
+// gdbg-check:type = struct GenericStruct<type_names::mod1::Struct2, type_names::mod1::mod2::Struct3>
+// gdbr-check:type = type_names::GenericStruct<type_names::mod1::Struct2, type_names::mod1::mod2::Struct3>
 
 // gdb-command:whatis generic_struct2
-// gdb-check:type = struct GenericStruct<type_names::Struct1, extern "fastcall" fn(isize) -> usize>
+// gdbg-check:type = struct GenericStruct<type_names::Struct1, extern "fastcall" fn(isize) -> usize>
+// gdbr-check:type = type_names::GenericStruct<type_names::Struct1, extern "fastcall" fn(isize) -> usize>
 
 // gdb-command:whatis mod_struct
-// gdb-check:type = struct Struct2
+// gdbg-check:type = struct Struct2
+// gdbr-check:type = type_names::mod1::Struct2
 
 
 // ENUMS
 // gdb-command:whatis simple_enum_1
-// gdb-check:type = union Enum1
+// gdbg-check:type = union Enum1
+// gdbr-check:type = type_names::Enum1
 
 // gdb-command:whatis simple_enum_2
-// gdb-check:type = union Enum1
+// gdbg-check:type = union Enum1
+// gdbr-check:type = type_names::Enum1
 
 // gdb-command:whatis simple_enum_3
-// gdb-check:type = union Enum2
+// gdbg-check:type = union Enum2
+// gdbr-check:type = type_names::mod1::Enum2
 
 // gdb-command:whatis generic_enum_1
-// gdb-check:type = union Enum3<type_names::mod1::Struct2>
+// gdbg-check:type = union Enum3<type_names::mod1::Struct2>
+// gdbr-check:type = type_names::mod1::mod2::Enum3<type_names::mod1::Struct2>
 
 // gdb-command:whatis generic_enum_2
-// gdb-check:type = union Enum3<type_names::Struct1>
+// gdbg-check:type = union Enum3<type_names::Struct1>
+// gdbr-check:type = type_names::mod1::mod2::Enum3<type_names::Struct1>
 
 
 // TUPLES
 // gdb-command:whatis tuple1
-// gdb-check:type = struct (u32, type_names::Struct1, type_names::mod1::mod2::Enum3<type_names::mod1::Struct2>)
+// gdbg-check:type = struct (u32, type_names::Struct1, type_names::mod1::mod2::Enum3<type_names::mod1::Struct2>)
+// gdbr-check:type = (u32, type_names::Struct1, type_names::mod1::mod2::Enum3<type_names::mod1::Struct2>)
 
 // gdb-command:whatis tuple2
-// gdb-check:type = struct ((type_names::Struct1, type_names::mod1::mod2::Struct3), type_names::mod1::Enum2, char)
+// gdbg-check:type = struct ((type_names::Struct1, type_names::mod1::mod2::Struct3), type_names::mod1::Enum2, char)
+// gdbr-check:type = ((type_names::Struct1, type_names::mod1::mod2::Struct3), type_names::mod1::Enum2, char)
 
 
 // BOX
 // gdb-command:whatis box1
-// gdb-check:type = struct (Box<f32>, i32)
+// gdbg-check:type = struct (Box<f32>, i32)
+// gdbr-check:type = (Box<f32>, i32)
 
 // gdb-command:whatis box2
-// gdb-check:type = struct (Box<type_names::mod1::mod2::Enum3<f32>>, i32)
+// gdbg-check:type = struct (Box<type_names::mod1::mod2::Enum3<f32>>, i32)
+// gdbr-check:type = (Box<type_names::mod1::mod2::Enum3<f32>>, i32)
 
 
 // REFERENCES
 // gdb-command:whatis ref1
-// gdb-check:type = struct (&type_names::Struct1, i32)
+// gdbg-check:type = struct (&type_names::Struct1, i32)
+// gdbr-check:type = (&type_names::Struct1, i32)
 
 // gdb-command:whatis ref2
-// gdb-check:type = struct (&type_names::GenericStruct<char, type_names::Struct1>, i32)
+// gdbg-check:type = struct (&type_names::GenericStruct<char, type_names::Struct1>, i32)
+// gdbr-check:type = (&type_names::GenericStruct<char, type_names::Struct1>, i32)
 
 // gdb-command:whatis mut_ref1
-// gdb-check:type = struct (&mut type_names::Struct1, i32)
+// gdbg-check:type = struct (&mut type_names::Struct1, i32)
+// gdbr-check:type = (&mut type_names::Struct1, i32)
 
 // gdb-command:whatis mut_ref2
-// gdb-check:type = struct (&mut type_names::GenericStruct<type_names::mod1::Enum2, f64>, i32)
+// gdbg-check:type = struct (&mut type_names::GenericStruct<type_names::mod1::Enum2, f64>, i32)
+// gdbr-check:type = (&mut type_names::GenericStruct<type_names::mod1::Enum2, f64>, i32)
 
 
 // RAW POINTERS
 // gdb-command:whatis mut_ptr1
-// gdb-check:type = struct (*mut type_names::Struct1, isize)
+// gdbg-check:type = struct (*mut type_names::Struct1, isize)
+// gdbr-check:type = (*mut type_names::Struct1, isize)
 
 // gdb-command:whatis mut_ptr2
-// gdb-check:type = struct (*mut isize, isize)
+// gdbg-check:type = struct (*mut isize, isize)
+// gdbr-check:type = (*mut isize, isize)
 
 // gdb-command:whatis mut_ptr3
-// gdb-check:type = struct (*mut type_names::mod1::mod2::Enum3<type_names::Struct1>, isize)
+// gdbg-check:type = struct (*mut type_names::mod1::mod2::Enum3<type_names::Struct1>, isize)
+// gdbr-check:type = (*mut type_names::mod1::mod2::Enum3<type_names::Struct1>, isize)
 
 // gdb-command:whatis const_ptr1
-// gdb-check:type = struct (*const type_names::Struct1, isize)
+// gdbg-check:type = struct (*const type_names::Struct1, isize)
+// gdbr-check:type = (*const type_names::Struct1, isize)
 
 // gdb-command:whatis const_ptr2
-// gdb-check:type = struct (*const isize, isize)
+// gdbg-check:type = struct (*const isize, isize)
+// gdbr-check:type = (*const isize, isize)
 
 // gdb-command:whatis const_ptr3
-// gdb-check:type = struct (*const type_names::mod1::mod2::Enum3<type_names::Struct1>, isize)
+// gdbg-check:type = struct (*const type_names::mod1::mod2::Enum3<type_names::Struct1>, isize)
+// gdbr-check:type = (*const type_names::mod1::mod2::Enum3<type_names::Struct1>, isize)
 
 
 // VECTORS
 // gdb-command:whatis fixed_size_vec1
-// gdb-check:type = struct ([type_names::Struct1; 3], i16)
+// gdbg-check:type = struct ([type_names::Struct1; 3], i16)
+// gdbr-check:type = ([type_names::Struct1; 3], i16)
 
 // gdb-command:whatis fixed_size_vec2
-// gdb-check:type = struct ([usize; 3], i16)
+// gdbg-check:type = struct ([usize; 3], i16)
+// gdbr-check:type = ([usize; 3], i16)
 
 // gdb-command:whatis slice1
-// gdb-check:type = struct &[usize]
+// gdbg-check:type = struct &[usize]
+// gdbr-check:type = &[usize]
 
 // gdb-command:whatis slice2
-// gdb-check:type = struct &[type_names::mod1::Enum2]
+// gdbg-check:type = struct &[type_names::mod1::Enum2]
+// gdbr-check:type = &[type_names::mod1::Enum2]
 
 
 // TRAITS
 // gdb-command:whatis box_trait
-// gdb-check:type = struct Box<Trait1>
+// gdbg-check:type = struct Box<Trait1>
+// gdbr-check:type = type_names::Box<Trait1>
 
 // gdb-command:whatis ref_trait
-// gdb-check:type = struct &Trait1
+// gdbg-check:type = struct &Trait1
+// gdbr-check:type = type_names::&Trait1
 
 // gdb-command:whatis mut_ref_trait
-// gdb-check:type = struct &mut Trait1
+// gdbg-check:type = struct &mut Trait1
+// gdbr-check:type = type_names::&mut Trait1
 
 // gdb-command:whatis generic_box_trait
-// gdb-check:type = struct Box<Trait2<i32, type_names::mod1::Struct2>>
+// gdbg-check:type = struct Box<Trait2<i32, type_names::mod1::Struct2>>
+// gdbr-check:type = type_names::Box<Trait2<i32, type_names::mod1::Struct2>>
 
 // gdb-command:whatis generic_ref_trait
-// gdb-check:type = struct &Trait2<type_names::Struct1, type_names::Struct1>
+// gdbg-check:type = struct &Trait2<type_names::Struct1, type_names::Struct1>
+// gdbr-check:type = type_names::&Trait2<type_names::Struct1, type_names::Struct1>
 
 // gdb-command:whatis generic_mut_ref_trait
-// gdb-check:type = struct &mut Trait2<type_names::mod1::mod2::Struct3, type_names::GenericStruct<usize, isize>>
+// gdbg-check:type = struct &mut Trait2<type_names::mod1::mod2::Struct3, type_names::GenericStruct<usize, isize>>
+// gdbr-check:type = type_names::&mut Trait2<type_names::mod1::mod2::Struct3, type_names::GenericStruct<usize, isize>>
 
 
 // BARE FUNCTIONS
 // gdb-command:whatis rust_fn
-// gdb-check:type = struct (fn(core::option::Option<isize>, core::option::Option<&type_names::mod1::Struct2>), usize)
+// gdbg-check:type = struct (fn(core::option::Option<isize>, core::option::Option<&type_names::mod1::Struct2>), usize)
+// gdbr-check:type = (fn(core::option::Option<isize>, core::option::Option<&type_names::mod1::Struct2>), usize)
 
 // gdb-command:whatis extern_c_fn
-// gdb-check:type = struct (extern "C" fn(isize), usize)
+// gdbg-check:type = struct (extern "C" fn(isize), usize)
+// gdbr-check:type = (extern "C" fn(isize), usize)
 
 // gdb-command:whatis unsafe_fn
-// gdb-check:type = struct (unsafe fn(core::result::Result<char, f64>), usize)
+// gdbg-check:type = struct (unsafe fn(core::result::Result<char, f64>), usize)
+// gdbr-check:type = (unsafe fn(core::result::Result<char, f64>), usize)
 
 // gdb-command:whatis extern_stdcall_fn
-// gdb-check:type = struct (extern "stdcall" fn(), usize)
+// gdbg-check:type = struct (extern "stdcall" fn(), usize)
+// gdbr-check:type = (extern "stdcall" fn(), usize)
 
 // gdb-command:whatis rust_fn_with_return_value
-// gdb-check:type = struct (fn(f64) -> usize, usize)
+// gdbg-check:type = struct (fn(f64) -> usize, usize)
+// gdbr-check:type = (fn(f64) -> usize, usize)
 
 // gdb-command:whatis extern_c_fn_with_return_value
-// gdb-check:type = struct (extern "C" fn() -> type_names::Struct1, usize)
+// gdbg-check:type = struct (extern "C" fn() -> type_names::Struct1, usize)
+// gdbr-check:type = (extern "C" fn() -> type_names::Struct1, usize)
 
 // gdb-command:whatis unsafe_fn_with_return_value
-// gdb-check:type = struct (unsafe fn(type_names::GenericStruct<u16, u8>) -> type_names::mod1::Struct2, usize)
+// gdbg-check:type = struct (unsafe fn(type_names::GenericStruct<u16, u8>) -> type_names::mod1::Struct2, usize)
+// gdbr-check:type = (unsafe fn(type_names::GenericStruct<u16, u8>) -> type_names::mod1::Struct2, usize)
 
 // gdb-command:whatis extern_stdcall_fn_with_return_value
-// gdb-check:type = struct (extern "stdcall" fn(Box<isize>) -> usize, usize)
+// gdbg-check:type = struct (extern "stdcall" fn(Box<isize>) -> usize, usize)
+// gdbr-check:type = (extern "stdcall" fn(Box<isize>) -> usize, usize)
 
 // gdb-command:whatis generic_function_int
-// gdb-check:type = struct (fn(isize) -> isize, usize)
+// gdbg-check:type = struct (fn(isize) -> isize, usize)
+// gdbr-check:type = (fn(isize) -> isize, usize)
 
 // gdb-command:whatis generic_function_struct3
-// gdb-check:type = struct (fn(type_names::mod1::mod2::Struct3) -> type_names::mod1::mod2::Struct3, usize)
+// gdbg-check:type = struct (fn(type_names::mod1::mod2::Struct3) -> type_names::mod1::mod2::Struct3, usize)
+// gdbr-check:type = (fn(type_names::mod1::mod2::Struct3) -> type_names::mod1::mod2::Struct3, usize)
 
 // gdb-command:whatis variadic_function
-// gdb-check:type = struct (unsafe extern "C" fn(*const u8, ...) -> isize, usize)
+// gdbg-check:type = struct (unsafe extern "C" fn(*const u8, ...) -> isize, usize)
+// gdbr-check:type = (unsafe extern "C" fn(*const u8, ...) -> isize, usize)
 
 
 // CLOSURES
 // gdb-command:whatis closure1
-// gdb-check:type = struct (closure, usize)
+// gdbg-check:type = struct (closure, usize)
+// gdbr-check:type = (closure, usize)
 
 // gdb-command:whatis closure2
-// gdb-check:type = struct (closure, usize)
+// gdbg-check:type = struct (closure, usize)
+// gdbr-check:type = (closure, usize)
 
 #![feature(box_syntax)]
 #![allow(unused_variables)]
