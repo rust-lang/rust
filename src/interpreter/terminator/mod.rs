@@ -263,14 +263,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.read_int(adt_ptr, discr_size as usize)? as u64
             }
 
-            RawNullablePointer { nndiscr, .. } => {
-                self.read_nonnull_discriminant_value(adt_ptr, nndiscr)?
+            RawNullablePointer { nndiscr, value } => {
+                let discr_size = value.size(&self.tcx.data_layout).bytes() as usize;
+                self.read_nonnull_discriminant_value(adt_ptr, nndiscr, discr_size)?
             }
 
             StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-                let offset = self.nonnull_offset(adt_ty, nndiscr, discrfield)?;
+                let (offset, ty) = self.nonnull_offset_and_ty(adt_ty, nndiscr, discrfield)?;
                 let nonnull = adt_ptr.offset(offset.bytes() as isize);
-                self.read_nonnull_discriminant_value(nonnull, nndiscr)?
+                // only the pointer part of a fat pointer is used for this space optimization
+                let discr_size = self.type_size(ty).unwrap_or(self.memory.pointer_size());
+                self.read_nonnull_discriminant_value(nonnull, nndiscr, discr_size)?
             }
 
             // The discriminant_value intrinsic returns 0 for non-sum types.
@@ -281,8 +284,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(discr_val)
     }
 
-    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u64) -> EvalResult<'tcx, u64> {
-        let not_null = match self.memory.read_usize(ptr) {
+    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u64, discr_size: usize) -> EvalResult<'tcx, u64> {
+        let not_null = match self.memory.read_uint(ptr, discr_size) {
             Ok(0) => false,
             Ok(_) | Err(EvalError::ReadPointerAsBytes) => true,
             Err(e) => return Err(e),

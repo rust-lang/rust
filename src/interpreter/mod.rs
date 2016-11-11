@@ -203,10 +203,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         PrimVal::from_uint_with_size(n, self.memory.pointer_size())
     }
 
-    fn isize_primval(&self, n: i64) -> PrimVal {
-        PrimVal::from_int_with_size(n, self.memory.pointer_size())
-    }
-
     fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         // FIXME: cache these allocs
         let ptr = self.memory.allocate(s.len(), 1)?;
@@ -523,7 +519,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 self.write_value(value, dest, value_ty)?;
                             } else {
                                 assert_eq!(operands.len(), 0);
-                                let zero = self.isize_primval(0);
+                                let value_size = self.type_size(dest_ty).expect("pointer types are sized");
+                                let zero = PrimVal::from_int_with_size(0, value_size);
                                 self.write_primval(dest, zero)?;
                             }
                         } else {
@@ -541,13 +538,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                     let operand_ty = self.operand_ty(operand);
                                     assert_eq!(self.type_size(operand_ty), Some(0));
                                 }
-                                let offset = self.nonnull_offset(dest_ty, nndiscr, discrfield)?;
+                                let (offset, ty) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
 
                                 // FIXME(solson)
                                 let dest = self.force_allocation(dest)?.to_ptr();
 
                                 let dest = dest.offset(offset.bytes() as isize);
-                                try!(self.memory.write_isize(dest, 0));
+                                let dest_size = self.type_size(ty).unwrap_or(self.memory.pointer_size());
+                                try!(self.memory.write_int(dest, 0, dest_size));
                             }
                         } else {
                             bug!("tried to assign {:?} to Layout::RawNullablePointer", kind);
@@ -694,7 +692,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn nonnull_offset(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> EvalResult<'tcx, Size> {
+    fn nonnull_offset_and_ty(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
         // Skip the constant 0 at the start meant for LLVM GEP.
         let mut path = discrfield.iter().skip(1).map(|&i| i as usize);
 
@@ -709,10 +707,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             _ => bug!("non-enum for StructWrappedNullablePointer: {}", ty),
         };
 
-        self.field_path_offset(inner_ty, path)
+        self.field_path_offset_and_ty(inner_ty, path)
     }
 
-    fn field_path_offset<I: Iterator<Item = usize>>(&self, mut ty: Ty<'tcx>, path: I) -> EvalResult<'tcx, Size> {
+    fn field_path_offset_and_ty<I: Iterator<Item = usize>>(&self, mut ty: Ty<'tcx>, path: I) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
         let mut offset = Size::from_bytes(0);
 
         // Skip the initial 0 intended for LLVM GEP.
@@ -722,7 +720,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             offset = offset.checked_add(field_offset, &self.tcx.data_layout).unwrap();
         }
 
-        Ok(offset)
+        Ok((offset, ty))
     }
 
     fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
