@@ -806,7 +806,7 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     TerminatorKind::Call {
         func: Operand::Constant(Constant {
             span: data.span,
-            ty: tcx.lookup_item_type(free_func).ty.subst(tcx, substs),
+            ty: tcx.item_type(free_func).subst(tcx, substs),
             literal: Literal::Item {
                 def_id: free_func,
                 substs: substs
