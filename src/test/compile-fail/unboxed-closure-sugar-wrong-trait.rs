@@ -13,8 +13,8 @@
 trait Trait {}
 
 fn f<F:Trait(isize) -> isize>(x: F) {}
-//~^ ERROR E0244
-//~| NOTE expected no type arguments, found 1
+//~^ ERROR wrong number of type arguments: expected 0, found 1 [E0244]
+//~| NOTE expected no type arguments
 //~| ERROR E0220
 //~| NOTE associated type `Output` not found
 
