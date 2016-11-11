@@ -22,7 +22,7 @@ use hir::def_id::DefId;
 use ty::{self, TyCtxt};
 use middle::privacy;
 use session::config;
-use util::nodemap::{NodeSet, FnvHashSet};
+use util::nodemap::{NodeSet, FxHashSet};
 
 use syntax::abi::Abi;
 use syntax::ast;
@@ -116,7 +116,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
             }
             hir::ExprMethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
-                let def_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
+                let def_id = self.tcx.tables().method_map[&method_call].def_id;
 
                 // Mark the trait item (and, possibly, its default impl) as reachable
                 // Or mark inherent impl item as reachable
@@ -204,7 +204,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     fn propagate(&mut self) {
-        let mut scanned = FnvHashSet();
+        let mut scanned = FxHashSet();
         loop {
             let search_item = match self.worklist.pop() {
                 Some(item) => item,
@@ -248,9 +248,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
-                    hir::ItemFn(.., ref search_block) => {
+                    hir::ItemFn(.., ref body) => {
                         if item_might_be_inlined(&item) {
-                            intravisit::walk_block(self, &search_block)
+                            self.visit_expr(body);
                         }
                     }
 
@@ -278,11 +278,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::MethodTraitItem(_, None) => {
                         // Keep going, nothing to get exported
                     }
-                    hir::ConstTraitItem(_, Some(ref expr)) => {
-                        self.visit_expr(&expr);
-                    }
+                    hir::ConstTraitItem(_, Some(ref body)) |
                     hir::MethodTraitItem(_, Some(ref body)) => {
-                        intravisit::walk_block(self, body);
+                        self.visit_expr(body);
                     }
                     hir::TypeTraitItem(..) => {}
                 }
@@ -295,7 +293,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ImplItemKind::Method(ref sig, ref body) => {
                         let did = self.tcx.map.get_parent_did(search_item);
                         if method_might_be_inlined(self.tcx, sig, impl_item, did) {
-                            intravisit::walk_block(self, body)
+                            self.visit_expr(body)
                         }
                     }
                     hir::ImplItemKind::Type(_) => {}

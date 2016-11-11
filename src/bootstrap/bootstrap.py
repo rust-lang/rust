@@ -259,9 +259,11 @@ class RustBuild(object):
         env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib")
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
                       os.pathsep + env["PATH"]
-        self.run([self.cargo(), "build", "--manifest-path",
-                  os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")],
-                 env)
+        args = [self.cargo(), "build", "--manifest-path",
+                os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
+        if self.use_vendored_sources:
+            args.append("--frozen")
+        self.run(args, env)
 
     def run(self, args, env):
         proc = subprocess.Popen(args, env=env)
@@ -344,6 +346,22 @@ class RustBuild(object):
             ostype += 'eabihf'
         elif cputype == 'aarch64':
             cputype = 'aarch64'
+        elif cputype == 'mips':
+            if sys.byteorder == 'big':
+                cputype = 'mips'
+            elif sys.byteorder == 'little':
+                cputype = 'mipsel'
+            else:
+                raise ValueError('unknown byteorder: ' + sys.byteorder)
+        elif cputype == 'mips64':
+            if sys.byteorder == 'big':
+                cputype = 'mips64'
+            elif sys.byteorder == 'little':
+                cputype = 'mips64el'
+            else:
+                raise ValueError('unknown byteorder: ' + sys.byteorder)
+            # only the n64 ABI is supported, indicate it
+            ostype += 'abi64'
         elif cputype in {'powerpc', 'ppc', 'ppc64'}:
             cputype = 'powerpc'
         elif cputype in {'amd64', 'x86_64', 'x86-64', 'x64'}:
@@ -384,6 +402,25 @@ def main():
     except:
         pass
 
+    rb.use_vendored_sources = '\nvendor = true' in rb.config_toml or \
+                              'CFG_ENABLE_VENDOR' in rb.config_mk
+
+    if rb.use_vendored_sources:
+        if not os.path.exists('.cargo'):
+            os.makedirs('.cargo')
+        f = open('.cargo/config','w')
+        f.write("""
+            [source.crates-io]
+            replace-with = 'vendored-sources'
+            registry = 'https://example.com'
+
+            [source.vendored-sources]
+            directory = '{}/src/vendor'
+        """.format(rb.rust_root))
+        f.close()
+    else:
+        if os.path.exists('.cargo'):
+            shutil.rmtree('.cargo')
     data = stage0_data(rb.rust_root)
     rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
     rb._cargo_channel, rb._cargo_date = data['cargo'].split('-', 1)
@@ -399,12 +436,10 @@ def main():
 
     # Run the bootstrap
     args = [os.path.join(rb.build_dir, "bootstrap/debug/bootstrap")]
-    args.append('--src')
-    args.append(rb.rust_root)
-    args.append('--build')
-    args.append(rb.build)
     args.extend(sys.argv[1:])
     env = os.environ.copy()
+    env["BUILD"] = rb.build
+    env["SRC"] = rb.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     rb.run(args, env)
 

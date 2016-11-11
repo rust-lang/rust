@@ -21,5 +21,5 @@ use proc_macro::TokenStream;
 
 #[proc_macro_derive(A)]
 pub fn derive_a(input: TokenStream) -> TokenStream {
-    input
+    "".parse().unwrap()
 }

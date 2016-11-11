@@ -211,7 +211,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_fn(&mut self, fk: intravisit::FnKind<'ast>, fd: &'ast FnDecl,
-                b: &'ast Block, s: Span, id: NodeId) {
+                b: &'ast Expr, s: Span, id: NodeId) {
         assert_eq!(self.parent_node, id);
         intravisit::walk_fn(self, fk, fd, b, s, id);
     }
@@ -225,5 +225,9 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
         self.insert(lifetime.id, NodeLifetime(lifetime));
+    }
+
+    fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
+        self.insert_entry(macro_def.id, NotPresent);
     }
 }

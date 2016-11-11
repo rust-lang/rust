@@ -22,7 +22,7 @@ use ty::{self, TyCtxt};
 use hir::def::Def;
 use hir::def_id::{DefId};
 use lint;
-use util::nodemap::FnvHashSet;
+use util::nodemap::FxHashSet;
 
 use syntax::{ast, codemap};
 use syntax::attr;
@@ -48,7 +48,7 @@ fn should_explore<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     worklist: Vec<ast::NodeId>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    live_symbols: Box<FnvHashSet<ast::NodeId>>,
+    live_symbols: Box<FxHashSet<ast::NodeId>>,
     struct_has_extern_repr: bool,
     ignore_non_const_paths: bool,
     inherited_pub_visibility: bool,
@@ -61,7 +61,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         MarkSymbolVisitor {
             worklist: worklist,
             tcx: tcx,
-            live_symbols: box FnvHashSet(),
+            live_symbols: box FxHashSet(),
             struct_has_extern_repr: false,
             ignore_non_const_paths: false,
             inherited_pub_visibility: false,
@@ -92,7 +92,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         match def {
             Def::AssociatedTy(..) | Def::Method(_) | Def::AssociatedConst(_)
             if self.tcx.trait_of_item(def.def_id()).is_some() => {
-                if let Some(substs) = self.tcx.tables.borrow().item_substs.get(&id) {
+                if let Some(substs) = self.tcx.tables().item_substs.get(&id) {
                     if let ty::TyAdt(tyid, _) = substs.substs.type_at(0).sty {
                         self.check_def_id(tyid.did);
                     }
@@ -123,12 +123,12 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn lookup_and_handle_method(&mut self, id: ast::NodeId) {
         let method_call = ty::MethodCall::expr(id);
-        let method = self.tcx.tables.borrow().method_map[&method_call];
+        let method = self.tcx.tables().method_map[&method_call];
         self.check_def_id(method.def_id);
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
-        match self.tcx.expr_ty_adjusted(lhs).sty {
+        match self.tcx.tables().expr_ty_adjusted(lhs).sty {
             ty::TyAdt(def, _) => {
                 self.insert_def_id(def.struct_variant().field_named(name).did);
             }
@@ -137,7 +137,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_tup_field_access(&mut self, lhs: &hir::Expr, idx: usize) {
-        match self.tcx.expr_ty_adjusted(lhs).sty {
+        match self.tcx.tables().expr_ty_adjusted(lhs).sty {
             ty::TyAdt(def, _) => {
                 self.insert_def_id(def.struct_variant().fields[idx].did);
             }
@@ -148,7 +148,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_field_pattern_match(&mut self, lhs: &hir::Pat,
                                   pats: &[codemap::Spanned<hir::FieldPat>]) {
-        let variant = match self.tcx.node_id_to_type(lhs.id).sty {
+        let variant = match self.tcx.tables().node_id_to_type(lhs.id).sty {
             ty::TyAdt(adt, _) => {
                 adt.variant_of_def(self.tcx.expect_def(lhs.id))
             }
@@ -163,7 +163,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn mark_live_symbols(&mut self) {
-        let mut scanned = FnvHashSet();
+        let mut scanned = FxHashSet();
         while !self.worklist.is_empty() {
             let id = self.worklist.pop().unwrap();
             if scanned.contains(&id) {
@@ -396,7 +396,7 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        access_levels: &privacy::AccessLevels,
                        krate: &hir::Crate)
-                       -> Box<FnvHashSet<ast::NodeId>> {
+                       -> Box<FxHashSet<ast::NodeId>> {
     let worklist = create_and_seed_worklist(tcx, access_levels, krate);
     let mut symbol_visitor = MarkSymbolVisitor::new(tcx, worklist);
     symbol_visitor.mark_live_symbols();
@@ -414,7 +414,7 @@ fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
 
 struct DeadVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    live_symbols: Box<FnvHashSet<ast::NodeId>>,
+    live_symbols: Box<FxHashSet<ast::NodeId>>,
 }
 
 impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
@@ -433,7 +433,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
-        let field_type = self.tcx.node_id_to_type(field.id);
+        let field_type = self.tcx.tables().node_id_to_type(field.id);
         let is_marker_field = match field_type.ty_to_def_id() {
             Some(def_id) => self.tcx.lang_items.items().iter().any(|item| *item == Some(def_id)),
             _ => false
@@ -471,11 +471,10 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // This is done to handle the case where, for example, the static
         // method of a private type is used, but the type itself is never
         // called directly.
-        let impl_items = self.tcx.impl_or_trait_item_def_ids.borrow();
         if let Some(impl_list) =
                 self.tcx.inherent_impls.borrow().get(&self.tcx.map.local_def_id(id)) {
-            for impl_did in impl_list.iter() {
-                for &item_did in &impl_items[impl_did][..] {
+            for &impl_did in impl_list.iter() {
+                for &item_did in &self.tcx.associated_item_def_ids(impl_did)[..] {
                     if let Some(item_node_id) = self.tcx.map.as_local_node_id(item_did) {
                         if self.live_symbols.contains(&item_node_id) {
                             return true;
@@ -567,7 +566,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
                     self.warn_dead_code(impl_item.id, impl_item.span,
                                         impl_item.name, "method");
                 }
-                intravisit::walk_block(self, body)
+                intravisit::walk_expr(self, body)
             }
             hir::ImplItemKind::Type(..) => {}
         }
@@ -576,11 +575,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     // Overwrite so that we don't warn the trait item itself.
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
         match trait_item.node {
-            hir::ConstTraitItem(_, Some(ref expr)) => {
-                intravisit::walk_expr(self, expr)
-            }
+            hir::ConstTraitItem(_, Some(ref body))|
             hir::MethodTraitItem(_, Some(ref body)) => {
-                intravisit::walk_block(self, body)
+                intravisit::walk_expr(self, body)
             }
             hir::ConstTraitItem(_, None) |
             hir::MethodTraitItem(_, None) |

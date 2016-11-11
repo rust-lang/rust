@@ -32,6 +32,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus};
 use std::str;
 
+use extract_gdb_version;
+
 pub fn run(config: Config, testpaths: &TestPaths) {
     match &*config.target {
 
@@ -41,7 +43,12 @@ pub fn run(config: Config, testpaths: &TestPaths) {
             }
         }
 
-        _=> { }
+        _ => {
+            // android has it's own gdb handling
+            if config.mode == DebugInfoGdb && config.gdb.is_none() {
+                panic!("gdb not available but debuginfo gdb debuginfo test requested");
+            }
+        }
     }
 
     if config.verbose {
@@ -430,11 +437,23 @@ actual:\n\
     }
 
     fn run_debuginfo_gdb_test_no_opt(&self) {
+        let prefixes = if self.config.gdb_native_rust {
+            // GDB with Rust
+            static PREFIXES: &'static [&'static str] = &["gdb", "gdbr"];
+            println!("NOTE: compiletest thinks it is using GDB with native rust support");
+            PREFIXES
+        } else {
+            // Generic GDB
+            static PREFIXES: &'static [&'static str] = &["gdb", "gdbg"];
+            println!("NOTE: compiletest thinks it is using GDB without native rust support");
+            PREFIXES
+        };
+
         let DebuggerCommands {
             commands,
             check_lines,
             breakpoint_lines
-        } = self.parse_debugger_commands("gdb");
+        } = self.parse_debugger_commands(prefixes);
         let mut cmds = commands.join("\n");
 
         // compile test file (it should have 'compile-flags:-g' in the header)
@@ -586,19 +605,18 @@ actual:\n\
                 script_str.push_str("show version\n");
 
                 match self.config.gdb_version {
-                    Some(ref version) => {
+                    Some(version) => {
                         println!("NOTE: compiletest thinks it is using GDB version {}",
                                  version);
 
-                        if header::gdb_version_to_int(version) >
-                            header::gdb_version_to_int("7.4") {
-                                // Add the directory containing the pretty printers to
-                                // GDB's script auto loading safe path
-                                script_str.push_str(
-                                    &format!("add-auto-load-safe-path {}\n",
-                                             rust_pp_module_abs_path.replace(r"\", r"\\"))
-                                );
-                            }
+                        if version > extract_gdb_version("7.4").unwrap() {
+                            // Add the directory containing the pretty printers to
+                            // GDB's script auto loading safe path
+                            script_str.push_str(
+                                &format!("add-auto-load-safe-path {}\n",
+                                         rust_pp_module_abs_path.replace(r"\", r"\\"))
+                            );
+                        }
                     }
                     _ => {
                         println!("NOTE: compiletest does not know which version of \
@@ -633,11 +651,6 @@ actual:\n\
                 debug!("script_str = {}", script_str);
                 self.dump_output_file(&script_str, "debugger.script");
 
-                // run debugger script with gdb
-                fn debugger() -> &'static str {
-                    if cfg!(windows) {"gdb.exe"} else {"gdb"}
-                }
-
                 let debugger_script = self.make_out_name("debugger.script");
 
                 // FIXME (#9639): This needs to handle non-utf8 paths
@@ -648,7 +661,7 @@ actual:\n\
                          format!("-command={}", debugger_script.to_str().unwrap())];
 
                 let proc_args = ProcArgs {
-                    prog: debugger().to_owned(),
+                    prog: self.config.gdb.as_ref().unwrap().to_owned(),
                     args: debugger_opts,
                 };
 
@@ -731,7 +744,7 @@ actual:\n\
             check_lines,
             breakpoint_lines,
             ..
-        } = self.parse_debugger_commands("lldb");
+        } = self.parse_debugger_commands(&["lldb"]);
 
         // Write debugger script:
         // We don't want to hang when calling `quit` while the process is still running
@@ -826,9 +839,11 @@ actual:\n\
         }
     }
 
-    fn parse_debugger_commands(&self, debugger_prefix: &str) -> DebuggerCommands {
-        let command_directive = format!("{}-command", debugger_prefix);
-        let check_directive = format!("{}-check", debugger_prefix);
+    fn parse_debugger_commands(&self, debugger_prefixes: &[&str]) -> DebuggerCommands {
+        let directives = debugger_prefixes.iter().map(|prefix| (
+            format!("{}-command", prefix),
+            format!("{}-check", prefix),
+        )).collect::<Vec<_>>();
 
         let mut breakpoint_lines = vec![];
         let mut commands = vec![];
@@ -842,17 +857,19 @@ actual:\n\
                         breakpoint_lines.push(counter);
                     }
 
-                    header::parse_name_value_directive(
-                        &line,
-                        &command_directive).map(|cmd| {
-                            commands.push(cmd)
-                        });
+                    for &(ref command_directive, ref check_directive) in &directives {
+                        header::parse_name_value_directive(
+                            &line,
+                            &command_directive).map(|cmd| {
+                                commands.push(cmd)
+                            });
 
-                    header::parse_name_value_directive(
-                        &line,
-                        &check_directive).map(|cmd| {
-                            check_lines.push(cmd)
-                        });
+                        header::parse_name_value_directive(
+                            &line,
+                            &check_directive).map(|cmd| {
+                                check_lines.push(cmd)
+                            });
+                    }
                 }
                 Err(e) => {
                     self.fatal(&format!("Error while parsing debugger commands: {}", e))

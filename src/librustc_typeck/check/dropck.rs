@@ -13,12 +13,12 @@ use check::regionck::RegionCtxt;
 
 use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
-use rustc::infer;
+use rustc::infer::{self, InferOk};
 use middle::region;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::traits::{self, Reveal};
-use util::nodemap::FnvHashSet;
+use util::nodemap::FxHashSet;
 
 use syntax::ast;
 use syntax_pos::{self, Span};
@@ -93,16 +93,22 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
             infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did);
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
-        if let Err(_) = infcx.eq_types(true, infer::TypeOrigin::Misc(drop_impl_span),
-                                       named_type, fresh_impl_self_ty) {
-            let item_span = tcx.map.span(self_type_node_id);
-            struct_span_err!(tcx.sess, drop_impl_span, E0366,
-                             "Implementations of Drop cannot be specialized")
-                .span_note(item_span,
-                           "Use same sequence of generic type and region \
-                            parameters that is on the struct/enum definition")
-                .emit();
-            return Err(());
+        match infcx.eq_types(true, infer::TypeOrigin::Misc(drop_impl_span),
+                             named_type, fresh_impl_self_ty) {
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME(#32730) propagate obligations
+                assert!(obligations.is_empty());
+            }
+            Err(_) => {
+                let item_span = tcx.map.span(self_type_node_id);
+                struct_span_err!(tcx.sess, drop_impl_span, E0366,
+                                 "Implementations of Drop cannot be specialized")
+                    .span_note(item_span,
+                               "Use same sequence of generic type and region \
+                                parameters that is on the struct/enum definition")
+                    .emit();
+                return Err(());
+            }
         }
 
         if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
@@ -283,7 +289,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
             rcx: rcx,
             span: span,
             parent_scope: parent_scope,
-            breadcrumbs: FnvHashSet()
+            breadcrumbs: FxHashSet()
         },
         TypeContext::Root,
         typ,
@@ -341,7 +347,7 @@ enum TypeContext {
 struct DropckContext<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
     rcx: &'a mut RegionCtxt<'b, 'gcx, 'tcx>,
     /// types that have already been traversed
-    breadcrumbs: FnvHashSet<Ty<'tcx>>,
+    breadcrumbs: FxHashSet<Ty<'tcx>>,
     /// span for error reporting
     span: Span,
     /// the scope reachable dtorck types must outlive
@@ -547,9 +553,9 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             // attributes attached to the impl's generics.
             let dtor_method = adt_def.destructor()
                 .expect("dtorck type without destructor impossible");
-            let method = tcx.impl_or_trait_item(dtor_method);
-            let impl_id: DefId = method.container().id();
-            let revised_ty = revise_self_ty(tcx, adt_def, impl_id, substs);
+            let method = tcx.associated_item(dtor_method);
+            let impl_def_id = method.container.id();
+            let revised_ty = revise_self_ty(tcx, adt_def, impl_def_id, substs);
             return DropckKind::RevisedSelf(revised_ty);
         }
         ty::TyTrait(..) | ty::TyProjection(..) | ty::TyAnon(..) => {

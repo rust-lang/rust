@@ -76,6 +76,7 @@ digraph block {
     N74[label="block {\l    if y == 0 { break ; \"unreachable\"; }\l    y -= 1;\l    loop  { if z == 0 { break ; \"unreachable\"; } z -= 1; }\l    if x > 10 { return; \"unreachable\"; }\l}\l"];
     N75[label="block {\l    if x == 0 { break ; \"unreachable\"; }\l    x -= 1;\l    loop  {\l        if y == 0 { break ; \"unreachable\"; }\l        y -= 1;\l        loop  { if z == 0 { break ; \"unreachable\"; } z -= 1; }\l        if x > 10 { return; \"unreachable\"; }\l    }\l}\l"];
     N76[label="block {\l    let mut x = 24;\l    let mut y = 24;\l    let mut z = 24;\l    loop  {\l        if x == 0 { break ; \"unreachable\"; }\l        x -= 1;\l        loop  {\l            if y == 0 { break ; \"unreachable\"; }\l            y -= 1;\l            loop  { if z == 0 { break ; \"unreachable\"; } z -= 1; }\l            if x > 10 { return; \"unreachable\"; }\l        }\l    }\l}\l"];
+    N77[label="expr {\l    let mut x = 24;\l    let mut y = 24;\l    let mut z = 24;\l    loop  {\l        if x == 0 { break ; \"unreachable\"; }\l        x -= 1;\l        loop  {\l            if y == 0 { break ; \"unreachable\"; }\l            y -= 1;\l            loop  { if z == 0 { break ; \"unreachable\"; } z -= 1; }\l            if x > 10 { return; \"unreachable\"; }\l        }\l    }\l}\l"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -155,5 +156,6 @@ digraph block {
     N29 -> N75;
     N75 -> N11;
     N12 -> N76;
-    N76 -> N1;
+    N76 -> N77;
+    N77 -> N1;
 }

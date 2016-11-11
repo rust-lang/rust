@@ -27,7 +27,7 @@ use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
 use syntax::attr::{self, Stability, Deprecation};
-use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
+use util::nodemap::{DefIdMap, FxHashSet, FxHashMap};
 
 use hir;
 use hir::{Item, Generics, StructField, Variant, PatKind};
@@ -102,7 +102,7 @@ pub struct Index<'tcx> {
     depr_map: DefIdMap<Option<DeprecationEntry>>,
 
     /// Maps for each crate whether it is part of the staged API.
-    staged_api: FnvHashMap<CrateNum, bool>
+    staged_api: FxHashMap<CrateNum, bool>
 }
 
 // A private tree-walker for producing an Index.
@@ -343,7 +343,7 @@ impl<'a, 'tcx> Index<'tcx> {
             }
         }
 
-        let mut staged_api = FnvHashMap();
+        let mut staged_api = FxHashMap();
         staged_api.insert(LOCAL_CRATE, is_staged_api);
         Index {
             staged_api: staged_api,
@@ -357,7 +357,7 @@ impl<'a, 'tcx> Index<'tcx> {
 /// features and possibly prints errors. Returns a list of all
 /// features used.
 pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                          -> FnvHashMap<InternedString, attr::StabilityLevel> {
+                                          -> FxHashMap<InternedString, attr::StabilityLevel> {
     let _task = tcx.dep_graph.in_task(DepNode::StabilityCheck);
     let ref active_lib_features = tcx.sess.features.borrow().declared_lib_features;
 
@@ -367,7 +367,7 @@ pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     let mut checker = Checker {
         tcx: tcx,
         active_features: active_features,
-        used_features: FnvHashMap(),
+        used_features: FxHashMap(),
         in_skip_block: 0,
     };
     intravisit::walk_crate(&mut checker, tcx.map.krate());
@@ -377,8 +377,8 @@ pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
 struct Checker<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    active_features: FnvHashSet<InternedString>,
-    used_features: FnvHashMap<InternedString, attr::StabilityLevel>,
+    active_features: FxHashSet<InternedString>,
+    used_features: FxHashMap<InternedString, attr::StabilityLevel>,
     // Within a block where feature gate checking can be skipped.
     in_skip_block: u32,
 }
@@ -529,14 +529,11 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // items.
         hir::ItemImpl(.., Some(ref t), _, ref impl_items) => {
             let trait_did = tcx.expect_def(t.ref_id).def_id();
-            let trait_items = tcx.trait_items(trait_did);
-
             for impl_item in impl_items {
-                let item = trait_items.iter().find(|item| {
-                    item.name() == impl_item.name
-                }).unwrap();
+                let item = tcx.associated_items(trait_did)
+                    .find(|item| item.name == impl_item.name).unwrap();
                 if warn_about_defns {
-                    maybe_do_stability_check(tcx, item.def_id(), impl_item.span, cb);
+                    maybe_do_stability_check(tcx, item.def_id, impl_item.span, cb);
                 }
             }
         }
@@ -555,11 +552,11 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
         hir::ExprMethodCall(i, ..) => {
             span = i.span;
             let method_call = ty::MethodCall::expr(e.id);
-            tcx.tables.borrow().method_map[&method_call].def_id
+            tcx.tables().method_map[&method_call].def_id
         }
         hir::ExprField(ref base_e, ref field) => {
             span = field.span;
-            match tcx.expr_ty_adjusted(base_e).sty {
+            match tcx.tables().expr_ty_adjusted(base_e).sty {
                 ty::TyAdt(def, _) => {
                     def.struct_variant().field_named(field.node).did
                 }
@@ -569,7 +566,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
         }
         hir::ExprTupField(ref base_e, ref field) => {
             span = field.span;
-            match tcx.expr_ty_adjusted(base_e).sty {
+            match tcx.tables().expr_ty_adjusted(base_e).sty {
                 ty::TyAdt(def, _) => {
                     def.struct_variant().fields[field.node].did
                 }
@@ -580,7 +577,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
             }
         }
         hir::ExprStruct(_, ref expr_fields, _) => {
-            match tcx.expr_ty(e).sty {
+            match tcx.tables().expr_ty(e).sty {
                 ty::TyAdt(adt, ..) => match adt.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
                         // check the stability of each field that appears
@@ -637,7 +634,7 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
-    let v = match tcx.pat_ty_opt(pat).map(|ty| &ty.sty) {
+    let v = match tcx.tables().pat_ty_opt(pat).map(|ty| &ty.sty) {
         Some(&ty::TyAdt(adt, _)) if !adt.is_enum() => adt.struct_variant(),
         _ => return,
     };
@@ -685,15 +682,8 @@ fn is_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span) -> bool {
 }
 
 fn is_staged_api<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> bool {
-    match tcx.trait_item_of_item(id) {
-        Some(trait_method_id) if trait_method_id != id => {
-            is_staged_api(tcx, trait_method_id)
-        }
-        _ => {
-            *tcx.stability.borrow_mut().staged_api.entry(id.krate).or_insert_with(
-                || tcx.sess.cstore.is_staged_api(id.krate))
-        }
-    }
+    *tcx.stability.borrow_mut().staged_api.entry(id.krate).or_insert_with(
+        || tcx.sess.cstore.is_staged_api(id.krate))
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
@@ -746,10 +736,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features(sess: &Session,
-                                       lib_features_used: &FnvHashMap<InternedString,
-                                                                      attr::StabilityLevel>) {
+                                       lib_features_used: &FxHashMap<InternedString,
+                                                                     attr::StabilityLevel>) {
     let ref declared_lib_features = sess.features.borrow().declared_lib_features;
-    let mut remaining_lib_features: FnvHashMap<InternedString, Span>
+    let mut remaining_lib_features: FxHashMap<InternedString, Span>
         = declared_lib_features.clone().into_iter().collect();
 
     fn format_stable_since_msg(version: &str) -> String {

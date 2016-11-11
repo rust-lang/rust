@@ -28,7 +28,7 @@
 #![feature(cell_extras)]
 #![feature(const_fn)]
 #![feature(custom_attribute)]
-#![feature(dotdot_in_tuple_patterns)]
+#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![allow(unused_attributes)]
 #![feature(libc)]
 #![feature(quote)]
@@ -169,6 +169,7 @@ pub struct CrateTranslation {
     pub metadata: Vec<u8>,
     pub reachable: Vec<String>,
     pub no_builtins: bool,
+    pub windows_subsystem: Option<String>,
     pub linker_info: back::linker::LinkerInfo
 }
 

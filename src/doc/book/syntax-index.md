@@ -94,6 +94,7 @@
 * `|=` (`var |= expr`): bitwise or & assignment. Overloadable (`BitOrAssign`).
 * `||` (`expr || expr`): logical or.
 * `_`: "ignored" pattern binding (see [Patterns (Ignoring bindings)]). Also used to make integer-literals readable (see [Reference (Integer literals)]).
+* `?` (`expr?`): Error propagation. Returns early when `Err(_)` is encountered, unwraps otherwise. Similar to the [`try!` macro].
 
 ## Other Syntax
 
@@ -210,6 +211,7 @@
 [Functions]: functions.html
 [Generics]: generics.html
 [Iterators]: iterators.html
+[`try!` macro]: error-handling.html#the-try-macro
 [Lifetimes]: lifetimes.html
 [Loops (`for`)]: loops.html#for
 [Loops (`loop`)]: loops.html#loop

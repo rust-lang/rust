@@ -17,6 +17,7 @@ use core::hash::{Hash, Hasher};
 use core::ops::{Add, AddAssign, Deref};
 
 use fmt;
+use string::String;
 
 use self::Cow::*;
 
@@ -159,7 +160,10 @@ impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
         match *self {
             Borrowed(borrowed) => {
                 *self = Owned(borrowed.to_owned());
-                self.to_mut()
+                match *self {
+                    Borrowed(..) => unreachable!(),
+                    Owned(ref mut owned) => owned,
+                }
             }
             Owned(ref mut owned) => owned,
         }
@@ -284,48 +288,60 @@ impl<'a, T: ?Sized + ToOwned> AsRef<T> for Cow<'a, T> {
     }
 }
 
-#[stable(feature = "cow_add", since = "1.13.0")]
+#[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> Add<&'a str> for Cow<'a, str> {
     type Output = Cow<'a, str>;
 
-    fn add(self, rhs: &'a str) -> Self {
-        if self == "" {
-            Cow::Borrowed(rhs)
-        } else if rhs == "" {
-            self
-        } else {
-            Cow::Owned(self.into_owned() + rhs)
-        }
+    #[inline]
+    fn add(mut self, rhs: &'a str) -> Self::Output {
+        self += rhs;
+        self
     }
 }
 
-#[stable(feature = "cow_add", since = "1.13.0")]
+#[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> Add<Cow<'a, str>> for Cow<'a, str> {
     type Output = Cow<'a, str>;
 
-    fn add(self, rhs: Cow<'a, str>) -> Self {
-        if self == "" {
-            rhs
-        } else if rhs == "" {
-            self
+    #[inline]
+    fn add(mut self, rhs: Cow<'a, str>) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+#[stable(feature = "cow_add", since = "1.14.0")]
+impl<'a> AddAssign<&'a str> for Cow<'a, str> {
+    fn add_assign(&mut self, rhs: &'a str) {
+        if self.is_empty() {
+            *self = Cow::Borrowed(rhs)
+        } else if rhs.is_empty() {
+            return;
         } else {
-            Cow::Owned(self.into_owned() + rhs.borrow())
+            if let Cow::Borrowed(lhs) = *self {
+                let mut s = String::with_capacity(lhs.len() + rhs.len());
+                s.push_str(lhs);
+                *self = Cow::Owned(s);
+            }
+            self.to_mut().push_str(rhs);
         }
     }
 }
 
-#[stable(feature = "cow_add", since = "1.13.0")]
-impl<'a> AddAssign<&'a str> for Cow<'a, str> {
-    fn add_assign(&mut self, rhs: &'a str) {
-        if rhs == "" { return; }
-        self.to_mut().push_str(rhs);
-    }
-}
-
-#[stable(feature = "cow_add", since = "1.13.0")]
+#[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
     fn add_assign(&mut self, rhs: Cow<'a, str>) {
-        if rhs == "" { return; }
-        self.to_mut().push_str(rhs.borrow());
+        if self.is_empty() {
+            *self = rhs
+        } else if rhs.is_empty() {
+            return;
+        } else {
+            if let Cow::Borrowed(lhs) = *self {
+                let mut s = String::with_capacity(lhs.len() + rhs.len());
+                s.push_str(lhs);
+                *self = Cow::Owned(s);
+            }
+            self.to_mut().push_str(&rhs);
+        }
     }
 }

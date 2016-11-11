@@ -36,12 +36,12 @@ use ty::layout::{Layout, TargetDataLayout};
 use ty::maps;
 use util::common::MemoizationMap;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
-use util::nodemap::{FnvHashMap, FnvHashSet};
+use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 use arena::TypedArena;
 use std::borrow::Borrow;
-use std::cell::{Cell, RefCell, Ref};
+use std::cell::{Cell, RefCell};
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::Deref;
@@ -96,26 +96,26 @@ pub struct CtxtInterners<'tcx> {
 
     /// Specifically use a speedy hash algorithm for these hash sets,
     /// they're accessed quite often.
-    type_: RefCell<FnvHashSet<Interned<'tcx, TyS<'tcx>>>>,
-    type_list: RefCell<FnvHashSet<Interned<'tcx, Slice<Ty<'tcx>>>>>,
-    substs: RefCell<FnvHashSet<Interned<'tcx, Substs<'tcx>>>>,
-    bare_fn: RefCell<FnvHashSet<Interned<'tcx, BareFnTy<'tcx>>>>,
-    region: RefCell<FnvHashSet<Interned<'tcx, Region>>>,
-    stability: RefCell<FnvHashSet<&'tcx attr::Stability>>,
-    layout: RefCell<FnvHashSet<&'tcx Layout>>,
+    type_: RefCell<FxHashSet<Interned<'tcx, TyS<'tcx>>>>,
+    type_list: RefCell<FxHashSet<Interned<'tcx, Slice<Ty<'tcx>>>>>,
+    substs: RefCell<FxHashSet<Interned<'tcx, Substs<'tcx>>>>,
+    bare_fn: RefCell<FxHashSet<Interned<'tcx, BareFnTy<'tcx>>>>,
+    region: RefCell<FxHashSet<Interned<'tcx, Region>>>,
+    stability: RefCell<FxHashSet<&'tcx attr::Stability>>,
+    layout: RefCell<FxHashSet<&'tcx Layout>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
     fn new(arenas: &'tcx CtxtArenas<'tcx>) -> CtxtInterners<'tcx> {
         CtxtInterners {
             arenas: arenas,
-            type_: RefCell::new(FnvHashSet()),
-            type_list: RefCell::new(FnvHashSet()),
-            substs: RefCell::new(FnvHashSet()),
-            bare_fn: RefCell::new(FnvHashSet()),
-            region: RefCell::new(FnvHashSet()),
-            stability: RefCell::new(FnvHashSet()),
-            layout: RefCell::new(FnvHashSet())
+            type_: RefCell::new(FxHashSet()),
+            type_list: RefCell::new(FxHashSet()),
+            substs: RefCell::new(FxHashSet()),
+            bare_fn: RefCell::new(FxHashSet()),
+            region: RefCell::new(FxHashSet()),
+            stability: RefCell::new(FxHashSet()),
+            layout: RefCell::new(FxHashSet())
         }
     }
 
@@ -212,7 +212,7 @@ pub struct Tables<'tcx> {
     /// other items.
     pub item_substs: NodeMap<ty::ItemSubsts<'tcx>>,
 
-    pub adjustments: NodeMap<ty::adjustment::AutoAdjustment<'tcx>>,
+    pub adjustments: NodeMap<ty::adjustment::Adjustment<'tcx>>,
 
     pub method_map: ty::MethodMap<'tcx>,
 
@@ -244,16 +244,86 @@ pub struct Tables<'tcx> {
 impl<'a, 'gcx, 'tcx> Tables<'tcx> {
     pub fn empty() -> Tables<'tcx> {
         Tables {
-            node_types: FnvHashMap(),
+            node_types: FxHashMap(),
             item_substs: NodeMap(),
             adjustments: NodeMap(),
-            method_map: FnvHashMap(),
-            upvar_capture_map: FnvHashMap(),
+            method_map: FxHashMap(),
+            upvar_capture_map: FxHashMap(),
             closure_tys: DefIdMap(),
             closure_kinds: DefIdMap(),
             liberated_fn_sigs: NodeMap(),
             fru_field_types: NodeMap()
         }
+    }
+
+    pub fn node_id_to_type(&self, id: NodeId) -> Ty<'tcx> {
+        match self.node_id_to_type_opt(id) {
+            Some(ty) => ty,
+            None => {
+                bug!("node_id_to_type: no type for node `{}`",
+                     tls::with(|tcx| tcx.map.node_to_string(id)))
+            }
+        }
+    }
+
+    pub fn node_id_to_type_opt(&self, id: NodeId) -> Option<Ty<'tcx>> {
+        self.node_types.get(&id).cloned()
+    }
+
+    pub fn node_id_item_substs(&self, id: NodeId) -> Option<&'tcx Substs<'tcx>> {
+        self.item_substs.get(&id).map(|ts| ts.substs)
+    }
+
+    // Returns the type of a pattern as a monotype. Like @expr_ty, this function
+    // doesn't provide type parameter substitutions.
+    pub fn pat_ty(&self, pat: &hir::Pat) -> Ty<'tcx> {
+        self.node_id_to_type(pat.id)
+    }
+
+    pub fn pat_ty_opt(&self, pat: &hir::Pat) -> Option<Ty<'tcx>> {
+        self.node_id_to_type_opt(pat.id)
+    }
+
+    // Returns the type of an expression as a monotype.
+    //
+    // NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
+    // some cases, we insert `Adjustment` annotations such as auto-deref or
+    // auto-ref.  The type returned by this function does not consider such
+    // adjustments.  See `expr_ty_adjusted()` instead.
+    //
+    // NB (2): This type doesn't provide type parameter substitutions; e.g. if you
+    // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
+    // instead of "fn(ty) -> T with T = isize".
+    pub fn expr_ty(&self, expr: &hir::Expr) -> Ty<'tcx> {
+        self.node_id_to_type(expr.id)
+    }
+
+    pub fn expr_ty_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
+        self.node_id_to_type_opt(expr.id)
+    }
+
+    /// Returns the type of `expr`, considering any `Adjustment`
+    /// entry recorded for that expression.
+    pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> Ty<'tcx> {
+        self.adjustments.get(&expr.id)
+            .map_or_else(|| self.expr_ty(expr), |adj| adj.target)
+    }
+
+    pub fn expr_ty_adjusted_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
+        self.adjustments.get(&expr.id)
+            .map(|adj| adj.target).or_else(|| self.expr_ty_opt(expr))
+    }
+
+    pub fn is_method_call(&self, expr_id: NodeId) -> bool {
+        self.method_map.contains_key(&ty::MethodCall::expr(expr_id))
+    }
+
+    pub fn is_overloaded_autoderef(&self, expr_id: NodeId, autoderefs: u32) -> bool {
+        self.method_map.contains_key(&ty::MethodCall::autoderef(expr_id, autoderefs))
+    }
+
+    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {
+        Some(self.upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
 }
 
@@ -333,14 +403,10 @@ pub struct GlobalCtxt<'tcx> {
     pub tables: RefCell<Tables<'tcx>>,
 
     /// Maps from a trait item to the trait item "descriptor"
-    pub impl_or_trait_items: RefCell<DepTrackingMap<maps::ImplOrTraitItems<'tcx>>>,
+    pub associated_items: RefCell<DepTrackingMap<maps::AssociatedItems<'tcx>>>,
 
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
-    pub impl_or_trait_item_def_ids: RefCell<DepTrackingMap<maps::ImplOrTraitItemDefIds<'tcx>>>,
-
-    /// A cache for the trait_items() routine; note that the routine
-    /// itself pushes the `TraitItems` dependency node.
-    trait_items_cache: RefCell<DepTrackingMap<maps::TraitItems<'tcx>>>,
+    pub associated_item_def_ids: RefCell<DepTrackingMap<maps::AssociatedItemDefIds<'tcx>>>,
 
     pub impl_trait_refs: RefCell<DepTrackingMap<maps::ImplTraitRefs<'tcx>>>,
     pub trait_defs: RefCell<DepTrackingMap<maps::TraitDefs<'tcx>>>,
@@ -381,16 +447,16 @@ pub struct GlobalCtxt<'tcx> {
     pub tcache: RefCell<DepTrackingMap<maps::Tcache<'tcx>>>,
 
     // Internal cache for metadata decoding. No need to track deps on this.
-    pub rcache: RefCell<FnvHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
+    pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
 
     // Cache for the type-contents routine. FIXME -- track deps?
-    pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, ty::contents::TypeContents>>,
+    pub tc_cache: RefCell<FxHashMap<Ty<'tcx>, ty::contents::TypeContents>>,
 
     // FIXME no dep tracking, but we should be able to remove this
     pub ty_param_defs: RefCell<NodeMap<ty::TypeParameterDef<'tcx>>>,
 
     // FIXME dep tracking -- should be harmless enough
-    pub normalized_cache: RefCell<FnvHashMap<Ty<'tcx>, Ty<'tcx>>>,
+    pub normalized_cache: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
 
     pub lang_items: middle::lang_items::LanguageItems,
 
@@ -501,7 +567,7 @@ pub struct GlobalCtxt<'tcx> {
     pub data_layout: TargetDataLayout,
 
     /// Cache for layouts computed from types.
-    pub layout_cache: RefCell<FnvHashMap<Ty<'tcx>, &'tcx Layout>>,
+    pub layout_cache: RefCell<FxHashMap<Ty<'tcx>, &'tcx Layout>>,
 
     /// Used to prevent layout from recursing too deeply.
     pub layout_depth: Cell<usize>,
@@ -597,14 +663,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                               -> ty::TypeParameterDef<'tcx>
     {
         self.ty_param_defs.borrow().get(&node_id).unwrap().clone()
-    }
-
-    pub fn node_types(self) -> Ref<'a, NodeMap<Ty<'tcx>>> {
-        fn projection<'a, 'tcx>(tables: &'a Tables<'tcx>) -> &'a NodeMap<Ty<'tcx>> {
-            &tables.node_types
-        }
-
-        Ref::map(self.tables.borrow(), projection)
     }
 
     pub fn node_type_insert(self, id: NodeId, ty: Ty<'gcx>) {
@@ -739,7 +797,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             types: common_types,
             named_region_map: named_region_map,
             region_maps: region_maps,
-            free_region_maps: RefCell::new(FnvHashMap()),
+            free_region_maps: RefCell::new(FxHashMap()),
             item_variance_map: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             variance_computed: Cell::new(false),
             sess: s,
@@ -758,13 +816,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             freevars: RefCell::new(freevars),
             maybe_unused_trait_imports: maybe_unused_trait_imports,
             tcache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            rcache: RefCell::new(FnvHashMap()),
-            tc_cache: RefCell::new(FnvHashMap()),
-            impl_or_trait_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            impl_or_trait_item_def_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            trait_items_cache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            rcache: RefCell::new(FxHashMap()),
+            tc_cache: RefCell::new(FxHashMap()),
+            associated_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            associated_item_def_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             ty_param_defs: RefCell::new(NodeMap()),
-            normalized_cache: RefCell::new(FnvHashMap()),
+            normalized_cache: RefCell::new(FxHashMap()),
             lang_items: lang_items,
             inherent_impls: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             used_unsafe: RefCell::new(NodeSet()),
@@ -784,7 +841,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             fragment_infos: RefCell::new(DefIdMap()),
             crate_name: token::intern_and_get_ident(crate_name),
             data_layout: data_layout,
-            layout_cache: RefCell::new(FnvHashMap()),
+            layout_cache: RefCell::new(FxHashMap()),
             layout_depth: Cell::new(0),
             derive_macros: RefCell::new(NodeMap()),
        }, f)
@@ -1475,15 +1532,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     -> &'tcx Substs<'tcx>
     {
         self.mk_substs(iter::once(s).chain(t.into_iter().cloned()).map(Kind::from))
-    }
-
-    pub fn trait_items(self, trait_did: DefId) -> Rc<Vec<ty::ImplOrTraitItem<'gcx>>> {
-        self.trait_items_cache.memoize(trait_did, || {
-            let def_ids = self.impl_or_trait_items(trait_did);
-            Rc::new(def_ids.iter()
-                           .map(|&def_id| self.impl_or_trait_item(def_id))
-                           .collect())
-        })
     }
 
     /// Obtain the representation annotation for a struct definition.

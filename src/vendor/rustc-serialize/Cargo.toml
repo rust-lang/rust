@@ -1,0 +1,18 @@
+[package]
+
+name = "rustc-serialize"
+version = "0.3.19"
+authors = ["The Rust Project Developers"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/rust-lang/rustc-serialize"
+homepage = "https://github.com/rust-lang/rustc-serialize"
+documentation = "https://doc.rust-lang.org/rustc-serialize"
+description = """
+Generic serialization/deserialization support corresponding to the
+`derive(RustcEncodable, RustcDecodable)` mode in the compiler. Also includes
+support for hex, base64, and json encoding and decoding.
+"""
+
+[dev-dependencies]
+rand = "0.3"

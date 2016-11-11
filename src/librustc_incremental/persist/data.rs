@@ -13,7 +13,7 @@
 use rustc::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use rustc::hir::def_id::DefIndex;
 use std::sync::Arc;
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use ich::Fingerprint;
 
 use super::directory::DefPathIndex;
@@ -106,7 +106,7 @@ pub struct SerializedMetadataHashes {
     /// is only populated if -Z query-dep-graph is specified. It will be
     /// empty otherwise. Importing crates are perfectly happy with just having
     /// the DefIndex.
-    pub index_map: FnvHashMap<DefIndex, DefPathIndex>
+    pub index_map: FxHashMap<DefIndex, DefPathIndex>
 }
 
 /// The hash for some metadata that (when saving) will be exported

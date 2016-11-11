@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// compile-flags: -Z parse-only -Z continue-parse-after-error
 
 struct Baz<U> where U: Eq(U); //This is parsed as the new Fn* style parenthesis syntax.
 struct Baz<U> where U: Eq(U) -> R; // Notice this parses as well.

@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:empty-struct.rs
+
 #[no_link]
-extern crate libc;
+extern crate empty_struct;
+//~^ WARN custom derive crates and `#[no_link]` crates have no effect without `#[macro_use]`
 
 fn main() {
-    unsafe {
-        libc::abs(0);  //~ ERROR unresolved name
-    }
+    empty_struct::XEmpty1; //~ ERROR unresolved name
 }

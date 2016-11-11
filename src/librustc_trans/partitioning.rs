@@ -134,7 +134,7 @@ use symbol_map::SymbolMap;
 use syntax::ast::NodeId;
 use syntax::parse::token::{self, InternedString};
 use trans_item::TransItem;
-use util::nodemap::{FnvHashMap, FnvHashSet};
+use util::nodemap::{FxHashMap, FxHashSet};
 
 pub enum PartitioningStrategy {
     /// Generate one codegen unit per source-level module.
@@ -151,12 +151,12 @@ pub struct CodegenUnit<'tcx> {
     /// as well as the crate name and disambiguator.
     name: InternedString,
 
-    items: FnvHashMap<TransItem<'tcx>, llvm::Linkage>,
+    items: FxHashMap<TransItem<'tcx>, llvm::Linkage>,
 }
 
 impl<'tcx> CodegenUnit<'tcx> {
     pub fn new(name: InternedString,
-               items: FnvHashMap<TransItem<'tcx>, llvm::Linkage>)
+               items: FxHashMap<TransItem<'tcx>, llvm::Linkage>)
                -> Self {
         CodegenUnit {
             name: name,
@@ -165,7 +165,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn empty(name: InternedString) -> Self {
-        Self::new(name, FnvHashMap())
+        Self::new(name, FxHashMap())
     }
 
     pub fn contains_item(&self, item: &TransItem<'tcx>) -> bool {
@@ -176,7 +176,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         &self.name
     }
 
-    pub fn items(&self) -> &FnvHashMap<TransItem<'tcx>, llvm::Linkage> {
+    pub fn items(&self) -> &FxHashMap<TransItem<'tcx>, llvm::Linkage> {
         &self.items
     }
 
@@ -297,7 +297,7 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
 
 struct PreInliningPartitioning<'tcx> {
     codegen_units: Vec<CodegenUnit<'tcx>>,
-    roots: FnvHashSet<TransItem<'tcx>>,
+    roots: FxHashSet<TransItem<'tcx>>,
 }
 
 struct PostInliningPartitioning<'tcx>(Vec<CodegenUnit<'tcx>>);
@@ -308,8 +308,8 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     where I: Iterator<Item = TransItem<'tcx>>
 {
     let tcx = scx.tcx();
-    let mut roots = FnvHashSet();
-    let mut codegen_units = FnvHashMap();
+    let mut roots = FxHashSet();
+    let mut codegen_units = FxHashMap();
 
     for trans_item in trans_items {
         let is_root = !trans_item.is_instantiated_only_on_demand(tcx);
@@ -419,7 +419,7 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
 
     for codegen_unit in &initial_partitioning.codegen_units[..] {
         // Collect all items that need to be available in this codegen unit
-        let mut reachable = FnvHashSet();
+        let mut reachable = FxHashSet();
         for root in codegen_unit.items.keys() {
             follow_inlining(*root, inlining_map, &mut reachable);
         }
@@ -465,7 +465,7 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
 
     fn follow_inlining<'tcx>(trans_item: TransItem<'tcx>,
                              inlining_map: &InliningMap<'tcx>,
-                             visited: &mut FnvHashSet<TransItem<'tcx>>) {
+                             visited: &mut FxHashSet<TransItem<'tcx>>) {
         if !visited.insert(trans_item) {
             return;
         }

@@ -39,7 +39,7 @@ use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::{self, Span, DUMMY_SP};
-use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
+use util::nodemap::{FxHashMap, FxHashSet, NodeMap};
 
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
@@ -134,7 +134,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     // the set of predicates on which errors have been reported, to
     // avoid reporting the same error twice.
-    pub reported_trait_errors: RefCell<FnvHashSet<traits::TraitErrorKey<'tcx>>>,
+    pub reported_trait_errors: RefCell<FxHashSet<traits::TraitErrorKey<'tcx>>>,
 
     // Sadly, the behavior of projection varies a bit depending on the
     // stage of compilation. The specifics are given in the
@@ -170,7 +170,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
 /// region that each late-bound region was replaced with.
-pub type SkolemizationMap<'tcx> = FnvHashMap<ty::BoundRegion, &'tcx ty::Region>;
+pub type SkolemizationMap<'tcx> = FxHashMap<ty::BoundRegion, &'tcx ty::Region>;
 
 /// Why did we require that the two types be related?
 ///
@@ -355,6 +355,19 @@ pub enum SubregionOrigin<'tcx> {
 
     // Region constraint arriving from destructor safety
     SafeDestructor(Span),
+
+    // Comparing the signature and requirements of an impl method against
+    // the containing trait.
+    CompareImplMethodObligation {
+        span: Span,
+        item_name: ast::Name,
+        impl_item_def_id: DefId,
+        trait_item_def_id: DefId,
+
+        // this is `Some(_)` if this error arises from the bug fix for
+        // #18937. This is a temporary measure.
+        lint_id: Option<ast::NodeId>,
+    },
 }
 
 /// Places that type/region parameters can appear.
@@ -479,7 +492,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
-            reported_trait_errors: RefCell::new(FnvHashSet()),
+            reported_trait_errors: RefCell::new(FxHashSet()),
             projection_mode: Reveal::NotSpecializable,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
@@ -518,7 +531,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             parameter_environment: param_env,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
-            reported_trait_errors: RefCell::new(FnvHashSet()),
+            reported_trait_errors: RefCell::new(FxHashSet()),
             projection_mode: projection_mode,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),
@@ -1056,7 +1069,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.probe(|_| {
             let origin = TypeOrigin::Misc(syntax_pos::DUMMY_SP);
             let trace = TypeTrace::types(origin, true, a, b);
-            self.sub(true, trace, &a, &b).map(|_| ())
+            self.sub(true, trace, &a, &b).map(|InferOk { obligations, .. }| {
+                // FIXME(#32730) propagate obligations
+                assert!(obligations.is_empty());
+            })
         })
     }
 
@@ -1147,16 +1163,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn region_outlives_predicate(&self,
-                                     span: Span,
+                                     cause: &traits::ObligationCause<'tcx>,
                                      predicate: &ty::PolyRegionOutlivesPredicate<'tcx>)
         -> UnitResult<'tcx>
     {
         self.commit_if_ok(|snapshot| {
             let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
-            let origin = RelateRegionParamBound(span);
+            let origin =
+                SubregionOrigin::from_obligation_cause(cause,
+                                                       || RelateRegionParamBound(cause.span));
             self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-            self.leak_check(false, span, &skol_map, snapshot)?;
+            self.leak_check(false, cause.span, &skol_map, snapshot)?;
             Ok(self.pop_skolemized(skol_map, snapshot))
         })
     }
@@ -1249,26 +1267,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> &'tcx ty::Region {
         self.region_vars.new_bound(debruijn)
-    }
-
-    /// Apply `adjustment` to the type of `expr`
-    pub fn adjust_expr_ty(&self,
-                          expr: &hir::Expr,
-                          adjustment: Option<&adjustment::AutoAdjustment<'tcx>>)
-                          -> Ty<'tcx>
-    {
-        let raw_ty = self.expr_ty(expr);
-        let raw_ty = self.shallow_resolve(raw_ty);
-        let resolve_ty = |ty: Ty<'tcx>| self.resolve_type_vars_if_possible(&ty);
-        raw_ty.adjust(self.tcx,
-                      expr.span,
-                      expr.id,
-                      adjustment,
-                      |method_call| self.tables
-                                        .borrow()
-                                        .method_map
-                                        .get(&method_call)
-                                        .map(|method| resolve_ty(method.ty)))
     }
 
     /// True if errors have been reported since this infcx was
@@ -1532,7 +1530,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: &ty::Binder<T>)
-        -> (T, FnvHashMap<ty::BoundRegion, &'tcx ty::Region>)
+        -> (T, FxHashMap<ty::BoundRegion, &'tcx ty::Region>)
         where T : TypeFoldable<'tcx>
     {
         self.tcx.replace_late_bound_regions(
@@ -1597,8 +1595,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // anyhow. We should make this typetrace stuff more
             // generic so we don't have to do anything quite this
             // terrible.
-            self.equate(true, TypeTrace::dummy(self.tcx), a, b)
-        }).map(|_| ())
+            let trace = TypeTrace::dummy(self.tcx);
+            self.equate(true, trace, a, b).map(|InferOk { obligations, .. }| {
+                // FIXME(#32730) propagate obligations
+                assert!(obligations.is_empty());
+            })
+        })
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
@@ -1607,7 +1609,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
-        let ty = self.adjust_expr_ty(expr, self.tables.borrow().adjustments.get(&expr.id));
+        let ty = self.tables.borrow().expr_ty_adjusted(expr);
         self.resolve_type_vars_or_error(&ty)
     }
 
@@ -1651,9 +1653,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .map(|method| method.def_id)
     }
 
-    pub fn adjustments(&self) -> Ref<NodeMap<adjustment::AutoAdjustment<'tcx>>> {
+    pub fn adjustments(&self) -> Ref<NodeMap<adjustment::Adjustment<'tcx>>> {
         fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
-                                        -> &'a NodeMap<adjustment::AutoAdjustment<'tcx>> {
+                                        -> &'a NodeMap<adjustment::Adjustment<'tcx>> {
             &tables.adjustments
         }
 
@@ -1786,6 +1788,32 @@ impl<'tcx> SubregionOrigin<'tcx> {
             AddrOf(a) => a,
             AutoBorrow(a) => a,
             SafeDestructor(a) => a,
+            CompareImplMethodObligation { span, .. } => span,
+        }
+    }
+
+    pub fn from_obligation_cause<F>(cause: &traits::ObligationCause<'tcx>,
+                                    default: F)
+                                    -> Self
+        where F: FnOnce() -> Self
+    {
+        match cause.code {
+            traits::ObligationCauseCode::ReferenceOutlivesReferent(ref_type) =>
+                SubregionOrigin::ReferenceOutlivesReferent(ref_type, cause.span),
+
+            traits::ObligationCauseCode::CompareImplMethodObligation { item_name,
+                                                                       impl_item_def_id,
+                                                                       trait_item_def_id,
+                                                                       lint_id } =>
+                SubregionOrigin::CompareImplMethodObligation {
+                    span: cause.span,
+                    item_name: item_name,
+                    impl_item_def_id: impl_item_def_id,
+                    trait_item_def_id: trait_item_def_id,
+                    lint_id: lint_id,
+                },
+
+            _ => default(),
         }
     }
 }

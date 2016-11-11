@@ -22,11 +22,10 @@ use super::elaborate_predicates;
 use hir::def_id::DefId;
 use traits;
 use ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
-use std::rc::Rc;
 use syntax::ast;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ObjectSafetyViolation<'tcx> {
+pub enum ObjectSafetyViolation {
     /// Self : Sized declared on the trait
     SizedSelf,
 
@@ -35,7 +34,7 @@ pub enum ObjectSafetyViolation<'tcx> {
     SupertraitSelf,
 
     /// Method has something illegal
-    Method(Rc<ty::Method<'tcx>>, MethodViolationCode),
+    Method(ast::Name, MethodViolationCode),
 }
 
 /// Reasons a method might not be object-safe.
@@ -77,7 +76,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// because `object_safety_violations` can't be used during
     /// type collection.
     pub fn astconv_object_safety_violations(self, trait_def_id: DefId)
-                                            -> Vec<ObjectSafetyViolation<'tcx>>
+                                            -> Vec<ObjectSafetyViolation>
     {
         let mut violations = vec![];
 
@@ -93,7 +92,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn object_safety_violations(self, trait_def_id: DefId)
-                                    -> Vec<ObjectSafetyViolation<'tcx>>
+                                    -> Vec<ObjectSafetyViolation>
     {
         traits::supertrait_def_ids(self, trait_def_id)
             .flat_map(|def_id| self.object_safety_violations_for_trait(def_id))
@@ -101,21 +100,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn object_safety_violations_for_trait(self, trait_def_id: DefId)
-                                          -> Vec<ObjectSafetyViolation<'tcx>>
+                                          -> Vec<ObjectSafetyViolation>
     {
         // Check methods for violations.
-        let mut violations: Vec<_> =
-            self.trait_items(trait_def_id).iter()
+        let mut violations: Vec<_> = self.associated_items(trait_def_id)
+            .filter(|item| item.kind == ty::AssociatedKind::Method)
             .filter_map(|item| {
-                match *item {
-                    ty::MethodTraitItem(ref m) => {
-                        self.object_safety_violation_for_method(trait_def_id, &m)
-                            .map(|code| ObjectSafetyViolation::Method(m.clone(), code))
-                    }
-                    _ => None,
-                }
-            })
-            .collect();
+                self.object_safety_violation_for_method(trait_def_id, &item)
+                    .map(|code| ObjectSafetyViolation::Method(item.name, code))
+            }).collect();
 
         // Check the trait itself.
         if self.trait_has_sized_self(trait_def_id) {
@@ -198,7 +191,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns `Some(_)` if this method makes the containing trait not object safe.
     fn object_safety_violation_for_method(self,
                                           trait_def_id: DefId,
-                                          method: &ty::Method<'gcx>)
+                                          method: &ty::AssociatedItem)
                                           -> Option<MethodViolationCode>
     {
         // Any method that has a `Self : Sized` requisite is otherwise
@@ -216,7 +209,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// otherwise ensure that they cannot be used when `Self=Trait`.
     pub fn is_vtable_safe_method(self,
                                  trait_def_id: DefId,
-                                 method: &ty::Method<'gcx>)
+                                 method: &ty::AssociatedItem)
                                  -> bool
     {
         // Any method that has a `Self : Sized` requisite can't be called.
@@ -233,26 +226,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// `Self:Sized`.
     fn virtual_call_violation_for_method(self,
                                          trait_def_id: DefId,
-                                         method: &ty::Method<'tcx>)
+                                         method: &ty::AssociatedItem)
                                          -> Option<MethodViolationCode>
     {
         // The method's first parameter must be something that derefs (or
         // autorefs) to `&self`. For now, we only accept `self`, `&self`
         // and `Box<Self>`.
-        match method.explicit_self {
-            ty::ExplicitSelfCategory::Static => {
-                return Some(MethodViolationCode::StaticMethod);
-            }
-
-            ty::ExplicitSelfCategory::ByValue |
-            ty::ExplicitSelfCategory::ByReference(..) |
-            ty::ExplicitSelfCategory::ByBox => {
-            }
+        if !method.method_has_self_argument {
+            return Some(MethodViolationCode::StaticMethod);
         }
 
         // The `Self` type is erased, so it should not appear in list of
         // arguments or return type apart from the receiver.
-        let ref sig = method.fty.sig;
+        let ref sig = self.lookup_item_type(method.def_id).ty.fn_sig();
         for &input_ty in &sig.0.inputs[1..] {
             if self.contains_illegal_self_type_reference(trait_def_id, input_ty) {
                 return Some(MethodViolationCode::ReferencesSelf);
@@ -263,7 +249,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         // We can't monomorphize things like `fn foo<A>(...)`.
-        if !method.generics.types.is_empty() {
+        if !self.lookup_generics(method.def_id).types.is_empty() {
             return Some(MethodViolationCode::Generic);
         }
 

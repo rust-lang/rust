@@ -12,5 +12,6 @@
 // unless it uses braces.
 
 fn main() {
-    let x = || -> i32 22; //~ ERROR expected `{`, found `22`
+    let x = || -> i32 22;
+    //~^ ERROR expected one of `!`, `(`, `::`, `<`, or `{`, found `22`
 }

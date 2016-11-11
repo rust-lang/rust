@@ -15,7 +15,7 @@
 //! in the first place). See README.md for a general overview of how
 //! to use this class.
 
-use fnv::{FnvHashMap, FnvHashSet};
+use fx::{FxHashMap, FxHashSet};
 
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -68,9 +68,9 @@ pub struct ObligationForest<O: ForestObligation> {
     /// backtrace iterator (which uses `split_at`).
     nodes: Vec<Node<O>>,
     /// A cache of predicates that have been successfully completed.
-    done_cache: FnvHashSet<O::Predicate>,
+    done_cache: FxHashSet<O::Predicate>,
     /// An cache of the nodes in `nodes`, indexed by predicate.
-    waiting_cache: FnvHashMap<O::Predicate, NodeIndex>,
+    waiting_cache: FxHashMap<O::Predicate, NodeIndex>,
     /// A list of the obligations added in snapshots, to allow
     /// for their removal.
     cache_list: Vec<O::Predicate>,
@@ -158,8 +158,8 @@ impl<O: ForestObligation> ObligationForest<O> {
         ObligationForest {
             nodes: vec![],
             snapshots: vec![],
-            done_cache: FnvHashSet(),
-            waiting_cache: FnvHashMap(),
+            done_cache: FxHashSet(),
+            waiting_cache: FxHashMap(),
             cache_list: vec![],
             scratch: Some(vec![]),
         }

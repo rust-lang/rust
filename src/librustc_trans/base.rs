@@ -79,7 +79,7 @@ use type_::Type;
 use type_of;
 use value::Value;
 use Disr;
-use util::nodemap::{NodeSet, FnvHashMap, FnvHashSet};
+use util::nodemap::{NodeSet, FxHashMap, FxHashSet};
 
 use arena::TypedArena;
 use libc::c_uint;
@@ -1196,6 +1196,9 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         }
         let llfn = declare::declare_cfn(ccx, "main", llfty);
 
+        // `main` should respect same config for frame pointer elimination as rest of code
+        attributes::set_frame_pointer_elimination(ccx, llfn);
+
         let llbb = unsafe {
             llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llfn, "top\0".as_ptr() as *const _)
         };
@@ -1315,7 +1318,7 @@ fn write_metadata(cx: &SharedCrateContext,
 fn internalize_symbols<'a, 'tcx>(sess: &Session,
                                  ccxs: &CrateContextList<'a, 'tcx>,
                                  symbol_map: &SymbolMap<'tcx>,
-                                 reachable: &FnvHashSet<&str>) {
+                                 reachable: &FxHashSet<&str>) {
     let scx = ccxs.shared();
     let tcx = scx.tcx();
 
@@ -1329,7 +1332,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
     // 'unsafe' because we are holding on to CStr's from the LLVM module within
     // this block.
     unsafe {
-        let mut referenced_somewhere = FnvHashSet();
+        let mut referenced_somewhere = FxHashSet();
 
         // Collect all symbols that need to stay externally visible because they
         // are referenced via a declaration in some other codegen unit.
@@ -1350,7 +1353,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
 
         // Also collect all symbols for which we cannot adjust linkage, because
         // it is fixed by some directive in the source code (e.g. #[no_mangle]).
-        let linkage_fixed_explicitly: FnvHashSet<_> = scx
+        let linkage_fixed_explicitly: FxHashSet<_> = scx
             .translation_items()
             .borrow()
             .iter()
@@ -1611,7 +1614,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             metadata: metadata,
             reachable: vec![],
             no_builtins: no_builtins,
-            linker_info: linker_info
+            linker_info: linker_info,
+            windows_subsystem: None,
         };
     }
 
@@ -1747,6 +1751,17 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let linker_info = LinkerInfo::new(&shared_ccx, &reachable_symbols);
 
+    let subsystem = attr::first_attr_value_str_by_name(&krate.attrs,
+                                                       "windows_subsystem");
+    let windows_subsystem = subsystem.map(|subsystem| {
+        if subsystem != "windows" && subsystem != "console" {
+            tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
+                                     `windows` and `console` are allowed",
+                                    subsystem));
+        }
+        subsystem.to_string()
+    });
+
     CrateTranslation {
         modules: modules,
         metadata_module: metadata_module,
@@ -1754,7 +1769,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         metadata: metadata,
         reachable: reachable_symbols,
         no_builtins: no_builtins,
-        linker_info: linker_info
+        linker_info: linker_info,
+        windows_subsystem: windows_subsystem,
     }
 }
 
@@ -1846,7 +1862,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
     }
 
     if scx.sess().opts.debugging_opts.print_trans_items.is_some() {
-        let mut item_to_cgus = FnvHashMap();
+        let mut item_to_cgus = FxHashMap();
 
         for cgu in &codegen_units {
             for (&trans_item, &linkage) in cgu.items() {

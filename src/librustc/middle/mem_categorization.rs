@@ -354,11 +354,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
-        let unadjusted_ty = self.expr_ty(expr)?;
-        Ok(unadjusted_ty.adjust(
-            self.tcx(), expr.span, expr.id,
-            self.infcx.adjustments().get(&expr.id),
-            |method_call| self.infcx.node_method_ty(method_call)))
+        self.infcx.expr_ty_adjusted(expr)
     }
 
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
@@ -396,19 +392,21 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
 
             Some(adjustment) => {
-                match *adjustment {
-                    adjustment::AdjustDerefRef(
-                        adjustment::AutoDerefRef {
-                            autoref: None, unsize: None, autoderefs, ..}) => {
+                match adjustment.kind {
+                    adjustment::Adjust::DerefRef {
+                        autoderefs,
+                        autoref: None,
+                        unsize: false
+                    } => {
                         // Equivalent to *expr or something similar.
                         self.cat_expr_autoderefd(expr, autoderefs)
                     }
 
-                    adjustment::AdjustNeverToAny(..) |
-                    adjustment::AdjustReifyFnPointer |
-                    adjustment::AdjustUnsafeFnPointer |
-                    adjustment::AdjustMutToConstPointer |
-                    adjustment::AdjustDerefRef(_) => {
+                    adjustment::Adjust::NeverToAny |
+                    adjustment::Adjust::ReifyFnPointer |
+                    adjustment::Adjust::UnsafeFnPointer |
+                    adjustment::Adjust::MutToConstPointer |
+                    adjustment::Adjust::DerefRef {..} => {
                         debug!("cat_expr({:?}): {:?}",
                                adjustment,
                                expr);

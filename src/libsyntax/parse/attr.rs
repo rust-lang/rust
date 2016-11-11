@@ -215,7 +215,10 @@ impl<'a> Parser<'a> {
     /// meta_item_inner : (meta_item | UNSUFFIXED_LIT) (',' meta_item_inner)? ;
     pub fn parse_meta_item(&mut self) -> PResult<'a, P<ast::MetaItem>> {
         let nt_meta = match self.token {
-            token::Interpolated(token::NtMeta(ref e)) => Some(e.clone()),
+            token::Interpolated(ref nt) => match **nt {
+                token::NtMeta(ref e) => Some(e.clone()),
+                _ => None,
+            },
             _ => None,
         };
 

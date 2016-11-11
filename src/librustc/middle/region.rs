@@ -19,7 +19,7 @@
 use dep_graph::DepNode;
 use hir::map as ast_map;
 use session::Session;
-use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+use util::nodemap::{FxHashMap, NodeMap, NodeSet};
 use ty;
 
 use std::cell::RefCell;
@@ -251,7 +251,7 @@ impl CodeExtent {
 /// The region maps encode information about region relationships.
 pub struct RegionMaps {
     code_extents: RefCell<Vec<CodeExtentData>>,
-    code_extent_interner: RefCell<FnvHashMap<CodeExtentData, CodeExtent>>,
+    code_extent_interner: RefCell<FxHashMap<CodeExtentData, CodeExtent>>,
     /// `scope_map` maps from a scope id to the enclosing scope id;
     /// this is usually corresponding to the lexical nesting, though
     /// in the case of closures the parent scope is the innermost
@@ -490,12 +490,7 @@ impl RegionMaps {
         // if there's one. Static items, for instance, won't
         // have an enclosing scope, hence no scope will be
         // returned.
-        let expr_extent = self.node_extent(expr_id);
-        // For some reason, the expr's scope itself is skipped here.
-        let mut id = match scope_map[expr_extent.0 as usize].into_option() {
-            Some(i) => i,
-            _ => return None
-        };
+        let mut id = self.node_extent(expr_id);
 
         while let Some(p) = scope_map[id.0 as usize].into_option() {
             match code_extents[p.0 as usize] {
@@ -1086,7 +1081,7 @@ fn resolve_item(visitor: &mut RegionResolutionVisitor, item: &hir::Item) {
 fn resolve_fn(visitor: &mut RegionResolutionVisitor,
               kind: FnKind,
               decl: &hir::FnDecl,
-              body: &hir::Block,
+              body: &hir::Expr,
               sp: Span,
               id: ast::NodeId) {
     debug!("region::resolve_fn(id={:?}, \
@@ -1128,7 +1123,7 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
         parent: fn_decl_scope,
         var_parent: fn_decl_scope
     };
-    visitor.visit_block(body);
+    visitor.visit_expr(body);
 
     // Restore context we had at the start.
     visitor.cx = outer_cx;
@@ -1191,7 +1186,7 @@ impl<'a, 'v> Visitor<'v> for RegionResolutionVisitor<'a> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
-                b: &'v Block, s: Span, n: NodeId) {
+                b: &'v Expr, s: Span, n: NodeId) {
         resolve_fn(self, fk, fd, b, s, n);
     }
     fn visit_arm(&mut self, a: &Arm) {
@@ -1217,7 +1212,7 @@ pub fn resolve_crate(sess: &Session, map: &ast_map::Map) -> RegionMaps {
 
     let maps = RegionMaps {
         code_extents: RefCell::new(vec![]),
-        code_extent_interner: RefCell::new(FnvHashMap()),
+        code_extent_interner: RefCell::new(FxHashMap()),
         scope_map: RefCell::new(vec![]),
         var_map: RefCell::new(NodeMap()),
         rvalue_scopes: RefCell::new(NodeMap()),

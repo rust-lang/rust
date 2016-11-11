@@ -10,7 +10,7 @@
 
 //! Platform-independent platform abstraction
 //!
-//! This is the platform-independent portion of the standard libraries
+//! This is the platform-independent portion of the standard library's
 //! platform abstraction layer, whereas `std::sys` is the
 //! platform-specific portion.
 //!

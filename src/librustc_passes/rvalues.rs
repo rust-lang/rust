@@ -35,7 +35,7 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for RvalueContext<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fk: intravisit::FnKind<'v>,
                 fd: &'v hir::FnDecl,
-                b: &'v hir::Block,
+                b: &'v hir::Expr,
                 s: Span,
                 fn_id: ast::NodeId) {
         // FIXME (@jroesch) change this to be an inference context

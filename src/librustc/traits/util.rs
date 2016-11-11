@@ -11,8 +11,9 @@
 use hir::def_id::DefId;
 use ty::subst::{Subst, Substs};
 use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
+use ty::outlives::Component;
 use util::common::ErrorReported;
-use util::nodemap::FnvHashSet;
+use util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
@@ -49,12 +50,12 @@ fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
 struct PredicateSet<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    set: FnvHashSet<ty::Predicate<'tcx>>,
+    set: FxHashSet<ty::Predicate<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> PredicateSet<'a, 'gcx, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PredicateSet<'a, 'gcx, 'tcx> {
-        PredicateSet { tcx: tcx, set: FnvHashSet() }
+        PredicateSet { tcx: tcx, set: FxHashSet() }
     }
 
     fn insert(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
@@ -166,27 +167,63 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
             ty::Predicate::ClosureKind(..) => {
                 // Nothing to elaborate when waiting for a closure's kind to be inferred.
             }
-            ty::Predicate::RegionOutlives(..) |
-            ty::Predicate::TypeOutlives(..) => {
-                // Currently, we do not "elaborate" predicates like
-                // `'a : 'b` or `T : 'a`.  We could conceivably do
-                // more here.  For example,
+
+            ty::Predicate::RegionOutlives(..) => {
+                // Nothing to elaborate from `'a: 'b`.
+            }
+
+            ty::Predicate::TypeOutlives(ref data) => {
+                // We know that `T: 'a` for some type `T`. We can
+                // often elaborate this. For example, if we know that
+                // `[U]: 'a`, that implies that `U: 'a`. Similarly, if
+                // we know `&'a U: 'b`, then we know that `'a: 'b` and
+                // `U: 'b`.
                 //
-                //     &'a int : 'b
-                //
-                // implies that
-                //
-                //     'a : 'b
-                //
-                // and we could get even more if we took WF
-                // constraints into account. For example,
-                //
-                //     &'a &'b int : 'c
-                //
-                // implies that
-                //
-                //     'b : 'a
-                //     'a : 'c
+                // We can basically ignore bound regions here. So for
+                // example `for<'c> Foo<'a,'c>: 'b` can be elaborated to
+                // `'a: 'b`.
+
+                // Ignore `for<'a> T: 'a` -- we might in the future
+                // consider this as evidence that `T: 'static`, but
+                // I'm a bit wary of such constructions and so for now
+                // I want to be conservative. --nmatsakis
+                let ty_max = data.skip_binder().0;
+                let r_min = data.skip_binder().1;
+                if r_min.is_bound() {
+                    return;
+                }
+
+                let visited = &mut self.visited;
+                self.stack.extend(
+                    tcx.outlives_components(ty_max)
+                       .into_iter()
+                       .filter_map(|component| match component {
+                           Component::Region(r) => if r.is_bound() {
+                               None
+                           } else {
+                               Some(ty::Predicate::RegionOutlives(
+                                   ty::Binder(ty::OutlivesPredicate(r, r_min))))
+                           },
+
+                           Component::Param(p) => {
+                               let ty = tcx.mk_param(p.idx, p.name);
+                               Some(ty::Predicate::TypeOutlives(
+                                   ty::Binder(ty::OutlivesPredicate(ty, r_min))))
+                           },
+
+                           Component::UnresolvedInferenceVariable(_) => {
+                               None
+                           },
+
+                           Component::Projection(_) |
+                           Component::EscapingProjection(_) => {
+                               // We can probably do more here. This
+                               // corresponds to a case like `<T as
+                               // Foo<'a>>::U: 'b`.
+                               None
+                           },
+                       })
+                       .filter(|p| visited.insert(p)));
             }
         }
     }
@@ -235,7 +272,7 @@ pub fn transitive_bounds<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
 pub struct SupertraitDefIds<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     stack: Vec<DefId>,
-    visited: FnvHashSet<DefId>,
+    visited: FxHashSet<DefId>,
 }
 
 pub fn supertrait_def_ids<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
@@ -440,8 +477,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let mut entries = 0;
         // Count number of methods and add them to the total offset.
         // Skip over associated types and constants.
-        for trait_item in &self.trait_items(trait_ref.def_id())[..] {
-            if let ty::MethodTraitItem(_) = *trait_item {
+        for trait_item in self.associated_items(trait_ref.def_id()) {
+            if trait_item.kind == ty::AssociatedKind::Method {
                 entries += 1;
             }
         }
@@ -458,17 +495,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // add them to the total offset.
         // Skip over associated types and constants.
         let mut entries = object.vtable_base;
-        for trait_item in &self.trait_items(object.upcast_trait_ref.def_id())[..] {
-            if trait_item.def_id() == method_def_id {
+        for trait_item in self.associated_items(object.upcast_trait_ref.def_id()) {
+            if trait_item.def_id == method_def_id {
                 // The item with the ID we were given really ought to be a method.
-                assert!(match *trait_item {
-                    ty::MethodTraitItem(_) => true,
-                    _ => false
-                });
-
+                assert_eq!(trait_item.kind, ty::AssociatedKind::Method);
                 return entries;
             }
-            if let ty::MethodTraitItem(_) = *trait_item {
+            if trait_item.kind == ty::AssociatedKind::Method {
                 entries += 1;
             }
         }

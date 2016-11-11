@@ -12,6 +12,7 @@ digraph block {
     N10[label="expr v[20]"];
     N11[label="stmt v[20];"];
     N12[label="block { let v = [2, 0, 20]; v[20]; }"];
+    N13[label="expr { let v = [2, 0, 20]; v[20]; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
@@ -23,5 +24,6 @@ digraph block {
     N9 -> N10;
     N10 -> N11;
     N11 -> N12;
-    N12 -> N1;
+    N12 -> N13;
+    N13 -> N1;
 }

@@ -17,11 +17,11 @@ use schema::*;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::map::{DefKey, DefPathData};
-use rustc::util::nodemap::FnvHashMap;
+use rustc::util::nodemap::FxHashMap;
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
-use rustc::middle::cstore::{InlinedItem, LinkagePreference};
+use rustc::middle::cstore::{DepKind, InlinedItem, LinkagePreference};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc::middle::lang_items;
@@ -36,7 +36,6 @@ use std::borrow::Cow;
 use std::cell::Ref;
 use std::io;
 use std::mem;
-use std::rc::Rc;
 use std::str;
 use std::u32;
 
@@ -432,7 +431,7 @@ impl<'a, 'tcx> MetadataBlob {
 
     /// Go through each item in the metadata and create a map from that
     /// item's def-key to the item's DefIndex.
-    pub fn load_key_map(&self, index: LazySeq<Index>) -> FnvHashMap<DefKey, DefIndex> {
+    pub fn load_key_map(&self, index: LazySeq<Index>) -> FxHashMap<DefKey, DefIndex> {
         index.iter_enumerated(self.raw_bytes())
             .map(|(index, item)| (item.decode(self).def_key.decode(self), index))
             .collect()
@@ -469,6 +468,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Variant(_) => Def::Variant(did),
             EntryKind::Trait(_) => Def::Trait(did),
             EntryKind::Enum => Def::Enum(did),
+            EntryKind::MacroDef(_) => Def::Macro(did),
 
             EntryKind::ForeignMod |
             EntryKind::Impl(_) |
@@ -691,6 +691,16 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F)
         where F: FnMut(def::Export)
     {
+        if let Some(ref proc_macros) = self.proc_macros {
+            for (id, &(name, _)) in proc_macros.iter().enumerate() {
+                callback(def::Export {
+                    name: name,
+                    def: Def::Macro(DefId { krate: self.cnum, index: DefIndex::new(id), }),
+                })
+            }
+            return
+        }
+
         // Find the item.
         let item = match self.maybe_entry(id) {
             None => return,
@@ -698,10 +708,21 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         // Iterate over all children.
+        let macros_only = self.dep_kind.get() == DepKind::MacrosOnly;
         for child_index in item.children.decode(self) {
+            if macros_only {
+                continue
+            }
+
             // Get the item.
             if let Some(child) = self.maybe_entry(child_index) {
                 let child = child.decode(self);
+                match child.kind {
+                    EntryKind::MacroDef(..) => {}
+                    _ if macros_only => continue,
+                    _ => {}
+                }
+
                 // Hand off the item to the callback.
                 match child.kind {
                     // FIXME(eddyb) Don't encode these in children.
@@ -760,6 +781,11 @@ impl<'a, 'tcx> CrateMetadata {
 
         if let EntryKind::Mod(data) = item.kind {
             for exp in data.decode(self).reexports.decode(self) {
+                match exp.def {
+                    Def::Macro(..) => {}
+                    _ if macros_only => continue,
+                    _ => {}
+                }
                 callback(exp);
             }
         }
@@ -792,10 +818,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(id).mir.map(|mir| mir.decode((self, tcx)))
     }
 
-    pub fn get_impl_or_trait_item(&self,
-                                  id: DefIndex,
-                                  tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                  -> Option<ty::ImplOrTraitItem<'tcx>> {
+    pub fn get_associated_item(&self, id: DefIndex) -> Option<ty::AssociatedItem> {
         let item = self.entry(id);
         let parent_and_name = || {
             let def_key = item.def_key.decode(self);
@@ -806,52 +829,43 @@ impl<'a, 'tcx> CrateMetadata {
         Some(match item.kind {
             EntryKind::AssociatedConst(container) => {
                 let (parent, name) = parent_and_name();
-                ty::ConstTraitItem(Rc::new(ty::AssociatedConst {
+                ty::AssociatedItem {
                     name: name,
-                    ty: item.ty.unwrap().decode((self, tcx)),
+                    kind: ty::AssociatedKind::Const,
                     vis: item.visibility,
                     defaultness: container.defaultness(),
+                    has_value: container.has_value(),
                     def_id: self.local_def_id(id),
                     container: container.with_def_id(parent),
-                    has_value: container.has_body(),
-                }))
+                    method_has_self_argument: false
+                }
             }
             EntryKind::Method(data) => {
                 let (parent, name) = parent_and_name();
-                let ity = item.ty.unwrap().decode((self, tcx));
-                let fty = match ity.sty {
-                    ty::TyFnDef(.., fty) => fty,
-                    _ => {
-                        bug!("the type {:?} of the method {:?} is not a function?",
-                             ity,
-                             name)
-                    }
-                };
-
                 let data = data.decode(self);
-                ty::MethodTraitItem(Rc::new(ty::Method {
+                ty::AssociatedItem {
                     name: name,
-                    generics: tcx.lookup_generics(self.local_def_id(id)),
-                    predicates: item.predicates.unwrap().decode((self, tcx)),
-                    fty: fty,
-                    explicit_self: data.explicit_self.decode((self, tcx)),
+                    kind: ty::AssociatedKind::Method,
                     vis: item.visibility,
                     defaultness: data.container.defaultness(),
-                    has_body: data.container.has_body(),
+                    has_value: data.container.has_value(),
                     def_id: self.local_def_id(id),
                     container: data.container.with_def_id(parent),
-                }))
+                    method_has_self_argument: data.has_self
+                }
             }
             EntryKind::AssociatedType(container) => {
                 let (parent, name) = parent_and_name();
-                ty::TypeTraitItem(Rc::new(ty::AssociatedType {
+                ty::AssociatedItem {
                     name: name,
-                    ty: item.ty.map(|ty| ty.decode((self, tcx))),
+                    kind: ty::AssociatedKind::Type,
                     vis: item.visibility,
                     defaultness: container.defaultness(),
+                    has_value: container.has_value(),
                     def_id: self.local_def_id(id),
                     container: container.with_def_id(parent),
-                }))
+                    method_has_self_argument: false
+                }
             }
             _ => return None,
         })
@@ -998,6 +1012,14 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn get_reachable_ids(&self) -> Vec<DefId> {
         self.root.reachable_ids.decode(self).map(|index| self.local_def_id(index)).collect()
+    }
+
+    pub fn get_macro(&self, id: DefIndex) -> (ast::Name, MacroDef) {
+        let entry = self.entry(id);
+        match entry.kind {
+            EntryKind::MacroDef(macro_def) => (self.item_name(&entry), macro_def.decode(self)),
+            _ => bug!(),
+        }
     }
 
     pub fn is_const_fn(&self, id: DefIndex) -> bool {

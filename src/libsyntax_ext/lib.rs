@@ -19,7 +19,7 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(not(stage0), deny(warnings))]
 
-#![feature(dotdot_in_tuple_patterns)]
+#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(proc_macro_lib)]
 #![feature(proc_macro_internals)]
 #![feature(rustc_private)]

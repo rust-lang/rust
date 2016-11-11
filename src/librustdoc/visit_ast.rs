@@ -21,8 +21,9 @@ use syntax_pos::Span;
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::middle::cstore::LoadedMacro;
 use rustc::middle::privacy::AccessLevel;
-use rustc::util::nodemap::FnvHashSet;
+use rustc::util::nodemap::FxHashSet;
 
 use rustc::hir;
 
@@ -42,14 +43,14 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx>,
-    view_item_stack: FnvHashSet<ast::NodeId>,
+    view_item_stack: FxHashSet<ast::NodeId>,
     inlining_from_glob: bool,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn new(cx: &'a core::DocContext<'a, 'tcx>) -> RustdocVisitor<'a, 'tcx> {
         // If the root is reexported, terminate all recursion.
-        let mut stack = FnvHashSet();
+        let mut stack = FxHashSet();
         stack.insert(ast::CRATE_NODE_ID);
         RustdocVisitor {
             module: Module::new(None),
@@ -85,8 +86,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                                               &krate.module,
                                               None);
         // attach the crate's exported macros to the top-level module:
-        self.module.macros = krate.exported_macros.iter()
-            .map(|def| self.visit_macro(def)).collect();
+        let macro_exports: Vec<_> =
+            krate.exported_macros.iter().map(|def| self.visit_macro(def)).collect();
+        self.module.macros.extend(macro_exports);
         self.module.is_crate = true;
     }
 
@@ -190,6 +192,33 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         for i in &m.item_ids {
             let item = self.cx.map.expect_item(i.id);
             self.visit_item(item, None, &mut om);
+        }
+        if let Some(exports) = self.cx.export_map.get(&id) {
+            for export in exports {
+                if let Def::Macro(def_id) = export.def {
+                    if def_id.krate == LOCAL_CRATE {
+                        continue // These are `krate.exported_macros`, handled in `self.visit()`.
+                    }
+                    let def = match self.cx.sess().cstore.load_macro(def_id, self.cx.sess()) {
+                        LoadedMacro::MacroRules(macro_rules) => macro_rules,
+                        // FIXME(jseyfried): document proc macro reexports
+                        LoadedMacro::ProcMacro(..) => continue,
+                    };
+
+                    // FIXME(jseyfried) merge with `self.visit_macro()`
+                    let matchers = def.body.chunks(4).map(|arm| arm[0].get_span()).collect();
+                    om.macros.push(Macro {
+                        id: def.id,
+                        attrs: def.attrs.clone().into(),
+                        name: def.ident.name,
+                        whence: def.span,
+                        matchers: matchers,
+                        stab: self.stability(def.id),
+                        depr: self.deprecation(def.id),
+                        imported_from: def.imported_from.map(|ident| ident.name),
+                    })
+                }
+            }
         }
         om
     }

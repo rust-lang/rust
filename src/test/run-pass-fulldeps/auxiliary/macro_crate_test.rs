@@ -10,7 +10,6 @@
 
 // force-host
 
-#![feature(dotdot_in_tuple_patterns)]
 #![feature(plugin_registrar, quote, rustc_private)]
 
 extern crate syntax;

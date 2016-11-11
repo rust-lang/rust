@@ -38,7 +38,7 @@ use rustc::hir::print as pprust;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind};
 use rustc::middle::stability;
-use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 use rustc::hir;
 
@@ -116,7 +116,7 @@ pub struct Crate {
     pub access_levels: Arc<AccessLevels<DefId>>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
-    pub external_traits: FnvHashMap<DefId, Trait>,
+    pub external_traits: FxHashMap<DefId, Trait>,
 }
 
 struct CrateNum(def_id::CrateNum);
@@ -993,7 +993,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
         // Note that associated types also have a sized bound by default, but we
         // don't actually know the set of associated types right here so that's
         // handled in cleaning associated types
-        let mut sized_params = FnvHashSet();
+        let mut sized_params = FxHashSet();
         where_predicates.retain(|pred| {
             match *pred {
                 WP::BoundPredicate { ty: Generic(ref g), ref bounds } => {
@@ -1338,47 +1338,116 @@ impl Clean<Item> for hir::ImplItem {
     }
 }
 
-impl<'tcx> Clean<Item> for ty::Method<'tcx> {
+impl<'tcx> Clean<Item> for ty::AssociatedItem {
     fn clean(&self, cx: &DocContext) -> Item {
-        let generics = (self.generics, &self.predicates).clean(cx);
-        let mut decl = (self.def_id, &self.fty.sig).clean(cx);
-        match self.explicit_self {
-            ty::ExplicitSelfCategory::ByValue => {
-                decl.inputs.values[0].type_ = Infer;
+        let inner = match self.kind {
+            ty::AssociatedKind::Const => {
+                let ty = cx.tcx().lookup_item_type(self.def_id).ty;
+                AssociatedConstItem(ty.clean(cx), None)
             }
-            ty::ExplicitSelfCategory::ByReference(..) => {
-                match decl.inputs.values[0].type_ {
-                    BorrowedRef{ref mut type_, ..} => **type_ = Infer,
-                    _ => unreachable!(),
+            ty::AssociatedKind::Method => {
+                let generics = (cx.tcx().lookup_generics(self.def_id),
+                                &cx.tcx().lookup_predicates(self.def_id)).clean(cx);
+                let fty = match cx.tcx().lookup_item_type(self.def_id).ty.sty {
+                    ty::TyFnDef(_, _, f) => f,
+                    _ => unreachable!()
+                };
+                let mut decl = (self.def_id, &fty.sig).clean(cx);
+
+                if self.method_has_self_argument {
+                    let self_ty = match self.container {
+                        ty::ImplContainer(def_id) => {
+                            cx.tcx().lookup_item_type(def_id).ty
+                        }
+                        ty::TraitContainer(_) => cx.tcx().mk_self_type()
+                    };
+                    let self_arg_ty = *fty.sig.input(0).skip_binder();
+                    if self_arg_ty == self_ty {
+                        decl.inputs.values[0].type_ = Infer;
+                    } else if let ty::TyRef(_, mt) = self_arg_ty.sty {
+                        if mt.ty == self_ty {
+                            match decl.inputs.values[0].type_ {
+                                BorrowedRef{ref mut type_, ..} => **type_ = Infer,
+                                _ => unreachable!(),
+                            }
+                        }
+                    }
+                }
+                let provided = match self.container {
+                    ty::ImplContainer(_) => false,
+                    ty::TraitContainer(_) => self.has_value
+                };
+                if provided {
+                    MethodItem(Method {
+                        unsafety: fty.unsafety,
+                        generics: generics,
+                        decl: decl,
+                        abi: fty.abi,
+
+                        // trait methods canot (currently, at least) be const
+                        constness: hir::Constness::NotConst,
+                    })
+                } else {
+                    TyMethodItem(TyMethod {
+                        unsafety: fty.unsafety,
+                        generics: generics,
+                        decl: decl,
+                        abi: fty.abi,
+                    })
                 }
             }
-            _ => {}
-        }
-        let provided = match self.container {
-            ty::ImplContainer(..) => false,
-            ty::TraitContainer(did) => {
-                cx.tcx().provided_trait_methods(did).iter().any(|m| {
-                    m.def_id == self.def_id
-                })
-            }
-        };
-        let inner = if provided {
-            MethodItem(Method {
-                unsafety: self.fty.unsafety,
-                generics: generics,
-                decl: decl,
-                abi: self.fty.abi,
+            ty::AssociatedKind::Type => {
+                let my_name = self.name.clean(cx);
 
-                // trait methods canot (currently, at least) be const
-                constness: hir::Constness::NotConst,
-            })
-        } else {
-            TyMethodItem(TyMethod {
-                unsafety: self.fty.unsafety,
-                generics: generics,
-                decl: decl,
-                abi: self.fty.abi,
-            })
+                let mut bounds = if let ty::TraitContainer(did) = self.container {
+                    // When loading a cross-crate associated type, the bounds for this type
+                    // are actually located on the trait/impl itself, so we need to load
+                    // all of the generics from there and then look for bounds that are
+                    // applied to this associated type in question.
+                    let def = cx.tcx().lookup_trait_def(did);
+                    let predicates = cx.tcx().lookup_predicates(did);
+                    let generics = (def.generics, &predicates).clean(cx);
+                    generics.where_predicates.iter().filter_map(|pred| {
+                        let (name, self_type, trait_, bounds) = match *pred {
+                            WherePredicate::BoundPredicate {
+                                ty: QPath { ref name, ref self_type, ref trait_ },
+                                ref bounds
+                            } => (name, self_type, trait_, bounds),
+                            _ => return None,
+                        };
+                        if *name != my_name { return None }
+                        match **trait_ {
+                            ResolvedPath { did, .. } if did == self.container.id() => {}
+                            _ => return None,
+                        }
+                        match **self_type {
+                            Generic(ref s) if *s == "Self" => {}
+                            _ => return None,
+                        }
+                        Some(bounds)
+                    }).flat_map(|i| i.iter().cloned()).collect::<Vec<_>>()
+                } else {
+                    vec![]
+                };
+
+                // Our Sized/?Sized bound didn't get handled when creating the generics
+                // because we didn't actually get our whole set of bounds until just now
+                // (some of them may have come from the trait). If we do have a sized
+                // bound, we remove it, and if we don't then we add the `?Sized` bound
+                // at the end.
+                match bounds.iter().position(|b| b.is_sized_bound(cx)) {
+                    Some(i) => { bounds.remove(i); }
+                    None => bounds.push(TyParamBound::maybe_sized(cx)),
+                }
+
+                let ty = if self.has_value {
+                    Some(cx.tcx().lookup_item_type(self.def_id).ty)
+                } else {
+                    None
+                };
+
+                AssociatedTypeItem(bounds, ty.clean(cx))
+            }
         };
 
         Item {
@@ -1390,16 +1459,6 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             attrs: inline::load_attrs(cx, cx.tcx(), self.def_id),
             source: Span::empty(),
             inner: inner,
-        }
-    }
-}
-
-impl<'tcx> Clean<Item> for ty::ImplOrTraitItem<'tcx> {
-    fn clean(&self, cx: &DocContext) -> Item {
-        match *self {
-            ty::ConstTraitItem(ref cti) => cti.clean(cx),
-            ty::MethodTraitItem(ref mti) => mti.clean(cx),
-            ty::TypeTraitItem(ref tti) => tti.clean(cx),
         }
     }
 }
@@ -1693,8 +1752,8 @@ impl Clean<Type> for hir::Ty {
                 });
                 if let Some((tcx, &hir::ItemTy(ref ty, ref generics))) = tcx_and_alias {
                     let provided_params = &path.segments.last().unwrap().parameters;
-                    let mut ty_substs = FnvHashMap();
-                    let mut lt_substs = FnvHashMap();
+                    let mut ty_substs = FxHashMap();
+                    let mut lt_substs = FxHashMap();
                     for (i, ty_param) in generics.ty_params.iter().enumerate() {
                         let ty_param_def = tcx.expect_def(ty_param.id);
                         if let Some(ty) = provided_params.types().get(i).cloned()
@@ -2368,7 +2427,7 @@ impl Clean<ImplPolarity> for hir::ImplPolarity {
 pub struct Impl {
     pub unsafety: hir::Unsafety,
     pub generics: Generics,
-    pub provided_trait_methods: FnvHashSet<String>,
+    pub provided_trait_methods: FxHashSet<String>,
     pub trait_: Option<Type>,
     pub for_: Type,
     pub items: Vec<Item>,
@@ -2394,7 +2453,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
                    .map(|meth| meth.name.to_string())
                    .collect()
             })
-        }).unwrap_or(FnvHashSet());
+        }).unwrap_or(FxHashSet());
 
         ret.push(Item {
             name: None,
@@ -2880,79 +2939,6 @@ impl Clean<Deprecation> for attr::Deprecation {
         Deprecation {
             since: self.since.as_ref().map_or("".to_string(), |s| s.to_string()),
             note: self.note.as_ref().map_or("".to_string(), |s| s.to_string()),
-        }
-    }
-}
-
-impl<'tcx> Clean<Item> for ty::AssociatedConst<'tcx> {
-    fn clean(&self, cx: &DocContext) -> Item {
-        Item {
-            source: DUMMY_SP.clean(cx),
-            name: Some(self.name.clean(cx)),
-            attrs: Vec::new(),
-            inner: AssociatedConstItem(self.ty.clean(cx), None),
-            visibility: None,
-            def_id: self.def_id,
-            stability: None,
-            deprecation: None,
-        }
-    }
-}
-
-impl<'tcx> Clean<Item> for ty::AssociatedType<'tcx> {
-    fn clean(&self, cx: &DocContext) -> Item {
-        let my_name = self.name.clean(cx);
-
-        let mut bounds = if let ty::TraitContainer(did) = self.container {
-            // When loading a cross-crate associated type, the bounds for this type
-            // are actually located on the trait/impl itself, so we need to load
-            // all of the generics from there and then look for bounds that are
-            // applied to this associated type in question.
-            let def = cx.tcx().lookup_trait_def(did);
-            let predicates = cx.tcx().lookup_predicates(did);
-            let generics = (def.generics, &predicates).clean(cx);
-            generics.where_predicates.iter().filter_map(|pred| {
-                let (name, self_type, trait_, bounds) = match *pred {
-                    WherePredicate::BoundPredicate {
-                        ty: QPath { ref name, ref self_type, ref trait_ },
-                        ref bounds
-                    } => (name, self_type, trait_, bounds),
-                    _ => return None,
-                };
-                if *name != my_name { return None }
-                match **trait_ {
-                    ResolvedPath { did, .. } if did == self.container.id() => {}
-                    _ => return None,
-                }
-                match **self_type {
-                    Generic(ref s) if *s == "Self" => {}
-                    _ => return None,
-                }
-                Some(bounds)
-            }).flat_map(|i| i.iter().cloned()).collect::<Vec<_>>()
-        } else {
-            vec![]
-        };
-
-        // Our Sized/?Sized bound didn't get handled when creating the generics
-        // because we didn't actually get our whole set of bounds until just now
-        // (some of them may have come from the trait). If we do have a sized
-        // bound, we remove it, and if we don't then we add the `?Sized` bound
-        // at the end.
-        match bounds.iter().position(|b| b.is_sized_bound(cx)) {
-            Some(i) => { bounds.remove(i); }
-            None => bounds.push(TyParamBound::maybe_sized(cx)),
-        }
-
-        Item {
-            source: DUMMY_SP.clean(cx),
-            name: Some(self.name.clean(cx)),
-            attrs: inline::load_attrs(cx, cx.tcx(), self.def_id),
-            inner: AssociatedTypeItem(bounds, self.ty.clean(cx)),
-            visibility: self.vis.clean(cx),
-            def_id: self.def_id,
-            stability: cx.tcx().lookup_stability(self.def_id).clean(cx),
-            deprecation: cx.tcx().lookup_deprecation(self.def_id).clean(cx),
         }
     }
 }
