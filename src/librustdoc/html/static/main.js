@@ -1013,6 +1013,22 @@
                     .html('&nbsp;Expand&nbsp;description'));
         var wrapper = $("<div class='toggle-wrapper'>").append(mainToggle);
         $("#main > .docblock").before(wrapper);
+
+        $(".docblock.autohide").each(function() {
+            var wrap = $(this).prev();
+            if (wrap.is(".toggle-wrapper")) {
+                var toggle = wrap.children().first();
+                if ($(this).children().first().is("h3")) {
+                    toggle.children(".toggle-label")
+                          .text(" Show " + $(this).children().first().text());
+                }
+                $(this).hide();
+                wrap.addClass("collapsed");
+                toggle.children(".inner").text(labelForToggleButton(true));
+                toggle.children(".toggle-label").show();
+            }
+        });
+
         var mainToggle =
             $(toggle).append(
                 $('<span/>', {'class': 'toggle-label'})
