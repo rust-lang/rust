@@ -570,7 +570,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             2 => Ok(self.layout.i16_align.abi() as usize),
             4 => Ok(self.layout.i32_align.abi() as usize),
             8 => Ok(self.layout.i64_align.abi() as usize),
-            _ => bug!("bad integer size"),
+            _ => bug!("bad integer size: {}", size),
         }
     }
 
