@@ -1,4 +1,4 @@
-- Feature Name: macro
+- Feature Name: macro_2_0
 - Start Date: 2016-04-17
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -19,10 +19,11 @@ In other RFCs:
 
 * Naming and modularisation (#1561).
 
-May be added to this RFC later (or might be separate RFCs):
+To come in separate RFCs:
 
 * more detailed syntax proposal,
-* hygiene improvements.
+* hygiene improvements,
+* more ...
 
 Note this RFC does not involve procedural macros (aka syntax extensions).
 
@@ -50,7 +51,7 @@ fn main() {
 
 mod a {
     // Macro privacy (TBA)
-    pub macro! foo { ... }
+    pub macro foo { ... }
 }
 ```
 
@@ -58,7 +59,7 @@ mod a {
 // Relative paths (part of hygiene reform, TBA)
 
 mod a {
-    pub macro! foo { ... bar() ... }
+    pub macro foo { ... bar() ... }
     fn bar() { ... }
 }
 
@@ -70,7 +71,7 @@ fn main() {
 ```rust
 // Syntax (TBA)
 
-macro! foo($a: ident) => {
+macro foo($a: ident) => {
     return $a + 1;
 }
 ```
@@ -93,10 +94,10 @@ current hygiene system.
 There will be a new system of macros by example using similar syntax and
 semantics to the current `macro_rules!` system.
 
-A macro by example is declared using the `macro` keyword with the `!`
-operator. For example, where a macro `foo` is declared today as `macro_rules!
-foo { ... }`, it will be declared using `macro! foo { ... }`. I leave the syntax
-of the macro body for later specification.
+A macro by example is declared using the `macro` keyword. For example, where a
+macro `foo` is declared today as `macro_rules! foo { ... }`, it will be declared
+using `macro foo { ... }`. I leave the syntax of the macro body for later
+specification.
 
 
 # Drawbacks
@@ -119,11 +120,10 @@ Limit ourselves to backwards compatible changes to `macro_rules!`. I don't think
 this is worthwhile. It's not clear we can make meaningful improvements without
 breaking backwards compatibility.
 
+Use `macro!` instead of `macro` (proposed in an earlier version of this RFC).
+
 Don't use a keyword - either make `macro` not a keyword or use a different word
 for the macros by example syntax.
-
-Use `macro` instead of `macro!` (we might want to use bare `macro` for
-procedural macros, not clear if the overlap will be a problem).
 
 Live with the existing system.
 
@@ -131,11 +131,8 @@ Live with the existing system.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-What to do with `macro_rules`? We will need to maintain it at least until `macro!`
+What to do with `macro_rules`? We will need to maintain it at least until `macro`
 is stable. Hopefully, we can then deprecate it (some time will be required to
 migrate users to the new system). Eventually, I hope we can remove `macro_rules!`.
 That will take a long time, and would require a 2.0 version of Rust to strictly
 adhere to our stability guarantees.
-
-There are many questions still to be answered as this RFC and some sister RFCs
-are developed.
