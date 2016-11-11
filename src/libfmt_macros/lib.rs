@@ -139,7 +139,7 @@ pub struct Parser<'a> {
     input: &'a str,
     cur: iter::Peekable<str::CharIndices<'a>>,
     /// Error messages accumulated during parsing
-    pub errors: Vec<string::String>,
+    pub errors: Vec<(string::String, Option<string::String>)>,
     /// Current position of implicit positional argument pointer
     curarg: usize,
 }
@@ -165,7 +165,9 @@ impl<'a> Iterator for Parser<'a> {
                     if self.consume('}') {
                         Some(String(self.string(pos + 1)))
                     } else {
-                        self.err("unmatched `}` found");
+                        self.err_with_note("unmatched `}` found",
+                                           "if you intended to print `}`, \
+                                           you can escape it using `}}`");
                         None
                     }
                 }
@@ -192,7 +194,14 @@ impl<'a> Parser<'a> {
     /// String, but I think it does when this eventually uses conditions so it
     /// might as well start using it now.
     fn err(&mut self, msg: &str) {
-        self.errors.push(msg.to_owned());
+        self.errors.push((msg.to_owned(), None));
+    }
+
+    /// Notifies of an error. The message doesn't actually need to be of type
+    /// String, but I think it does when this eventually uses conditions so it
+    /// might as well start using it now.
+    fn err_with_note(&mut self, msg: &str, note: &str) {
+        self.errors.push((msg.to_owned(), Some(note.to_owned())));
     }
 
     /// Optionally consumes the specified character. If the character is not at
@@ -222,7 +231,13 @@ impl<'a> Parser<'a> {
                 self.err(&format!("expected `{:?}`, found `{:?}`", c, maybe));
             }
         } else {
-            self.err(&format!("expected `{:?}` but string was terminated", c));
+            let msg = &format!("expected `{:?}` but string was terminated", c);
+            if c == '}' {
+                self.err_with_note(msg,
+                                   "if you intended to print `{`, you can escape it using `{{`");
+            } else {
+                self.err(msg);
+            }
         }
     }
 
