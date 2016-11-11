@@ -353,7 +353,7 @@ impl File {
     ///
     /// This function is only implemented on Redox, but could be
     /// implemented on other operating systems using readlink
-    #[cfg(redox)]
+    #[cfg(target_os = "redox")]
     #[stable(feature = "rust1", since = "1.14.0")]
     pub fn path(&self) -> io::Result<PathBuf> {
         self.inner.path()

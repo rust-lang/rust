@@ -32,7 +32,7 @@
 
 pub use self::imp::*;
 
-#[cfg(redox)]
+#[cfg(target_os = "redox")]
 #[path = "redox/mod.rs"]
 mod imp;
 
