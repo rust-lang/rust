@@ -469,10 +469,8 @@ pub fn run(mut krate: clean::Crate,
                 clean::NameValue(ref x, ref s)
                         if "html_playground_url" == *x => {
                     markdown::PLAYGROUND.with(|slot| {
-                        if slot.borrow().is_none() {
-                            let name = krate.name.clone();
-                            *slot.borrow_mut() = Some((Some(name), s.clone()));
-                        }
+                        let name = krate.name.clone();
+                        *slot.borrow_mut() = Some((Some(name), s.clone()));
                     });
                 }
                 clean::NameValue(ref x, ref s)
