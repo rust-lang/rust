@@ -50,7 +50,6 @@ mod imp {
     pub fn set_oom_handler(handler: fn() -> !) {
         OOM_HANDLER.store(handler as *mut (), Ordering::SeqCst);
     }
-
 }
 
 #[cfg(not(target_has_atomic = "ptr"))]
