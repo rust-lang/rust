@@ -172,8 +172,8 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for IfThisChanged<'a, 'tcx> {
         self.process_attrs(item.id, &item.attrs);
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) {
-        // handled in `visit_item` above
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+        self.process_attrs(impl_item.id, &impl_item.attrs);
     }
 }
 
