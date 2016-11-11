@@ -799,6 +799,9 @@ pub struct ModuleS<'a> {
 
     resolutions: RefCell<FxHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
 
+    // Macro invocations that can expand into items in this module.
+    unresolved_invocations: RefCell<FxHashSet<Mark>>,
+
     no_implicit_prelude: bool,
 
     glob_importers: RefCell<Vec<&'a ImportDirective<'a>>>,
@@ -822,6 +825,7 @@ impl<'a> ModuleS<'a> {
             kind: kind,
             normal_ancestor_id: None,
             resolutions: RefCell::new(FxHashMap()),
+            unresolved_invocations: RefCell::new(FxHashSet()),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
