@@ -731,11 +731,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                       ref generics,
                       ref opt_trait_ref,
                       ref selfty,
-                      ref _impl_item_ids /* [1] */) => {
-            // [1]: We really don't want to be inspecting the details
-            // of impl-items here; it creates bad edges in the
-            // incr. comp. graph.
-
+                      _) => {
             // Create generics from the generics specified in the impl head.
             debug!("convert: ast_generics={:?}", generics);
             let def_id = ccx.tcx.map.local_def_id(it.id);

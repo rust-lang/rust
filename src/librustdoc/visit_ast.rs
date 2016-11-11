@@ -507,7 +507,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 // regardless of where they're located.
                 if !self.inlining {
                     let items = item_ids.iter()
-                                        .map(|&id| self.cx.map.impl_item(id).clone())
+                                        .map(|ii| self.cx.map.impl_item(ii.id).clone())
                                         .collect();
                     let i = Impl {
                         unsafety: unsafety,
@@ -515,7 +515,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         generics: gen.clone(),
                         trait_: tr.clone(),
                         for_: ty.clone(),
-                        items: items.clone(),
+                        items: items,
                         attrs: item.attrs.clone(),
                         id: item.id,
                         whence: item.span,

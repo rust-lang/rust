@@ -1007,8 +1007,9 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                     // types, which appear not to unify -- so the
                     // overlap check succeeds, when it should
                     // fail.
-                    bug!("Tried to project an inherited associated type during \
-                          coherence checking, which is currently not supported.");
+                    span_bug!(obligation.cause.span,
+                              "Tried to project an inherited associated type during \
+                               coherence checking, which is currently not supported.");
                 };
                 candidate_set.vec.extend(new_candidate);
             }
