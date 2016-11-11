@@ -17,6 +17,7 @@ fn main() {
                             //~^ ERROR: argument never used
     format!("{foo}");         //~ ERROR: no argument named `foo`
 
+    format!("", 1, 2);                 //~ ERROR: multiple unused formatting arguments
     format!("{}", 1, 2);               //~ ERROR: argument never used
     format!("{1}", 1, 2);              //~ ERROR: argument never used
     format!("{}", 1, foo=2);           //~ ERROR: named argument never used
@@ -53,4 +54,6 @@ fn main() {
 
     format!("foo } bar"); //~ ERROR: unmatched `}` found
     format!("foo }"); //~ ERROR: unmatched `}` found
+
+    format!("foo %s baz", "bar"); //~ ERROR: argument never used
 }
