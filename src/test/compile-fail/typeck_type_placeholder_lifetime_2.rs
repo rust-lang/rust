@@ -17,6 +17,6 @@ struct Foo<'a, T:'a> {
 
 pub fn main() {
     let c: Foo<_, usize> = Foo { r: &5 };
-    //~^ ERROR E0244
-    //~| NOTE expected 1 type argument, found 2
+    //~^ ERROR wrong number of type arguments: expected 1, found 2 [E0244]
+    //~| NOTE expected 1 type argument
 }
