@@ -279,8 +279,8 @@ fn create_matches(len: usize) -> Vec<Vec<Rc<NamedMatch>>> {
 
 fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
                     next_eis: &mut Vec<Box<MatcherPos>>,
-                    eof_eis: &mut Vec<Box<MatcherPos>>,
-                    bb_eis: &mut Vec<Box<MatcherPos>>,
+                    eof_eis: &mut SmallVector<Box<MatcherPos>>,
+                    bb_eis: &mut SmallVector<Box<MatcherPos>>,
                     token: &Token, span: &syntax_pos::Span) -> ParseResult<()> {
     while let Some(mut ei) = cur_eis.pop() {
         // When unzipped trees end, remove them
@@ -412,11 +412,9 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
     let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo));
 
     loop {
-        let mut bb_eis = Vec::new(); // black-box parsed by parser.rs
+        let mut bb_eis = SmallVector::new(); // black-box parsed by parser.rs
+        let mut eof_eis = SmallVector::new();
         let mut next_eis = Vec::new(); // or proceed normally
-
-        // FIXME: Use SmallVector since in the successful case we will only have one
-        let mut eof_eis = Vec::new();
 
         match inner_parse_loop(&mut cur_eis, &mut next_eis, &mut eof_eis, &mut bb_eis,
                                &parser.token, &parser.span) {
