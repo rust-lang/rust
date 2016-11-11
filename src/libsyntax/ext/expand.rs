@@ -533,7 +533,9 @@ impl<'a> Parser<'a> {
             }
             ExpansionKind::Stmts => {
                 let mut stmts = SmallVector::zero();
-                while self.token != token::Eof {
+                while self.token != token::Eof &&
+                      // won't make progress on a `}`
+                      self.token != token::CloseDelim(token::Brace) {
                     if let Some(stmt) = self.parse_full_stmt(macro_legacy_warnings)? {
                         stmts.push(stmt);
                     }
