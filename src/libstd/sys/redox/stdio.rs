@@ -10,6 +10,7 @@
 
 use io;
 use libc;
+use sys::cvt;
 use sys::fd::FileDesc;
 
 pub struct Stdin(());
@@ -43,6 +44,10 @@ impl Stdout {
         fd.into_raw();
         ret
     }
+
+    pub fn flush(&self) -> io::Result<()> {
+        cvt(libc::fsync(libc::STDOUT_FILENO)).and(Ok(()))
+    }
 }
 
 impl Stderr {
@@ -54,6 +59,10 @@ impl Stderr {
         fd.into_raw();
         ret
     }
+
+    pub fn flush(&self) -> io::Result<()> {
+        cvt(libc::fsync(libc::STDERR_FILENO)).and(Ok(()))
+    }
 }
 
 // FIXME: right now this raw stderr handle is used in a few places because
@@ -63,7 +72,10 @@ impl io::Write for Stderr {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         Stderr::write(self, data)
     }
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+
+    fn flush(&mut self) -> io::Result<()> {
+        cvt(libc::fsync(libc::STDERR_FILENO)).and(Ok(()))
+    }
 }
 
 pub const EBADF_ERR: i32 = ::libc::EBADF;
