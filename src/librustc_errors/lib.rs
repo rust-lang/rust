@@ -36,7 +36,7 @@ extern crate rustc_unicode;
 extern crate serialize as rustc_serialize; // used by deriving
 extern crate syntax_pos;
 
-pub use emitter::ColorConfig;
+pub use emitter::{ColorConfig, Drawing, EmitterConfig};
 
 use self::Level::*;
 
@@ -227,12 +227,12 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub fn with_tty_emitter(color_config: ColorConfig,
+    pub fn with_tty_emitter(config: EmitterConfig,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
                             cm: Option<Rc<CodeMapper>>)
                             -> Handler {
-        let emitter = Box::new(EmitterWriter::stderr(color_config, cm));
+        let emitter = Box::new(EmitterWriter::stderr(config, cm));
         Handler::with_emitter(can_emit_warnings, treat_err_as_bug, emitter)
     }
 
