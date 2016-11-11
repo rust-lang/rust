@@ -43,10 +43,10 @@ pub mod thread_local;
 pub mod util;
 pub mod wtf8;
 
-#[cfg(redox)]
+#[cfg(target_os = "redox")]
 pub use sys::net;
 
-#[cfg(not(redox))]
+#[cfg(not(target_os = "redox"))]
 pub mod net;
 
 #[cfg(any(not(cargobuild), feature = "backtrace"))]
