@@ -13,15 +13,10 @@
 use super::{check_fn, Expectation, FnCtxt};
 
 use astconv::AstConv;
-use rustc::hir::def_id::DefId;
 use rustc::ty::{self, ToPolyTraitRef, Ty};
-use rustc::ty::subst::Substs;
-use rustc::util::common::MemoizationMap;
 use std::cmp;
 use syntax::abi::Abi;
 use rustc::hir;
-
-use syntax::parse::token;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_expr_closure(&self,
@@ -45,48 +40,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.check_closure(expr, expected_kind, decl, body, expected_sig)
     }
 
-    fn declare_closure(&self, def_id: DefId) {
-        let tcx = self.tcx.global_tcx();
-
-        tcx.generics.memoize(def_id, || {
-            let node_id = tcx.map.as_local_node_id(def_id).unwrap();
-            let base_def_id = self.tcx.closure_base_def_id(def_id);
-            let base_generics = tcx.item_generics(base_def_id);
-
-            // provide junk type parameter defs - the only place that
-            // cares about anything but the length is instantiation,
-            // and we don't do that for closures.
-            let upvar_decls : Vec<_> = tcx.with_freevars(node_id, |fv| {
-                fv.iter().enumerate().map(|(i, _)| ty::TypeParameterDef {
-                    index: (base_generics.count() as u32) + (i as u32),
-                    name: token::intern("<upvar>"),
-                    def_id: def_id,
-                    default_def_id: base_def_id,
-                    default: None,
-                    object_lifetime_default: ty::ObjectLifetimeDefault::BaseDefault,
-                    pure_wrt_drop: false,
-                }).collect()
-            });
-
-            tcx.alloc_generics(ty::Generics {
-                parent: Some(base_def_id),
-                parent_regions: base_generics.parent_regions +
-                    (base_generics.regions.len() as u32),
-                parent_types: base_generics.parent_types +
-                    (base_generics.types.len() as u32),
-                regions: vec![],
-                types: upvar_decls,
-                has_self: false,
-            })
-        });
-
-        tcx.item_types.memoize(def_id, || tcx.mk_closure(def_id, Substs::for_item(
-            tcx, def_id,
-            |def, _| tcx.mk_region(def.to_early_bound_region()),
-            |def, _| tcx.mk_param_from_def(def)
-        )));
-    }
-
     fn check_closure(&self,
                      expr: &hir::Expr,
                      opt_kind: Option<ty::ClosureKind>,
@@ -99,8 +52,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                expected_sig);
 
         let expr_def_id = self.tcx.map.local_def_id(expr.id);
-        self.declare_closure(expr_def_id);
-
         let mut fn_ty = AstConv::ty_of_closure(self,
                                                hir::Unsafety::Normal,
                                                decl,
@@ -110,17 +61,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Create type variables (for now) to represent the transformed
         // types of upvars. These will be unified during the upvar
         // inference phase (`upvar.rs`).
-        let num_upvars = self.tcx.with_freevars(expr.id, |fv| fv.len());
-        let upvar_tys = self.next_ty_vars(num_upvars);
-
-        debug!("check_closure: expr.id={:?} upvar_tys={:?}",
-               expr.id,
-               upvar_tys);
-
-        let closure_type = self.tcx.mk_closure(
-            expr_def_id,
-            self.parameter_environment.free_substs.extend_with_types(self.tcx, &upvar_tys)
+        let closure_type = self.tcx.mk_closure(expr_def_id,
+            self.parameter_environment.free_substs.extend_to(self.tcx, expr_def_id,
+                |_, _| span_bug!(expr.span, "closure has region param"),
+                |_, _| self.infcx.next_ty_var()
+            )
         );
+
+        debug!("check_closure: expr.id={:?} closure_type={:?}", expr.id, closure_type);
 
         let fn_sig = self.tcx
             .liberate_late_bound_regions(self.tcx.region_maps.call_site_extent(expr.id, body.id),

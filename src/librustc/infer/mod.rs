@@ -1150,10 +1150,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(true))
     }
 
-    pub fn next_ty_vars(&self, n: usize) -> Vec<Ty<'tcx>> {
-        (0..n).map(|_i| self.next_ty_var()).collect()
-    }
-
     pub fn next_int_var_id(&self) -> IntVid {
         self.int_unification_table
             .borrow_mut()
