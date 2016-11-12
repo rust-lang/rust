@@ -46,8 +46,8 @@ unsafe fn deallocate(ptr: *mut u8, _size: usize, _align: usize) {
 }
 
 #[lang = "box_free"]
-unsafe fn box_free<T>(ptr: *mut T) {
-    deallocate(ptr as *mut u8, ::core::mem::size_of::<T>(), ::core::mem::align_of::<T>());
+unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
+    deallocate(ptr as *mut u8, ::core::mem::size_of_val(&*ptr), ::core::mem::align_of_val(&*ptr));
 }
 
 #[start]

@@ -164,7 +164,7 @@ pub enum TypeVariants<'tcx> {
     /// Anonymized (`impl Trait`) type found in a return type.
     /// The DefId comes from the `impl Trait` ast::Ty node, and the
     /// substitutions are for the generics of the function in question.
-    /// After typeck, the concrete type can be found in the `tcache` map.
+    /// After typeck, the concrete type can be found in the `types` map.
     TyAnon(DefId, &'tcx Substs<'tcx>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
@@ -556,7 +556,7 @@ pub struct DebruijnIndex {
 ///
 /// These are regions that are stored behind a binder and must be substituted
 /// with some concrete region before being used. There are 2 kind of
-/// bound regions: early-bound, which are bound in a TypeScheme/TraitDef,
+/// bound regions: early-bound, which are bound in an item's Generics,
 /// and are substituted by a Substs,  and late-bound, which are part of
 /// higher-ranked types (e.g. `for<'a> fn(&'a ())`) and are substituted by
 /// the likes of `liberate_late_bound_regions`. The distinction exists

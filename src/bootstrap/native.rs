@@ -67,10 +67,17 @@ pub fn llvm(build: &Build, target: &str) {
     if build.config.ninja {
         cfg.generator("Ninja");
     }
+
+    let profile = match (build.config.llvm_optimize, build.config.llvm_release_debuginfo) {
+        (false, _) => "Debug",
+        (true, false) => "Release",
+        (true, true) => "RelWithDebInfo",
+    };
+
     cfg.target(target)
        .host(&build.config.build)
        .out_dir(&dst)
-       .profile(if build.config.llvm_optimize {"Release"} else {"Debug"})
+       .profile(profile)
        .define("LLVM_ENABLE_ASSERTIONS", assertions)
        .define("LLVM_TARGETS_TO_BUILD", "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend")
        .define("LLVM_INCLUDE_EXAMPLES", "OFF")

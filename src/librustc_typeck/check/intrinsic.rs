@@ -34,7 +34,6 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    output: Ty<'tcx>) {
     let tcx = ccx.tcx;
     let def_id = tcx.map.local_def_id(it.id);
-    let i_ty = tcx.lookup_item_type(def_id);
 
     let substs = Substs::for_item(tcx, def_id,
                                   |_, _| tcx.mk_region(ty::ReErased),
@@ -49,7 +48,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             variadic: false,
         }),
     }));
-    let i_n_tps = i_ty.generics.types.len();
+    let i_n_tps = tcx.item_generics(def_id).types.len();
     if i_n_tps != n_tps {
         let span = match it.node {
             hir::ForeignItemFn(_, ref generics) => generics.span,
@@ -65,7 +64,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     } else {
         require_same_types(ccx,
                            TypeOrigin::IntrinsicType(it.span),
-                           i_ty.ty,
+                           tcx.item_type(def_id),
                            fty);
     }
 }
@@ -330,8 +329,8 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
     };
 
     let tcx = ccx.tcx;
-    let i_ty = tcx.lookup_item_type(tcx.map.local_def_id(it.id));
-    let i_n_tps = i_ty.generics.types.len();
+    let def_id = tcx.map.local_def_id(it.id);
+    let i_n_tps = tcx.item_generics(def_id).types.len();
     let name = it.name.as_str();
 
     let (n_tps, inputs, output) = match &*name {
@@ -374,7 +373,8 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
 
                     let mut structural_to_nomimal = FxHashMap();
 
-                    let sig = tcx.no_late_bound_regions(i_ty.ty.fn_sig()).unwrap();
+                    let sig = tcx.item_type(def_id).fn_sig();
+                    let sig = tcx.no_late_bound_regions(sig).unwrap();
                     if intr.inputs.len() != sig.inputs.len() {
                         span_err!(tcx.sess, it.span, E0444,
                                   "platform-specific intrinsic has invalid number of \

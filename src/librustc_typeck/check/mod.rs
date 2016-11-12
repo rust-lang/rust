@@ -86,7 +86,8 @@ use fmt_macros::{Parser, Piece, Position};
 use hir::def::{Def, CtorKind, PathResolution};
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::pat_util;
-use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
+use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin,
+                   TypeOrigin, TypeTrace, type_variable};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, Reveal};
 use rustc::ty::{ParamTy, ParameterEnvironment};
@@ -597,7 +598,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            body: &'tcx hir::Expr,
                            fn_id: ast::NodeId,
                            span: Span) {
-    let raw_fty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(fn_id)).ty;
+    let raw_fty = ccx.tcx.item_type(ccx.tcx.map.local_def_id(fn_id));
     let fn_ty = match raw_fty.sty {
         ty::TyFnDef(.., f) => f,
         _ => span_bug!(body.span, "check_bare_fn: function type expected")
@@ -780,15 +781,16 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 }
 
 fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
-    check_representable(ccx.tcx, span, id);
+    let def_id = ccx.tcx.map.local_def_id(id);
+    check_representable(ccx.tcx, span, def_id);
 
-    if ccx.tcx.lookup_simd(ccx.tcx.map.local_def_id(id)) {
-        check_simd(ccx.tcx, span, id);
+    if ccx.tcx.lookup_simd(def_id) {
+        check_simd(ccx.tcx, span, def_id);
     }
 }
 
 fn check_union(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
-    check_representable(ccx.tcx, span, id);
+    check_representable(ccx.tcx, span, ccx.tcx.map.local_def_id(id));
 }
 
 pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
@@ -831,7 +833,8 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         check_union(ccx, it.id, it.span);
       }
       hir::ItemTy(_, ref generics) => {
-        let pty_ty = ccx.tcx.tables().node_id_to_type(it.id);
+        let def_id = ccx.tcx.map.local_def_id(it.id);
+        let pty_ty = ccx.tcx.item_type(def_id);
         check_bounds_are_used(ccx, generics, pty_ty);
       }
       hir::ItemForeignMod(ref m) => {
@@ -847,8 +850,8 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
             }
         } else {
             for item in &m.items {
-                let pty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(item.id));
-                if !pty.generics.types.is_empty() {
+                let generics = ccx.tcx.item_generics(ccx.tcx.map.local_def_id(item.id));
+                if !generics.types.is_empty() {
                     let mut err = struct_span_err!(ccx.tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
                     span_help!(&mut err, item.span,
@@ -917,7 +920,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
 fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     def_id: DefId,
                                     item: &hir::Item) {
-    let generics = ccx.tcx.lookup_generics(def_id);
+    let generics = ccx.tcx.item_generics(def_id);
     if let Some(ref attr) = item.attrs.iter().find(|a| {
         a.check_name("rustc_on_unimplemented")
     }) {
@@ -1143,12 +1146,11 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let signature = |item: &ty::AssociatedItem| {
         match item.kind {
             ty::AssociatedKind::Method => {
-                format!("{}", tcx.lookup_item_type(item.def_id).ty.fn_sig().0)
+                format!("{}", tcx.item_type(item.def_id).fn_sig().0)
             }
             ty::AssociatedKind::Type => format!("type {};", item.name.to_string()),
             ty::AssociatedKind::Const => {
-                format!("const {}: {:?};", item.name.to_string(),
-                        tcx.lookup_item_type(item.def_id).ty)
+                format!("const {}: {:?};", item.name.to_string(), tcx.item_type(item.def_id))
             }
         }
     };
@@ -1218,7 +1220,7 @@ fn check_const_with_type<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
 fn check_const<'a, 'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                          expr: &'tcx hir::Expr,
                          id: ast::NodeId) {
-    let decl_ty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(id)).ty;
+    let decl_ty = ccx.tcx.item_type(ccx.tcx.map.local_def_id(id));
     check_const_with_type(ccx, expr, decl_ty, id);
 }
 
@@ -1227,9 +1229,9 @@ fn check_const<'a, 'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 /// pointer, which would mean their size is unbounded.
 fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  sp: Span,
-                                 item_id: ast::NodeId)
+                                 item_def_id: DefId)
                                  -> bool {
-    let rty = tcx.tables().node_id_to_type(item_id);
+    let rty = tcx.item_type(item_def_id);
 
     // Check that it is possible to represent this type. This call identifies
     // (1) types that contain themselves and (2) types that contain a different
@@ -1238,7 +1240,6 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
         Representability::SelfRecursive => {
-            let item_def_id = tcx.map.local_def_id(item_id);
             tcx.recursive_type_with_infinite_size_error(item_def_id).emit();
             return false
         }
@@ -1247,8 +1248,8 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     return true
 }
 
-pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, id: ast::NodeId) {
-    let t = tcx.tables().node_id_to_type(id);
+pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId) {
+    let t = tcx.item_type(def_id);
     match t.sty {
         ty::TyAdt(def, substs) if def.is_struct() => {
             let fields = &def.struct_variant().fields;
@@ -1328,7 +1329,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         disr_vals.push(current_disr_val);
     }
 
-    check_representable(ccx.tcx, sp, id);
+    check_representable(ccx.tcx, sp, def_id);
 }
 
 impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
@@ -1341,13 +1342,12 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn get_generics(&self, _: Span, id: DefId)
                     -> Result<&'tcx ty::Generics<'tcx>, ErrorReported>
     {
-        Ok(self.tcx().lookup_generics(id))
+        Ok(self.tcx().item_generics(id))
     }
 
-    fn get_item_type_scheme(&self, _: Span, id: DefId)
-                            -> Result<ty::TypeScheme<'tcx>, ErrorReported>
+    fn get_item_type(&self, _: Span, id: DefId) -> Result<Ty<'tcx>, ErrorReported>
     {
-        Ok(self.tcx().lookup_item_type(id))
+        Ok(self.tcx().item_type(id))
     }
 
     fn get_trait_def(&self, _: Span, id: DefId)
@@ -1662,7 +1662,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// generic type scheme.
     fn instantiate_bounds(&self, span: Span, def_id: DefId, substs: &Substs<'tcx>)
                           -> ty::InstantiatedPredicates<'tcx> {
-        let bounds = self.tcx.lookup_predicates(def_id);
+        let bounds = self.tcx.item_predicates(def_id);
         let result = bounds.instantiate(self.tcx, substs);
         let result = self.normalize_associated_types_in(span, &result.predicates);
         debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}",
@@ -1687,7 +1687,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let ty_var = self.next_ty_var();
                 self.anon_types.borrow_mut().insert(def_id, ty_var);
 
-                let item_predicates = self.tcx.lookup_predicates(def_id);
+                let item_predicates = self.tcx.item_predicates(def_id);
                 let bounds = item_predicates.instantiate(self.tcx, substs);
 
                 let span = self.tcx.map.def_id_span(def_id, codemap::DUMMY_SP);
@@ -2742,11 +2742,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         span: Span, // (potential) receiver for this impl
                         did: DefId)
                         -> TypeAndSubsts<'tcx> {
-        let ity = self.tcx.lookup_item_type(did);
+        let ity = self.tcx.item_type(did);
         debug!("impl_self_ty: ity={:?}", ity);
 
         let substs = self.fresh_substs_for_item(span, did);
-        let substd_ty = self.instantiate_type_scheme(span, &substs, &ity.ty);
+        let substd_ty = self.instantiate_type_scheme(span, &substs, &ity);
 
         TypeAndSubsts { substs: substs, ty: substd_ty }
     }
@@ -2760,7 +2760,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   formal_args: &[Ty<'tcx>])
                                   -> Vec<Ty<'tcx>> {
         let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {
-            self.commit_regions_if_ok(|| {
+            self.fudge_regions_if_ok(&RegionVariableOrigin::Coercion(call_span), || {
                 // Attempt to apply a subtyping relationship between the formal
                 // return type (likely containing type variables if the function
                 // is polymorphic) and the expected return type.
@@ -4184,11 +4184,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::VariantCtor(def_id, ..) => {
                 // Everything but the final segment should have no
                 // parameters at all.
-                let mut generics = self.tcx.lookup_generics(def_id);
+                let mut generics = self.tcx.item_generics(def_id);
                 if let Some(def_id) = generics.parent {
                     // Variant and struct constructors use the
                     // generics of their parent type definition.
-                    generics = self.tcx.lookup_generics(def_id);
+                    generics = self.tcx.item_generics(def_id);
                 }
                 type_segment = Some((segments.last().unwrap(), generics));
             }
@@ -4198,7 +4198,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Const(def_id) |
             Def::Static(def_id, _) => {
                 fn_segment = Some((segments.last().unwrap(),
-                                   self.tcx.lookup_generics(def_id)));
+                                   self.tcx.item_generics(def_id)));
             }
 
             // Case 3. Reference to a method or associated const.
@@ -4212,9 +4212,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::ImplContainer(_) => {}
                 }
 
-                let generics = self.tcx.lookup_generics(def_id);
+                let generics = self.tcx.item_generics(def_id);
                 if segments.len() >= 2 {
-                    let parent_generics = self.tcx.lookup_generics(generics.parent.unwrap());
+                    let parent_generics = self.tcx.item_generics(generics.parent.unwrap());
                     type_segment = Some((&segments[segments.len() - 2], parent_generics));
                 } else {
                     // `<T>::assoc` will end up here, and so can `T::assoc`.
@@ -4344,9 +4344,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
-        let scheme = self.tcx.lookup_item_type(def.def_id());
+        let ty = self.tcx.item_type(def.def_id());
         assert!(!substs.has_escaping_regions());
-        assert!(!scheme.ty.has_escaping_regions());
+        assert!(!ty.has_escaping_regions());
 
         // Add all the obligations that are required, substituting and
         // normalized appropriately.
@@ -4357,16 +4357,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
-        let ty_substituted = self.instantiate_type_scheme(span, &substs, &scheme.ty);
+        let ty_substituted = self.instantiate_type_scheme(span, &substs, &ty);
 
         if let Some((ty::ImplContainer(impl_def_id), self_ty)) = ufcs_associated {
             // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
             // is inherent, there is no `Self` parameter, instead, the impl needs
             // type parameters, which we can infer by unifying the provided `Self`
             // with the substituted impl type.
-            let impl_scheme = self.tcx.lookup_item_type(impl_def_id);
+            let ty = self.tcx.item_type(impl_def_id);
 
-            let impl_ty = self.instantiate_type_scheme(span, &substs, &impl_scheme.ty);
+            let impl_ty = self.instantiate_type_scheme(span, &substs, &ty);
             match self.sub_types(false, TypeOrigin::Misc(span), self_ty, impl_ty) {
                 Ok(InferOk { obligations, .. }) => {
                     // FIXME(#32730) propagate obligations

@@ -440,7 +440,7 @@ impl MacResult for DummyResult {
         if self.expr_only {
             None
         } else {
-            Some(SmallVector::zero())
+            Some(SmallVector::new())
         }
     }
 
@@ -448,7 +448,7 @@ impl MacResult for DummyResult {
         if self.expr_only {
             None
         } else {
-            Some(SmallVector::zero())
+            Some(SmallVector::new())
         }
     }
 
@@ -456,7 +456,7 @@ impl MacResult for DummyResult {
         if self.expr_only {
             None
         } else {
-            Some(SmallVector::zero())
+            Some(SmallVector::new())
         }
     }
 

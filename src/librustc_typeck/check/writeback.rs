@@ -20,8 +20,6 @@ use rustc::ty::adjustment;
 use rustc::ty::fold::{TypeFolder,TypeFoldable};
 use rustc::infer::{InferCtxt, FixupError};
 use rustc::util::nodemap::DefIdMap;
-use write_substs_to_tcx;
-use write_ty_to_tcx;
 
 use std::cell::Cell;
 
@@ -67,7 +65,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
-        wbcx.visit_anon_types(item_id);
+        wbcx.visit_anon_types();
         wbcx.visit_deferred_obligations(item_id);
     }
 }
@@ -131,6 +129,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
         self.fcx.tcx
+    }
+
+    fn write_ty_to_tcx(&self, node_id: ast::NodeId, ty: Ty<'gcx>) {
+        debug!("write_ty_to_tcx({}, {:?})", node_id,  ty);
+        assert!(!ty.needs_infer());
+        self.tcx().tables.borrow_mut().node_types.insert(node_id, ty);
     }
 
     // Hacky hack: During type-checking, we treat *all* operators
@@ -241,7 +245,7 @@ impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
 
         let var_ty = self.fcx.local_ty(l.span, l.id);
         let var_ty = self.resolve(&var_ty, ResolvingLocal(l.span));
-        write_ty_to_tcx(self.fcx.ccx, l.id, var_ty);
+        self.write_ty_to_tcx(l.id, var_ty);
         intravisit::walk_local(self, l);
     }
 
@@ -249,7 +253,7 @@ impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
         match t.node {
             hir::TyArray(ref ty, ref count_expr) => {
                 self.visit_ty(&ty);
-                write_ty_to_tcx(self.fcx.ccx, count_expr.id, self.tcx().types.usize);
+                self.write_ty_to_tcx(count_expr.id, self.tcx().types.usize);
             }
             hir::TyBareFn(ref function_declaration) => {
                 intravisit::walk_fn_decl_nopat(self, &function_declaration.decl);
@@ -302,12 +306,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_anon_types(&self, item_id: ast::NodeId) {
+    fn visit_anon_types(&self) {
         if self.fcx.writeback_errors.get() {
             return
         }
-
-        let item_def_id = self.fcx.tcx.map.local_def_id(item_id);
 
         let gcx = self.tcx().global_tcx();
         for (&def_id, &concrete_ty) in self.fcx.anon_types.borrow().iter() {
@@ -349,10 +351,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 }
             });
 
-            gcx.register_item_type(def_id, ty::TypeScheme {
-                ty: outside_ty,
-                generics: gcx.lookup_generics(item_def_id)
-            });
+            gcx.item_types.borrow_mut().insert(def_id, outside_ty);
         }
     }
 
@@ -363,13 +362,17 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         // Resolve the type of the node with id `id`
         let n_ty = self.fcx.node_ty(id);
         let n_ty = self.resolve(&n_ty, reason);
-        write_ty_to_tcx(self.fcx.ccx, id, n_ty);
+        self.write_ty_to_tcx(id, n_ty);
         debug!("Node {} has type {:?}", id, n_ty);
 
         // Resolve any substitutions
         self.fcx.opt_node_ty_substs(id, |item_substs| {
-            write_substs_to_tcx(self.fcx.ccx, id,
-                                self.resolve(item_substs, reason));
+            let item_substs = self.resolve(item_substs, reason);
+            if !item_substs.is_noop() {
+                debug!("write_substs_to_tcx({}, {:?})", id, item_substs);
+                assert!(!item_substs.substs.needs_infer());
+                self.tcx().tables.borrow_mut().item_substs.insert(id, item_substs);
+            }
         });
     }
 

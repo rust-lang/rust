@@ -246,7 +246,7 @@ fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
                     def_id: DefId,
                     substs: &'tcx Substs<'tcx>)
                     -> Ty<'tcx> {
-    let ty = shared.tcx().lookup_item_type(def_id).ty;
+    let ty = shared.tcx().item_type(def_id);
     monomorphize::apply_param_substs(shared, substs, &ty)
 }
 
@@ -400,7 +400,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let substs = tcx.normalize_associated_type(&substs);
     let instance = Instance::new(def_id, substs);
-    let item_ty = ccx.tcx().lookup_item_type(def_id).ty;
+    let item_ty = ccx.tcx().item_type(def_id);
     let fn_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &item_ty);
 
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {

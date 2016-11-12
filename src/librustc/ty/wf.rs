@@ -446,7 +446,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                            -> Vec<traits::PredicateObligation<'tcx>>
     {
         let predicates =
-            self.infcx.tcx.lookup_predicates(def_id)
+            self.infcx.tcx.item_predicates(def_id)
                           .instantiate(self.infcx.tcx, substs);
         let cause = self.cause(traits::ItemObligation(def_id));
         predicates.predicates

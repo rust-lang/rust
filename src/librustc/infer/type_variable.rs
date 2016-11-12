@@ -184,6 +184,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
         v
     }
 
+    pub fn num_vars(&self) -> usize {
+        self.values.len()
+    }
+
     pub fn root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
         self.eq_relations.find(vid)
     }

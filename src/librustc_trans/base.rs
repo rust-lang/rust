@@ -1045,7 +1045,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     debug!("trans_instance(instance={:?})", instance);
     let _icx = push_ctxt("trans_instance");
 
-    let fn_ty = ccx.tcx().lookup_item_type(instance.def).ty;
+    let fn_ty = ccx.tcx().item_type(instance.def);
     let fn_ty = ccx.tcx().erase_regions(&fn_ty);
     let fn_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &fn_ty);
 
@@ -1068,7 +1068,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     attributes::inline(llfndecl, attributes::InlineAttr::Hint);
     attributes::set_frame_pointer_elimination(ccx, llfndecl);
 
-    let ctor_ty = ccx.tcx().lookup_item_type(def_id).ty;
+    let ctor_ty = ccx.tcx().item_type(def_id);
     let ctor_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &ctor_ty);
 
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
@@ -1514,7 +1514,7 @@ pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
             hir_map::NodeImplItem(&hir::ImplItem {
                 node: hir::ImplItemKind::Method(..), .. }) => {
                 let def_id = tcx.map.local_def_id(id);
-                let generics = tcx.lookup_generics(def_id);
+                let generics = tcx.item_generics(def_id);
                 let attributes = tcx.get_attrs(def_id);
                 (generics.parent_types == 0 && generics.types.is_empty()) &&
                 // Functions marked with #[inline] are only ever translated
@@ -1719,7 +1719,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let applicable = match sess.cstore.describe_def(def_id) {
                 Some(Def::Static(..)) => true,
                 Some(Def::Fn(_)) => {
-                    shared_ccx.tcx().lookup_generics(def_id).types.is_empty()
+                    shared_ccx.tcx().item_generics(def_id).types.is_empty()
                 }
                 _ => false
             };

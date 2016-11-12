@@ -243,27 +243,21 @@ to know more about [operator traits][operators-and-overloading].
 # Rules for implementing traits
 
 So far, we’ve only added trait implementations to structs, but you can
-implement a trait for any type. So technically, we _could_ implement `HasArea`
-for `i32`:
+implement a trait for any type such as `f32`:
 
 ```rust
-trait HasArea {
-    fn area(&self) -> f64;
+trait ApproxEqual {
+    fn approx_equal(&self, other: &Self) -> bool;
 }
-
-impl HasArea for i32 {
-    fn area(&self) -> f64 {
-        println!("this is silly");
-
-        *self as f64
+impl ApproxEqual for f32 {
+    fn approx_equal(&self, other: &Self) -> bool {
+        // Appropriate for `self` and `other` being close to 1.0.
+        (self - other).abs() <= ::std::f32::EPSILON
     }
 }
 
-5.area();
+println!("{}", 1.0.approx_equal(&1.00000001));
 ```
-
-It is considered poor style to implement methods on such primitive types, even
-though it is possible.
 
 This may seem like the Wild West, but there are two restrictions around
 implementing traits that prevent this from getting out of hand. The first is

@@ -40,6 +40,7 @@ mod concat;
 mod concat_idents;
 mod env;
 mod format;
+mod format_foreign;
 mod log_syntax;
 mod trace_macros;
 

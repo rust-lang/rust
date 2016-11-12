@@ -51,7 +51,7 @@ struct ExprVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
-        let intrinsic = match self.infcx.tcx.lookup_item_type(def_id).ty.sty {
+        let intrinsic = match self.infcx.tcx.item_type(def_id).sty {
             ty::TyFnDef(.., ref bfty) => bfty.abi == RustIntrinsic,
             _ => return false
         };
