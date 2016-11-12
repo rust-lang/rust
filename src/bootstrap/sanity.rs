@@ -81,15 +81,16 @@ pub fn check(build: &mut Build) {
 
     need_cmd("python".as_ref());
 
-    // Look for the nodejs command, needed for emscripten testing
-    if let Some(node) = have_cmd("node".as_ref()) {
-        build.config.nodejs = Some(node);
-    } else if let Some(node) = have_cmd("nodejs".as_ref()) {
-        build.config.nodejs = Some(node);
-    }
 
     if let Some(ref s) = build.config.nodejs {
         need_cmd(s.as_ref());
+    } else {
+        // Look for the nodejs command, needed for emscripten testing
+        if let Some(node) = have_cmd("node".as_ref()) {
+            build.config.nodejs = Some(node);
+        } else if let Some(node) = have_cmd("nodejs".as_ref()) {
+            build.config.nodejs = Some(node);
+        }
     }
 
     if let Some(ref gdb) = build.config.gdb {
