@@ -436,43 +436,40 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseRes
             } else {
                 return Failure(parser.span, token::Eof);
             }
-        } else {
-            if (!bb_eis.is_empty() && !next_eis.is_empty())
-                || bb_eis.len() > 1 {
-                let nts = bb_eis.iter().map(|ei| match ei.top_elts.get_tt(ei.idx) {
-                    TokenTree::Token(_, MatchNt(bind, name)) => {
-                        format!("{} ('{}')", name, bind)
-                    }
-                    _ => panic!()
-                }).collect::<Vec<String>>().join(" or ");
-
-                return Error(parser.span, format!(
-                    "local ambiguity: multiple parsing options: {}",
-                    match next_eis.len() {
-                        0 => format!("built-in NTs {}.", nts),
-                        1 => format!("built-in NTs {} or 1 other option.", nts),
-                        n => format!("built-in NTs {} or {} other options.", nts, n),
-                    }
-                ))
-            } else if bb_eis.is_empty() && next_eis.is_empty() {
-                return Failure(parser.span, parser.token);
-            } else if !next_eis.is_empty() {
-                /* Now process the next token */
-                cur_eis.extend(next_eis.drain(..));
-                parser.bump();
-            } else /* bb_eis.len() == 1 */ {
-                let mut ei = bb_eis.pop().unwrap();
-                if let TokenTree::Token(span, MatchNt(_, ident)) = ei.top_elts.get_tt(ei.idx) {
-                    let match_cur = ei.match_cur;
-                    ei.matches[match_cur].push(Rc::new(MatchedNonterminal(
-                        Rc::new(parse_nt(&mut parser, span, &ident.name.as_str())))));
-                    ei.idx += 1;
-                    ei.match_cur += 1;
-                } else {
-                    unreachable!()
+        } else if (!bb_eis.is_empty() && !next_eis.is_empty()) || bb_eis.len() > 1 {
+            let nts = bb_eis.iter().map(|ei| match ei.top_elts.get_tt(ei.idx) {
+                TokenTree::Token(_, MatchNt(bind, name)) => {
+                    format!("{} ('{}')", name, bind)
                 }
-                cur_eis.push(ei);
+                _ => panic!()
+            }).collect::<Vec<String>>().join(" or ");
+
+            return Error(parser.span, format!(
+                "local ambiguity: multiple parsing options: {}",
+                match next_eis.len() {
+                    0 => format!("built-in NTs {}.", nts),
+                    1 => format!("built-in NTs {} or 1 other option.", nts),
+                    n => format!("built-in NTs {} or {} other options.", nts, n),
+                }
+            ));
+        } else if bb_eis.is_empty() && next_eis.is_empty() {
+            return Failure(parser.span, parser.token);
+        } else if !next_eis.is_empty() {
+            /* Now process the next token */
+            cur_eis.extend(next_eis.drain(..));
+            parser.bump();
+        } else /* bb_eis.len() == 1 */ {
+            let mut ei = bb_eis.pop().unwrap();
+            if let TokenTree::Token(span, MatchNt(_, ident)) = ei.top_elts.get_tt(ei.idx) {
+                let match_cur = ei.match_cur;
+                ei.matches[match_cur].push(Rc::new(MatchedNonterminal(
+                            Rc::new(parse_nt(&mut parser, span, &ident.name.as_str())))));
+                ei.idx += 1;
+                ei.match_cur += 1;
+            } else {
+                unreachable!()
             }
+            cur_eis.push(ei);
         }
 
         assert!(!cur_eis.is_empty());
