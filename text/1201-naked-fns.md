@@ -126,7 +126,7 @@ unsafe extern "C" fn correct1(x: &mut u8) {
 }
 
 #[naked]
-extern "C" fn correct2() {
+extern "C" fn correct2(x: &mut u8) {
     unsafe {
         *x += 1;
     }

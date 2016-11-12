@@ -192,7 +192,9 @@ Guidelines may include more than one acceptable rule, but should offer
 guidance for when to use each rule (which should be formal enough to be used by
 a tool).
 
-For example: "a struct literal must be formatted either on a single line (with
+For example: 
+
+> A struct literal must be formatted either on a single line (with
 spaces after the opening brace and before the closing brace, and with fields
 separated by commas and spaces), or on multiple lines (with one field per line
 and newlines after the opening brace and before the closing brace). The former
@@ -200,7 +202,7 @@ approach should be used for short struct literals, the latter for longer struct
 literals. For tools, the first approach should be used when the width of the
 fields (excluding commas and braces) is 16 characters. E.g.,
 
-```
+> ```rust
 let x = Foo { a: 42, b: 34 };
 let y = Foo {
     a: 42,
@@ -208,7 +210,6 @@ let y = Foo {
     c: 1000
 };
 ```
-"
 
 (Note this is just an example, not a proposed guideline).
 
