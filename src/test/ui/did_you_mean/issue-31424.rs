@@ -15,15 +15,12 @@ struct Struct;
 impl Struct {
     fn foo(&mut self) {
         (&mut self).bar();
-        //~^ ERROR cannot borrow immutable argument `self` as mutable
-        // ... and no SUGGESTION that suggests `&mut mut self`
     }
 
     // In this case we could keep the suggestion, but to distinguish the
     // two cases is pretty hard. It's an obscure case anyway.
     fn bar(self: &mut Self) {
         (&mut self).bar();
-        //~^ ERROR cannot borrow immutable argument `self` as mutable
     }
 }
 
