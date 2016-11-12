@@ -26,38 +26,34 @@ pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
     };
 
     // Find search directory
-    match env::var_os("TERMINFO") {
-        Some(dir) => dirs_to_search.push(PathBuf::from(dir)),
-        None => {
-            if let Some(mut homedir) = env::home_dir() {
-                // ncurses compatibility;
-                homedir.push(".terminfo");
-                dirs_to_search.push(homedir)
-            }
-            match env::var("TERMINFO_DIRS") {
-                Ok(dirs) => {
-                    for i in dirs.split(':') {
-                        if i == "" {
-                            dirs_to_search.push(PathBuf::from("/usr/share/terminfo"));
-                        } else {
-                            dirs_to_search.push(PathBuf::from(i));
-                        }
-                    }
-                }
-                // Found nothing in TERMINFO_DIRS, use the default paths:
-                // According to  /etc/terminfo/README, after looking at
-                // ~/.terminfo, ncurses will search /etc/terminfo, then
-                // /lib/terminfo, and eventually /usr/share/terminfo.
-                // On Haiku the database can be found at /boot/system/data/terminfo
-                Err(..) => {
-                    dirs_to_search.push(PathBuf::from("/etc/terminfo"));
-                    dirs_to_search.push(PathBuf::from("/lib/terminfo"));
-                    dirs_to_search.push(PathBuf::from("/usr/share/terminfo"));
-                    dirs_to_search.push(PathBuf::from("/boot/system/data/terminfo"));
-                }
+    if let Some(dir) = env::var_os("TERMINFO") {
+        dirs_to_search.push(PathBuf::from(dir));
+    }
+
+    if let Ok(dirs) = env::var("TERMINFO_DIRS") {
+        for i in dirs.split(':') {
+            if i == "" {
+                dirs_to_search.push(PathBuf::from("/usr/share/terminfo"));
+            } else {
+                dirs_to_search.push(PathBuf::from(i));
             }
         }
-    };
+    } else {
+        // Found nothing in TERMINFO_DIRS, use the default paths:
+        // According to  /etc/terminfo/README, after looking at
+        // ~/.terminfo, ncurses will search /etc/terminfo, then
+        // /lib/terminfo, and eventually /usr/share/terminfo.
+        // On Haiku the database can be found at /boot/system/data/terminfo
+        if let Some(mut homedir) = env::home_dir() {
+            homedir.push(".terminfo");
+            dirs_to_search.push(homedir)
+        }
+
+        dirs_to_search.push(PathBuf::from("/etc/terminfo"));
+        dirs_to_search.push(PathBuf::from("/lib/terminfo"));
+        dirs_to_search.push(PathBuf::from("/usr/share/terminfo"));
+        dirs_to_search.push(PathBuf::from("/boot/system/data/terminfo"));
+    }
 
     // Look for the terminal in all of the search directories
     for mut p in dirs_to_search {
