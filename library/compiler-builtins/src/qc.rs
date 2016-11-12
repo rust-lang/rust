@@ -281,9 +281,9 @@ macro_rules! check {
                             print!("{} - Args: ", stringify!($name));
                             $(print!("{:?} ", $arg);)*
                             print!("\n");
-                            println!("  rustc-builtins: {:?}", my_answer);
-                            println!("  compiler_rt:    {:?}", compiler_rt_answer);
-                            println!("  gcc_s:          {:?}", gcc_s_answer);
+                            println!(" compiler-builtins: {:?}", my_answer);
+                            println!(" compiler_rt:       {:?}", compiler_rt_answer);
+                            println!(" gcc_s:             {:?}", gcc_s_answer);
                         };
 
                         if my_answer != compiler_rt_answer {
