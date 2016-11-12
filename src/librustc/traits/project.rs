@@ -311,7 +311,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
             ty::TyAnon(def_id, substs) if !substs.has_escaping_regions() => { // (*)
                 // Only normalize `impl Trait` after type-checking, usually in trans.
                 if self.selcx.projection_mode() == Reveal::All {
-                    let generic_ty = self.tcx().lookup_item_type(def_id).ty;
+                    let generic_ty = self.tcx().item_type(def_id);
                     let concrete_ty = generic_ty.subst(self.tcx(), substs);
                     self.fold_ty(concrete_ty)
                 } else {
@@ -809,7 +809,7 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
     };
 
     // If so, extract what we know from the trait and try to come up with a good answer.
-    let trait_predicates = selcx.tcx().lookup_predicates(def_id);
+    let trait_predicates = selcx.tcx().item_predicates(def_id);
     let bounds = trait_predicates.instantiate(selcx.tcx(), substs);
     let bounds = elaborate_predicates(selcx.tcx(), bounds.predicates);
     assemble_candidates_from_predicates(selcx,
@@ -1313,7 +1313,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
                        obligation.predicate.trait_ref);
                 tcx.types.err
             } else {
-                tcx.lookup_item_type(node_item.item.def_id).ty
+                tcx.item_type(node_item.item.def_id)
             };
             let substs = translate_substs(selcx.infcx(), impl_def_id, substs, node_item.node);
             Progress {

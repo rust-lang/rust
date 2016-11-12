@@ -527,7 +527,7 @@ impl<'a, 'tcx> CrateMetadata {
 
         ty::TraitDef::new(data.unsafety,
                           data.paren_sugar,
-                          tcx.lookup_generics(self.local_def_id(item_id)),
+                          tcx.item_generics(self.local_def_id(item_id)),
                           data.trait_ref.decode((self, tcx)),
                           self.def_path(item_id).unwrap().deterministic_hash(tcx))
     }
