@@ -1,0 +1,13 @@
+error: borrowed value does not live long enough
+  --> $DIR/slice-borrow.rs:18:5
+   |
+16 |         let x: &[isize] = &[1, 2, 3, 4, 5];
+   |                            --------------- temporary value created here
+17 |         y = &x[1..];
+18 |     }
+   |     ^ temporary value dropped here while still borrowed
+19 | }
+   | - temporary value needs to live until here
+
+error: aborting due to previous error
+

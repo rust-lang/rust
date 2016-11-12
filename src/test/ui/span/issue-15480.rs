@@ -11,7 +11,6 @@
 fn main() {
     let v = vec![
         &3
-//~^ ERROR borrowed value does not live long enough
     ];
 
     for &&x in &v {

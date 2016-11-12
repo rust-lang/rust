@@ -1009,11 +1009,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
 
             err_out_of_scope(super_scope, sub_scope, cause) => {
-                let (value_kind, value_msg, is_temporary) = match err.cmt.cat {
+                let (value_kind, value_msg) = match err.cmt.cat {
                     mc::Categorization::Rvalue(_) =>
-                        ("temporary value", "temporary value created here", true),
+                        ("temporary value", "temporary value created here"),
                     _ =>
-                        ("borrowed value", "does not live long enough", false)
+                        ("borrowed value", "borrow occurs here")
                 };
 
                 let is_closure = match cause {
@@ -1026,14 +1026,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             Some(primary) => {
                                 db.span = MultiSpan::from_span(s);
                                 db.span_label(primary, &format!("capture occurs here"));
-                                db.span_label(s, &value_msg);
+                                db.span_label(s, &"does not live long enough");
                                 true
                             }
                             None => false
                         }
                     }
                     _ => {
-                        db.span_label(error_span, &value_msg);
+                        db.span_label(error_span, &"does not live long enough");
                         false
                     }
                 };
@@ -1043,11 +1043,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 match (sub_span, super_span) {
                     (Some(s1), Some(s2)) if s1 == s2 => {
-                        if !is_temporary && !is_closure {
+                        if !is_closure {
                             db.span = MultiSpan::from_span(s1);
-                            db.span_label(error_span, &format!("borrow occurs here"));
+                            db.span_label(error_span, &value_msg);
                             let msg = match opt_loan_path(&err.cmt) {
-                                None => "borrowed value".to_string(),
+                                None => value_kind.to_string(),
                                 Some(lp) => {
                                     format!("`{}`", self.loan_path_to_string(&lp))
                                 }
@@ -1060,17 +1060,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         db.note("values in a scope are dropped in the opposite order \
                                 they are created");
                     }
-                    (Some(s1), Some(s2)) if !is_temporary && !is_closure => {
+                    (Some(s1), Some(s2)) if !is_closure => {
                         db.span = MultiSpan::from_span(s2);
-                        db.span_label(error_span, &format!("borrow occurs here"));
+                        db.span_label(error_span, &value_msg);
                         let msg = match opt_loan_path(&err.cmt) {
-                            None => "borrowed value".to_string(),
+                            None => value_kind.to_string(),
                             Some(lp) => {
                                 format!("`{}`", self.loan_path_to_string(&lp))
                             }
                         };
-                        db.span_label(s2,
-                                      &format!("{} dropped here while still borrowed", msg));
+                        db.span_label(s2, &format!("{} dropped here while still borrowed", msg));
                         db.span_label(s1, &format!("{} needs to live until here", value_kind));
                     }
                     _ => {
