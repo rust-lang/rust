@@ -1056,10 +1056,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             stability: None,
             deprecation: None,
 
-            ty: None,
+            ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
             variances: LazySeq::empty(),
-            generics: None,
+            generics: Some(self.encode_generics(def_id)),
             predicates: None,
 
             ast: None,

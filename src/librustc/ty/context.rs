@@ -1446,12 +1446,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_closure(self,
                       closure_id: DefId,
-                      substs: &'tcx Substs<'tcx>,
-                      tys: &[Ty<'tcx>])
+                      substs: &'tcx Substs<'tcx>)
                       -> Ty<'tcx> {
         self.mk_closure_from_closure_substs(closure_id, ClosureSubsts {
-            func_substs: substs,
-            upvar_tys: self.intern_type_list(tys)
+            substs: substs
         })
     }
 
@@ -1574,4 +1572,3 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
         Ok(f(&iter.collect::<Result<AccumulateVec<[_; 8]>, _>>()?))
     }
 }
-

@@ -553,14 +553,6 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 }
                 failure?;
 
-                // FIXME Shouldn't need to manually trigger closure instantiations.
-                if let mir::AggregateKind::Closure(def_id, substs) = *kind {
-                    use closure;
-                    closure::trans_closure_body_via_mir(self.ccx,
-                                                        def_id,
-                                                        self.monomorphize(&substs));
-                }
-
                 match *kind {
                     mir::AggregateKind::Array => {
                         self.const_array(dest_ty, &fields)

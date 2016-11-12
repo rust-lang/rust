@@ -521,8 +521,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             };
             let upvars = cx.tcx.with_freevars(expr.id, |freevars| {
                 freevars.iter()
-                    .enumerate()
-                    .map(|(i, fv)| capture_freevar(cx, expr, fv, substs.upvar_tys[i]))
+                    .zip(substs.upvar_tys(def_id, cx.tcx))
+                    .map(|(fv, ty)| capture_freevar(cx, expr, fv, ty))
                     .collect()
             });
             ExprKind::Closure {

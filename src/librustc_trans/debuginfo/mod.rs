@@ -25,7 +25,6 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
                       FlagPrototyped};
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::DefPathData;
 use rustc::ty::subst::Substs;
 
 use abi::Abi;
@@ -248,21 +247,19 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     // Find the enclosing function, in case this is a closure.
-    let mut fn_def_id = instance.def;
-    let mut def_key = cx.tcx().def_key(fn_def_id);
+    let def_key = cx.tcx().def_key(instance.def);
     let mut name = def_key.disambiguated_data.data.to_string();
     let name_len = name.len();
-    while def_key.disambiguated_data.data == DefPathData::ClosureExpr {
-        fn_def_id.index = def_key.parent.expect("closure without a parent?");
-        def_key = cx.tcx().def_key(fn_def_id);
-    }
+
+    let fn_def_id = cx.tcx().closure_base_def_id(instance.def);
 
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
     let generics = cx.tcx().item_generics(fn_def_id);
+    let substs = instance.substs.truncate_to(cx.tcx(), generics);
     let template_parameters = get_template_parameters(cx,
                                                       &generics,
-                                                      instance.substs,
+                                                      substs,
                                                       file_metadata,
                                                       &mut name);
 
