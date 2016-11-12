@@ -1052,21 +1052,28 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     match item.node {
                         hir::ItemFn(ref fn_decl, unsafety, constness, _, ref gen, _) => {
                             Some((fn_decl, gen, unsafety, constness, item.name, item.span))
-                        },
-                        _ => None
+                        }
+                        _ => None,
                     }
                 }
                 ast_map::NodeImplItem(item) => {
-                    match item.node {
-                        hir::ImplItemKind::Method(ref sig, _) => {
-                            Some((&sig.decl,
-                                  &sig.generics,
-                                  sig.unsafety,
-                                  sig.constness,
-                                  item.name,
-                                  item.span))
+                    let id = self.tcx.map.get_parent(item.id);
+                    if let Some(ast_map::NodeItem(parent_scope)) = self.tcx.map.find(id) {
+                        if let hir::ItemImpl(_, _, _, None, _, _) = parent_scope.node {
+                            // this impl scope implements a trait, do not recomend
+                            // using explicit lifetimes (#37363)
+                            return;
                         }
-                        _ => None,
+                    }
+                    if let hir::ImplItemKind::Method(ref sig, _) = item.node {
+                        Some((&sig.decl,
+                              &sig.generics,
+                              sig.unsafety,
+                              sig.constness,
+                              item.name,
+                              item.span))
+                    } else {
+                        None
                     }
                 },
                 ast_map::NodeTraitItem(item) => {
@@ -1079,12 +1086,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                   item.name,
                                   item.span))
                         }
-                        _ => None
+                        _ => None,
                     }
                 }
-                _ => None
+                _ => None,
             },
-            None => None
+            None => None,
         };
         let (fn_decl, generics, unsafety, constness, name, span)
                                     = node_inner.expect("expect item fn");
@@ -1436,7 +1443,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                     match self.tcx.expect_def(cur_ty.id) {
                         Def::Enum(did) | Def::TyAlias(did) |
                         Def::Struct(did) | Def::Union(did) => {
-                            let generics = self.tcx.lookup_generics(did);
+                            let generics = self.tcx.item_generics(did);
 
                             let expected =
                                 generics.regions.len() as u32;

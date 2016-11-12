@@ -81,7 +81,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 // defined in this crate.
                 debug!("coherence2::orphan check: inherent impl {}",
                        self.tcx.map.node_to_string(item.id));
-                let self_ty = self.tcx.lookup_item_type(def_id).ty;
+                let self_ty = self.tcx.item_type(def_id);
                 match self_ty.sty {
                     ty::TyAdt(def, _) => {
                         self.check_def_id(item, def.did);

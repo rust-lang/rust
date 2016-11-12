@@ -337,7 +337,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// Bypasses Rust's normal memory-initialization checks by pretending to
 /// produce a value of type `T`, while doing nothing at all.
 ///
-/// **This is incredibly dangerous, and should not be done lightly. Deeply
+/// **This is incredibly dangerous and should not be done lightly. Deeply
 /// consider initializing your memory with a default value instead.**
 ///
 /// This is useful for [FFI] functions and initializing arrays sometimes,
@@ -352,24 +352,18 @@ pub unsafe fn zeroed<T>() -> T {
 /// a boolean, your program may take one, both, or neither of the branches.
 ///
 /// Writing to the uninitialized value is similarly dangerous. Rust believes the
-/// value is initialized, and will therefore try to [`Drop`][drop] the uninitialized
+/// value is initialized, and will therefore try to [`Drop`] the uninitialized
 /// value and its fields if you try to overwrite it in a normal manner. The only way
 /// to safely initialize an uninitialized value is with [`ptr::write`][write],
 /// [`ptr::copy`][copy], or [`ptr::copy_nonoverlapping`][copy_no].
 ///
-/// If the value does implement `Drop`, it must be initialized before
+/// If the value does implement [`Drop`], it must be initialized before
 /// it goes out of scope (and therefore would be dropped). Note that this
 /// includes a `panic` occurring and unwinding the stack suddenly.
 ///
-/// [ub]: ../../reference.html#behavior-considered-undefined
-/// [write]: ../ptr/fn.write.html
-/// [copy]: ../intrinsics/fn.copy.html
-/// [copy_no]: ../intrinsics/fn.copy_nonoverlapping.html
-/// [drop]: ../ops/trait.Drop.html
-///
 /// # Examples
 ///
-/// Here's how to safely initialize an array of `Vec`s.
+/// Here's how to safely initialize an array of [`Vec`]s.
 ///
 /// ```
 /// use std::mem;
@@ -410,8 +404,8 @@ pub unsafe fn zeroed<T>() -> T {
 /// ```
 ///
 /// This example emphasizes exactly how delicate and dangerous using `mem::uninitialized`
-/// can be. Note that the `vec!` macro *does* let you initialize every element with a
-/// value that is only `Clone`, so the following is semantically equivalent and
+/// can be. Note that the [`vec!`] macro *does* let you initialize every element with a
+/// value that is only [`Clone`], so the following is semantically equivalent and
 /// vastly less dangerous, as long as you can live with an extra heap
 /// allocation:
 ///
@@ -419,6 +413,15 @@ pub unsafe fn zeroed<T>() -> T {
 /// let data: Vec<Vec<u32>> = vec![Vec::new(); 1000];
 /// println!("{:?}", &data[0]);
 /// ```
+///
+/// [`Vec`]: ../../std/vec/struct.Vec.html
+/// [`vec!`]: ../../std/macro.vec.html
+/// [`Clone`]: ../../std/clone/trait.Clone.html
+/// [ub]: ../../reference.html#behavior-considered-undefined
+/// [write]: ../ptr/fn.write.html
+/// [copy]: ../intrinsics/fn.copy.html
+/// [copy_no]: ../intrinsics/fn.copy_nonoverlapping.html
+/// [`Drop`]: ../ops/trait.Drop.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn uninitialized<T>() -> T {
@@ -492,7 +495,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// }
 /// ```
 ///
-/// Note that `T` does not necessarily implement `Clone`, so it can't even clone and reset
+/// Note that `T` does not necessarily implement [`Clone`], so it can't even clone and reset
 /// `self.buf`. But `replace` can be used to disassociate the original value of `self.buf` from
 /// `self`, allowing it to be returned:
 ///
@@ -507,6 +510,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 ///     }
 /// }
 /// ```
+///
+/// [`Clone`]: ../../std/clone/trait.Clone.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn replace<T>(dest: &mut T, mut src: T) -> T {
@@ -571,8 +576,8 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// v.push(4); // no problems
 /// ```
 ///
-/// Since `RefCell` enforces the borrow rules at runtime, `drop` can
-/// release a `RefCell` borrow:
+/// Since [`RefCell`] enforces the borrow rules at runtime, `drop` can
+/// release a [`RefCell`] borrow:
 ///
 /// ```
 /// use std::cell::RefCell;
@@ -588,7 +593,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// println!("{}", *borrow);
 /// ```
 ///
-/// Integers and other types implementing `Copy` are unaffected by `drop`.
+/// Integers and other types implementing [`Copy`] are unaffected by `drop`.
 ///
 /// ```
 /// #[derive(Copy, Clone)]
@@ -602,6 +607,8 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// println!("x: {}, y: {}", x, y.0); // still available
 /// ```
 ///
+/// [`RefCell`]: ../../std/cell/struct.RefCell.html
+/// [`Copy`]: ../../std/marker/trait.Copy.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn drop<T>(_x: T) { }

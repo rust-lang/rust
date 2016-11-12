@@ -125,7 +125,7 @@ impl<'tcx> Lvalue<'tcx> {
             Lvalue::Local(index) =>
                 LvalueTy::Ty { ty: mir.local_decls[index].ty },
             Lvalue::Static(def_id) =>
-                LvalueTy::Ty { ty: tcx.lookup_item_type(def_id).ty },
+                LvalueTy::Ty { ty: tcx.item_type(def_id) },
             Lvalue::Projection(ref proj) =>
                 proj.base.ty(mir, tcx).projection_ty(tcx, &proj.elem),
         }
@@ -188,7 +188,7 @@ impl<'tcx> Rvalue<'tcx> {
                         ))
                     }
                     AggregateKind::Adt(def, _, substs, _) => {
-                        Some(tcx.lookup_item_type(def.did).ty.subst(tcx, substs))
+                        Some(tcx.item_type(def.did).subst(tcx, substs))
                     }
                     AggregateKind::Closure(did, substs) => {
                         Some(tcx.mk_closure_from_closure_substs(did, substs))

@@ -697,6 +697,8 @@ CTEST_DEPS_ui_$(1)-T-$(2)-H-$(3) = $$(UI_TESTS)
 CTEST_DEPS_mir-opt_$(1)-T-$(2)-H-$(3) = $$(MIR_OPT_TESTS)
 CTEST_DEPS_rustdocck_$(1)-T-$(2)-H-$(3) = $$(RUSTDOCCK_TESTS) \
 		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
+		$$(CSREQ$(1)_T_$(3)_H_$(3)) \
+		$$(SREQ$(1)_T_$(3)_H_$(3)) \
 		$(S)src/etc/htmldocck.py
 
 endef

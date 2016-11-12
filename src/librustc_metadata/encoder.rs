@@ -13,7 +13,7 @@ use index::Index;
 use schema::*;
 
 use rustc::middle::cstore::{InlinedItemRef, LinkMeta};
-use rustc::middle::cstore::{LinkagePreference, NativeLibraryKind};
+use rustc::middle::cstore::{LinkagePreference, NativeLibrary};
 use rustc::hir::def;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId};
 use rustc::middle::dependency_format::Linkage;
@@ -246,7 +246,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_item_type(&mut self, def_id: DefId) -> Lazy<Ty<'tcx>> {
         let tcx = self.tcx;
-        self.lazy(&tcx.lookup_item_type(def_id).ty)
+        self.lazy(&tcx.item_type(def_id))
     }
 
     /// Encode data for the given variant of the given ADT. The
@@ -444,12 +444,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_generics(&mut self, def_id: DefId) -> Lazy<ty::Generics<'tcx>> {
         let tcx = self.tcx;
-        self.lazy(tcx.lookup_generics(def_id))
+        self.lazy(tcx.item_generics(def_id))
     }
 
     fn encode_predicates(&mut self, def_id: DefId) -> Lazy<ty::GenericPredicates<'tcx>> {
         let tcx = self.tcx;
-        self.lazy(&tcx.lookup_predicates(def_id))
+        self.lazy(&tcx.item_predicates(def_id))
     }
 
     fn encode_info_for_trait_item(&mut self, def_id: DefId) -> Entry<'tcx> {
@@ -556,7 +556,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let (ast, mir) = if impl_item.kind == ty::AssociatedKind::Const {
             (true, true)
         } else if let hir::ImplItemKind::Method(ref sig, _) = ast_item.node {
-            let generics = self.tcx.lookup_generics(def_id);
+            let generics = self.tcx.item_generics(def_id);
             let types = generics.parent_types as usize + generics.types.len();
             let needs_inline = types > 0 || attr::requests_inline(&ast_item.attrs);
             let is_const_fn = sig.constness == hir::Constness::Const;
@@ -717,7 +717,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     paren_sugar: trait_def.paren_sugar,
                     has_default_impl: tcx.trait_has_default_impl(def_id),
                     trait_ref: self.lazy(&trait_def.trait_ref),
-                    super_predicates: self.lazy(&tcx.lookup_super_predicates(def_id)),
+                    super_predicates: self.lazy(&tcx.item_super_predicates(def_id)),
                 };
 
                 EntryKind::Trait(self.lazy(&data))
@@ -1134,14 +1134,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
          self.lazy_seq_ref(&tcx.lang_items.missing))
     }
 
-    fn encode_native_libraries(&mut self) -> LazySeq<(NativeLibraryKind, String)> {
+    fn encode_native_libraries(&mut self) -> LazySeq<NativeLibrary> {
         let used_libraries = self.tcx.sess.cstore.used_libraries();
-        self.lazy_seq(used_libraries.into_iter().filter_map(|(lib, kind)| {
-            match kind {
-                cstore::NativeStatic => None, // these libraries are not propagated
-                cstore::NativeFramework | cstore::NativeUnknown => Some((kind, lib)),
-            }
-        }))
+        self.lazy_seq(used_libraries)
     }
 
     fn encode_codemap(&mut self) -> LazySeq<syntax_pos::FileMap> {

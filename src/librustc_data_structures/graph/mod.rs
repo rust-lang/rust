@@ -231,18 +231,30 @@ impl<N: Debug, E: Debug> Graph<N, E> {
 
     // # Iterating over nodes, edges
 
+    pub fn enumerated_nodes(&self) -> EnumeratedNodes<N> {
+        EnumeratedNodes {
+            iter: self.nodes.iter().enumerate()
+        }
+    }
+
+    pub fn enumerated_edges(&self) -> EnumeratedEdges<E> {
+        EnumeratedEdges {
+            iter: self.edges.iter().enumerate()
+        }
+    }
+
     pub fn each_node<'a, F>(&'a self, mut f: F) -> bool
         where F: FnMut(NodeIndex, &'a Node<N>) -> bool
     {
         //! Iterates over all edges defined in the graph.
-        self.nodes.iter().enumerate().all(|(i, node)| f(NodeIndex(i), node))
+        self.enumerated_nodes().all(|(node_idx, node)| f(node_idx, node))
     }
 
     pub fn each_edge<'a, F>(&'a self, mut f: F) -> bool
         where F: FnMut(EdgeIndex, &'a Edge<E>) -> bool
     {
         //! Iterates over all edges defined in the graph
-        self.edges.iter().enumerate().all(|(i, edge)| f(EdgeIndex(i), edge))
+        self.enumerated_edges().all(|(edge_idx, edge)| f(edge_idx, edge))
     }
 
     pub fn outgoing_edges(&self, source: NodeIndex) -> AdjacentEdges<N, E> {
@@ -270,14 +282,11 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         self.incoming_edges(target).sources()
     }
 
-    // # Fixed-point iteration
-    //
-    // A common use for graphs in our compiler is to perform
-    // fixed-point iteration. In this case, each edge represents a
-    // constraint, and the nodes themselves are associated with
-    // variables or other bitsets. This method facilitates such a
-    // computation.
-
+    /// A common use for graphs in our compiler is to perform
+    /// fixed-point iteration. In this case, each edge represents a
+    /// constraint, and the nodes themselves are associated with
+    /// variables or other bitsets. This method facilitates such a
+    /// computation.
     pub fn iterate_until_fixed_point<'a, F>(&'a self, mut op: F)
         where F: FnMut(usize, EdgeIndex, &'a Edge<E>) -> bool
     {
@@ -286,8 +295,8 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         while changed {
             changed = false;
             iteration += 1;
-            for (i, edge) in self.edges.iter().enumerate() {
-                changed |= op(iteration, EdgeIndex(i), edge);
+            for (edge_index, edge) in self.enumerated_edges() {
+                changed |= op(iteration, edge_index, edge);
             }
         }
     }
@@ -298,9 +307,66 @@ impl<N: Debug, E: Debug> Graph<N, E> {
                               -> DepthFirstTraversal<'a, N, E> {
         DepthFirstTraversal::with_start_node(self, start, direction)
     }
+
+    /// Whether or not a node can be reached from itself.
+    pub fn is_node_cyclic(&self, starting_node_index: NodeIndex) -> bool {
+        // This is similar to depth traversal below, but we
+        // can't use that, because depth traversal doesn't show
+        // the starting node a second time.
+        let mut visited = BitVector::new(self.len_nodes());
+        let mut stack = vec![starting_node_index];
+
+        while let Some(current_node_index) = stack.pop() {
+            visited.insert(current_node_index.0);
+
+            // Directionality doesn't change the answer,
+            // so just use outgoing edges.
+            for (_, edge) in self.outgoing_edges(current_node_index) {
+                let target_node_index = edge.target();
+
+                if target_node_index == starting_node_index {
+                    return true;
+                }
+
+                if !visited.contains(target_node_index.0) {
+                    stack.push(target_node_index);
+                }
+            }
+        }
+
+        false
+    }
 }
 
 // # Iterators
+
+pub struct EnumeratedNodes<'g, N>
+    where N: 'g,
+{
+    iter: ::std::iter::Enumerate<::std::slice::Iter<'g, Node<N>>>
+}
+
+impl<'g, N: Debug> Iterator for EnumeratedNodes<'g, N> {
+    type Item = (NodeIndex, &'g Node<N>);
+
+    fn next(&mut self) -> Option<(NodeIndex, &'g Node<N>)> {
+        self.iter.next().map(|(idx, n)| (NodeIndex(idx), n))
+    }
+}
+
+pub struct EnumeratedEdges<'g, E>
+    where E: 'g,
+{
+    iter: ::std::iter::Enumerate<::std::slice::Iter<'g, Edge<E>>>
+}
+
+impl<'g, E: Debug> Iterator for EnumeratedEdges<'g, E> {
+    type Item = (EdgeIndex, &'g Edge<E>);
+
+    fn next(&mut self) -> Option<(EdgeIndex, &'g Edge<E>)> {
+        self.iter.next().map(|(idx, e)| (EdgeIndex(idx), e))
+    }
+}
 
 pub struct AdjacentEdges<'g, N, E>
     where N: 'g,
@@ -336,7 +402,7 @@ impl<'g, N: Debug, E: Debug> Iterator for AdjacentEdges<'g, N, E> {
     }
 }
 
-pub struct AdjacentTargets<'g, N: 'g, E: 'g>
+pub struct AdjacentTargets<'g, N, E>
     where N: 'g,
           E: 'g
 {
@@ -351,7 +417,7 @@ impl<'g, N: Debug, E: Debug> Iterator for AdjacentTargets<'g, N, E> {
     }
 }
 
-pub struct AdjacentSources<'g, N: 'g, E: 'g>
+pub struct AdjacentSources<'g, N, E>
     where N: 'g,
           E: 'g
 {
@@ -366,7 +432,10 @@ impl<'g, N: Debug, E: Debug> Iterator for AdjacentSources<'g, N, E> {
     }
 }
 
-pub struct DepthFirstTraversal<'g, N: 'g, E: 'g> {
+pub struct DepthFirstTraversal<'g, N, E>
+    where N: 'g,
+          E: 'g
+{
     graph: &'g Graph<N, E>,
     stack: Vec<NodeIndex>,
     visited: BitVector,
