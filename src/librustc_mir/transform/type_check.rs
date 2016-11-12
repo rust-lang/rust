@@ -127,7 +127,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         match *lvalue {
             Lvalue::Local(index) => LvalueTy::Ty { ty: self.mir.local_decls[index].ty },
             Lvalue::Static(def_id) =>
-                LvalueTy::Ty { ty: self.tcx().lookup_item_type(def_id).ty },
+                LvalueTy::Ty { ty: self.tcx().item_type(def_id) },
             Lvalue::Projection(ref proj) => {
                 let base_ty = self.sanitize_lvalue(&proj.base, location);
                 if let LvalueTy::Ty { ty } = base_ty {

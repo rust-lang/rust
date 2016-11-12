@@ -133,7 +133,10 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
         &InlinedItem::ImplItem(_, ref ii) => ii.id,
     };
     let inlined_did = tcx.map.local_def_id(item_node_id);
-    tcx.register_item_type(inlined_did, tcx.lookup_item_type(orig_did));
+    let ty = tcx.item_type(orig_did);
+    let generics = tcx.item_generics(orig_did);
+    tcx.item_types.borrow_mut().insert(inlined_did, ty);
+    tcx.generics.borrow_mut().insert(inlined_did, generics);
 
     for (id, entry) in ast.side_tables.decode((cdata, tcx, id_ranges)) {
         match entry {
@@ -141,7 +144,7 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
                 tcx.def_map.borrow_mut().insert(id, def::PathResolution::new(def));
             }
             TableEntry::NodeType(ty) => {
-                tcx.node_type_insert(id, ty);
+                tcx.tables.borrow_mut().node_types.insert(id, ty);
             }
             TableEntry::ItemSubsts(item_substs) => {
                 tcx.tables.borrow_mut().item_substs.insert(id, item_substs);

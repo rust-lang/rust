@@ -337,7 +337,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
         }
         TransItem::Static(node_id) => {
             let def_id = scx.tcx().map.local_def_id(node_id);
-            let ty = scx.tcx().lookup_item_type(def_id).ty;
+            let ty = scx.tcx().item_type(def_id);
             let ty = glue::get_drop_glue_type(scx.tcx(), ty);
             neighbors.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
 
@@ -618,7 +618,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         fn can_result_in_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               def_id: DefId)
                                               -> bool {
-            match tcx.lookup_item_type(def_id).ty.sty {
+            match tcx.item_type(def_id).sty {
                 ty::TyFnDef(def_id, _, f) => {
                     // Some constructors also have type TyFnDef but they are
                     // always instantiated inline and don't result in
@@ -1077,13 +1077,12 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemStruct(_, ref generics) |
             hir::ItemUnion(_, ref generics) => {
                 if !generics.is_parameterized() {
-                    let ty = self.scx.tcx().tables().node_types[&item.id];
-
                     if self.mode == TransItemCollectionMode::Eager {
+                        let def_id = self.scx.tcx().map.local_def_id(item.id);
                         debug!("RootCollector: ADT drop-glue for {}",
-                               def_id_to_string(self.scx.tcx(),
-                                                self.scx.tcx().map.local_def_id(item.id)));
+                               def_id_to_string(self.scx.tcx(), def_id));
 
+                        let ty = self.scx.tcx().item_type(def_id);
                         let ty = glue::get_drop_glue_type(self.scx.tcx(), ty);
                         self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
                     }
@@ -1182,7 +1181,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                         continue;
                     }
 
-                    if !tcx.lookup_generics(method.def_id).types.is_empty() {
+                    if !tcx.item_generics(method.def_id).types.is_empty() {
                         continue;
                     }
 
@@ -1201,7 +1200,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                                                                callee_substs,
                                                                &impl_data);
 
-                    let predicates = tcx.lookup_predicates(def_id).predicates
+                    let predicates = tcx.item_predicates(def_id).predicates
                                         .subst(tcx, substs);
                     if !traits::normalize_and_test_predicates(tcx, predicates) {
                         continue;
