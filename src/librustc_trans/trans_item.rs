@@ -458,10 +458,12 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 output.push(']');
             },
             ty::TyTrait(ref trait_data) => {
-                self.push_def_path(trait_data.principal.def_id(), output);
-                self.push_type_params(trait_data.principal.skip_binder().substs,
-                                      &trait_data.projection_bounds,
-                                      output);
+                if let Some(principal) = trait_data.principal() {
+                    self.push_def_path(principal.def_id(), output);
+                    self.push_type_params(principal.skip_binder().substs,
+                        &trait_data.projection_bounds,
+                        output);
+                }
             },
             ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
             ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {

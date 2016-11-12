@@ -417,7 +417,11 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
 
         (&ty::TyTrait(ref a_obj), &ty::TyTrait(ref b_obj)) =>
         {
-            let principal = relation.relate(&a_obj.principal, &b_obj.principal)?;
+            let principal = match (a_obj.principal(), b_obj.principal()) {
+                (Some(ref a_p), Some(ref b_p)) => Some(relation.relate(a_p, b_p)?),
+                (None, None) => None,
+                _ => return Err(TypeError::Sorts(expected_found(relation, &a, &b))),
+            };
             let r =
                 relation.with_cause(
                     Cause::ExistentialRegionBound,
@@ -426,12 +430,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                                                              &b_obj.region_bound))?;
             let nb = relation.relate(&a_obj.builtin_bounds, &b_obj.builtin_bounds)?;
             let pb = relation.relate(&a_obj.projection_bounds, &b_obj.projection_bounds)?;
-            Ok(tcx.mk_trait(ty::TraitObject {
-                principal: principal,
-                region_bound: r,
-                builtin_bounds: nb,
-                projection_bounds: pb
-            }))
+            Ok(tcx.mk_trait(ty::TraitObject::new(principal, r, nb, pb)))
         }
 
         (&ty::TyClosure(a_id, a_substs),

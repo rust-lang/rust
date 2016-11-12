@@ -1877,30 +1877,34 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 }
             }
             ty::TyTrait(ref obj) => {
-                let did = obj.principal.def_id();
-                inline::record_extern_fqn(cx, did, TypeKind::Trait);
+                if let Some(principal) = obj.principal() {
+                    let did = principal.def_id();
+                    inline::record_extern_fqn(cx, did, TypeKind::Trait);
 
-                let mut typarams = vec![];
-                obj.region_bound.clean(cx).map(|b| typarams.push(RegionBound(b)));
-                for bb in &obj.builtin_bounds {
-                    typarams.push(bb.clean(cx));
-                }
+                    let mut typarams = vec![];
+                    obj.region_bound.clean(cx).map(|b| typarams.push(RegionBound(b)));
+                    for bb in &obj.builtin_bounds {
+                        typarams.push(bb.clean(cx));
+                    }
 
-                let mut bindings = vec![];
-                for &ty::Binder(ref pb) in &obj.projection_bounds {
-                    bindings.push(TypeBinding {
-                        name: pb.item_name.clean(cx),
-                        ty: pb.ty.clean(cx)
-                    });
-                }
+                    let mut bindings = vec![];
+                    for &ty::Binder(ref pb) in &obj.projection_bounds {
+                        bindings.push(TypeBinding {
+                            name: pb.item_name.clean(cx),
+                            ty: pb.ty.clean(cx)
+                        });
+                    }
 
-                let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
-                                         Some(did), false, bindings, obj.principal.0.substs);
-                ResolvedPath {
-                    path: path,
-                    typarams: Some(typarams),
-                    did: did,
-                    is_generic: false,
+                    let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
+                                             Some(did), false, bindings, obj.principal.0.substs);
+                    ResolvedPath {
+                        path: path,
+                        typarams: Some(typarams),
+                        did: did,
+                        is_generic: false,
+                    }
+                } else {
+                    Never
                 }
             }
             ty::TyTuple(ref t) => Tuple(t.clean(cx)),

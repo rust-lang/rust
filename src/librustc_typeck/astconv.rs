@@ -1135,12 +1135,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         .emit();
         }
 
-        let ty = tcx.mk_trait(ty::TraitObject {
-            principal: existential_principal,
-            region_bound: region_bound,
-            builtin_bounds: builtin_bounds,
-            projection_bounds: existential_projections
-        });
+        let ty = tcx.mk_trait(ty::TraitObject::new(
+            Some(existential_principal),
+            region_bound,
+            builtin_bounds,
+            existential_projections
+        ));
         debug!("trait_object_type: {:?}", ty);
         ty
     }

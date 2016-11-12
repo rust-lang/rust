@@ -296,8 +296,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         match self_ty.sty {
             ty::TyTrait(box ref data) => {
-                self.assemble_inherent_candidates_from_object(self_ty, data.principal);
-                self.assemble_inherent_impl_candidates_for_type(data.principal.def_id());
+                self.assemble_inherent_candidates_from_object(self_ty, data.principal().unwrap());
+                self.assemble_inherent_impl_candidates_for_type(data.principal().unwrap().def_id());
             }
             ty::TyAdt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);

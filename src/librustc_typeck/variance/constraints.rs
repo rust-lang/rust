@@ -376,7 +376,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(generics, data.region_bound, contra);
 
-                let poly_trait_ref = data.principal.with_self_ty(self.tcx(), self.tcx().types.err);
+                let poly_trait_ref = data.principal().unwrap().with_self_ty(self.tcx(), self.tcx().types.err);
                 self.add_constraints_from_trait_ref(generics, poly_trait_ref.0, variance);
 
                 for projection in &data.projection_bounds {

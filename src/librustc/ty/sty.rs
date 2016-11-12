@@ -277,10 +277,27 @@ impl<'a, 'gcx, 'acx, 'tcx> ClosureSubsts<'tcx> {
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct TraitObject<'tcx> {
-    pub principal: PolyExistentialTraitRef<'tcx>,
+    principal: Option<PolyExistentialTraitRef<'tcx>>,
     pub region_bound: &'tcx ty::Region,
     pub builtin_bounds: BuiltinBounds,
     pub projection_bounds: Vec<PolyExistentialProjection<'tcx>>,
+}
+
+impl<'tcx> TraitObject<'tcx> {
+    pub fn new(principal: Option<PolyExistentialTraitRef<'tcx>>, region_bound: &'tcx ty::Region,
+               builtin_bounds: BuiltinBounds, projection_bounds: Vec<PolyExistentialProjection<'tcx>>)
+        -> Self {
+        TraitObject {
+            principal: principal,
+            region_bound: region_bound,
+            builtin_bounds: builtin_bounds,
+            projection_bounds: projection_bounds,
+        }
+    }
+
+    pub fn principal(&self) -> Option<PolyExistentialTraitRef<'tcx>> {
+        self.principal
+    }
 }
 
 /// A complete reference to a trait. These take numerous guises in syntax,
@@ -1221,7 +1238,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn ty_to_def_id(&self) -> Option<DefId> {
         match self.sty {
-            TyTrait(ref tt) => Some(tt.principal.def_id()),
+            TyTrait(ref tt) => tt.principal().map(|p| p.def_id()),
             TyAdt(def, _) => Some(def.did),
             TyClosure(id, _) => Some(id),
             _ => None
@@ -1245,7 +1262,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             }
             TyTrait(ref obj) => {
                 let mut v = vec![obj.region_bound];
-                v.extend(obj.principal.skip_binder().substs.regions());
+                v.extend(obj.principal().unwrap().skip_binder().substs.regions());
                 v
             }
             TyAdt(_, substs) | TyAnon(_, substs) => {

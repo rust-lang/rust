@@ -68,7 +68,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         match ty.sty {
             TyAdt(def, _) => Some(def.did),
 
-            TyTrait(ref t) => Some(t.principal.def_id()),
+            TyTrait(ref t) => t.principal().map(|p| p.def_id()),
 
             TyBox(_) => self.inference_context.tcx.lang_items.owned_box(),
 

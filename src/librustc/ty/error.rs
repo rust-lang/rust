@@ -215,7 +215,8 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyFnDef(..) => format!("fn item"),
             ty::TyFnPtr(_) => "fn pointer".to_string(),
             ty::TyTrait(ref inner) => {
-                format!("trait {}", tcx.item_path_str(inner.principal.def_id()))
+                inner.principal().map_or_else(|| "trait".to_string(),
+                    |p| format!("trait {}", tcx.item_path_str(p.def_id())))
             }
             ty::TyClosure(..) => "closure".to_string(),
             ty::TyTuple(_) => "tuple".to_string(),

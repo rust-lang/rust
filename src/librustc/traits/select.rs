@@ -1528,7 +1528,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         _ => {}
                     }
 
-                    data.principal.with_self_ty(this.tcx(), self_ty)
+                    match data.principal() {
+                        Some(ref p) => p.with_self_ty(this.tcx(), self_ty),
+                        None => return,
+                    }
                 }
                 ty::TyInfer(ty::TyVar(_)) => {
                     debug!("assemble_candidates_from_object_ty: ambiguous");
@@ -1611,8 +1614,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 //
                 // We always upcast when we can because of reason
                 // #2 (region bounds).
-                data_a.principal.def_id() == data_b.principal.def_id() &&
-                data_a.builtin_bounds.is_superset(&data_b.builtin_bounds)
+                match (data_a.principal(), data_b.principal()) {
+                    (Some(ref a), Some(ref b)) => a.def_id() == b.def_id() &&
+                        data_a.builtin_bounds.is_superset(&data_b.builtin_bounds),
+                    _ => false
+                }
             }
 
             // T -> Trait.
@@ -2167,7 +2173,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         match self_ty.sty {
             ty::TyTrait(ref data) => {
                 // OK to skip the binder, it is reintroduced below
-                let input_types = data.principal.input_types();
+                let principal = data.principal().unwrap();
+                let input_types = principal.input_types();
                 let assoc_types = data.projection_bounds.iter()
                                       .map(|pb| pb.skip_binder().ty);
                 let all_types: Vec<_> = input_types.chain(assoc_types)
@@ -2301,7 +2308,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let poly_trait_ref = match self_ty.sty {
             ty::TyTrait(ref data) => {
-                data.principal.with_self_ty(self.tcx(), self_ty)
+                data.principal().unwrap().with_self_ty(self.tcx(), self_ty)
             }
             _ => {
                 span_bug!(obligation.cause.span,
@@ -2471,12 +2478,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
             (&ty::TyTrait(ref data_a), &ty::TyTrait(ref data_b)) => {
                 // See assemble_candidates_for_unsizing for more info.
-                let new_trait = tcx.mk_trait(ty::TraitObject {
-                    principal: data_a.principal,
-                    region_bound: data_b.region_bound,
-                    builtin_bounds: data_b.builtin_bounds,
-                    projection_bounds: data_a.projection_bounds.clone(),
-                });
+                let new_trait = tcx.mk_trait(ty::TraitObject::new(
+                    data_a.principal(),
+                    data_b.region_bound,
+                    data_b.builtin_bounds,
+                    data_a.projection_bounds.clone(),
+                ));
+                let origin = TypeOrigin::Misc(obligation.cause.span);
                 let InferOk { obligations, .. } =
                     self.infcx.sub_types(false, &obligation.cause, new_trait, target)
                     .map_err(|_| Unimplemented)?;
@@ -2499,7 +2507,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     data.builtin_bounds.iter().flat_map(|bound| {
                         tcx.lang_items.from_builtin_kind(bound).ok()
                     })
-                    .chain(Some(data.principal.def_id()));
+                    .chain(data.principal().map(|ref p| p.def_id()));
                 if let Some(did) = object_dids.find(|did| {
                     !tcx.is_object_safe(*did)
                 }) {
@@ -2516,7 +2524,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 };
 
                 // Create the obligation for casting from T to Trait.
-                push(data.principal.with_self_ty(tcx, source).to_predicate());
+                push(data.principal().unwrap().with_self_ty(tcx, source).to_predicate());
 
                 // We can only make objects from sized types.
                 let mut builtin_bounds = data.builtin_bounds;

@@ -532,7 +532,9 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
                 self.hash(f.sig.inputs().skip_binder().len());
             }
             TyTrait(ref data) => {
-                self.def_id(data.principal.def_id());
+                if let Some(ref p) = data.principal() {
+                    self.def_id(p.def_id());
+                }
                 self.hash(data.builtin_bounds);
             }
             TyTuple(tys) => {

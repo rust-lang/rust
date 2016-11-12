@@ -302,7 +302,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
         (_, &ty::TyTrait(ref data)) => {
-            let trait_ref = data.principal.with_self_ty(ccx.tcx(), source);
+            let trait_ref = data.principal().unwrap().with_self_ty(ccx.tcx(), source);
             let trait_ref = ccx.tcx().erase_regions(&trait_ref);
             consts::ptrcast(meth::get_vtable(ccx, trait_ref),
                             Type::vtable_ptr(ccx))

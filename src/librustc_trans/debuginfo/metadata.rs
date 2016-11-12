@@ -431,8 +431,13 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // type is assigned the correct name, size, namespace, and source location.
     // But it does not describe the trait's methods.
 
-    let def_id = match trait_type.sty {
-        ty::TyTrait(ref data) => data.principal.def_id(),
+    let containing_scope = match trait_type.sty {
+        ty::TyTrait(ref data) => if let Some(principal) = data.principal() {
+            let def_id = principal.def_id();
+            get_namespace_and_span_for_item(cx, def_id).0
+        } else {
+            NO_SCOPE_METADATA
+        },
         _ => {
             bug!("debuginfo: Unexpected trait-object type in \
                   trait_pointer_metadata(): {:?}",
@@ -443,8 +448,6 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let trait_object_type = trait_object_type.unwrap_or(trait_type);
     let trait_type_name =
         compute_debuginfo_type_name(cx, trait_object_type, false);
-
-    let (containing_scope, _) = get_namespace_and_span_for_item(cx, def_id);
 
     let trait_llvm_type = type_of::type_of(cx, trait_object_type);
     let file_metadata = unknown_file_metadata(cx);
