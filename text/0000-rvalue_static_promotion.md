@@ -45,25 +45,11 @@ fn generic<T>() -> &'static Option<T> {
 }
 ```
 
-Additionally, despite it being memory safe, it is not currently possible to
-create a `&'static mut` to a zero-sized type without involving unsafe code:
-
-```rust
-fn return_fn_mut_or_default(&mut self) -> &FnMut(u32, u32) -> u32 {
-    // error: references in constants may only refer to immutable values
-    const STATIC_TRAIT_OBJECT: &'static mut FnMut(u32, u32) -> u32
-        = &mut |x, y| x * y;
-
-    self.operator.unwrap_or(STATIC_TRAIT_OBJECT)
-}
-```
-
-Lastly, the compiler already special cases a small subset of rvalue
+However, the compiler already special cases a small subset of rvalue
 const expressions to have static lifetime - namely the empty array expression:
 
 ```rust
 let x: &'static [u8] = &[];
-let y: &'static mut [u8] = &mut [];
 ```
 
 And though they don't have to be seen as such, string literals could be regarded
@@ -94,22 +80,8 @@ Inside a function body's block:
   it into a static memory location and give the resulting reference a
   `'static` lifetime.
 
-Likewise,
-
-- If a mutable reference to a constexpr rvalue is taken. (`&mut <constexpr>`)
-- And the constexpr does not contain a `UnsafeCell { ... }` constructor.
-- And the constexpr does not contain a const fn call returning a type containing a `UnsafeCell`.
-- _And the type of the rvalue is zero-sized._
-- Then instead of translating the value into a stack slot, translate
-  it into a static memory location and give the resulting reference a
-  `'static` lifetime.
-
 The `UnsafeCell` restrictions are there to ensure that the promoted value is
-truly immutable behind the reference (Though not technically needed in the zero-sized case, see alternatives below).
-
-The zero-sized restriction for mutable references is there because
-aliasing mutable references are only safe for zero sized types
-(since you never dereference the pointer for them).
+truly immutable behind the reference.
 
 Examples:
 
@@ -118,9 +90,6 @@ Examples:
 let a: &'static u32 = &32;
 let b: &'static Option<UnsafeCell<u32>> = &None;
 let c: &'static Fn() -> u32 = &|| 42;
-
-let d: &'static mut () = &mut ();
-let e: &'static mut Fn() -> u32 = &mut || 42;
 
 let h: &'static u32 = &(32 + 64);
 
@@ -134,7 +103,7 @@ let g: &'static Cell<u32> = &Cell::new(); // assuming conf fn new()
 ```
 
 These rules above should be consistent with the existing rvalue promotions in `const`
-initializer lists:
+initializer expressions:
 
 ```rust
 // If this compiles:
@@ -160,8 +129,48 @@ https://github.com/rust-lang/rust/blob/29ea4eef9fa6e36f40bc1f31eb1e56bf5941ee72/
 
 One more feature with seemingly ad-hoc rules to complicate the language...
 
-# Alternatives
+# Alternatives, Extensions
 [alternatives]: #alternatives
+
+It would be possible to extend support to `&'static mut` references,
+as long as there is the additional constraint that the
+referenced type is zero sized.
+
+This again has precedence in the array reference constructor:
+
+```rust
+// valid code today
+let y: &'static mut [u8] = &mut [];
+```
+
+The rules would be similar:
+
+- If a mutable reference to a constexpr rvalue is taken. (`&mut <constexpr>`)
+- And the constexpr does not contain a `UnsafeCell { ... }` constructor.
+- And the constexpr does not contain a const fn call returning a type containing a `UnsafeCell`.
+- _And the type of the rvalue is zero-sized._
+- Then instead of translating the value into a stack slot, translate
+  it into a static memory location and give the resulting reference a
+  `'static` lifetime.
+
+The zero-sized restriction is there because
+aliasing mutable references are only safe for zero sized types
+(since you never dereference the pointer for them).
+
+Example:
+
+```rust
+fn return_fn_mut_or_default(&mut self) -> &FnMut(u32, u32) -> u32 {
+    self.operator.unwrap_or(&mut |x, y| x * y)
+    // ^ would be okay, since it would be translated like this:
+    // const STATIC_TRAIT_OBJECT: &'static mut FnMut(u32, u32) -> u32
+    //     = &mut |x, y| x * y;
+    // self.operator.unwrap_or(STATIC_TRAIT_OBJECT)
+}
+
+let d: &'static mut () = &mut ();
+let e: &'static mut Fn() -> u32 = &mut || 42;
+```
 
 There are two ways this could be taken further with zero-sized types:
 
