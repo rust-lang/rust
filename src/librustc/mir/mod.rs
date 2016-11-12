@@ -923,7 +923,7 @@ impl<'tcx> Debug for Lvalue<'tcx> {
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
                         write!(fmt, "{:?}[-{:?} of {:?}]", data.base, offset, min_length),
                     ProjectionElem::Subslice { from, to } if to == 0 =>
-                        write!(fmt, "{:?}[{:?}:", data.base, from),
+                        write!(fmt, "{:?}[{:?}:]", data.base, from),
                     ProjectionElem::Subslice { from, to } if from == 0 =>
                         write!(fmt, "{:?}[:-{:?}]", data.base, to),
                     ProjectionElem::Subslice { from, to } =>
