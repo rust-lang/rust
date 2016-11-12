@@ -187,7 +187,10 @@ impl<R: Read> BufRead for BufReader<R> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         // If we've reached the end of our internal buffer then we need to fetch
         // some more data from the underlying reader.
-        if self.pos == self.cap {
+        // Branch using `>=` instead of the more correct `==`
+        // to tell the compiler that the pos..cap slice is always valid.
+        if self.pos >= self.cap {
+            debug_assert!(self.pos == self.cap);
             self.cap = self.inner.read(&mut self.buf)?;
             self.pos = 0;
         }
