@@ -780,6 +780,8 @@ impl Child {
     ///
     #[stable(feature = "process", since = "1.0.0")]
     pub fn wait_with_output(mut self) -> io::Result<Output> {
+        //use io::ErrorKind;
+
         drop(self.stdin.take());
 
         let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
@@ -794,8 +796,15 @@ impl Child {
                 res.unwrap();
             }
             (Some(out), Some(err)) => {
-                let res = read2(out.inner, &mut stdout, err.inner, &mut stderr);
-                res.unwrap();
+                match read2(out.inner, &mut stdout, err.inner, &mut stderr) {
+                    Ok(()) => { },
+                    #[cfg(not(target_os = "fuchsia"))]
+                    Err(ref e) => { panic!("Failed to read child's stdout and stderr: {:?}", e); },
+                    #[cfg(target_os = "fuchsia")]
+                    Err(_) => {
+                        // FIXME: Right now there's a bug in magenta's pipes implementation
+                    },
+                }
             }
         }
 
