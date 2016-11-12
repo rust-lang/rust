@@ -184,11 +184,11 @@ macro_rules! add {
 add!(__addsf3: f32);
 add!(__adddf3: f64);
 
-// NOTE(cfg) for some reason, on arm-unknown-linux-gnueabi*, our implementation doesn't
+// NOTE(cfg) for some reason, on arm*-unknown-linux-gnueabi*, our implementation doesn't
 // match the output of its gcc_s or compiler-rt counterpart. Until we investigate further, we'll
 // just avoid testing against them on those targets. Do note that our implementation gives the
 // correct answer; gcc_s and compiler-rt are incorrect in this case.
-#[cfg(all(test, not(gnueabi)))]
+#[cfg(all(test, not(arm_linux)))]
 mod tests {
     use core::{f32, f64};
     use qc::{F32, F64};
