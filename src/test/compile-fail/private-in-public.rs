@@ -21,16 +21,16 @@ mod types {
         type Alias;
     }
 
-    pub const C: Priv = Priv; //~ ERROR private type in public interface
-    pub static S: Priv = Priv; //~ ERROR private type in public interface
-    pub fn f1(arg: Priv) {} //~ ERROR private type in public interface
-    pub fn f2() -> Priv { panic!() } //~ ERROR private type in public interface
-    pub struct S1(pub Priv); //~ ERROR private type in public interface
-    pub struct S2 { pub field: Priv } //~ ERROR private type in public interface
+    pub const C: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
+    pub static S: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
+    pub fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public interface
+    pub fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` in public interface
+    pub struct S1(pub Priv); //~ ERROR private type `types::Priv` in public interface
+    pub struct S2 { pub field: Priv } //~ ERROR private type `types::Priv` in public interface
     impl Pub {
-        pub const C: Priv = Priv; //~ ERROR private type in public interface
-        pub fn f1(arg: Priv) {} //~ ERROR private type in public interface
-        pub fn f2() -> Priv { panic!() } //~ ERROR private type in public interface
+        pub const C: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
+        pub fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public interface
+        pub fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` in public interface
     }
 }
 
@@ -39,11 +39,11 @@ mod traits {
     pub struct Pub<T>(T);
     pub trait PubTr {}
 
-    pub enum E<T: PrivTr> { V(T) } //~ ERROR private trait in public interface
-    pub fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait in public interface
-    pub struct S1<T: PrivTr>(T); //~ ERROR private trait in public interface
-    impl<T: PrivTr> Pub<T> {
-        pub fn f<U: PrivTr>(arg: U) {} //~ ERROR private trait in public interface
+    pub enum E<T: PrivTr> { V(T) } //~ ERROR private trait `traits::PrivTr` in public interface
+    pub fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait `traits::PrivTr` in public interface
+    pub struct S1<T: PrivTr>(T); //~ ERROR private trait `traits::PrivTr` in public interface
+    impl<T: PrivTr> Pub<T> { //~ ERROR private trait `traits::PrivTr` in public interface
+        pub fn f<U: PrivTr>(arg: U) {} //~ ERROR private trait `traits::PrivTr` in public interface
     }
 }
 
@@ -52,11 +52,16 @@ mod traits_where {
     pub struct Pub<T>(T);
     pub trait PubTr {}
 
-    pub enum E<T> where T: PrivTr { V(T) } //~ ERROR private trait in public interface
-    pub fn f<T>(arg: T) where T: PrivTr {} //~ ERROR private trait in public interface
-    pub struct S1<T>(T) where T: PrivTr; //~ ERROR private trait in public interface
+    pub enum E<T> where T: PrivTr { V(T) }
+    //~^ ERROR private trait `traits_where::PrivTr` in public interface
+    pub fn f<T>(arg: T) where T: PrivTr {}
+    //~^ ERROR private trait `traits_where::PrivTr` in public interface
+    pub struct S1<T>(T) where T: PrivTr;
+    //~^ ERROR private trait `traits_where::PrivTr` in public interface
     impl<T> Pub<T> where T: PrivTr {
-        pub fn f<U>(arg: U) where U: PrivTr {} //~ ERROR private trait in public interface
+    //~^ ERROR private trait `traits_where::PrivTr` in public interface
+        pub fn f<U>(arg: U) where U: PrivTr {}
+        //~^ ERROR private trait `traits_where::PrivTr` in public interface
     }
 }
 
@@ -66,9 +71,10 @@ mod generics {
     trait PrivTr<T> {}
     pub trait PubTr<T> {}
 
-    pub fn f1(arg: [Priv; 1]) {} //~ ERROR private type in public interface
-    pub fn f2(arg: Pub<Priv>) {} //~ ERROR private type in public interface
-    pub fn f3(arg: Priv<Pub>) {} //~ ERROR private type in public interface
+    pub fn f1(arg: [Priv; 1]) {} //~ ERROR private type `generics::Priv` in public interface
+    pub fn f2(arg: Pub<Priv>) {} //~ ERROR private type `generics::Priv` in public interface
+    pub fn f3(arg: Priv<Pub>) {}
+    //~^ ERROR private type `generics::Priv<generics::Pub>` in public interface
 }
 
 mod impls {
@@ -82,7 +88,7 @@ mod impls {
     }
 
     impl Pub {
-        pub fn f(arg: Priv) {} //~ ERROR private type in public interface
+        pub fn f(arg: Priv) {} //~ ERROR private type `impls::Priv` in public interface
     }
 }
 
@@ -101,15 +107,17 @@ mod aliases_pub {
     use self::m::PubTr as PrivUseAliasTr;
     type PrivAlias = m::Pub2;
     trait PrivTr {
-        type AssocAlias = m::Pub3;
+        type Assoc = m::Pub3;
     }
     impl PrivTr for Priv {}
 
     // This should be OK, but associated type aliases are not substituted yet
-    pub fn f3(arg: <Priv as PrivTr>::AssocAlias) {} //~ ERROR private type in public interface
+    pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
+    //~^ ERROR private type `<aliases_pub::Priv as aliases_pub::PrivTr>::Assoc` in public interface
+    //~| ERROR private type `aliases_pub::Priv` in public interface
 
     impl PrivUseAlias {
-        pub fn f(arg: Priv) {} //~ ERROR private type in public interface
+        pub fn f(arg: Priv) {} //~ ERROR private type `aliases_pub::Priv` in public interface
     }
 }
 
@@ -127,13 +135,15 @@ mod aliases_priv {
     use self::PrivTr1 as PrivUseAliasTr;
     type PrivAlias = Priv2;
     trait PrivTr {
-        type AssocAlias = Priv3;
+        type Assoc = Priv3;
     }
     impl PrivTr for Priv {}
 
-    pub fn f1(arg: PrivUseAlias) {} //~ ERROR private type in public interface
-    pub fn f2(arg: PrivAlias) {} //~ ERROR private type in public interface
-    pub fn f3(arg: <Priv as PrivTr>::AssocAlias) {} //~ ERROR private type in public interface
+    pub fn f1(arg: PrivUseAlias) {} //~ ERROR private type `aliases_priv::Priv1` in public interface
+    pub fn f2(arg: PrivAlias) {} //~ ERROR private type `aliases_priv::Priv2` in public interface
+    pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
+    //~^ ERROR private type `<aliases_priv::Priv as aliases_priv::PrivTr>::Assoc` in public
+    //~| ERROR private type `aliases_priv::Priv` in public interface
 }
 
 mod aliases_params {
@@ -141,8 +151,9 @@ mod aliases_params {
     type PrivAliasGeneric<T = Priv> = T;
     type Result<T> = ::std::result::Result<T, Priv>;
 
-    pub fn f2(arg: PrivAliasGeneric) {} //~ ERROR private type in public interface
-    pub fn f3(arg: Result<u8>) {} //~ ERROR private type in public interface
+    pub fn f2(arg: PrivAliasGeneric) {}
+    //~^ ERROR private type `aliases_params::Priv` in public interface
+    pub fn f3(arg: Result<u8>) {} //~ ERROR private type `aliases_params::Priv` in public interface
 }
 
 fn main() {}
