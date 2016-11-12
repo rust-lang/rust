@@ -131,7 +131,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                         linkage: llvm::Linkage,
                         symbol_name: &str) {
         let def_id = ccx.tcx().map.local_def_id(node_id);
-        let ty = ccx.tcx().lookup_item_type(def_id).ty;
+        let ty = ccx.tcx().item_type(def_id);
         let llty = type_of::type_of(ccx, ty);
 
         let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
@@ -153,7 +153,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert!(!instance.substs.needs_infer() &&
                 !instance.substs.has_param_types());
 
-        let item_ty = ccx.tcx().lookup_item_type(instance.def).ty;
+        let item_ty = ccx.tcx().item_type(instance.def);
         let item_ty = ccx.tcx().erase_regions(&item_ty);
         let mono_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &item_ty);
 

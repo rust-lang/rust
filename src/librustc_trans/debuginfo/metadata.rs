@@ -1765,7 +1765,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = tcx.erase_regions(&tcx.tables().node_id_to_type(node_id));
+    let variable_type = tcx.erase_regions(&tcx.item_type(node_def_id));
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = tcx.item_name(node_def_id).to_string();
     let linkage_name = mangled_name_of_item(cx, node_def_id, "");

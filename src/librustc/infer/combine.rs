@@ -184,7 +184,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
     {
         // We use SmallVector here instead of Vec because this code is hot and
         // it's rare that the stack length exceeds 1.
-        let mut stack = SmallVector::zero();
+        let mut stack = SmallVector::new();
         stack.push((a_ty, dir, b_vid));
         loop {
             // For each turn of the loop, we extract a tuple

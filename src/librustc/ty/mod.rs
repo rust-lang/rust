@@ -169,9 +169,9 @@ impl<'a, 'gcx, 'tcx> ImplHeader<'tcx> {
 
         let header = ImplHeader {
             impl_def_id: impl_def_id,
-            self_ty: tcx.lookup_item_type(impl_def_id).ty,
+            self_ty: tcx.item_type(impl_def_id),
             trait_ref: tcx.impl_trait_ref(impl_def_id),
-            predicates: tcx.lookup_predicates(impl_def_id).predicates
+            predicates: tcx.item_predicates(impl_def_id).predicates
         }.subst(tcx, impl_substs);
 
         let traits::Normalized { value: mut header, obligations } =
@@ -708,7 +708,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
                         instantiated: &mut InstantiatedPredicates<'tcx>,
                         substs: &Substs<'tcx>) {
         if let Some(def_id) = self.parent {
-            tcx.lookup_predicates(def_id).instantiate_into(tcx, instantiated, substs);
+            tcx.item_predicates(def_id).instantiate_into(tcx, instantiated, substs);
         }
         instantiated.predicates.extend(self.predicates.iter().map(|p| p.subst(tcx, substs)))
     }
@@ -1301,31 +1301,6 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
     }
 }
 
-/// A "type scheme", in ML terminology, is a type combined with some
-/// set of generic types that the type is, well, generic over. In Rust
-/// terms, it is the "type" of a fn item or struct -- this type will
-/// include various generic parameters that must be substituted when
-/// the item/struct is referenced. That is called converting the type
-/// scheme to a monotype.
-///
-/// - `generics`: the set of type parameters and their bounds
-/// - `ty`: the base types, which may reference the parameters defined
-///   in `generics`
-///
-/// Note that TypeSchemes are also sometimes called "polytypes" (and
-/// in fact this struct used to carry that name, so you may find some
-/// stray references in a comment or something). We try to reserve the
-/// "poly" prefix to refer to higher-ranked things, as in
-/// `PolyTraitRef`.
-///
-/// Note that each item also comes with predicates, see
-/// `lookup_predicates`.
-#[derive(Clone, Debug)]
-pub struct TypeScheme<'tcx> {
-    pub generics: &'tcx Generics<'tcx>,
-    pub ty: Ty<'tcx>,
-}
-
 bitflags! {
     flags AdtFlags: u32 {
         const NO_ADT_FLAGS        = 0,
@@ -1359,8 +1334,6 @@ pub struct VariantDefData<'tcx, 'container: 'tcx> {
 }
 
 pub struct FieldDefData<'tcx, 'container: 'tcx> {
-    /// The field's DefId. NOTE: the fields of tuple-like enum variants
-    /// are not real items, and don't have entries in tcache etc.
     pub did: DefId,
     pub name: Name,
     pub vis: Visibility,
@@ -1542,13 +1515,8 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     }
 
     #[inline]
-    pub fn type_scheme(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> TypeScheme<'gcx> {
-        tcx.lookup_item_type(self.did)
-    }
-
-    #[inline]
     pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> GenericPredicates<'gcx> {
-        tcx.lookup_predicates(self.did)
+        tcx.item_predicates(self.did)
     }
 
     /// Returns an iterator over all fields contained
@@ -1784,7 +1752,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
                     def_id: sized_trait,
                     substs: tcx.mk_substs_trait(ty, &[])
                 }).to_predicate();
-                let predicates = tcx.lookup_predicates(self.did).predicates;
+                let predicates = tcx.item_predicates(self.did).predicates;
                 if predicates.into_iter().any(|p| p == sized_predicate) {
                     vec![]
                 } else {
@@ -1963,7 +1931,7 @@ impl LvaluePreference {
 }
 
 /// Helper for looking things up in the various maps that are populated during
-/// typeck::collect (e.g., `tcx.associated_items`, `tcx.tcache`, etc).  All of
+/// typeck::collect (e.g., `tcx.associated_items`, `tcx.types`, etc).  All of
 /// these share the pattern that if the id is local, it should have been loaded
 /// into the map by the `typeck::collect` phase.  If the def-id is external,
 /// then we have to go consult the crate loading code (and cache the result for
@@ -2351,38 +2319,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Register a given item type
-    pub fn register_item_type(self, did: DefId, scheme: TypeScheme<'gcx>) {
-        self.tcache.borrow_mut().insert(did, scheme.ty);
-        self.generics.borrow_mut().insert(did, scheme.generics);
-    }
-
     // If the given item is in an external crate, looks up its type and adds it to
     // the type cache. Returns the type parameters and type.
-    pub fn lookup_item_type(self, did: DefId) -> TypeScheme<'gcx> {
-        let ty = lookup_locally_or_in_crate_store(
-            "tcache", did, &self.tcache,
-            || self.sess.cstore.item_type(self.global_tcx(), did));
-
-        TypeScheme {
-            ty: ty,
-            generics: self.lookup_generics(did)
-        }
-    }
-
-    pub fn opt_lookup_item_type(self, did: DefId) -> Option<TypeScheme<'gcx>> {
-        if did.krate != LOCAL_CRATE {
-            return Some(self.lookup_item_type(did));
-        }
-
-        if let Some(ty) = self.tcache.borrow().get(&did).cloned() {
-            Some(TypeScheme {
-                ty: ty,
-                generics: self.lookup_generics(did)
-            })
-        } else {
-            None
-        }
+    pub fn item_type(self, did: DefId) -> Ty<'gcx> {
+        lookup_locally_or_in_crate_store(
+            "item_types", did, &self.item_types,
+            || self.sess.cstore.item_type(self.global_tcx(), did))
     }
 
     /// Given the did of a trait, returns its canonical trait ref.
@@ -2411,21 +2353,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Given the did of an item, returns its generics.
-    pub fn lookup_generics(self, did: DefId) -> &'gcx Generics<'gcx> {
+    pub fn item_generics(self, did: DefId) -> &'gcx Generics<'gcx> {
         lookup_locally_or_in_crate_store(
             "generics", did, &self.generics,
             || self.alloc_generics(self.sess.cstore.item_generics(self.global_tcx(), did)))
     }
 
     /// Given the did of an item, returns its full set of predicates.
-    pub fn lookup_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
+    pub fn item_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
         lookup_locally_or_in_crate_store(
             "predicates", did, &self.predicates,
             || self.sess.cstore.item_predicates(self.global_tcx(), did))
     }
 
     /// Given the did of a trait, returns its superpredicates.
-    pub fn lookup_super_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
+    pub fn item_super_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
         lookup_locally_or_in_crate_store(
             "super_predicates", did, &self.super_predicates,
             || self.sess.cstore.item_super_predicates(self.global_tcx(), did))
@@ -2718,7 +2660,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         //
 
         let tcx = self.global_tcx();
-        let generic_predicates = tcx.lookup_predicates(def_id);
+        let generic_predicates = tcx.item_predicates(def_id);
         let bounds = generic_predicates.instantiate(tcx, free_substs);
         let bounds = tcx.liberate_late_bound_regions(free_id_outlive, &ty::Binder(bounds));
         let predicates = bounds.predicates;

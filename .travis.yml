@@ -1,33 +1,82 @@
-language: generic
+language: rust
 sudo: required
+dist: trusty
 services:
   - docker
 
-# LLVM takes awhile to check out and otherwise we'll manage the submodules in
-# our configure script, so disable auto submodule management.
 git:
-  submodules: false
   depth: 1
+  submodules: false
 
-before_install:
-  - docker build -t rust -f src/etc/Dockerfile src/etc
+matrix:
+  include:
+    # Linux builders, all docker images
+    - env: IMAGE=arm-android
+    - env: IMAGE=cross
+    - env: IMAGE=i686-gnu
+    - env: IMAGE=i686-gnu-nopt
+    - env: IMAGE=x86_64-freebsd
+    - env: IMAGE=x86_64-gnu
+    - env: IMAGE=x86_64-gnu-cargotest
+    - env: IMAGE=x86_64-gnu-debug
+    - env: IMAGE=x86_64-gnu-nopt
+    - env: IMAGE=x86_64-gnu-rustbuild
+    - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1
+    - env: IMAGE=x86_64-musl
+
+    # OSX builders
+    - env: >
+        RUST_CHECK_TARGET=check
+        RUST_CONFIGURE_ARGS=--target=x86_64-apple-darwin
+        SRC=.
+      os: osx
+      install: brew install ccache
+    - env: >
+        RUST_CHECK_TARGET=check
+        RUST_CONFIGURE_ARGS=--target=i686-apple-darwin
+        SRC=.
+      os: osx
+      install: brew install ccache
+    - env: >
+        RUST_CHECK_TARGET=check
+        RUST_CONFIGURE_ARGS=--target=x86_64-apple-darwin --enable-rustbuild
+        SRC=.
+      os: osx
+      install: brew install ccache
+    - env: >
+        RUST_CHECK_TARGET=
+        RUST_CONFIGURE_ARGS=--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios
+        SRC=.
+      os: osx
+      install: brew install ccache
 
 script:
-  - docker run -v `pwd`:/build rust
-    sh -c "
-      ./configure --enable-vendor --enable-rustbuild --llvm-root=/usr/lib/llvm-3.7 --enable-quiet-tests &&
-      make tidy &&
-      make check -j4
-    "
+  - if [ -z "$ALLOW_PR" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
+        echo skipping, not a full build;
+    elif [ -z "$ENABLE_AUTO" ] then
+        echo skipping, not quite ready yet
+    elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
+        git submodule update --init;
+        src/ci/run.sh;
+    else
+        git submodule update --init;
+        src/ci/docker/run.sh $IMAGE;
+    fi
 
-# Real testing happens on http://buildbot.rust-lang.org/
-#
-# See https://github.com/rust-lang/rust-buildbot
-#     CONTRIBUTING.md#pull-requests
+# Save tagged docker images we created and load them if they're available
+before_cache:
+  - docker history -q rust-ci |
+    grep -v missing |
+    xargs docker save |
+    gzip -9 > $HOME/docker/rust-ci.tar.gz
+before_install:
+  - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
 
 notifications:
   email: false
 
-branches:
-  only:
-    - master
+cache:
+  directories:
+    - $HOME/docker
+    - $HOME/.ccache
+    - $HOME/.cargo

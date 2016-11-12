@@ -276,7 +276,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let num_supplied_types = supplied_method_types.len();
-        let method_generics = self.tcx.lookup_generics(pick.item.def_id);
+        let method_generics = self.tcx.item_generics(pick.item.def_id);
         let num_method_types = method_generics.types.len();
 
         if num_supplied_types > 0 && num_supplied_types != num_method_types {
@@ -359,14 +359,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // type/early-bound-regions substitutions performed. There can
         // be no late-bound regions appearing here.
         let def_id = pick.item.def_id;
-        let method_predicates = self.tcx.lookup_predicates(def_id)
+        let method_predicates = self.tcx.item_predicates(def_id)
                                     .instantiate(self.tcx, all_substs);
         let method_predicates = self.normalize_associated_types_in(self.span,
                                                                    &method_predicates);
 
         debug!("method_predicates after subst = {:?}", method_predicates);
 
-        let fty = match self.tcx.lookup_item_type(def_id).ty.sty {
+        let fty = match self.tcx.item_type(def_id).sty {
             ty::TyFnDef(_, _, f) => f,
             _ => bug!()
         };

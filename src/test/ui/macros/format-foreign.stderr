@@ -1,0 +1,52 @@
+error: multiple unused formatting arguments
+  --> $DIR/format-foreign.rs:12:5
+   |
+12 |     println!("%.*3$s %s!/n", "Hello,", "World", 4);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: argument never used
+  --> $DIR/format-foreign.rs:12:30
+   |
+12 |     println!("%.*3$s %s!/n", "Hello,", "World", 4);
+   |                              ^^^^^^^^
+note: argument never used
+  --> $DIR/format-foreign.rs:12:40
+   |
+12 |     println!("%.*3$s %s!/n", "Hello,", "World", 4);
+   |                                        ^^^^^^^
+note: argument never used
+  --> $DIR/format-foreign.rs:12:49
+   |
+12 |     println!("%.*3$s %s!/n", "Hello,", "World", 4);
+   |                                                 ^
+   = help: `%.*3$s` should be written as `{:.2$}`
+   = help: `%s` should be written as `{}`
+   = note: printf formatting not supported; see the documentation for `std::fmt`
+   = note: this error originates in a macro outside of the current crate
+
+error: argument never used
+  --> $DIR/format-foreign.rs:13:29
+   |
+13 |     println!("%1$*2$.*3$f", 123.456);
+   |                             ^^^^^^^
+   |
+   = help: `%1$*2$.*3$f` should be written as `{0:1$.2$}`
+   = note: printf formatting not supported; see the documentation for `std::fmt`
+
+error: argument never used
+  --> $DIR/format-foreign.rs:17:30
+   |
+17 |     println!("{} %f", "one", 2.0);
+   |                              ^^^
+
+error: named argument never used
+  --> $DIR/format-foreign.rs:19:39
+   |
+19 |     println!("Hi there, $NAME.", NAME="Tim");
+   |                                       ^^^^^
+   |
+   = help: `$NAME` should be written as `{NAME}`
+   = note: shell formatting not supported; see the documentation for `std::fmt`
+
+error: aborting due to 4 previous errors
+

@@ -106,7 +106,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
     fn check_implementation(&self, item: &Item) {
         let tcx = self.crate_context.tcx;
         let impl_did = tcx.map.local_def_id(item.id);
-        let self_type = tcx.lookup_item_type(impl_did);
+        let self_type = tcx.item_type(impl_did);
 
         // If there are no traits, then this implementation must have a
         // base type.
@@ -129,14 +129,14 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         } else {
             // Skip inherent impls where the self type is an error
             // type. This occurs with e.g. resolve failures (#30589).
-            if self_type.ty.references_error() {
+            if self_type.references_error() {
                 return;
             }
 
             // Add the implementation to the mapping from implementation to base
             // type def ID, if there is a base type for this implementation and
             // the implementation does not have any associated traits.
-            if let Some(base_def_id) = self.get_base_type_def_id(item.span, self_type.ty) {
+            if let Some(base_def_id) = self.get_base_type_def_id(item.span, self_type) {
                 self.add_inherent_impl(base_def_id, impl_did);
             }
         }
@@ -175,8 +175,8 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
             }
             let method_def_id = items[0];
 
-            let self_type = tcx.lookup_item_type(impl_did);
-            match self_type.ty.sty {
+            let self_type = tcx.item_type(impl_did);
+            match self_type.sty {
                 ty::TyAdt(type_def, _) => {
                     type_def.set_destructor(method_def_id);
                 }
@@ -232,13 +232,13 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                 return;
             };
 
-            let self_type = tcx.lookup_item_type(impl_did);
+            let self_type = tcx.item_type(impl_did);
             debug!("check_implementations_of_copy: self_type={:?} (bound)",
                    self_type);
 
             let span = tcx.map.span(impl_node_id);
             let param_env = ParameterEnvironment::for_item(tcx, impl_node_id);
-            let self_type = self_type.ty.subst(tcx, &param_env.free_substs);
+            let self_type = self_type.subst(tcx, &param_env.free_substs);
             assert!(!self_type.has_escaping_regions());
 
             debug!("check_implementations_of_copy: self_type={:?} (free)",
@@ -326,7 +326,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                 return;
             };
 
-            let source = tcx.lookup_item_type(impl_did).ty;
+            let source = tcx.item_type(impl_did);
             let trait_ref = self.crate_context.tcx.impl_trait_ref(impl_did).unwrap();
             let target = trait_ref.substs.type_at(1);
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (bound)",

@@ -259,7 +259,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
-    let generics = cx.tcx().lookup_generics(fn_def_id);
+    let generics = cx.tcx().item_generics(fn_def_id);
     let template_parameters = get_template_parameters(cx,
                                                       &generics,
                                                       instance.substs,
@@ -397,7 +397,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                           generics: &ty::Generics<'tcx>)
                                           -> Vec<ast::Name> {
         let mut names = generics.parent.map_or(vec![], |def_id| {
-            get_type_parameter_names(cx, cx.tcx().lookup_generics(def_id))
+            get_type_parameter_names(cx, cx.tcx().item_generics(def_id))
         });
         names.extend(generics.types.iter().map(|param| param.name));
         names
@@ -412,7 +412,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let self_type = cx.tcx().impl_of_method(instance.def).and_then(|impl_def_id| {
             // If the method does *not* belong to a trait, proceed
             if cx.tcx().trait_id_of_impl(impl_def_id).is_none() {
-                let impl_self_ty = cx.tcx().lookup_item_type(impl_def_id).ty;
+                let impl_self_ty = cx.tcx().item_type(impl_def_id);
                 let impl_self_ty = cx.tcx().erase_regions(&impl_self_ty);
                 let impl_self_ty = monomorphize::apply_param_substs(cx.shared(),
                                                                     instance.substs,

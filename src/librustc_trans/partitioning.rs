@@ -495,7 +495,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
             if let Some(impl_def_id) = tcx.impl_of_method(instance.def) {
                 // This is a method within an inherent impl, find out what the
                 // self-type is:
-                let impl_self_ty = tcx.lookup_item_type(impl_def_id).ty;
+                let impl_self_ty = tcx.item_type(impl_def_id);
                 let impl_self_ty = tcx.erase_regions(&impl_self_ty);
                 let impl_self_ty = monomorphize::apply_param_substs(scx,
                                                                     instance.substs,

@@ -33,7 +33,7 @@ macro_rules! dep_map_ty {
 }
 
 dep_map_ty! { AssociatedItems: AssociatedItems(DefId) -> ty::AssociatedItem }
-dep_map_ty! { Tcache: ItemSignature(DefId) -> Ty<'tcx> }
+dep_map_ty! { Types: ItemSignature(DefId) -> Ty<'tcx> }
 dep_map_ty! { Generics: ItemSignature(DefId) -> &'tcx ty::Generics<'tcx> }
 dep_map_ty! { Predicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx> }
 dep_map_ty! { SuperPredicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx> }

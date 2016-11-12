@@ -444,7 +444,7 @@ pub struct GlobalCtxt<'tcx> {
     pub maybe_unused_trait_imports: NodeSet,
 
     // Records the type of every item.
-    pub tcache: RefCell<DepTrackingMap<maps::Tcache<'tcx>>>,
+    pub item_types: RefCell<DepTrackingMap<maps::Types<'tcx>>>,
 
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -665,10 +665,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.ty_param_defs.borrow().get(&node_id).unwrap().clone()
     }
 
-    pub fn node_type_insert(self, id: NodeId, ty: Ty<'gcx>) {
-        self.tables.borrow_mut().node_types.insert(id, ty);
-    }
-
     pub fn alloc_generics(self, generics: ty::Generics<'gcx>)
                           -> &'gcx ty::Generics<'gcx> {
         self.global_interners.arenas.generics.alloc(generics)
@@ -815,7 +811,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             mir_map: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             freevars: RefCell::new(freevars),
             maybe_unused_trait_imports: maybe_unused_trait_imports,
-            tcache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            item_types: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             rcache: RefCell::new(FxHashMap()),
             tc_cache: RefCell::new(FxHashMap()),
             associated_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
