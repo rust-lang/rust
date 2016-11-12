@@ -410,11 +410,12 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
 pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree]) -> NamedParseResult {
     let mut parser = Parser::new_with_doc_flag(sess, Box::new(rdr), true);
     let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo));
+    let mut next_eis = Vec::new(); // or proceed normally
 
     loop {
         let mut bb_eis = SmallVector::new(); // black-box parsed by parser.rs
         let mut eof_eis = SmallVector::new();
-        let mut next_eis = Vec::new(); // or proceed normally
+        assert!(next_eis.is_empty());
 
         match inner_parse_loop(&mut cur_eis, &mut next_eis, &mut eof_eis, &mut bb_eis,
                                &parser.token, &parser.span) {
