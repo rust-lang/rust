@@ -89,7 +89,7 @@ macro_rules! expansions {
                     Expansion::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
                     Expansion::OptExpr(None) => {}
                     $($( Expansion::$kind(ref ast) => visitor.$visit(ast), )*)*
-                    $($( Expansion::$kind(ref ast) => for ast in ast.as_slice() {
+                    $($( Expansion::$kind(ref ast) => for ast in &ast[..] {
                         visitor.$visit_elt(ast);
                     }, )*)*
                 }
@@ -511,28 +511,28 @@ impl<'a> Parser<'a> {
                            -> PResult<'a, Expansion> {
         Ok(match kind {
             ExpansionKind::Items => {
-                let mut items = SmallVector::zero();
+                let mut items = SmallVector::new();
                 while let Some(item) = self.parse_item()? {
                     items.push(item);
                 }
                 Expansion::Items(items)
             }
             ExpansionKind::TraitItems => {
-                let mut items = SmallVector::zero();
+                let mut items = SmallVector::new();
                 while self.token != token::Eof {
                     items.push(self.parse_trait_item()?);
                 }
                 Expansion::TraitItems(items)
             }
             ExpansionKind::ImplItems => {
-                let mut items = SmallVector::zero();
+                let mut items = SmallVector::new();
                 while self.token != token::Eof {
                     items.push(self.parse_impl_item()?);
                 }
                 Expansion::ImplItems(items)
             }
             ExpansionKind::Stmts => {
-                let mut stmts = SmallVector::zero();
+                let mut stmts = SmallVector::new();
                 while self.token != token::Eof &&
                       // won't make progress on a `}`
                       self.token != token::CloseDelim(token::Brace) {
@@ -573,7 +573,7 @@ macro_rules! fully_configure {
     ($this:ident, $node:ident, $noop_fold:ident) => {
         match $noop_fold($node, &mut $this.cfg).pop() {
             Some(node) => node,
-            None => return SmallVector::zero(),
+            None => return SmallVector::new(),
         }
     }
 }
@@ -689,7 +689,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
         let stmt = match self.cfg.configure_stmt(stmt) {
             Some(stmt) => stmt,
-            None => return SmallVector::zero(),
+            None => return SmallVector::new(),
         };
 
         let (mac, style, attrs) = if let StmtKind::Mac(mac) = stmt.node {
