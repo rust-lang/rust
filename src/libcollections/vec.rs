@@ -1517,7 +1517,7 @@ impl<T> FromIterator<T> for Vec<T> {
                 vector
             }
         };
-        vector.extend_desugared(iterator);
+        vector.extend(iterator);
         vector
     }
 }
