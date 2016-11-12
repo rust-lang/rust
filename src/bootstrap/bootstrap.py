@@ -226,13 +226,16 @@ class RustBuild(object):
         config = self.get_toml('cargo')
         if config:
             return config
+        config = self.get_mk('CFG_LOCAL_RUST_ROOT')
+        if config:
+            return config + '/bin/cargo' + self.exe_suffix()
         return os.path.join(self.bin_root(), "bin/cargo" + self.exe_suffix())
 
     def rustc(self):
         config = self.get_toml('rustc')
         if config:
             return config
-        config = self.get_mk('CFG_LOCAL_RUST')
+        config = self.get_mk('CFG_LOCAL_RUST_ROOT')
         if config:
             return config + '/bin/rustc' + self.exe_suffix()
         return os.path.join(self.bin_root(), "bin/rustc" + self.exe_suffix())
