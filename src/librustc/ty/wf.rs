@@ -394,7 +394,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                         data.builtin_bounds.iter().flat_map(|bound| {
                             tcx.lang_items.from_builtin_kind(bound).ok()
                         })
-                        .chain(Some(data.principal.def_id()));
+                        .chain(data.principal().map(|ref p| p.def_id()));
                     self.out.extend(
                         component_traits.map(|did| { traits::Obligation::new(
                             cause.clone(),
@@ -492,7 +492,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         if !data.has_escaping_regions() {
             let implicit_bounds =
                 object_region_bounds(self.infcx.tcx,
-                                     data.principal,
+                                     data.principal().unwrap(),
                                      data.builtin_bounds);
 
             let explicit_bound = data.region_bound;

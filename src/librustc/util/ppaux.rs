@@ -339,7 +339,7 @@ impl<'tcx> fmt::Display for ty::TraitObject<'tcx> {
             // Use a type that can't appear in defaults of type parameters.
             let dummy_self = tcx.mk_infer(ty::FreshTy(0));
 
-            let principal = tcx.lift(&self.principal)
+            let principal = self.principal().and_then(|ref p| tcx.lift(p))
                                .expect("could not lift TraitRef for printing")
                                .with_self_ty(tcx, dummy_self).0;
             let projections = self.projection_bounds.iter().map(|p| {
@@ -466,7 +466,7 @@ impl<'tcx> fmt::Debug for ty::TraitObject<'tcx> {
         };
 
         maybe_continue(f)?;
-        write!(f, "{:?}", self.principal)?;
+        write!(f, "{:?}", self.principal())?;
 
         let region_str = format!("{:?}", self.region_bound);
         if !region_str.is_empty() {

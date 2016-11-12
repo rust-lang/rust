@@ -1004,7 +1004,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
     assert!(!trait_ty.needs_subst() && !impl_ty.needs_subst());
 
     if let ty::TyTrait(ref trait_ty) = trait_ty.sty {
-        let poly_trait_ref = trait_ty.principal.with_self_ty(scx.tcx(), impl_ty);
+        let poly_trait_ref = trait_ty.principal().unwrap().with_self_ty(scx.tcx(), impl_ty);
         let param_substs = scx.tcx().intern_substs(&[]);
 
         // Walk all methods of the trait, including those of its supertraits

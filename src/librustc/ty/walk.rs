@@ -93,7 +93,10 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
             stack.extend(data.trait_ref.substs.types().rev());
         }
         ty::TyTrait(ref obj) => {
-            stack.extend(obj.principal.input_types().rev());
+            match obj.principal() {
+                Some(ref p) => stack.extend(p.input_types().rev()),
+                None => {}
+            }
             stack.extend(obj.projection_bounds.iter().map(|pred| {
                 pred.0.ty
             }).rev());

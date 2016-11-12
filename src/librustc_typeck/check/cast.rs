@@ -78,7 +78,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn unsize_kind(&self, t: Ty<'tcx>) -> Option<UnsizeKind<'tcx>> {
         match t.sty {
             ty::TySlice(_) | ty::TyStr => Some(UnsizeKind::Length),
-            ty::TyTrait(ref tty) => Some(UnsizeKind::Vtable(tty.principal.def_id())),
+            ty::TyTrait(ref tty) => Some(UnsizeKind::Vtable(tty.principal().unwrap().def_id())),
             ty::TyAdt(def, substs) if def.is_struct() => {
                 // FIXME(arielb1): do some kind of normalization
                 match def.struct_variant().fields.last() {

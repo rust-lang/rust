@@ -429,16 +429,16 @@ impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
 
 impl<'tcx> TypeFoldable<'tcx> for ty::TraitObject<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::TraitObject {
-            principal: self.principal.fold_with(folder),
-            region_bound: self.region_bound.fold_with(folder),
-            builtin_bounds: self.builtin_bounds,
-            projection_bounds: self.projection_bounds.fold_with(folder),
-        }
+        ty::TraitObject::new(
+            self.principal().map(|p| p.fold_with(folder)),
+            self.region_bound.fold_with(folder),
+            self.builtin_bounds,
+            self.projection_bounds.fold_with(folder),
+        )
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.principal.visit_with(visitor) ||
+        self.principal().map(|p| p.visit_with(visitor)).unwrap_or(true) ||
         self.region_bound.visit_with(visitor) ||
         self.projection_bounds.visit_with(visitor)
     }

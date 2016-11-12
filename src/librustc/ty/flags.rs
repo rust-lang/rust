@@ -123,7 +123,7 @@ impl FlagComputation {
 
             &ty::TyTrait(ref obj) => {
                 let mut computation = FlagComputation::new();
-                computation.add_substs(obj.principal.skip_binder().substs);
+                computation.add_substs(obj.principal().unwrap().skip_binder().substs);
                 for projection_bound in &obj.projection_bounds {
                     let mut proj_computation = FlagComputation::new();
                     proj_computation.add_existential_projection(&projection_bound.0);
