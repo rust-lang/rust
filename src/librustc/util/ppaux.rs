@@ -907,13 +907,14 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             }
             TyStr => write!(f, "str"),
             TyClosure(did, substs) => ty::tls::with(|tcx| {
+                let upvar_tys = substs.upvar_tys(did, tcx);
                 write!(f, "[closure")?;
 
                 if let Some(node_id) = tcx.map.as_local_node_id(did) {
                     write!(f, "@{:?}", tcx.map.span(node_id))?;
                     let mut sep = " ";
                     tcx.with_freevars(node_id, |freevars| {
-                        for (freevar, upvar_ty) in freevars.iter().zip(substs.upvar_tys) {
+                        for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
                             let def_id = freevar.def.def_id();
                             let node_id = tcx.map.as_local_node_id(def_id).unwrap();
                             write!(f,
@@ -930,7 +931,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     // visible in trans bug reports, I imagine.
                     write!(f, "@{:?}", did)?;
                     let mut sep = " ";
-                    for (index, upvar_ty) in substs.upvar_tys.iter().enumerate() {
+                    for (index, upvar_ty) in upvar_tys.enumerate() {
                         write!(f, "{}{}:{}", sep, index, upvar_ty)?;
                         sep = ", ";
                     }

@@ -709,9 +709,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             ty::TyAdt(def, substs) => {
                 self.open_drop_for_adt(c, def, substs)
             }
-            ty::TyTuple(tys) | ty::TyClosure(_, ty::ClosureSubsts {
-                upvar_tys: tys, ..
-            }) => {
+            ty::TyClosure(def_id, substs) => {
+                let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx).collect();
+                self.open_drop_for_tuple(c, &tys)
+            }
+            ty::TyTuple(tys) => {
                 self.open_drop_for_tuple(c, tys)
             }
             ty::TyBox(ty) => {

@@ -446,24 +446,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         debug!("visiting rvalue {:?}", *rvalue);
 
         match *rvalue {
-            mir::Rvalue::Aggregate(mir::AggregateKind::Closure(def_id,
-                                                               ref substs), _) => {
-                let mir = self.scx.tcx().item_mir(def_id);
-
-                let concrete_substs = monomorphize::apply_param_substs(self.scx,
-                                                                       self.param_substs,
-                                                                       &substs.func_substs);
-                let concrete_substs = self.scx.tcx().erase_regions(&concrete_substs);
-
-                let visitor = MirNeighborCollector {
-                    scx: self.scx,
-                    mir: &mir,
-                    output: self.output,
-                    param_substs: concrete_substs
-                };
-
-                visit_mir_and_promoted(visitor, &mir);
-            }
             // When doing an cast from a regular pointer to a fat pointer, we
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
@@ -797,8 +779,8 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                 }
             }
         }
-        ty::TyClosure(_, substs) => {
-            for upvar_ty in substs.upvar_tys {
+        ty::TyClosure(def_id, substs) => {
+            for upvar_ty in substs.upvar_tys(def_id, scx.tcx()) {
                 let upvar_ty = glue::get_drop_glue_type(scx.tcx(), upvar_ty);
                 if glue::type_needs_drop(scx.tcx(), upvar_ty) {
                     output.push(TransItem::DropGlue(DropGlueKind::Ty(upvar_ty)));
@@ -888,10 +870,12 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         traits::VtableImpl(impl_data) => {
             Some(traits::find_method(tcx, trait_method.name, rcvr_substs, &impl_data))
         }
-        // If we have a closure or a function pointer, we will also encounter
-        // the concrete closure/function somewhere else (during closure or fn
-        // pointer construction). That's where we track those things.
-        traits::VtableClosure(..) |
+        traits::VtableClosure(closure_data) => {
+            Some((closure_data.closure_def_id, closure_data.substs.substs))
+        }
+        // Trait object and function pointer shims are always
+        // instantiated in-place, and as they are just an ABI-adjusting
+        // indirect call they do not have any dependencies.
         traits::VtableFnPointer(..) |
         traits::VtableObject(..) => {
             None

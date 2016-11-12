@@ -534,13 +534,8 @@ impl<'tcx> Relate<'tcx> for ty::ClosureSubsts<'tcx> {
                            -> RelateResult<'tcx, ty::ClosureSubsts<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        let substs = relate_substs(relation, None, a.func_substs, b.func_substs)?;
-        assert_eq!(a.upvar_tys.len(), b.upvar_tys.len());
-        Ok(ty::ClosureSubsts {
-            func_substs: substs,
-            upvar_tys: relation.tcx().mk_type_list(
-                a.upvar_tys.iter().zip(b.upvar_tys).map(|(a, b)| relation.relate(a, b)))?
-        })
+        let substs = relate_substs(relation, None, a.substs, b.substs)?;
+        Ok(ty::ClosureSubsts { substs: substs })
     }
 }
 

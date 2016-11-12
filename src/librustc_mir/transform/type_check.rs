@@ -274,9 +274,15 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 ty::TyAdt(adt_def, substs) if adt_def.is_univariant() => {
                         (&adt_def.variants[0], substs)
                     }
-                ty::TyTuple(tys) | ty::TyClosure(_, ty::ClosureSubsts {
-                    upvar_tys: tys, ..
-                }) => {
+                ty::TyClosure(def_id, substs) => {
+                    return match substs.upvar_tys(def_id, tcx).nth(field.index()) {
+                        Some(ty) => Ok(ty),
+                        None => Err(FieldAccessError::OutOfRange {
+                            field_count: substs.upvar_tys(def_id, tcx).count()
+                        })
+                    }
+                }
+                ty::TyTuple(tys) => {
                     return match tys.get(field.index()) {
                         Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {

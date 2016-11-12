@@ -72,7 +72,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // in the `subtys` iterator (e.g., when encountering a
         // projection).
         match ty.sty {
-            ty::TyClosure(_, ref substs) => {
+            ty::TyClosure(def_id, ref substs) => {
                 // FIXME(#27086). We do not accumulate from substs, since they
                 // don't represent reachable data. This means that, in
                 // practice, some of the lifetime parameters might not
@@ -110,7 +110,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // what func/type parameters are used and unused,
                 // taking into consideration UFCS and so forth.
 
-                for &upvar_ty in substs.upvar_tys {
+                for upvar_ty in substs.upvar_tys(def_id, *self) {
                     self.compute_components(upvar_ty, out);
                 }
             }

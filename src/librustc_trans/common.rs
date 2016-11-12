@@ -44,6 +44,8 @@ use rustc::hir;
 
 use arena::TypedArena;
 use libc::{c_uint, c_char};
+use std::borrow::Cow;
+use std::iter;
 use std::ops::Deref;
 use std::ffi::CString;
 use std::cell::{Cell, RefCell, Ref};
@@ -109,7 +111,16 @@ pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
             Some([monomorphize::field_ty(ccx.tcx(), substs, &fields[0]),
                   monomorphize::field_ty(ccx.tcx(), substs, &fields[1])])
         }
-        ty::TyClosure(_, ty::ClosureSubsts { upvar_tys: tys, .. }) |
+        ty::TyClosure(def_id, substs) => {
+            let mut tys = substs.upvar_tys(def_id, ccx.tcx());
+            tys.next().and_then(|first_ty| tys.next().and_then(|second_ty| {
+                if tys.next().is_some() {
+                    None
+                } else {
+                    Some([first_ty, second_ty])
+                }
+            }))
+        }
         ty::TyTuple(tys) => {
             if tys.len() != 2 {
                 return None;
@@ -1058,5 +1069,34 @@ pub fn shift_mask_val<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             build::VectorSplat(bcx, mask_llty.vector_length(), mask)
         },
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
+    }
+}
+
+pub fn ty_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                          ty: Ty<'tcx>)
+                          -> Cow<'tcx, ty::BareFnTy<'tcx>>
+{
+    match ty.sty {
+        ty::TyFnDef(_, _, fty) => Cow::Borrowed(fty),
+        // Shims currently have type TyFnPtr. Not sure this should remain.
+        ty::TyFnPtr(fty) => Cow::Borrowed(fty),
+        ty::TyClosure(def_id, substs) => {
+            let tcx = ccx.tcx();
+            let ty::ClosureTy { unsafety, abi, sig } = tcx.closure_type(def_id, substs);
+
+            let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
+            let env_ty = match tcx.closure_kind(def_id) {
+                ty::ClosureKind::Fn => tcx.mk_imm_ref(tcx.mk_region(env_region), ty),
+                ty::ClosureKind::FnMut => tcx.mk_mut_ref(tcx.mk_region(env_region), ty),
+                ty::ClosureKind::FnOnce => ty,
+            };
+
+            let sig = sig.map_bound(|sig| ty::FnSig {
+                inputs: iter::once(env_ty).chain(sig.inputs).collect(),
+                ..sig
+            });
+            Cow::Owned(ty::BareFnTy { unsafety: unsafety, abi: abi, sig: sig })
+        }
+        _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
     }
 }
