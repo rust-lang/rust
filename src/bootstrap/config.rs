@@ -129,6 +129,7 @@ struct Build {
     submodules: Option<bool>,
     gdb: Option<String>,
     vendor: Option<bool>,
+    nodejs: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -234,6 +235,7 @@ impl Config {
         }
         config.rustc = build.rustc.map(PathBuf::from);
         config.cargo = build.cargo.map(PathBuf::from);
+        config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);

@@ -1456,8 +1456,11 @@ actual:\n\
 
         // If this is emscripten, then run tests under nodejs
         if self.config.target.contains("emscripten") {
-            let nodejs = self.config.nodejs.clone().unwrap_or("nodejs".to_string());
-            args.push(nodejs);
+            if let Some(ref p) = self.config.nodejs {
+                args.push(p.clone());
+            } else {
+                self.fatal("no NodeJS binary found (--nodejs)");
+            }
         }
 
         let exe_file = self.make_exe_name();
