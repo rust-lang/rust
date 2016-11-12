@@ -13,6 +13,11 @@
 use io::{self, ErrorKind};
 use libc;
 
+#[cfg(target_os = "fuchsia")]
+use convert::TryInto;
+#[cfg(target_os = "fuchsia")]
+pub use self::magenta::mx_status_t;
+
 #[cfg(target_os = "android")]   pub use os::android as platform;
 #[cfg(target_os = "bitrig")]    pub use os::bitrig as platform;
 #[cfg(target_os = "dragonfly")] pub use os::dragonfly as platform;
@@ -41,6 +46,8 @@ pub mod ext;
 pub mod fast_thread_local;
 pub mod fd;
 pub mod fs;
+#[cfg(target_os = "fuchsia")]
+pub mod magenta;
 pub mod memchr;
 pub mod mutex;
 pub mod net;
@@ -161,6 +168,19 @@ pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
             other => return other,
         }
+    }
+}
+
+#[cfg(target_os = "fuchsia")]
+pub fn mx_cvt<T>(t: T) -> io::Result<T> where T: TryInto<mx_status_t>+Copy {
+    if let Ok(status) = TryInto::try_into(t) {
+        if status < 0 {
+            Err(io::Error::from_raw_os_error(status))
+        } else {
+            Ok(t)
+        }
+    } else {
+        Err(io::Error::last_os_error())
     }
 }
 

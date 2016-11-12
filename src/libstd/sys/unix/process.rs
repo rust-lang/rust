@@ -15,13 +15,23 @@ use env;
 use ffi::{OsString, OsStr, CString, CStr};
 use fmt;
 use io::{self, Error, ErrorKind};
-use libc::{self, pid_t, c_int, gid_t, uid_t, c_char};
+use libc::{self, c_int, gid_t, uid_t, c_char};
 use mem;
 use ptr;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
 use sys::pipe::{self, AnonPipe};
-use sys::{self, cvt, cvt_r};
+
+#[cfg(not(target_os = "fuchsia"))]
+use sys::cvt;
+#[cfg(target_os = "fuchsia")]
+use sys::mx_cvt;
+
+#[cfg(target_os = "fuchsia")]
+use sys::magenta::{launchpad_t, mx_handle_t};
+
+#[cfg(not(target_os = "fuchsia"))]
+use libc::pid_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -210,8 +220,11 @@ impl Command {
         self.stderr = Some(stderr);
     }
 
+    #[cfg(not(target_os = "fuchsia"))]
     pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
                  -> io::Result<(Process, StdioPipes)> {
+        use sys;
+
         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
         if self.saw_nul {
@@ -286,6 +299,31 @@ impl Command {
         }
     }
 
+    #[cfg(target_os = "fuchsia")]
+    pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
+                 -> io::Result<(Process, StdioPipes)> {
+        if self.saw_nul {
+            return Err(io::Error::new(ErrorKind::InvalidInput,
+                                      "nul byte found in provided data"));
+        }
+
+        let (ours, theirs) = self.setup_io(default, needs_stdin)?;
+
+        let (maybe_process, err) = unsafe { self.do_exec(&theirs) };
+        // We don't want FileDesc::drop to be called on any stdio. It would close their handles.
+        let ChildPipes { stdin: their_stdin, stdout: their_stdout, stderr: their_stderr } = theirs;
+        their_stdin.fd();
+        their_stdout.fd();
+        their_stderr.fd();
+
+        if let Some((launchpad, process_handle)) = maybe_process {
+            Ok((Process { launchpad: launchpad, handle: process_handle, status: None }, ours))
+        } else {
+            Err(err)
+        }
+    }
+
+    #[cfg(not(target_os = "fuchsia"))]
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         if self.saw_nul {
             return io::Error::new(ErrorKind::InvalidInput,
@@ -294,6 +332,22 @@ impl Command {
 
         match self.setup_io(default, true) {
             Ok((_, theirs)) => unsafe { self.do_exec(theirs) },
+            Err(e) => e,
+        }
+    }
+
+    #[cfg(target_os = "fuchsia")]
+    pub fn exec(&mut self, default: Stdio) -> io::Error {
+        if self.saw_nul {
+            return io::Error::new(ErrorKind::InvalidInput,
+                                  "nul byte found in provided data")
+        }
+
+        match self.setup_io(default, true) {
+            Ok((_, _)) => {
+                // FIXME: This is tough because we don't support the exec syscalls
+                unimplemented!();
+            },
             Err(e) => e,
         }
     }
@@ -328,7 +382,10 @@ impl Command {
     // allocation). Instead we just close it manually. This will never
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke libc::exit)
+    #[cfg(not(target_os = "fuchsia"))]
     unsafe fn do_exec(&mut self, stdio: ChildPipes) -> io::Error {
+        use sys::{self, cvt_r};
+
         macro_rules! t {
             ($e:expr) => (match $e {
                 Ok(e) => e,
@@ -395,6 +452,108 @@ impl Command {
         io::Error::last_os_error()
     }
 
+    #[cfg(target_os = "fuchsia")]
+    unsafe fn do_exec(&mut self, stdio: &ChildPipes)
+                      -> (Option<(*mut launchpad_t, mx_handle_t)>, io::Error) {
+        use sys::magenta::*;
+
+        macro_rules! t {
+            ($e:expr) => (match $e {
+                Ok(e) => e,
+                Err(e) => return (None, e),
+            })
+        }
+
+        macro_rules! tlp {
+            ($lp:expr, $e:expr) => (match $e {
+                Ok(e) => e,
+                Err(e) => {
+                    launchpad_destroy($lp);
+                    return (None, e);
+                },
+            })
+        }
+
+        let job_handle = mxio_get_startup_handle(mx_hnd_info(MX_HND_TYPE_JOB, 0));
+        let envp = match self.envp {
+            Some(ref envp) => envp.as_ptr(),
+            None => ptr::null(),
+        };
+
+        let mut launchpad: *mut launchpad_t = ptr::null_mut();
+        let mut job_copy: mx_handle_t = MX_HANDLE_INVALID;
+
+        // Duplicate the job handle
+        t!(mx_cvt(mx_handle_duplicate(job_handle, MX_RIGHT_SAME_RIGHTS,
+                                   &mut job_copy as *mut mx_handle_t)));
+        // Create a launchpad
+        t!(mx_cvt(launchpad_create(job_copy, self.argv[0],
+                                &mut launchpad as *mut *mut launchpad_t)));
+        // Set the process argv
+        tlp!(launchpad, mx_cvt(launchpad_arguments(launchpad, self.argv.len() as i32 - 1,
+                                                self.argv.as_ptr())));
+        // Setup the environment vars
+        let status = launchpad_environ(launchpad, envp);
+        if status != NO_ERROR {
+            launchpad_destroy(launchpad);
+            return (None, io::Error::last_os_error());
+        }
+        let status = launchpad_add_vdso_vmo(launchpad);
+        if status != NO_ERROR {
+            launchpad_destroy(launchpad);
+            return (None, io::Error::last_os_error());
+        }
+        let status = launchpad_clone_mxio_root(launchpad);
+        if status != NO_ERROR {
+            launchpad_destroy(launchpad);
+            return (None, io::Error::last_os_error());
+        }
+        // Load the executable
+        let status = launchpad_elf_load(launchpad, launchpad_vmo_from_file(self.argv[0]));
+        if status != NO_ERROR {
+            launchpad_destroy(launchpad);
+            return (None, io::Error::last_os_error());
+        }
+        let status = launchpad_load_vdso(launchpad, MX_HANDLE_INVALID);
+        if status != NO_ERROR {
+            launchpad_destroy(launchpad);
+            return (None, io::Error::last_os_error());
+        }
+        let status = launchpad_clone_mxio_cwd(launchpad);
+        if status != NO_ERROR {
+            launchpad_destroy(launchpad);
+            return (None, io::Error::last_os_error());
+        }
+
+        // Clone stdin, stdout, and stderr
+        if let Some(fd) = stdio.stdin.fd() {
+            launchpad_transfer_fd(launchpad, fd, 0);
+        } else {
+            launchpad_clone_fd(launchpad, 0, 0);
+        }
+        if let Some(fd) = stdio.stdout.fd() {
+            launchpad_transfer_fd(launchpad, fd, 1);
+        } else {
+            launchpad_clone_fd(launchpad, 1, 1);
+        }
+        if let Some(fd) = stdio.stderr.fd() {
+            launchpad_transfer_fd(launchpad, fd, 2);
+        } else {
+            launchpad_clone_fd(launchpad, 2, 2);
+        }
+
+        for callback in self.closures.iter_mut() {
+            t!(callback());
+        }
+
+        let process_handle = launchpad_start(launchpad);
+        if process_handle < 0 {
+            launchpad_destroy(launchpad);
+            return (None, io::Error::last_os_error());
+        }
+
+        (Some((launchpad, process_handle)), io::Error::last_os_error())
+    }
 
     fn setup_io(&self, default: Stdio, needs_stdin: bool)
                 -> io::Result<(StdioPipes, ChildPipes)> {
@@ -431,7 +590,9 @@ impl Stdio {
     fn to_child_stdio(&self, readable: bool)
                       -> io::Result<(ChildStdio, Option<AnonPipe>)> {
         match *self {
-            Stdio::Inherit => Ok((ChildStdio::Inherit, None)),
+            Stdio::Inherit => {
+                Ok((ChildStdio::Inherit, None))
+            },
 
             // Make sure that the source descriptors are not an stdio
             // descriptor, otherwise the order which we set the child's
@@ -556,16 +717,31 @@ impl fmt::Display for ExitStatus {
 }
 
 /// The unique id of the process (this should never be negative).
+#[cfg(not(target_os = "fuchsia"))]
 pub struct Process {
     pid: pid_t,
     status: Option<ExitStatus>,
 }
 
+#[cfg(target_os = "fuchsia")]
+pub struct Process {
+    launchpad: *mut launchpad_t,
+    handle: mx_handle_t,
+    status: Option<ExitStatus>,
+}
+
 impl Process {
+    #[cfg(not(target_os = "fuchsia"))]
     pub fn id(&self) -> u32 {
         self.pid as u32
     }
 
+    #[cfg(target_os = "fuchsia")]
+    pub fn id(&self) -> u32 {
+        0
+    }
+
+    #[cfg(not(target_os = "fuchsia"))]
     pub fn kill(&mut self) -> io::Result<()> {
         // If we've already waited on this process then the pid can be recycled
         // and used for another process, and we probably shouldn't be killing
@@ -578,7 +754,28 @@ impl Process {
         }
     }
 
+    #[cfg(target_os = "fuchsia")]
+    pub fn kill(&mut self) -> io::Result<()> {
+        use sys::magenta::*;
+
+        // If we've already waited on this process then the pid can be recycled
+        // and used for another process, and we probably shouldn't be killing
+        // random processes, so just return an error.
+        if self.status.is_some() {
+            Err(Error::new(ErrorKind::InvalidInput,
+                           "invalid argument: can't kill an exited process"))
+        } else {
+            unsafe {
+                mx_cvt(mx_handle_close(self.handle))?;
+                launchpad_destroy(self.launchpad);
+            }
+            Ok(())
+        }
+    }
+
+    #[cfg(not(target_os = "fuchsia"))]
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
+        use sys::cvt_r;
         if let Some(status) = self.status {
             return Ok(status)
         }
@@ -586,6 +783,39 @@ impl Process {
         cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) })?;
         self.status = Some(ExitStatus(status));
         Ok(ExitStatus(status))
+    }
+
+    #[cfg(target_os = "fuchsia")]
+    pub fn wait(&mut self) -> io::Result<ExitStatus> {
+        use default::Default;
+        use sys::magenta::*;
+
+        if let Some(status) = self.status {
+            return Ok(status)
+        }
+
+        let mut proc_info: mx_info_process_t = Default::default();
+        let mut actual: mx_size_t = 0;
+        let mut avail: mx_size_t = 0;
+
+        unsafe {
+            mx_cvt(mx_handle_wait_one(self.handle, MX_TASK_TERMINATED,
+                                      MX_TIME_INFINITE, ptr::null_mut()))?;
+            mx_cvt(mx_object_get_info(self.handle, MX_INFO_PROCESS,
+                                      &mut proc_info as *mut _ as *mut libc::c_void,
+                                      mem::size_of::<mx_info_process_t>(), &mut actual,
+                                      &mut avail))?;
+        }
+        if actual != 1 {
+            return Err(Error::new(ErrorKind::InvalidInput,
+                                  "Failed to get exit status of process"));
+        }
+        self.status = Some(ExitStatus(proc_info.rec.return_code));
+        unsafe {
+            mx_cvt(mx_handle_close(self.handle))?;
+            launchpad_destroy(self.launchpad);
+        }
+        Ok(ExitStatus(proc_info.rec.return_code))
     }
 }
 
