@@ -33,13 +33,13 @@ automatically coerce to a `&T`. Here’s an example:
 
 ```rust
 fn foo(s: &str) {
-    // borrow a string for a second
+    // Borrow a string for a second.
 }
 
-// String implements Deref<Target=str>
+// String implements Deref<Target=str>.
 let owned = "Hello".to_string();
 
-// therefore, this works:
+// Therefore, this works:
 foo(&owned);
 ```
 
@@ -55,14 +55,14 @@ type implements `Deref<Target=T>`, so this works:
 use std::rc::Rc;
 
 fn foo(s: &str) {
-    // borrow a string for a second
+    // Borrow a string for a second.
 }
 
-// String implements Deref<Target=str>
+// String implements Deref<Target=str>.
 let owned = "Hello".to_string();
 let counted = Rc::new(owned);
 
-// therefore, this works:
+// Therefore, this works:
 foo(&counted);
 ```
 
@@ -76,10 +76,10 @@ Another very common implementation provided by the standard library is:
 
 ```rust
 fn foo(s: &[i32]) {
-    // borrow a slice for a second
+    // Borrow a slice for a second.
 }
 
-// Vec<T> implements Deref<Target=[T]>
+// Vec<T> implements Deref<Target=[T]>.
 let owned = vec![1, 2, 3];
 
 foo(&owned);

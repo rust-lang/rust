@@ -82,9 +82,9 @@ fn main() {
 
     point.x = 5;
 
-    let point = point; // now immutable
+    let point = point; // `point` is now immutable.
 
-    point.y = 6; // this causes an error
+    point.y = 6; // This causes an error.
 }
 ```
 
@@ -234,10 +234,10 @@ rather than positions.
 You can define a `struct` with no members at all:
 
 ```rust
-struct Electron {} // use empty braces...
-struct Proton;     // ...or just a semicolon
+struct Electron {} // Use empty braces...
+struct Proton;     // ...or just a semicolon.
 
-// whether you declared the struct with braces or not, do the same when creating one
+// Whether you declared the struct with braces or not, do the same when creating one.
 let x = Electron {};
 let y = Proton;
 ```

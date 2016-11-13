@@ -54,13 +54,13 @@ dangling pointer or ‘use after free’, when the resource is memory. A small
 example of such a situation would be:
 
 ```rust,compile_fail
-let r;              // Introduce reference: r
+let r;              // Introduce reference: `r`.
 {
-    let i = 1;      // Introduce scoped value: i
-    r = &i;         // Store reference of i in r
-}                   // i goes out of scope and is dropped.
+    let i = 1;      // Introduce scoped value: `i`.
+    r = &i;         // Store reference of `i` in `r`.
+}                   // `i` goes out of scope and is dropped.
 
-println!("{}", r);  // r still refers to i
+println!("{}", r);  // `r` still refers to `i`.
 ```
 
 To fix this, we have to make sure that step four never happens after step
@@ -81,9 +81,9 @@ let lang = "en";
 
 let v;
 {
-    let p = format!("lang:{}=", lang);  // -+ p goes into scope
+    let p = format!("lang:{}=", lang);  // -+ `p` comes into scope.
     v = skip_prefix(line, p.as_str());  //  |
-}                                       // -+ p goes out of scope
+}                                       // -+ `p` goes out of scope.
 println!("{}", v);
 ```
 
@@ -191,7 +191,7 @@ struct Foo<'a> {
 }
 
 fn main() {
-    let y = &5; // this is the same as `let _y = 5; let y = &_y;`
+    let y = &5; // This is the same as `let _y = 5; let y = &_y;`.
     let f = Foo { x: y };
 
     println!("{}", f.x);
@@ -233,7 +233,7 @@ impl<'a> Foo<'a> {
 }
 
 fn main() {
-    let y = &5; // this is the same as `let _y = 5; let y = &_y;`
+    let y = &5; // This is the same as `let _y = 5; let y = &_y;`.
     let f = Foo { x: y };
 
     println!("x is: {}", f.x());
@@ -274,11 +274,11 @@ valid for. For example:
 
 ```rust
 fn main() {
-    let y = &5;     // -+ y goes into scope
+    let y = &5;     // -+ `y` comes into scope.
                     //  |
-    // stuff        //  |
+    // Stuff...     //  |
                     //  |
-}                   // -+ y goes out of scope
+}                   // -+ `y` goes out of scope.
 ```
 
 Adding in our `Foo`:
@@ -289,11 +289,12 @@ struct Foo<'a> {
 }
 
 fn main() {
-    let y = &5;           // -+ y goes into scope
-    let f = Foo { x: y }; // -+ f goes into scope
-    // stuff              //  |
+    let y = &5;           // -+ `y` comes into scope.
+    let f = Foo { x: y }; // -+ `f` comes into scope.
                           //  |
-}                         // -+ f and y go out of scope
+    // Stuff...           //  |
+                          //  |
+}                         // -+ `f` and `y` go out of scope.
 ```
 
 Our `f` lives within the scope of `y`, so everything works. What if it didn’t?
@@ -305,16 +306,16 @@ struct Foo<'a> {
 }
 
 fn main() {
-    let x;                    // -+ x goes into scope
+    let x;                    // -+ `x` comes into scope.
                               //  |
     {                         //  |
-        let y = &5;           // ---+ y goes into scope
-        let f = Foo { x: y }; // ---+ f goes into scope
-        x = &f.x;             //  | | error here
-    }                         // ---+ f and y go out of scope
+        let y = &5;           // ---+ `y` comes into scope.
+        let f = Foo { x: y }; // ---+ `f` comes into scope.
+        x = &f.x;             //  | | This causes an error.
+    }                         // ---+ `f` and y go out of scope.
                               //  |
     println!("{}", x);        //  |
-}                             // -+ x goes out of scope
+}                             // -+ `x` goes out of scope.
 ```
 
 Whew! As you can see here, the scopes of `f` and `y` are smaller than the scope

@@ -277,7 +277,7 @@ extern {
 fn main() {
     unsafe {
         register_callback(callback);
-        trigger_callback(); // Triggers the callback
+        trigger_callback(); // Triggers the callback.
     }
 }
 ```
@@ -294,7 +294,7 @@ int32_t register_callback(rust_callback callback) {
 }
 
 void trigger_callback() {
-  cb(7); // Will call callback(7) in Rust
+  cb(7); // Will call callback(7) in Rust.
 }
 ```
 
@@ -320,13 +320,13 @@ Rust code:
 #[repr(C)]
 struct RustObject {
     a: i32,
-    // other members
+    // Other members...
 }
 
 extern "C" fn callback(target: *mut RustObject, a: i32) {
     println!("I'm called from C with value {0}", a);
     unsafe {
-        // Update the value in RustObject with the value received from the callback
+        // Update the value in RustObject with the value received from the callback:
         (*target).a = a;
     }
 }
@@ -339,7 +339,7 @@ extern {
 }
 
 fn main() {
-    // Create the object that will be referenced in the callback
+    // Create the object that will be referenced in the callback:
     let mut rust_object = Box::new(RustObject { a: 5 });
 
     unsafe {
@@ -363,7 +363,7 @@ int32_t register_callback(void* callback_target, rust_callback callback) {
 }
 
 void trigger_callback() {
-  cb(cb_target, 7); // Will call callback(&rustObject, 7) in Rust
+  cb(cb_target, 7); // Will call callback(&rustObject, 7) in Rust.
 }
 ```
 
@@ -606,7 +606,7 @@ use libc::c_int;
 
 # #[cfg(hidden)]
 extern "C" {
-    /// Register the callback.
+    /// Registers the callback.
     fn register(cb: Option<extern "C" fn(Option<extern "C" fn(c_int) -> c_int>, c_int) -> c_int>);
 }
 # unsafe fn register(_: Option<extern "C" fn(Option<extern "C" fn(c_int) -> c_int>,
