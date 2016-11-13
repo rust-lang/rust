@@ -167,7 +167,22 @@ an example implementation and a more complex use case.
 [alternatives]: #alternatives
 
 Instead of a dedicated trait, the functionality could be provided
-by standalone functions like this:
+as `Cell` constructors:
+
+```rust
+
+impl<T: Copy> Cell<T> {
+    fn from_mut<'a>(t: &'a mut T) -> &'a Cell<T> {
+        unsafe { mem::transmute(t) }
+    }
+    fn from_mut<'a>(t: &'a mut [T]) -> &'a [Cell<T>] {
+        unsafe { mem::transmute(t) }
+    }
+}
+
+```
+
+Or more simple, by standalone functions like this:
 
 ```rust
 fn ref_as_cell<T: Copy>(t: &mut T) -> &Cell<T> {
