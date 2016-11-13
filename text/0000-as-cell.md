@@ -82,11 +82,35 @@ applicable, namely:
 
 This RFC proposes a way to address the first and the last of the
 previous restrictions by introducing simple conversions functions
-to the standard library that allow the creation of `&Cell<T>`s from `&mut T`s.
+to the standard library that allow the creation of shared borrowed
+`Cell<T>`s from mutably borrowed `T`s.
 
 This allows the original data structure to remain unchanged in type, which makes
 this approach more applicable to more problems, and an answer to many of the
 situations that require C-style for loops at the moment.
+
+As an example, given `Cell::from_mut_slice(&mut [T]) -> &[Cell<T>]`,
+the previous Example can be written as this:
+
+```rust
+let mut v: Vec<i32> = ...;
+
+// convert the mutable borrow
+let v_slice: &[Cell<T>] = Cell::from_mut_slice(&mut v);
+
+// example 1
+for i in v_slice.iter() {
+    for j in v_slice.iter() {
+        j.set(f(i.get(), j.get()));
+    }
+}
+
+// example 2
+for (i, j) in v_slice[n..].iter().zip(v_slice.iter()) {
+    i.set(g(g.get()));
+}
+
+```
 
 # Detailed design
 [design]: #detailed-design
