@@ -2488,8 +2488,13 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             if let clean::VariantItem(Variant {
                 kind: VariantKind::Struct(ref s)
             }) = variant.inner {
-                write!(w, "<h3 class='fields'>Fields</h3>\n
-                           <table>")?;
+                let variant_id = derive_id(format!("{}.{}.fields",
+                                                   ItemType::Variant,
+                                                   variant.name.as_ref().unwrap()));
+                write!(w, "<span class='docblock autohide sub-variant' id='{id}'>",
+                       id = variant_id)?;
+                write!(w, "<h3 class='fields'>Fields of <code>{name}</code></h3>\n
+                           <table>", name = variant.name.as_ref().unwrap())?;
                 for field in &s.fields {
                     use clean::StructFieldItem;
                     if let StructFieldItem(ref ty) = field.inner {
@@ -2513,7 +2518,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                         write!(w, "</td></tr>")?;
                     }
                 }
-                write!(w, "</table>")?;
+                write!(w, "</table></span>")?;
             }
             render_stability_since(w, variant, it)?;
         }
