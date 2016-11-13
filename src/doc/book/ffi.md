@@ -95,7 +95,7 @@ internal details.
 
 Wrapping the functions which expect buffers involves using the `slice::raw` module to manipulate Rust
 vectors as pointers to memory. Rust's vectors are guaranteed to be a contiguous block of memory. The
-length is number of elements currently contained, and the capacity is the total size in elements of
+length is the number of elements currently contained, and the capacity is the total size in elements of
 the allocated memory. The length is less than or equal to the capacity.
 
 ```rust
