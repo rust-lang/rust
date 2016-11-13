@@ -544,7 +544,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 let dest = self.force_allocation(dest)?.to_ptr();
 
                                 let dest = dest.offset(offset.bytes() as isize);
-                                let dest_size = self.type_size(ty).unwrap_or(self.memory.pointer_size());
+                                let dest_size = self.type_size(ty).expect("bad StructWrappedNullablePointer discrfield");
                                 try!(self.memory.write_int(dest, 0, dest_size));
                             }
                         } else {
@@ -734,8 +734,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
             ty::TyBox(ty) => {
-                assert_eq!(field_index, 0);
-                Ok(ty)
+                if self.type_is_sized(ty) {
+                    assert_eq!(field_index, 0);
+                    Ok(self.tcx.mk_imm_ptr(self.tcx.types.never))
+                } else {
+                    match (field_index, &ty.sty) {
+                        (1, &ty::TySlice(_)) => Ok(self.tcx.types.usize),
+                        (1, &ty::TyTrait(_)) |
+                        (0, _) => Ok(self.tcx.mk_imm_ptr(self.tcx.types.never)),
+                        _ => bug!("invalid fat pointee type"),
+                    }
+                }
             }
             _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, {:?}", ty, ty.sty))),
         }

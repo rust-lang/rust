@@ -272,7 +272,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (offset, ty) = self.nonnull_offset_and_ty(adt_ty, nndiscr, discrfield)?;
                 let nonnull = adt_ptr.offset(offset.bytes() as isize);
                 // only the pointer part of a fat pointer is used for this space optimization
-                let discr_size = self.type_size(ty).unwrap_or(self.memory.pointer_size());
+                let discr_size = self.type_size(ty).expect("bad StructWrappedNullablePointer discrfield");
                 self.read_nonnull_discriminant_value(nonnull, nndiscr, discr_size)?
             }
 
