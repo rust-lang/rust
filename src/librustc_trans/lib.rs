@@ -101,6 +101,7 @@ mod cabi_arm;
 mod cabi_asmjs;
 mod cabi_mips;
 mod cabi_mips64;
+mod cabi_msp430;
 mod cabi_powerpc;
 mod cabi_powerpc64;
 mod cabi_s390x;
