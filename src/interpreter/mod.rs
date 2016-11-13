@@ -734,12 +734,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
             ty::TyBox(ty) => {
-                assert!(!self.type_is_sized(ty));
                 match (field_index, &self.tcx.struct_tail(ty).sty) {
+                    (1, &ty::TyStr) |
                     (1, &ty::TySlice(_)) => Ok(self.tcx.types.usize),
                     (1, &ty::TyTrait(_)) |
                     (0, _) => Ok(self.tcx.mk_imm_ptr(self.tcx.types.u8)),
-                    _ => bug!("invalid fat pointee type"),
+                    _ => bug!("invalid fat pointee type: {}", ty),
                 }
             }
             _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, {:?}", ty, ty.sty))),
