@@ -131,7 +131,9 @@ However, if changes as proposed in https://github.com/rust-lang/rfcs/pull/1651 s
 get implemented, the `Copy` bound might get relaxed or removed entirely,
 which would affect the ergonomics here.
 
-The proposed implementation only covers the base case `&mut T -> &Cell<T>`
+It might also be possible to add `AsRef` implementations for this conversion.
+
+The proposal only covers the base case `&mut T -> &Cell<T>`
 and the trivially implementable extension to `[T]`,
 but in theory this conversion could be enabled for
 many "higher level mutable reference" types, like for example
