@@ -366,7 +366,13 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
 
             let comment_end = match self.inner.peek() {
                 Some(..) => {
-                    let block_open_index = post_snippet.find("/*");
+                    let mut block_open_index = post_snippet.find("/*");
+                    // check if it realy is a block comment (and not //*)
+                    if let Some(i) = block_open_index {
+                        if i > 0 && &post_snippet[i - 1..i] == "/" {
+                            block_open_index = None;
+                        }
+                    }
                     let newline_index = post_snippet.find('\n');
                     let separator_index = post_snippet.find_uncommented(",").unwrap();
 
