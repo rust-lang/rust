@@ -1902,12 +1902,12 @@ impl<'a> Parser<'a> {
                     if let Some(recv) = followed_by_ty_params {
                         assert!(recv.is_empty());
                         *recv = attrs;
-                    } else {
+                        debug!("parse_lifetime_defs ret {:?}", res);
+                        return Ok(res);
+                    } else if !attrs.is_empty() {
                         let msg = "trailing attribute after lifetime parameters";
                         return Err(self.fatal(msg));
                     }
-                    debug!("parse_lifetime_defs ret {:?}", res);
-                    return Ok(res);
                 }
             }
 
