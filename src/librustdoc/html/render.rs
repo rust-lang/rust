@@ -1878,8 +1878,8 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
     let mut stability = vec![];
 
     if let Some(stab) = item.stability.as_ref() {
-        let reason = if show_reason && !stab.reason.is_empty() {
-            format!(": {}", stab.reason)
+        let deprecated_reason = if show_reason && !stab.deprecated_reason.is_empty() {
+            format!(": {}", stab.deprecated_reason)
         } else {
             String::new()
         };
@@ -1889,7 +1889,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Deprecated{}{}", since, Markdown(&reason));
+            let text = format!("Deprecated{}{}", since, Markdown(&deprecated_reason));
             stability.push(format!("<em class='stab deprecated'>{}</em>", text))
         };
 
@@ -1909,7 +1909,12 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Unstable{}{}", unstable_extra, Markdown(&reason));
+            let unstable_reason = if show_reason && !stab.unstable_reason.is_empty() {
+                format!(": {}", stab.unstable_reason)
+            } else {
+                String::new()
+            };
+            let text = format!("Unstable{}{}", unstable_extra, Markdown(&unstable_reason));
             stability.push(format!("<em class='stab unstable'>{}</em>", text))
         };
     } else if let Some(depr) = item.deprecation.as_ref() {
