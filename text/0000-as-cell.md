@@ -175,7 +175,7 @@ impl<T: Copy> Cell<T> {
     fn from_mut<'a>(t: &'a mut T) -> &'a Cell<T> {
         unsafe { mem::transmute(t) }
     }
-    fn from_mut<'a>(t: &'a mut [T]) -> &'a [Cell<T>] {
+    fn from_mut_slice<'a>(t: &'a mut [T]) -> &'a [Cell<T>] {
         unsafe { mem::transmute(t) }
     }
 }
