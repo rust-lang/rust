@@ -428,7 +428,11 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                     |relation| relation.relate_with_variance(ty::Contravariant,
                                                              &a_obj.region_bound,
                                                              &b_obj.region_bound))?;
-            let nb = relation.relate(&a_obj.builtin_bounds, &b_obj.builtin_bounds)?;
+            let nb = if !a_obj.auto_traits().eq(b_obj.auto_traits()) {
+                return Err(TypeError::Sorts(expected_found(relation, &a, &b)));
+            } else {
+                a_obj.auto_traits().collect()
+            };
             let pb = relation.relate(&a_obj.projection_bounds, &b_obj.projection_bounds)?;
             Ok(tcx.mk_trait(ty::TraitObject::new(principal, r, nb, pb)))
         }

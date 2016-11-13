@@ -432,7 +432,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitObject<'tcx> {
         ty::TraitObject::new(
             self.principal().map(|p| p.fold_with(folder)),
             self.region_bound.fold_with(folder),
-            self.builtin_bounds,
+            self.auto_traits().collect(),
             self.projection_bounds.fold_with(folder),
         )
     }
