@@ -118,7 +118,88 @@ for (i, j) in v_slice[n..].iter().zip(v_slice.iter()) {
 Add conversions functions for `&mut T -> &Cell<T>` and `&mut [T] -> &[Cell<T>]`
 to std, implemented with the equivalent of a simple `transmute()`.
 
-As an initial design, `std::cell` would provide them through this trait:
+As an initial design, `Cell` would provide them through additional constructors:
+
+```rust
+impl<T: Copy> Cell<T> {
+    fn from_mut<'a>(t: &'a mut T) -> &'a Cell<T> {
+        unsafe { mem::transmute(t) }
+    }
+    fn from_mut_slice<'a>(t: &'a mut [T]) -> &'a [Cell<T>] {
+        unsafe { mem::transmute(t) }
+    }
+}
+```
+
+It might also be possible to add `AsRef`, `Into` or `From`
+versions of these conversions.
+
+The proposal only covers the base case `&mut T -> &Cell<T>`
+and the trivially implementable extension to `[T]`,
+but in theory this conversion could be enabled for
+many "higher level mutable reference" types, like for example
+mutable iterators (with the goal of making them cloneable through this).
+
+In order for this proposal to be safe, it needs to be guaranteed that
+`T` and `Cell<T>` have the same memory layout, and that there are no codegen
+issues based on viewing a reference to a `UnsafeCell`-less types as a
+reference to a `UnsafeCell`-containing type.
+
+As far as the author is aware, both should already fall out of the semantic of
+`Cell` and llvms notion of aliasing:
+
+- `Cell` is safe interior mutability based on memcopying the `T`,
+  and thus does not need additional fields.
+- `&mut T -> &U` is a sub borrow, which prevents access to the original `&mut T`
+  for its duration, thus no aliasing.
+
+See https://play.rust-lang.org/?gist=d012cebf462841887323185cff8ccbcc&version=stable&backtrace=0 for
+an example implementation and a more complex use case, and
+https://crates.io/crates/alias for an existing crate providing these features.
+
+# Drawbacks
+[drawbacks]: #drawbacks
+
+> Why should we *not* do this?
+
+- More complexity around the `Cell` API.
+- `T` -> `Cell<T>` transmute compatibility might not be a desired guarantee.
+
+# Alternatives
+[alternatives]: #alternatives
+
+## Just the language guarantee
+
+The cast could be guaranteed as correct, but not be provided by std
+itself. This would serve as legitimization of external implementations like
+[alias](https://crates.io/crates/alias).
+
+## No guarantees
+
+If the casting guarantees can not be granted,
+code would have to use direct indexing as today, with either possible
+bound checking costs or the use of unsafe code to avoid them.
+
+## Exposing the functions differently
+
+Instead of `Cell` constructors, we could just have freestanding functions
+in, say, `std::cell`:
+
+```rust
+fn ref_as_cell<T: Copy>(t: &mut T) -> &Cell<T> {
+    unsafe { mem::transmute(t) }
+}
+
+fn slice_as_cell<T: Copy>(t: &mut [T]) -> &[Cell<T>] {
+    unsafe { mem::transmute(t) }
+}
+```
+
+On the opposite spectrum, and should this feature end up being used
+somewhat commonly,
+we could provide the conversions by dedicated traits,
+possibly in the prelude, or use the std coherence hack to implement
+them directly on `&mut T` and `& mut [T]`:
 
 ```rust
 trait AsCell {
@@ -141,9 +222,6 @@ impl<'a, T: Copy> AsCell for &'a mut [T] {
 }
 ```
 
-In theory it could get added to the prelude, but it should probably
-follow `Cell`s lead there, which is currently not in there.
-
 Method dispatch would work as expected with this design:
 
 - `v.as_cell()` where `v: Vec` would correctly pick the `[T]` impl.
@@ -155,75 +233,9 @@ However, if changes as proposed in https://github.com/rust-lang/rfcs/pull/1651 s
 get implemented, the `Copy` bound might get relaxed or removed entirely,
 which would affect the ergonomics here.
 
-It might also be possible to add `AsRef` implementations for this conversion.
-
-The proposal only covers the base case `&mut T -> &Cell<T>`
-and the trivially implementable extension to `[T]`,
-but in theory this conversion could be enabled for
-many "higher level mutable reference" types, like for example
-mutable iterators (with the goal of making them cloneable through this).
-
-In order for this proposal to be safe, it needs to be guaranteed that
-`T` and `Cell<T>` have the same memory layout, and that there are no codegen
-issues based on viewing a reference to a `UnsafeCell`-less types as a
-reference to a `UnsafeCell`-containing type.
-
-As far as the author is aware, both should already fall out of the semantic of
-`Cell` and llvms notion of aliasing:
-
-- `Cell` is safe interior mutability based on memcopying the `T`,
-  and thus does not need additional fields.
-- `&mut T -> &U` is a sub borrow, which prevents access to the original `&mut T`
-  for its duration, thus no aliasing.
-
-See https://play.rust-lang.org/?gist=d012cebf462841887323185cff8ccbcc&version=stable&backtrace=0 for
-an example implementation and a more complex use case.
-
-# Drawbacks
-[drawbacks]: #drawbacks
-
-> Why should we *not* do this?
-
-- More complexity around the `Cell` API.
-- `T` -> `Cell<T>` transmute compatibility might not be a desired guarantee.
-
-# Alternatives
-[alternatives]: #alternatives
-
-Instead of a dedicated trait, the functionality could be provided
-as `Cell` constructors:
-
-```rust
-
-impl<T: Copy> Cell<T> {
-    fn from_mut<'a>(t: &'a mut T) -> &'a Cell<T> {
-        unsafe { mem::transmute(t) }
-    }
-    fn from_mut_slice<'a>(t: &'a mut [T]) -> &'a [Cell<T>] {
-        unsafe { mem::transmute(t) }
-    }
-}
-
-```
-
-Or more simple, by standalone functions like this:
-
-```rust
-fn ref_as_cell<T: Copy>(t: &mut T) -> &Cell<T> {
-    unsafe { mem::transmute(t) }
-}
-
-fn slice_as_cell<T: Copy>(t: &mut [T]) -> &[Cell<T>] {
-    unsafe { mem::transmute(t) }
-}
-```
-
-The cast could also be guaranteed as correct, but not be provided by std
-itself, and rather be provided by an external crate.
-
-Lastly, if the casting guarantees can not be granted,
-code would have to use direct indexing as today, with either possible
-bound checking costs or the use of unsafe code to avoid them.
+But given the issues of adding methods to pointer-like types,
+this approach in general would probably be not a good idea
+(See the situation with `Rc` and `Arc`).
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
