@@ -65,7 +65,7 @@ and in most cases, the entire program aborts.) Here's an example:
 
 ```rust,should_panic
 // Guess a number between 1 and 10.
-// If it matches the number we had in mind, return true. Else, return false.
+// If it matches the number we had in mind, return `true`. Else, return `false`.
 fn guess(n: i32) -> bool {
     if n < 1 || n > 10 {
         panic!("Invalid number: {}", n);
@@ -350,7 +350,7 @@ fn file_path_ext_explicit(file_path: &str) -> Option<&str> {
 }
 
 fn file_name(file_path: &str) -> Option<&str> {
-  // implementation elided
+  // Implementation elided.
   unimplemented!()
 }
 ```
@@ -360,7 +360,7 @@ analysis, but its type doesn't quite fit...
 
 ```rust,ignore
 fn file_path_ext(file_path: &str) -> Option<&str> {
-    file_name(file_path).map(|x| extension(x)) //Compilation error
+    file_name(file_path).map(|x| extension(x)) // This causes a compilation error.
 }
 ```
 
@@ -1235,11 +1235,11 @@ use std::fs;
 use std::io;
 use std::num;
 
-// We have to jump through some hoops to actually get error values.
+// We have to jump through some hoops to actually get error values:
 let io_err: io::Error = io::Error::last_os_error();
 let parse_err: num::ParseIntError = "not a number".parse::<i32>().unwrap_err();
 
-// OK, here are the conversions.
+// OK, here are the conversions:
 let err1: Box<Error> = From::from(io_err);
 let err2: Box<Error> = From::from(parse_err);
 ```
@@ -1609,7 +1609,7 @@ fn main() {
     let data_path = &matches.free[0];
     let city: &str = &matches.free[1];
 
-    // Do stuff with information
+    // Do stuff with information.
 }
 ```
 
@@ -1747,7 +1747,7 @@ simply ignoring that row.
 use std::path::Path;
 
 struct Row {
-    // unchanged
+    // This struct remains unchanged.
 }
 
 struct PopulationCount {
@@ -1769,7 +1769,7 @@ fn search<P: AsRef<Path>>(file_path: P, city: &str) -> Vec<PopulationCount> {
     for row in rdr.decode::<Row>() {
         let row = row.unwrap();
         match row.population {
-            None => { } // skip it
+            None => { } // Skip it.
             Some(count) => if row.city == city {
                 found.push(PopulationCount {
                     city: row.city,
@@ -1825,7 +1825,7 @@ Let's try it:
 ```rust,ignore
 use std::error::Error;
 
-// The rest of the code before this is unchanged
+// The rest of the code before this is unchanged.
 
 fn search<P: AsRef<Path>>
          (file_path: P, city: &str)
@@ -1836,7 +1836,7 @@ fn search<P: AsRef<Path>>
     for row in rdr.decode::<Row>() {
         let row = try!(row);
         match row.population {
-            None => { } // skip it
+            None => { } // Skip it.
             Some(count) => if row.city == city {
                 found.push(PopulationCount {
                     city: row.city,
@@ -1957,7 +1957,7 @@ that it is generic on some type parameter `R` that satisfies
 ```rust,ignore
 use std::io;
 
-// The rest of the code before this is unchanged
+// The rest of the code before this is unchanged.
 
 fn search<P: AsRef<Path>>
          (file_path: &Option<P>, city: &str)
@@ -2070,7 +2070,7 @@ fn search<P: AsRef<Path>>
     for row in rdr.decode::<Row>() {
         let row = try!(row);
         match row.population {
-            None => { } // skip it
+            None => { } // Skip it.
             Some(count) => if row.city == city {
                 found.push(PopulationCount {
                     city: row.city,

@@ -213,10 +213,10 @@ fn main() {
     let mut data = Rc::new(vec![1, 2, 3]);
 
     for i in 0..3 {
-        // create a new owned reference
+        // Create a new owned reference:
         let data_ref = data.clone();
 
-        // use it in a thread
+        // Use it in a thread:
         thread::spawn(move || {
             data_ref[0] += i;
         });
@@ -390,8 +390,8 @@ use std::sync::mpsc;
 fn main() {
     let data = Arc::new(Mutex::new(0));
 
-    // `tx` is the "transmitter" or "sender"
-    // `rx` is the "receiver"
+    // `tx` is the "transmitter" or "sender".
+    // `rx` is the "receiver".
     let (tx, rx) = mpsc::channel();
 
     for _ in 0..10 {
