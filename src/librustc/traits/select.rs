@@ -41,6 +41,7 @@ use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use traits;
 use ty::fast_reject;
 use ty::relate::TypeRelation;
+use middle::lang_items;
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::snapshot_vec::{SnapshotVecDelegate, SnapshotVec};
@@ -49,6 +50,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
 use std::rc::Rc;
+use std::iter;
 use syntax::abi::Abi;
 use hir;
 use util::nodemap::FxHashMap;
@@ -1516,16 +1518,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             let self_ty = this.tcx().erase_late_bound_regions(&obligation.self_ty());
             let poly_trait_ref = match self_ty.sty {
                 ty::TyTrait(ref data) => {
-                    match this.tcx().lang_items.to_builtin_kind(obligation.predicate.def_id()) {
-                        Some(bound @ ty::BoundSend) | Some(bound @ ty::BoundSync) => {
-                            if data.builtin_bounds.contains(&bound) {
-                                debug!("assemble_candidates_from_object_ty: matched builtin bound, \
-                                        pushing candidate");
-                                candidates.vec.push(BuiltinObjectCandidate);
-                                return;
-                            }
-                        }
-                        _ => {}
+                    if data.auto_traits().any(|did| did == obligation.predicate.def_id()) {
+                        debug!("assemble_candidates_from_object_ty: matched builtin bound, \
+                                    pushing candidate");
+                        candidates.vec.push(BuiltinObjectCandidate);
+                        return;
                     }
 
                     match data.principal() {
@@ -1616,7 +1613,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // #2 (region bounds).
                 match (data_a.principal(), data_b.principal()) {
                     (Some(ref a), Some(ref b)) => a.def_id() == b.def_id() &&
-                        data_a.builtin_bounds.is_superset(&data_b.builtin_bounds),
+                        data_b.auto_traits()
+                            // All of a's auto traits need to be in b's auto traits.
+                            .all(|b| data_a.auto_traits().any(|a| a == b)),
                     _ => false
                 }
             }
@@ -2481,7 +2480,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let new_trait = tcx.mk_trait(ty::TraitObject::new(
                     data_a.principal(),
                     data_b.region_bound,
-                    data_b.builtin_bounds,
+                    data_b.auto_traits().collect(),
                     data_a.projection_bounds.clone(),
                 ));
                 let origin = TypeOrigin::Misc(obligation.cause.span);
@@ -2504,10 +2503,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // T -> Trait.
             (_, &ty::TyTrait(ref data)) => {
                 let mut object_dids =
-                    data.builtin_bounds.iter().flat_map(|bound| {
-                        tcx.lang_items.from_builtin_kind(bound).ok()
-                    })
-                    .chain(data.principal().map(|ref p| p.def_id()));
+                    data.auto_traits().chain(data.principal().map(|ref p| p.def_id()));
                 if let Some(did) = object_dids.find(|did| {
                     !tcx.is_object_safe(*did)
                 }) {
@@ -2527,19 +2523,21 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 push(data.principal().unwrap().with_self_ty(tcx, source).to_predicate());
 
                 // We can only make objects from sized types.
-                let mut builtin_bounds = data.builtin_bounds;
-                builtin_bounds.insert(ty::BoundSized);
+                let trait_refs = data.auto_traits()
+                    .chain(iter::once(
+                            tcx.lang_items.require(lang_items::SizedTraitLangItem)
+                            .unwrap_or_else(|msg| tcx.sess.fatal(&msg[..]))))
+                    .map(|did| ty::TraitRef {
+                        def_id: did,
+                        substs: tcx.mk_substs_trait(source, &[]),
+                    });
 
                 // Create additional obligations for all the various builtin
                 // bounds attached to the object cast. (In other words, if the
                 // object type is Foo+Send, this would create an obligation
                 // for the Send check.)
-                for bound in &builtin_bounds {
-                    if let Ok(tr) = tcx.trait_ref_for_builtin_bound(bound, source) {
-                        push(tr.to_predicate());
-                    } else {
-                        return Err(Unimplemented);
-                    }
+                for tr in trait_refs {
+                    push(tr.to_predicate());
                 }
 
                 // Create obligations for the projection predicates.

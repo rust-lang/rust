@@ -1586,7 +1586,7 @@ fn convert_foreign_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 // Add the Sized bound, unless the type parameter is marked as `?Sized`.
 fn add_unsized_bound<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                       bounds: &mut ty::BuiltinBounds,
+                                       bounds: &mut Vec<DefId>,
                                        ast_bounds: &[hir::TyParamBound],
                                        span: Span)
 {
@@ -1908,13 +1908,13 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 {
     let tcx = astconv.tcx();
     let PartitionedBounds {
-        mut builtin_bounds,
+        mut auto_traits,
         trait_bounds,
         region_bounds
     } = partition_bounds(tcx, span, &ast_bounds);
 
     if let SizedByDefault::Yes = sized_by_default {
-        add_unsized_bound(astconv, &mut builtin_bounds, ast_bounds, span);
+        add_unsized_bound(astconv, &mut auto_traits, ast_bounds, span);
     }
 
     let mut projection_bounds = vec![];
@@ -1935,7 +1935,7 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 
     Bounds {
         region_bounds: region_bounds,
-        builtin_bounds: builtin_bounds,
+        auto_traits: auto_traits,
         trait_bounds: trait_bounds,
         projection_bounds: projection_bounds,
     }

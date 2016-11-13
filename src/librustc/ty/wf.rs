@@ -298,7 +298,6 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     /// is WF. Returns false if `ty0` is an unresolved type variable,
     /// in which case we are not able to simplify at all.
     fn compute(&mut self, ty0: Ty<'tcx>) -> bool {
-        let tcx = self.infcx.tcx;
         let mut subtys = ty0.walk();
         while let Some(ty) = subtys.next() {
             match ty.sty {
@@ -391,15 +390,12 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     let cause = self.cause(traits::MiscObligation);
 
                     let component_traits =
-                        data.builtin_bounds.iter().flat_map(|bound| {
-                            tcx.lang_items.from_builtin_kind(bound).ok()
-                        })
-                        .chain(data.principal().map(|ref p| p.def_id()));
+                        data.auto_traits().chain(data.principal().map(|ref p| p.def_id()));
                     self.out.extend(
-                        component_traits.map(|did| { traits::Obligation::new(
+                        component_traits.map(|did| traits::Obligation::new(
                             cause.clone(),
                             ty::Predicate::ObjectSafe(did)
-                        )})
+                        ))
                     );
                 }
 
@@ -493,7 +489,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
             let implicit_bounds =
                 object_region_bounds(self.infcx.tcx,
                                      data.principal().unwrap(),
-                                     data.builtin_bounds);
+                                     data.auto_traits());
 
             let explicit_bound = data.region_bound;
 
@@ -512,18 +508,25 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 /// they declare `trait SomeTrait : 'static`, for example, then
 /// `'static` would appear in the list. The hard work is done by
 /// `ty::required_region_bounds`, see that for more information.
-pub fn object_region_bounds<'a, 'gcx, 'tcx>(
+pub fn object_region_bounds<'a, 'gcx, 'tcx, I>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     principal: ty::PolyExistentialTraitRef<'tcx>,
-    others: ty::BuiltinBounds)
+    others: I)
     -> Vec<&'tcx ty::Region>
+    where I: Iterator<Item=DefId>
 {
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a skolemized type.
     let open_ty = tcx.mk_infer(ty::FreshTy(0));
 
-    let mut predicates = others.to_predicates(tcx, open_ty);
+    let mut predicates = others.map(|d| {
+        let trait_ref = ty::TraitRef {
+            def_id: d,
+            substs: tcx.mk_substs_trait(open_ty, &[])
+        };
+        trait_ref.to_predicate()
+    }).collect::<Vec<_>>();
     predicates.push(principal.with_self_ty(tcx, open_ty).to_predicate());
 
     tcx.required_region_bounds(open_ty, predicates)

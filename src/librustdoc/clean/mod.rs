@@ -1883,8 +1883,28 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
 
                     let mut typarams = vec![];
                     obj.region_bound.clean(cx).map(|b| typarams.push(RegionBound(b)));
-                    for bb in &obj.builtin_bounds {
-                        typarams.push(bb.clean(cx));
+                    for did in obj.auto_traits() {
+                        let tcx = match cx.tcx_opt() {
+                            Some(tcx) => tcx,
+                            None => {
+                                typarams.push(RegionBound(Lifetime::statik()));
+                                continue;
+                            }
+                        };
+                        let empty = tcx.intern_substs(&[]);
+                        let path = external_path(cx, &tcx.item_name(did).as_str(),
+                            Some(did), false, vec![], empty);
+                        inline::record_extern_fqn(cx, did, TypeKind::Trait);
+                        let bound = TraitBound(PolyTrait {
+                            trait_: ResolvedPath {
+                                path: path,
+                                typarams: None,
+                                did: did,
+                                is_generic: false,
+                            },
+                            lifetimes: vec![]
+                        }, hir::TraitBoundModifier::None);
+                        typarams.push(bound);
                     }
 
                     let mut bindings = vec![];

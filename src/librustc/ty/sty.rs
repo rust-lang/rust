@@ -279,24 +279,28 @@ impl<'a, 'gcx, 'acx, 'tcx> ClosureSubsts<'tcx> {
 pub struct TraitObject<'tcx> {
     principal: Option<PolyExistentialTraitRef<'tcx>>,
     pub region_bound: &'tcx ty::Region,
-    pub builtin_bounds: BuiltinBounds,
+    auto_traits: Vec<DefId>,
     pub projection_bounds: Vec<PolyExistentialProjection<'tcx>>,
 }
 
 impl<'tcx> TraitObject<'tcx> {
     pub fn new(principal: Option<PolyExistentialTraitRef<'tcx>>, region_bound: &'tcx ty::Region,
-               builtin_bounds: BuiltinBounds, projection_bounds: Vec<PolyExistentialProjection<'tcx>>)
+               auto_traits: Vec<DefId>, projection_bounds: Vec<PolyExistentialProjection<'tcx>>)
         -> Self {
         TraitObject {
             principal: principal,
             region_bound: region_bound,
-            builtin_bounds: builtin_bounds,
+            auto_traits: auto_traits,
             projection_bounds: projection_bounds,
         }
     }
 
     pub fn principal(&self) -> Option<PolyExistentialTraitRef<'tcx>> {
         self.principal
+    }
+
+    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item=DefId> + 'a {
+        self.auto_traits.iter().cloned()
     }
 }
 
@@ -833,18 +837,22 @@ impl CLike for BuiltinBound {
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn try_add_builtin_trait(self,
-                                 trait_def_id: DefId,
-                                 builtin_bounds: &mut EnumSet<BuiltinBound>)
+                                 id: DefId,
+                                 auto_traits: &mut Vec<DefId>)
                                  -> bool
     {
-        //! Checks whether `trait_ref` refers to one of the builtin
-        //! traits, like `Send`, and adds the corresponding
-        //! bound to the set `builtin_bounds` if so. Returns true if `trait_ref`
-        //! is a builtin trait.
+        //! Checks whether `id` refers to one of the builtin
+        //! traits, like `Send`, and adds it to `auto_traits` if so.
+        //! Returns true if `idf` refers to a builtin trait.
 
-        match self.lang_items.to_builtin_kind(trait_def_id) {
-            Some(bound) => { builtin_bounds.insert(bound); true }
-            None => false
+        if Some(id) == self.lang_items.send_trait() ||
+            Some(id) == self.lang_items.sized_trait() ||
+            Some(id) == self.lang_items.copy_trait() ||
+            Some(id) == self.lang_items.sync_trait() {
+            auto_traits.push(id);
+            true
+        } else {
+            false
         }
     }
 }

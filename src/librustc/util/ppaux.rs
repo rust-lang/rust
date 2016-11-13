@@ -349,13 +349,15 @@ impl<'tcx> fmt::Display for ty::TraitObject<'tcx> {
             }).collect();
 
             let tap = ty::Binder(TraitAndProjections(principal, projections));
-            in_binder(f, tcx, &ty::Binder(""), Some(tap))
-        })?;
+            in_binder(f, tcx, &ty::Binder(""), Some(tap))?;
 
-        // Builtin bounds.
-        for bound in &self.builtin_bounds {
-            write!(f, " + {:?}", bound)?;
-        }
+            // Builtin bounds.
+            for did in self.auto_traits() {
+                write!(f, " + {}", tcx.item_path_str(did))?;
+            }
+
+            Ok(())
+        })?;
 
         // FIXME: It'd be nice to compute from context when this bound
         // is implied, but that's non-trivial -- we'd perhaps have to
@@ -474,10 +476,14 @@ impl<'tcx> fmt::Debug for ty::TraitObject<'tcx> {
             write!(f, "{}", region_str)?;
         }
 
-        for bound in &self.builtin_bounds {
-            maybe_continue(f)?;
-            write!(f, "{:?}", bound)?;
-        }
+        ty::tls::with(|tcx| {
+            for did in self.auto_traits() {
+                maybe_continue(f)?;
+                write!(f, " + {}", tcx.item_path_str(did))?;
+            }
+
+            Ok(())
+        })?;
 
         for projection_bound in &self.projection_bounds {
             maybe_continue(f)?;
