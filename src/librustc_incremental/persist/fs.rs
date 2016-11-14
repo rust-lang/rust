@@ -119,7 +119,7 @@ use rustc::hir::svh::Svh;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::fs as fs_util;
-use rustc_data_structures::flock;
+use rustc_data_structures::{flock, base_n};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 use std::ffi::OsString;
@@ -134,6 +134,12 @@ const LOCK_FILE_EXT: &'static str = ".lock";
 const DEP_GRAPH_FILENAME: &'static str = "dep-graph.bin";
 const WORK_PRODUCTS_FILENAME: &'static str = "work-products.bin";
 const METADATA_HASHES_FILENAME: &'static str = "metadata.bin";
+
+// We encode integers using the following base, so they are shorter than decimal
+// or hexadecimal numbers (we want short file and directory names). Since these
+// numbers will be used in file names, we choose an encoding that is not
+// case-sensitive (as opposed to base64, for example).
+const INT_ENCODE_BASE: u64 = 36;
 
 pub fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
@@ -327,7 +333,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
     let mut new_sub_dir_name = String::from(&old_sub_dir_name[.. dash_indices[2] + 1]);
 
     // Append the svh
-    new_sub_dir_name.push_str(&encode_base_36(svh.as_u64()));
+    base_n::push_str(svh.as_u64(), INT_ENCODE_BASE, &mut new_sub_dir_name);
 
     // Create the full path
     let new_path = incr_comp_session_dir.parent().unwrap().join(new_sub_dir_name);
@@ -433,7 +439,8 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
 
     let directory_name = format!("s-{}-{}-working",
                                   timestamp,
-                                  encode_base_36(random_number as u64));
+                                  base_n::encode(random_number as u64,
+                                                 INT_ENCODE_BASE));
     debug!("generate_session_dir_path: directory_name = {}", directory_name);
     let directory_path = crate_dir.join(directory_name);
     debug!("generate_session_dir_path: directory_path = {}", directory_path.display());
@@ -562,27 +569,11 @@ fn extract_timestamp_from_session_dir(directory_name: &str)
     string_to_timestamp(&directory_name[dash_indices[0]+1 .. dash_indices[1]])
 }
 
-const BASE_36: &'static [u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
-
-fn encode_base_36(mut n: u64) -> String {
-    let mut s = Vec::with_capacity(13);
-    loop {
-        s.push(BASE_36[(n % 36) as usize]);
-        n /= 36;
-
-        if n == 0 {
-            break;
-        }
-    }
-    s.reverse();
-    String::from_utf8(s).unwrap()
-}
-
 fn timestamp_to_string(timestamp: SystemTime) -> String {
     let duration = timestamp.duration_since(UNIX_EPOCH).unwrap();
     let micros = duration.as_secs() * 1_000_000 +
                 (duration.subsec_nanos() as u64) / 1000;
-    encode_base_36(micros)
+    base_n::encode(micros, INT_ENCODE_BASE)
 }
 
 fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
@@ -629,7 +620,7 @@ pub fn find_metadata_hashes_for(tcx: TyCtxt, cnum: CrateNum) -> Option<PathBuf> 
     };
 
     let target_svh = tcx.sess.cstore.crate_hash(cnum);
-    let target_svh = encode_base_36(target_svh.as_u64());
+    let target_svh = base_n::encode(target_svh.as_u64(), INT_ENCODE_BASE);
 
     let sub_dir = find_metadata_hashes_iter(&target_svh, dir_entries.filter_map(|e| {
         e.ok().map(|e| e.file_name().to_string_lossy().into_owned())
@@ -677,7 +668,9 @@ fn crate_path(sess: &Session,
     let mut hasher = DefaultHasher::new();
     crate_disambiguator.hash(&mut hasher);
 
-    let crate_name = format!("{}-{}", crate_name, encode_base_36(hasher.finish()));
+    let crate_name = format!("{}-{}",
+                             crate_name,
+                             base_n::encode(hasher.finish(), INT_ENCODE_BASE));
     incr_dir.join(crate_name)
 }
 
@@ -1048,22 +1041,4 @@ fn test_find_metadata_hashes_iter()
         ].into_iter()),
         None
     );
-}
-
-#[test]
-fn test_encode_base_36() {
-    fn test(n: u64) {
-        assert_eq!(Ok(n), u64::from_str_radix(&encode_base_36(n)[..], 36));
-    }
-
-    test(0);
-    test(1);
-    test(35);
-    test(36);
-    test(37);
-    test(u64::max_value());
-
-    for i in 0 .. 1_000 {
-        test(i * 983);
-    }
 }

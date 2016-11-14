@@ -10,14 +10,12 @@
 
 #![allow(non_camel_case_types)]
 
-use rustc::hir::def_id::DefId;
 use abi::FnType;
 use adt;
 use common::*;
 use machine;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::subst::Substs;
-
+use trans_item::DefPathBasedNames;
 use type_::Type;
 
 use syntax::ast;
@@ -282,12 +280,12 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           let n = t.simd_size(cx.tcx()) as u64;
           Type::vector(&llet, n)
       }
-      ty::TyAdt(def, substs) => {
+      ty::TyAdt(..) => {
           // Only create the named struct, but don't fill it in. We
           // fill it in *after* placing it into the type cache. This
           // avoids creating more than one copy of the enum when one
           // of the enum's variants refers to the enum itself.
-          let name = llvm_type_name(cx, def.did, substs);
+          let name = llvm_type_name(cx, t);
           adt::incomplete_type_of(cx, t, &name[..])
       }
 
@@ -319,21 +317,9 @@ pub fn align_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
     layout.align(&cx.tcx().data_layout).abi() as machine::llalign
 }
 
-fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                            did: DefId,
-                            substs: &Substs<'tcx>)
-                            -> String {
-    let base = cx.tcx().item_path_str(did);
-    let strings: Vec<String> = substs.types().map(|t| t.to_string()).collect();
-    let tstr = if strings.is_empty() {
-        base
-    } else {
-        format!("{}<{}>", base, strings.join(", "))
-    };
-
-    if did.is_local() {
-        tstr
-    } else {
-        format!("{}.{}", did.krate, tstr)
-    }
+fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> String {
+    let mut name = String::with_capacity(32);
+    let printer = DefPathBasedNames::new(cx.tcx(), true, true);
+    printer.push_type_name(ty, &mut name);
+    name
 }
