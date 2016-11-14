@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:m1.rs
+
 #![feature(associated_consts)]
-#![crate_type = "dylib"]
+
 extern crate m1;
 
 struct X {
