@@ -86,7 +86,7 @@ pub struct Directory {
 pub enum DirectoryOwnership {
     Owned,
     UnownedViaBlock,
-    UnownedViaMod,
+    UnownedViaMod(bool /* legacy warnings? */),
 }
 
 // a bunch of utility functions of the form parse_<thing>_from_<source>

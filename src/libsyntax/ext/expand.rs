@@ -790,7 +790,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(inner));
                     let directory_ownership = match path.file_name().unwrap().to_str() {
                         Some("mod.rs") => DirectoryOwnership::Owned,
-                        _ => DirectoryOwnership::UnownedViaMod,
+                        _ => DirectoryOwnership::UnownedViaMod(false),
                     };
                     path.pop();
                     module.directory = path;
