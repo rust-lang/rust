@@ -267,6 +267,12 @@ pub trait Visitor<'v> : Sized {
     fn visit_vis(&mut self, vis: &'v Visibility) {
         walk_vis(self, vis)
     }
+    fn visit_associated_item_kind(&mut self, kind: &'v AssociatedItemKind) {
+        walk_associated_item_kind(self, kind);
+    }
+    fn visit_defaultness(&mut self, defaultness: &'v Defaultness) {
+        walk_defaultness(self, defaultness);
+    }
 }
 
 pub fn walk_opt_name<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, opt_name: Option<Name>) {
@@ -740,10 +746,14 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
 }
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem) {
-    visitor.visit_vis(&impl_item.vis);
-    visitor.visit_name(impl_item.span, impl_item.name);
-    walk_list!(visitor, visit_attribute, &impl_item.attrs);
-    match impl_item.node {
+    // NB: Deliberately force a compilation error if/when new fields are added.
+    let ImplItem { id: _, name, ref vis, ref defaultness, ref attrs, ref node, span } = *impl_item;
+
+    visitor.visit_name(span, name);
+    visitor.visit_vis(vis);
+    visitor.visit_defaultness(defaultness);
+    walk_list!(visitor, visit_attribute, attrs);
+    match *node {
         ImplItemKind::Const(ref ty, ref expr) => {
             visitor.visit_id(impl_item.id);
             visitor.visit_ty(ty);
@@ -767,8 +777,13 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
 }
 
 pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, impl_item_ref: &'v ImplItemRef) {
-    visitor.visit_nested_impl_item(impl_item_ref.id);
-    visitor.visit_name(impl_item_ref.span, impl_item_ref.name);
+    // NB: Deliberately force a compilation error if/when new fields are added.
+    let ImplItemRef { id, name, ref kind, span, ref vis, ref defaultness } = *impl_item_ref;
+    visitor.visit_nested_impl_item(id);
+    visitor.visit_name(span, name);
+    visitor.visit_associated_item_kind(kind);
+    visitor.visit_vis(vis);
+    visitor.visit_defaultness(defaultness);
 }
 
 
@@ -939,6 +954,18 @@ pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility) {
         visitor.visit_id(id);
         visitor.visit_path(path, id)
     }
+}
+
+pub fn walk_associated_item_kind<'v, V: Visitor<'v>>(_: &mut V, _: &'v AssociatedItemKind) {
+    // No visitable content here: this fn exists so you can call it if
+    // the right thing to do, should content be added in the future,
+    // would be to walk it.
+}
+
+pub fn walk_defaultness<'v, V: Visitor<'v>>(_: &mut V, _: &'v Defaultness) {
+    // No visitable content here: this fn exists so you can call it if
+    // the right thing to do, should content be added in the future,
+    // would be to walk it.
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq)]

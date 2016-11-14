@@ -1373,9 +1373,10 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                         }
                     }
                 }
+
                 let provided = match self.container {
                     ty::ImplContainer(_) => false,
-                    ty::TraitContainer(_) => self.has_value
+                    ty::TraitContainer(_) => self.defaultness.has_value()
                 };
                 if provided {
                     MethodItem(Method {
@@ -1440,7 +1441,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     None => bounds.push(TyParamBound::maybe_sized(cx)),
                 }
 
-                let ty = if self.has_value {
+                let ty = if self.defaultness.has_value() {
                     Some(cx.tcx().item_type(self.def_id))
                 } else {
                     None

@@ -189,7 +189,6 @@ pub struct AssociatedItem {
     pub kind: AssociatedKind,
     pub vis: Visibility,
     pub defaultness: hir::Defaultness,
-    pub has_value: bool,
     pub container: AssociatedItemContainer,
 
     /// Whether this is a method with an explicit self
@@ -2072,7 +2071,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn provided_trait_methods(self, id: DefId) -> Vec<AssociatedItem> {
         self.associated_items(id)
-            .filter(|item| item.kind == AssociatedKind::Method && item.has_value)
+            .filter(|item| item.kind == AssociatedKind::Method && item.defaultness.has_value())
             .collect()
     }
 
@@ -2180,8 +2179,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             name: trait_item.name,
             kind: kind,
             vis: Visibility::from_hir(&hir::Inherited, trait_item.id, self),
-            defaultness: hir::Defaultness::Default,
-            has_value: has_value,
+            defaultness: hir::Defaultness::Default { has_value: has_value },
             def_id: def_id,
             container: TraitContainer(parent_def_id),
             method_has_self_argument: has_self
@@ -2211,7 +2209,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             kind: kind,
             vis: ty::Visibility::from_hir(vis, impl_item_ref.id.node_id, self),
             defaultness: impl_item_ref.defaultness,
-            has_value: true,
             def_id: def_id,
             container: ImplContainer(parent_def_id),
             method_has_self_argument: has_self

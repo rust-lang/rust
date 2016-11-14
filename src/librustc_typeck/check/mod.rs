@@ -1110,7 +1110,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 }
                 hir::ImplItemKind::Type(_) => {
                     if ty_trait_item.kind == ty::AssociatedKind::Type {
-                        if ty_trait_item.has_value {
+                        if ty_trait_item.defaultness.has_value() {
                             overridden_associated_type = Some(impl_item);
                         }
                     } else {
@@ -1144,7 +1144,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             .unwrap_or(false);
 
         if !is_implemented {
-            if !trait_item.has_value {
+            if !trait_item.defaultness.has_value() {
                 missing_items.push(trait_item);
             } else if associated_type_overridden {
                 invalidated_items.push(trait_item.name);

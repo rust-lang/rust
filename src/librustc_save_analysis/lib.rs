@@ -536,7 +536,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.associated_item(decl_id);
                     self.tcx.associated_items(ti.container.id())
-                        .find(|item| item.name == ti.name && item.has_value)
+                        .find(|item| item.name == ti.name && item.defaultness.has_value())
                         .map(|item| item.def_id)
                 } else {
                     None

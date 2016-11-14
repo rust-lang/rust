@@ -943,7 +943,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                         // an error when we confirm the candidate
                         // (which will ultimately lead to `normalize_to_error`
                         // being invoked).
-                        node_item.item.has_value
+                        node_item.item.defaultness.has_value()
                     } else {
                         node_item.item.defaultness.is_default()
                     };
@@ -1304,7 +1304,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
 
     match assoc_ty {
         Some(node_item) => {
-            let ty = if !node_item.item.has_value {
+            let ty = if !node_item.item.defaultness.has_value() {
                 // This means that the impl is missing a definition for the
                 // associated type. This error will be reported by the type
                 // checker method `check_impl_items_against_trait`, so here we
