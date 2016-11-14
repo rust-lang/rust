@@ -26,6 +26,7 @@ use monomorphize::Instance;
 use partitioning::CodegenUnit;
 use trans_item::TransItem;
 use type_::Type;
+use rustc_data_structures::base_n;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
@@ -700,22 +701,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local_ccxs[self.index]
     }
 
-    /// Get a (possibly) different `CrateContext` from the same
-    /// `SharedCrateContext`.
-    pub fn rotate(&'b self) -> CrateContext<'b, 'tcx> {
-        let (_, index) =
-            self.local_ccxs
-                .iter()
-                .zip(0..self.local_ccxs.len())
-                .min_by_key(|&(local_ccx, _idx)| local_ccx.n_llvm_insns.get())
-                .unwrap();
-        CrateContext {
-            shared: self.shared,
-            index: index,
-            local_ccxs: &self.local_ccxs[..],
-        }
-    }
-
     /// Either iterate over only `self`, or iterate over all `CrateContext`s in
     /// the `SharedCrateContext`.  The iterator produces `(ccx, is_origin)`
     /// pairs, where `is_origin` is `true` if `ccx` is `self` and `false`
@@ -975,7 +960,11 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local().local_gen_sym_counter.set(idx + 1);
         // Include a '.' character, so there can be no accidental conflicts with
         // user defined names
-        format!("{}.{}", prefix, idx)
+        let mut name = String::with_capacity(prefix.len() + 6);
+        name.push_str(prefix);
+        name.push_str(".");
+        base_n::push_str(idx as u64, base_n::MAX_BASE, &mut name);
+        name
     }
 }
 
