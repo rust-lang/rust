@@ -53,7 +53,6 @@ use hir;
 use hir::itemlikevisit::ItemLikeVisitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
-pub use self::sty::{BuiltinBound, BuiltinBounds};
 pub use self::sty::{BareFnTy, FnSig, PolyFnSig};
 pub use self::sty::{ClosureTy, InferTy, ParamTy, ProjectionTy, TraitObject};
 pub use self::sty::{ClosureSubsts, TypeAndMut};
@@ -67,11 +66,6 @@ pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::Region::*;
 pub use self::sty::TypeVariants::*;
-
-pub use self::sty::BuiltinBound::Send as BoundSend;
-pub use self::sty::BuiltinBound::Sized as BoundSized;
-pub use self::sty::BuiltinBound::Copy as BoundCopy;
-pub use self::sty::BuiltinBound::Sync as BoundSync;
 
 pub use self::contents::TypeContents;
 pub use self::context::{TyCtxt, tls};

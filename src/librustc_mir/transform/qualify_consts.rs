@@ -29,6 +29,7 @@ use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::util::nodemap::DefIdMap;
+use rustc::middle::lang_items;
 use syntax::abi::Abi;
 use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::Span;
@@ -1046,7 +1047,11 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants {
             tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
                 let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
                 let mut fulfillment_cx = traits::FulfillmentContext::new();
-                fulfillment_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
+                fulfillment_cx.register_bound(&infcx, ty,
+                                              tcx.lang_items
+                                                .require(lang_items::SyncTraitLangItem)
+                                                .unwrap_or_else(|msg| tcx.sess.fatal(&msg[..])),
+                                              cause);
                 if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
                     infcx.report_fulfillment_errors(&err);
                 }

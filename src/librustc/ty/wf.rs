@@ -17,7 +17,7 @@ use ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
 use syntax::ast;
 use syntax_pos::Span;
-use util::common::ErrorReported;
+use middle::lang_items;
 
 /// Returns the set of obligations needed to make `ty` well-formed.
 /// If `ty` contains unresolved inference variables, this may include
@@ -282,14 +282,12 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
         if !subty.has_escaping_regions() {
             let cause = self.cause(cause);
-            match self.infcx.tcx.trait_ref_for_builtin_bound(ty::BoundSized, subty) {
-                Ok(trait_ref) => {
-                    self.out.push(
-                        traits::Obligation::new(cause,
-                                                trait_ref.to_predicate()));
-                }
-                Err(ErrorReported) => { }
-            }
+            let trait_ref = ty::TraitRef {
+                def_id: self.infcx.tcx.lang_items.require(lang_items::SizedTraitLangItem)
+                    .unwrap_or_else(|msg| self.infcx.tcx.sess.fatal(&msg[..])),
+                substs: self.infcx.tcx.mk_substs_trait(subty, &[]),
+            };
+            self.out.push(traits::Obligation::new(cause, trait_ref.to_predicate()));
         }
     }
 

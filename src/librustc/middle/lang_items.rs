@@ -90,31 +90,6 @@ impl LanguageItems {
         self.require(OwnedBoxLangItem)
     }
 
-    pub fn from_builtin_kind(&self, bound: ty::BuiltinBound)
-                             -> Result<DefId, String>
-    {
-        match bound {
-            ty::BoundSend => self.require(SendTraitLangItem),
-            ty::BoundSized => self.require(SizedTraitLangItem),
-            ty::BoundCopy => self.require(CopyTraitLangItem),
-            ty::BoundSync => self.require(SyncTraitLangItem),
-        }
-    }
-
-    pub fn to_builtin_kind(&self, id: DefId) -> Option<ty::BuiltinBound> {
-        if Some(id) == self.send_trait() {
-            Some(ty::BoundSend)
-        } else if Some(id) == self.sized_trait() {
-            Some(ty::BoundSized)
-        } else if Some(id) == self.copy_trait() {
-            Some(ty::BoundCopy)
-        } else if Some(id) == self.sync_trait() {
-            Some(ty::BoundSync)
-        } else {
-            None
-        }
-    }
-
     pub fn fn_trait_kind(&self, id: DefId) -> Option<ty::ClosureKind> {
         let def_id_kinds = [
             (self.fn_trait(), ty::ClosureKind::Fn),

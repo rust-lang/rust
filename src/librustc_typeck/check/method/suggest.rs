@@ -379,7 +379,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match ty.sty {
                 ty::TyAdt(def, _) => def.did.is_local(),
 
-                ty::TyTrait(ref tr) => tr.principal().map(|p| p.def_id().is_local()).unwrap_or(false),
+                ty::TyTrait(ref tr) => tr.principal().map(|p|
+                                                          p.def_id().is_local()).unwrap_or(false),
 
                 ty::TyParam(_) => true,
 

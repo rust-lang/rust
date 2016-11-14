@@ -119,7 +119,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.deduce_sig_from_projection(&pb)
                     })
                     .next();
-                let kind = self.tcx.lang_items.fn_trait_kind(object_type.principal().unwrap().def_id());
+                let kind =
+                    self.tcx.lang_items.fn_trait_kind(object_type.principal().unwrap().def_id());
                 (sig, kind)
             }
             ty::TyInfer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),

@@ -21,6 +21,7 @@ use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
 use util::nodemap::FxHashMap;
+use middle::lang_items;
 
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 
@@ -599,7 +600,7 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
 impl<'a, 'tcx> ty::TyS<'tcx> {
     fn impls_bound(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    param_env: &ParameterEnvironment<'tcx>,
-                   bound: ty::BuiltinBound,
+                   def_id: DefId,
                    cache: &RefCell<FxHashMap<Ty<'tcx>, bool>>,
                    span: Span) -> bool
     {
@@ -611,7 +612,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         let result =
             tcx.infer_ctxt(None, Some(param_env.clone()), Reveal::ExactMatch)
             .enter(|infcx| {
-                traits::type_known_to_meet_builtin_bound(&infcx, self, bound, span)
+                traits::type_known_to_meet_bound(&infcx, self, def_id, span)
             });
         if self.has_param_types() || self.has_self_ty() {
             cache.borrow_mut().insert(self, result);
@@ -644,8 +645,10 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             TyClosure(..) | TyAdt(..) | TyAnon(..) |
             TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
         }.unwrap_or_else(|| {
-            !self.impls_bound(tcx, param_env, ty::BoundCopy, &param_env.is_copy_cache, span)
-        });
+            !self.impls_bound(tcx, param_env,
+                              tcx.lang_items.require(lang_items::CopyTraitLangItem)
+                                .unwrap_or_else(|msg| tcx.sess.fatal(&msg[..])),
+                              &param_env.is_copy_cache, span) });
 
         if !self.has_param_types() && !self.has_self_ty() {
             self.flags.set(self.flags.get() | if result {
@@ -686,8 +689,9 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             TyAdt(..) | TyProjection(..) | TyParam(..) |
             TyInfer(..) | TyAnon(..) | TyError => None
         }.unwrap_or_else(|| {
-            self.impls_bound(tcx, param_env, ty::BoundSized, &param_env.is_sized_cache, span)
-        });
+            self.impls_bound(tcx, param_env, tcx.lang_items.require(lang_items::SizedTraitLangItem)
+                              .unwrap_or_else(|msg| tcx.sess.fatal(&msg[..])),
+                              &param_env.is_copy_cache, span) });
 
         if !self.has_param_types() && !self.has_self_ty() {
             self.flags.set(self.flags.get() | if result {

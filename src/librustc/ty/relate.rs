@@ -302,23 +302,6 @@ impl<'tcx> Relate<'tcx> for Vec<ty::PolyExistentialProjection<'tcx>> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::BuiltinBounds {
-    fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &ty::BuiltinBounds,
-                           b: &ty::BuiltinBounds)
-                           -> RelateResult<'tcx, ty::BuiltinBounds>
-        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
-    {
-        // Two sets of builtin bounds are only relatable if they are
-        // precisely the same (but see the coercion code).
-        if a != b {
-            Err(TypeError::BuiltinBoundsMismatch(expected_found(relation, a, b)))
-        } else {
-            Ok(*a)
-        }
-    }
-}
-
 impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
                            a: &ty::TraitRef<'tcx>,
