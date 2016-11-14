@@ -41,7 +41,7 @@ which allocator is in use is done simply by linking to the desired allocator:
 extern crate alloc_system;
 
 fn main() {
-    let a = Box::new(4); // allocates from the system allocator
+    let a = Box::new(4); // Allocates from the system allocator.
     println!("{}", a);
 }
 ```
@@ -57,7 +57,7 @@ uses jemalloc by default one would write:
 extern crate alloc_jemalloc;
 
 pub fn foo() {
-    let a = Box::new(4); // allocates from jemalloc
+    let a = Box::new(4); // Allocates from jemalloc.
     println!("{}", a);
 }
 # fn main() {}
@@ -72,11 +72,11 @@ crate which implements the allocator API (e.g. the same as `alloc_system` or
 annotated version of `alloc_system`
 
 ```rust,no_run
-# // only needed for rustdoc --test down below
+# // Only needed for rustdoc --test down below.
 # #![feature(lang_items)]
 // The compiler needs to be instructed that this crate is an allocator in order
 // to realize that when this is linked in another allocator like jemalloc should
-// not be linked in
+// not be linked in.
 #![feature(allocator)]
 #![allocator]
 
@@ -85,7 +85,7 @@ annotated version of `alloc_system`
 // however, can use all of libcore.
 #![no_std]
 
-// Let's give a unique name to our custom allocator
+// Let's give a unique name to our custom allocator:
 #![crate_name = "my_allocator"]
 #![crate_type = "rlib"]
 
@@ -126,7 +126,7 @@ pub extern fn __rust_reallocate(ptr: *mut u8, _old_size: usize, size: usize,
 #[no_mangle]
 pub extern fn __rust_reallocate_inplace(_ptr: *mut u8, old_size: usize,
                                         _size: usize, _align: usize) -> usize {
-    old_size // this api is not supported by libc
+    old_size // This api is not supported by libc.
 }
 
 #[no_mangle]
@@ -134,7 +134,7 @@ pub extern fn __rust_usable_size(size: usize, _align: usize) -> usize {
     size
 }
 
-# // only needed to get rustdoc to test this
+# // Only needed to get rustdoc to test this:
 # fn main() {}
 # #[lang = "panic_fmt"] fn panic_fmt() {}
 # #[lang = "eh_personality"] fn eh_personality() {}
@@ -149,7 +149,7 @@ After we compile this crate, it can be used as follows:
 extern crate my_allocator;
 
 fn main() {
-    let a = Box::new(8); // allocates memory via our custom allocator crate
+    let a = Box::new(8); // Allocates memory via our custom allocator crate.
     println!("{}", a);
 }
 ```

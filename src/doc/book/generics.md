@@ -78,7 +78,7 @@ We can write functions that take generic types with a similar syntax:
 
 ```rust
 fn takes_anything<T>(x: T) {
-    // do something with x
+    // Do something with `x`.
 }
 ```
 

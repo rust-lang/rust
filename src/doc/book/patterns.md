@@ -163,7 +163,7 @@ ignore parts of a larger structure:
 
 ```rust
 fn coordinate() -> (i32, i32, i32) {
-    // generate and return some sort of triple tuple
+    // Generate and return some sort of triple tuple.
 # (1, 2, 3)
 }
 
@@ -182,7 +182,7 @@ let tuple: (u32, String) = (5, String::from("five"));
 // Here, tuple is moved, because the String moved:
 let (x, _s) = tuple;
 
-// The next line would give "error: use of partially moved value: `tuple`"
+// The next line would give "error: use of partially moved value: `tuple`".
 // println!("Tuple is: {:?}", tuple);
 
 // However,

@@ -299,7 +299,7 @@ fn it_works() {
 #[test]
 #[ignore]
 fn expensive_test() {
-    // code that takes an hour to run
+    // Code that takes an hour to run...
 }
 ```
 

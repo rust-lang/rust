@@ -54,9 +54,9 @@ bigger numbers.
 If a number literal has nothing to cause its type to be inferred, it defaults:
 
 ```rust
-let x = 42; // x has type i32
+let x = 42; // `x` has type `i32`.
 
-let y = 1.0; // y has type f64
+let y = 1.0; // `y` has type `f64`.
 ```
 
 Here’s a list of the different numeric types, with links to their documentation
@@ -177,8 +177,8 @@ length of the slice:
 
 ```rust
 let a = [0, 1, 2, 3, 4];
-let complete = &a[..]; // A slice containing all of the elements in a
-let middle = &a[1..4]; // A slice of a: only the elements 1, 2, and 3
+let complete = &a[..]; // A slice containing all of the elements in `a`.
+let middle = &a[1..4]; // A slice of `a`: only the elements `1`, `2`, and `3`.
 ```
 
 Slices have type `&[T]`. We’ll talk about that `T` when we cover
@@ -264,8 +264,8 @@ You can disambiguate a single-element tuple from a value in parentheses with a
 comma:
 
 ```rust
-(0,); // single-element tuple
-(0); // zero in parentheses
+(0,); // A single-element tuple.
+(0); // A zero in parentheses.
 ```
 
 ## Tuple Indexing
