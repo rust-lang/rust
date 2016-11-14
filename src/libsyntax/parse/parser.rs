@@ -1047,14 +1047,12 @@ impl<'a> Parser<'a> {
             let poly_trait_ref = ast::PolyTraitRef { bound_lifetimes: lifetime_defs,
                                                      trait_ref: trait_ref,
                                                      span: mk_sp(lo, hi)};
-            let other_bounds = if self.eat(&token::BinOp(token::Plus)) {
-                self.parse_ty_param_bounds(BoundParsingMode::Bare)?
-            } else {
-                P::new()
-            };
+
+            let other_bounds = self.parse_opt_ty_param_bounds(&token::BinOp(token::Plus),
+                                                              BoundParsingMode::Bare)?;
             let all_bounds =
                 Some(TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)).into_iter()
-                .chain(other_bounds.into_vec())
+                .chain(other_bounds.unwrap_or_else(P::new).into_vec())
                 .collect();
             Ok(ast::TyKind::PolyTraitRef(all_bounds))
         }
@@ -1274,24 +1272,15 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         let lhs = self.parse_ty()?;
 
-        if !self.eat(&token::BinOp(token::Plus)) {
-            return Ok(lhs);
+        match self.parse_opt_ty_param_bounds(&token::BinOp(token::Plus),
+                                             BoundParsingMode::Bare)? {
+            None => Ok(lhs),
+            Some(bounds) => {
+                let sp = mk_sp(lo, self.prev_span.hi);
+                let sum = ast::TyKind::ObjectSum(lhs, bounds);
+                Ok(P(Ty {id: ast::DUMMY_NODE_ID, node: sum, span: sp}))
+            }
         }
-
-        let bounds = self.parse_ty_param_bounds(BoundParsingMode::Bare)?;
-
-        // In type grammar, `+` is treated like a binary operator,
-        // and hence both L and R side are required.
-        if bounds.is_empty() {
-            let prev_span = self.prev_span;
-            self.span_err(prev_span,
-                          "at least one type parameter bound \
-                          must be specified");
-        }
-
-        let sp = mk_sp(lo, self.prev_span.hi);
-        let sum = ast::TyKind::ObjectSum(lhs, bounds);
-        Ok(P(Ty {id: ast::DUMMY_NODE_ID, node: sum, span: sp}))
     }
 
     /// Parse a type.
@@ -4155,11 +4144,25 @@ impl<'a> Parser<'a> {
                                         mode: BoundParsingMode)
                                         -> PResult<'a, TyParamBounds>
     {
-        if !self.eat(&token::Colon) {
-            Ok(P::new())
-        } else {
-            self.parse_ty_param_bounds(mode)
+        Ok(self.parse_opt_ty_param_bounds(&token::Colon, mode)?.unwrap_or_else(P::new))
+    }
+
+    fn parse_opt_ty_param_bounds(&mut self,
+                                 intoducing_token: &token::Token,
+                                 mode: BoundParsingMode)
+                                 -> PResult<'a, Option<TyParamBounds>> {
+        if !self.eat(intoducing_token) {
+            return Ok(None);
         }
+
+        let bounds = self.parse_ty_param_bounds(mode)?;
+
+        if bounds.is_empty() {
+            self.span_err(self.prev_span,
+                          "at least one type parameter bound must be specified");
+        }
+
+        Ok(Some(bounds))
     }
 
     // matches bounds    = ( boundseq )?
@@ -4409,13 +4412,19 @@ impl<'a> Parser<'a> {
                     let bounded_lifetime =
                         self.parse_lifetime()?;
 
-                    self.eat(&token::Colon);
+                    self.expect(&token::Colon)?;
 
                     let bounds =
                         self.parse_lifetimes(token::BinOp(token::Plus))?;
 
                     let hi = self.prev_span.hi;
                     let span = mk_sp(lo, hi);
+
+                    if bounds.is_empty() {
+                        self.span_err(span,
+                                      "each predicate in a `where` clause must have \
+                                       at least one bound in it");
+                    }
 
                     where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
                         ast::WhereRegionPredicate {
@@ -4441,46 +4450,40 @@ impl<'a> Parser<'a> {
 
                     let bounded_ty = self.parse_ty()?;
 
-                    if self.eat(&token::Colon) {
-                        let bounds = self.parse_ty_param_bounds(BoundParsingMode::Bare)?;
-                        let hi = self.prev_span.hi;
-                        let span = mk_sp(lo, hi);
-
-                        if bounds.is_empty() {
-                            self.span_err(span,
-                                          "each predicate in a `where` clause must have \
-                                           at least one bound in it");
-                        }
+                    if let Some(bounds) = self.parse_opt_ty_param_bounds(&token::Colon,
+                                                                         BoundParsingMode::Bare)? {
 
                         where_clause.predicates.push(ast::WherePredicate::BoundPredicate(
                                 ast::WhereBoundPredicate {
-                                    span: span,
+                                    span: mk_sp(lo, self.prev_span.hi),
                                     bound_lifetimes: bound_lifetimes,
                                     bounded_ty: bounded_ty,
                                     bounds: bounds,
                         }));
 
                         parsed_something = true;
-                    } else if self.eat(&token::Eq) {
-                        // let ty = try!(self.parse_ty());
-                        let hi = self.prev_span.hi;
-                        let span = mk_sp(lo, hi);
-                        // where_clause.predicates.push(
-                        //     ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
-                        //         id: ast::DUMMY_NODE_ID,
-                        //         span: span,
-                        //         path: panic!("NYI"), //bounded_ty,
-                        //         ty: ty,
-                        // }));
-                        // parsed_something = true;
-                        // // FIXME(#18433)
-                        self.span_err(span,
-                                     "equality constraints are not yet supported \
-                                     in where clauses (#20041)");
                     } else {
-                        let prev_span = self.prev_span;
-                        self.span_err(prev_span,
-                              "unexpected token in `where` clause");
+                        if self.eat(&token::Eq) {
+                            // let ty = try!(self.parse_ty());
+                            let hi = self.prev_span.hi;
+                            let span = mk_sp(lo, hi);
+                            // where_clause.predicates.push(
+                            //     ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
+                            //         id: ast::DUMMY_NODE_ID,
+                            //         span: span,
+                            //         path: panic!("NYI"), //bounded_ty,
+                            //         ty: ty,
+                            // }));
+                            // parsed_something = true;
+                            // // FIXME(#18433)
+                            self.span_err(span,
+                                          "equality constraints are not yet supported \
+                                          in where clauses (#20041)");
+                        } else {
+                            let prev_span = self.prev_span;
+                            self.span_err(prev_span,
+                                          "unexpected token in `where` clause");
+                        }
                     }
                 }
             };
