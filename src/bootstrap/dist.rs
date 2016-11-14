@@ -99,7 +99,7 @@ pub fn mingw(build: &Build, host: &str) {
     // (which is what we want).
     //
     // FIXME: this script should be rewritten into Rust
-    let mut cmd = Command::new("python");
+    let mut cmd = Command::new(build.python());
     cmd.arg(build.src.join("src/etc/make-win-dist.py"))
        .arg(tmpdir(build))
        .arg(&image)
@@ -159,7 +159,7 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
     //
     // FIXME: this script should be rewritten into Rust
     if host.contains("pc-windows-gnu") {
-        let mut cmd = Command::new("python");
+        let mut cmd = Command::new(build.python());
         cmd.arg(build.src.join("src/etc/make-win-dist.py"))
            .arg(&image)
            .arg(tmpdir(build))

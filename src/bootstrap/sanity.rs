@@ -79,7 +79,17 @@ pub fn check(build: &mut Build) {
         break
     }
 
-    need_cmd("python".as_ref());
+    if build.config.python.is_none() {
+        build.config.python = have_cmd("python2.7".as_ref());
+    }
+    if build.config.python.is_none() {
+        build.config.python = have_cmd("python2".as_ref());
+    }
+    if build.config.python.is_none() {
+        need_cmd("python".as_ref());
+        build.config.python = Some("python".into());
+    }
+    need_cmd(build.config.python.as_ref().unwrap().as_ref());
 
 
     if let Some(ref s) = build.config.nodejs {
