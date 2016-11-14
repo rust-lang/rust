@@ -315,7 +315,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             IntMismatch(x) => IntMismatch(x),
             FloatMismatch(x) => FloatMismatch(x),
             Traits(x) => Traits(x),
-            BuiltinBoundsMismatch(x) => BuiltinBoundsMismatch(x),
             VariadicMismatch(x) => VariadicMismatch(x),
             CyclicTy => CyclicTy,
             ProjectionNameMismatched(x) => ProjectionNameMismatched(x),
@@ -700,16 +699,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::AutoBorrow<'tcx> {
             ty::adjustment::AutoBorrow::Ref(r, _m) => r.visit_with(visitor),
             ty::adjustment::AutoBorrow::RawPtr(_m) => false,
         }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::BuiltinBounds {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
-        *self
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
-        false
     }
 }
 

@@ -46,6 +46,7 @@ use rustc::hir;
 use rustc::traits;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::cast::{CastKind, CastTy};
+use rustc::middle::lang_items;
 use syntax::ast;
 use syntax_pos::Span;
 use util::common::ErrorReported;
@@ -543,6 +544,8 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn type_is_known_to_be_sized(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundSized, span)
+        let lang_item = self.tcx.lang_items.require(lang_items::SizedTraitLangItem)
+                            .unwrap_or_else(|msg| self.tcx.sess.fatal(&msg[..]));
+        traits::type_known_to_meet_bound(self, ty, lang_item, span)
     }
 }

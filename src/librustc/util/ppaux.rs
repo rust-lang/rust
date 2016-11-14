@@ -683,19 +683,6 @@ impl<'tcx> fmt::Display for ty::FnSig<'tcx> {
     }
 }
 
-impl fmt::Display for ty::BuiltinBounds {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut bounds = self.iter();
-        if let Some(bound) = bounds.next() {
-            write!(f, "{:?}", bound)?;
-            for bound in bounds {
-                write!(f, " + {:?}", bound)?;
-            }
-        }
-        Ok(())
-    }
-}
-
 impl fmt::Debug for ty::TyVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "_#{}t", self.index)

@@ -30,6 +30,7 @@ use syntax_pos::{self, DUMMY_SP, Pos};
 use rustc_trans::back::link;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime::DefRegion::*;
+use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{self, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::print as pprust;
@@ -593,12 +594,21 @@ pub enum TyParamBound {
 
 impl TyParamBound {
     fn maybe_sized(cx: &DocContext) -> TyParamBound {
-        use rustc::hir::TraitBoundModifier as TBM;
-        let mut sized_bound = ty::BoundSized.clean(cx);
-        if let TyParamBound::TraitBound(_, ref mut tbm) = sized_bound {
-            *tbm = TBM::Maybe
-        };
-        sized_bound
+        let did = cx.tcx().lang_items.require(lang_items::SizedTraitLangItem)
+            .unwrap_or_else(|msg| cx.tcx().sess.fatal(&msg[..]));
+        let empty = cx.tcx().intern_substs(&[]);
+        let path = external_path(cx, &cx.tcx().item_name(did).as_str(),
+            Some(did), false, vec![], empty);
+        inline::record_extern_fqn(cx, did, TypeKind::Trait);
+        TraitBound(PolyTrait {
+            trait_: ResolvedPath {
+                path: path,
+                typarams: None,
+                did: did,
+                is_generic: false,
+            },
+            lifetimes: vec![]
+        }, hir::TraitBoundModifier::Maybe)
     }
 
     fn is_sized_bound(&self, cx: &DocContext) -> bool {
@@ -672,37 +682,6 @@ fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>, has_self
             name: name.to_string(),
             params: external_path_params(cx, trait_did, has_self, bindings, substs)
         }],
-    }
-}
-
-impl Clean<TyParamBound> for ty::BuiltinBound {
-    fn clean(&self, cx: &DocContext) -> TyParamBound {
-        let tcx = cx.tcx;
-        let empty = tcx.intern_substs(&[]);
-        let (did, path) = match *self {
-            ty::BoundSend =>
-                (tcx.lang_items.send_trait().unwrap(),
-                 external_path(cx, "Send", None, false, vec![], empty)),
-            ty::BoundSized =>
-                (tcx.lang_items.sized_trait().unwrap(),
-                 external_path(cx, "Sized", None, false, vec![], empty)),
-            ty::BoundCopy =>
-                (tcx.lang_items.copy_trait().unwrap(),
-                 external_path(cx, "Copy", None, false, vec![], empty)),
-            ty::BoundSync =>
-                (tcx.lang_items.sync_trait().unwrap(),
-                 external_path(cx, "Sync", None, false, vec![], empty)),
-        };
-        inline::record_extern_fqn(cx, did, TypeKind::Trait);
-        TraitBound(PolyTrait {
-            trait_: ResolvedPath {
-                path: path,
-                typarams: None,
-                did: did,
-                is_generic: false,
-            },
-            lifetimes: vec![]
-        }, hir::TraitBoundModifier::None)
     }
 }
 
@@ -1915,8 +1894,8 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                         });
                     }
 
-                    let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
-                                             Some(did), false, bindings, obj.principal.0.substs);
+                    let path = external_path(cx, &cx.tcx().item_name(did).as_str(), Some(did),
+                        false, bindings, principal.0.substs);
                     ResolvedPath {
                         path: path,
                         typarams: Some(typarams),

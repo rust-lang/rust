@@ -14,13 +14,10 @@ use hir::def_id::DefId;
 
 use middle::region;
 use ty::subst::Substs;
-use ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TypeFoldable};
+use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
-use util::common::ErrorReported;
 
-use collections::enum_set::{self, EnumSet, CLike};
 use std::fmt;
-use std::ops;
 use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::symbol::{keywords, InternedString};
@@ -767,71 +764,6 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
             },
             ty: proj.ty
         })
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct BuiltinBounds(EnumSet<BuiltinBound>);
-
-impl<'a, 'gcx, 'tcx> BuiltinBounds {
-    pub fn empty() -> BuiltinBounds {
-        BuiltinBounds(EnumSet::new())
-    }
-
-    pub fn iter(&self) -> enum_set::Iter<BuiltinBound> {
-        self.into_iter()
-    }
-
-    pub fn to_predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                         self_ty: Ty<'tcx>)
-                         -> Vec<ty::Predicate<'tcx>> {
-        self.iter().filter_map(|builtin_bound|
-            match tcx.trait_ref_for_builtin_bound(builtin_bound, self_ty) {
-                Ok(trait_ref) => Some(trait_ref.to_predicate()),
-                Err(ErrorReported) => { None }
-            }
-        ).collect()
-    }
-}
-
-impl ops::Deref for BuiltinBounds {
-    type Target = EnumSet<BuiltinBound>;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-
-impl ops::DerefMut for BuiltinBounds {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
-}
-
-impl<'a> IntoIterator for &'a BuiltinBounds {
-    type Item = BuiltinBound;
-    type IntoIter = enum_set::Iter<BuiltinBound>;
-    fn into_iter(self) -> Self::IntoIter {
-        (**self).into_iter()
-    }
-}
-
-#[derive(Clone, RustcEncodable, PartialEq, Eq, RustcDecodable, Hash,
-           Debug, Copy)]
-pub enum BuiltinBound {
-    Send = 0,
-    Sized = 1,
-    Copy = 2,
-    Sync = 3,
-}
-
-impl CLike for BuiltinBound {
-    fn to_usize(&self) -> usize {
-        *self as usize
-    }
-    fn from_usize(v: usize) -> BuiltinBound {
-        match v {
-            0 => BuiltinBound::Send,
-            1 => BuiltinBound::Sized,
-            2 => BuiltinBound::Copy,
-            3 => BuiltinBound::Sync,
-            _ => bug!("{} is not a valid BuiltinBound", v)
-        }
     }
 }
 

@@ -45,7 +45,6 @@ pub enum TypeError<'tcx> {
     IntMismatch(ExpectedFound<ty::IntVarValue>),
     FloatMismatch(ExpectedFound<ast::FloatTy>),
     Traits(ExpectedFound<DefId>),
-    BuiltinBoundsMismatch(ExpectedFound<ty::BuiltinBounds>),
     VariadicMismatch(ExpectedFound<bool>),
     CyclicTy,
     ProjectionNameMismatched(ExpectedFound<Name>),
@@ -135,19 +134,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                                        format!("trait `{}`",
                                                tcx.item_path_str(values.found)))
             }),
-            BuiltinBoundsMismatch(values) => {
-                if values.expected.is_empty() {
-                    write!(f, "expected no bounds, found `{}`",
-                           values.found)
-                } else if values.found.is_empty() {
-                    write!(f, "expected bounds `{}`, found no bounds",
-                           values.expected)
-                } else {
-                    write!(f, "expected bounds `{}`, found bounds `{}`",
-                           values.expected,
-                           values.found)
-                }
-            }
             IntMismatch(ref values) => {
                 write!(f, "expected `{:?}`, found `{:?}`",
                        values.expected,

@@ -905,16 +905,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::StructInitializerSized => {
                 err.note("structs must have a statically known size to be initialized");
             }
-            ObligationCauseCode::ClosureCapture(var_id, _, builtin_bound) => {
-                let def_id = tcx.lang_items.from_builtin_kind(builtin_bound).unwrap();
-                let trait_name = tcx.item_path_str(def_id);
-                let name = tcx.local_var_name_str(var_id);
-                err.note(
-                    &format!("the closure that captures `{}` requires that all captured variables \
-                              implement the trait `{}`",
-                             name,
-                             trait_name));
-            }
             ObligationCauseCode::FieldSized => {
                 err.note("only the last field of a struct may have a dynamically sized type");
             }

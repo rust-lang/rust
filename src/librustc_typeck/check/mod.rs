@@ -123,6 +123,7 @@ use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
+use rustc::middle::lang_items;
 use rustc_back::slice;
 use rustc_const_eval::eval_length;
 
@@ -1805,11 +1806,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               ty: Ty<'tcx>,
                               span: Span,
                               code: traits::ObligationCauseCode<'tcx>,
-                              bound: ty::BuiltinBound)
+                              def_id: DefId)
     {
-        self.register_builtin_bound(
+        self.register_bound(
             ty,
-            bound,
+            def_id,
             traits::ObligationCause::new(span, self.body_id, code));
     }
 
@@ -1818,16 +1819,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  span: Span,
                                  code: traits::ObligationCauseCode<'tcx>)
     {
-        self.require_type_meets(ty, span, code, ty::BoundSized);
+        let lang_item = self.tcx.lang_items.require(lang_items::SizedTraitLangItem)
+                            .unwrap_or_else(|msg| self.tcx.sess.fatal(&msg[..]));
+        self.require_type_meets(ty, span, code, lang_item);
     }
 
-    pub fn register_builtin_bound(&self,
+    pub fn register_bound(&self,
                                   ty: Ty<'tcx>,
-                                  builtin_bound: ty::BuiltinBound,
+                                  def_id: DefId,
                                   cause: traits::ObligationCause<'tcx>)
     {
         self.fulfillment_cx.borrow_mut()
-            .register_builtin_bound(self, ty, builtin_bound, cause);
+            .register_bound(self, ty, def_id, cause);
     }
 
     pub fn register_predicate(&self,
@@ -3899,7 +3902,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if count > 1 {
                 // For [foo, ..n] where n > 1, `foo` must have
                 // Copy type:
-                self.require_type_meets(t, expr.span, traits::RepeatVec, ty::BoundCopy);
+                let lang_item = self.tcx.lang_items.require(lang_items::CopyTraitLangItem)
+                            .unwrap_or_else(|msg| self.tcx.sess.fatal(&msg[..]));
+                self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
             }
 
             if element_ty.references_error() {

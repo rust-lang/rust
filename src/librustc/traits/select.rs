@@ -1093,8 +1093,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // Other bounds. Consider both in-scope bounds from fn decl
         // and applicable impls. There is a certain set of precedence rules here.
 
-        match self.tcx().lang_items.to_builtin_kind(obligation.predicate.def_id()) {
-            Some(ty::BoundCopy) => {
+        let def_id = obligation.predicate.def_id();
+        match obligation.predicate.def_id() {
+            _ if self.tcx().lang_items.copy_trait() == Some(def_id) => {
                 debug!("obligation self ty is {:?}",
                        obligation.predicate.0.self_ty());
 
@@ -1106,7 +1107,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let copy_conditions = self.copy_conditions(obligation);
                 self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates)?;
             }
-            Some(ty::BoundSized) => {
+            _ if self.tcx().lang_items.sized_trait() == Some(def_id) => {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
                 let sized_conditions = self.sized_conditions(obligation);
@@ -1114,14 +1115,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                                        &mut candidates)?;
             }
 
-            None if self.tcx().lang_items.unsize_trait() ==
-                    Some(obligation.predicate.def_id()) => {
+            _ if self.tcx().lang_items.unsize_trait() == Some(def_id) => {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
             }
 
-            Some(ty::BoundSend) |
-            Some(ty::BoundSync) |
-            None => {
+            // For non-builtins and Send/Sync
+            _ => {
                 self.assemble_closure_candidates(obligation, &mut candidates)?;
                 self.assemble_fn_pointer_candidates(obligation, &mut candidates)?;
                 self.assemble_candidates_from_impls(obligation, &mut candidates)?;
@@ -2483,7 +2482,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     data_b.auto_traits().collect(),
                     data_a.projection_bounds.clone(),
                 ));
-                let origin = TypeOrigin::Misc(obligation.cause.span);
                 let InferOk { obligations, .. } =
                     self.infcx.sub_types(false, &obligation.cause, new_trait, target)
                     .map_err(|_| Unimplemented)?;
