@@ -240,7 +240,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_assoc_type_binding(self, type_binding)
     }
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
-        self.record("Attribute", Id::Attr(attr.node.id), attr);
+        self.record("Attribute", Id::Attr(attr.id), attr);
     }
     fn visit_macro_def(&mut self, macro_def: &'v hir::MacroDef) {
         self.record("MacroDef", Id::Node(macro_def.id), macro_def);

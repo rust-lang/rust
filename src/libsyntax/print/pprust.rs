@@ -727,7 +727,7 @@ pub trait PrintState<'a> {
                               trailing_hardbreak: bool) -> io::Result<()> {
         let mut count = 0;
         for attr in attrs {
-            if attr.node.style == kind {
+            if attr.style == kind {
                 try!(self.print_attribute_inline(attr, is_inline));
                 if is_inline {
                     try!(self.nbsp());
@@ -751,11 +751,11 @@ pub trait PrintState<'a> {
             try!(self.hardbreak_if_not_bol());
         }
         try!(self.maybe_print_comment(attr.span.lo));
-        if attr.node.is_sugared_doc {
+        if attr.is_sugared_doc {
             try!(word(self.writer(), &attr.value_str().unwrap()));
             hardbreak(self.writer())
         } else {
-            match attr.node.style {
+            match attr.style {
                 ast::AttrStyle::Inner => try!(word(self.writer(), "#![")),
                 ast::AttrStyle::Outer => try!(word(self.writer(), "#[")),
             }

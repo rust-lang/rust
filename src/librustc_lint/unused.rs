@@ -277,7 +277,7 @@ impl LateLintPass for UnusedAttributes {
                 .find(|&&(ref x, t)| &*attr.name() == x && AttributeType::CrateLevel == t)
                 .is_some();
             if known_crate || plugin_crate {
-                let msg = match attr.node.style {
+                let msg = match attr.style {
                     ast::AttrStyle::Outer => {
                         "crate-level attribute should be an inner attribute: add an exclamation \
                          mark: #![foo]"

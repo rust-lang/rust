@@ -934,7 +934,7 @@ impl<'a, 'tcx> CrateMetadata {
             .decode(self)
             .map(|mut attr| {
                 // Need new unique IDs: old thread-local IDs won't map to new threads.
-                attr.node.id = attr::mk_attr_id();
+                attr.id = attr::mk_attr_id();
                 attr
             })
             .collect()

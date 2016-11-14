@@ -405,7 +405,7 @@ pub fn gather_attr(attr: &ast::Attribute)
 
     attr::mark_used(attr);
 
-    let meta = &attr.node.value;
+    let meta = &attr.value;
     let metas = if let Some(metas) = meta.meta_item_list() {
         metas
     } else {
