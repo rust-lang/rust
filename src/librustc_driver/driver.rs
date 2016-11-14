@@ -1056,7 +1056,11 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn phase_5_run_llvm_passes(sess: &Session,
                                trans: &trans::CrateTranslation,
                                outputs: &OutputFilenames) -> CompileResult {
-    if sess.opts.cg.no_integrated_as || sess.target.target.options.no_integrated_as {
+    if sess.opts.cg.no_integrated_as ||
+        (sess.target.target.options.no_integrated_as &&
+         (outputs.outputs.contains_key(&OutputType::Object) ||
+          outputs.outputs.contains_key(&OutputType::Exe)))
+    {
         let output_types = OutputTypes::new(&[(OutputType::Assembly, None)]);
         time(sess.time_passes(),
              "LLVM passes",
