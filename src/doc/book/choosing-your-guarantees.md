@@ -25,7 +25,7 @@ the following:
 ```rust
 let x = Box::new(1);
 let y = x;
-// x no longer accessible here
+// `x` is no longer accessible here.
 ```
 
 Here, the box was _moved_ into `y`. As `x` no longer owns it, the compiler will no longer allow the
@@ -291,9 +291,9 @@ the inner data (mutably), and the lock will be released when the guard goes out 
 ```rust,ignore
 {
     let guard = mutex.lock();
-    // guard dereferences mutably to the inner type
+    // `guard` dereferences mutably to the inner type.
     *guard += 1;
-} // lock released when destructor runs
+} // Lock is released when destructor runs.
 ```
 
 

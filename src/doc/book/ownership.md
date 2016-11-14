@@ -107,7 +107,7 @@ try to use something after we’ve passed it as an argument:
 
 ```rust,ignore
 fn take(v: Vec<i32>) {
-    // what happens here isn’t important.
+    // What happens here isn’t important.
 }
 
 let v = vec![1, 2, 3];
@@ -264,9 +264,9 @@ Of course, if we had to hand ownership back with every function we wrote:
 
 ```rust
 fn foo(v: Vec<i32>) -> Vec<i32> {
-    // do stuff with v
+    // Do stuff with `v`.
 
-    // hand back ownership
+    // Hand back ownership.
     v
 }
 ```
@@ -275,9 +275,9 @@ This would get very tedious. It gets worse the more things we want to take owner
 
 ```rust
 fn foo(v1: Vec<i32>, v2: Vec<i32>) -> (Vec<i32>, Vec<i32>, i32) {
-    // do stuff with v1 and v2
+    // Do stuff with `v1` and `v2`.
 
-    // hand back ownership, and the result of our function
+    // Hand back ownership, and the result of our function.
     (v1, v2, 42)
 }
 

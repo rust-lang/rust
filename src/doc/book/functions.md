@@ -135,7 +135,7 @@ In Rust, however, using `let` to introduce a binding is _not_ an expression. The
 following will produce a compile-time error:
 
 ```rust,ignore
-let x = (let y = 5); // expected identifier, found keyword `let`
+let x = (let y = 5); // Expected identifier, found keyword `let`.
 ```
 
 The compiler is telling us here that it was expecting to see the beginning of
@@ -151,7 +151,7 @@ other returned value would be too surprising:
 ```rust
 let mut y = 5;
 
-let x = (y = 6);  // x has the value `()`, not `6`
+let x = (y = 6);  // `x` has the value `()`, not `6`.
 ```
 
 The second kind of statement in Rust is the *expression statement*. Its
@@ -183,7 +183,7 @@ But what about early returns? Rust does have a keyword for that, `return`:
 fn foo(x: i32) -> i32 {
     return x;
 
-    // we never run this code!
+    // We never run this code!
     x + 1
 }
 ```
@@ -307,10 +307,10 @@ fn plus_one(i: i32) -> i32 {
     i + 1
 }
 
-// without type inference
+// Without type inference:
 let f: fn(i32) -> i32 = plus_one;
 
-// with type inference
+// With type inference:
 let f = plus_one;
 ```
 

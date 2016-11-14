@@ -32,7 +32,7 @@ pub struct Box<T>(*mut T);
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     let p = libc::malloc(size as libc::size_t) as *mut u8;
 
-    // malloc failed
+    // Check if `malloc` failed:
     if p as usize == 0 {
         abort();
     }

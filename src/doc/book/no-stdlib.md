@@ -41,10 +41,10 @@ in the same format as C:
 #![feature(start)]
 #![no_std]
 
-// Pull in the system libc library for what crt0.o likely requires
+// Pull in the system libc library for what crt0.o likely requires.
 extern crate libc;
 
-// Entry point for this program
+// Entry point for this program.
 #[start]
 fn start(_argc: isize, _argv: *const *const u8) -> isize {
     0
@@ -84,10 +84,10 @@ compiler's name mangling too:
 #![no_std]
 #![no_main]
 
-// Pull in the system libc library for what crt0.o likely requires
+// Pull in the system libc library for what crt0.o likely requires.
 extern crate libc;
 
-// Entry point for this program
+// Entry point for this program.
 #[no_mangle] // ensure that this symbol is called `main` in the output
 pub extern fn main(_argc: i32, _argv: *const *const u8) -> i32 {
     0

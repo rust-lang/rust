@@ -11,7 +11,7 @@ this:
 trait Graph<N, E> {
     fn has_edge(&self, &N, &N) -> bool;
     fn edges(&self, &N) -> Vec<E>;
-    // etc
+    // Etc.
 }
 ```
 
@@ -36,7 +36,7 @@ trait Graph {
 
     fn has_edge(&self, &Self::N, &Self::N) -> bool;
     fn edges(&self, &Self::N) -> Vec<Self::E>;
-    // etc
+    // Etc.
 }
 ```
 

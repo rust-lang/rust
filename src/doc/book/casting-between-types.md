@@ -106,7 +106,7 @@ from integers, and to cast between pointers to different types subject to
 some constraints. It is only unsafe to dereference the pointer:
 
 ```rust
-let a = 300 as *const char; // a pointer to location 300
+let a = 300 as *const char; // `a` is a pointer to location 300.
 let b = a as u32;
 ```
 
@@ -135,14 +135,14 @@ cast four bytes into a `u32`:
 ```rust,ignore
 let a = [0u8, 0u8, 0u8, 0u8];
 
-let b = a as u32; // four u8s makes a u32
+let b = a as u32; // Four u8s makes a u32.
 ```
 
 This errors with:
 
 ```text
 error: non-scalar cast: `[u8; 4]` as `u32`
-let b = a as u32; // four u8s makes a u32
+let b = a as u32; // Four u8s makes a u32.
         ^~~~~~~~
 ```
 
@@ -170,7 +170,7 @@ fn main() {
         let a = [0u8, 1u8, 0u8, 0u8];
         let b = mem::transmute::<[u8; 4], u32>(a);
         println!("{}", b); // 256
-        // or, more concisely:
+        // Or, more concisely:
         let c: u32 = mem::transmute(a);
         println!("{}", c); // 256
     }

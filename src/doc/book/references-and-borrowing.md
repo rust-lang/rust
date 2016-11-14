@@ -46,9 +46,9 @@ like this:
 
 ```rust
 fn foo(v1: Vec<i32>, v2: Vec<i32>) -> (Vec<i32>, Vec<i32>, i32) {
-    // do stuff with v1 and v2
+    // Do stuff with `v1` and `v2`.
 
-    // hand back ownership, and the result of our function
+    // Hand back ownership, and the result of our function.
     (v1, v2, 42)
 }
 
@@ -63,9 +63,9 @@ the first step:
 
 ```rust
 fn foo(v1: &Vec<i32>, v2: &Vec<i32>) -> i32 {
-    // do stuff with v1 and v2
+    // Do stuff with `v1` and `v2`.
 
-    // return the answer
+    // Return the answer.
     42
 }
 
@@ -74,7 +74,7 @@ let v2 = vec![1, 2, 3];
 
 let answer = foo(&v1, &v2);
 
-// we can use v1 and v2 here!
+// We can use `v1` and `v2` here!
 ```
 
 A more concrete example:
@@ -88,10 +88,10 @@ fn main() {
     // Borrow two vectors and sum them.
     // This kind of borrowing does not allow mutation through the borrowed reference.
     fn foo(v1: &Vec<i32>, v2: &Vec<i32>) -> i32 {
-        // do stuff with v1 and v2
+        // Do stuff with `v1` and `v2`.
         let s1 = sum_vec(v1);
         let s2 = sum_vec(v2);
-        // return the answer
+        // Return the answer.
         s1 + s2
     }
 
@@ -248,12 +248,12 @@ scopes look like this:
 fn main() {
     let mut x = 5;
 
-    let y = &mut x;    // -+ &mut borrow of x starts here
+    let y = &mut x;    // -+ &mut borrow of `x` starts here.
                        //  |
     *y += 1;           //  |
                        //  |
-    println!("{}", x); // -+ - try to borrow x here
-}                      // -+ &mut borrow of x ends here
+    println!("{}", x); // -+ - Try to borrow `x` here.
+}                      // -+ &mut borrow of `x` ends here.
                        
 ```
 
@@ -265,11 +265,11 @@ So when we add the curly braces:
 let mut x = 5;
 
 {
-    let y = &mut x; // -+ &mut borrow starts here
+    let y = &mut x; // -+ &mut borrow starts here.
     *y += 1;        //  |
-}                   // -+ ... and ends here
+}                   // -+ ... and ends here.
 
-println!("{}", x);  // <- try to borrow x here
+println!("{}", x);  // <- Try to borrow `x` here.
 ```
 
 There’s no problem. Our mutable borrow goes out of scope before we create an
