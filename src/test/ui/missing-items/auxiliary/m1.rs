@@ -9,9 +9,9 @@
 // except according to those terms.
 
 #![feature(associated_consts)]
-#![crate_type = "dylib"]
+
 pub trait X {
-  const CONSTANT: u32;
-  type Type;
-  fn method(&self, s: String) -> Self::Type;
+    const CONSTANT: u32;
+    type Type;
+    fn method(&self, s: String) -> Self::Type;
 }
