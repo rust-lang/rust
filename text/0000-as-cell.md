@@ -58,14 +58,14 @@ to enable safe mutation even with only shared views into the data:
 let v: Vec<Cell<i32>> = ...;
 
 // example 1
-for i in v.iter() {
-    for j in v.iter() {
+for i in &v {
+    for j in &v {
         j.set(f(i.get(), j.get()));
     }
 }
 
 // example 2
-for (i, j) in v[n..].iter().zip(v.iter()) {
+for (i, j) in v[n..].iter().zip(&v) {
     i.set(g(g.get()));
 }
 
@@ -99,14 +99,14 @@ let mut v: Vec<i32> = ...;
 let v_slice: &[Cell<T>] = Cell::from_mut_slice(&mut v);
 
 // example 1
-for i in v_slice.iter() {
-    for j in v_slice.iter() {
+for i in v_slice {
+    for j in v_slice {
         j.set(f(i.get(), j.get()));
     }
 }
 
 // example 2
-for (i, j) in v_slice[n..].iter().zip(v_slice.iter()) {
+for (i, j) in v_slice[n..].iter().zip(v_slice) {
     i.set(g(g.get()));
 }
 
