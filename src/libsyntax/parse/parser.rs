@@ -38,7 +38,7 @@ use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use ast::{BinOpKind, UnOp};
-use ast;
+use {ast, attr};
 use codemap::{self, CodeMap, Spanned, spanned, respan};
 use syntax_pos::{self, Span, BytePos, mk_sp};
 use errors::{self, DiagnosticBuilder};
@@ -243,6 +243,7 @@ pub struct ModulePath {
 pub struct ModulePathSuccess {
     pub path: PathBuf,
     pub directory_ownership: DirectoryOwnership,
+    warn: bool,
 }
 
 pub struct ModulePathError {
@@ -5268,10 +5269,25 @@ impl<'a> Parser<'a> {
             self.bump();
             if in_cfg {
                 // This mod is in an external file. Let's go get it!
-                let ModulePathSuccess { path, directory_ownership } =
+                let ModulePathSuccess { path, directory_ownership, warn } =
                     self.submod_path(id, &outer_attrs, id_span)?;
-                let (module, attrs) =
+                let (module, mut attrs) =
                     self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
+                if warn {
+                    let attr = ast::Attribute {
+                        id: attr::mk_attr_id(),
+                        style: ast::AttrStyle::Outer,
+                        value: ast::MetaItem {
+                            name: Symbol::intern("warn_directory_ownership"),
+                            node: ast::MetaItemKind::Word,
+                            span: syntax_pos::DUMMY_SP,
+                        },
+                        is_sugared_doc: false,
+                        span: syntax_pos::DUMMY_SP,
+                    };
+                    attr::mark_known(&attr);
+                    attrs.push(attr);
+                }
                 Ok((id, module, Some(attrs)))
             } else {
                 let placeholder = ast::Mod { inner: syntax_pos::DUMMY_SP, items: Vec::new() };
@@ -5290,7 +5306,7 @@ impl<'a> Parser<'a> {
     }
 
     fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
-        if let Some(path) = ::attr::first_attr_value_str_by_name(attrs, "path") {
+        if let Some(path) = attr::first_attr_value_str_by_name(attrs, "path") {
             self.directory.path.push(&*path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned;
         } else {
@@ -5299,7 +5315,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn submod_path_from_attr(attrs: &[ast::Attribute], dir_path: &Path) -> Option<PathBuf> {
-        ::attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&*d.as_str()))
+        attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&*d.as_str()))
     }
 
     /// Returns either a path to a module, or .
@@ -5316,11 +5332,13 @@ impl<'a> Parser<'a> {
         let result = match (default_exists, secondary_exists) {
             (true, false) => Ok(ModulePathSuccess {
                 path: default_path,
-                directory_ownership: DirectoryOwnership::UnownedViaMod,
+                directory_ownership: DirectoryOwnership::UnownedViaMod(false),
+                warn: false,
             }),
             (false, true) => Ok(ModulePathSuccess {
                 path: secondary_path,
                 directory_ownership: DirectoryOwnership::Owned,
+                warn: false,
             }),
             (false, false) => Err(ModulePathError {
                 err_msg: format!("file not found for module `{}`", mod_name),
@@ -5353,9 +5371,10 @@ impl<'a> Parser<'a> {
             return Ok(ModulePathSuccess {
                 directory_ownership: match path.file_name().and_then(|s| s.to_str()) {
                     Some("mod.rs") => DirectoryOwnership::Owned,
-                    _ => DirectoryOwnership::UnownedViaMod,
+                    _ => DirectoryOwnership::UnownedViaMod(true),
                 },
                 path: path,
+                warn: false,
             });
         }
 
@@ -5371,7 +5390,12 @@ impl<'a> Parser<'a> {
                 err.span_note(id_sp, &msg);
             }
             return Err(err);
-        } else if let DirectoryOwnership::UnownedViaMod = self.directory.ownership {
+        } else if let DirectoryOwnership::UnownedViaMod(warn) = self.directory.ownership {
+            if warn {
+                if let Ok(result) = paths.result {
+                    return Ok(ModulePathSuccess { warn: true, ..result });
+                }
+            }
             let mut err = self.diagnostic().struct_span_err(id_sp,
                 "cannot declare a new module at this location");
             let this_module = match self.directory.path.file_name() {
@@ -5387,8 +5411,10 @@ impl<'a> Parser<'a> {
                               &format!("... or maybe `use` the module `{}` instead \
                                         of possibly redeclaring it",
                                        paths.name));
-            }
-            return Err(err);
+                return Err(err);
+            } else {
+                return Err(err);
+            };
         }
 
         match paths.result {
