@@ -1036,8 +1036,9 @@ impl<'a> State<'a> {
         self.maybe_print_comment(ii.span.lo)?;
         self.print_outer_attributes(&ii.attrs)?;
 
-        if let hir::Defaultness::Default = ii.defaultness {
-            self.word_nbsp("default")?;
+        match ii.defaultness {
+            hir::Defaultness::Default { .. } => self.word_nbsp("default")?,
+            hir::Defaultness::Final => (),
         }
 
         match ii.node {

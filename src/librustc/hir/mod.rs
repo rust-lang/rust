@@ -1259,17 +1259,27 @@ pub enum Constness {
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Defaultness {
-    Default,
+    Default { has_value: bool },
     Final,
 }
 
 impl Defaultness {
+    pub fn has_value(&self) -> bool {
+        match *self {
+            Defaultness::Default { has_value, .. } => has_value,
+            Defaultness::Final => true,
+        }
+    }
+
     pub fn is_final(&self) -> bool {
         *self == Defaultness::Final
     }
 
     pub fn is_default(&self) -> bool {
-        *self == Defaultness::Default
+        match *self {
+            Defaultness::Default { .. } => true,
+            _ => false,
+        }
     }
 }
 
@@ -1584,7 +1594,6 @@ pub struct ImplItemRef {
     pub span: Span,
     pub vis: Visibility,
     pub defaultness: Defaultness,
-    pub has_value: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

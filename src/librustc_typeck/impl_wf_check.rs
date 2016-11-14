@@ -118,7 +118,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         .map(|item_ref|  ccx.tcx.map.local_def_id(item_ref.id.node_id))
         .filter(|&def_id| {
             let item = ccx.tcx.associated_item(def_id);
-            item.kind == ty::AssociatedKind::Type && item.has_value
+            item.kind == ty::AssociatedKind::Type && item.defaultness.has_value()
         })
         .flat_map(|def_id| {
             ctp::parameters_for(&ccx.tcx.item_type(def_id), true)

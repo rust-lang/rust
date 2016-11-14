@@ -699,7 +699,7 @@ impl<'a> LoweringContext<'a> {
                 name: i.ident.name,
                 attrs: this.lower_attrs(&i.attrs),
                 vis: this.lower_visibility(&i.vis),
-                defaultness: this.lower_defaultness(i.defaultness),
+                defaultness: this.lower_defaultness(i.defaultness, true /* [1] */),
                 node: match i.node {
                     ImplItemKind::Const(ref ty, ref expr) => {
                         hir::ImplItemKind::Const(this.lower_ty(ty), this.lower_expr(expr))
@@ -715,6 +715,8 @@ impl<'a> LoweringContext<'a> {
                 span: i.span,
             }
         })
+
+        // [1] since `default impl` is not yet implemented, this is always true in impls
     }
 
     fn lower_impl_item_ref(&mut self, i: &ImplItem) -> hir::ImplItemRef {
@@ -723,7 +725,7 @@ impl<'a> LoweringContext<'a> {
             name: i.ident.name,
             span: i.span,
             vis: self.lower_visibility(&i.vis),
-            defaultness: self.lower_defaultness(i.defaultness),
+            defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
             kind: match i.node {
                 ImplItemKind::Const(..) => hir::AssociatedItemKind::Const,
                 ImplItemKind::Type(..) => hir::AssociatedItemKind::Type,
@@ -732,9 +734,9 @@ impl<'a> LoweringContext<'a> {
                 },
                 ImplItemKind::Macro(..) => unimplemented!(),
             },
-            // since `default impl` is not yet implemented, this is always true in impls
-            has_value: true,
         }
+
+        // [1] since `default impl` is not yet implemented, this is always true in impls
     }
 
     fn lower_mod(&mut self, m: &Mod) -> hir::Mod {
@@ -1650,10 +1652,13 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_defaultness(&mut self, d: Defaultness) -> hir::Defaultness {
+    fn lower_defaultness(&mut self, d: Defaultness, has_value: bool) -> hir::Defaultness {
         match d {
-            Defaultness::Default => hir::Defaultness::Default,
-            Defaultness::Final => hir::Defaultness::Final,
+            Defaultness::Default => hir::Defaultness::Default { has_value: has_value },
+            Defaultness::Final => {
+                assert!(has_value);
+                hir::Defaultness::Final
+            }
         }
     }
 

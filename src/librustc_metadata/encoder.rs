@@ -460,10 +460,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let ast_item = tcx.map.expect_trait_item(node_id);
         let trait_item = tcx.associated_item(def_id);
 
-        let container = if trait_item.has_value {
-            AssociatedContainer::TraitWithDefault
-        } else {
-            AssociatedContainer::TraitRequired
+        let container = match trait_item.defaultness {
+            hir::Defaultness::Default { has_value: true } =>
+                AssociatedContainer::TraitWithDefault,
+            hir::Defaultness::Default { has_value: false } =>
+                AssociatedContainer::TraitRequired,
+            hir::Defaultness::Final =>
+                span_bug!(ast_item.span, "traits cannot have final items"),
         };
 
         let kind = match trait_item.kind {
@@ -501,7 +504,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     Some(self.encode_item_type(def_id))
                 }
                 ty::AssociatedKind::Type => {
-                    if trait_item.has_value {
+                    if trait_item.defaultness.has_value() {
                         Some(self.encode_item_type(def_id))
                     } else {
                         None
@@ -530,8 +533,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let impl_def_id = impl_item.container.id();
 
         let container = match impl_item.defaultness {
-            hir::Defaultness::Default => AssociatedContainer::ImplDefault,
+            hir::Defaultness::Default { has_value: true } => AssociatedContainer::ImplDefault,
             hir::Defaultness::Final => AssociatedContainer::ImplFinal,
+            hir::Defaultness::Default { has_value: false } =>
+                span_bug!(ast_item.span, "impl items always have values (currently)"),
         };
 
         let kind = match impl_item.kind {
