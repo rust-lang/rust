@@ -112,7 +112,78 @@ pub struct Session {
     /// Some measurements that are being gathered during compilation.
     pub perf_stats: PerfStats,
 
+    /// Data about code being compiled, gathered during compilation.
+    pub code_stats: RefCell<CodeStats>,
+
     next_node_id: Cell<ast::NodeId>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum VariantSize {
+    Exact(u64),
+    Min(u64),
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct TypeSizeInfo {
+    pub type_description: String,
+    pub overall_size: u64,
+    pub variant_sizes: Option<Vec<VariantSize>>,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct CodeStats {
+    pub type_sizes: Vec<TypeSizeInfo>,
+}
+
+impl CodeStats {
+    fn new() -> Self {
+        CodeStats { type_sizes: Vec::new() }
+    }
+
+    pub fn record_type_size<S: ToString>(&mut self,
+                                         type_desc: S,
+                                         overall_size: u64,
+                                         variant_sizes: Vec<VariantSize>) {
+        let sizes = if variant_sizes.len() == 0 { None } else { Some(variant_sizes) };
+        let info = TypeSizeInfo {
+            type_description: type_desc.to_string(),
+            overall_size: overall_size,
+            variant_sizes: sizes,
+        };
+        if !self.type_sizes.contains(&info) {
+            self.type_sizes.push(info);
+        }
+    }
+
+    pub fn sort_by_type_description(&mut self) {
+        self.type_sizes.sort_by(|info1, info2| {
+            info1.type_description.cmp(&info2.type_description)
+        });
+    }
+
+    pub fn sort_by_overall_size(&mut self) {
+        self.type_sizes.sort_by(|info1, info2| {
+            // (reversing cmp order to get large-to-small ordering)
+            info2.overall_size.cmp(&info1.overall_size)
+        });
+    }
+
+    pub fn print_type_sizes(&self) {
+        for info in &self.type_sizes {
+            println!("print-type-size t: `{}` overall bytes: {}",
+                     info.type_description, info.overall_size);
+            if let Some(ref variant_sizes) = info.variant_sizes {
+                for (i, variant_size) in variant_sizes.iter().enumerate() {
+                    let (kind, s) = match *variant_size {
+                        VariantSize::Exact(s) => { ("exact", s) }
+                        VariantSize::Min(s) =>   { ("  min", s) }
+                    };
+                    println!("print-type-size    variant[{}] {} bytes: {}", i, kind, s);
+                }
+            }
+        }
+    }
 }
 
 pub struct PerfStats {
@@ -624,7 +695,8 @@ pub fn build_session_(sopts: config::Options,
             incr_comp_hashes_count: Cell::new(0),
             incr_comp_bytes_hashed: Cell::new(0),
             symbol_hash_time: Cell::new(Duration::from_secs(0)),
-        }
+        },
+        code_stats: RefCell::new(CodeStats::new()),
     };
 
     init_llvm(&sess);
