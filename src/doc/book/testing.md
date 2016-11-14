@@ -590,11 +590,10 @@ please see the [Documentation chapter](documentation.html).
 # Testing and concurrency
 
 One thing that is important to note when writing tests are run concurrently
-using threads (by default the number of threads is equal to the number of CPUs
-on the machine). For this reason you should take care that your tests are
-written in such a way as to not depend on each-other, or on any shared
-state. "Shared state" can also include the environment, such as the current
-working directory, or environment variables.
+using threads. For this reason you should take care that your tests are written
+in such a way as to not depend on each-other, or on any shared state. "Shared
+state" can also include the environment, such as the current working directory,
+or environment variables.
 
 If this is an issue it is possible to control this concurrency, either by
 setting the environment variable `RUST_TEST_THREADS`, or by passing the argument
@@ -623,7 +622,7 @@ $ cargo test -- --nocapture          # Same as above
 
 However a better method avoiding capture is to use logging rather than raw
 output. Rust has a [standard logging API][log], which provides a frontend to
-multiple loggin implementations. This can be used in conjunction with the
+multiple logging implementations. This can be used in conjunction with the
 default [env_logger] to output any debugging information in a manner that can be
 controlled at runtime.
 
