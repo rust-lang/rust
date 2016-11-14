@@ -257,8 +257,6 @@ pub struct Cache {
     parent_stack: Vec<DefId>,
     parent_is_trait_impl: bool,
     search_index: Vec<IndexItem>,
-    seen_modules: FxHashSet<DefId>,
-    seen_mod: bool,
     stripped_mod: bool,
     deref_trait_did: Option<DefId>,
     deref_mut_trait_did: Option<DefId>,
@@ -520,8 +518,6 @@ pub fn run(mut krate: clean::Crate,
         parent_is_trait_impl: false,
         extern_locations: FxHashMap(),
         primitive_locations: FxHashMap(),
-        seen_modules: FxHashSet(),
-        seen_mod: false,
         stripped_mod: false,
         access_levels: krate.access_levels.clone(),
         orphan_impl_items: Vec::new(),
@@ -977,37 +973,26 @@ impl DocFolder for Cache {
             _ => self.stripped_mod,
         };
 
-        // Inlining can cause us to visit the same item multiple times.
-        // (i.e. relevant for gathering impls and implementors)
-        let orig_seen_mod = if item.is_mod() {
-            let seen_this = self.seen_mod || !self.seen_modules.insert(item.def_id);
-            mem::replace(&mut self.seen_mod, seen_this)
-        } else {
-            self.seen_mod
-        };
-
         // Register any generics to their corresponding string. This is used
         // when pretty-printing types
         if let Some(generics) = item.inner.generics() {
             self.generics(generics);
         }
 
-        if !self.seen_mod {
-            // Propagate a trait methods' documentation to all implementors of the
-            // trait
-            if let clean::TraitItem(ref t) = item.inner {
-                self.traits.insert(item.def_id, t.clone());
-            }
+        // Propagate a trait methods' documentation to all implementors of the
+        // trait
+        if let clean::TraitItem(ref t) = item.inner {
+            self.traits.entry(item.def_id).or_insert_with(|| t.clone());
+        }
 
-            // Collect all the implementors of traits.
-            if let clean::ImplItem(ref i) = item.inner {
-                if let Some(did) = i.trait_.def_id() {
-                    self.implementors.entry(did).or_insert(vec![]).push(Implementor {
-                        def_id: item.def_id,
-                        stability: item.stability.clone(),
-                        impl_: i.clone(),
-                    });
-                }
+        // Collect all the implementors of traits.
+        if let clean::ImplItem(ref i) = item.inner {
+            if let Some(did) = i.trait_.def_id() {
+                self.implementors.entry(did).or_insert(vec![]).push(Implementor {
+                    def_id: item.def_id,
+                    stability: item.stability.clone(),
+                    impl_: i.clone(),
+                });
             }
         }
 
@@ -1186,12 +1171,10 @@ impl DocFolder for Cache {
                 } else {
                     unreachable!()
                 };
-                if !self.seen_mod {
-                    if let Some(did) = did {
-                        self.impls.entry(did).or_insert(vec![]).push(Impl {
-                            impl_item: item,
-                        });
-                    }
+                if let Some(did) = did {
+                    self.impls.entry(did).or_insert(vec![]).push(Impl {
+                        impl_item: item,
+                    });
                 }
                 None
             } else {
@@ -1201,7 +1184,6 @@ impl DocFolder for Cache {
 
         if pushed { self.stack.pop().unwrap(); }
         if parent_pushed { self.parent_stack.pop().unwrap(); }
-        self.seen_mod = orig_seen_mod;
         self.stripped_mod = orig_stripped_mod;
         self.parent_is_trait_impl = orig_parent_is_trait_impl;
         ret
