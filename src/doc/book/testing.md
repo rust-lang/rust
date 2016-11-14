@@ -593,7 +593,7 @@ One thing that is important to note when writing tests are run concurrently
 using threads (by default the number of threads is equal to the number of CPUs
 on the machine). For this reason you should take care that your tests are
 written in such a way as to not depend on each-other, or on any shared
-state. "Share state" can also include the environment, such as the current
+state. "Shared state" can also include the environment, such as the current
 working directory, or environment variables.
 
 If this is an issue it is possible to control this concurrency, either by
