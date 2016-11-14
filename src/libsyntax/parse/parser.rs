@@ -4409,7 +4409,7 @@ impl<'a> Parser<'a> {
                     let bounded_lifetime =
                         self.parse_lifetime()?;
 
-                    self.eat(&token::Colon);
+                    self.expect(&token::Colon)?;
 
                     let bounds =
                         self.parse_lifetimes(token::BinOp(token::Plus))?;
