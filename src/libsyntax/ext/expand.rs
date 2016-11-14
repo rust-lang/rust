@@ -353,12 +353,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         match *ext {
             MultiModifier(ref mac) => {
-                let item = mac.expand(self.cx, attr.span, &attr.node.value, item);
+                let item = mac.expand(self.cx, attr.span, &attr.value, item);
                 kind.expect_from_annotatables(item)
             }
             MultiDecorator(ref mac) => {
                 let mut items = Vec::new();
-                mac.expand(self.cx, attr.span, &attr.node.value, &item,
+                mac.expand(self.cx, attr.span, &attr.value, &item,
                            &mut |item| items.push(item));
                 items.push(item);
                 kind.expect_from_annotatables(items)

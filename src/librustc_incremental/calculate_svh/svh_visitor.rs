@@ -914,7 +914,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         let indices = self.indices_sorted_by(attributes, |attr| attr.name());
 
         for i in indices {
-            let attr = &attributes[i].node;
+            let attr = &attributes[i];
             if !attr.is_sugared_doc &&
                !IGNORED_ATTRIBUTES.contains(&&*attr.value.name()) {
                 SawAttribute(attr.style).hash(self.st);

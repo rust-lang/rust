@@ -223,13 +223,13 @@ pub mod rt {
             let mut r = vec![];
             // FIXME: The spans could be better
             r.push(TokenTree::Token(self.span, token::Pound));
-            if self.node.style == ast::AttrStyle::Inner {
+            if self.style == ast::AttrStyle::Inner {
                 r.push(TokenTree::Token(self.span, token::Not));
             }
             r.push(TokenTree::Delimited(self.span, Rc::new(tokenstream::Delimited {
                 delim: token::Bracket,
                 open_span: self.span,
-                tts: self.node.value.to_tokens(cx),
+                tts: self.value.to_tokens(cx),
                 close_span: self.span,
             })));
             r

@@ -734,7 +734,7 @@ fn docs_for_attrs(attrs: &[Attribute]) -> String {
     for attr in attrs {
         if attr.name() == doc {
             if let Some(ref val) = attr.value_str() {
-                if attr.node.is_sugared_doc {
+                if attr.is_sugared_doc {
                     result.push_str(&strip_doc_comment_decoration(val));
                 } else {
                     result.push_str(val);

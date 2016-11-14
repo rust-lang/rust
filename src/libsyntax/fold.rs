@@ -486,16 +486,13 @@ pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
     })
 }
 
-pub fn noop_fold_attribute<T: Folder>(at: Attribute, fld: &mut T) -> Option<Attribute> {
-    let Spanned {node: Attribute_ {id, style, value, is_sugared_doc}, span} = at;
-    Some(Spanned {
-        node: Attribute_ {
-            id: id,
-            style: style,
-            value: fld.fold_meta_item(value),
-            is_sugared_doc: is_sugared_doc
-        },
-        span: fld.new_span(span)
+pub fn noop_fold_attribute<T: Folder>(attr: Attribute, fld: &mut T) -> Option<Attribute> {
+    Some(Attribute {
+        id: attr.id,
+        style: attr.style,
+        value: fld.fold_meta_item(attr.value),
+        is_sugared_doc: attr.is_sugared_doc,
+        span: fld.new_span(attr.span),
     })
 }
 

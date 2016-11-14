@@ -1013,7 +1013,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
             self.context.check_attribute(attr, false);
         }
 
-        if contains_novel_literal(&*(attr.node.value)) {
+        if contains_novel_literal(&*(attr.value)) {
             gate_feature_post!(&self, attr_literals, attr.span,
                                "non-string literals in attributes, or string \
                                literals in top-level positions, are experimental");

@@ -1755,8 +1755,6 @@ impl ViewPath_ {
     }
 }
 
-/// Meta-data associated with an item
-pub type Attribute = Spanned<Attribute_>;
 
 /// Distinguishes between Attributes that decorate items and Attributes that
 /// are contained as statements within items. These two cases need to be
@@ -1770,13 +1768,15 @@ pub enum AttrStyle {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub struct AttrId(pub usize);
 
+/// Meta-data associated with an item
 /// Doc-comments are promoted to attributes that have is_sugared_doc = true
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct Attribute_ {
+pub struct Attribute {
     pub id: AttrId,
     pub style: AttrStyle,
     pub value: P<MetaItem>,
     pub is_sugared_doc: bool,
+    pub span: Span,
 }
 
 /// TraitRef's appear in impls.

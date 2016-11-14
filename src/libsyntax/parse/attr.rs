@@ -11,7 +11,7 @@
 use attr;
 use ast;
 use syntax_pos::{mk_sp, Span};
-use codemap::{spanned, Spanned};
+use codemap::spanned;
 use parse::common::SeqSep;
 use parse::PResult;
 use parse::token;
@@ -55,7 +55,7 @@ impl<'a> Parser<'a> {
                         self.span.lo,
                         self.span.hi
                     );
-                    if attr.node.style != ast::AttrStyle::Outer {
+                    if attr.style != ast::AttrStyle::Outer {
                         let mut err = self.fatal("expected outer doc comment");
                         err.note("inner doc comments like this (starting with \
                                   `//!` or `/*!`) can only appear before items");
@@ -145,14 +145,12 @@ impl<'a> Parser<'a> {
             style = ast::AttrStyle::Inner;
         }
 
-        Ok(Spanned {
+        Ok(ast::Attribute {
+            id: attr::mk_attr_id(),
+            style: style,
+            value: value,
+            is_sugared_doc: false,
             span: span,
-            node: ast::Attribute_ {
-                id: attr::mk_attr_id(),
-                style: style,
-                value: value,
-                is_sugared_doc: false,
-            },
         })
     }
 
@@ -172,7 +170,7 @@ impl<'a> Parser<'a> {
                     }
 
                     let attr = self.parse_attribute(true)?;
-                    assert!(attr.node.style == ast::AttrStyle::Inner);
+                    assert!(attr.style == ast::AttrStyle::Inner);
                     attrs.push(attr);
                 }
                 token::DocComment(s) => {
@@ -180,7 +178,7 @@ impl<'a> Parser<'a> {
                     let Span { lo, hi, .. } = self.span;
                     let str = self.id_to_interned_str(ast::Ident::with_empty_ctxt(s));
                     let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), str, lo, hi);
-                    if attr.node.style == ast::AttrStyle::Inner {
+                    if attr.style == ast::AttrStyle::Inner {
                         attrs.push(attr);
                         self.bump();
                     } else {

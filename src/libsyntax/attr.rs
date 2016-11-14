@@ -15,10 +15,10 @@ pub use self::ReprAttr::*;
 pub use self::IntType::*;
 
 use ast;
-use ast::{AttrId, Attribute, Attribute_};
+use ast::{AttrId, Attribute};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, Expr, Item, Local, Stmt, StmtKind};
-use codemap::{respan, spanned, dummy_spanned};
+use codemap::{respan, spanned, dummy_spanned, mk_sp};
 use syntax_pos::{Span, BytePos, DUMMY_SP};
 use errors::Handler;
 use feature_gate::{Features, GatedCfg};
@@ -61,7 +61,7 @@ fn handle_errors(diag: &Handler, span: Span, error: AttrError) {
 
 pub fn mark_used(attr: &Attribute) {
     debug!("Marking {:?} as used.", attr);
-    let AttrId(id) = attr.node.id;
+    let AttrId(id) = attr.id;
     USED_ATTRS.with(|slot| {
         let idx = (id / 64) as usize;
         let shift = id % 64;
@@ -73,7 +73,7 @@ pub fn mark_used(attr: &Attribute) {
 }
 
 pub fn is_used(attr: &Attribute) -> bool {
-    let AttrId(id) = attr.node.id;
+    let AttrId(id) = attr.id;
     USED_ATTRS.with(|slot| {
         let idx = (id / 64) as usize;
         let shift = id % 64;
@@ -84,7 +84,7 @@ pub fn is_used(attr: &Attribute) -> bool {
 
 pub fn mark_known(attr: &Attribute) {
     debug!("Marking {:?} as known.", attr);
-    let AttrId(id) = attr.node.id;
+    let AttrId(id) = attr.id;
     KNOWN_ATTRS.with(|slot| {
         let idx = (id / 64) as usize;
         let shift = id % 64;
@@ -96,7 +96,7 @@ pub fn mark_known(attr: &Attribute) {
 }
 
 pub fn is_known(attr: &Attribute) -> bool {
-    let AttrId(id) = attr.node.id;
+    let AttrId(id) = attr.id;
     KNOWN_ATTRS.with(|slot| {
         let idx = (id / 64) as usize;
         let shift = id % 64;
@@ -270,7 +270,7 @@ impl MetaItem {
 impl Attribute {
     /// Extract the MetaItem from inside this Attribute.
     pub fn meta(&self) -> &MetaItem {
-        &self.node.value
+        &self.value
     }
 
     /// Convert self to a normal #[doc="foo"] comment, if it is a
@@ -279,16 +279,16 @@ impl Attribute {
     pub fn with_desugared_doc<T, F>(&self, f: F) -> T where
         F: FnOnce(&Attribute) -> T,
     {
-        if self.node.is_sugared_doc {
+        if self.is_sugared_doc {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
                 InternedString::new("doc"),
                 token::intern_and_get_ident(&strip_doc_comment_decoration(
                         &comment)));
-            if self.node.style == ast::AttrStyle::Outer {
-                f(&mk_attr_outer(self.node.id, meta))
+            if self.style == ast::AttrStyle::Outer {
+                f(&mk_attr_outer(self.id, meta))
             } else {
-                f(&mk_attr_inner(self.node.id, meta))
+                f(&mk_attr_inner(self.id, meta))
             }
         } else {
             f(self)
@@ -355,13 +355,13 @@ pub fn mk_attr_inner(id: AttrId, item: P<MetaItem>) -> Attribute {
 
 /// Returns an innter attribute with the given value and span.
 pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: P<MetaItem>) -> Attribute {
-    respan(sp,
-           Attribute_ {
-            id: id,
-            style: ast::AttrStyle::Inner,
-            value: item,
-            is_sugared_doc: false,
-          })
+    Attribute {
+        id: id,
+        style: ast::AttrStyle::Inner,
+        value: item,
+        is_sugared_doc: false,
+        span: sp,
+    }
 }
 
 
@@ -372,36 +372,36 @@ pub fn mk_attr_outer(id: AttrId, item: P<MetaItem>) -> Attribute {
 
 /// Returns an outer attribute with the given value and span.
 pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: P<MetaItem>) -> Attribute {
-    respan(sp,
-           Attribute_ {
-            id: id,
-            style: ast::AttrStyle::Outer,
-            value: item,
-            is_sugared_doc: false,
-          })
+    Attribute {
+        id: id,
+        style: ast::AttrStyle::Outer,
+        value: item,
+        is_sugared_doc: false,
+        span: sp,
+    }
 }
 
 pub fn mk_doc_attr_outer(id: AttrId, item: P<MetaItem>, is_sugared_doc: bool) -> Attribute {
-    dummy_spanned(Attribute_ {
+    Attribute {
         id: id,
         style: ast::AttrStyle::Outer,
         value: item,
         is_sugared_doc: is_sugared_doc,
-    })
+        span: DUMMY_SP,
+    }
 }
 
-pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos,
-                           hi: BytePos)
+pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos, hi: BytePos)
                            -> Attribute {
     let style = doc_comment_style(&text);
     let lit = spanned(lo, hi, ast::LitKind::Str(text, ast::StrStyle::Cooked));
-    let attr = Attribute_ {
+    Attribute {
         id: id,
         style: style,
         value: P(spanned(lo, hi, MetaItemKind::NameValue(InternedString::new("doc"), lit))),
-        is_sugared_doc: true
-    };
-    spanned(lo, hi, attr)
+        is_sugared_doc: true,
+        span: mk_sp(lo, hi),
+    }
 }
 
 /* Searching */
@@ -489,7 +489,7 @@ pub enum InlineAttr {
 /// Determine what `#[inline]` attribute is present in `attrs`, if any.
 pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> InlineAttr {
     attrs.iter().fold(InlineAttr::None, |ia,attr| {
-        match attr.node.value.node {
+        match attr.value.node {
             MetaItemKind::Word(ref n) if n == "inline" => {
                 mark_used(attr);
                 InlineAttr::Hint
@@ -896,7 +896,7 @@ pub fn require_unique_names(diagnostic: &Handler, metas: &[P<MetaItem>]) {
 /// structure layout, and `packed` to remove padding.
 pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> {
     let mut acc = Vec::new();
-    match attr.node.value.node {
+    match attr.value.node {
         ast::MetaItemKind::List(ref s, ref items) if s == "repr" => {
             mark_used(attr);
             for item in items {

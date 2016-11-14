@@ -68,15 +68,13 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
     let span = ignored_span(sess, DUMMY_SP);
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![ast::Attribute {
-            node: ast::Attribute_ {
-                style: ast::AttrStyle::Outer,
-                value: P(ast::MetaItem {
-                    node: ast::MetaItemKind::Word(token::intern_and_get_ident("prelude_import")),
-                    span: span,
-                }),
-                id: attr::mk_attr_id(),
-                is_sugared_doc: false,
-            },
+            style: ast::AttrStyle::Outer,
+            value: P(ast::MetaItem {
+                node: ast::MetaItemKind::Word(token::intern_and_get_ident("prelude_import")),
+                span: span,
+            }),
+            id: attr::mk_attr_id(),
+            is_sugared_doc: false,
             span: span,
         }],
         vis: ast::Visibility::Inherited,

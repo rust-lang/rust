@@ -135,7 +135,7 @@ pub fn expand_derive(cx: &mut ExtCtxt,
 
     let mut traits = get_traits(mitem, cx);
     for derive_attr in derive_attrs {
-        traits.extend(get_traits(&derive_attr.node.value, cx));
+        traits.extend(get_traits(&derive_attr.value, cx));
     }
 
     // First, weed out malformed #[derive]

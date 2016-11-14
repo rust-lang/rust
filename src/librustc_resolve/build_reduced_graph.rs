@@ -607,7 +607,7 @@ impl<'b> Resolver<'b> {
             if attr.check_name("macro_escape") {
                 let msg = "macro_escape is a deprecated synonym for macro_use";
                 let mut err = self.session.struct_span_warn(attr.span, msg);
-                if let ast::AttrStyle::Inner = attr.node.style {
+                if let ast::AttrStyle::Inner = attr.style {
                     err.help("consider an outer attribute, #[macro_use] mod ...").emit();
                 } else {
                     err.emit();
