@@ -2890,7 +2890,8 @@ pub struct Stability {
     pub feature: String,
     pub since: String,
     pub deprecated_since: String,
-    pub reason: String,
+    pub deprecated_reason: String,
+    pub unstable_reason: String,
     pub issue: Option<u32>
 }
 
@@ -2913,12 +2914,13 @@ impl Clean<Stability> for attr::Stability {
                 Some(attr::RustcDeprecation {ref since, ..}) => since.to_string(),
                 _=> "".to_string(),
             },
-            reason: {
-                match (&self.rustc_depr, &self.level) {
-                    (&Some(ref depr), _) => depr.reason.to_string(),
-                    (&None, &attr::Unstable {reason: Some(ref reason), ..}) => reason.to_string(),
-                    _ => "".to_string(),
-                }
+            deprecated_reason: match self.rustc_depr {
+                Some(ref depr) => depr.reason.to_string(),
+                _ => "".to_string(),
+            },
+            unstable_reason: match self.level {
+                attr::Unstable { reason: Some(ref reason), .. } => reason.to_string(),
+                _ => "".to_string(),
             },
             issue: match self.level {
                 attr::Unstable {issue, ..} => Some(issue),
