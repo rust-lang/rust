@@ -995,7 +995,7 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
         NameValue(ref lit) => !lit.node.is_str(),
         List(ref list) => list.iter().any(|li| {
             match li.node {
-                MetaItem(ref mi) => contains_novel_literal(&**mi),
+                MetaItem(ref mi) => contains_novel_literal(&mi),
                 Literal(_) => true,
             }
         }),
@@ -1013,7 +1013,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
             self.context.check_attribute(attr, false);
         }
 
-        if contains_novel_literal(&*(attr.value)) {
+        if contains_novel_literal(&attr.value) {
             gate_feature_post!(&self, attr_literals, attr.span,
                                "non-string literals in attributes, or string \
                                literals in top-level positions, are experimental");
