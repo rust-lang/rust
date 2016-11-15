@@ -1406,7 +1406,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if self.type_is_sized(ty) {
                     PrimVal::from_ptr(p)
                 } else {
-                    // FIXME: extract the offset to the tail field for `Box<(i64, i32, [u8])>`
+                    trace!("reading fat pointer extra of type {}", ty);
                     let extra = ptr.offset(self.memory.pointer_size() as isize);
                     let extra = match self.tcx.struct_tail(ty).sty {
                         ty::TyTrait(..) => PrimVal::from_ptr(self.memory.read_ptr(extra)?),
@@ -1513,7 +1513,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 //let dst = adt::MaybeSizedValue::sized(dst);
                 let src_ptr = match src {
                     Value::ByRef(ptr) => ptr,
-                    _ => panic!("expected pointer, got {:?}", src),
+                    _ => bug!("expected pointer, got {:?}", src),
                 };
 
                 let iter = src_fields.zip(dst_fields).enumerate();
