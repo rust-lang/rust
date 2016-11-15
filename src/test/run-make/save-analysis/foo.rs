@@ -57,6 +57,12 @@ fn test_alias<I: Iterator>(i: Option<<I as Iterator>::Item>) {
     let y = x.1;
 }
 
+// Issue #37700
+const LUT_BITS: usize = 3;
+pub struct HuffmanTable {
+    ac_lut: Option<[(i16, u8); 1 << LUT_BITS]>,
+}
+
 struct TupStruct(isize, isize, Box<str>);
 
 fn test_tup_struct(x: TupStruct) -> isize {
