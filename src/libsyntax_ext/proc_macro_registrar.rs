@@ -17,7 +17,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::parse::ParseSess;
-use syntax::parse::token::{self, InternedString};
+use syntax::parse::token;
 use syntax::feature_gate::Features;
 use syntax::fold::Folder;
 use syntax::ptr::P;
@@ -27,10 +27,10 @@ use syntax::visit::{self, Visitor};
 use deriving;
 
 struct CustomDerive {
-    trait_name: InternedString,
+    trait_name: ast::Name,
     function_name: Ident,
     span: Span,
-    attrs: Vec<InternedString>,
+    attrs: Vec<ast::Name>,
 }
 
 struct CollectCustomDerives<'a> {
@@ -183,7 +183,7 @@ impl<'a> Visitor for CollectCustomDerives<'a> {
             self.handler.span_err(trait_attr.span(), "must only be one word");
         }
 
-        if deriving::is_builtin_trait(&trait_name) {
+        if deriving::is_builtin_trait(trait_name) {
             self.handler.span_err(trait_attr.span(),
                                   "cannot override a built-in #[derive] mode");
         }
@@ -290,10 +290,10 @@ fn mk_registrar(cx: &mut ExtCtxt,
     let register_custom_derive = token::str_to_ident("register_custom_derive");
     let stmts = custom_derives.iter().map(|cd| {
         let path = cx.path_global(cd.span, vec![cd.function_name]);
-        let trait_name = cx.expr_str(cd.span, cd.trait_name.clone());
+        let trait_name = cx.expr_str(cd.span, cd.trait_name.as_str());
         let attrs = cx.expr_vec_slice(
             span,
-            cd.attrs.iter().map(|s| cx.expr_str(cd.span, s.clone())).collect::<Vec<_>>()
+            cd.attrs.iter().map(|s| cx.expr_str(cd.span, s.as_str())).collect::<Vec<_>>()
         );
         (path, trait_name, attrs)
     }).map(|(path, trait_name, attrs)| {
@@ -316,8 +316,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
                           cx.ty(span, ast::TyKind::Tup(Vec::new())),
                           cx.block(span, stmts));
 
-    let derive_registrar = token::intern_and_get_ident("rustc_derive_registrar");
-    let derive_registrar = cx.meta_word(span, derive_registrar);
+    let derive_registrar = cx.meta_word(span, token::intern("rustc_derive_registrar"));
     let derive_registrar = cx.attribute(span, derive_registrar);
     let func = func.map(|mut i| {
         i.attrs.push(derive_registrar);

@@ -26,7 +26,7 @@ use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;
-use syntax::parse;
+use syntax::parse::{self, token};
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
 
@@ -947,41 +947,40 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
 
     let mk = attr::mk_name_value_item_str;
     let mut ret = vec![ // Target bindings.
-        mk(InternedString::new("target_os"), intern(os)),
-        mk(InternedString::new("target_family"), fam.clone()),
-        mk(InternedString::new("target_arch"), intern(arch)),
-        mk(InternedString::new("target_endian"), intern(end)),
-        mk(InternedString::new("target_pointer_width"), intern(wordsz)),
-        mk(InternedString::new("target_env"), intern(env)),
-        mk(InternedString::new("target_vendor"), intern(vendor)),
+        mk(token::intern("target_os"), intern(os)),
+        mk(token::intern("target_family"), fam.clone()),
+        mk(token::intern("target_arch"), intern(arch)),
+        mk(token::intern("target_endian"), intern(end)),
+        mk(token::intern("target_pointer_width"), intern(wordsz)),
+        mk(token::intern("target_env"), intern(env)),
+        mk(token::intern("target_vendor"), intern(vendor)),
     ];
     match &fam[..] {
-        "windows" | "unix" => ret.push(attr::mk_word_item(fam)),
+        "windows" | "unix" => ret.push(attr::mk_word_item(token::intern(&fam))),
         _ => (),
     }
     if sess.target.target.options.has_elf_tls {
-        ret.push(attr::mk_word_item(InternedString::new("target_thread_local")));
+        ret.push(attr::mk_word_item(token::intern("target_thread_local")));
     }
     for &i in &[8, 16, 32, 64, 128] {
         if i <= max_atomic_width {
             let s = i.to_string();
-            ret.push(mk(InternedString::new("target_has_atomic"), intern(&s)));
+            ret.push(mk(token::intern("target_has_atomic"), intern(&s)));
             if &s == wordsz {
-                ret.push(mk(InternedString::new("target_has_atomic"), intern("ptr")));
+                ret.push(mk(token::intern("target_has_atomic"), intern("ptr")));
             }
         }
     }
     if sess.opts.debug_assertions {
-        ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));
+        ret.push(attr::mk_word_item(token::intern("debug_assertions")));
     }
     if sess.opts.crate_types.contains(&CrateTypeProcMacro) {
-        ret.push(attr::mk_word_item(InternedString::new("proc_macro")));
+        ret.push(attr::mk_word_item(token::intern("proc_macro")));
     }
     return ret;
 }
 
-pub fn append_configuration(cfg: &mut ast::CrateConfig,
-                            name: InternedString) {
+pub fn append_configuration(cfg: &mut ast::CrateConfig, name: ast::Name) {
     if !cfg.iter().any(|mi| mi.name() == name) {
         cfg.push(attr::mk_word_item(name))
     }
@@ -995,7 +994,7 @@ pub fn build_configuration(sess: &Session,
     let default_cfg = default_configuration(sess);
     // If the user wants a test runner, then add the test cfg
     if sess.opts.test {
-        append_configuration(&mut user_cfg, InternedString::new("test"))
+        append_configuration(&mut user_cfg, token::intern("test"))
     }
     let mut v = user_cfg.into_iter().collect::<Vec<_>>();
     v.extend_from_slice(&default_cfg[..]);

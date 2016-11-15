@@ -191,8 +191,8 @@ impl fold::Folder for EntryPointCleaner {
             EntryPointType::MainAttr |
             EntryPointType::Start =>
                 folded.map(|ast::Item {id, ident, attrs, node, vis, span}| {
-                    let allow_str = InternedString::new("allow");
-                    let dead_code_str = InternedString::new("dead_code");
+                    let allow_str = token::intern("allow");
+                    let dead_code_str = token::intern("dead_code");
                     let word_vec = vec![attr::mk_list_word_item(dead_code_str)];
                     let allow_dead_code_item = attr::mk_list_item(allow_str, word_vec);
                     let allow_dead_code = attr::mk_attr_outer(attr::mk_attr_id(),
@@ -229,8 +229,8 @@ fn mk_reexport_mod(cx: &mut TestCtxt, parent: ast::NodeId, tests: Vec<ast::Ident
     // Generate imports with `#[allow(private_in_public)]` to work around issue #36768.
     let allow_private_in_public = cx.ext_cx.attribute(DUMMY_SP, cx.ext_cx.meta_list(
         DUMMY_SP,
-        InternedString::new("allow"),
-        vec![cx.ext_cx.meta_list_item_word(DUMMY_SP, InternedString::new("private_in_public"))],
+        token::intern("allow"),
+        vec![cx.ext_cx.meta_list_item_word(DUMMY_SP, token::intern("private_in_public"))],
     ));
     let items = tests.into_iter().map(|r| {
         cx.ext_cx.item_use_simple(DUMMY_SP, ast::Visibility::Public,
@@ -496,7 +496,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
                                        vec![tests_ident_expr]);
     let call_test_main = ecx.stmt_expr(call_test_main);
     // #![main]
-    let main_meta = ecx.meta_word(sp, token::intern_and_get_ident("main"));
+    let main_meta = ecx.meta_word(sp, token::intern("main"));
     let main_attr = ecx.attribute(sp, main_meta);
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(vec![]));

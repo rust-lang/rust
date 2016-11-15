@@ -277,18 +277,18 @@ pub trait AstBuilder {
 
     fn attribute(&self, sp: Span, mi: P<ast::MetaItem>) -> ast::Attribute;
 
-    fn meta_word(&self, sp: Span, w: InternedString) -> P<ast::MetaItem>;
+    fn meta_word(&self, sp: Span, w: ast::Name) -> P<ast::MetaItem>;
 
-    fn meta_list_item_word(&self, sp: Span, w: InternedString) -> ast::NestedMetaItem;
+    fn meta_list_item_word(&self, sp: Span, w: ast::Name) -> ast::NestedMetaItem;
 
     fn meta_list(&self,
                  sp: Span,
-                 name: InternedString,
+                 name: ast::Name,
                  mis: Vec<ast::NestedMetaItem> )
                  -> P<ast::MetaItem>;
     fn meta_name_value(&self,
                        sp: Span,
-                       name: InternedString,
+                       name: ast::Name,
                        value: ast::LitKind)
                        -> P<ast::MetaItem>;
 
@@ -1150,20 +1150,20 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         attr::mk_spanned_attr_outer(sp, attr::mk_attr_id(), mi)
     }
 
-    fn meta_word(&self, sp: Span, w: InternedString) -> P<ast::MetaItem> {
+    fn meta_word(&self, sp: Span, w: ast::Name) -> P<ast::MetaItem> {
         attr::mk_spanned_word_item(sp, w)
     }
 
-    fn meta_list_item_word(&self, sp: Span, w: InternedString) -> ast::NestedMetaItem {
+    fn meta_list_item_word(&self, sp: Span, w: ast::Name) -> ast::NestedMetaItem {
         respan(sp, ast::NestedMetaItemKind::MetaItem(attr::mk_spanned_word_item(sp, w)))
     }
 
-    fn meta_list(&self, sp: Span, name: InternedString, mis: Vec<ast::NestedMetaItem>)
+    fn meta_list(&self, sp: Span, name: ast::Name, mis: Vec<ast::NestedMetaItem>)
                  -> P<ast::MetaItem> {
         attr::mk_spanned_list_item(sp, name, mis)
     }
 
-    fn meta_name_value(&self, sp: Span, name: InternedString, value: ast::LitKind)
+    fn meta_name_value(&self, sp: Span, name: ast::Name, value: ast::LitKind)
                        -> P<ast::MetaItem> {
         attr::mk_spanned_name_value_item(sp, name, respan(sp, value))
     }

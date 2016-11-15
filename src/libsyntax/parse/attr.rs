@@ -227,22 +227,21 @@ impl<'a> Parser<'a> {
 
         let lo = self.span.lo;
         let ident = self.parse_ident()?;
-        let name = self.id_to_interned_str(ident);
         match self.token {
             token::Eq => {
                 self.bump();
                 let lit = self.parse_unsuffixed_lit()?;
                 let hi = self.prev_span.hi;
-                Ok(P(spanned(lo, hi, ast::MetaItemKind::NameValue(name, lit))))
+                Ok(P(spanned(lo, hi, ast::MetaItemKind::NameValue(ident.name, lit))))
             }
             token::OpenDelim(token::Paren) => {
                 let inner_items = self.parse_meta_seq()?;
                 let hi = self.prev_span.hi;
-                Ok(P(spanned(lo, hi, ast::MetaItemKind::List(name, inner_items))))
+                Ok(P(spanned(lo, hi, ast::MetaItemKind::List(ident.name, inner_items))))
             }
             _ => {
                 let hi = self.prev_span.hi;
-                Ok(P(spanned(lo, hi, ast::MetaItemKind::Word(name))))
+                Ok(P(spanned(lo, hi, ast::MetaItemKind::Word(ident.name))))
             }
         }
     }

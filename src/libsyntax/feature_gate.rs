@@ -757,7 +757,7 @@ pub struct GatedCfg {
 
 impl GatedCfg {
     pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        let name = cfg.name();
+        let name = &*cfg.name().as_str();
         GATED_CFGS.iter()
                   .position(|info| info.0 == name)
                   .map(|idx| {
@@ -804,7 +804,7 @@ macro_rules! gate_feature {
 impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
-        let name = &*attr.name();
+        let name = &*attr.name().as_str();
         for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
             if n == name {
                 if let &Gated(_, ref name, ref desc, ref has_feature) = gateage {
@@ -1351,7 +1351,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
             Some(list) => {
                 for mi in list {
                     let name = if let Some(word) = mi.word() {
-                        word.name()
+                        word.name().as_str()
                     } else {
                         span_err!(span_handler, mi.span, E0556,
                                   "malformed feature, expected just one word");

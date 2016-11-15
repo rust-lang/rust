@@ -54,7 +54,7 @@ use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
-use syntax::parse::token::{self, keywords, InternedString};
+use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{ty_to_string, arg_to_string};
 use syntax::codemap::MacroAttribute;
@@ -728,7 +728,7 @@ impl Visitor for PathCollector {
 }
 
 fn docs_for_attrs(attrs: &[Attribute]) -> String {
-    let doc = InternedString::new("doc");
+    let doc = token::intern("doc");
     let mut result = String::new();
 
     for attr in attrs {

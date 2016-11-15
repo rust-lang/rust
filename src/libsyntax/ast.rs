@@ -75,6 +75,12 @@ impl Decodable for Name {
     }
 }
 
+impl<'a> ::std::cmp::PartialEq<&'a str> for Name {
+    fn eq(&self, other: &&str) -> bool {
+        *self.as_str() == **other
+    }
+}
+
 impl Ident {
     pub const fn with_empty_ctxt(name: Name) -> Ident {
         Ident { name: name, ctxt: SyntaxContext::empty() }
@@ -518,15 +524,15 @@ pub enum MetaItemKind {
     /// Word meta item.
     ///
     /// E.g. `test` as in `#[test]`
-    Word(InternedString),
+    Word(Name),
     /// List meta item.
     ///
     /// E.g. `derive(..)` as in `#[derive(..)]`
-    List(InternedString, Vec<NestedMetaItem>),
+    List(Name, Vec<NestedMetaItem>),
     /// Name value meta item.
     ///
     /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
-    NameValue(InternedString, Lit),
+    NameValue(Name, Lit),
 }
 
 // can't be derived because the MetaItemKind::List requires an unordered comparison
