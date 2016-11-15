@@ -23,9 +23,7 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
 
     libc::pipe2(&mut fds, libc::O_CLOEXEC).map_err(|err| io::Error::from_raw_os_error(err.errno))?;
 
-    let fd0 = FileDesc::new(fds[0]);
-    let fd1 = FileDesc::new(fds[1]);
-    Ok((AnonPipe::from_fd(fd0)?, AnonPipe::from_fd(fd1)?))
+    Ok((AnonPipe(FileDesc::new(fds[0])), AnonPipe(FileDesc::new(fds[1]))))
 }
 
 impl AnonPipe {
@@ -50,12 +48,18 @@ impl AnonPipe {
     pub fn into_fd(self) -> FileDesc { self.0 }
 }
 
-pub fn read2(_p1: AnonPipe,
-             _v1: &mut Vec<u8>,
-             _p2: AnonPipe,
-             _v2: &mut Vec<u8>) -> io::Result<()> {
-    ::sys_common::util::dumb_print(format_args!("read2\n"));
-    unimplemented!();
+pub fn read2(p1: AnonPipe,
+             v1: &mut Vec<u8>,
+             p2: AnonPipe,
+             v2: &mut Vec<u8>) -> io::Result<()> {
+    //TODO: Use event based I/O multiplexing
+    //unimplemented!()
+
+    p1.read_to_end(v1)?;
+    p2.read_to_end(v2)?;
+
+    Ok(())
+
     /*
     // Set both pipes into nonblocking mode as we're gonna be reading from both
     // in the `select` loop below, and we wouldn't want one to block the other!
@@ -64,7 +68,6 @@ pub fn read2(_p1: AnonPipe,
     p1.set_nonblocking(true)?;
     p2.set_nonblocking(true)?;
 
-    let max = cmp::max(p1.raw(), p2.raw());
     loop {
         // wait for either pipe to become readable using `select`
         cvt_r(|| unsafe {
