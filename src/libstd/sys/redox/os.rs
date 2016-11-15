@@ -113,8 +113,18 @@ impl StdError for JoinPathsError {
 }
 
 pub fn current_exe() -> io::Result<PathBuf> {
-    use io::ErrorKind;
-    Err(io::Error::new(ErrorKind::Other, "Not yet implemented on redox"))
+    use fs::File;
+
+    let mut file = File::open("sys:exe")?;
+
+    let mut path = String::new();
+    file.read_to_string(&mut path)?;
+
+    if path.ends_with('\n') {
+        path.pop();
+    }
+
+    Ok(PathBuf::from(path))
 }
 
 pub struct Env {
