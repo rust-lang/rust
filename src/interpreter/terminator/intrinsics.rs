@@ -57,6 +57,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "atomic_load" |
+            "atomic_load_acq" |
             "volatile_load" => {
                 let ty = substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
@@ -73,6 +74,53 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "atomic_fence_acq" => {
                 // we are inherently singlethreaded and singlecored, this is a nop
             }
+
+            "atomic_xchg" => {
+                let ty = substs.type_at(0);
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let change = self.value_to_primval(arg_vals[1], ty)?;
+                let old = self.read_value(ptr, ty)?;
+                let old = match old {
+                    Value::ByVal(val) => val,
+                    Value::ByRef(_) => bug!("just read the value, can't be byref"),
+                    Value::ByValPair(..) => bug!("atomic_xchg doesn't work with nonprimitives"),
+                };
+                self.write_primval(dest, old)?;
+                self.write_primval(Lvalue::from_ptr(ptr), change)?;
+            }
+
+            "atomic_cxchg" => {
+                let ty = substs.type_at(0);
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let expect_old = self.value_to_primval(arg_vals[1], ty)?;
+                let change = self.value_to_primval(arg_vals[2], ty)?;
+                let old = self.read_value(ptr, ty)?;
+                let old = match old {
+                    Value::ByVal(val) => val,
+                    Value::ByRef(_) => bug!("just read the value, can't be byref"),
+                    Value::ByValPair(..) => bug!("atomic_cxchg doesn't work with nonprimitives"),
+                };
+                let (val, _) = primval::binary_op(mir::BinOp::Eq, old, expect_old)?;
+                let dest = self.force_allocation(dest)?.to_ptr();
+                self.write_pair_to_ptr(old, val, dest, dest_ty)?;
+                self.write_primval(Lvalue::from_ptr(ptr), change)?;
+            }
+
+            "atomic_xadd_relaxed" => {
+                let ty = substs.type_at(0);
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let change = self.value_to_primval(arg_vals[1], ty)?;
+                let old = self.read_value(ptr, ty)?;
+                let old = match old {
+                    Value::ByVal(val) => val,
+                    Value::ByRef(_) => bug!("just read the value, can't be byref"),
+                    Value::ByValPair(..) => bug!("atomic_xadd_relaxed doesn't work with nonprimitives"),
+                };
+                self.write_primval(dest, old)?;
+                // FIXME: what do atomics do on overflow?
+                let (val, _) = primval::binary_op(mir::BinOp::Add, old, change)?;
+                self.write_primval(Lvalue::from_ptr(ptr), val)?;
+            },
 
             "atomic_xsub_rel" => {
                 let ty = substs.type_at(0);
