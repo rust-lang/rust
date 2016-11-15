@@ -875,16 +875,19 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         // ignoring span information, it doesn't matter here
         self.hash_discriminant(&meta_item.node);
         match meta_item.node {
-            ast::MetaItemKind::Word(ref s) => {
+            ast::MetaItemKind::Word(s) => {
+                let s = &*s.as_str();
                 s.len().hash(self.st);
                 s.hash(self.st);
             }
-            ast::MetaItemKind::NameValue(ref s, ref lit) => {
+            ast::MetaItemKind::NameValue(s, ref lit) => {
+                let s = &*s.as_str();
                 s.len().hash(self.st);
                 s.hash(self.st);
                 lit.node.hash(self.st);
             }
-            ast::MetaItemKind::List(ref s, ref items) => {
+            ast::MetaItemKind::List(s, ref items) => {
+                let s = &*s.as_str();
                 s.len().hash(self.st);
                 s.hash(self.st);
                 // Sort subitems so the hash does not depend on their order
@@ -916,7 +919,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         for i in indices {
             let attr = &attributes[i];
             if !attr.is_sugared_doc &&
-               !IGNORED_ATTRIBUTES.contains(&&*attr.value.name()) {
+               !IGNORED_ATTRIBUTES.contains(&&*attr.value.name().as_str()) {
                 SawAttribute(attr.style).hash(self.st);
                 self.hash_meta_item(&*attr.value);
             }

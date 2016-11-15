@@ -14,7 +14,7 @@ use deriving::generic::ty::*;
 use syntax::ast::{self, Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token::InternedString;
+use syntax::parse::token;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
@@ -23,9 +23,9 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                           mitem: &MetaItem,
                           item: &Annotatable,
                           push: &mut FnMut(Annotatable)) {
-    let inline = cx.meta_word(span, InternedString::new("inline"));
-    let hidden = cx.meta_list_item_word(span, InternedString::new("hidden"));
-    let doc = cx.meta_list(span, InternedString::new("doc"), vec![hidden]);
+    let inline = cx.meta_word(span, token::intern("inline"));
+    let hidden = cx.meta_list_item_word(span, token::intern("hidden"));
+    let doc = cx.meta_list(span, token::intern("doc"), vec![hidden]);
     let attrs = vec![cx.attribute(span, inline), cx.attribute(span, doc)];
     let trait_def = TraitDef {
         span: span,

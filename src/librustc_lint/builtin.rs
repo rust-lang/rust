@@ -772,9 +772,9 @@ impl LintPass for DeprecatedAttr {
 
 impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext, attr: &ast::Attribute) {
-        let name = &*attr.name();
+        let name = attr.name();
         for &&(n, _, ref g) in &self.depr_attrs {
-            if n == name {
+            if name == n {
                 if let &AttributeGate::Gated(Stability::Deprecated(link),
                                              ref name,
                                              ref reason,

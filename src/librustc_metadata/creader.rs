@@ -37,7 +37,7 @@ use syntax::abi::Abi;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::feature_gate::{self, GateIssue};
-use syntax::parse::token::{InternedString, intern};
+use syntax::parse::token::{self, InternedString};
 use syntax_pos::{Span, DUMMY_SP};
 use log;
 
@@ -582,11 +582,11 @@ impl<'a> CrateLoader<'a> {
                                       trait_name: &str,
                                       expand: fn(TokenStream) -> TokenStream,
                                       attributes: &[&'static str]) {
-                let attrs = attributes.iter().map(|s| InternedString::new(s)).collect();
+                let attrs = attributes.iter().cloned().map(token::intern).collect();
                 let derive = SyntaxExtension::CustomDerive(
                     Box::new(CustomDerive::new(expand, attrs))
                 );
-                self.0.push((intern(trait_name), Rc::new(derive)));
+                self.0.push((token::intern(trait_name), Rc::new(derive)));
             }
         }
 

@@ -274,7 +274,7 @@ impl LateLintPass for UnusedAttributes {
             // Has a plugin registered this attribute as one which must be used at
             // the crate level?
             let plugin_crate = plugin_attributes.iter()
-                .find(|&&(ref x, t)| &*attr.name() == x && AttributeType::CrateLevel == t)
+                .find(|&&(ref x, t)| attr.name() == &**x && AttributeType::CrateLevel == t)
                 .is_some();
             if known_crate || plugin_crate {
                 let msg = match attr.style {

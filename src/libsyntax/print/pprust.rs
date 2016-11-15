@@ -19,7 +19,7 @@ use attr;
 use codemap::{self, CodeMap};
 use syntax_pos::{self, BytePos};
 use errors;
-use parse::token::{self, keywords, BinOpToken, Token, InternedString};
+use parse::token::{self, keywords, BinOpToken, Token};
 use parse::lexer::comments;
 use parse;
 use print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
@@ -119,14 +119,13 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
         // of the feature gate, so we fake them up here.
 
         // #![feature(prelude_import)]
-        let prelude_import_meta = attr::mk_list_word_item(InternedString::new("prelude_import"));
-        let list = attr::mk_list_item(InternedString::new("feature"),
-                                      vec![prelude_import_meta]);
+        let prelude_import_meta = attr::mk_list_word_item(token::intern("prelude_import"));
+        let list = attr::mk_list_item(token::intern("feature"), vec![prelude_import_meta]);
         let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(), list);
         try!(s.print_attribute(&fake_attr));
 
         // #![no_std]
-        let no_std_meta = attr::mk_word_item(InternedString::new("no_std"));
+        let no_std_meta = attr::mk_word_item(token::intern("no_std"));
         let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(), no_std_meta);
         try!(s.print_attribute(&fake_attr));
     }
@@ -779,15 +778,15 @@ pub trait PrintState<'a> {
         try!(self.ibox(INDENT_UNIT));
         match item.node {
             ast::MetaItemKind::Word(ref name) => {
-                try!(word(self.writer(), &name));
+                try!(word(self.writer(), &name.as_str()));
             }
             ast::MetaItemKind::NameValue(ref name, ref value) => {
-                try!(self.word_space(&name[..]));
+                try!(self.word_space(&name.as_str()));
                 try!(self.word_space("="));
                 try!(self.print_literal(value));
             }
             ast::MetaItemKind::List(ref name, ref items) => {
-                try!(word(self.writer(), &name));
+                try!(word(self.writer(), &name.as_str()));
                 try!(self.popen());
                 try!(self.commasep(Consistent,
                               &items[..],

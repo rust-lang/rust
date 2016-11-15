@@ -12,7 +12,7 @@ use ast;
 use attr;
 use syntax_pos::{DUMMY_SP, Span};
 use codemap::{self, ExpnInfo, NameAndSpan, MacroAttribute};
-use parse::token::{intern, InternedString, keywords};
+use parse::token::{intern, keywords};
 use parse::{token, ParseSess};
 use ptr::P;
 
@@ -57,7 +57,7 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
 
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![attr::mk_attr_outer(attr::mk_attr_id(),
-                                        attr::mk_word_item(InternedString::new("macro_use")))],
+                                        attr::mk_word_item(token::intern("macro_use")))],
         vis: ast::Visibility::Inherited,
         node: ast::ItemKind::ExternCrate(Some(crate_name)),
         ident: token::str_to_ident(name),
@@ -70,7 +70,7 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
         attrs: vec![ast::Attribute {
             style: ast::AttrStyle::Outer,
             value: P(ast::MetaItem {
-                node: ast::MetaItemKind::Word(token::intern_and_get_ident("prelude_import")),
+                node: ast::MetaItemKind::Word(token::intern("prelude_import")),
                 span: span,
             }),
             id: attr::mk_attr_id(),

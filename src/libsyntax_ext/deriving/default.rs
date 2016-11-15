@@ -14,7 +14,7 @@ use deriving::generic::ty::*;
 use syntax::ast::{Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token::InternedString;
+use syntax::parse::token;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
@@ -23,7 +23,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
                                mitem: &MetaItem,
                                item: &Annotatable,
                                push: &mut FnMut(Annotatable)) {
-    let inline = cx.meta_word(span, InternedString::new("inline"));
+    let inline = cx.meta_word(span, token::intern("inline"));
     let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {
         span: span,

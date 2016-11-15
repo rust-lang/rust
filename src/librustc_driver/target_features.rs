@@ -13,8 +13,7 @@ use llvm::LLVMRustHasFeature;
 use rustc::session::Session;
 use rustc_trans::back::write::create_target_machine;
 use syntax::feature_gate::UnstableFeatures;
-use syntax::parse::token::InternedString;
-use syntax::parse::token::intern_and_get_ident as intern;
+use syntax::parse::token::{self, intern_and_get_ident as intern};
 use libc::c_char;
 
 // WARNING: the features must be known to LLVM or the feature
@@ -41,11 +40,11 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
         _ => &[],
     };
 
-    let tf = InternedString::new("target_feature");
+    let tf = token::intern("target_feature");
     for feat in whitelist {
         assert_eq!(feat.chars().last(), Some('\0'));
         if unsafe { LLVMRustHasFeature(target_machine, feat.as_ptr() as *const c_char) } {
-            cfg.push(attr::mk_name_value_item_str(tf.clone(), intern(&feat[..feat.len() - 1])))
+            cfg.push(attr::mk_name_value_item_str(tf, intern(&feat[..feat.len() - 1])))
         }
     }
 

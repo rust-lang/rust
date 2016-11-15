@@ -15,7 +15,7 @@ pub use self::ReprAttr::*;
 pub use self::IntType::*;
 
 use ast;
-use ast::{AttrId, Attribute};
+use ast::{AttrId, Attribute, Name};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, Expr, Item, Local, Stmt, StmtKind};
 use codemap::{respan, spanned, dummy_spanned, mk_sp};
@@ -37,8 +37,8 @@ thread_local! {
 }
 
 enum AttrError {
-    MultipleItem(InternedString),
-    UnknownMetaItem(InternedString),
+    MultipleItem(Name),
+    UnknownMetaItem(Name),
     MissingSince,
     MissingFeature,
     MultipleStabilityLevels,
@@ -134,7 +134,7 @@ impl NestedMetaItem {
 
     /// Returns the name of the meta item, e.g. `foo` in `#[foo]`,
     /// `#[foo="bar"]` and `#[foo(bar)]`, if self is a MetaItem
-    pub fn name(&self) -> Option<InternedString> {
+    pub fn name(&self) -> Option<Name> {
         self.meta_item().and_then(|meta_item| Some(meta_item.name()))
     }
 
@@ -186,14 +186,14 @@ impl NestedMetaItem {
 
 impl Attribute {
     pub fn check_name(&self, name: &str) -> bool {
-        let matches = name == &self.name()[..];
+        let matches = self.name() == name;
         if matches {
             mark_used(self);
         }
         matches
     }
 
-    pub fn name(&self) -> InternedString { self.meta().name() }
+    pub fn name(&self) -> Name { self.meta().name() }
 
     pub fn value_str(&self) -> Option<InternedString> {
         self.meta().value_str()
@@ -218,11 +218,11 @@ impl Attribute {
 }
 
 impl MetaItem {
-    pub fn name(&self) -> InternedString {
+    pub fn name(&self) -> Name {
         match self.node {
-            MetaItemKind::Word(ref n) => (*n).clone(),
-            MetaItemKind::NameValue(ref n, _) => (*n).clone(),
-            MetaItemKind::List(ref n, _) => (*n).clone(),
+            MetaItemKind::Word(n) => n,
+            MetaItemKind::NameValue(n, _) => n,
+            MetaItemKind::List(n, _) => n,
         }
     }
 
@@ -255,7 +255,7 @@ impl MetaItem {
     pub fn span(&self) -> Span { self.span }
 
     pub fn check_name(&self, name: &str) -> bool {
-        name == &self.name()[..]
+        self.name() == name
     }
 
     pub fn is_value_str(&self) -> bool {
@@ -282,7 +282,7 @@ impl Attribute {
         if self.is_sugared_doc {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
-                InternedString::new("doc"),
+                token::intern("doc"),
                 token::intern_and_get_ident(&strip_doc_comment_decoration(
                         &comment)));
             if self.style == ast::AttrStyle::Outer {
@@ -298,40 +298,36 @@ impl Attribute {
 
 /* Constructors */
 
-pub fn mk_name_value_item_str(name: InternedString, value: InternedString)
-                              -> P<MetaItem> {
+pub fn mk_name_value_item_str(name: Name, value: InternedString) -> P<MetaItem> {
     let value_lit = dummy_spanned(ast::LitKind::Str(value, ast::StrStyle::Cooked));
     mk_spanned_name_value_item(DUMMY_SP, name, value_lit)
 }
 
-pub fn mk_name_value_item(name: InternedString, value: ast::Lit)
-                          -> P<MetaItem> {
+pub fn mk_name_value_item(name: Name, value: ast::Lit) -> P<MetaItem> {
     mk_spanned_name_value_item(DUMMY_SP, name, value)
 }
 
-pub fn mk_list_item(name: InternedString, items: Vec<NestedMetaItem>) -> P<MetaItem> {
+pub fn mk_list_item(name: Name, items: Vec<NestedMetaItem>) -> P<MetaItem> {
     mk_spanned_list_item(DUMMY_SP, name, items)
 }
 
-pub fn mk_list_word_item(name: InternedString) -> ast::NestedMetaItem {
+pub fn mk_list_word_item(name: Name) -> ast::NestedMetaItem {
     dummy_spanned(NestedMetaItemKind::MetaItem(mk_spanned_word_item(DUMMY_SP, name)))
 }
 
-pub fn mk_word_item(name: InternedString) -> P<MetaItem> {
+pub fn mk_word_item(name: Name) -> P<MetaItem> {
     mk_spanned_word_item(DUMMY_SP, name)
 }
 
-pub fn mk_spanned_name_value_item(sp: Span, name: InternedString, value: ast::Lit)
-                          -> P<MetaItem> {
+pub fn mk_spanned_name_value_item(sp: Span, name: Name, value: ast::Lit) -> P<MetaItem> {
     P(respan(sp, MetaItemKind::NameValue(name, value)))
 }
 
-pub fn mk_spanned_list_item(sp: Span, name: InternedString, items: Vec<NestedMetaItem>)
-                            -> P<MetaItem> {
+pub fn mk_spanned_list_item(sp: Span, name: Name, items: Vec<NestedMetaItem>) -> P<MetaItem> {
     P(respan(sp, MetaItemKind::List(name, items)))
 }
 
-pub fn mk_spanned_word_item(sp: Span, name: InternedString) -> P<MetaItem> {
+pub fn mk_spanned_word_item(sp: Span, name: Name) -> P<MetaItem> {
     P(respan(sp, MetaItemKind::Word(name)))
 }
 
@@ -398,7 +394,7 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos, hi: By
     Attribute {
         id: id,
         style: style,
-        value: P(spanned(lo, hi, MetaItemKind::NameValue(InternedString::new("doc"), lit))),
+        value: P(spanned(lo, hi, MetaItemKind::NameValue(token::intern("doc"), lit))),
         is_sugared_doc: true,
         span: mk_sp(lo, hi),
     }
@@ -490,11 +486,11 @@ pub enum InlineAttr {
 pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> InlineAttr {
     attrs.iter().fold(InlineAttr::None, |ia,attr| {
         match attr.value.node {
-            MetaItemKind::Word(ref n) if n == "inline" => {
+            MetaItemKind::Word(n) if n == "inline" => {
                 mark_used(attr);
                 InlineAttr::Hint
             }
-            MetaItemKind::List(ref n, ref items) if n == "inline" => {
+            MetaItemKind::List(n, ref items) if n == "inline" => {
                 mark_used(attr);
                 if items.len() != 1 {
                     diagnostic.map(|d|{ span_err!(d, attr.span, E0534, "expected one argument"); });
@@ -537,7 +533,7 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
 
             // The unwraps below may look dangerous, but we've already asserted
             // that they won't fail with the loop above.
-            match &pred[..] {
+            match &*pred.as_str() {
                 "any" => mis.iter().any(|mi| {
                     cfg_matches(mi.meta_item().unwrap(), sess, features)
                 }),
@@ -611,7 +607,6 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
 
     'outer: for attr in attrs_iter {
         let tag = attr.name();
-        let tag = &*tag;
         if tag != "rustc_deprecated" && tag != "unstable" && tag != "stable" {
             continue // not a stability level
         }
@@ -633,7 +628,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                 }
             };
 
-            match tag {
+            match &*tag.as_str() {
                 "rustc_deprecated" => {
                     if rustc_depr.is_some() {
                         span_err!(diagnostic, item_sp, E0540,
@@ -645,7 +640,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                     let mut reason = None;
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
-                            match &*mi.name() {
+                            match &*mi.name().as_str() {
                                 "since" => if !get(mi, &mut since) { continue 'outer },
                                 "reason" => if !get(mi, &mut reason) { continue 'outer },
                                 _ => {
@@ -688,7 +683,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                     let mut issue = None;
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
-                            match &*mi.name() {
+                            match &*mi.name().as_str() {
                                 "feature" => if !get(mi, &mut feature) { continue 'outer },
                                 "reason" => if !get(mi, &mut reason) { continue 'outer },
                                 "issue" => if !get(mi, &mut issue) { continue 'outer },
@@ -743,7 +738,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                     let mut since = None;
                     for meta in metas {
                         if let NestedMetaItemKind::MetaItem(ref mi) = meta.node {
-                            match &*mi.name() {
+                            match &*mi.name().as_str() {
                                 "feature" => if !get(mi, &mut feature) { continue 'outer },
                                 "since" => if !get(mi, &mut since) { continue 'outer },
                                 _ => {
@@ -839,7 +834,7 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
             let mut note = None;
             for meta in metas {
                 if let NestedMetaItemKind::MetaItem(ref mi) = meta.node {
-                    match &*mi.name() {
+                    match &*mi.name().as_str() {
                         "since" => if !get(mi, &mut since) { continue 'outer },
                         "note" => if !get(mi, &mut note) { continue 'outer },
                         _ => {
@@ -897,7 +892,7 @@ pub fn require_unique_names(diagnostic: &Handler, metas: &[P<MetaItem>]) {
 pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> {
     let mut acc = Vec::new();
     match attr.value.node {
-        ast::MetaItemKind::List(ref s, ref items) if s == "repr" => {
+        ast::MetaItemKind::List(s, ref items) if s == "repr" => {
             mark_used(attr);
             for item in items {
                 if !item.is_meta_item() {
@@ -906,7 +901,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                 }
 
                 if let Some(mi) = item.word() {
-                    let word = &*mi.name();
+                    let word = &*mi.name().as_str();
                     let hint = match word {
                         // Can't use "extern" because it's not a lexical identifier.
                         "C" => Some(ReprExtern),

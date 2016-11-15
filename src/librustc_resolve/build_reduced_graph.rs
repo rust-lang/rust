@@ -31,7 +31,6 @@ use std::rc::Rc;
 
 use syntax::ast::Name;
 use syntax::attr;
-use syntax::parse::token;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
@@ -632,7 +631,7 @@ impl<'b> Resolver<'b> {
                 match attr.meta_item_list() {
                     Some(names) => for attr in names {
                         if let Some(word) = attr.word() {
-                            imports.imports.push((token::intern(&word.name()), attr.span()));
+                            imports.imports.push((word.name(), attr.span()));
                         } else {
                             span_err!(self.session, attr.span(), E0466, "bad macro import");
                         }
@@ -646,7 +645,7 @@ impl<'b> Resolver<'b> {
                 if let Some(names) = attr.meta_item_list() {
                     for attr in names {
                         if let Some(word) = attr.word() {
-                            imports.reexports.push((token::intern(&word.name()), attr.span()));
+                            imports.reexports.push((word.name(), attr.span()));
                         } else {
                             bad_macro_reexport(self, attr.span());
                         }

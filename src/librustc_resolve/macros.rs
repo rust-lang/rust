@@ -27,7 +27,6 @@ use syntax::ext::expand::Expansion;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::fold::Folder;
-use syntax::parse::token::intern;
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::Visitor;
@@ -207,8 +206,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn find_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
-            let name = intern(&attrs[i].name());
-            match self.builtin_macros.get(&name).cloned() {
+            match self.builtin_macros.get(&attrs[i].name()).cloned() {
                 Some(binding) => match *self.get_macro(binding) {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))

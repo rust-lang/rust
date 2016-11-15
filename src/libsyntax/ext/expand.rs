@@ -23,7 +23,7 @@ use fold;
 use fold::*;
 use parse::{ParseSess, PResult, lexer};
 use parse::parser::Parser;
-use parse::token::{self, intern, keywords};
+use parse::token::{self, keywords};
 use print::pprust;
 use ptr::P;
 use std_inject;
@@ -246,7 +246,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.cx.resolver.resolve_macro(scope, &mac.node.path, force)
                 }
                 InvocationKind::Attr { ref attr, .. } => {
-                    let ident = ast::Ident::with_empty_ctxt(intern(&*attr.name()));
+                    let ident = ast::Ident::with_empty_ctxt(attr.name());
                     let path = ast::Path::from_ident(attr.span, ident);
                     self.cx.resolver.resolve_macro(scope, &path, force)
                 }
@@ -341,7 +341,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         attr::mark_used(&attr);
-        let name = intern(&attr.name());
+        let name = attr.name();
         self.cx.bt_push(ExpnInfo {
             call_site: attr.span,
             callee: NameAndSpan {
