@@ -76,11 +76,6 @@ fn test_class() {
   let q = p(1, 2);
   let mut r = p(1, 2);
 
-  unsafe {
-  println!("q = {:x}, r = {:x}",
-         (::std::mem::transmute::<*const P, usize>(&q)),
-         (::std::mem::transmute::<*const P, usize>(&r)));
-  }
   assert_eq!(q, r);
   r.y = 17;
   assert!((r.y != q.y));
