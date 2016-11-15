@@ -789,9 +789,6 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
     // Merge the deprecation info into the stability info
     if let Some(rustc_depr) = rustc_depr {
         if let Some(ref mut stab) = stab {
-            if let Unstable {reason: ref mut reason @ None, ..} = stab.level {
-                *reason = Some(rustc_depr.reason.clone())
-            }
             stab.rustc_depr = Some(rustc_depr);
         } else {
             span_err!(diagnostic, item_sp, E0549,
