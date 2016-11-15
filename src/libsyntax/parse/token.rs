@@ -301,7 +301,7 @@ pub enum Nonterminal {
     NtTy(P<ast::Ty>),
     NtIdent(ast::SpannedIdent),
     /// Stuff inside brackets for attributes
-    NtMeta(P<ast::MetaItem>),
+    NtMeta(ast::MetaItem),
     NtPath(ast::Path),
     NtTT(tokenstream::TokenTree),
     // These are not exposed to macros, but are used by quasiquote.

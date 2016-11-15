@@ -117,7 +117,7 @@ pub fn parse_item_from_source_str<'a>(name: String, source: String, sess: &'a Pa
 }
 
 pub fn parse_meta_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
-                                      -> PResult<'a, P<ast::MetaItem>> {
+                                      -> PResult<'a, ast::MetaItem> {
     new_parser_from_source_str(sess, name, source).parse_meta_item()
 }
 

@@ -107,7 +107,7 @@ pub fn is_known(attr: &Attribute) -> bool {
 
 impl NestedMetaItem {
     /// Returns the MetaItem if self is a NestedMetaItemKind::MetaItem.
-    pub fn meta_item(&self) -> Option<&P<MetaItem>> {
+    pub fn meta_item(&self) -> Option<&MetaItem> {
         match self.node {
             NestedMetaItemKind::MetaItem(ref item) => Some(&item),
             _ => None
@@ -145,7 +145,7 @@ impl NestedMetaItem {
     }
 
     /// Returns a MetaItem if self is a MetaItem with Kind Word.
-    pub fn word(&self) -> Option<&P<MetaItem>> {
+    pub fn word(&self) -> Option<&MetaItem> {
         self.meta_item().and_then(|meta_item| if meta_item.is_word() {
             Some(meta_item)
         } else {
@@ -294,16 +294,16 @@ impl Attribute {
 
 /* Constructors */
 
-pub fn mk_name_value_item_str(name: Name, value: InternedString) -> P<MetaItem> {
+pub fn mk_name_value_item_str(name: Name, value: InternedString) -> MetaItem {
     let value_lit = dummy_spanned(ast::LitKind::Str(value, ast::StrStyle::Cooked));
     mk_spanned_name_value_item(DUMMY_SP, name, value_lit)
 }
 
-pub fn mk_name_value_item(name: Name, value: ast::Lit) -> P<MetaItem> {
+pub fn mk_name_value_item(name: Name, value: ast::Lit) -> MetaItem {
     mk_spanned_name_value_item(DUMMY_SP, name, value)
 }
 
-pub fn mk_list_item(name: Name, items: Vec<NestedMetaItem>) -> P<MetaItem> {
+pub fn mk_list_item(name: Name, items: Vec<NestedMetaItem>) -> MetaItem {
     mk_spanned_list_item(DUMMY_SP, name, items)
 }
 
@@ -311,20 +311,20 @@ pub fn mk_list_word_item(name: Name) -> ast::NestedMetaItem {
     dummy_spanned(NestedMetaItemKind::MetaItem(mk_spanned_word_item(DUMMY_SP, name)))
 }
 
-pub fn mk_word_item(name: Name) -> P<MetaItem> {
+pub fn mk_word_item(name: Name) -> MetaItem {
     mk_spanned_word_item(DUMMY_SP, name)
 }
 
-pub fn mk_spanned_name_value_item(sp: Span, name: Name, value: ast::Lit) -> P<MetaItem> {
-    P(MetaItem { span: sp, name: name, node: MetaItemKind::NameValue(value) })
+pub fn mk_spanned_name_value_item(sp: Span, name: Name, value: ast::Lit) -> MetaItem {
+    MetaItem { span: sp, name: name, node: MetaItemKind::NameValue(value) }
 }
 
-pub fn mk_spanned_list_item(sp: Span, name: Name, items: Vec<NestedMetaItem>) -> P<MetaItem> {
-    P(MetaItem { span: sp, name: name, node: MetaItemKind::List(items) })
+pub fn mk_spanned_list_item(sp: Span, name: Name, items: Vec<NestedMetaItem>) -> MetaItem {
+    MetaItem { span: sp, name: name, node: MetaItemKind::List(items) }
 }
 
-pub fn mk_spanned_word_item(sp: Span, name: Name) -> P<MetaItem> {
-    P(MetaItem { span: sp, name: name, node: MetaItemKind::Word })
+pub fn mk_spanned_word_item(sp: Span, name: Name) -> MetaItem {
+    MetaItem { span: sp, name: name, node: MetaItemKind::Word }
 }
 
 
@@ -341,12 +341,12 @@ pub fn mk_attr_id() -> AttrId {
 }
 
 /// Returns an inner attribute with the given value.
-pub fn mk_attr_inner(id: AttrId, item: P<MetaItem>) -> Attribute {
+pub fn mk_attr_inner(id: AttrId, item: MetaItem) -> Attribute {
     mk_spanned_attr_inner(DUMMY_SP, id, item)
 }
 
 /// Returns an innter attribute with the given value and span.
-pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: P<MetaItem>) -> Attribute {
+pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
     Attribute {
         id: id,
         style: ast::AttrStyle::Inner,
@@ -358,12 +358,12 @@ pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: P<MetaItem>) -> Attribu
 
 
 /// Returns an outer attribute with the given value.
-pub fn mk_attr_outer(id: AttrId, item: P<MetaItem>) -> Attribute {
+pub fn mk_attr_outer(id: AttrId, item: MetaItem) -> Attribute {
     mk_spanned_attr_outer(DUMMY_SP, id, item)
 }
 
 /// Returns an outer attribute with the given value and span.
-pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: P<MetaItem>) -> Attribute {
+pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
     Attribute {
         id: id,
         style: ast::AttrStyle::Outer,
@@ -373,7 +373,7 @@ pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: P<MetaItem>) -> Attribu
     }
 }
 
-pub fn mk_doc_attr_outer(id: AttrId, item: P<MetaItem>, is_sugared_doc: bool) -> Attribute {
+pub fn mk_doc_attr_outer(id: AttrId, item: MetaItem, is_sugared_doc: bool) -> Attribute {
     Attribute {
         id: id,
         style: ast::AttrStyle::Outer,
@@ -390,11 +390,11 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos, hi: By
     Attribute {
         id: id,
         style: style,
-        value: P(MetaItem {
+        value: MetaItem {
             span: mk_sp(lo, hi),
             name: token::intern("doc"),
             node: MetaItemKind::NameValue(lit),
-        }),
+        },
         is_sugared_doc: true,
         span: mk_sp(lo, hi),
     }
@@ -423,8 +423,7 @@ pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
         .and_then(|at| at.value_str())
 }
 
-pub fn last_meta_item_value_str_by_name(items: &[P<MetaItem>], name: &str)
-                                     -> Option<InternedString> {
+pub fn last_meta_item_value_str_by_name(items: &[MetaItem], name: &str) -> Option<InternedString> {
     items.iter()
          .rev()
          .find(|mi| mi.check_name(name))
@@ -859,7 +858,7 @@ pub fn find_deprecation(diagnostic: &Handler, attrs: &[Attribute],
     find_deprecation_generic(diagnostic, attrs.iter(), item_sp)
 }
 
-pub fn require_unique_names(diagnostic: &Handler, metas: &[P<MetaItem>]) {
+pub fn require_unique_names(diagnostic: &Handler, metas: &[MetaItem]) {
     let mut set = HashSet::new();
     for meta in metas {
         let name = meta.name();

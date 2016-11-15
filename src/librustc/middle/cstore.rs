@@ -93,7 +93,7 @@ pub enum NativeLibraryKind {
 pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
     pub name: String,
-    pub cfg: Option<P<ast::MetaItem>>,
+    pub cfg: Option<ast::MetaItem>,
 }
 
 /// The data we save and restore about an inlined item or method.  This is not

@@ -43,7 +43,7 @@ pub trait Folder : Sized {
         noop_fold_crate(c, self)
     }
 
-    fn fold_meta_items(&mut self, meta_items: Vec<P<MetaItem>>) -> Vec<P<MetaItem>> {
+    fn fold_meta_items(&mut self, meta_items: Vec<MetaItem>) -> Vec<MetaItem> {
         noop_fold_meta_items(meta_items, self)
     }
 
@@ -51,7 +51,7 @@ pub trait Folder : Sized {
         noop_fold_meta_list_item(list_item, self)
     }
 
-    fn fold_meta_item(&mut self, meta_item: P<MetaItem>) -> P<MetaItem> {
+    fn fold_meta_item(&mut self, meta_item: MetaItem) -> MetaItem {
         noop_fold_meta_item(meta_item, self)
     }
 
@@ -293,8 +293,7 @@ pub trait Folder : Sized {
     }
 }
 
-pub fn noop_fold_meta_items<T: Folder>(meta_items: Vec<P<MetaItem>>, fld: &mut T)
-                                       -> Vec<P<MetaItem>> {
+pub fn noop_fold_meta_items<T: Folder>(meta_items: Vec<MetaItem>, fld: &mut T) -> Vec<MetaItem> {
     meta_items.move_map(|x| fld.fold_meta_item(x))
 }
 
@@ -519,18 +518,18 @@ pub fn noop_fold_meta_list_item<T: Folder>(li: NestedMetaItem, fld: &mut T)
     }
 }
 
-pub fn noop_fold_meta_item<T: Folder>(mi: P<MetaItem>, fld: &mut T) -> P<MetaItem> {
-    mi.map(|MetaItem { name, node, span }| MetaItem {
-        name: name,
-        node: match node {
+pub fn noop_fold_meta_item<T: Folder>(mi: MetaItem, fld: &mut T) -> MetaItem {
+    MetaItem {
+        name: mi.name,
+        node: match mi.node {
             MetaItemKind::Word => MetaItemKind::Word,
             MetaItemKind::List(mis) => {
                 MetaItemKind::List(mis.move_map(|e| fld.fold_meta_list_item(e)))
             },
             MetaItemKind::NameValue(s) => MetaItemKind::NameValue(s),
         },
-        span: fld.new_span(span)
-    })
+        span: fld.new_span(mi.span)
+    }
 }
 
 pub fn noop_fold_arg<T: Folder>(Arg {id, pat, ty}: Arg, fld: &mut T) -> Arg {

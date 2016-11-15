@@ -116,7 +116,7 @@ pub fn expand_derive(cx: &mut ExtCtxt,
     // Expand `#[derive]`s after other attribute macro invocations.
     if cx.resolver.find_attr_invoc(&mut item.attrs.clone()).is_some() {
         return vec![Annotatable::Item(item.map_attrs(|mut attrs| {
-            attrs.push(cx.attribute(span, P(mitem.clone())));
+            attrs.push(cx.attribute(span, mitem.clone()));
             attrs.extend(derive_attrs);
             attrs
         }))];

@@ -16,7 +16,6 @@ use parse::common::SeqSep;
 use parse::PResult;
 use parse::token;
 use parse::parser::{Parser, TokenType};
-use ptr::P;
 
 #[derive(PartialEq, Eq, Debug)]
 enum InnerAttributeParsePolicy<'a> {
@@ -211,7 +210,7 @@ impl<'a> Parser<'a> {
     ///
     /// meta_item : IDENT ( '=' UNSUFFIXED_LIT | '(' meta_item_inner? ')' )? ;
     /// meta_item_inner : (meta_item | UNSUFFIXED_LIT) (',' meta_item_inner)? ;
-    pub fn parse_meta_item(&mut self) -> PResult<'a, P<ast::MetaItem>> {
+    pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
         let nt_meta = match self.token {
             token::Interpolated(ref nt) => match **nt {
                 token::NtMeta(ref e) => Some(e.clone()),
@@ -235,7 +234,7 @@ impl<'a> Parser<'a> {
             ast::MetaItemKind::Word
         };
         let hi = self.prev_span.hi;
-        Ok(P(ast::MetaItem { name: ident.name, node: node, span: mk_sp(lo, hi) }))
+        Ok(ast::MetaItem { name: ident.name, node: node, span: mk_sp(lo, hi) })
     }
 
     /// matches meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;

@@ -505,7 +505,7 @@ pub type NestedMetaItem = Spanned<NestedMetaItemKind>;
 #[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Debug, PartialEq)]
 pub enum NestedMetaItemKind {
     /// A full MetaItem, for recursive meta items.
-    MetaItem(P<MetaItem>),
+    MetaItem(MetaItem),
     /// A literal.
     ///
     /// E.g. "foo", 64, true
@@ -1758,7 +1758,7 @@ pub struct AttrId(pub usize);
 pub struct Attribute {
     pub id: AttrId,
     pub style: AttrStyle,
-    pub value: P<MetaItem>,
+    pub value: MetaItem,
     pub is_sugared_doc: bool,
     pub span: Span,
 }

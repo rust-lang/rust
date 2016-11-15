@@ -275,9 +275,9 @@ pub trait AstBuilder {
                     generics: Generics) -> P<ast::Item>;
     fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> P<ast::Item>;
 
-    fn attribute(&self, sp: Span, mi: P<ast::MetaItem>) -> ast::Attribute;
+    fn attribute(&self, sp: Span, mi: ast::MetaItem) -> ast::Attribute;
 
-    fn meta_word(&self, sp: Span, w: ast::Name) -> P<ast::MetaItem>;
+    fn meta_word(&self, sp: Span, w: ast::Name) -> ast::MetaItem;
 
     fn meta_list_item_word(&self, sp: Span, w: ast::Name) -> ast::NestedMetaItem;
 
@@ -285,12 +285,12 @@ pub trait AstBuilder {
                  sp: Span,
                  name: ast::Name,
                  mis: Vec<ast::NestedMetaItem> )
-                 -> P<ast::MetaItem>;
+                 -> ast::MetaItem;
     fn meta_name_value(&self,
                        sp: Span,
                        name: ast::Name,
                        value: ast::LitKind)
-                       -> P<ast::MetaItem>;
+                       -> ast::MetaItem;
 
     fn item_use(&self, sp: Span,
                 vis: ast::Visibility, vp: P<ast::ViewPath>) -> P<ast::Item>;
@@ -1146,11 +1146,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.item_ty_poly(span, name, ty, Generics::default())
     }
 
-    fn attribute(&self, sp: Span, mi: P<ast::MetaItem>) -> ast::Attribute {
+    fn attribute(&self, sp: Span, mi: ast::MetaItem) -> ast::Attribute {
         attr::mk_spanned_attr_outer(sp, attr::mk_attr_id(), mi)
     }
 
-    fn meta_word(&self, sp: Span, w: ast::Name) -> P<ast::MetaItem> {
+    fn meta_word(&self, sp: Span, w: ast::Name) -> ast::MetaItem {
         attr::mk_spanned_word_item(sp, w)
     }
 
@@ -1159,12 +1159,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn meta_list(&self, sp: Span, name: ast::Name, mis: Vec<ast::NestedMetaItem>)
-                 -> P<ast::MetaItem> {
+                 -> ast::MetaItem {
         attr::mk_spanned_list_item(sp, name, mis)
     }
 
     fn meta_name_value(&self, sp: Span, name: ast::Name, value: ast::LitKind)
-                       -> P<ast::MetaItem> {
+                       -> ast::MetaItem {
         attr::mk_spanned_name_value_item(sp, name, respan(sp, value))
     }
 

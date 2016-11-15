@@ -211,7 +211,7 @@ pub mod rt {
     impl_to_tokens_slice! { P<ast::Item>, [] }
     impl_to_tokens_slice! { ast::Arg, [TokenTree::Token(DUMMY_SP, token::Comma)] }
 
-    impl ToTokens for P<ast::MetaItem> {
+    impl ToTokens for ast::MetaItem {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtMeta(self.clone());
             vec![TokenTree::Token(DUMMY_SP, token::Interpolated(Rc::new(nt)))]
@@ -405,7 +405,7 @@ pub fn parse_block_panic(parser: &mut Parser) -> P<Block> {
     panictry!(parser.parse_block())
 }
 
-pub fn parse_meta_item_panic(parser: &mut Parser) -> P<ast::MetaItem> {
+pub fn parse_meta_item_panic(parser: &mut Parser) -> ast::MetaItem {
     panictry!(parser.parse_meta_item())
 }
 

@@ -919,7 +919,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             if !attr.is_sugared_doc &&
                !IGNORED_ATTRIBUTES.contains(&&*attr.value.name().as_str()) {
                 SawAttribute(attr.style).hash(self.st);
-                self.hash_meta_item(&*attr.value);
+                self.hash_meta_item(&attr.value);
             }
         }
     }
