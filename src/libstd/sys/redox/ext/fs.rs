@@ -216,7 +216,7 @@ impl MetadataExt for fs::Metadata {
     }
 }
 
-/*
+/* TODO
 /// Add special unix types (block/char device, fifo and socket)
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
