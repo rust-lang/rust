@@ -88,7 +88,12 @@ impl<'a> ::std::ops::Index<&'a DepNode<DefId>> for IncrementalHashesMap {
     type Output = Fingerprint;
 
     fn index(&self, index: &'a DepNode<DefId>) -> &Fingerprint {
-        &self.hashes[index]
+        match self.hashes.get(index) {
+            Some(fingerprint) => fingerprint,
+            None => {
+                bug!("Could not find ICH for {:?}", index);
+            }
+        }
     }
 }
 
