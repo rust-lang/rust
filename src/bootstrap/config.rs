@@ -339,6 +339,7 @@ impl Config {
                 ("COMPILER_DOCS", self.compiler_docs),
                 ("DOCS", self.docs),
                 ("LLVM_ASSERTIONS", self.llvm_assertions),
+                ("LLVM_RELEASE_DEBUGINFO", self.llvm_release_debuginfo),
                 ("OPTIMIZE_LLVM", self.llvm_optimize),
                 ("LLVM_VERSION_CHECK", self.llvm_version_check),
                 ("LLVM_STATIC_STDCPP", self.llvm_static_stdcpp),
