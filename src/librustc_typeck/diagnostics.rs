@@ -4165,24 +4165,23 @@ If necessary, you can circumvent this check using custom target specifications.
 "##,
 
 E0571: r##"
-A return statement was outside a function scope.
+A return statement was found outside of a function body.
 
 Erroneous code example:
 
 ```compile_fail,E0571
-const FOO: u32 = return 0; // error: return statement cannot be out of a
-                           //        function scope
+const FOO: u32 = return 0; // error: return statement outside of function body
 
 fn main() {}
 ```
 
-To fix this issue, just remove the return statement or move it into a function
-scope. Example:
+To fix this issue, just remove the return keyword or move the expression into a
+function. Example:
 
 ```
 const FOO: u32 = 0;
 
-fn some_fn() -> i32 {
+fn some_fn() -> u32 {
     return FOO;
 }
 
