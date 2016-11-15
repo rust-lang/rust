@@ -426,6 +426,14 @@ pub type OperandBundleDefRef = *mut OperandBundleDef_opaque;
 pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
 
+/// LLVMVisibility
+#[repr(C)]
+pub enum Visibility {
+    Default,
+    Hidden,
+    Protected,
+}
+
 pub mod debuginfo {
     pub use self::DIDescriptorFlags::*;
     use super::MetadataRef;
@@ -746,8 +754,8 @@ extern "C" {
     pub fn LLVMRustSetLinkage(Global: ValueRef, RustLinkage: Linkage);
     pub fn LLVMGetSection(Global: ValueRef) -> *const c_char;
     pub fn LLVMSetSection(Global: ValueRef, Section: *const c_char);
-    pub fn LLVMGetVisibility(Global: ValueRef) -> c_uint;
-    pub fn LLVMSetVisibility(Global: ValueRef, Viz: c_uint);
+    pub fn LLVMGetVisibility(Global: ValueRef) -> Visibility;
+    pub fn LLVMSetVisibility(Global: ValueRef, Viz: Visibility);
     pub fn LLVMGetAlignment(Global: ValueRef) -> c_uint;
     pub fn LLVMSetAlignment(Global: ValueRef, Bytes: c_uint);
     pub fn LLVMSetDLLStorageClass(V: ValueRef, C: DLLStorageClass);
