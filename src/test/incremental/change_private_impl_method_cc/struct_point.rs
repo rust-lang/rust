@@ -21,9 +21,7 @@
 
 #![rustc_partition_reused(module="struct_point-fn_read_field", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_write_field", cfg="rpass2")]
-
-// FIXME(#37333) the struct fields get entangled with inherent methods
-#![rustc_partition_translated(module="struct_point-fn_make_struct", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="rpass2")]
 
 // FIXME(#37720) these two should be reused, but data gets entangled across crates
 #![rustc_partition_translated(module="struct_point-fn_calls_methods_in_same_impl", cfg="rpass2")]
