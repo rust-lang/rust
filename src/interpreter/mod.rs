@@ -654,6 +654,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     ReifyFnPointer => match self.operand_ty(operand).sty {
                         ty::TyFnDef(def_id, substs, fn_ty) => {
+                            let fn_ty = self.tcx.erase_regions(&fn_ty);
                             let fn_ptr = self.memory.create_fn_ptr(def_id, substs, fn_ty);
                             self.write_value(Value::ByVal(PrimVal::from_fn_ptr(fn_ptr)), dest, dest_ty)?;
                         },
@@ -665,6 +666,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let src = self.eval_operand(operand)?;
                             let ptr = src.read_ptr(&self.memory)?;
                             let (def_id, substs, _) = self.memory.get_fn(ptr.alloc_id)?;
+                            let unsafe_fn_ty = self.tcx.erase_regions(&unsafe_fn_ty);
                             let fn_ptr = self.memory.create_fn_ptr(def_id, substs, unsafe_fn_ty);
                             self.write_value(Value::ByVal(PrimVal::from_fn_ptr(fn_ptr)), dest, dest_ty)?;
                         },
@@ -1390,6 +1392,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr)?),
 
             ty::TyFnDef(def_id, substs, fn_ty) => {
+                let fn_ty = self.tcx.erase_regions(&fn_ty);
                 PrimVal::from_fn_ptr(self.memory.create_fn_ptr(def_id, substs, fn_ty))
             },
             ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::from_fn_ptr)?,

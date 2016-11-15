@@ -35,7 +35,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     self.get_vtable_methods(id, substs)
                         .into_iter()
                         .map(|opt_mth| opt_mth.map(|mth| {
-                            self.memory.create_fn_ptr(mth.method.def_id, mth.substs, mth.method.fty)
+                            let fn_ty = self.tcx.erase_regions(&mth.method.fty);
+                            self.memory.create_fn_ptr(mth.method.def_id, mth.substs, fn_ty)
                         }))
                         .collect::<Vec<_>>()
                         .into_iter()
@@ -90,7 +91,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             if let Some(drop_def_id) = adt_def.destructor() {
                 let ty_scheme = self.tcx.lookup_item_type(drop_def_id);
                 let fn_ty = match ty_scheme.ty.sty {
-                    ty::TyFnDef(_, _, fn_ty) => fn_ty,
+                    ty::TyFnDef(_, _, fn_ty) => self.tcx.erase_regions(&fn_ty),
                     _ => bug!("drop method is not a TyFnDef"),
                 };
                 let fn_ptr = self.memory.create_fn_ptr(drop_def_id, substs, fn_ty);
