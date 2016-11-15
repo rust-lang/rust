@@ -4164,6 +4164,34 @@ target / ABI combination is currently unsupported by llvm.
 If necessary, you can circumvent this check using custom target specifications.
 "##,
 
+E0571: r##"
+A return statement was outside a function scope.
+
+Erroneous code example:
+
+```compile_fail,E0571
+const FOO: u32 = return 0; // error: return statement cannot be out of a
+                           //        function scope
+
+fn main() {}
+```
+
+To fix this issue, just remove the return statement or move it into a function
+scope. Example:
+
+```
+const FOO: u32 = 0;
+
+fn some_fn() -> i32 {
+    return FOO;
+}
+
+fn main() {
+    some_fn();
+}
+```
+"##,
+
 }
 
 register_diagnostics! {

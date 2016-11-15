@@ -451,7 +451,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // expects the types within the function to be consistent.
     err_count_on_creation: usize,
 
-    ret_ty: Ty<'tcx>,
+    ret_ty: Option<Ty<'tcx>>,
 
     ps: RefCell<UnsafetyState>,
 
@@ -785,11 +785,12 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
-    let mut fcx = FnCtxt::new(inherited, fn_sig.output(), body.id);
+    let mut fcx = FnCtxt::new(inherited, body.id);
+    let ret_ty = fn_sig.output();
     *fcx.ps.borrow_mut() = UnsafetyState::function(unsafety, unsafety_id);
 
-    fcx.require_type_is_sized(fcx.ret_ty, decl.output.span(), traits::ReturnType);
-    fcx.ret_ty = fcx.instantiate_anon_types(&fcx.ret_ty);
+    fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::ReturnType);
+    fcx.ret_ty = fcx.instantiate_anon_types(&ret_ty);
     fn_sig = fcx.tcx.mk_fn_sig(fn_sig.inputs().iter().cloned(), &fcx.ret_ty, fn_sig.variadic);
 
     {
@@ -821,7 +822,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
 
-    fcx.check_expr_coercable_to_type(body, fcx.ret_ty);
+    fcx.check_expr_coercable_to_type(body, fcx.ret_ty.unwrap());
 
     fcx
 }
@@ -1245,7 +1246,7 @@ fn check_const_with_type<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
                                    expected_type: Ty<'tcx>,
                                    id: ast::NodeId) {
     ccx.inherited(id).enter(|inh| {
-        let fcx = FnCtxt::new(&inh, expected_type, expr.id);
+        let fcx = FnCtxt::new(&inh, expr.id);
         fcx.require_type_is_sized(expected_type, expr.span, traits::ConstSized);
 
         // Gather locals in statics (because of block expressions).
@@ -1530,7 +1531,6 @@ enum TupleArgumentsFlag {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn new(inh: &'a Inherited<'a, 'gcx, 'tcx>,
-               rty: Ty<'tcx>,
                body_id: ast::NodeId)
                -> FnCtxt<'a, 'gcx, 'tcx> {
         FnCtxt {
@@ -1538,7 +1538,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             body_id: body_id,
             writeback_errors: Cell::new(false),
             err_count_on_creation: inh.tcx.sess.err_count(),
-            ret_ty: rty,
+            ret_ty: None,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
                                                      ast::CRATE_NODE_ID)),
             diverges: Cell::new(Diverges::Maybe),
@@ -3705,14 +3705,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           }
           hir::ExprAgain(_) => { tcx.types.never }
           hir::ExprRet(ref expr_opt) => {
-            if let Some(ref e) = *expr_opt {
-                self.check_expr_coercable_to_type(&e, self.ret_ty);
+            if self.ret_ty.is_none() {
+                struct_span_err!(self.tcx.sess, expr.span, E0571,
+                                 "return statement cannot be out of a function scope").emit();
+            } else if let Some(ref e) = *expr_opt {
+                self.check_expr_coercable_to_type(&e, self.ret_ty.unwrap());
             } else {
                 match self.eq_types(false,
                                     &self.misc(expr.span),
-                                    self.ret_ty,
-                                    tcx.mk_nil())
-                {
+                                    self.ret_ty.unwrap(),
+                                    tcx.mk_nil()) {
                     Ok(ok) => self.register_infer_ok_obligations(ok),
                     Err(_) => {
                         struct_span_err!(tcx.sess, expr.span, E0069,
