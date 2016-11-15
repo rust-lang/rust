@@ -19,6 +19,7 @@
 //!   interested in defining the ValueRef they return.
 //! * Use define_* family of methods when you might be defining the ValueRef.
 //! * When in doubt, define.
+
 use llvm::{self, ValueRef};
 use llvm::AttributePlace::Function;
 use rustc::ty;
@@ -28,6 +29,7 @@ use context::CrateContext;
 use common;
 use type_::Type;
 use value::Value;
+use syntax::attr;
 
 use std::ffi::CString;
 
@@ -68,6 +70,16 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
     if ccx.tcx().sess.opts.cg.no_redzone
         .unwrap_or(ccx.tcx().sess.target.target.options.disable_redzone) {
         llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);
+    }
+
+    // If we're compiling the compiler-builtins crate, e.g. the equivalent of
+    // compiler-rt, then we want to implicitly compile everything with hidden
+    // visibility as we're going to link this object all over the place but
+    // don't want the symbols to get exported.
+    if attr::contains_name(ccx.tcx().map.krate_attrs(), "compiler_builtins") {
+        unsafe {
+            llvm::LLVMSetVisibility(llfn, llvm::Visibility::Hidden);
+        }
     }
 
     match ccx.tcx().sess.opts.cg.opt_level.as_ref().map(String::as_ref) {
