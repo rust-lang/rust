@@ -1056,13 +1056,28 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn phase_5_run_llvm_passes(sess: &Session,
                                trans: &trans::CrateTranslation,
                                outputs: &OutputFilenames) -> CompileResult {
-    if sess.opts.cg.no_integrated_as {
+    if sess.opts.cg.no_integrated_as ||
+        (sess.target.target.options.no_integrated_as &&
+         (outputs.outputs.contains_key(&OutputType::Object) ||
+          outputs.outputs.contains_key(&OutputType::Exe)))
+    {
         let output_types = OutputTypes::new(&[(OutputType::Assembly, None)]);
         time(sess.time_passes(),
              "LLVM passes",
              || write::run_passes(sess, trans, &output_types, outputs));
 
         write::run_assembler(sess, outputs);
+
+        // HACK the linker expects the object file to be named foo.0.o but
+        // `run_assembler` produces an object named just foo.o. Rename it if we
+        // are going to build an executable
+        if sess.opts.output_types.contains_key(&OutputType::Exe) {
+            let f = outputs.path(OutputType::Object);
+            fs::copy(&f,
+                     f.with_file_name(format!("{}.0.o",
+                                              f.file_stem().unwrap().to_string_lossy()))).unwrap();
+            fs::remove_file(f).unwrap();
+        }
 
         // Remove assembly source, unless --save-temps was specified
         if !sess.opts.cg.save_temps {

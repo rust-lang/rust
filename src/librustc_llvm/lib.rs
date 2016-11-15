@@ -413,6 +413,11 @@ pub fn initialize_available_targets() {
                  LLVMInitializeJSBackendTargetInfo,
                  LLVMInitializeJSBackendTarget,
                  LLVMInitializeJSBackendTargetMC);
+    init_target!(llvm_component = "msp430",
+                 LLVMInitializeMSP430TargetInfo,
+                 LLVMInitializeMSP430Target,
+                 LLVMInitializeMSP430TargetMC,
+                 LLVMInitializeMSP430AsmPrinter);
 }
 
 pub fn last_error() -> Option<String> {
