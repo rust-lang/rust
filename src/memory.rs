@@ -543,7 +543,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             I16 | U16              => (2, val.bits as u16 as u64),
             I32 | U32 | F32 | Char => (4, val.bits as u32 as u64),
             I64 | U64 | F64        => (8, val.bits),
-            FnPtr | Ptr            => bug!("handled above"),
+            // int -> ptr transmutes are handled here
+            FnPtr | Ptr            => return self.write_usize(dest, val.bits),
         };
 
         self.write_uint(dest, bits, size)
