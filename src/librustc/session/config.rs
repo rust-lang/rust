@@ -25,7 +25,6 @@ use lint;
 use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
-use syntax::attr;
 use syntax::parse::{self, token};
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
@@ -41,6 +40,7 @@ use std::collections::btree_map::Values as BTreeMapValuesIter;
 use std::fmt;
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
@@ -945,45 +945,37 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         InternedString::new("unix")
     };
 
-    let mk = attr::mk_name_value_item_str;
-    let mut ret = vec![ // Target bindings.
-        mk(token::intern("target_os"), intern(os)),
-        mk(token::intern("target_family"), fam.clone()),
-        mk(token::intern("target_arch"), intern(arch)),
-        mk(token::intern("target_endian"), intern(end)),
-        mk(token::intern("target_pointer_width"), intern(wordsz)),
-        mk(token::intern("target_env"), intern(env)),
-        mk(token::intern("target_vendor"), intern(vendor)),
-    ];
-    match &fam[..] {
-        "windows" | "unix" => ret.push(attr::mk_word_item(token::intern(&fam))),
-        _ => (),
+    let mut ret = HashSet::new();
+    // Target bindings.
+    ret.insert((token::intern("target_os"), Some(intern(os))));
+    ret.insert((token::intern("target_family"), Some(fam.clone())));
+    ret.insert((token::intern("target_arch"), Some(intern(arch))));
+    ret.insert((token::intern("target_endian"), Some(intern(end))));
+    ret.insert((token::intern("target_pointer_width"), Some(intern(wordsz))));
+    ret.insert((token::intern("target_env"), Some(intern(env))));
+    ret.insert((token::intern("target_vendor"), Some(intern(vendor))));
+    if &fam == "windows" || &fam == "unix" {
+        ret.insert((token::intern(&fam), None));
     }
     if sess.target.target.options.has_elf_tls {
-        ret.push(attr::mk_word_item(token::intern("target_thread_local")));
+        ret.insert((token::intern("target_thread_local"), None));
     }
     for &i in &[8, 16, 32, 64, 128] {
         if i <= max_atomic_width {
             let s = i.to_string();
-            ret.push(mk(token::intern("target_has_atomic"), intern(&s)));
+            ret.insert((token::intern("target_has_atomic"), Some(intern(&s))));
             if &s == wordsz {
-                ret.push(mk(token::intern("target_has_atomic"), intern("ptr")));
+                ret.insert((token::intern("target_has_atomic"), Some(intern("ptr"))));
             }
         }
     }
     if sess.opts.debug_assertions {
-        ret.push(attr::mk_word_item(token::intern("debug_assertions")));
+        ret.insert((token::intern("debug_assertions"), None));
     }
     if sess.opts.crate_types.contains(&CrateTypeProcMacro) {
-        ret.push(attr::mk_word_item(token::intern("proc_macro")));
+        ret.insert((token::intern("proc_macro"), None));
     }
     return ret;
-}
-
-pub fn append_configuration(cfg: &mut ast::CrateConfig, name: ast::Name) {
-    if !cfg.iter().any(|mi| mi.name() == name) {
-        cfg.push(attr::mk_word_item(name))
-    }
 }
 
 pub fn build_configuration(sess: &Session,
@@ -994,11 +986,10 @@ pub fn build_configuration(sess: &Session,
     let default_cfg = default_configuration(sess);
     // If the user wants a test runner, then add the test cfg
     if sess.opts.test {
-        append_configuration(&mut user_cfg, token::intern("test"))
+        user_cfg.insert((token::intern("test"), None));
     }
-    let mut v = user_cfg.into_iter().collect::<Vec<_>>();
-    v.extend_from_slice(&default_cfg[..]);
-    v
+    user_cfg.extend(default_cfg.iter().cloned());
+    user_cfg
 }
 
 pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
@@ -1244,11 +1235,14 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
         let meta_item = panictry!(parser.parse_meta_item());
 
         if !parser.reader.is_eof() {
-            early_error(ErrorOutputType::default(), &format!("invalid --cfg argument: {}",
-                                                             s))
+            early_error(ErrorOutputType::default(), &format!("invalid --cfg argument: {}", s))
+        } else if meta_item.is_meta_item_list() {
+            let msg =
+                format!("invalid predicate in --cfg command line argument: `{}`", meta_item.name());
+            early_error(ErrorOutputType::default(), &msg)
         }
 
-        meta_item
+        (meta_item.name(), meta_item.value_str())
     }).collect::<ast::CrateConfig>()
 }
 
