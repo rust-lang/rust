@@ -58,11 +58,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
                 traits::VtableFnPointer(
                     traits::VtableFnPointerData {
-                        fn_ty: _bare_fn_ty,
+                        fn_ty,
                         nested: _ }) => {
-                    let _trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_ref.def_id()).unwrap();
-                    //vec![trans_fn_pointer_shim(ccx, trait_closure_kind, bare_fn_ty)].into_iter()
-                    unimplemented!()
+                    match fn_ty.sty {
+                        ty::TyFnDef(did, substs, bare_fn_ty) => {
+                            vec![Some(self.memory.create_fn_ptr(did, substs, bare_fn_ty))].into_iter()
+                        },
+                        _ => bug!("bad VtableFnPointer fn_ty: {:?}", fn_ty),
+                    }
                 }
                 traits::VtableObject(ref data) => {
                     // this would imply that the Self type being erased is
