@@ -60,6 +60,8 @@ fn compile_test() {
         let files: Box<Iterator<Item=_>> = if let Ok(path) = std::env::var("MIRI_RUSTC_TEST") {
             Box::new(files.chain(std::fs::read_dir(path).unwrap()))
         } else {
+            // print traces only when not running on the rust run-pass test suite (since tracing is slow)
+            std::env::set_var("MIRI_LOG", "trace");
             Box::new(files)
         };
         let mut mir_not_found = 0;
