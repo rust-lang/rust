@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME (#14132): Even this SVH computation still has implementation
-// artifacts: namely, the order of item declaration will affect the
-// hash computation, but for many kinds of items the order of
-// declaration should be irrelevant to the ABI.
-
 use self::SawExprComponent::*;
 use self::SawAbiComponent::*;
 use self::SawItemComponent::*;
