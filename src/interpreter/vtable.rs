@@ -36,7 +36,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         .into_iter()
                         .map(|opt_mth| opt_mth.map(|mth| {
                             let fn_ty = self.tcx.erase_regions(&mth.method.fty);
-                            self.memory.create_fn_ptr(mth.method.def_id, mth.substs, fn_ty)
+                            self.memory.create_fn_ptr(self.tcx, mth.method.def_id, mth.substs, fn_ty)
                         }))
                         .collect::<Vec<_>>()
                         .into_iter()
@@ -47,14 +47,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         substs,
                         nested: _ }) => {
                     let closure_type = self.tcx.closure_type(closure_def_id, substs);
-                    let fn_ty = ty::BareFnTy {
-                        unsafety: closure_type.unsafety,
-                        abi: closure_type.abi,
-                        sig: closure_type.sig,
-                    };
-                    let _fn_ty = self.tcx.mk_bare_fn(fn_ty);
-                    unimplemented!()
-                    //vec![Some(self.memory.create_fn_ptr(closure_def_id, substs.func_substs, fn_ty))].into_iter()
+                    vec![Some(self.memory.create_closure_ptr(self.tcx, closure_def_id, substs, closure_type))].into_iter()
                 }
                 traits::VtableFnPointer(
                     traits::VtableFnPointerData {
@@ -62,7 +55,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         nested: _ }) => {
                     match fn_ty.sty {
                         ty::TyFnDef(did, substs, bare_fn_ty) => {
-                            vec![Some(self.memory.create_fn_ptr(did, substs, bare_fn_ty))].into_iter()
+                            vec![Some(self.memory.create_fn_ptr(self.tcx, did, substs, bare_fn_ty))].into_iter()
                         },
                         _ => bug!("bad VtableFnPointer fn_ty: {:?}", fn_ty),
                     }
@@ -97,7 +90,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     ty::TyFnDef(_, _, fn_ty) => self.tcx.erase_regions(&fn_ty),
                     _ => bug!("drop method is not a TyFnDef"),
                 };
-                let fn_ptr = self.memory.create_fn_ptr(drop_def_id, substs, fn_ty);
+                let fn_ptr = self.memory.create_fn_ptr(self.tcx, drop_def_id, substs, fn_ty);
                 self.memory.write_ptr(vtable, fn_ptr)?;
             }
         }

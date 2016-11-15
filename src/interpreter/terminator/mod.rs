@@ -86,9 +86,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match func_ty.sty {
                     ty::TyFnPtr(bare_fn_ty) => {
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr();
-                        let (def_id, substs, fn_ty) = self.memory.get_fn(fn_ptr.alloc_id)?;
-                        if fn_ty != bare_fn_ty {
-                            return Err(EvalError::FunctionPointerTyMismatch(fn_ty, bare_fn_ty));
+                        let (def_id, substs, abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
+                        if abi != bare_fn_ty.abi || sig != bare_fn_ty.sig.skip_binder() {
+                            return Err(EvalError::FunctionPointerTyMismatch(abi, sig, bare_fn_ty));
                         }
                         self.eval_fn_call(def_id, substs, bare_fn_ty, destination, args,
                                           terminator.source_info.span)?
@@ -500,9 +500,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let idx = idx + 3;
                     let offset = idx * self.memory.pointer_size();
                     let fn_ptr = self.memory.read_ptr(vtable.offset(offset as isize))?;
-                    let (def_id, substs, ty) = self.memory.get_fn(fn_ptr.alloc_id)?;
-                    // FIXME: skip_binder is wrong for HKL
-                    *first_ty = ty.sig.skip_binder().inputs[0];
+                    let (def_id, substs, _abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
+                    *first_ty = sig.inputs[0];
                     Ok((def_id, substs))
                 } else {
                     Err(EvalError::VtableForArgumentlessMethod)
@@ -643,9 +642,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let drop_fn = self.memory.read_ptr(vtable)?;
                 // some values don't need to call a drop impl, so the value is null
                 if drop_fn != Pointer::from_int(0) {
-                    let (def_id, substs, ty) = self.memory.get_fn(drop_fn.alloc_id)?;
-                    let fn_sig = self.tcx.erase_late_bound_regions_and_normalize(&ty.sig);
-                    let real_ty = fn_sig.inputs[0];
+                    let (def_id, substs, _abi, sig) = self.memory.get_fn(drop_fn.alloc_id)?;
+                    let real_ty = sig.inputs[0];
                     self.drop(Lvalue::from_ptr(ptr), real_ty, drop)?;
                     drop.push((def_id, Value::ByVal(PrimVal::from_ptr(ptr)), substs));
                 } else {

@@ -4,9 +4,11 @@ use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, ptr};
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::{BareFnTy, ClosureTy, ClosureSubsts};
+use rustc::ty::{self, BareFnTy, ClosureTy, ClosureSubsts, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::ty::layout::{self, TargetDataLayout};
+
+use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
 use primval::PrimVal;
@@ -88,19 +90,9 @@ impl Pointer {
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 struct FunctionDefinition<'tcx> {
     pub def_id: DefId,
-    pub kind: FunctionKind<'tcx>,
-}
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
-enum FunctionKind<'tcx> {
-    Closure {
-        substs: ClosureSubsts<'tcx>,
-        ty: ClosureTy<'tcx>,
-    },
-    Function {
-        substs: &'tcx Substs<'tcx>,
-        ty: &'tcx BareFnTy<'tcx>,
-    }
+    pub substs: &'tcx Substs<'tcx>,
+    pub abi: Abi,
+    pub sig: &'tcx ty::FnSig<'tcx>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,23 +135,31 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.alloc_map.iter()
     }
 
-    pub fn create_closure_ptr(&mut self, def_id: DefId, substs: ClosureSubsts<'tcx>, fn_ty: ClosureTy<'tcx>) -> Pointer {
+    pub fn create_closure_ptr(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: ClosureSubsts<'tcx>, fn_ty: ClosureTy<'tcx>) -> Pointer {
+        // FIXME: this is a hack
+        let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: fn_ty.unsafety,
+            abi: fn_ty.abi,
+            sig: fn_ty.sig,
+        });
         self.create_fn_alloc(FunctionDefinition {
             def_id: def_id,
-            kind: FunctionKind::Closure {
-                substs: substs,
-                ty: fn_ty,
-            }
+            substs: substs.func_substs,
+            abi: fn_ty.abi,
+            // FIXME: why doesn't this compile?
+            //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
+            sig: fn_ty.sig.skip_binder(),
         })
     }
 
-    pub fn create_fn_ptr(&mut self, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
+    pub fn create_fn_ptr(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
         self.create_fn_alloc(FunctionDefinition {
             def_id: def_id,
-            kind: FunctionKind::Function {
-                substs: substs,
-                ty: fn_ty,
-            }
+            substs: substs,
+            abi: fn_ty.abi,
+            // FIXME: why doesn't this compile?
+            //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
+            sig: fn_ty.sig.skip_binder(),
         })
     }
 
@@ -308,33 +308,15 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn get_closure(&self, id: AllocId) -> EvalResult<'tcx, (DefId, ClosureSubsts<'tcx>, ClosureTy<'tcx>)> {
-        debug!("reading closure fn ptr: {}", id);
-        match self.functions.get(&id) {
-            Some(&FunctionDefinition {
-                def_id,
-                kind: FunctionKind::Closure { ref substs, ref ty }
-            }) => Ok((def_id, *substs, ty.clone())),
-            Some(&FunctionDefinition {
-                kind: FunctionKind::Function { .. }, ..
-            }) => Err(EvalError::CalledClosureAsFunction),
-            None => match self.alloc_map.get(&id) {
-                Some(_) => Err(EvalError::ExecuteMemory),
-                None => Err(EvalError::InvalidFunctionPointer),
-            }
-        }
-    }
-
-    pub fn get_fn(&self, id: AllocId) -> EvalResult<'tcx, (DefId, &'tcx Substs<'tcx>, &'tcx BareFnTy<'tcx>)> {
+    pub fn get_fn(&self, id: AllocId) -> EvalResult<'tcx, (DefId, &'tcx Substs<'tcx>, Abi, &'tcx ty::FnSig<'tcx>)> {
         debug!("reading fn ptr: {}", id);
         match self.functions.get(&id) {
             Some(&FunctionDefinition {
                 def_id,
-                kind: FunctionKind::Function { substs, ty }
-            }) => Ok((def_id, substs, ty)),
-            Some(&FunctionDefinition {
-                kind: FunctionKind::Closure { .. }, ..
-            }) => Err(EvalError::CalledClosureAsFunction),
+                substs,
+                abi,
+                sig,
+            }) => Ok((def_id, substs, abi, sig)),
             None => match self.alloc_map.get(&id) {
                 Some(_) => Err(EvalError::ExecuteMemory),
                 None => Err(EvalError::InvalidFunctionPointer),
