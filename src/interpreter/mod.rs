@@ -518,7 +518,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 let value_ty = self.operand_ty(operand);
                                 self.write_value(value, dest, value_ty)?;
                             } else {
-                                assert_eq!(operands.len(), 0);
+                                if let Some(operand) = operands.get(0) {
+                                    assert_eq!(operands.len(), 1);
+                                    let operand_ty = self.operand_ty(operand);
+                                    assert_eq!(self.type_size(operand_ty), Some(0));
+                                }
                                 let value_size = self.type_size(dest_ty).expect("pointer types are sized");
                                 let zero = PrimVal::from_int_with_size(0, value_size);
                                 self.write_primval(dest, zero)?;
