@@ -22,6 +22,7 @@ use str::char_at;
 use tokenstream;
 
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -64,7 +65,7 @@ impl ParseSess {
         ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
-            config: Vec::new(),
+            config: HashSet::new(),
             included_mod_stack: RefCell::new(vec![]),
             code_map: code_map
         }

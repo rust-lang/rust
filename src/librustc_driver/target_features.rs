@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::{ast, attr};
+use syntax::ast;
 use llvm::LLVMRustHasFeature;
 use rustc::session::Session;
 use rustc_trans::back::write::create_target_machine;
@@ -44,7 +44,7 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
     for feat in whitelist {
         assert_eq!(feat.chars().last(), Some('\0'));
         if unsafe { LLVMRustHasFeature(target_machine, feat.as_ptr() as *const c_char) } {
-            cfg.push(attr::mk_name_value_item_str(tf, intern(&feat[..feat.len() - 1])))
+            cfg.insert((tf, Some(intern(&feat[..feat.len() - 1]))));
         }
     }
 
@@ -73,6 +73,6 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
     }
 
     if crt_static {
-        cfg.push(attr::mk_name_value_item_str(tf.clone(), intern("crt-static")));
+        cfg.insert((tf, Some(intern("crt-static"))));
     }
 }

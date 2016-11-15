@@ -400,18 +400,6 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos, hi: By
     }
 }
 
-/* Searching */
-/// Check if `needle` occurs in `haystack` by a structural
-/// comparison. This is slightly subtle, and relies on ignoring the
-/// span included in the `==` comparison a plain MetaItem.
-pub fn contains(haystack: &[P<MetaItem>], needle: &MetaItem) -> bool {
-    debug!("attr::contains (name={})", needle.name());
-    haystack.iter().any(|item| {
-        debug!("  testing: {}", item.name());
-        item.node == needle.node
-    })
-}
-
 pub fn list_contains_name(items: &[NestedMetaItem], name: &str) -> bool {
     debug!("attr::list_contains_name (name={})", name);
     items.iter().any(|item| {
@@ -558,7 +546,7 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
             if let (Some(feats), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
                 gated_cfg.check_and_emit(sess, feats);
             }
-            contains(&sess.config, cfg)
+            sess.config.contains(&(cfg.name(), cfg.value_str()))
         }
     }
 }

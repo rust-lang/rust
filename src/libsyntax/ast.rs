@@ -25,6 +25,7 @@ use print::pprust;
 use ptr::P;
 use tokenstream::{TokenTree};
 
+use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 use std::u32;
@@ -485,7 +486,7 @@ pub struct WhereEqPredicate {
 
 /// The set of MetaItems that define the compilation environment of the crate,
 /// used to drive conditional compilation
-pub type CrateConfig = Vec<P<MetaItem>>;
+pub type CrateConfig = HashSet<(Name, Option<InternedString>)>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Crate {
@@ -519,7 +520,7 @@ pub type MetaItem = Spanned<MetaItemKind>;
 /// A compile-time attribute item.
 ///
 /// E.g. `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`
-#[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum MetaItemKind {
     /// Word meta item.
     ///
@@ -533,34 +534,6 @@ pub enum MetaItemKind {
     ///
     /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
     NameValue(Name, Lit),
-}
-
-// can't be derived because the MetaItemKind::List requires an unordered comparison
-impl PartialEq for MetaItemKind {
-    fn eq(&self, other: &MetaItemKind) -> bool {
-        use self::MetaItemKind::*;
-        match *self {
-            Word(ref ns) => match *other {
-                Word(ref no) => (*ns) == (*no),
-                _ => false
-            },
-            List(ref ns, ref miss) => match *other {
-                List(ref no, ref miso) => {
-                    ns == no &&
-                        miss.iter().all(|mi| {
-                            miso.iter().any(|x| x.node == mi.node)
-                        })
-                }
-                _ => false
-            },
-            NameValue(ref ns, ref vs) => match *other {
-                NameValue(ref no, ref vo) => {
-                    (*ns) == (*no) && vs.node == vo.node
-                }
-                _ => false
-            },
-        }
-    }
 }
 
 /// A Block (`{ .. }`).
