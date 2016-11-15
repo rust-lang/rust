@@ -70,7 +70,8 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
         attrs: vec![ast::Attribute {
             style: ast::AttrStyle::Outer,
             value: P(ast::MetaItem {
-                node: ast::MetaItemKind::Word(token::intern("prelude_import")),
+                name: token::intern("prelude_import"),
+                node: ast::MetaItemKind::Word,
                 span: span,
             }),
             id: attr::mk_attr_id(),

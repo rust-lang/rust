@@ -991,9 +991,9 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
     use ast::NestedMetaItemKind::*;
 
     match item.node {
-        Word(..) => false,
-        NameValue(_, ref lit) => !lit.node.is_str(),
-        List(_, ref list) => list.iter().any(|li| {
+        Word => false,
+        NameValue(ref lit) => !lit.node.is_str(),
+        List(ref list) => list.iter().any(|li| {
             match li.node {
                 MetaItem(ref mi) => contains_novel_literal(&**mi),
                 Literal(_) => true,

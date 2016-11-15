@@ -515,7 +515,12 @@ pub enum NestedMetaItemKind {
 /// A spanned compile-time attribute item.
 ///
 /// E.g. `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`
-pub type MetaItem = Spanned<MetaItemKind>;
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct MetaItem {
+    pub name: Name,
+    pub node: MetaItemKind,
+    pub span: Span,
+}
 
 /// A compile-time attribute item.
 ///
@@ -525,15 +530,15 @@ pub enum MetaItemKind {
     /// Word meta item.
     ///
     /// E.g. `test` as in `#[test]`
-    Word(Name),
+    Word,
     /// List meta item.
     ///
     /// E.g. `derive(..)` as in `#[derive(..)]`
-    List(Name, Vec<NestedMetaItem>),
+    List(Vec<NestedMetaItem>),
     /// Name value meta item.
     ///
     /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
-    NameValue(Name, Lit),
+    NameValue(Lit)
 }
 
 /// A Block (`{ .. }`).

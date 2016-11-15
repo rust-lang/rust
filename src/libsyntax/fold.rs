@@ -520,13 +520,14 @@ pub fn noop_fold_meta_list_item<T: Folder>(li: NestedMetaItem, fld: &mut T)
 }
 
 pub fn noop_fold_meta_item<T: Folder>(mi: P<MetaItem>, fld: &mut T) -> P<MetaItem> {
-    mi.map(|Spanned {node, span}| Spanned {
+    mi.map(|MetaItem { name, node, span }| MetaItem {
+        name: name,
         node: match node {
-            MetaItemKind::Word(id) => MetaItemKind::Word(id),
-            MetaItemKind::List(id, mis) => {
-                MetaItemKind::List(id, mis.move_map(|e| fld.fold_meta_list_item(e)))
-            }
-            MetaItemKind::NameValue(id, s) => MetaItemKind::NameValue(id, s)
+            MetaItemKind::Word => MetaItemKind::Word,
+            MetaItemKind::List(mis) => {
+                MetaItemKind::List(mis.move_map(|e| fld.fold_meta_list_item(e)))
+            },
+            MetaItemKind::NameValue(s) => MetaItemKind::NameValue(s),
         },
         span: fld.new_span(span)
     })

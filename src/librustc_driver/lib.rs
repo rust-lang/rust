@@ -615,7 +615,8 @@ impl RustcDefaultCalls {
                     let mut cfgs = Vec::new();
                     for &(name, ref value) in sess.parse_sess.config.iter() {
                         let gated_cfg = GatedCfg::gate(&ast::MetaItem {
-                            node: ast::MetaItemKind::Word(name),
+                            name: name,
+                            node: ast::MetaItemKind::Word,
                             span: DUMMY_SP,
                         });
                         if !allow_unstable_cfg && gated_cfg.is_some() {

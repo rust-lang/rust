@@ -18,7 +18,7 @@ use ast;
 use ast::{AttrId, Attribute, Name};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, Expr, Item, Local, Stmt, StmtKind};
-use codemap::{respan, spanned, dummy_spanned, mk_sp};
+use codemap::{spanned, dummy_spanned, mk_sp};
 use syntax_pos::{Span, BytePos, DUMMY_SP};
 use errors::Handler;
 use feature_gate::{Features, GatedCfg};
@@ -219,16 +219,12 @@ impl Attribute {
 
 impl MetaItem {
     pub fn name(&self) -> Name {
-        match self.node {
-            MetaItemKind::Word(n) => n,
-            MetaItemKind::NameValue(n, _) => n,
-            MetaItemKind::List(n, _) => n,
-        }
+        self.name
     }
 
     pub fn value_str(&self) -> Option<InternedString> {
         match self.node {
-            MetaItemKind::NameValue(_, ref v) => {
+            MetaItemKind::NameValue(ref v) => {
                 match v.node {
                     ast::LitKind::Str(ref s, _) => Some((*s).clone()),
                     _ => None,
@@ -240,14 +236,14 @@ impl MetaItem {
 
     pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
         match self.node {
-            MetaItemKind::List(_, ref l) => Some(&l[..]),
+            MetaItemKind::List(ref l) => Some(&l[..]),
             _ => None
         }
     }
 
     pub fn is_word(&self) -> bool {
         match self.node {
-            MetaItemKind::Word(_) => true,
+            MetaItemKind::Word => true,
             _ => false,
         }
     }
@@ -320,15 +316,15 @@ pub fn mk_word_item(name: Name) -> P<MetaItem> {
 }
 
 pub fn mk_spanned_name_value_item(sp: Span, name: Name, value: ast::Lit) -> P<MetaItem> {
-    P(respan(sp, MetaItemKind::NameValue(name, value)))
+    P(MetaItem { span: sp, name: name, node: MetaItemKind::NameValue(value) })
 }
 
 pub fn mk_spanned_list_item(sp: Span, name: Name, items: Vec<NestedMetaItem>) -> P<MetaItem> {
-    P(respan(sp, MetaItemKind::List(name, items)))
+    P(MetaItem { span: sp, name: name, node: MetaItemKind::List(items) })
 }
 
 pub fn mk_spanned_word_item(sp: Span, name: Name) -> P<MetaItem> {
-    P(respan(sp, MetaItemKind::Word(name)))
+    P(MetaItem { span: sp, name: name, node: MetaItemKind::Word })
 }
 
 
@@ -394,7 +390,11 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos, hi: By
     Attribute {
         id: id,
         style: style,
-        value: P(spanned(lo, hi, MetaItemKind::NameValue(token::intern("doc"), lit))),
+        value: P(MetaItem {
+            span: mk_sp(lo, hi),
+            name: token::intern("doc"),
+            node: MetaItemKind::NameValue(lit),
+        }),
         is_sugared_doc: true,
         span: mk_sp(lo, hi),
     }
@@ -472,13 +472,14 @@ pub enum InlineAttr {
 
 /// Determine what `#[inline]` attribute is present in `attrs`, if any.
 pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> InlineAttr {
-    attrs.iter().fold(InlineAttr::None, |ia,attr| {
+    attrs.iter().fold(InlineAttr::None, |ia, attr| {
         match attr.value.node {
-            MetaItemKind::Word(n) if n == "inline" => {
+            _ if attr.value.name != "inline" => ia,
+            MetaItemKind::Word => {
                 mark_used(attr);
                 InlineAttr::Hint
             }
-            MetaItemKind::List(n, ref items) if n == "inline" => {
+            MetaItemKind::List(ref items) => {
                 mark_used(attr);
                 if items.len() != 1 {
                     diagnostic.map(|d|{ span_err!(d, attr.span, E0534, "expected one argument"); });
@@ -511,7 +512,7 @@ pub fn requests_inline(attrs: &[Attribute]) -> bool {
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {
     match cfg.node {
-        ast::MetaItemKind::List(ref pred, ref mis) => {
+        ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
                 if !mi.is_meta_item() {
                     handle_errors(&sess.span_diagnostic, mi.span, AttrError::UnsupportedLiteral);
@@ -521,7 +522,7 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
 
             // The unwraps below may look dangerous, but we've already asserted
             // that they won't fail with the loop above.
-            match &*pred.as_str() {
+            match &*cfg.name.as_str() {
                 "any" => mis.iter().any(|mi| {
                     cfg_matches(mi.meta_item().unwrap(), sess, features)
                 }),
@@ -542,7 +543,7 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
                 }
             }
         },
-        ast::MetaItemKind::Word(_) | ast::MetaItemKind::NameValue(..) => {
+        ast::MetaItemKind::Word | ast::MetaItemKind::NameValue(..) => {
             if let (Some(feats), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
                 gated_cfg.check_and_emit(sess, feats);
             }
@@ -880,7 +881,7 @@ pub fn require_unique_names(diagnostic: &Handler, metas: &[P<MetaItem>]) {
 pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> {
     let mut acc = Vec::new();
     match attr.value.node {
-        ast::MetaItemKind::List(s, ref items) if s == "repr" => {
+        ast::MetaItemKind::List(ref items) if attr.value.name == "repr" => {
             mark_used(attr);
             for item in items {
                 if !item.is_meta_item() {

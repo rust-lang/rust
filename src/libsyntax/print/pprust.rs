@@ -777,16 +777,16 @@ pub trait PrintState<'a> {
     fn print_meta_item(&mut self, item: &ast::MetaItem) -> io::Result<()> {
         try!(self.ibox(INDENT_UNIT));
         match item.node {
-            ast::MetaItemKind::Word(ref name) => {
-                try!(word(self.writer(), &name.as_str()));
+            ast::MetaItemKind::Word => {
+                try!(word(self.writer(), &item.name.as_str()));
             }
-            ast::MetaItemKind::NameValue(ref name, ref value) => {
-                try!(self.word_space(&name.as_str()));
+            ast::MetaItemKind::NameValue(ref value) => {
+                try!(self.word_space(&item.name.as_str()));
                 try!(self.word_space("="));
                 try!(self.print_literal(value));
             }
-            ast::MetaItemKind::List(ref name, ref items) => {
-                try!(word(self.writer(), &name.as_str()));
+            ast::MetaItemKind::List(ref items) => {
+                try!(word(self.writer(), &item.name.as_str()));
                 try!(self.popen());
                 try!(self.commasep(Consistent,
                               &items[..],
