@@ -137,15 +137,19 @@ impl PrimVal {
         bits_to_f64(self.bits)
     }
 
-    pub fn try_as_ptr(self) -> Option<Pointer> {
+    pub fn to_ptr(self) -> Pointer {
         self.relocation.map(|alloc_id| {
             Pointer::new(alloc_id, self.bits as usize)
-        })
+        }).unwrap_or_else(|| Pointer::from_int(self.bits as usize))
+    }
+
+    pub fn try_as_uint<'tcx>(self) -> EvalResult<'tcx, u64> {
+        self.to_ptr().to_int().map(|val| val as u64)
     }
 
     pub fn expect_uint(self, error_msg: &str) -> u64 {
-        if let Some(ptr) = self.try_as_ptr() {
-            return ptr.to_int().expect("non abstract ptr") as u64
+        if let Ok(int) = self.try_as_uint() {
+            return int;
         }
 
         use self::PrimValKind::*;
@@ -156,8 +160,8 @@ impl PrimVal {
     }
 
     pub fn expect_int(self, error_msg: &str) -> i64 {
-        if let Some(ptr) = self.try_as_ptr() {
-            return ptr.to_int().expect("non abstract ptr") as i64
+        if let Ok(int) = self.try_as_uint() {
+            return int as i64;
         }
 
         use self::PrimValKind::*;
@@ -187,15 +191,6 @@ impl PrimVal {
             PrimValKind::F32 => bits_to_f64(self.bits),
             _ => bug!("{}", error_msg),
         }
-    }
-
-    pub fn expect_ptr(self, error_msg: &str) -> Pointer {
-        self.try_as_ptr().expect(error_msg)
-    }
-
-    /// FIXME(solson): Refactored into a duplicate of `expect_ptr`. Investigate removal.
-    pub fn expect_fn_ptr(self, error_msg: &str) -> Pointer {
-        self.try_as_ptr().expect(error_msg)
     }
 }
 
@@ -277,19 +272,13 @@ pub fn binary_op<'tcx>(
     use rustc::mir::BinOp::*;
     use self::PrimValKind::*;
 
-    match (left.try_as_ptr(), right.try_as_ptr()) {
-        (Some(left_ptr), Some(right_ptr)) => {
-            if left_ptr.alloc_id != right_ptr.alloc_id {
-                return Ok((unrelated_ptr_ops(bin_op)?, false));
-            }
-
-            // If the pointers are into the same allocation, fall through to the more general match
-            // later, which will do comparisons on the `bits` fields, which are the pointer offsets
-            // in this case.
-        }
-
-        (None, None) => {}
-        _ => return Err(EvalError::ReadPointerAsBytes),
+    // If the pointers are into the same allocation, fall through to the more general match
+    // later, which will do comparisons on the `bits` fields, which are the pointer offsets
+    // in this case.
+    let left_ptr = left.to_ptr();
+    let right_ptr = right.to_ptr();
+    if left_ptr.alloc_id != right_ptr.alloc_id {
+        return Ok((unrelated_ptr_ops(bin_op, left_ptr, right_ptr)?, false));
     }
 
     let (l, r) = (left.bits, right.bits);
@@ -376,12 +365,15 @@ pub fn binary_op<'tcx>(
     Ok((val, false))
 }
 
-fn unrelated_ptr_ops<'tcx>(bin_op: mir::BinOp) -> EvalResult<'tcx, PrimVal> {
+fn unrelated_ptr_ops<'tcx>(bin_op: mir::BinOp, left: Pointer, right: Pointer) -> EvalResult<'tcx, PrimVal> {
     use rustc::mir::BinOp::*;
     match bin_op {
         Eq => Ok(PrimVal::from_bool(false)),
         Ne => Ok(PrimVal::from_bool(true)),
         Lt | Le | Gt | Ge => Err(EvalError::InvalidPointerMath),
+        _ if left.to_int().is_ok() ^ right.to_int().is_ok() => {
+            Err(EvalError::ReadPointerAsBytes)
+        },
         _ => bug!(),
     }
 }

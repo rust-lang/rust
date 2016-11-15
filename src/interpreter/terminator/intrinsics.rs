@@ -124,15 +124,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "drop_in_place" => {
                 let ty = substs.type_at(0);
+                trace!("drop in place on {}", ty);
                 let ptr_ty = self.tcx.mk_mut_ptr(ty);
                 let lvalue = match self.follow_by_ref_value(arg_vals[0], ptr_ty)? {
                     Value::ByRef(_) => bug!("follow_by_ref_value returned ByRef"),
-                    Value::ByVal(ptr) => Lvalue::from_ptr(ptr.expect_ptr("drop_in_place first arg not a pointer")),
+                    Value::ByVal(value) => Lvalue::from_ptr(value.to_ptr()),
                     Value::ByValPair(ptr, extra) => Lvalue::Ptr {
-                        ptr: ptr.expect_ptr("drop_in_place first arg not a pointer"),
-                        extra: match extra.try_as_ptr() {
-                            Some(vtable) => LvalueExtra::Vtable(vtable),
-                            None => LvalueExtra::Length(extra.expect_uint("either pointer or not, but not neither")),
+                        ptr: ptr.to_ptr(),
+                        extra: match self.tcx.struct_tail(ty).sty {
+                            ty::TyTrait(_) => LvalueExtra::Vtable(extra.to_ptr()),
+                            ty::TyStr | ty::TySlice(_) => LvalueExtra::Length(extra.try_as_uint()?),
+                            _ => bug!("invalid fat pointer type: {}", ptr_ty),
                         },
                     },
                 };
@@ -440,7 +442,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 ty::TySlice(_) | ty::TyStr => {
                     let elem_ty = ty.sequence_element_type(self.tcx);
                     let elem_size = self.type_size(elem_ty).expect("slice element must be sized") as u64;
-                    let len = value.expect_slice_len(&self.memory)?;
+                    let (_, len) = value.expect_slice(&self.memory)?;
                     let align = self.type_align(elem_ty);
                     Ok((len * elem_size, align as u64))
                 }

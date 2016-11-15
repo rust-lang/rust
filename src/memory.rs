@@ -533,8 +533,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn write_primval(&mut self, dest: Pointer, val: PrimVal) -> EvalResult<'tcx, ()> {
-        if let Some(ptr) = val.try_as_ptr() {
-            return self.write_ptr(dest, ptr);
+        if let Some(alloc_id) = val.relocation {
+            return self.write_ptr(dest, Pointer::new(alloc_id, val.bits as usize));
         }
 
         use primval::PrimValKind::*;

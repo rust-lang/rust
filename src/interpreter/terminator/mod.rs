@@ -85,8 +85,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let func_ty = self.operand_ty(func);
                 match func_ty.sty {
                     ty::TyFnPtr(bare_fn_ty) => {
-                        let fn_ptr = self.eval_operand_to_primval(func)?
-                            .expect_fn_ptr("TyFnPtr callee did not evaluate to FnPtr");
+                        let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr();
                         let (def_id, substs, fn_ty) = self.memory.get_fn(fn_ptr.alloc_id)?;
                         if fn_ty != bare_fn_ty {
                             return Err(EvalError::FunctionPointerTyMismatch(fn_ty, bare_fn_ty));
@@ -542,14 +541,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByRef(_) => bug!("follow_by_ref_value can't result in ByRef"),
                     Value::ByVal(ptr) => {
                         assert!(self.type_is_sized(contents_ty));
-                        let contents_ptr = ptr.expect_ptr("value of Box type must be a pointer");
+                        let contents_ptr = ptr.to_ptr();
                         self.drop(Lvalue::from_ptr(contents_ptr), contents_ty, drop)?;
                     },
                     Value::ByValPair(prim_ptr, extra) => {
-                        let ptr = prim_ptr.expect_ptr("value of Box type must be a pointer");
-                        let extra = match extra.try_as_ptr() {
-                            Some(vtable) => LvalueExtra::Vtable(vtable),
-                            None => LvalueExtra::Length(extra.expect_uint("slice length")),
+                        let ptr = prim_ptr.to_ptr();
+                        let extra = match self.tcx.struct_tail(contents_ty).sty {
+                            ty::TyTrait(_) => LvalueExtra::Vtable(extra.to_ptr()),
+                            ty::TyStr | ty::TySlice(_) => LvalueExtra::Length(extra.try_as_uint()?),
+                            _ => bug!("invalid fat pointer type: {}", ty),
                         };
                         self.drop(
                             Lvalue::Ptr {

@@ -963,33 +963,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Deref => {
-                use interpreter::value::Value::*;
+                let val = self.eval_and_read_lvalue(&proj.base)?;
 
-                let val = match self.eval_and_read_lvalue(&proj.base)? {
-                    ByRef(ptr) => self.read_value(ptr, base_ty)?,
-                    v => v,
+                let pointee_type = match base_ty.sty {
+                    ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
+                    ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
+                    ty::TyBox(ty) => ty,
+                    _ => bug!("can only deref pointer types"),
                 };
 
-                match val {
-                    ByValPair(ptr, vtable)
-                        if ptr.try_as_ptr().is_some() && vtable.try_as_ptr().is_some()
-                    => {
-                        let ptr = ptr.try_as_ptr().unwrap();
-                        let vtable = vtable.try_as_ptr().unwrap();
+                trace!("deref to {} on {:?}", pointee_type, val);
+
+                match self.tcx.struct_tail(pointee_type).sty {
+                    ty::TyTrait(_) => {
+                        let (ptr, vtable) = val.expect_ptr_vtable_pair(&self.memory)?;
                         (ptr, LvalueExtra::Vtable(vtable))
-                    }
-
-                    ByValPair(ptr, n) if ptr.try_as_ptr().is_some() => {
-                        let ptr = ptr.try_as_ptr().unwrap();
-                        (ptr, LvalueExtra::Length(n.expect_uint("slice length")))
-                    }
-
-                    ByVal(ptr) if ptr.try_as_ptr().is_some() => {
-                        let ptr = ptr.try_as_ptr().unwrap();
-                        (ptr, LvalueExtra::None)
-                    }
-
-                    _ => bug!("can't deref non pointer types"),
+                    },
+                    ty::TyStr | ty::TySlice(_) => {
+                        let (ptr, len) = val.expect_slice(&self.memory)?;
+                        (ptr, LvalueExtra::Length(len))
+                    },
+                    _ => (val.read_ptr(&self.memory)?, LvalueExtra::None),
                 }
             }
 
