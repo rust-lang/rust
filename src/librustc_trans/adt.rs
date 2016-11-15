@@ -247,6 +247,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // of the size.
             let size = size.bytes();
             let align = align.abi();
+            assert!(align <= std::u32::MAX as u64);
             let discr_ty = Type::from_integer(cx, discr);
             let discr_size = discr.size().bytes();
             let padded_discr_size = roundup(discr_size, align as u32);

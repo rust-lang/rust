@@ -13,7 +13,6 @@ pub mod simplify;
 pub mod erase_regions;
 pub mod no_landing_pads;
 pub mod type_check;
-pub mod print_type_sizes;
 pub mod add_call_guards;
 pub mod promote_consts;
 pub mod qualify_consts;

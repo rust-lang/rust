@@ -47,7 +47,7 @@ use rustc::hir::map as hir_map;
 use rustc::util::common::time;
 use session::config::{self, NoDebugInfo};
 use rustc_incremental::IncrementalHashesMap;
-use session::Session;
+use session::{self, DataTypeKind, Session};
 use abi::{self, Abi, FnType};
 use adt;
 use attributes;
@@ -93,6 +93,7 @@ use std::i32;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::attr;
 use rustc::hir;
+use rustc::ty::layout::{self, Layout};
 use syntax::ast;
 
 thread_local! {
@@ -1741,6 +1742,10 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               .collect())
     });
 
+    if tcx.sess.opts.debugging_opts.print_type_sizes {
+        gather_type_sizes(tcx);
+    }
+
     if sess.target.target.options.is_like_msvc &&
        sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
         create_imps(&crate_context_list);
@@ -1768,6 +1773,192 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         no_builtins: no_builtins,
         linker_info: linker_info,
         windows_subsystem: windows_subsystem,
+    }
+}
+
+fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    let layout_cache = tcx.layout_cache.borrow();
+    for (ty, layout) in layout_cache.iter() {
+
+        // (delay format until we actually need it)
+        let record = |kind, opt_discr_size, variants| {
+            let type_desc = format!("{:?}", ty);
+            let overall_size = layout.size(&tcx.data_layout);
+            let align = layout.align(&tcx.data_layout);
+            tcx.sess.code_stats.borrow_mut().record_type_size(kind,
+                                                              type_desc,
+                                                              align,
+                                                              overall_size,
+                                                              opt_discr_size,
+                                                              variants);
+        };
+
+        let (adt_def, substs) = match ty.sty {
+            ty::TyAdt(ref adt_def, substs) => {
+                debug!("print-type-size t: `{:?}` process adt", ty);
+                (adt_def, substs)
+            }
+
+            ty::TyClosure(..) => {
+                debug!("print-type-size t: `{:?}` record closure", ty);
+                record(DataTypeKind::Closure, None, vec![]);
+                continue;
+            }
+
+            _ => {
+                debug!("print-type-size t: `{:?}` skip non-nominal", ty);
+                continue;
+            }
+        };
+
+        let adt_kind = adt_def.adt_kind();
+
+        let build_field_info = |(field_name, field_ty): (ast::Name, Ty), offset: &layout::Size| {
+            match layout_cache.get(&field_ty) {
+                None => bug!("no layout found for field {} type: `{:?}`", field_name, field_ty),
+                Some(field_layout) => {
+                    session::FieldInfo {
+                        name: field_name.to_string(),
+                        offset: offset.bytes(),
+                        size: field_layout.size(&tcx.data_layout).bytes(),
+                        align: field_layout.align(&tcx.data_layout).abi(),
+                    }
+                }
+            }
+        };
+
+        let build_primitive_info = |name: ast::Name, value: &layout::Primitive| {
+            session::VariantInfo {
+                name: Some(name.to_string()),
+                kind: session::SizeKind::Exact,
+                align: value.align(&tcx.data_layout).abi(),
+                size: value.size(&tcx.data_layout).bytes(),
+                fields: vec![],
+            }
+        };
+
+        enum Fields<'a> {
+            WithDiscrim(&'a layout::Struct),
+            NoDiscrim(&'a layout::Struct),
+        }
+
+        let build_variant_info = |n: Option<ast::Name>, flds: &[(ast::Name, Ty)], layout: Fields| {
+            let (s, field_offsets) = match layout {
+                Fields::WithDiscrim(s) => (s, &s.offsets[1..]),
+                Fields::NoDiscrim(s) => (s, &s.offsets[0..]),
+            };
+            let field_info: Vec<_> = flds.iter()
+                .zip(field_offsets.iter())
+                .map(|(&field_name_ty, offset)| build_field_info(field_name_ty, offset))
+                .collect();
+
+            session::VariantInfo {
+                name: n.map(|n|n.to_string()),
+                kind: if s.sized {
+                    session::SizeKind::Exact
+                } else {
+                    session::SizeKind::Min
+                },
+                align: s.align.abi(),
+                size: s.min_size.bytes(),
+                fields: field_info,
+            }
+        };
+
+        match **layout {
+            Layout::StructWrappedNullablePointer { nonnull: ref variant_layout,
+                                                   nndiscr,
+                                                   discrfield: _ } => {
+                debug!("print-type-size t: `{:?}` adt struct-wrapped nullable nndiscr {} is {:?}",
+                       ty, nndiscr, variant_layout);
+                let variant_def = &adt_def.variants[nndiscr as usize];
+                let fields: Vec<_> = variant_def.fields.iter()
+                    .map(|field_def| (field_def.name, field_def.ty(tcx, substs)))
+                    .collect();
+                record(adt_kind.into(),
+                       None,
+                       vec![build_variant_info(Some(variant_def.name),
+                                               &fields,
+                                               Fields::NoDiscrim(variant_layout))]);
+            }
+            Layout::RawNullablePointer { nndiscr, value } => {
+                debug!("print-type-size t: `{:?}` adt raw nullable nndiscr {} is {:?}",
+                       ty, nndiscr, value);
+                let variant_def = &adt_def.variants[nndiscr as usize];
+                record(adt_kind.into(), None,
+                       vec![build_primitive_info(variant_def.name, &value)]);
+            }
+            Layout::Univariant { variant: ref variant_layout, non_zero: _ } => {
+                let variant_names = || {
+                    adt_def.variants.iter().map(|v|format!("{}", v.name)).collect::<Vec<_>>()
+                };
+                debug!("print-type-size t: `{:?}` adt univariant {:?} variants: {:?}",
+                       ty, variant_layout, variant_names());
+                assert!(adt_def.variants.len() <= 1,
+                        "univariant with variants {:?}", variant_names());
+                if adt_def.variants.len() == 1 {
+                    let variant_def = &adt_def.variants[0];
+                    let fields: Vec<_> = variant_def.fields.iter()
+                        .map(|field_def| (field_def.name, field_def.ty(tcx, substs)))
+                        .collect();
+                    record(adt_kind.into(),
+                           None,
+                           vec![build_variant_info(Some(variant_def.name),
+                                                   &fields,
+                                                   Fields::NoDiscrim(variant_layout))]);
+                } else {
+                    // (This case arises for *empty* enums; so give it
+                    // zero variants.)
+                    record(adt_kind.into(), None, vec![]);
+                }
+            }
+
+            Layout::General { ref variants, discr, .. } => {
+                debug!("print-type-size t: `{:?}` adt general variants def {} layouts {} {:?}",
+                       ty, adt_def.variants.len(), variants.len(), variants);
+                let variant_infos: Vec<_> = adt_def.variants.iter()
+                    .zip(variants.iter())
+                    .map(|(variant_def, variant_layout)| {
+                        let fields: Vec<_> = variant_def.fields.iter()
+                            .map(|field_def| (field_def.name, field_def.ty(tcx, substs)))
+                            .collect();
+                        build_variant_info(Some(variant_def.name),
+                                           &fields,
+                                           Fields::WithDiscrim(variant_layout))
+                    })
+                    .collect();
+                record(adt_kind.into(), Some(discr.size()), variant_infos);
+            }
+
+            Layout::UntaggedUnion { ref variants } => {
+                debug!("print-type-size t: `{:?}` adt union variants {:?}",
+                       ty, variants);
+                // layout does not currently store info about each
+                // variant...
+                record(adt_kind.into(), None, Vec::new());
+            }
+
+            Layout::CEnum { discr, .. } => {
+                debug!("print-type-size t: `{:?}` adt c-like enum", ty);
+                let variant_infos: Vec<_> = adt_def.variants.iter()
+                    .map(|variant_def| {
+                        build_primitive_info(variant_def.name,
+                                             &layout::Primitive::Int(discr))
+                    })
+                    .collect();
+                record(adt_kind.into(), Some(discr.size()), variant_infos);
+            }
+
+            // other cases provide little interesting (i.e. adjustable
+            // via representation tweaks) size info beyond total size.
+            Layout::Scalar { .. } |
+            Layout::Vector { .. } |
+            Layout::Array { .. } |
+            Layout::FatPointer { .. } => {
+                debug!("print-type-size t: `{:?}` adt other", ty);
+                record(adt_kind.into(), None, Vec::new())
+            }
+        }
     }
 }
 

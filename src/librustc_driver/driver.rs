@@ -216,9 +216,6 @@ pub fn compile_input(sess: &Session,
     };
 
     if sess.opts.debugging_opts.print_type_sizes {
-        // (these are stable sorts)
-        sess.code_stats.borrow_mut().sort_by_type_description();
-        sess.code_stats.borrow_mut().sort_by_overall_size();
         sess.code_stats.borrow().print_type_sizes();
     }
 
@@ -1015,9 +1012,6 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     time(time_passes, "MIR optimisations", || {
         let mut passes = ::rustc::mir::transform::Passes::new();
         passes.push_hook(box mir::transform::dump_mir::DumpMir);
-        if tcx.sess.opts.debugging_opts.print_type_sizes {
-            passes.push_pass(box mir::transform::print_type_sizes::GatherTypeSizesMir::new());
-        }
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
         passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("no-landing-pads"));
 
