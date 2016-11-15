@@ -133,7 +133,7 @@ impl<'a> StripUnconfigured<'a> {
             }
 
             let mis = match attr.value.node {
-                ast::MetaItemKind::List(_, ref mis) if is_cfg(&attr) => mis,
+                ast::MetaItemKind::List(ref mis) if is_cfg(&attr) => mis,
                 _ => return true
             };
 

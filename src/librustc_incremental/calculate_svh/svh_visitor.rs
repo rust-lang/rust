@@ -874,22 +874,20 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
 
         // ignoring span information, it doesn't matter here
         self.hash_discriminant(&meta_item.node);
+        let name = &*meta_item.name.as_str();
         match meta_item.node {
-            ast::MetaItemKind::Word(s) => {
-                let s = &*s.as_str();
-                s.len().hash(self.st);
-                s.hash(self.st);
+            ast::MetaItemKind::Word => {
+                name.len().hash(self.st);
+                name.hash(self.st);
             }
-            ast::MetaItemKind::NameValue(s, ref lit) => {
-                let s = &*s.as_str();
-                s.len().hash(self.st);
-                s.hash(self.st);
+            ast::MetaItemKind::NameValue(ref lit) => {
+                name.len().hash(self.st);
+                name.hash(self.st);
                 lit.node.hash(self.st);
             }
-            ast::MetaItemKind::List(s, ref items) => {
-                let s = &*s.as_str();
-                s.len().hash(self.st);
-                s.hash(self.st);
+            ast::MetaItemKind::List(ref items) => {
+                name.len().hash(self.st);
+                name.hash(self.st);
                 // Sort subitems so the hash does not depend on their order
                 let indices = self.indices_sorted_by(&items, |p| {
                     (p.name(), fnv::hash(&p.literal().map(|i| &i.node)))
