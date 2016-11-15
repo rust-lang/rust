@@ -570,6 +570,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     }
 
+                    Vector { element, count } => {
+                        let elem_size = element.size(&self.tcx.data_layout).bytes();
+                        debug_assert_eq!(count, operands.len() as u64);
+                        let offsets = (0..).map(|i| i * elem_size);
+                        self.assign_fields(dest, offsets, operands)?;
+                    }
+
                     _ => return Err(EvalError::Unimplemented(format!("can't handle destination layout {:?} when assigning {:?}", dest_layout, kind))),
                 }
             }
