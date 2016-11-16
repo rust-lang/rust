@@ -51,7 +51,7 @@ pub fn find(build: &mut Build) {
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
             cfg.compiler(cc);
         } else {
-            set_compiler(&mut cfg, "gcc", target, config);
+            set_compiler(&mut cfg, "gcc", target, config, build);
         }
 
         let compiler = cfg.get_compiler();
@@ -72,7 +72,7 @@ pub fn find(build: &mut Build) {
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
         } else {
-            set_compiler(&mut cfg, "g++", host, config);
+            set_compiler(&mut cfg, "g++", host, config, build);
         }
         let compiler = cfg.get_compiler();
         build.verbose(&format!("CXX_{} = {:?}", host, compiler.path()));
@@ -83,7 +83,8 @@ pub fn find(build: &mut Build) {
 fn set_compiler(cfg: &mut gcc::Config,
                 gnu_compiler: &str,
                 target: &str,
-                config: Option<&Target>) {
+                config: Option<&Target>,
+                build: &Build) {
     match target {
         // When compiling for android we may have the NDK configured in the
         // config.toml in which case we look there. Otherwise the default
@@ -116,6 +117,22 @@ fn set_compiler(cfg: &mut gcc::Config,
             let alternative = format!("e{}", gnu_compiler);
             if Command::new(&alternative).output().is_ok() {
                 cfg.compiler(alternative);
+            }
+        }
+
+        "mips-unknown-linux-musl" => {
+            cfg.compiler("mips-linux-musl-gcc");
+        }
+        "mipsel-unknown-linux-musl" => {
+            cfg.compiler("mipsel-linux-musl-gcc");
+        }
+
+        t if t.contains("musl") => {
+            if let Some(root) = build.musl_root(target) {
+                let guess = root.join("bin/musl-gcc");
+                if guess.exists() {
+                    cfg.compiler(guess);
+                }
             }
         }
 
