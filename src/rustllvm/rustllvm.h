@@ -72,6 +72,28 @@ enum class LLVMRustResult {
     Failure
 };
 
+enum LLVMRustAttribute {
+    AlwaysInline    = 0,
+    ByVal           = 1,
+    Cold            = 2,
+    InlineHint      = 3,
+    MinSize         = 4,
+    Naked           = 5,
+    NoAlias         = 6,
+    NoCapture       = 7,
+    NoInline        = 8,
+    NonNull         = 9,
+    NoRedZone       = 10,
+    NoReturn        = 11,
+    NoUnwind        = 12,
+    OptimizeForSize = 13,
+    ReadOnly        = 14,
+    SExt            = 15,
+    StructRet       = 16,
+    UWTable         = 17,
+    ZExt            = 18,
+};
+
 typedef struct OpaqueRustString *RustStringRef;
 typedef struct LLVMOpaqueTwine *LLVMTwineRef;
 typedef struct LLVMOpaqueDebugLoc *LLVMDebugLocRef;

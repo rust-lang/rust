@@ -23,6 +23,7 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(not(stage0), deny(warnings))]
 
+#![feature(associated_consts)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(cell_extras)]
@@ -55,6 +56,9 @@ extern crate rustc_platform_intrinsics as intrinsics;
 extern crate serialize;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
+#[macro_use]
+#[no_link]
+extern crate rustc_bitflags;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

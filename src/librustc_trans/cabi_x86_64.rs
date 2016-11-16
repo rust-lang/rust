@@ -15,8 +15,8 @@
 use self::RegClass::*;
 
 use llvm::{Integer, Pointer, Float, Double};
-use llvm::{Struct, Array, Attribute, Vector};
-use abi::{self, ArgType, FnType};
+use llvm::{Struct, Array, Vector};
+use abi::{self, ArgType, ArgAttribute, FnType};
 use context::CrateContext;
 use type_::Type;
 
@@ -334,7 +334,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     fn x86_64_ty<F>(ccx: &CrateContext,
                     arg: &mut ArgType,
                     is_mem_cls: F,
-                    ind_attr: Option<Attribute>)
+                    ind_attr: Option<ArgAttribute>)
         where F: FnOnce(&[RegClass]) -> bool
     {
         if !arg.ty.is_reg_ty() {
@@ -384,7 +384,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
                 sse_regs -= needed_sse;
             }
             in_mem
-        }, Some(Attribute::ByVal));
+        }, Some(ArgAttribute::ByVal));
 
         // An integer, pointer, double or float parameter
         // thus the above closure passed to `x86_64_ty` won't

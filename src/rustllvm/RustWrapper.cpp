@@ -109,37 +109,84 @@ extern "C" LLVMTypeRef LLVMRustMetadataTypeInContext(LLVMContextRef C) {
   return wrap(Type::getMetadataTy(*unwrap(C)));
 }
 
-extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned index, uint64_t Val) {
+static Attribute::AttrKind
+from_rust(LLVMRustAttribute kind) {
+  switch (kind) {
+    case AlwaysInline:
+      return Attribute::AlwaysInline;
+    case ByVal:
+      return Attribute::ByVal;
+    case Cold:
+      return Attribute::Cold;
+    case InlineHint:
+      return Attribute::InlineHint;
+    case MinSize:
+      return Attribute::MinSize;
+    case Naked:
+      return Attribute::Naked;
+    case NoAlias:
+      return Attribute::NoAlias;
+    case NoCapture:
+      return Attribute::NoCapture;
+    case NoInline:
+      return Attribute::NoInline;
+    case NonNull:
+      return Attribute::NonNull;
+    case NoRedZone:
+      return Attribute::NoRedZone;
+    case NoReturn:
+      return Attribute::NoReturn;
+    case NoUnwind:
+      return Attribute::NoUnwind;
+    case OptimizeForSize:
+      return Attribute::OptimizeForSize;
+    case ReadOnly:
+      return Attribute::ReadOnly;
+    case SExt:
+      return Attribute::SExt;
+    case StructRet:
+      return Attribute::StructRet;
+    case UWTable:
+      return Attribute::UWTable;
+    case ZExt:
+      return Attribute::ZExt;
+    default:
+      llvm_unreachable("bad AttributeKind");
+  }
+}
+
+extern "C" LLVMAttributeRef LLVMRustCreateAttribute(LLVMContextRef C, LLVMRustAttribute Kind, uint64_t Val) {
+  return wrap(Attribute::get(*unwrap(C), from_rust(Kind), Val));
+}
+
+extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned index, LLVMAttributeRef attr) {
   CallSite Call = CallSite(unwrap<Instruction>(Instr));
-  AttrBuilder B;
-  B.addRawValue(Val);
+  AttrBuilder B(unwrap(attr));
   Call.setAttributes(
     Call.getAttributes().addAttributes(Call->getContext(), index,
                                        AttributeSet::get(Call->getContext(),
                                                          index, B)));
 }
 
-
 extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
-						       unsigned idx,
-						       uint64_t b)
+                                                      unsigned index,
+                                                      uint64_t bytes)
 {
   CallSite Call = CallSite(unwrap<Instruction>(Instr));
   AttrBuilder B;
-  B.addDereferenceableAttr(b);
+  B.addDereferenceableAttr(bytes);
   Call.setAttributes(
-    Call.getAttributes().addAttributes(Call->getContext(), idx,
+    Call.getAttributes().addAttributes(Call->getContext(), index,
                                        AttributeSet::get(Call->getContext(),
-                                                         idx, B)));
+                                                         index, B)));
 }
 
 extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn,
 					     unsigned index,
-					     uint64_t Val)
+					     LLVMAttributeRef attr)
 {
   Function *A = unwrap<Function>(Fn);
-  AttrBuilder B;
-  B.addRawValue(Val);
+  AttrBuilder B(unwrap(attr));
   A->addAttributes(index, AttributeSet::get(A->getContext(), index, B));
 }
 
@@ -151,16 +198,6 @@ extern "C" void LLVMRustAddDereferenceableAttr(LLVMValueRef Fn,
   AttrBuilder B;
   B.addDereferenceableAttr(bytes);
   A->addAttributes(index, AttributeSet::get(A->getContext(), index, B));
-}
-
-extern "C" void LLVMRustAddFunctionAttrString(LLVMValueRef Fn,
-					      unsigned index,
-					      const char *Name)
-{
-  Function *F = unwrap<Function>(Fn);
-  AttrBuilder B;
-  B.addAttribute(Name);
-  F->addAttributes(index, AttributeSet::get(F->getContext(), index, B));
 }
 
 extern "C" void LLVMRustAddFunctionAttrStringValue(LLVMValueRef Fn,
@@ -175,31 +212,15 @@ extern "C" void LLVMRustAddFunctionAttrStringValue(LLVMValueRef Fn,
 
 extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
 						 unsigned index,
-						 uint64_t Val)
+						 LLVMAttributeRef attr)
 {
-  Function *A = unwrap<Function>(Fn);
-  const AttributeSet PAL = A->getAttributes();
-  AttrBuilder B(Val);
+  Function *F = unwrap<Function>(Fn);
+  const AttributeSet PAL = F->getAttributes();
+  AttrBuilder B(unwrap(attr));
   const AttributeSet PALnew =
-    PAL.removeAttributes(A->getContext(), index,
-                         AttributeSet::get(A->getContext(), index, B));
-  A->setAttributes(PALnew);
-}
-
-extern "C" void LLVMRustRemoveFunctionAttrString(LLVMValueRef fn,
-						 unsigned index,
-						 const char *Name)
-{
-  Function *f = unwrap<Function>(fn);
-  LLVMContext &C = f->getContext();
-  AttrBuilder B;
-  B.addAttribute(Name);
-  AttributeSet to_remove = AttributeSet::get(C, index, B);
-
-  AttributeSet attrs = f->getAttributes();
-  f->setAttributes(attrs.removeAttributes(f->getContext(),
-                                          index,
-                                          to_remove));
+    PAL.removeAttributes(F->getContext(), index,
+                         AttributeSet::get(F->getContext(), index, B));
+  F->setAttributes(PALnew);
 }
 
 // enable fpmath flag UnsafeAlgebra
@@ -1292,4 +1313,8 @@ extern "C" LLVMRustLinkage LLVMRustGetLinkage(LLVMValueRef V) {
 
 extern "C" void LLVMRustSetLinkage(LLVMValueRef V, LLVMRustLinkage RustLinkage) {
     LLVMSetLinkage(V, from_rust(RustLinkage));
+}
+
+extern "C" LLVMContextRef LLVMRustGetValueContext(LLVMValueRef V) {
+    return wrap(&unwrap(V)->getContext());
 }
