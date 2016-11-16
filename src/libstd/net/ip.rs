@@ -154,6 +154,14 @@ impl Ipv4Addr {
     /// Creates a new IPv4 address from four eight-bit octets.
     ///
     /// The result will represent the IP address `a`.`b`.`c`.`d`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         Ipv4Addr {
@@ -167,6 +175,15 @@ impl Ipv4Addr {
     }
 
     /// Returns the four eight-bit integers that make up this address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
+    /// assert_eq!(addr.octets(), [127, 0, 0, 1]);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn octets(&self) -> [u8; 4] {
         let bits = ntoh(self.inner.s_addr);
@@ -178,7 +195,16 @@ impl Ipv4Addr {
     /// This property is defined in _UNIX Network Programming, Second Edition_,
     /// W. Richard Stevens, p. 891; see also [ip7].
     ///
-    /// [ip7]: (http://man7.org/linux/man-pages/man7/ip.7.html)
+    /// [ip7]: http://man7.org/linux/man-pages/man7/ip.7.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(0, 0, 0, 0).is_unspecified(), true);
+    /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_unspecified(), false);
+    /// ```
     #[stable(feature = "ip_shared", since = "1.12.0")]
     pub fn is_unspecified(&self) -> bool {
         self.inner.s_addr == 0
@@ -189,6 +215,15 @@ impl Ipv4Addr {
     /// This property is defined by [RFC 1122].
     ///
     /// [RFC 1122]: https://tools.ietf.org/html/rfc1122
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_loopback(), true);
+    /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_loopback(), false);
+    /// ```
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_loopback(&self) -> bool {
         self.octets()[0] == 127
@@ -203,6 +238,20 @@ impl Ipv4Addr {
     ///  - 192.168.0.0/16
     ///
     /// [RFC 1918]: https://tools.ietf.org/html/rfc1918
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(10, 0, 0, 1).is_private(), true);
+    /// assert_eq!(Ipv4Addr::new(10, 10, 10, 10).is_private(), true);
+    /// assert_eq!(Ipv4Addr::new(172, 16, 10, 10).is_private(), true);
+    /// assert_eq!(Ipv4Addr::new(172, 29, 45, 14).is_private(), true);
+    /// assert_eq!(Ipv4Addr::new(172, 32, 0, 2).is_private(), false);
+    /// assert_eq!(Ipv4Addr::new(192, 168, 0, 2).is_private(), true);
+    /// assert_eq!(Ipv4Addr::new(192, 169, 0, 2).is_private(), false);
+    /// ```
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_private(&self) -> bool {
         match (self.octets()[0], self.octets()[1]) {
@@ -218,6 +267,16 @@ impl Ipv4Addr {
     /// This property is defined by [RFC 3927].
     ///
     /// [RFC 3927]: https://tools.ietf.org/html/rfc3927
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(169, 254, 0, 0).is_link_local(), true);
+    /// assert_eq!(Ipv4Addr::new(169, 254, 10, 65).is_link_local(), true);
+    /// assert_eq!(Ipv4Addr::new(16, 89, 10, 65).is_link_local(), false);
+    /// ```
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_link_local(&self) -> bool {
         self.octets()[0] == 169 && self.octets()[1] == 254
@@ -236,6 +295,22 @@ impl Ipv4Addr {
     /// - the unspecified address (0.0.0.0)
     ///
     /// [ipv4-sr]: http://goo.gl/RaZ7lg
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv4Addr;
+    ///
+    /// fn main() {
+    ///     assert_eq!(Ipv4Addr::new(10, 254, 0, 0).is_global(), false);
+    ///     assert_eq!(Ipv4Addr::new(192, 168, 10, 65).is_global(), false);
+    ///     assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_global(), false);
+    ///     assert_eq!(Ipv4Addr::new(0, 0, 0, 0).is_global(), false);
+    ///     assert_eq!(Ipv4Addr::new(80, 9, 12, 3).is_global(), true);
+    /// }
+    /// ```
     pub fn is_global(&self) -> bool {
         !self.is_private() && !self.is_loopback() && !self.is_link_local() &&
         !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
@@ -247,6 +322,16 @@ impl Ipv4Addr {
     /// and is defined by [RFC 5771].
     ///
     /// [RFC 5771]: https://tools.ietf.org/html/rfc5771
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(224, 254, 0, 0).is_multicast(), true);
+    /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_multicast(), true);
+    /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_multicast(), false);
+    /// ```
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_multicast(&self) -> bool {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
@@ -257,6 +342,15 @@ impl Ipv4Addr {
     /// A broadcast address has all octets set to 255 as defined in [RFC 919].
     ///
     /// [RFC 919]: https://tools.ietf.org/html/rfc919
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_broadcast(), true);
+    /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_broadcast(), false);
+    /// ```
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_broadcast(&self) -> bool {
         self.octets()[0] == 255 && self.octets()[1] == 255 &&
@@ -272,6 +366,17 @@ impl Ipv4Addr {
     /// - 203.0.113.0/24 (TEST-NET-3)
     ///
     /// [RFC 5737]: https://tools.ietf.org/html/rfc5737
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).is_documentation(), true);
+    /// assert_eq!(Ipv4Addr::new(198, 51, 100, 65).is_documentation(), true);
+    /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_documentation(), true);
+    /// assert_eq!(Ipv4Addr::new(193, 34, 17, 19).is_documentation(), false);
+    /// ```
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_documentation(&self) -> bool {
         match(self.octets()[0], self.octets()[1], self.octets()[2], self.octets()[3]) {
@@ -285,6 +390,15 @@ impl Ipv4Addr {
     /// Converts this address to an IPv4-compatible IPv6 address.
     ///
     /// a.b.c.d becomes ::a.b.c.d
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_compatible(),
+    ///            Ipv6Addr::new(0, 0, 0, 0, 0, 0, 49152, 767));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv6_compatible(&self) -> Ipv6Addr {
         Ipv6Addr::new(0, 0, 0, 0, 0, 0,
@@ -295,6 +409,15 @@ impl Ipv4Addr {
     /// Converts this address to an IPv4-mapped IPv6 address.
     ///
     /// a.b.c.d becomes ::ffff:a.b.c.d
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped(),
+    ///            Ipv6Addr::new(0, 0, 0, 0, 0, 65535, 49152, 767));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv6_mapped(&self) -> Ipv6Addr {
         Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff,
