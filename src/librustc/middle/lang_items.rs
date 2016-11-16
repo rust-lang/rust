@@ -30,7 +30,7 @@ use middle::weak_lang_items;
 use util::nodemap::FxHashMap;
 
 use syntax::ast;
-use syntax::parse::token::InternedString;
+use syntax::symbol::InternedString;
 use hir::itemlikevisit::ItemLikeVisitor;
 use hir;
 

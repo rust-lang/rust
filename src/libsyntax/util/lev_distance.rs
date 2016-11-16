@@ -10,7 +10,7 @@
 
 use ast::Name;
 use std::cmp;
-use parse::token::InternedString;
+use symbol::InternedString;
 
 /// To find the Levenshtein distance between two strings
 pub fn lev_distance(a: &str, b: &str) -> usize {

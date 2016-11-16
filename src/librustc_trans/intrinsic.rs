@@ -30,7 +30,7 @@ use rustc::ty::{self, Ty};
 use Disr;
 use rustc::hir;
 use syntax::ast;
-use syntax::parse::token;
+use syntax::symbol::intern_and_get_ident;
 
 use rustc::session::Session;
 use syntax_pos::{Span, DUMMY_SP};
@@ -208,7 +208,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, "type_name") => {
             let tp_ty = substs.type_at(0);
-            let ty_name = token::intern_and_get_ident(&tp_ty.to_string());
+            let ty_name = intern_and_get_ident(&tp_ty.to_string());
             C_str_slice(ccx, ty_name)
         }
         (_, "type_id") => {

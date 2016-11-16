@@ -49,7 +49,7 @@ use std::rc::Rc;
 use std::iter;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
-use syntax::parse::token::{self, keywords};
+use syntax::symbol::{InternedString, intern_and_get_ident, keywords};
 
 use hir;
 
@@ -561,7 +561,7 @@ pub struct GlobalCtxt<'tcx> {
 
     /// The definite name of the current crate after taking into account
     /// attributes, commandline parameters, etc.
-    pub crate_name: token::InternedString,
+    pub crate_name: InternedString,
 
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
@@ -574,7 +574,7 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Map from function to the `#[derive]` mode that it's defining. Only used
     /// by `proc-macro` crates.
-    pub derive_macros: RefCell<NodeMap<token::InternedString>>,
+    pub derive_macros: RefCell<NodeMap<InternedString>>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -588,7 +588,7 @@ impl<'tcx> GlobalCtxt<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn crate_name(self, cnum: CrateNum) -> token::InternedString {
+    pub fn crate_name(self, cnum: CrateNum) -> InternedString {
         if cnum == LOCAL_CRATE {
             self.crate_name.clone()
         } else {
@@ -596,7 +596,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn original_crate_name(self, cnum: CrateNum) -> token::InternedString {
+    pub fn original_crate_name(self, cnum: CrateNum) -> InternedString {
         if cnum == LOCAL_CRATE {
             self.crate_name.clone()
         } else {
@@ -604,7 +604,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn crate_disambiguator(self, cnum: CrateNum) -> token::InternedString {
+    pub fn crate_disambiguator(self, cnum: CrateNum) -> InternedString {
         if cnum == LOCAL_CRATE {
             self.sess.local_crate_disambiguator()
         } else {
@@ -835,7 +835,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
             cast_kinds: RefCell::new(NodeMap()),
             fragment_infos: RefCell::new(DefIdMap()),
-            crate_name: token::intern_and_get_ident(crate_name),
+            crate_name: intern_and_get_ident(crate_name),
             data_layout: data_layout,
             layout_cache: RefCell::new(FxHashMap()),
             layout_depth: Cell::new(0),

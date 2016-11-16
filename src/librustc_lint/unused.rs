@@ -20,7 +20,7 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
-use syntax::parse::token::keywords;
+use syntax::symbol::keywords;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
@@ -48,7 +48,7 @@ impl UnusedMut {
                 let name = path1.node;
                 if let hir::BindByValue(hir::MutMutable) = mode {
                     if !name.as_str().starts_with("_") {
-                        match mutables.entry(name.0 as usize) {
+                        match mutables.entry(name) {
                             Vacant(entry) => {
                                 entry.insert(vec![id]);
                             }

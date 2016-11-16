@@ -40,8 +40,8 @@ use syntax::codemap::{self, respan, Spanned};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
-use syntax::parse::token::{keywords, InternedString};
 use syntax::ptr::P;
+use syntax::symbol::{keywords, InternedString};
 use syntax::tokenstream::TokenTree;
 use syntax::util::ThinVec;
 

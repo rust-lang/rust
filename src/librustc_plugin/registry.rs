@@ -17,7 +17,7 @@ use rustc::mir::transform::MirMapPass;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT, IdentTT};
 use syntax::ext::base::MacroExpanderFn;
-use syntax::parse::token;
+use syntax::symbol::Symbol;
 use syntax::ast;
 use syntax::feature_gate::AttributeType;
 use syntax_pos::Span;
@@ -121,7 +121,7 @@ impl<'a> Registry<'a> {
     /// It builds for you a `NormalTT` that calls `expander`,
     /// and also takes care of interning the macro's name.
     pub fn register_macro(&mut self, name: &str, expander: MacroExpanderFn) {
-        self.register_syntax_extension(token::intern(name),
+        self.register_syntax_extension(Symbol::intern(name),
                                        NormalTT(Box::new(expander), None, false));
     }
 

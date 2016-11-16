@@ -34,7 +34,7 @@ use std::rc::Rc;
 use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::attr;
-use syntax;
+use syntax::symbol::Symbol;
 use syntax_pos;
 
 use rustc::hir::{self, PatKind};
@@ -600,7 +600,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let PatKind::Binding(_, ref path1, _) = arg.pat.node {
                 path1.node
             } else {
-                syntax::parse::token::intern("")
+                Symbol::intern("")
             }
         }))
     }
@@ -1119,7 +1119,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let deps = get_ordered_deps(self.cstore);
         self.lazy_seq(deps.iter().map(|&(_, ref dep)| {
             CrateDep {
-                name: syntax::parse::token::intern(dep.name()),
+                name: Symbol::intern(dep.name()),
                 hash: dep.hash(),
                 kind: dep.dep_kind.get(),
             }

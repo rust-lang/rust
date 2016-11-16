@@ -16,8 +16,8 @@ use syntax::codemap;
 use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxExtension};
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate::{self, emit_feature_err};
-use syntax::parse::token;
 use syntax::ptr::P;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 macro_rules! pathvec {
@@ -80,7 +80,7 @@ fn allow_unstable(cx: &mut ExtCtxt, span: Span, attr_name: &str) -> Span {
         expn_id: cx.codemap().record_expansion(codemap::ExpnInfo {
             call_site: span,
             callee: codemap::NameAndSpan {
-                format: codemap::MacroAttribute(token::intern(attr_name)),
+                format: codemap::MacroAttribute(Symbol::intern(attr_name)),
                 span: Some(span),
                 allow_internal_unstable: true,
             },
@@ -105,7 +105,7 @@ pub fn expand_derive(cx: &mut ExtCtxt,
         }
     };
 
-    let derive = token::intern("derive");
+    let derive = Symbol::intern("derive");
     let mut derive_attrs = Vec::new();
     item = item.map_attrs(|attrs| {
         let partition = attrs.into_iter().partition(|attr| attr.name() == derive);
@@ -176,7 +176,7 @@ pub fn expand_derive(cx: &mut ExtCtxt,
                                            feature_gate::EXPLAIN_CUSTOM_DERIVE);
         } else {
             cx.span_warn(titem.span, feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE);
-            let name = token::intern(&format!("derive_{}", tname));
+            let name = Symbol::intern(&format!("derive_{}", tname));
             let mitem = cx.meta_word(titem.span, name);
             new_attributes.push(cx.attribute(mitem.span, mitem));
         }
@@ -251,10 +251,10 @@ pub fn expand_derive(cx: &mut ExtCtxt,
 
     // RFC #1445. `#[derive(PartialEq, Eq)]` adds a (trusted)
     // `#[structural_match]` attribute.
-    let (partial_eq, eq) = (token::intern("PartialEq"), token::intern("Eq"));
+    let (partial_eq, eq) = (Symbol::intern("PartialEq"), Symbol::intern("Eq"));
     if traits.iter().any(|t| t.name() == Some(partial_eq)) &&
        traits.iter().any(|t| t.name() == Some(eq)) {
-        let structural_match = token::intern("structural_match");
+        let structural_match = Symbol::intern("structural_match");
         let span = allow_unstable(cx, span, "derive(PartialEq, Eq)");
         let meta = cx.meta_word(span, structural_match);
         item = item.map(|mut i| {
@@ -267,10 +267,10 @@ pub fn expand_derive(cx: &mut ExtCtxt,
     // the same as the copy implementation.
     //
     // Add a marker attribute here picked up during #[derive(Clone)]
-    let (copy, clone) = (token::intern("Copy"), token::intern("Clone"));
+    let (copy, clone) = (Symbol::intern("Copy"), Symbol::intern("Clone"));
     if traits.iter().any(|t| t.name() == Some(clone)) &&
        traits.iter().any(|t| t.name() == Some(copy)) {
-        let marker = token::intern("rustc_copy_clone_marker");
+        let marker = Symbol::intern("rustc_copy_clone_marker");
         let span = allow_unstable(cx, span, "derive(Copy, Clone)");
         let meta = cx.meta_word(span, marker);
         item = item.map(|mut i| {
@@ -282,14 +282,14 @@ pub fn expand_derive(cx: &mut ExtCtxt,
     let mut items = Vec::new();
     for titem in traits.iter() {
         let tname = titem.word().unwrap().name();
-        let name = token::intern(&format!("derive({})", tname));
+        let name = Symbol::intern(&format!("derive({})", tname));
         let mitem = cx.meta_word(titem.span, name);
 
         let span = Span {
             expn_id: cx.codemap().record_expansion(codemap::ExpnInfo {
                 call_site: titem.span,
                 callee: codemap::NameAndSpan {
-                    format: codemap::MacroAttribute(token::intern(&format!("derive({})", tname))),
+                    format: codemap::MacroAttribute(Symbol::intern(&format!("derive({})", tname))),
                     span: Some(titem.span),
                     allow_internal_unstable: true,
                 },
@@ -408,7 +408,7 @@ fn call_intrinsic(cx: &ExtCtxt,
     span.expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
         call_site: span,
         callee: codemap::NameAndSpan {
-            format: codemap::MacroAttribute(token::intern("derive")),
+            format: codemap::MacroAttribute(Symbol::intern("derive")),
             span: Some(span),
             allow_internal_unstable: true,
         },

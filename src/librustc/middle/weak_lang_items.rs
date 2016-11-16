@@ -16,7 +16,7 @@ use middle::lang_items;
 
 use rustc_back::PanicStrategy;
 use syntax::ast;
-use syntax::parse::token::InternedString;
+use syntax::symbol::InternedString;
 use syntax_pos::Span;
 use hir::intravisit::Visitor;
 use hir::intravisit;

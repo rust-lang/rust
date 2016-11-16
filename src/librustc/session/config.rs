@@ -25,8 +25,8 @@ use lint;
 use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
-use syntax::parse::{self, token};
-use syntax::parse::token::InternedString;
+use syntax::parse;
+use syntax::symbol::{Symbol, InternedString};
 use syntax::feature_gate::UnstableFeatures;
 
 use errors::{ColorConfig, FatalError, Handler};
@@ -927,7 +927,7 @@ pub fn default_lib_output() -> CrateType {
 }
 
 pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
-    use syntax::parse::token::intern_and_get_ident as intern;
+    use syntax::symbol::intern_and_get_ident as intern;
 
     let end = &sess.target.target.target_endian;
     let arch = &sess.target.target.arch;
@@ -947,33 +947,33 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
 
     let mut ret = HashSet::new();
     // Target bindings.
-    ret.insert((token::intern("target_os"), Some(intern(os))));
-    ret.insert((token::intern("target_family"), Some(fam.clone())));
-    ret.insert((token::intern("target_arch"), Some(intern(arch))));
-    ret.insert((token::intern("target_endian"), Some(intern(end))));
-    ret.insert((token::intern("target_pointer_width"), Some(intern(wordsz))));
-    ret.insert((token::intern("target_env"), Some(intern(env))));
-    ret.insert((token::intern("target_vendor"), Some(intern(vendor))));
+    ret.insert((Symbol::intern("target_os"), Some(intern(os))));
+    ret.insert((Symbol::intern("target_family"), Some(fam.clone())));
+    ret.insert((Symbol::intern("target_arch"), Some(intern(arch))));
+    ret.insert((Symbol::intern("target_endian"), Some(intern(end))));
+    ret.insert((Symbol::intern("target_pointer_width"), Some(intern(wordsz))));
+    ret.insert((Symbol::intern("target_env"), Some(intern(env))));
+    ret.insert((Symbol::intern("target_vendor"), Some(intern(vendor))));
     if &fam == "windows" || &fam == "unix" {
-        ret.insert((token::intern(&fam), None));
+        ret.insert((Symbol::intern(&fam), None));
     }
     if sess.target.target.options.has_elf_tls {
-        ret.insert((token::intern("target_thread_local"), None));
+        ret.insert((Symbol::intern("target_thread_local"), None));
     }
     for &i in &[8, 16, 32, 64, 128] {
         if i <= max_atomic_width {
             let s = i.to_string();
-            ret.insert((token::intern("target_has_atomic"), Some(intern(&s))));
+            ret.insert((Symbol::intern("target_has_atomic"), Some(intern(&s))));
             if &s == wordsz {
-                ret.insert((token::intern("target_has_atomic"), Some(intern("ptr"))));
+                ret.insert((Symbol::intern("target_has_atomic"), Some(intern("ptr"))));
             }
         }
     }
     if sess.opts.debug_assertions {
-        ret.insert((token::intern("debug_assertions"), None));
+        ret.insert((Symbol::intern("debug_assertions"), None));
     }
     if sess.opts.crate_types.contains(&CrateTypeProcMacro) {
-        ret.insert((token::intern("proc_macro"), None));
+        ret.insert((Symbol::intern("proc_macro"), None));
     }
     return ret;
 }
@@ -986,7 +986,7 @@ pub fn build_configuration(sess: &Session,
     let default_cfg = default_configuration(sess);
     // If the user wants a test runner, then add the test cfg
     if sess.opts.test {
-        user_cfg.insert((token::intern("test"), None));
+        user_cfg.insert((Symbol::intern("test"), None));
     }
     user_cfg.extend(default_cfg.iter().cloned());
     user_cfg

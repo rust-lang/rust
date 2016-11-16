@@ -40,7 +40,7 @@ use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::expand::mark_tts;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::parse::token::keywords;
+use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};

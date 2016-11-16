@@ -23,9 +23,9 @@ use syntax_pos::{Span, BytePos, DUMMY_SP};
 use errors::Handler;
 use feature_gate::{Features, GatedCfg};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use parse::token::InternedString;
-use parse::{ParseSess, token};
+use parse::ParseSess;
 use ptr::P;
+use symbol::{self, Symbol, InternedString};
 use util::ThinVec;
 
 use std::cell::{RefCell, Cell};
@@ -278,8 +278,8 @@ impl Attribute {
         if self.is_sugared_doc {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
-                token::intern("doc"),
-                token::intern_and_get_ident(&strip_doc_comment_decoration(
+                Symbol::intern("doc"),
+                symbol::intern_and_get_ident(&strip_doc_comment_decoration(
                         &comment)));
             if self.style == ast::AttrStyle::Outer {
                 f(&mk_attr_outer(self.id, meta))
@@ -392,7 +392,7 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos, hi: By
         style: style,
         value: MetaItem {
             span: mk_sp(lo, hi),
-            name: token::intern("doc"),
+            name: Symbol::intern("doc"),
             node: MetaItemKind::NameValue(lit),
         },
         is_sugared_doc: true,

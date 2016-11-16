@@ -48,13 +48,14 @@ use parse::classify;
 use parse::common::SeqSep;
 use parse::lexer::{Reader, TokenAndSpan};
 use parse::obsolete::ObsoleteSyntax;
-use parse::token::{self, intern, keywords, MatchNt, SubstNt, InternedString};
+use parse::token::{self, MatchNt, SubstNt};
 use parse::{new_sub_parser_from_file, ParseSess};
 use util::parser::{AssocOp, Fixity};
 use print::pprust;
 use ptr::P;
 use parse::PResult;
 use tokenstream::{self, Delimited, SequenceRepetition, TokenTree};
+use symbol::{self, Symbol, keywords, InternedString};
 use util::ThinVec;
 
 use std::collections::HashSet;
@@ -1537,13 +1538,13 @@ impl<'a> Parser<'a> {
 
                     token::Str_(s) => {
                         (true,
-                         LitKind::Str(token::intern_and_get_ident(&parse::str_lit(&s.as_str())),
+                         LitKind::Str(symbol::intern_and_get_ident(&parse::str_lit(&s.as_str())),
                                       ast::StrStyle::Cooked))
                     }
                     token::StrRaw(s, n) => {
                         (true,
                          LitKind::Str(
-                            token::intern_and_get_ident(&parse::raw_str_lit(&s.as_str())),
+                            symbol::intern_and_get_ident(&parse::raw_str_lit(&s.as_str())),
                             ast::StrStyle::Raw(n)))
                     }
                     token::ByteStr(i) =>
@@ -2627,7 +2628,7 @@ impl<'a> Parser<'a> {
                                       })));
                 } else if self.token.is_keyword(keywords::Crate) {
                     let ident = match self.token {
-                        token::Ident(id) => ast::Ident { name: token::intern("$crate"), ..id },
+                        token::Ident(id) => ast::Ident { name: Symbol::intern("$crate"), ..id },
                         _ => unreachable!(),
                     };
                     self.bump();
@@ -4835,7 +4836,7 @@ impl<'a> Parser<'a> {
             Visibility::Inherited => (),
             _ => {
                 let is_macro_rules: bool = match self.token {
-                    token::Ident(sid) => sid.name == intern("macro_rules"),
+                    token::Ident(sid) => sid.name == Symbol::intern("macro_rules"),
                     _ => false,
                 };
                 if is_macro_rules {

@@ -21,7 +21,7 @@ use machine;
 use type_of;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
-use syntax::parse::token::keywords;
+use syntax::symbol::keywords;
 
 use std::cell::Ref;
 use std::iter;

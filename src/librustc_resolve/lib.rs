@@ -57,7 +57,7 @@ use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, Ident, SpannedIdent, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
-use syntax::parse::token::{self, keywords};
+use syntax::symbol::{Symbol, InternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
@@ -90,7 +90,7 @@ mod resolve_imports;
 
 enum SuggestionType {
     Macro(String),
-    Function(token::InternedString),
+    Function(InternedString),
     NotFound,
 }
 
@@ -1039,7 +1039,7 @@ impl PrimitiveTypeTable {
     }
 
     fn intern(&mut self, string: &str, primitive_type: PrimTy) {
-        self.primitive_types.insert(token::intern(string), primitive_type);
+        self.primitive_types.insert(Symbol::intern(string), primitive_type);
     }
 }
 
@@ -3606,7 +3606,7 @@ fn module_to_string(module: Module) -> String {
             }
         } else {
             // danger, shouldn't be ident?
-            names.push(token::str_to_ident("<opaque>"));
+            names.push(Ident::from_str("<opaque>"));
             collect_mod(names, module.parent.unwrap());
         }
     }

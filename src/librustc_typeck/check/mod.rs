@@ -115,8 +115,8 @@ use syntax::ast;
 use syntax::attr;
 use syntax::codemap::{self, original_sp, Spanned};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
+use syntax::symbol::{Symbol, InternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{self, BytePos, Span};
 
@@ -2369,7 +2369,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (PreferMutLvalue, Some(trait_did)) => {
                 self.lookup_method_in_trait_adjusted(expr.span,
                                                      Some(&base_expr),
-                                                     token::intern("index_mut"),
+                                                     Symbol::intern("index_mut"),
                                                      trait_did,
                                                      autoderefs,
                                                      unsize,
@@ -2384,7 +2384,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (None, Some(trait_did)) => {
                 self.lookup_method_in_trait_adjusted(expr.span,
                                                      Some(&base_expr),
-                                                     token::intern("index"),
+                                                     Symbol::intern("index"),
                                                      trait_did,
                                                      autoderefs,
                                                      unsize,

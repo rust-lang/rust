@@ -17,7 +17,7 @@ use syntax::ast;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token;
+use syntax::symbol::intern_and_get_ident;
 use syntax_pos::Span;
 use syntax::tokenstream;
 
@@ -49,7 +49,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
         Ok(s) => {
             cx.expr_call_global(sp,
                                 cx.std_path(&["option", "Option", "Some"]),
-                                vec![cx.expr_str(sp, token::intern_and_get_ident(&s[..]))])
+                                vec![cx.expr_str(sp, intern_and_get_ident(&s[..]))])
         }
     };
     MacEager::expr(e)
@@ -73,7 +73,7 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt,
         Some((v, _style)) => v,
     };
     let msg = match exprs.next() {
-        None => token::intern_and_get_ident(&format!("environment variable `{}` not defined", var)),
+        None => intern_and_get_ident(&format!("environment variable `{}` not defined", var)),
         Some(second) => {
             match expr_to_string(cx, second, "expected string literal") {
                 None => return DummyResult::expr(sp),
@@ -92,7 +92,7 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt,
             cx.span_err(sp, &msg);
             cx.expr_usize(sp, 0)
         }
-        Ok(s) => cx.expr_str(sp, token::intern_and_get_ident(&s)),
+        Ok(s) => cx.expr_str(sp, intern_and_get_ident(&s)),
     };
     MacEager::expr(e)
 }

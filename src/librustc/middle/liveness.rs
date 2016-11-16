@@ -123,8 +123,8 @@ use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
 use syntax::ast::{self, NodeId};
-use syntax::parse::token::keywords;
 use syntax::ptr::P;
+use syntax::symbol::keywords;
 use syntax_pos::Span;
 
 use hir::Expr;

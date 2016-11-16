@@ -16,9 +16,9 @@ use syntax_pos::{self, Span, FileMap};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
-use parse::token::InternedString;
 use ptr::P;
 use str::char_at;
+use symbol::{self, InternedString};
 use tokenstream;
 
 use std::cell::RefCell;
@@ -372,7 +372,7 @@ fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
         s[1..].chars().all(|c| '0' <= c && c <= '9')
 }
 
-fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
+fn filtered_float_lit(data: InternedString, suffix: Option<&str>,
                       sd: &Handler, sp: Span) -> ast::LitKind {
     debug!("filtered_float_lit: {}, {:?}", data, suffix);
     match suffix.as_ref().map(|s| &**s) {
@@ -400,7 +400,7 @@ pub fn float_lit(s: &str, suffix: Option<InternedString>,
     debug!("float_lit: {:?}, {:?}", s, suffix);
     // FIXME #2252: bounds checking float literals is deferred until trans
     let s = s.chars().filter(|&c| c != '_').collect::<String>();
-    let data = token::intern_and_get_ident(&s);
+    let data = symbol::intern_and_get_ident(&s);
     filtered_float_lit(data, suffix.as_ref().map(|s| &**s), sd, sp)
 }
 
@@ -530,7 +530,7 @@ pub fn integer_lit(s: &str,
                 2 => sd.span_err(sp, "binary float literal is not supported"),
                 _ => ()
             }
-            let ident = token::intern_and_get_ident(&s);
+            let ident = symbol::intern_and_get_ident(&s);
             return filtered_float_lit(ident, Some(&suf), sd, sp)
         }
     }

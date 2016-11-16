@@ -39,7 +39,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::ptr::P;
-use syntax::parse::token::InternedString;
+use syntax::symbol::InternedString;
 use syntax_pos::Span;
 use rustc_back::target::Target;
 use hir;

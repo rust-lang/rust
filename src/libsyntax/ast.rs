@@ -14,15 +14,16 @@ pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
+pub use symbol::Symbol as Name;
 pub use util::ThinVec;
 
 use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
 use ext::hygiene::SyntaxContext;
-use parse::token::{self, keywords, InternedString};
 use print::pprust;
 use ptr::P;
+use symbol::{Symbol, keywords, InternedString};
 use tokenstream::{TokenTree};
 
 use std::collections::HashSet;
@@ -32,60 +33,24 @@ use std::u32;
 
 use serialize::{self, Encodable, Decodable, Encoder, Decoder};
 
-/// A name is a part of an identifier, representing a string or gensym. It's
-/// the result of interning.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Name(pub u32);
-
 /// An identifier contains a Name (index into the interner
 /// table) and a SyntaxContext to track renaming and
 /// macro expansion per Flatt et al., "Macros That Work Together"
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ident {
-    pub name: Name,
+    pub name: Symbol,
     pub ctxt: SyntaxContext
-}
-
-impl Name {
-    pub fn as_str(self) -> token::InternedString {
-        token::InternedString::new_from_name(self)
-    }
-}
-
-impl fmt::Debug for Name {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}({})", self, self.0)
-    }
-}
-
-impl fmt::Display for Name {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.as_str(), f)
-    }
-}
-
-impl Encodable for Name {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.as_str())
-    }
-}
-
-impl Decodable for Name {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Name, D::Error> {
-        Ok(token::intern(&d.read_str()?))
-    }
-}
-
-impl<'a> ::std::cmp::PartialEq<&'a str> for Name {
-    fn eq(&self, other: &&str) -> bool {
-        *self.as_str() == **other
-    }
 }
 
 impl Ident {
     pub const fn with_empty_ctxt(name: Name) -> Ident {
         Ident { name: name, ctxt: SyntaxContext::empty() }
     }
+
+   /// Maps a string to an identifier with an empty syntax context.
+   pub fn from_str(s: &str) -> Ident {
+       Ident::with_empty_ctxt(Symbol::intern(s))
+   }
 }
 
 impl fmt::Debug for Ident {

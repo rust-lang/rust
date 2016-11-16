@@ -18,6 +18,7 @@ use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::parse::token;
+use syntax::symbol::InternedString;
 use syntax_pos::{Span, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
 use syntax::tokenstream;
 use rustc::hir;
@@ -169,8 +170,8 @@ enum SawAbiComponent<'a> {
 
     // FIXME (#14132): should we include (some function of)
     // ident.ctxt as well?
-    SawIdent(token::InternedString),
-    SawStructDef(token::InternedString),
+    SawIdent(InternedString),
+    SawStructDef(InternedString),
 
     SawLifetime,
     SawLifetimeDef(usize),
@@ -232,11 +233,11 @@ enum SawAbiComponent<'a> {
 #[derive(Hash)]
 enum SawExprComponent<'a> {
 
-    SawExprLoop(Option<token::InternedString>),
-    SawExprField(token::InternedString),
+    SawExprLoop(Option<InternedString>),
+    SawExprField(InternedString),
     SawExprTupField(usize),
-    SawExprBreak(Option<token::InternedString>),
-    SawExprAgain(Option<token::InternedString>),
+    SawExprBreak(Option<InternedString>),
+    SawExprAgain(Option<InternedString>),
 
     SawExprBox,
     SawExprArray,
