@@ -18,6 +18,7 @@ use attributes;
 use base;
 use consts;
 use context::{CrateContext, SharedCrateContext};
+use common;
 use declare;
 use glue::DropGlueKind;
 use llvm;
@@ -245,6 +246,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::Fn(ref instance) => {
                 !instance.def.is_local() ||
                 instance.substs.types().next().is_some() ||
+                common::is_closure(tcx, instance.def) ||
                 attr::requests_inline(&tcx.get_attrs(instance.def)[..])
             }
             TransItem::DropGlue(..) => true,
