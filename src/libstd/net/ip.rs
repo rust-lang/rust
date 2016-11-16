@@ -176,8 +176,9 @@ impl Ipv4Addr {
     /// Returns true for the special 'unspecified' address (0.0.0.0).
     ///
     /// This property is defined in _UNIX Network Programming, Second Edition_,
-    /// W. Richard Stevens, p. 891; see also [ip7]
-    /// [ip7][http://man7.org/linux/man-pages/man7/ip.7.html]
+    /// W. Richard Stevens, p. 891; see also [ip7].
+    ///
+    /// [ip7]: (http://man7.org/linux/man-pages/man7/ip.7.html)
     #[stable(feature = "ip_shared", since = "1.12.0")]
     pub fn is_unspecified(&self) -> bool {
         self.inner.s_addr == 0
@@ -186,6 +187,7 @@ impl Ipv4Addr {
     /// Returns true if this is a loopback address (127.0.0.0/8).
     ///
     /// This property is defined by [RFC 1122].
+    ///
     /// [RFC 1122]: https://tools.ietf.org/html/rfc1122
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_loopback(&self) -> bool {
@@ -195,11 +197,12 @@ impl Ipv4Addr {
     /// Returns true if this is a private address.
     ///
     /// The private address ranges are defined in [RFC 1918] and include:
-    /// [RFC 1918]: https://tools.ietf.org/html/rfc1918
     ///
     ///  - 10.0.0.0/8
     ///  - 172.16.0.0/12
     ///  - 192.168.0.0/16
+    ///
+    /// [RFC 1918]: https://tools.ietf.org/html/rfc1918
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_private(&self) -> bool {
         match (self.octets()[0], self.octets()[1]) {
@@ -213,6 +216,7 @@ impl Ipv4Addr {
     /// Returns true if the address is link-local (169.254.0.0/16).
     ///
     /// This property is defined by [RFC 3927].
+    ///
     /// [RFC 3927]: https://tools.ietf.org/html/rfc3927
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_link_local(&self) -> bool {
@@ -221,7 +225,6 @@ impl Ipv4Addr {
 
     /// Returns true if the address appears to be globally routable.
     /// See [iana-ipv4-special-registry][ipv4-sr].
-    /// [ipv4-sr]: http://goo.gl/RaZ7lg
     ///
     /// The following return false:
     ///
@@ -231,6 +234,8 @@ impl Ipv4Addr {
     /// - the broadcast address (255.255.255.255/32)
     /// - test addresses used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24)
     /// - the unspecified address (0.0.0.0)
+    ///
+    /// [ipv4-sr]: http://goo.gl/RaZ7lg
     pub fn is_global(&self) -> bool {
         !self.is_private() && !self.is_loopback() && !self.is_link_local() &&
         !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
@@ -240,6 +245,7 @@ impl Ipv4Addr {
     ///
     /// Multicast addresses have a most significant octet between 224 and 239,
     /// and is defined by [RFC 5771].
+    ///
     /// [RFC 5771]: https://tools.ietf.org/html/rfc5771
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_multicast(&self) -> bool {
@@ -249,6 +255,7 @@ impl Ipv4Addr {
     /// Returns true if this is a broadcast address (255.255.255.255).
     ///
     /// A broadcast address has all octets set to 255 as defined in [RFC 919].
+    ///
     /// [RFC 919]: https://tools.ietf.org/html/rfc919
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_broadcast(&self) -> bool {
@@ -259,11 +266,12 @@ impl Ipv4Addr {
     /// Returns true if this address is in a range designated for documentation.
     ///
     /// This is defined in [RFC 5737]:
-    /// [RFC 5737]: https://tools.ietf.org/html/rfc5737
     ///
     /// - 192.0.2.0/24 (TEST-NET-1)
     /// - 198.51.100.0/24 (TEST-NET-2)
     /// - 203.0.113.0/24 (TEST-NET-3)
+    ///
+    /// [RFC 5737]: https://tools.ietf.org/html/rfc5737
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_documentation(&self) -> bool {
         match(self.octets()[0], self.octets()[1], self.octets()[2], self.octets()[3]) {
@@ -425,6 +433,7 @@ impl Ipv6Addr {
     /// Returns true for the special 'unspecified' address (::).
     ///
     /// This property is defined in [RFC 4291].
+    ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_unspecified(&self) -> bool {
@@ -434,6 +443,7 @@ impl Ipv6Addr {
     /// Returns true if this is a loopback address (::1).
     ///
     /// This property is defined in [RFC 4291].
+    ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_loopback(&self) -> bool {
@@ -458,6 +468,7 @@ impl Ipv6Addr {
     /// Returns true if this is a unique local address (fc00::/7).
     ///
     /// This property is defined in [RFC 4193].
+    ///
     /// [RFC 4193]: https://tools.ietf.org/html/rfc4193
     pub fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
@@ -466,6 +477,7 @@ impl Ipv6Addr {
     /// Returns true if the address is unicast and link-local (fe80::/10).
     ///
     /// This property is defined in [RFC 4291].
+    ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     pub fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
@@ -481,6 +493,7 @@ impl Ipv6Addr {
     /// (2001:db8::/32).
     ///
     /// This property is defined in [RFC 3849].
+    ///
     /// [RFC 3849]: https://tools.ietf.org/html/rfc3849
     pub fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
@@ -524,6 +537,7 @@ impl Ipv6Addr {
     /// Returns true if this is a multicast address (ff00::/8).
     ///
     /// This property is defined by [RFC 4291].
+    ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_multicast(&self) -> bool {
