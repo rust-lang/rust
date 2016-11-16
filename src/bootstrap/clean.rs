@@ -46,6 +46,9 @@ fn rm_rf(build: &Build, path: &Path) {
     if !path.exists() {
         return
     }
+    if path.is_file() {
+        return do_op(path, "remove file", |p| fs::remove_file(p));
+    }
 
     for file in t!(fs::read_dir(path)) {
         let file = t!(file).path();

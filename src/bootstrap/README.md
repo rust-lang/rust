@@ -66,17 +66,6 @@ The script accepts commands, flags, and filters to determine what to do:
 * `doc` - a command for building documentation. Like above can take arguments
   for what to document.
 
-If you're more used to `./configure` and `make`, however, then you can also
-configure the build system to use rustbuild instead of the old makefiles:
-
-```
-./configure --enable-rustbuild
-make
-```
-
-Afterwards the `Makefile` which is generated will have a few commands like
-`make check`, `make tidy`, etc.
-
 ## Configuring rustbuild
 
 There are currently two primary methods for configuring the rustbuild build
@@ -89,6 +78,13 @@ file in the same location as `config.mk`. An example of this configuration can
 be found at `src/bootstrap/config.toml.example`, and the configuration file
 can also be passed as `--config path/to/config.toml` if the build system is
 being invoked manually (via the python script).
+
+Finally, rustbuild makes use of the [gcc-rs crate] which has [its own
+method][env-vars] of configuring C compilers and C flags via environment
+variables.
+
+[gcc-rs crate]: https://github.com/alexcrichton/gcc-rs
+[env-vars]: https://github.com/alexcrichton/gcc-rs#external-configuration-via-environment-variables
 
 ## Build stages
 
@@ -273,16 +269,17 @@ After that, each module in rustbuild should have enough documentation to keep
 you up and running. Some general areas that you may be interested in modifying
 are:
 
-* Adding a new build tool? Take a look at `build/step.rs` for examples of other
-  tools, as well as `build/mod.rs`.
+* Adding a new build tool? Take a look at `bootstrap/step.rs` for examples of
+  other tools.
 * Adding a new compiler crate? Look no further! Adding crates can be done by
   adding a new directory with `Cargo.toml` followed by configuring all
   `Cargo.toml` files accordingly.
 * Adding a new dependency from crates.io? We're still working on that, so hold
   off on that for now.
-* Adding a new configuration option? Take a look at `build/config.rs` or perhaps
-  `build/flags.rs` and then modify the build elsewhere to read that option.
-* Adding a sanity check? Take a look at `build/sanity.rs`.
+* Adding a new configuration option? Take a look at `bootstrap/config.rs` or
+  perhaps `bootstrap/flags.rs` and then modify the build elsewhere to read that
+  option.
+* Adding a sanity check? Take a look at `bootstrap/sanity.rs`.
 
 If you have any questions feel free to reach out on `#rust-internals` on IRC or
 open an issue in the bug tracker!

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-emscripten
+// ignore-android
 
 #![feature(libc)]
 

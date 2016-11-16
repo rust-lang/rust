@@ -1,4 +1,4 @@
-language: rust
+language: minimal
 sudo: required
 dist: trusty
 services:
@@ -20,7 +20,7 @@ matrix:
     - env: IMAGE=x86_64-gnu-cargotest
     - env: IMAGE=x86_64-gnu-debug
     - env: IMAGE=x86_64-gnu-nopt
-    - env: IMAGE=x86_64-gnu-rustbuild
+    - env: IMAGE=x86_64-gnu-make
     - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
     - env: IMAGE=x86_64-musl
 
@@ -39,7 +39,7 @@ matrix:
       install: brew install ccache
     - env: >
         RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--target=x86_64-apple-darwin --enable-rustbuild
+        RUST_CONFIGURE_ARGS=--target=x86_64-apple-darwin --disable-rustbuild
         SRC=.
       os: osx
       install: brew install ccache
@@ -51,17 +51,16 @@ matrix:
       install: brew install ccache
 
 script:
-  - if [ -z "$ALLOW_PR" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
-        echo skipping, not a full build;
-    elif [ -z "$ENABLE_AUTO" ] then
-        echo skipping, not quite ready yet
-    elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
-        git submodule update --init;
-        src/ci/run.sh;
-    else
-        git submodule update --init;
-        src/ci/docker/run.sh $IMAGE;
-    fi
+  - >
+      if [ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
+          echo skipping, not a full build;
+      elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
+          git submodule update --init;
+          src/ci/run.sh;
+      else
+          git submodule update --init;
+          src/ci/docker/run.sh $IMAGE;
+      fi
 
 # Save tagged docker images we created and load them if they're available
 before_cache:

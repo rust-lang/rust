@@ -41,10 +41,14 @@ pub fn check(build: &mut Build) {
         }
     }
     let have_cmd = |cmd: &OsStr| {
-        for path in env::split_paths(&path).map(|p| p.join(cmd)) {
-            if fs::metadata(&path).is_ok() ||
-               fs::metadata(path.with_extension("exe")).is_ok() {
-                return Some(path);
+        for path in env::split_paths(&path) {
+            let target = path.join(cmd);
+            let mut cmd_alt = cmd.to_os_string();
+            cmd_alt.push(".exe");
+            if target.exists() ||
+               target.with_extension("exe").exists() ||
+               target.join(cmd_alt).exists() {
+                return Some(target);
             }
         }
         return None;

@@ -9,7 +9,6 @@ RUN dpkg --add-architecture i386 && \
   curl \
   ca-certificates \
   python2.7 \
-  python-minimal \
   git \
   cmake \
   ccache \
@@ -39,8 +38,7 @@ ENV RUST_CONFIGURE_ARGS \
       --arm-linux-androideabi-ndk=/android/ndk-arm-9 \
       --armv7-linux-androideabi-ndk=/android/ndk-arm-9 \
       --i686-linux-android-ndk=/android/ndk-x86-9 \
-      --aarch64-linux-android-ndk=/android/ndk-aarch64 \
-      --enable-rustbuild
-ENV RUST_CHECK_TARGET check-stage2-android
+      --aarch64-linux-android-ndk=/android/ndk-aarch64
+ENV XPY_CHECK test --target arm-linux-androideabi
 RUN mkdir /tmp/obj
 RUN chmod 777 /tmp/obj

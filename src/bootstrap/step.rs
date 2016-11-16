@@ -8,6 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Definition of steps of the build system.
+//!
+//! This is where some of the real meat of rustbuild is located, in how we
+//! define targets and the dependencies amongst them. This file can sort of be
+//! viewed as just defining targets in a makefile which shell out to predefined
+//! functions elsewhere about how to execute the target.
+//!
+//! The primary function here you're likely interested in is the `build_rules`
+//! function. This will create a `Rules` structure which basically just lists
+//! everything that rustbuild can do. Each rule has a human-readable name, a
+//! path associated with it, some dependencies, and then a closure of how to
+//! actually perform the rule.
+//!
+//! All steps below are defined in self-contained units, so adding a new target
+//! to the build system should just involve adding the meta information here
+//! along with the actual implementation elsewhere. You can find more comments
+//! about how to define rules themselves below.
+
 use std::collections::{HashMap, HashSet};
 use std::mem;
 
@@ -20,36 +38,6 @@ use install;
 use native;
 use {Compiler, Build, Mode};
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
-struct Step<'a> {
-    name: &'a str,
-    stage: u32,
-    host: &'a str,
-    target: &'a str,
-}
-
-impl<'a> Step<'a> {
-    fn name(&self, name: &'a str) -> Step<'a> {
-        Step { name: name, ..*self }
-    }
-
-    fn stage(&self, stage: u32) -> Step<'a> {
-        Step { stage: stage, ..*self }
-    }
-
-    fn host(&self, host: &'a str) -> Step<'a> {
-        Step { host: host, ..*self }
-    }
-
-    fn target(&self, target: &'a str) -> Step<'a> {
-        Step { target: target, ..*self }
-    }
-
-    fn compiler(&self) -> Compiler<'a> {
-        Compiler::new(self.stage, self.host)
-    }
-}
-
 pub fn run(build: &Build) {
     let rules = build_rules(build);
     let steps = rules.plan();
@@ -57,14 +45,91 @@ pub fn run(build: &Build) {
 }
 
 pub fn build_rules(build: &Build) -> Rules {
-    let mut rules: Rules = Rules::new(build);
+    let mut rules = Rules::new(build);
+
+    // This is the first rule that we're going to define for rustbuild, which is
+    // used to compile LLVM itself. All rules are added through the `rules`
+    // structure created above and are configured through a builder-style
+    // interface.
+    //
+    // First up we see the `build` method. This represents a rule that's part of
+    // the top-level `build` subcommand. For example `./x.py build` is what this
+    // is associating with. Note that this is normally only relevant if you flag
+    // a rule as `default`, which we'll talk about later.
+    //
+    // Next up we'll see two arguments to this method:
+    //
+    // * `llvm` - this is the "human readable" name of this target. This name is
+    //            not accessed anywhere outside this file itself (e.g. not in
+    //            the CLI nor elsewhere in rustbuild). The purpose of this is to
+    //            easily define dependencies between rules. That is, other rules
+    //            will depend on this with the name "llvm".
+    // * `src/llvm` - this is the relevant path to the rule that we're working
+    //                with. This path is the engine behind how commands like
+    //                `./x.py build src/llvm` work. This should typically point
+    //                to the relevant component, but if there's not really a
+    //                path to be assigned here you can pass something like
+    //                `path/to/nowhere` to ignore it.
+    //
+    // After we create the rule with the `build` method we can then configure
+    // various aspects of it. For example this LLVM rule uses `.host(true)` to
+    // flag that it's a rule only for host targets. In other words, LLVM isn't
+    // compiled for targets configured through `--target` (e.g. those we're just
+    // building a standard library for).
+    //
+    // Next up the `dep` method will add a dependency to this rule. The closure
+    // is yielded the step that represents executing the `llvm` rule itself
+    // (containing information like stage, host, target, ...) and then it must
+    // return a target that the step depends on. Here LLVM is actually
+    // interesting where a cross-compiled LLVM depends on the host LLVM, but
+    // otherwise it has no dependencies.
+    //
+    // To handle this we do a bit of dynamic dispatch to see what the dependency
+    // is. If we're building a LLVM for the build triple, then we don't actually
+    // have any dependencies! To do that we return a dependency on the "dummy"
+    // target which does nothing.
+    //
+    // If we're build a cross-compiled LLVM, however, we need to assemble the
+    // libraries from the previous compiler. This step has the same name as
+    // ours (llvm) but we want it for a different target, so we use the
+    // builder-style methods on `Step` to configure this target to the build
+    // triple.
+    //
+    // Finally, to finish off this rule, we define how to actually execute it.
+    // That logic is all defined in the `native` module so we just delegate to
+    // the relevant function there. The argument to the closure passed to `run`
+    // is a `Step` (defined below) which encapsulates information like the
+    // stage, target, host, etc.
+    rules.build("llvm", "src/llvm")
+         .host(true)
+         .dep(move |s| {
+             if s.target == build.config.build {
+                 dummy(s, build)
+             } else {
+                 s.target(&build.config.build)
+             }
+         })
+         .run(move |s| native::llvm(build, s.target));
+
+    // Ok! After that example rule  that's hopefully enough to explain what's
+    // going on here. You can check out the API docs below and also see a bunch
+    // more examples of rules directly below as well.
+
     // dummy rule to do nothing, useful when a dep maps to no deps
     rules.build("dummy", "path/to/nowhere");
-    fn dummy<'a>(s: &Step<'a>, build: &'a Build) -> Step<'a> {
-        s.name("dummy").stage(0)
-         .target(&build.config.build)
-         .host(&build.config.build)
-    }
+
+    // the compiler with no target libraries ready to go
+    rules.build("rustc", "src/rustc")
+         .dep(move |s| {
+             if s.stage == 0 {
+                 dummy(s, build)
+             } else {
+                 s.name("librustc")
+                  .host(&build.config.build)
+                  .stage(s.stage - 1)
+             }
+         })
+         .run(move |s| compile::assemble_rustc(build, s.stage, s.target));
 
     // Helper for loading an entire DAG of crates, rooted at `name`
     let krates = |name: &str| {
@@ -84,28 +149,6 @@ pub fn build_rules(build: &Build) -> Rules {
         }
         return ret
     };
-
-    rules.build("rustc", "path/to/nowhere")
-         .dep(move |s| {
-             if s.stage == 0 {
-                 dummy(s, build)
-             } else {
-                 s.name("librustc")
-                  .host(&build.config.build)
-                  .stage(s.stage - 1)
-             }
-         })
-         .run(move |s| compile::assemble_rustc(build, s.stage, s.target));
-    rules.build("llvm", "src/llvm")
-         .host(true)
-         .dep(move |s| {
-             if s.target == build.config.build {
-                 dummy(s, build)
-             } else {
-                 s.target(&build.config.build)
-             }
-         })
-         .run(move |s| native::llvm(build, s.target));
 
     // ========================================================================
     // Crate compilations
@@ -337,10 +380,10 @@ pub fn build_rules(build: &Build) -> Rules {
          .host(true)
          .run(move |s| check::cargotest(build, s.stage, s.target));
     rules.test("check-tidy", "src/tools/tidy")
-         .dep(|s| s.name("tool-tidy"))
+         .dep(|s| s.name("tool-tidy").stage(0))
          .default(true)
          .host(true)
-         .run(move |s| check::tidy(build, s.stage, s.target));
+         .run(move |s| check::tidy(build, 0, s.target));
     rules.test("check-error-index", "src/tools/error_index_generator")
          .dep(|s| s.name("libstd"))
          .dep(|s| s.name("tool-error-index").host(s.host))
@@ -457,16 +500,89 @@ pub fn build_rules(build: &Build) -> Rules {
          .run(move |s| install::install(build, s.stage, s.target));
 
     rules.verify();
-    return rules
+    return rules;
+
+    fn dummy<'a>(s: &Step<'a>, build: &'a Build) -> Step<'a> {
+        s.name("dummy").stage(0)
+         .target(&build.config.build)
+         .host(&build.config.build)
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+struct Step<'a> {
+    /// Human readable name of the rule this step is executing. Possible names
+    /// are all defined above in `build_rules`.
+    name: &'a str,
+
+    /// The stage this step is executing in. This is typically 0, 1, or 2.
+    stage: u32,
+
+    /// This step will likely involve a compiler, and the target that compiler
+    /// itself is built for is called the host, this variable. Typically this is
+    /// the target of the build machine itself.
+    host: &'a str,
+
+    /// The target that this step represents generating. If you're building a
+    /// standard library for a new suite of targets, for example, this'll be set
+    /// to those targets.
+    target: &'a str,
+}
+
+impl<'a> Step<'a> {
+    /// Creates a new step which is the same as this, except has a new name.
+    fn name(&self, name: &'a str) -> Step<'a> {
+        Step { name: name, ..*self }
+    }
+
+    /// Creates a new step which is the same as this, except has a new stage.
+    fn stage(&self, stage: u32) -> Step<'a> {
+        Step { stage: stage, ..*self }
+    }
+
+    /// Creates a new step which is the same as this, except has a new host.
+    fn host(&self, host: &'a str) -> Step<'a> {
+        Step { host: host, ..*self }
+    }
+
+    /// Creates a new step which is the same as this, except has a new target.
+    fn target(&self, target: &'a str) -> Step<'a> {
+        Step { target: target, ..*self }
+    }
+
+    /// Returns the `Compiler` structure that this step corresponds to.
+    fn compiler(&self) -> Compiler<'a> {
+        Compiler::new(self.stage, self.host)
+    }
 }
 
 struct Rule<'a> {
+    /// The human readable name of this target, defined in `build_rules`.
     name: &'a str,
+
+    /// The path associated with this target, used in the `./x.py` driver for
+    /// easy and ergonomic specification of what to do.
     path: &'a str,
+
+    /// The "kind" of top-level command that this rule is associated with, only
+    /// relevant if this is a default rule.
     kind: Kind,
+
+    /// List of dependencies this rule has. Each dependency is a function from a
+    /// step that's being executed to another step that should be executed.
     deps: Vec<Box<Fn(&Step<'a>) -> Step<'a> + 'a>>,
+
+    /// How to actually execute this rule. Takes a step with contextual
+    /// information and then executes it.
     run: Box<Fn(&Step<'a>) + 'a>,
+
+    /// Whether or not this is a "default" rule. That basically means that if
+    /// you run, for example, `./x.py test` whether it's included or not.
     default: bool,
+
+    /// Whether or not this is a "host" rule, or in other words whether this is
+    /// only intended for compiler hosts and not for targets that are being
+    /// generated.
     host: bool,
 }
 
@@ -493,6 +609,8 @@ impl<'a> Rule<'a> {
     }
 }
 
+/// Builder pattern returned from the various methods on `Rules` which will add
+/// the rule to the internal list on `Drop`.
 struct RuleBuilder<'a: 'b, 'b> {
     rules: &'b mut Rules<'a>,
     rule: Rule<'a>,
@@ -554,26 +672,35 @@ impl<'a> Rules<'a> {
         }
     }
 
+    /// Creates a new rule of `Kind::Build` with the specified human readable
+    /// name and path associated with it.
+    ///
+    /// The builder returned should be configured further with information such
+    /// as how to actually run this rule.
     fn build<'b>(&'b mut self, name: &'a str, path: &'a str)
                  -> RuleBuilder<'a, 'b> {
         self.rule(name, path, Kind::Build)
     }
 
+    /// Same as `build`, but for `Kind::Test`.
     fn test<'b>(&'b mut self, name: &'a str, path: &'a str)
                 -> RuleBuilder<'a, 'b> {
         self.rule(name, path, Kind::Test)
     }
 
+    /// Same as `build`, but for `Kind::Bench`.
     fn bench<'b>(&'b mut self, name: &'a str, path: &'a str)
                 -> RuleBuilder<'a, 'b> {
         self.rule(name, path, Kind::Bench)
     }
 
+    /// Same as `build`, but for `Kind::Doc`.
     fn doc<'b>(&'b mut self, name: &'a str, path: &'a str)
                -> RuleBuilder<'a, 'b> {
         self.rule(name, path, Kind::Doc)
     }
 
+    /// Same as `build`, but for `Kind::Dist`.
     fn dist<'b>(&'b mut self, name: &'a str, path: &'a str)
                 -> RuleBuilder<'a, 'b> {
         self.rule(name, path, Kind::Dist)
@@ -634,6 +761,31 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
     /// Construct the top-level build steps that we're going to be executing,
     /// given the subcommand that our build is performing.
     fn plan(&self) -> Vec<Step<'a>> {
+        // Ok, the logic here is pretty subtle, and involves quite a few
+        // conditionals. The basic idea here is to:
+        //
+        // 1. First, filter all our rules to the relevant ones. This means that
+        //    the command specified corresponds to one of our `Kind` variants,
+        //    and we filter all rules based on that.
+        //
+        // 2. Next, we determine which rules we're actually executing. If a
+        //    number of path filters were specified on the command line we look
+        //    for those, otherwise we look for anything tagged `default`.
+        //
+        // 3. Finally, we generate some steps with host and target information.
+        //
+        // The last step is by far the most complicated and subtle. The basic
+        // thinking here is that we want to take the cartesian product of
+        // specified hosts and targets and build rules with that. The list of
+        // hosts and targets, if not specified, come from the how this build was
+        // configured. If the rule we're looking at is a host-only rule the we
+        // ignore the list of targets and instead consider the list of hosts
+        // also the list of targets.
+        //
+        // Once the host and target lists are generated we take the cartesian
+        // product of the two and then create a step based off them. Note that
+        // the stage each step is associated was specified with the `--step`
+        // flag on the command line.
         let (kind, paths) = match self.build.flags.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
             Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
@@ -664,7 +816,18 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             } else {
                 &self.build.config.target
             };
-            let arr = if rule.host {hosts} else {targets};
+            // If --target was specified but --host wasn't specified, don't run
+            // any host-only tests
+            let arr = if rule.host {
+                if self.build.flags.target.len() > 0 &&
+                   self.build.flags.host.len() == 0 {
+                    &hosts[..0]
+                } else {
+                    hosts
+                }
+            } else {
+                targets
+            };
 
             hosts.iter().flat_map(move |host| {
                 arr.iter().map(move |target| {
@@ -705,6 +868,15 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
         }
     }
 
+    /// Performs topological sort of dependencies rooted at the `step`
+    /// specified, pushing all results onto the `order` vector provided.
+    ///
+    /// In other words, when this method returns, the `order` vector will
+    /// contain a list of steps which if executed in order will eventually
+    /// complete the `step` specified as well.
+    ///
+    /// The `added` set specified here is the set of steps that are already
+    /// present in `order` (and hence don't need to be added again).
     fn fill(&self,
             step: Step<'a>,
             order: &mut Vec<Step<'a>>,
