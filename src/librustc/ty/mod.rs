@@ -54,7 +54,7 @@ use hir::itemlikevisit::ItemLikeVisitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{BareFnTy, FnSig, PolyFnSig};
-pub use self::sty::{ClosureTy, InferTy, ParamTy, ProjectionTy, TraitObject};
+pub use self::sty::{ClosureTy, InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, TypeAndMut};
 pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
@@ -1712,7 +1712,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
                 vec![]
             }
 
-            TyStr | TyTrait(..) | TySlice(_) | TyError => {
+            TyStr | TyDynamic(..) | TySlice(_) | TyError => {
                 // these are never sized - return the target type
                 vec![ty]
             }

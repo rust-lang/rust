@@ -93,7 +93,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             push_debuginfo_type_name(cx, inner_type, true, output);
             output.push(']');
         },
-        ty::TyTrait(ref trait_data) => {
+        ty::TyDynamic(ref trait_data, ..) => {
             if let Some(principal) = trait_data.principal() {
                 let principal = cx.tcx().erase_late_bound_regions_and_normalize(
                     &principal);

@@ -532,8 +532,8 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
                 self.hash(f.sig.variadic());
                 self.hash(f.sig.inputs().skip_binder().len());
             }
-            TyTrait(ref data) => {
-                if let Some(ref p) = data.principal() {
+            TyDynamic(ref data, ..) => {
+                if let Some(p) = data.principal() {
                     self.def_id(p.def_id());
                 }
                 for d in data.auto_traits() {
@@ -641,7 +641,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 mutbl: hir::MutMutable, ..
             }) => Some(true),
 
-            TyArray(..) | TySlice(..) | TyTrait(..) | TyTuple(..) |
+            TyArray(..) | TySlice(..) | TyDynamic(..) | TyTuple(..) |
             TyClosure(..) | TyAdt(..) | TyAnon(..) |
             TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
         }.unwrap_or_else(|| {
@@ -684,7 +684,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
             TyArray(..) | TyTuple(..) | TyClosure(..) | TyNever => Some(true),
 
-            TyStr | TyTrait(..) | TySlice(_) => Some(false),
+            TyStr | TyDynamic(..) | TySlice(_) => Some(false),
 
             TyAdt(..) | TyProjection(..) | TyParam(..) |
             TyInfer(..) | TyAnon(..) | TyError => None

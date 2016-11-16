@@ -269,7 +269,7 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     /// for examples of where this comes up,.
     fn rvalue_hint(fcx: &FnCtxt<'a, 'gcx, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
         match fcx.tcx.struct_tail(ty).sty {
-            ty::TySlice(_) | ty::TyStr | ty::TyTrait(..) => {
+            ty::TySlice(_) | ty::TyStr | ty::TyDynamic(..) => {
                 ExpectRvalueLikeUnsized(ty)
             }
             _ => ExpectHasType(ty)

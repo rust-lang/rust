@@ -231,10 +231,10 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
     }
 
     pub fn register_bound(&mut self,
-                                  infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                  ty: Ty<'tcx>,
-                                  def_id: DefId,
-                                  cause: ObligationCause<'tcx>)
+                          infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                          ty: Ty<'tcx>,
+                          def_id: DefId,
+                          cause: ObligationCause<'tcx>)
     {
         let trait_ref = ty::TraitRef {
             def_id: def_id,

@@ -572,7 +572,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                            consider using a raw pointer instead")
             }
 
-            ty::TyTrait(..) => {
+            ty::TyDynamic(..) => {
                 FfiUnsafe("found Rust trait type in foreign module, \
                            consider using a raw pointer instead")
             }

@@ -59,7 +59,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyStr => Some(StrSimplifiedType),
         ty::TyArray(..) | ty::TySlice(_) => Some(ArraySimplifiedType),
         ty::TyRawPtr(_) => Some(PtrSimplifiedType),
-        ty::TyTrait(ref trait_info) => {
+        ty::TyDynamic(ref trait_info, ..) => {
             trait_info.principal().map(|p| TraitSimplifiedType(p.def_id()))
         }
         ty::TyRef(_, mt) => {

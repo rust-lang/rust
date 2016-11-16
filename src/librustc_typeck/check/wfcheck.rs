@@ -118,15 +118,8 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                 // FIXME(#27579) what amount of WF checking do we need for neg impls?
 
                 let trait_ref = ccx.tcx.impl_trait_ref(ccx.tcx.map.local_def_id(item.id)).unwrap();
-                ccx.tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id);
-                let sync_trait = ccx.tcx.lang_items.require(lang_items::SyncTraitLangItem)
-                    .unwrap_or_else(|msg| ccx.tcx.sess.fatal(&msg[..]));
-                let send_trait = ccx.tcx.lang_items.require(lang_items::SendTraitLangItem)
-                    .unwrap_or_else(|msg| ccx.tcx.sess.fatal(&msg[..]));
-                if trait_ref.def_id != sync_trait && trait_ref.def_id != send_trait {
-                    if !ccx.tcx.trait_has_default_impl(trait_ref.def_id) {
-                        error_192(ccx, item.span);
-                    }
+                if !ccx.tcx.trait_has_default_impl(trait_ref.def_id) {
+                    error_192(ccx, item.span);
                 }
             }
             hir::ItemFn(.., ref body) => {

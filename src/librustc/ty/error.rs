@@ -49,7 +49,8 @@ pub enum TypeError<'tcx> {
     CyclicTy,
     ProjectionNameMismatched(ExpectedFound<Name>),
     ProjectionBoundsLength(ExpectedFound<usize>),
-    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>)
+    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
+    ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -164,6 +165,10 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        values.expected.ty,
                        values.found.ty)
             }
+            ExistentialMismatch(ref values) => {
+                report_maybe_different(f, format!("trait `{}`", values.expected),
+                                       format!("trait `{}`", values.found))
+            }
         }
     }
 }
@@ -200,7 +205,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             }
             ty::TyFnDef(..) => format!("fn item"),
             ty::TyFnPtr(_) => "fn pointer".to_string(),
-            ty::TyTrait(ref inner) => {
+            ty::TyDynamic(ref inner, ..) => {
                 inner.principal().map_or_else(|| "trait".to_string(),
                     |p| format!("trait {}", tcx.item_path_str(p.def_id())))
             }

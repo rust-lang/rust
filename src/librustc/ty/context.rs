@@ -29,7 +29,7 @@ use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
 use ty::{AdtKind, AdtDef, ClosureSubsts, Region};
 use hir::FreevarMap;
-use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitObject};
+use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
 use ty::layout::{Layout, TargetDataLayout};
@@ -47,6 +47,7 @@ use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::iter;
+use std::cmp::Ordering;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::symbol::{Symbol, keywords};
@@ -63,6 +64,7 @@ pub struct CtxtArenas<'tcx> {
     region: TypedArena<Region>,
     stability: TypedArena<attr::Stability>,
     layout: TypedArena<Layout>,
+    existential_predicates: TypedArena<ExistentialPredicate<'tcx>>,
 
     // references
     generics: TypedArena<ty::Generics<'tcx>>,
@@ -81,6 +83,7 @@ impl<'tcx> CtxtArenas<'tcx> {
             region: TypedArena::new(),
             stability: TypedArena::new(),
             layout: TypedArena::new(),
+            existential_predicates: TypedArena::new(),
 
             generics: TypedArena::new(),
             trait_def: TypedArena::new(),
@@ -103,6 +106,7 @@ pub struct CtxtInterners<'tcx> {
     region: RefCell<FxHashSet<Interned<'tcx, Region>>>,
     stability: RefCell<FxHashSet<&'tcx attr::Stability>>,
     layout: RefCell<FxHashSet<&'tcx Layout>>,
+    existential_predicates: RefCell<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
@@ -115,7 +119,8 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             bare_fn: RefCell::new(FxHashSet()),
             region: RefCell::new(FxHashSet()),
             stability: RefCell::new(FxHashSet()),
-            layout: RefCell::new(FxHashSet())
+            layout: RefCell::new(FxHashSet()),
+            existential_predicates: RefCell::new(FxHashSet()),
         }
     }
 
@@ -958,6 +963,27 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Ty<'a>> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for &'a Slice<ExistentialPredicate<'a>> {
+    type Lifted = &'tcx Slice<ExistentialPredicate<'tcx>>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
+        -> Option<&'tcx Slice<ExistentialPredicate<'tcx>>> {
+        if self.is_empty() {
+            return Some(Slice::empty());
+        }
+        if let Some(&Interned(eps)) = tcx.interners.existential_predicates.borrow().get(&self[..]) {
+            if *self as *const _ == eps as *const _ {
+                return Some(eps);
+            }
+        }
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
 impl<'a, 'tcx> Lift<'tcx> for &'a BareFnTy<'a> {
     type Lifted = &'tcx BareFnTy<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
@@ -1126,7 +1152,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         sty_debug_print!(
             self,
             TyAdt, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
-            TyTrait, TyClosure, TyTuple, TyParam, TyInfer, TyProjection, TyAnon);
+            TyDynamic, TyClosure, TyTuple, TyParam, TyInfer, TyProjection, TyAnon);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("BareFnTy interner: #{}", self.interners.bare_fn.borrow().len());
@@ -1197,6 +1223,13 @@ impl<'tcx: 'lcx, 'lcx> Borrow<BareFnTy<'lcx>> for Interned<'tcx, BareFnTy<'tcx>>
 impl<'tcx> Borrow<Region> for Interned<'tcx, Region> {
     fn borrow<'a>(&'a self) -> &'a Region {
         self.0
+    }
+}
+
+impl<'tcx: 'lcx, 'lcx> Borrow<[ExistentialPredicate<'lcx>]>
+    for Interned<'tcx, Slice<ExistentialPredicate<'tcx>>> {
+    fn borrow<'a>(&'a self) -> &'a [ExistentialPredicate<'lcx>] {
+        &self.0[..]
     }
 }
 
@@ -1297,6 +1330,7 @@ macro_rules! slice_interners {
 }
 
 slice_interners!(
+    existential_predicates: _intern_existential_predicates(ExistentialPredicate),
     type_list: _intern_type_list(Ty),
     substs: _intern_substs(Kind)
 );
@@ -1437,24 +1471,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TyFnPtr(fty))
     }
 
-    pub fn mk_trait(self, mut obj: TraitObject<'tcx>) -> Ty<'tcx> {
-        obj.projection_bounds.sort_by_key(|b| b.sort_key(self));
-        self.mk_ty(TyTrait(box obj))
+    pub fn mk_dynamic(
+        self,
+        obj: ty::Binder<&'tcx Slice<ExistentialPredicate<'tcx>>>,
+        reg: &'tcx ty::Region
+    ) -> Ty<'tcx> {
+        self.mk_ty(TyDynamic(obj, reg))
     }
 
     pub fn mk_projection(self,
                          trait_ref: TraitRef<'tcx>,
                          item_name: Name)
-                         -> Ty<'tcx> {
-        // take a copy of substs so that we own the vectors inside
-        let inner = ProjectionTy { trait_ref: trait_ref, item_name: item_name };
-        self.mk_ty(TyProjection(inner))
-    }
+        -> Ty<'tcx> {
+            // take a copy of substs so that we own the vectors inside
+            let inner = ProjectionTy { trait_ref: trait_ref, item_name: item_name };
+            self.mk_ty(TyProjection(inner))
+        }
 
     pub fn mk_closure(self,
                       closure_id: DefId,
                       substs: &'tcx Substs<'tcx>)
-                      -> Ty<'tcx> {
+        -> Ty<'tcx> {
         self.mk_closure_from_closure_substs(closure_id, ClosureSubsts {
             substs: substs
         })
@@ -1501,6 +1538,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TyAnon(def_id, substs))
     }
 
+    pub fn intern_existential_predicates(self, eps: &[ExistentialPredicate<'tcx>])
+        -> &'tcx Slice<ExistentialPredicate<'tcx>> {
+        assert!(!eps.is_empty());
+        assert!(eps.windows(2).all(|w| w[0].cmp(self, &w[1]) != Ordering::Greater));
+        self._intern_existential_predicates(eps)
+    }
+
     pub fn intern_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx Slice<Ty<'tcx>> {
         if ts.len() == 0 {
             Slice::empty()
@@ -1515,6 +1559,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             self._intern_substs(ts)
         }
+    }
+
+    pub fn mk_existential_predicates<I: InternAs<[ExistentialPredicate<'tcx>],
+                                     &'tcx Slice<ExistentialPredicate<'tcx>>>>(self, iter: I)
+                                     -> I::Output {
+        iter.intern_with(|xs| self.intern_existential_predicates(xs))
     }
 
     pub fn mk_type_list<I: InternAs<[Ty<'tcx>],

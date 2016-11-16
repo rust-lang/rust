@@ -366,10 +366,10 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
 pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                                        ty: Ty<'tcx>,
-                                                        def_id: DefId,
-                                                        span: Span)
-                                                        -> bool
+                                                ty: Ty<'tcx>,
+                                                def_id: DefId,
+                                                span: Span)
+-> bool
 {
     debug!("type_known_to_meet_bound(ty={:?}, bound={:?})",
            ty,

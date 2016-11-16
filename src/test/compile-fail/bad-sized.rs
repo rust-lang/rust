@@ -12,8 +12,7 @@ trait Trait {}
 
 pub fn main() {
     let x: Vec<Trait + Sized> = Vec::new();
-    //~^ ERROR the trait bound `Trait + std::marker::Sized: std::marker::Sized` is not satisfied
-    //~| ERROR the trait `std::marker::Sized` cannot be made into an object
-    //~| ERROR the trait bound `Trait + std::marker::Sized: std::marker::Sized` is not satisfied
-    //~| ERROR the trait `std::marker::Sized` cannot be made into an object
+    //~^ ERROR only Send/Sync traits can be used as additional traits in a trait object
+    //~| ERROR the trait bound `Trait: std::marker::Sized` is not satisfied
+    //~| ERROR the trait bound `Trait: std::marker::Sized` is not satisfied
 }

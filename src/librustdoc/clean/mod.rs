@@ -594,10 +594,10 @@ pub enum TyParamBound {
 
 impl TyParamBound {
     fn maybe_sized(cx: &DocContext) -> TyParamBound {
-        let did = cx.tcx().lang_items.require(lang_items::SizedTraitLangItem)
-            .unwrap_or_else(|msg| cx.tcx().sess.fatal(&msg[..]));
-        let empty = cx.tcx().intern_substs(&[]);
-        let path = external_path(cx, &cx.tcx().item_name(did).as_str(),
+        let did = cx.tcx.lang_items.require(lang_items::SizedTraitLangItem)
+            .unwrap_or_else(|msg| cx.tcx.sess.fatal(&msg[..]));
+        let empty = cx.tcx.intern_substs(&[]);
+        let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
             Some(did), false, vec![], empty);
         inline::record_extern_fqn(cx, did, TypeKind::Trait);
         TraitBound(PolyTrait {
@@ -1855,23 +1855,16 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     is_generic: false,
                 }
             }
-            ty::TyTrait(ref obj) => {
+            ty::TyDynamic(ref obj, ref reg) => {
                 if let Some(principal) = obj.principal() {
                     let did = principal.def_id();
                     inline::record_extern_fqn(cx, did, TypeKind::Trait);
 
                     let mut typarams = vec![];
-                    obj.region_bound.clean(cx).map(|b| typarams.push(RegionBound(b)));
+                    reg.clean(cx).map(|b| typarams.push(RegionBound(b)));
                     for did in obj.auto_traits() {
-                        let tcx = match cx.tcx_opt() {
-                            Some(tcx) => tcx,
-                            None => {
-                                typarams.push(RegionBound(Lifetime::statik()));
-                                continue;
-                            }
-                        };
-                        let empty = tcx.intern_substs(&[]);
-                        let path = external_path(cx, &tcx.item_name(did).as_str(),
+                        let empty = cx.tcx.intern_substs(&[]);
+                        let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
                             Some(did), false, vec![], empty);
                         inline::record_extern_fqn(cx, did, TypeKind::Trait);
                         let bound = TraitBound(PolyTrait {
@@ -1887,14 +1880,14 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     }
 
                     let mut bindings = vec![];
-                    for &ty::Binder(ref pb) in &obj.projection_bounds {
+                    for ty::Binder(ref pb) in obj.projection_bounds() {
                         bindings.push(TypeBinding {
                             name: pb.item_name.clean(cx),
                             ty: pb.ty.clean(cx)
                         });
                     }
 
-                    let path = external_path(cx, &cx.tcx().item_name(did).as_str(), Some(did),
+                    let path = external_path(cx, &cx.tcx.item_name(did).as_str(), Some(did),
                         false, bindings, principal.0.substs);
                     ResolvedPath {
                         path: path,

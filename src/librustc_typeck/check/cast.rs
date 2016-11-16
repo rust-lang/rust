@@ -65,7 +65,7 @@ pub struct CastCheck<'tcx> {
 /// fat pointers if their unsize-infos have the same kind.
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum UnsizeKind<'tcx> {
-    Vtable(DefId),
+    Vtable(Option<DefId>),
     Length,
     /// The unsize info of this projection
     OfProjection(&'tcx ty::ProjectionTy<'tcx>),
@@ -79,7 +79,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn unsize_kind(&self, t: Ty<'tcx>) -> Option<UnsizeKind<'tcx>> {
         match t.sty {
             ty::TySlice(_) | ty::TyStr => Some(UnsizeKind::Length),
-            ty::TyTrait(ref tty) => Some(UnsizeKind::Vtable(tty.principal().unwrap().def_id())),
+            ty::TyDynamic(ref tty, ..) =>
+                Some(UnsizeKind::Vtable(tty.principal().map(|p| p.def_id()))),
             ty::TyAdt(def, substs) if def.is_struct() => {
                 // FIXME(arielb1): do some kind of normalization
                 match def.struct_variant().fields.last() {
@@ -130,7 +131,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         // cases now. We do a more thorough check at the end, once
         // inference is more completely known.
         match cast_ty.sty {
-            ty::TyTrait(..) | ty::TySlice(..) => {
+            ty::TyDynamic(..) | ty::TySlice(..) => {
                 check.report_cast_to_unsized_type(fcx);
                 Err(ErrorReported)
             }

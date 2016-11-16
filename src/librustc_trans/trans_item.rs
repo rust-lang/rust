@@ -457,11 +457,11 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 self.push_type_name(inner_type, output);
                 output.push(']');
             },
-            ty::TyTrait(ref trait_data) => {
+            ty::TyDynamic(ref trait_data, ..) => {
                 if let Some(principal) = trait_data.principal() {
                     self.push_def_path(principal.def_id(), output);
                     self.push_type_params(principal.skip_binder().substs,
-                        &trait_data.projection_bounds,
+                        &trait_data.projection_bounds().collect::<Vec<_>>()[..],
                         output);
                 }
             },
