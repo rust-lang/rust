@@ -14,7 +14,7 @@ use locator;
 use schema;
 
 use rustc::middle::cstore::{InlinedItem, CrateStore, CrateSource, DepKind, ExternCrate};
-use rustc::middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference, LoadedMacro};
+use rustc::middle::cstore::{NativeLibrary, LinkMeta, LinkagePreference, LoadedMacro};
 use rustc::hir::def::{self, Def};
 use rustc::middle::lang_items;
 use rustc::session::Session;
@@ -295,7 +295,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         })
     }
 
-    fn native_libraries(&self, cnum: CrateNum) -> Vec<(NativeLibraryKind, String)>
+    fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
     {
         self.get_crate_data(cnum).get_native_libraries()
     }
@@ -524,7 +524,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         result
     }
 
-    fn used_libraries(&self) -> Vec<(String, NativeLibraryKind)>
+    fn used_libraries(&self) -> Vec<NativeLibrary>
     {
         self.get_used_libraries().borrow().clone()
     }

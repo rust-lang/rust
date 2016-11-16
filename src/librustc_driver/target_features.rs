@@ -12,6 +12,7 @@ use syntax::{ast, attr};
 use llvm::LLVMRustHasFeature;
 use rustc::session::Session;
 use rustc_trans::back::write::create_target_machine;
+use syntax::feature_gate::UnstableFeatures;
 use syntax::parse::token::InternedString;
 use syntax::parse::token::intern_and_get_ident as intern;
 use libc::c_char;
@@ -46,5 +47,33 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
         if unsafe { LLVMRustHasFeature(target_machine, feat.as_ptr() as *const c_char) } {
             cfg.push(attr::mk_name_value_item_str(tf.clone(), intern(&feat[..feat.len() - 1])))
         }
+    }
+
+    let requested_features = sess.opts.cg.target_feature.split(',');
+    let unstable_options = sess.opts.debugging_opts.unstable_options;
+    let is_nightly = UnstableFeatures::from_environment().is_nightly_build();
+    let found_negative = requested_features.clone().any(|r| r == "-crt-static");
+    let found_positive = requested_features.clone().any(|r| r == "+crt-static");
+
+    // If the target we're compiling for requests a static crt by default,
+    // then see if the `-crt-static` feature was passed to disable that.
+    // Otherwise if we don't have a static crt by default then see if the
+    // `+crt-static` feature was passed.
+    let crt_static = if sess.target.target.options.crt_static_default {
+        !found_negative
+    } else {
+        found_positive
+    };
+
+    // If we switched from the default then that's only allowed on nightly, so
+    // gate that here.
+    if (found_positive || found_negative) && (!is_nightly || !unstable_options) {
+        sess.fatal("specifying the `crt-static` target feature is only allowed \
+                    on the nightly channel with `-Z unstable-options` passed \
+                    as well");
+    }
+
+    if crt_static {
+        cfg.push(attr::mk_name_value_item_str(tf.clone(), intern("crt-static")));
     }
 }
