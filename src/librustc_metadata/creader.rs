@@ -23,6 +23,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::middle;
 use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::middle::cstore::NativeLibrary;
 use rustc::hir::map::Definitions;
 
 use std::cell::{RefCell, Cell};
@@ -35,6 +36,7 @@ use syntax::ast;
 use syntax::abi::Abi;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
+use syntax::feature_gate::{self, GateIssue};
 use syntax::parse::token::{InternedString, intern};
 use syntax_pos::{Span, DUMMY_SP};
 use log;
@@ -77,9 +79,8 @@ struct ExternCrateInfo {
 fn register_native_lib(sess: &Session,
                        cstore: &CStore,
                        span: Option<Span>,
-                       name: String,
-                       kind: cstore::NativeLibraryKind) {
-    if name.is_empty() {
+                       lib: NativeLibrary) {
+    if lib.name.is_empty() {
         match span {
             Some(span) => {
                 struct_span_err!(sess, span, E0454,
@@ -94,17 +95,21 @@ fn register_native_lib(sess: &Session,
         return
     }
     let is_osx = sess.target.target.options.is_like_osx;
-    if kind == cstore::NativeFramework && !is_osx {
+    if lib.kind == cstore::NativeFramework && !is_osx {
         let msg = "native frameworks are only available on OSX targets";
         match span {
-            Some(span) => {
-                span_err!(sess, span, E0455,
-                          "{}", msg)
-            }
+            Some(span) => span_err!(sess, span, E0455, "{}", msg),
             None => sess.err(msg),
         }
     }
-    cstore.add_used_library(name, kind);
+    if lib.cfg.is_some() && !sess.features.borrow().link_cfg {
+        feature_gate::emit_feature_err(&sess.parse_sess,
+                                       "link_cfg",
+                                       span.unwrap(),
+                                       GateIssue::Language,
+                                       "is feature gated");
+    }
+    cstore.add_used_library(lib);
 }
 
 // Extra info about a crate loaded for plugins or exported macros.
@@ -635,9 +640,9 @@ impl<'a> CrateLoader<'a> {
 
     fn register_statically_included_foreign_items(&mut self) {
         let libs = self.cstore.get_used_libraries();
-        for (lib, list) in self.foreign_item_map.iter() {
-            let is_static = libs.borrow().iter().any(|&(ref name, kind)| {
-                lib == name && kind == cstore::NativeStatic
+        for (foreign_lib, list) in self.foreign_item_map.iter() {
+            let is_static = libs.borrow().iter().any(|lib| {
+                *foreign_lib == lib.name && lib.kind == cstore::NativeStatic
             });
             if is_static {
                 for id in list {
@@ -898,7 +903,18 @@ impl<'a> CrateLoader<'a> {
                     InternedString::new("foo")
                 }
             };
-            register_native_lib(self.sess, self.cstore, Some(m.span), n.to_string(), kind);
+            let cfg = items.iter().find(|k| {
+                k.check_name("cfg")
+            }).and_then(|a| a.meta_item_list());
+            let cfg = cfg.map(|list| {
+                list[0].meta_item().unwrap().clone()
+            });
+            let lib = NativeLibrary {
+                name: n.to_string(),
+                kind: kind,
+                cfg: cfg,
+            };
+            register_native_lib(self.sess, self.cstore, Some(m.span), lib);
         }
 
         // Finally, process the #[linked_from = "..."] attribute
@@ -924,7 +940,12 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         }
 
         for &(ref name, kind) in &self.sess.opts.libs {
-            register_native_lib(self.sess, self.cstore, None, name.clone(), kind);
+            let lib = NativeLibrary {
+                name: name.clone(),
+                kind: kind,
+                cfg: None,
+            };
+            register_native_lib(self.sess, self.cstore, None, lib);
         }
         self.register_statically_included_foreign_items();
     }
