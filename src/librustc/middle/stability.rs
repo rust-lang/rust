@@ -21,7 +21,7 @@ use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, DefIndex, LOCAL_CRATE};
 use ty::{self, TyCtxt, AdtKind};
 use middle::privacy::AccessLevels;
-use syntax::parse::token::InternedString;
+use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};

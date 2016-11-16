@@ -23,10 +23,11 @@ use fold;
 use fold::*;
 use parse::{ParseSess, PResult, lexer};
 use parse::parser::Parser;
-use parse::token::{self, keywords};
+use parse::token;
 use print::pprust;
 use ptr::P;
 use std_inject;
+use symbol::keywords;
 use tokenstream::{TokenTree, TokenStream};
 use util::small_vector::SmallVector;
 use visit::Visitor;
@@ -190,7 +191,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         self.cx.crate_root = std_inject::injected_crate_name(&krate);
         let mut module = ModuleData {
-            mod_path: vec![token::str_to_ident(&self.cx.ecfg.crate_name)],
+            mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
             directory: PathBuf::from(self.cx.codemap().span_to_filename(krate.span)),
         };
         module.directory.pop();
@@ -246,7 +247,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.cx.resolver.resolve_macro(scope, &mac.node.path, force)
                 }
                 InvocationKind::Attr { ref attr, .. } => {
-                    let ident = ast::Ident::with_empty_ctxt(attr.name());
+                    let ident = Ident::with_empty_ctxt(attr.name());
                     let path = ast::Path::from_ident(attr.span, ident);
                     self.cx.resolver.resolve_macro(scope, &path, force)
                 }

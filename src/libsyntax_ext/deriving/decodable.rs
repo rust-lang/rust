@@ -18,9 +18,9 @@ use syntax::ast;
 use syntax::ast::{Expr, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token::InternedString;
-use syntax::parse::token;
 use syntax::ptr::P;
+use syntax::symbol::InternedString;
+use syntax::symbol::intern_and_get_ident;
 use syntax_pos::Span;
 
 pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
@@ -202,10 +202,7 @@ fn decode_static_fields<F>(cx: &mut ExtCtxt,
                 let fields = fields.iter()
                     .enumerate()
                     .map(|(i, &span)| {
-                        getarg(cx,
-                               span,
-                               token::intern_and_get_ident(&format!("_field{}", i)),
-                               i)
+                        getarg(cx, span, intern_and_get_ident(&format!("_field{}", i)), i)
                     })
                     .collect();
 

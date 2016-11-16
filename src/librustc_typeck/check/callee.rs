@@ -16,7 +16,7 @@ use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::print;
 use rustc::{infer, traits};
 use rustc::ty::{self, LvaluePreference, Ty};
-use syntax::parse::token;
+use syntax::symbol::Symbol;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
@@ -160,9 +160,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   -> Option<ty::MethodCallee<'tcx>> {
         // Try the options that are least restrictive on the caller first.
         for &(opt_trait_def_id, method_name) in
-            &[(self.tcx.lang_items.fn_trait(), token::intern("call")),
-              (self.tcx.lang_items.fn_mut_trait(), token::intern("call_mut")),
-              (self.tcx.lang_items.fn_once_trait(), token::intern("call_once"))] {
+            &[(self.tcx.lang_items.fn_trait(), Symbol::intern("call")),
+              (self.tcx.lang_items.fn_mut_trait(), Symbol::intern("call_mut")),
+              (self.tcx.lang_items.fn_once_trait(), Symbol::intern("call_once"))] {
             let trait_def_id = match opt_trait_def_id {
                 Some(def_id) => def_id,
                 None => continue,

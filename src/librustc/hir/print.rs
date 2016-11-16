@@ -13,13 +13,14 @@ pub use self::AnnNode::*;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{CodeMap, Spanned};
-use syntax::parse::token::{self, keywords, BinOpToken};
+use syntax::parse::token::{self, BinOpToken};
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, break_offset, word, space, hardbreak};
 use syntax::print::pp::{Breaks, eof};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
+use syntax::symbol::keywords;
 use syntax_pos::{self, BytePos};
 use errors;
 

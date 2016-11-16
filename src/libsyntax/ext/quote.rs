@@ -33,6 +33,7 @@ pub mod rt {
     use parse::{self, token, classify};
     use ptr::P;
     use std::rc::Rc;
+    use symbol;
 
     use tokenstream::{self, TokenTree};
 
@@ -239,7 +240,7 @@ pub mod rt {
     impl ToTokens for str {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
             let lit = ast::LitKind::Str(
-                token::intern_and_get_ident(self), ast::StrStyle::Cooked);
+                symbol::intern_and_get_ident(self), ast::StrStyle::Cooked);
             dummy_spanned(lit).to_tokens(cx)
         }
     }
@@ -527,12 +528,12 @@ pub fn expand_quote_matcher(cx: &mut ExtCtxt,
     base::MacEager::expr(expanded)
 }
 
-fn ids_ext(strs: Vec<String> ) -> Vec<ast::Ident> {
-    strs.iter().map(|str| str_to_ident(&(*str))).collect()
+fn ids_ext(strs: Vec<String>) -> Vec<ast::Ident> {
+    strs.iter().map(|s| ast::Ident::from_str(s)).collect()
 }
 
-fn id_ext(str: &str) -> ast::Ident {
-    str_to_ident(str)
+fn id_ext(s: &str) -> ast::Ident {
+    ast::Ident::from_str(s)
 }
 
 // Lift an ident to the expr that evaluates to that ident.

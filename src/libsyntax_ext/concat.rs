@@ -11,7 +11,7 @@
 use syntax::ast;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token;
+use syntax::symbol::intern_and_get_ident;
 use syntax_pos;
 use syntax::tokenstream;
 
@@ -57,5 +57,5 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
             }
         }
     }
-    base::MacEager::expr(cx.expr_str(sp, token::intern_and_get_ident(&accumulator[..])))
+    base::MacEager::expr(cx.expr_str(sp, intern_and_get_ident(&accumulator[..])))
 }

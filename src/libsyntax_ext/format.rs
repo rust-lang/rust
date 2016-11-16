@@ -17,8 +17,9 @@ use syntax::ast;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token::{self, keywords};
+use syntax::parse::token;
 use syntax::ptr::P;
+use syntax::symbol::{self, keywords};
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::tokenstream;
 
@@ -369,7 +370,7 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Translate the accumulated string literals to a literal expression
     fn trans_literal_string(&mut self) -> P<ast::Expr> {
         let sp = self.fmtsp;
-        let s = token::intern_and_get_ident(&self.literal);
+        let s = symbol::intern_and_get_ident(&self.literal);
         self.literal.clear();
         self.ecx.expr_str(sp, s)
     }

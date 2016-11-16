@@ -19,6 +19,7 @@ use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
+use symbol::Symbol;
 use tokenstream::{TokenTree};
 use util::small_vector::SmallVector;
 
@@ -141,7 +142,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
             ));
         }
     });
-    let sym = Ident::with_empty_ctxt(token::gensym(&format!(
+    let sym = Ident::with_empty_ctxt(Symbol::gensym(&format!(
         "__register_diagnostic_{}", code
     )));
     MacEager::items(SmallVector::many(vec![

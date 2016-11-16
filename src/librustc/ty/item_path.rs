@@ -12,7 +12,7 @@ use hir::map::DefPathData;
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
-use syntax::parse::token;
+use syntax::symbol::Symbol;
 
 use std::cell::Cell;
 
@@ -136,7 +136,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             cur_path.push(self.sess.cstore.def_key(cur_def)
                               .disambiguated_data.data.get_opt_name().unwrap_or_else(||
-                token::intern("<unnamed>")));
+                Symbol::intern("<unnamed>")));
             match visible_parent_map.get(&cur_def) {
                 Some(&def) => cur_def = def,
                 None => return false,

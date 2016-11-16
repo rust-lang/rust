@@ -95,8 +95,8 @@ use deriving::generic::ty::*;
 use syntax::ast::{Expr, ExprKind, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token;
 use syntax::ptr::P;
+use syntax::symbol::intern_and_get_ident;
 use syntax_pos::Span;
 
 pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
@@ -193,7 +193,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
             for (i, &FieldInfo { name, ref self_, span, .. }) in fields.iter().enumerate() {
                 let name = match name {
                     Some(id) => id.name.as_str(),
-                    None => token::intern_and_get_ident(&format!("_field{}", i)),
+                    None => intern_and_get_ident(&format!("_field{}", i)),
                 };
                 let self_ref = cx.expr_addr_of(span, self_.clone());
                 let enc = cx.expr_call(span, fn_path.clone(), vec![self_ref, blkencoder.clone()]);

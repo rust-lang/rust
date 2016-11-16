@@ -79,7 +79,7 @@ use rustc_const_math::ConstInt;
 use std::cell::RefCell;
 
 use syntax::{abi, ast, attr};
-use syntax::parse::token::{self, keywords};
+use syntax::symbol::{Symbol, keywords};
 use syntax_pos::Span;
 
 use rustc::hir::{self, map as hir_map, print as pprust};
@@ -585,7 +585,7 @@ fn convert_closure<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let upvar_decls : Vec<_> = tcx.with_freevars(node_id, |fv| {
         fv.iter().enumerate().map(|(i, _)| ty::TypeParameterDef {
             index: (base_generics.count() as u32) + (i as u32),
-            name: token::intern("<upvar>"),
+            name: Symbol::intern("<upvar>"),
             def_id: def_id,
             default_def_id: base_def_id,
             default: None,

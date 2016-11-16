@@ -42,7 +42,7 @@ use std::ptr;
 use std::rc::Rc;
 use std::str;
 use syntax::ast;
-use syntax::parse::token::InternedString;
+use syntax::symbol::InternedString;
 use abi::FnType;
 
 pub struct Stats {

@@ -53,7 +53,7 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, IdentTT, MultiModifier, NamedSyntaxExtension};
 use syntax::ext::tt::macro_rules::MacroRulesExpander;
-use syntax::parse::token::intern;
+use syntax::symbol::Symbol;
 
 pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                          user_exts: Vec<NamedSyntaxExtension>,
@@ -62,11 +62,11 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
         resolver.add_ext(ast::Ident::with_empty_ctxt(name), Rc::new(ext));
     };
 
-    register(intern("macro_rules"), IdentTT(Box::new(MacroRulesExpander), None, false));
+    register(Symbol::intern("macro_rules"), IdentTT(Box::new(MacroRulesExpander), None, false));
 
     macro_rules! register {
         ($( $name:ident: $f:expr, )*) => { $(
-            register(intern(stringify!($name)),
+            register(Symbol::intern(stringify!($name)),
                      NormalTT(Box::new($f as MacroExpanderFn), None, false));
         )* }
     }
@@ -112,9 +112,10 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
     }
 
     // format_args uses `unstable` things internally.
-    register(intern("format_args"), NormalTT(Box::new(format::expand_format_args), None, true));
+    register(Symbol::intern("format_args"),
+             NormalTT(Box::new(format::expand_format_args), None, true));
 
-    register(intern("derive"), MultiModifier(Box::new(deriving::expand_derive)));
+    register(Symbol::intern("derive"), MultiModifier(Box::new(deriving::expand_derive)));
 
     for (name, ext) in user_exts {
         register(name, ext);

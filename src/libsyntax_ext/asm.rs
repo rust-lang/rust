@@ -17,9 +17,9 @@ use syntax::codemap;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
-use syntax::parse::token::intern;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
+use syntax::symbol::{self, Symbol, InternedString};
 use syntax::ast::AsmDialect;
 use syntax_pos::Span;
 use syntax::tokenstream;
@@ -73,7 +73,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
         })
         .unwrap_or(tts.len());
     let mut p = cx.new_parser_from_tts(&tts[first_colon..]);
-    let mut asm = token::InternedString::new("");
+    let mut asm = InternedString::new("");
     let mut asm_str_style = None;
     let mut outputs = Vec::new();
     let mut inputs = Vec::new();
@@ -139,7 +139,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     let output = match ch.next() {
                         Some('=') => None,
                         Some('+') => {
-                            Some(token::intern_and_get_ident(&format!("={}", ch.as_str())))
+                            Some(symbol::intern_and_get_ident(&format!("={}", ch.as_str())))
                         }
                         _ => {
                             cx.span_err(span, "output operand constraint lacks '=' or '+'");
@@ -242,7 +242,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
     let expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
         call_site: sp,
         callee: codemap::NameAndSpan {
-            format: codemap::MacroBang(intern("asm")),
+            format: codemap::MacroBang(Symbol::intern("asm")),
             span: None,
             allow_internal_unstable: false,
         },
@@ -251,7 +251,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
     MacEager::expr(P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprKind::InlineAsm(P(ast::InlineAsm {
-            asm: token::intern_and_get_ident(&asm),
+            asm: symbol::intern_and_get_ident(&asm),
             asm_str_style: asm_str_style.unwrap(),
             outputs: outputs,
             inputs: inputs,

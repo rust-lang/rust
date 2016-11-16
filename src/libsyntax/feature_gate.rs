@@ -33,7 +33,7 @@ use syntax_pos::Span;
 use errors::{DiagnosticBuilder, Handler};
 use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
-use parse::token::InternedString;
+use symbol::InternedString;
 
 use std::ascii::AsciiExt;
 use std::env;

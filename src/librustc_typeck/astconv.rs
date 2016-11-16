@@ -71,7 +71,7 @@ use util::nodemap::{NodeMap, FxHashSet};
 use std::cell::RefCell;
 use syntax::{abi, ast};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax::parse::token::{self, keywords};
+use syntax::symbol::{Symbol, keywords};
 use syntax_pos::{Span, Pos};
 use errors::DiagnosticBuilder;
 
@@ -645,7 +645,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
 
         let output_binding = ConvertedBinding {
-            item_name: token::intern(FN_OUTPUT_NAME),
+            item_name: Symbol::intern(FN_OUTPUT_NAME),
             ty: output,
             span: output_span
         };

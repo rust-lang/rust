@@ -45,9 +45,8 @@ use std::fmt::Write;
 use std::path::Path;
 use std::ptr;
 use std::rc::Rc;
-use syntax::util::interner::Interner;
 use syntax::ast;
-use syntax::parse::token;
+use syntax::symbol::{Interner, InternedString};
 use syntax_pos::{self, Span};
 
 
@@ -1566,7 +1565,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     fn get_enum_discriminant_name(cx: &CrateContext,
                                   def_id: DefId)
-                                  -> token::InternedString {
+                                  -> InternedString {
         cx.tcx().item_name(def_id).as_str()
     }
 }

@@ -20,8 +20,8 @@ use ext::hygiene::Mark;
 use fold::{self, Folder};
 use parse::{self, parser};
 use parse::token;
-use parse::token::{InternedString, str_to_ident};
 use ptr::P;
+use symbol::{Symbol, InternedString};
 use util::small_vector::SmallVector;
 
 use std::path::PathBuf;
@@ -735,7 +735,7 @@ impl<'a> ExtCtxt<'a> {
         self.ecfg.trace_mac = x
     }
     pub fn ident_of(&self, st: &str) -> ast::Ident {
-        str_to_ident(st)
+        ast::Ident::from_str(st)
     }
     pub fn std_path(&self, components: &[&str]) -> Vec<ast::Ident> {
         let mut v = Vec::new();
@@ -746,7 +746,7 @@ impl<'a> ExtCtxt<'a> {
         return v
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
-        token::intern(st)
+        Symbol::intern(st)
     }
 }
 

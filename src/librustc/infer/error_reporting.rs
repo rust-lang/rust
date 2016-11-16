@@ -91,8 +91,8 @@ use std::cell::{Cell, RefCell};
 use std::char::from_u32;
 use std::fmt;
 use syntax::ast;
-use syntax::parse::token;
 use syntax::ptr::P;
+use syntax::symbol::Symbol;
 use syntax_pos::{self, Pos, Span};
 use errors::DiagnosticBuilder;
 
@@ -1219,7 +1219,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 names.push(lt_name);
             }
             names.sort();
-            let name = token::intern(&names[0]);
+            let name = Symbol::intern(&names[0]);
             return (name_to_dummy_lifetime(name), Kept);
         }
         return (self.life_giver.give_lifetime(), Fresh);
@@ -1931,7 +1931,7 @@ impl LifeGiver {
             let mut s = String::from("'");
             s.push_str(&num_to_string(self.counter.get()));
             if !self.taken.contains(&s) {
-                lifetime = name_to_dummy_lifetime(token::intern(&s[..]));
+                lifetime = name_to_dummy_lifetime(Symbol::intern(&s));
                 self.generated.borrow_mut().push(lifetime);
                 break;
             }

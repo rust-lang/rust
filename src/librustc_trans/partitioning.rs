@@ -132,7 +132,7 @@ use std::sync::Arc;
 use std::collections::hash_map::DefaultHasher;
 use symbol_map::SymbolMap;
 use syntax::ast::NodeId;
-use syntax::parse::token::{self, InternedString};
+use syntax::symbol::{InternedString, intern_and_get_ident};
 use trans_item::TransItem;
 use util::nodemap::{FxHashMap, FxHashSet};
 
@@ -542,11 +542,11 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         mod_path.push_str(".volatile");
     }
 
-    return token::intern_and_get_ident(&mod_path[..]);
+    return intern_and_get_ident(&mod_path[..]);
 }
 
 fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
-    token::intern_and_get_ident(&format!("{}{}{}",
+    intern_and_get_ident(&format!("{}{}{}",
         crate_name,
         NUMBERED_CODEGEN_UNIT_MARKER,
         index)[..])

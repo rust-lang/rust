@@ -14,7 +14,7 @@ use std::fmt::Write;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use syntax::ast;
-use syntax::parse::token::{self, InternedString};
+use syntax::symbol::{Symbol, InternedString};
 use ty::TyCtxt;
 use util::nodemap::NodeMap;
 
@@ -328,7 +328,7 @@ impl DefPathData {
             LifetimeDef(ref name) |
             EnumVariant(ref name) |
             Binding(ref name) |
-            Field(ref name) => Some(token::intern(name)),
+            Field(ref name) => Some(Symbol::intern(name)),
 
             Impl |
             CrateRoot |

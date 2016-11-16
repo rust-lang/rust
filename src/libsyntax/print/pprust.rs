@@ -19,7 +19,7 @@ use attr;
 use codemap::{self, CodeMap};
 use syntax_pos::{self, BytePos};
 use errors;
-use parse::token::{self, keywords, BinOpToken, Token};
+use parse::token::{self, BinOpToken, Token};
 use parse::lexer::comments;
 use parse;
 use print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
@@ -27,6 +27,7 @@ use print::pp::{Breaks, eof};
 use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 use std_inject;
+use symbol::{Symbol, keywords};
 use tokenstream::{self, TokenTree};
 
 use std::ascii;
@@ -119,13 +120,13 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
         // of the feature gate, so we fake them up here.
 
         // #![feature(prelude_import)]
-        let prelude_import_meta = attr::mk_list_word_item(token::intern("prelude_import"));
-        let list = attr::mk_list_item(token::intern("feature"), vec![prelude_import_meta]);
+        let prelude_import_meta = attr::mk_list_word_item(Symbol::intern("prelude_import"));
+        let list = attr::mk_list_item(Symbol::intern("feature"), vec![prelude_import_meta]);
         let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(), list);
         try!(s.print_attribute(&fake_attr));
 
         // #![no_std]
-        let no_std_meta = attr::mk_word_item(token::intern("no_std"));
+        let no_std_meta = attr::mk_word_item(Symbol::intern("no_std"));
         let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(), no_std_meta);
         try!(s.print_attribute(&fake_attr));
     }

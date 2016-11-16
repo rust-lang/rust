@@ -53,8 +53,8 @@ use syntax::ast::*;
 use syntax::errors;
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned};
-use syntax::parse::token;
 use syntax::std_inject;
+use syntax::symbol::{Symbol, keywords};
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
 
@@ -149,7 +149,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn str_to_ident(&self, s: &'static str) -> Name {
-        token::gensym(s)
+        Symbol::gensym(s)
     }
 
     fn with_parent_def<T, F>(&mut self, parent_id: NodeId, f: F) -> T
@@ -400,8 +400,8 @@ impl<'a> LoweringContext<'a> {
         // Don't expose `Self` (recovered "keyword used as ident" parse error).
         // `rustc::ty` expects `Self` to be only used for a trait's `Self`.
         // Instead, use gensym("Self") to create a distinct name that looks the same.
-        if name == token::keywords::SelfType.name() {
-            name = token::gensym("Self");
+        if name == keywords::SelfType.name() {
+            name = Symbol::gensym("Self");
         }
 
         hir::TyParam {
@@ -540,7 +540,7 @@ impl<'a> LoweringContext<'a> {
         hir::StructField {
             span: f.span,
             id: f.id,
-            name: f.ident.map(|ident| ident.name).unwrap_or(token::intern(&index.to_string())),
+            name: f.ident.map(|ident| ident.name).unwrap_or(Symbol::intern(&index.to_string())),
             vis: self.lower_visibility(&f.vis),
             ty: self.lower_ty(&f.ty),
             attrs: self.lower_attrs(&f.attrs),
@@ -1189,7 +1189,7 @@ impl<'a> LoweringContext<'a> {
                                                                           e.span,
                                                                           hir::PopUnstableBlock,
                                                                           ThinVec::new());
-                                this.field(token::intern(s), signal_block, ast_expr.span)
+                                this.field(Symbol::intern(s), signal_block, ast_expr.span)
                             }).collect();
                             let attrs = ast_expr.attrs.clone();
 
@@ -1953,9 +1953,9 @@ impl<'a> LoweringContext<'a> {
     fn std_path_components(&mut self, components: &[&str]) -> Vec<Name> {
         let mut v = Vec::new();
         if let Some(s) = self.crate_root {
-            v.push(token::intern(s));
+            v.push(Symbol::intern(s));
         }
-        v.extend(components.iter().map(|s| token::intern(s)));
+        v.extend(components.iter().map(|s| Symbol::intern(s)));
         return v;
     }
 
