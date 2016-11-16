@@ -30,11 +30,8 @@ impl LateLintPass for Pass {
         if let ExprMethodCall(name, _, ref args) = expr.node {
             if name.node.as_str() == "map" && args.len() == 2 {
                 match args[1].node {
-                    ExprClosure(_, ref decl, ref blk, _) => {
+                    ExprClosure(_, ref decl, ref closure_expr, _) => {
                         if_let_chain! {[
-                            // just one expression in the closure
-                            blk.stmts.is_empty(),
-                            let Some(ref closure_expr) = blk.expr,
                             // nothing special in the argument, besides reference bindings
                             // (e.g. .map(|&x| x) )
                             let Some(arg_ident) = get_arg_name(&*decl.inputs[0].pat),
@@ -44,7 +41,7 @@ impl LateLintPass for Pass {
                             // look for derefs, for .map(|x| *x)
                             if only_derefs(cx, &*closure_expr, arg_ident) &&
                                 // .cloned() only removes one level of indirection, don't lint on more
-                                walk_ptrs_ty_depth(cx.tcx.pat_ty(&*decl.inputs[0].pat)).1 == 1
+                                walk_ptrs_ty_depth(cx.tcx.tables().pat_ty(&*decl.inputs[0].pat)).1 == 1
                             {
                                 span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
                                     "you seem to be using .map() to clone the contents of an {}, consider \
@@ -101,7 +98,7 @@ fn expr_eq_name(expr: &Expr, id: ast::Name) -> bool {
 fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static str> {
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         Some("iterator")
-    } else if match_type(cx, walk_ptrs_ty(cx.tcx.expr_ty(arg)), &paths::OPTION) {
+    } else if match_type(cx, walk_ptrs_ty(cx.tcx.tables().expr_ty(arg)), &paths::OPTION) {
         Some("Option")
     } else {
         None

@@ -392,7 +392,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for NonminimalBoolVisitor<'a, 'tcx> {
         match e.node {
             ExprBinary(binop, _, _) if binop.node == BiOr || binop.node == BiAnd => self.bool_expr(e),
             ExprUnary(UnNot, ref inner) => {
-                if self.0.tcx.node_types()[&inner.id].is_bool() {
+                if self.0.tcx.tables.borrow().node_types[&inner.id].is_bool() {
                     self.bool_expr(e);
                 } else {
                     walk_expr(self, e);

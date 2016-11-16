@@ -81,11 +81,11 @@ impl LateLintPass for AssignOps {
                 if let hir::ExprBinary(binop, ref l, ref r) = rhs.node {
                     if op.node == binop.node {
                         let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
-                            let ty = cx.tcx.expr_ty(assignee);
+                            let ty = cx.tcx.tables().expr_ty(assignee);
                             if ty.walk_shallow().next().is_some() {
                                 return; // implements_trait does not work with generics
                             }
-                            let rty = cx.tcx.expr_ty(rhs);
+                            let rty = cx.tcx.tables().expr_ty(rhs);
                             if rty.walk_shallow().next().is_some() {
                                 return; // implements_trait does not work with generics
                             }
@@ -116,11 +116,11 @@ impl LateLintPass for AssignOps {
             hir::ExprAssign(ref assignee, ref e) => {
                 if let hir::ExprBinary(op, ref l, ref r) = e.node {
                     let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
-                        let ty = cx.tcx.expr_ty(assignee);
+                        let ty = cx.tcx.tables().expr_ty(assignee);
                         if ty.walk_shallow().next().is_some() {
                             return; // implements_trait does not work with generics
                         }
-                        let rty = cx.tcx.expr_ty(rhs);
+                        let rty = cx.tcx.tables().expr_ty(rhs);
                         if rty.walk_shallow().next().is_some() {
                             return; // implements_trait does not work with generics
                         }

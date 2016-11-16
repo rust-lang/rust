@@ -39,8 +39,8 @@ impl LateLintPass for OverflowCheckConditional {
             let Expr_::ExprPath(_, ref path2) = ident2.node,
             let Expr_::ExprPath(_, ref path3) = second.node,
             &path1.segments[0] == &path3.segments[0] || &path2.segments[0] == &path3.segments[0],
-            cx.tcx.expr_ty(ident1).is_integral(),
-            cx.tcx.expr_ty(ident2).is_integral()
+            cx.tcx.tables().expr_ty(ident1).is_integral(),
+            cx.tcx.tables().expr_ty(ident2).is_integral()
         ], {
             if let BinOp_::BiLt = op.node {
                 if let BinOp_::BiAdd = op2.node {
@@ -61,8 +61,8 @@ impl LateLintPass for OverflowCheckConditional {
             let Expr_::ExprPath(_, ref path2) = ident2.node,
             let Expr_::ExprPath(_, ref path3) = first.node,
             &path1.segments[0] == &path3.segments[0] || &path2.segments[0] == &path3.segments[0],
-            cx.tcx.expr_ty(ident1).is_integral(),
-            cx.tcx.expr_ty(ident2).is_integral()
+            cx.tcx.tables().expr_ty(ident1).is_integral(),
+            cx.tcx.tables().expr_ty(ident2).is_integral()
         ], {
             if let BinOp_::BiGt = op.node {
                 if let BinOp_::BiAdd = op2.node {

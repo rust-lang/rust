@@ -33,7 +33,7 @@ impl LateLintPass for MemForget {
             if let ExprPath(None, _) = path_expr.node {
                 let def_id = cx.tcx.expect_def(path_expr.id).def_id();
                 if match_def_path(cx, def_id, &paths::MEM_FORGET) {
-                    let forgot_ty = cx.tcx.expr_ty(&args[0]);
+                    let forgot_ty = cx.tcx.tables().expr_ty(&args[0]);
 
                     if match forgot_ty.ty_adt_def() {
                         Some(def) => def.has_dtor(),

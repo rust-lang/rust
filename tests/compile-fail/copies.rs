@@ -1,5 +1,4 @@
 #![feature(plugin, inclusive_range_syntax)]
-#![feature(dotdot_in_tuple_patterns)]
 #![plugin(clippy)]
 
 #![allow(dead_code, no_effect, unnecessary_operation)]

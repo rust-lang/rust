@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, ImplOrTraitItem};
+use rustc::ty;
 use rustc::hir::*;
 use syntax::ast::{Lit, LitKind, Name};
 use syntax::codemap::{Span, Spanned};
@@ -133,7 +133,8 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItem]) {
 
     if let Some(i) = impl_items.iter().find(|i| is_named_self(i, "len")) {
         if cx.access_levels.is_exported(i.id) {
-            let ty = cx.tcx.node_id_to_type(item.id);
+            let def_id = cx.tcx.map.local_def_id(item.id);
+            let ty = cx.tcx.item_type(def_id);
 
             span_lint(cx,
                       LEN_WITHOUT_IS_EMPTY,
@@ -183,10 +184,15 @@ fn check_len_zero(cx: &LateContext, span: Span, name: &Name, args: &[P<Expr>], l
 
 /// Check if this type has an `is_empty` method.
 fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
-    /// Get an `ImplOrTraitItem` and return true if it matches `is_empty(self)`.
-    fn is_is_empty(item: &ImplOrTraitItem) -> bool {
-        if let ty::MethodTraitItem(ref method) = *item {
-            method.name.as_str() == "is_empty" && method.fty.sig.skip_binder().inputs.len() == 1
+    /// Get an `AssociatedItem` and return true if it matches `is_empty(self)`.
+    fn is_is_empty(cx: &LateContext, item: &ty::AssociatedItem) -> bool {
+        if let ty::AssociatedKind::Method = item.kind {
+            if item.name.as_str() == "is_empty" {
+                let ty = cx.tcx.item_type(item.def_id).fn_sig().skip_binder();
+                ty.inputs.len() == 1
+            } else {
+                false
+            }
         } else {
             false
         }
@@ -195,19 +201,18 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     /// Check the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext, id: DefId) -> bool {
         cx.tcx.inherent_impls.borrow().get(&id).map_or(false, |impls| impls.iter().any(|imp| {
-            cx.tcx.impl_or_trait_items(*imp).iter().any(|item| {
-                is_is_empty(&cx.tcx.impl_or_trait_item(*item))
+            cx.tcx.associated_items(*imp).any(|item| {
+                is_is_empty(cx, &item)
             })
         }))
     }
 
-    let ty = &walk_ptrs_ty(cx.tcx.expr_ty(expr));
+    let ty = &walk_ptrs_ty(cx.tcx.tables().expr_ty(expr));
     match ty.sty {
         ty::TyTrait(_) => {
             cx.tcx
-              .impl_or_trait_items(ty.ty_to_def_id().expect("trait impl not found"))
-              .iter()
-              .any(|item| is_is_empty(&cx.tcx.impl_or_trait_item(*item)))
+              .associated_items(ty.ty_to_def_id().expect("trait impl not found"))
+              .any(|item| is_is_empty(cx, &item))
         }
         ty::TyProjection(_) => ty.ty_to_def_id().map_or(false, |id| has_is_empty_impl(cx, id)),
         ty::TyAdt(id, _) => has_is_empty_impl(cx, id.did),

@@ -147,10 +147,7 @@ impl LateLintPass for MissingDoc {
     fn check_impl_item(&mut self, cx: &LateContext, impl_item: &hir::ImplItem) {
         // If the method is an impl for a trait, don't doc.
         let def_id = cx.tcx.map.local_def_id(impl_item.id);
-        match cx.tcx.impl_or_trait_items.borrow()
-                                         .get(&def_id)
-                                         .expect("missing method descriptor?!")
-                                         .container() {
+        match cx.tcx.associated_item(def_id).container {
             ty::TraitContainer(_) => return,
             ty::ImplContainer(cid) => {
                 if cx.tcx.impl_trait_ref(cid).is_some() {

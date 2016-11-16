@@ -114,7 +114,7 @@ impl LateLintPass for StringAdd {
 }
 
 fn is_string(cx: &LateContext, e: &Expr) -> bool {
-    match_type(cx, walk_ptrs_ty(cx.tcx.expr_ty(e)), &paths::STRING)
+    match_type(cx, walk_ptrs_ty(cx.tcx.tables().expr_ty(e)), &paths::STRING)
 }
 
 fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {

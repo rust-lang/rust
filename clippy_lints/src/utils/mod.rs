@@ -429,7 +429,12 @@ pub fn get_enclosing_block<'c>(cx: &'c LateContext, node: NodeId) -> Option<&'c 
     if let Some(node) = enclosing_node {
         match node {
             Node::NodeBlock(block) => Some(block),
-            Node::NodeItem(&Item { node: ItemFn(_, _, _, _, _, ref block), .. }) => Some(block),
+            Node::NodeItem(&Item { node: ItemFn(_, _, _, _, _, ref expr), .. }) => {
+                match expr.node {
+                    ExprBlock(ref block) => Some(block),
+                    _ => None,
+                }
+            }
             _ => None,
         }
     } else {
@@ -696,8 +701,9 @@ pub fn camel_case_from(s: &str) -> usize {
 /// Convenience function to get the return type of a function
 pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::Ty<'tcx> {
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_item);
-    let fn_sig = cx.tcx.node_id_to_type(fn_item).fn_sig().subst(cx.tcx, parameter_env.free_substs);
-    let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, &fn_sig);
+    let fn_def_id = cx.tcx.map.local_def_id(fn_item);
+    let fn_sig = cx.tcx.item_type(fn_def_id).fn_sig();
+    let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, fn_sig);
     fn_sig.output
 }
 

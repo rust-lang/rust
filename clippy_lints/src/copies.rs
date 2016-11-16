@@ -120,8 +120,8 @@ impl LateLintPass for CopyAndPaste {
             }
 
             let (conds, blocks) = if_sequence(expr);
-            lint_same_then_else(cx, blocks.as_slice());
-            lint_same_cond(cx, conds.as_slice());
+            lint_same_then_else(cx, &blocks);
+            lint_same_cond(cx, &conds);
             lint_match_arms(cx, expr);
         }
     }
@@ -219,8 +219,8 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
 /// Eg. would return `([a, b], [c, d, e])` for the expression
 /// `if a { c } else if b { d } else { e }`.
 fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
-    let mut conds = SmallVector::zero();
-    let mut blocks = SmallVector::zero();
+    let mut conds = SmallVector::new();
+    let mut blocks = SmallVector::new();
 
     while let ExprIf(ref cond, ref then_block, ref else_expr) = expr.node {
         conds.push(&**cond);
@@ -256,7 +256,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
             }
             PatKind::Binding(_, ref ident, ref as_pat) => {
                 if let Entry::Vacant(v) = map.entry(ident.node.as_str()) {
-                    v.insert(cx.tcx.pat_ty(pat));
+                    v.insert(cx.tcx.tables().pat_ty(pat));
                 }
                 if let Some(ref as_pat) = *as_pat {
                     bindings_impl(cx, as_pat, map);

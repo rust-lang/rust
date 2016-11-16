@@ -91,8 +91,8 @@ impl LateLintPass for Transmute {
                 let def_id = cx.tcx.expect_def(path_expr.id).def_id();
 
                 if match_def_path(cx, def_id, &paths::TRANSMUTE) {
-                    let from_ty = cx.tcx.expr_ty(&args[0]);
-                    let to_ty = cx.tcx.expr_ty(e);
+                    let from_ty = cx.tcx.tables().expr_ty(&args[0]);
+                    let to_ty = cx.tcx.tables().expr_ty(e);
 
                     match (&from_ty.sty, &to_ty.sty) {
                         _ if from_ty == to_ty => span_lint(

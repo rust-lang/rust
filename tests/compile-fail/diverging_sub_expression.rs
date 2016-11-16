@@ -1,6 +1,7 @@
 #![feature(plugin, never_type)]
 #![plugin(clippy)]
 #![deny(diverging_sub_expression)]
+#![allow(match_same_arms, logic_bug)]
 
 #[allow(empty_loop)]
 fn diverge() -> ! { loop {} }
@@ -16,8 +17,6 @@ fn main() {
     let b = true;
     b || diverge(); //~ ERROR sub-expression diverges
     b || A.foo(); //~ ERROR sub-expression diverges
-    let y = (5, diverge(), 6); //~ ERROR sub-expression diverges
-    println!("{}", y.1);
 }
 
 #[allow(dead_code, unused_variables)]
@@ -26,16 +25,16 @@ fn foobar() {
         let x = match 5 {
             4 => return,
             5 => continue,
-            6 => (println!("foo"), return), //~ ERROR sub-expression diverges
-            7 => (println!("bar"), continue), //~ ERROR sub-expression diverges
+            6 => true || return, //~ ERROR sub-expression diverges
+            7 => true || continue, //~ ERROR sub-expression diverges
             8 => break,
             9 => diverge(),
-            3 => (println!("moo"), diverge()), //~ ERROR sub-expression diverges
+            3 => true || diverge(), //~ ERROR sub-expression diverges
             10 => match 42 {
                 99 => return,
-                _ => ((), panic!("boo")),
+                _ => true || panic!("boo"),
             },
-            _ => (println!("boo"), break), //~ ERROR sub-expression diverges
+            _ => true || break, //~ ERROR sub-expression diverges
         };
     }
 }

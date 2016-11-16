@@ -623,7 +623,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
 
 /// Check for `for` loops over `Option`s and `Results`
 fn check_arg_type(cx: &LateContext, pat: &Pat, arg: &Expr) {
-    let ty = cx.tcx.expr_ty(arg);
+    let ty = cx.tcx.tables().expr_ty(arg);
     if match_type(cx, ty, &paths::OPTION) {
         span_help_and_lint(cx,
                            FOR_LOOP_OVER_OPTION,
@@ -709,7 +709,7 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
                 _ => (arg.span, arg),
             };
 
-            let ty = walk_ptrs_ty(cx.tcx.expr_ty(arg));
+            let ty = walk_ptrs_ty(cx.tcx.tables().expr_ty(arg));
             if match_type(cx, ty, &paths::HASHMAP) || match_type(cx, ty, &paths::BTREEMAP) {
                 span_lint_and_then(cx,
                                    FOR_KV_MAP,
@@ -854,7 +854,7 @@ impl<'v, 't> Visitor<'v> for VarUsedAfterLoopVisitor<'v, 't> {
 fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     // no walk_ptrs_ty: calling iter() on a reference can make sense because it
     // will allow further borrows afterwards
-    let ty = cx.tcx.expr_ty(e);
+    let ty = cx.tcx.tables().expr_ty(e);
     is_iterable_array(ty) ||
     match_type(cx, ty, &paths::VEC) ||
     match_type(cx, ty, &paths::LINKED_LIST) ||

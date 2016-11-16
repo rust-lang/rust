@@ -52,7 +52,7 @@ impl LateLintPass for Pass {
 }
 
 fn check_drop_arg(cx: &LateContext, call_span: Span, arg: &Expr) {
-    let arg_ty = cx.tcx.expr_ty(arg);
+    let arg_ty = cx.tcx.tables().expr_ty(arg);
     if let ty::TyRef(..) = arg_ty.sty {
         span_note_and_lint(cx,
                            DROP_REF,

@@ -91,7 +91,7 @@ impl LateLintPass for Pass {
         if_let_chain!{[
             self.last.is_none(),
             let Some(ref expr) = block.expr,
-            match_type(cx, cx.tcx.expr_ty(expr), &paths::REGEX),
+            match_type(cx, cx.tcx.tables().expr_ty(expr), &paths::REGEX),
             let Some(span) = is_expn_of(cx, expr.span, "regex"),
         ], {
             if !self.spans.contains(&span) {

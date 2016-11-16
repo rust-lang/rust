@@ -239,7 +239,7 @@ impl EarlyLintPass for MiscEarly {
         }
     }
 
-    fn check_fn(&mut self, cx: &EarlyContext, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
+    fn check_fn(&mut self, cx: &EarlyContext, _: FnKind, decl: &FnDecl, _: Span, _: NodeId) {
         let mut registered_names: HashMap<String, Span> = HashMap::new();
 
         for arg in &decl.inputs {
