@@ -86,7 +86,7 @@ pub fn build_rules(build: &Build) -> Rules {
     //
     // To handle this we do a bit of dynamic dispatch to see what the dependency
     // is. If we're building a LLVM for the build triple, then we don't actually
-    // have any dependencies! To do that we return a dependency on the "dummy"
+    // have any dependencies! To do that we return a dependency on the `Step::noop()`
     // target which does nothing.
     //
     // If we're build a cross-compiled LLVM, however, we need to assemble the
@@ -104,7 +104,7 @@ pub fn build_rules(build: &Build) -> Rules {
          .host(true)
          .dep(move |s| {
              if s.target == build.config.build {
-                 dummy(s, build)
+                 Step::noop()
              } else {
                  s.target(&build.config.build)
              }
@@ -115,14 +115,11 @@ pub fn build_rules(build: &Build) -> Rules {
     // going on here. You can check out the API docs below and also see a bunch
     // more examples of rules directly below as well.
 
-    // dummy rule to do nothing, useful when a dep maps to no deps
-    rules.build("dummy", "path/to/nowhere");
-
     // the compiler with no target libraries ready to go
     rules.build("rustc", "src/rustc")
          .dep(move |s| {
              if s.stage == 0 {
-                 dummy(s, build)
+                 Step::noop()
              } else {
                  s.name("librustc")
                   .host(&build.config.build)
@@ -165,7 +162,7 @@ pub fn build_rules(build: &Build) -> Rules {
              .dep(move |s| s.name("rustc").host(&build.config.build).target(s.host))
              .dep(move |s| {
                  if s.host == build.config.build {
-                    dummy(s, build)
+                     Step::noop()
                  } else {
                     s.host(&build.config.build)
                  }
@@ -183,7 +180,7 @@ pub fn build_rules(build: &Build) -> Rules {
              .dep(|s| s.name("libstd"))
              .dep(move |s| {
                  if s.host == build.config.build {
-                    dummy(s, build)
+                    Step::noop()
                  } else {
                     s.host(&build.config.build)
                  }
@@ -203,7 +200,7 @@ pub fn build_rules(build: &Build) -> Rules {
              .dep(move |s| s.name("llvm").host(&build.config.build).stage(0))
              .dep(move |s| {
                  if s.host == build.config.build {
-                    dummy(s, build)
+                    Step::noop()
                  } else {
                     s.host(&build.config.build)
                  }
@@ -233,7 +230,7 @@ pub fn build_rules(build: &Build) -> Rules {
                      if s.target.contains("android") {
                          s.name("android-copy-libs")
                      } else {
-                         dummy(s, build)
+                         Step::noop()
                      }
                  })
                  .default(true)
@@ -514,12 +511,6 @@ pub fn build_rules(build: &Build) -> Rules {
 
     rules.verify();
     return rules;
-
-    fn dummy<'a>(s: &Step<'a>, build: &'a Build) -> Step<'a> {
-        s.name("dummy").stage(0)
-         .target(&build.config.build)
-         .host(&build.config.build)
-    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
@@ -543,6 +534,10 @@ struct Step<'a> {
 }
 
 impl<'a> Step<'a> {
+    fn noop() -> Step<'a> {
+        Step { name: "", stage: 0, host: "", target: "" }
+    }
+
     /// Creates a new step which is the same as this, except has a new name.
     fn name(&self, name: &'a str) -> Step<'a> {
         Step { name: name, ..*self }
@@ -738,6 +733,9 @@ impl<'a> Rules<'a> {
                 if self.rules.contains_key(&dep.name) || dep.name.starts_with("default:") {
                     continue
                 }
+                if dep == Step::noop() {
+                    continue
+                }
                 panic!("\
 
 invalid rule dependency graph detected, was a rule added and maybe typo'd?
@@ -864,6 +862,7 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
         // of what we need to do.
         let mut order = Vec::new();
         let mut added = HashSet::new();
+        added.insert(Step::noop());
         for step in steps.iter().cloned() {
             self.fill(step, &mut order, &mut added);
         }
