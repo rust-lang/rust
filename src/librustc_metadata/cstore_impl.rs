@@ -356,7 +356,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn load_macro(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
-            return LoadedMacro::ProcMacro(proc_macros[id.index.as_usize()].1.clone());
+            return LoadedMacro::ProcMacro(proc_macros[id.index.as_usize() - 1].1.clone());
         }
 
         let (name, def) = data.get_macro(id.index);
