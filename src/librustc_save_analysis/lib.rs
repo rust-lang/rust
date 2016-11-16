@@ -120,7 +120,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             };
             result.push(CrateData {
-                name: (&self.tcx.sess.cstore.crate_name(n)[..]).to_owned(),
+                name: self.tcx.sess.cstore.crate_name(n).to_string(),
                 number: n.as_u32(),
                 span: span,
             });
@@ -734,11 +734,11 @@ fn docs_for_attrs(attrs: &[Attribute]) -> String {
 
     for attr in attrs {
         if attr.name() == doc {
-            if let Some(ref val) = attr.value_str() {
+            if let Some(val) = attr.value_str() {
                 if attr.is_sugared_doc {
-                    result.push_str(&strip_doc_comment_decoration(val));
+                    result.push_str(&strip_doc_comment_decoration(&val.as_str()));
                 } else {
-                    result.push_str(val);
+                    result.push_str(&val.as_str());
                 }
                 result.push('\n');
             }

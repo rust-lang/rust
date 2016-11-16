@@ -84,8 +84,8 @@ impl DefIdDirectory {
             assert_eq!(old_info.krate, krate);
             let old_name: &str = &old_info.name;
             let old_disambiguator: &str = &old_info.disambiguator;
-            let new_name: &str = &tcx.crate_name(krate);
-            let new_disambiguator: &str = &tcx.crate_disambiguator(krate);
+            let new_name: &str = &tcx.crate_name(krate).as_str();
+            let new_disambiguator: &str = &tcx.crate_disambiguator(krate).as_str();
             old_name == new_name && old_disambiguator == new_disambiguator
         }
     }
@@ -99,8 +99,8 @@ impl DefIdDirectory {
         let new_krates: HashMap<_, _> =
             once(LOCAL_CRATE)
             .chain(tcx.sess.cstore.crates())
-            .map(|krate| (make_key(&tcx.crate_name(krate),
-                                   &tcx.crate_disambiguator(krate)), krate))
+            .map(|krate| (make_key(&tcx.crate_name(krate).as_str(),
+                                   &tcx.crate_disambiguator(krate).as_str()), krate))
             .collect();
 
         let ids = self.paths.iter()

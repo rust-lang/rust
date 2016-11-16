@@ -132,7 +132,7 @@ use std::sync::Arc;
 use std::collections::hash_map::DefaultHasher;
 use symbol_map::SymbolMap;
 use syntax::ast::NodeId;
-use syntax::symbol::{InternedString, intern_and_get_ident};
+use syntax::symbol::{Symbol, InternedString};
 use trans_item::TransItem;
 use util::nodemap::{FxHashMap, FxHashSet};
 
@@ -272,7 +272,7 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
     if let PartitioningStrategy::FixedUnitCount(count) = strategy {
-        merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name[..]);
+        merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name.as_str());
 
         debug_dump(scx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
@@ -523,7 +523,7 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut mod_path = String::with_capacity(64);
 
     let def_path = tcx.def_path(def_id);
-    mod_path.push_str(&tcx.crate_name(def_path.krate));
+    mod_path.push_str(&tcx.crate_name(def_path.krate).as_str());
 
     for part in tcx.def_path(def_id)
                    .data
@@ -542,14 +542,11 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         mod_path.push_str(".volatile");
     }
 
-    return intern_and_get_ident(&mod_path[..]);
+    return Symbol::intern(&mod_path[..]).as_str();
 }
 
 fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
-    intern_and_get_ident(&format!("{}{}{}",
-        crate_name,
-        NUMBERED_CODEGEN_UNIT_MARKER,
-        index)[..])
+    Symbol::intern(&format!("{}{}{}", crate_name, NUMBERED_CODEGEN_UNIT_MARKER, index)).as_str()
 }
 
 fn debug_dump<'a, 'b, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,

@@ -931,7 +931,8 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     if let Some(ref attr) = item.attrs.iter().find(|a| {
         a.check_name("rustc_on_unimplemented")
     }) {
-        if let Some(ref istring) = attr.value_str() {
+        if let Some(istring) = attr.value_str() {
+            let istring = istring.as_str();
             let parser = Parser::new(&istring);
             let types = &generics.types;
             for token in parser {
@@ -3027,7 +3028,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn suggest_field_name(variant: ty::VariantDef<'tcx>,
                           field: &Spanned<ast::Name>,
                           skip : Vec<InternedString>)
-                          -> Option<InternedString> {
+                          -> Option<Symbol> {
         let name = field.node.as_str();
         let names = variant.fields.iter().filter_map(|field| {
             // ignore already set fields and private fields from non-local crates

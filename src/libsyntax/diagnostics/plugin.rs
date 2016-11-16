@@ -195,11 +195,11 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
     let (count, expr) =
         with_registered_diagnostics(|diagnostics| {
             let descriptions: Vec<P<ast::Expr>> =
-                diagnostics.iter().filter_map(|(code, info)| {
+                diagnostics.iter().filter_map(|(&code, info)| {
                     info.description.map(|description| {
                         ecx.expr_tuple(span, vec![
-                            ecx.expr_str(span, code.as_str()),
-                            ecx.expr_str(span, description.as_str())
+                            ecx.expr_str(span, code),
+                            ecx.expr_str(span, description)
                         ])
                     })
                 }).collect();

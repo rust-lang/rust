@@ -23,7 +23,7 @@ use abi::Abi;
 use ext::hygiene::SyntaxContext;
 use print::pprust;
 use ptr::P;
-use symbol::{Symbol, keywords, InternedString};
+use symbol::{Symbol, keywords};
 use tokenstream::{TokenTree};
 
 use std::collections::HashSet;
@@ -451,7 +451,7 @@ pub struct WhereEqPredicate {
 
 /// The set of MetaItems that define the compilation environment of the crate,
 /// used to drive conditional compilation
-pub type CrateConfig = HashSet<(Name, Option<InternedString>)>;
+pub type CrateConfig = HashSet<(Name, Option<Symbol>)>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Crate {
@@ -1098,7 +1098,7 @@ pub enum LitIntType {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum LitKind {
     /// A string literal (`"foo"`)
-    Str(InternedString, StrStyle),
+    Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`)
     ByteStr(Rc<Vec<u8>>),
     /// A byte char (`b'f'`)
@@ -1108,9 +1108,9 @@ pub enum LitKind {
     /// An integer literal (`1`)
     Int(u64, LitIntType),
     /// A float literal (`1f64` or `1E10f64`)
-    Float(InternedString, FloatTy),
+    Float(Symbol, FloatTy),
     /// A float literal without a suffix (`1.0 or 1.0E10`)
-    FloatUnsuffixed(InternedString),
+    FloatUnsuffixed(Symbol),
     /// A boolean literal
     Bool(bool),
 }
@@ -1442,7 +1442,7 @@ pub enum AsmDialect {
 /// E.g. `"={eax}"(result)` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")``
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsmOutput {
-    pub constraint: InternedString,
+    pub constraint: Symbol,
     pub expr: P<Expr>,
     pub is_rw: bool,
     pub is_indirect: bool,
@@ -1453,11 +1453,11 @@ pub struct InlineAsmOutput {
 /// E.g. `asm!("NOP");`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsm {
-    pub asm: InternedString,
+    pub asm: Symbol,
     pub asm_str_style: StrStyle,
     pub outputs: Vec<InlineAsmOutput>,
-    pub inputs: Vec<(InternedString, P<Expr>)>,
-    pub clobbers: Vec<InternedString>,
+    pub inputs: Vec<(Symbol, P<Expr>)>,
+    pub clobbers: Vec<Symbol>,
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,

@@ -26,7 +26,7 @@ use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::parse;
-use syntax::symbol::{Symbol, InternedString};
+use syntax::symbol::Symbol;
 use syntax::feature_gate::UnstableFeatures;
 
 use errors::{ColorConfig, FatalError, Handler};
@@ -927,8 +927,6 @@ pub fn default_lib_output() -> CrateType {
 }
 
 pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
-    use syntax::symbol::intern_and_get_ident as intern;
-
     let end = &sess.target.target.target_endian;
     let arch = &sess.target.target.arch;
     let wordsz = &sess.target.target.target_pointer_width;
@@ -938,24 +936,24 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let max_atomic_width = sess.target.target.max_atomic_width();
 
     let fam = if let Some(ref fam) = sess.target.target.options.target_family {
-        intern(fam)
+        Symbol::intern(fam)
     } else if sess.target.target.options.is_like_windows {
-        InternedString::new("windows")
+        Symbol::intern("windows")
     } else {
-        InternedString::new("unix")
+        Symbol::intern("unix")
     };
 
     let mut ret = HashSet::new();
     // Target bindings.
-    ret.insert((Symbol::intern("target_os"), Some(intern(os))));
-    ret.insert((Symbol::intern("target_family"), Some(fam.clone())));
-    ret.insert((Symbol::intern("target_arch"), Some(intern(arch))));
-    ret.insert((Symbol::intern("target_endian"), Some(intern(end))));
-    ret.insert((Symbol::intern("target_pointer_width"), Some(intern(wordsz))));
-    ret.insert((Symbol::intern("target_env"), Some(intern(env))));
-    ret.insert((Symbol::intern("target_vendor"), Some(intern(vendor))));
-    if &fam == "windows" || &fam == "unix" {
-        ret.insert((Symbol::intern(&fam), None));
+    ret.insert((Symbol::intern("target_os"), Some(Symbol::intern(os))));
+    ret.insert((Symbol::intern("target_family"), Some(fam)));
+    ret.insert((Symbol::intern("target_arch"), Some(Symbol::intern(arch))));
+    ret.insert((Symbol::intern("target_endian"), Some(Symbol::intern(end))));
+    ret.insert((Symbol::intern("target_pointer_width"), Some(Symbol::intern(wordsz))));
+    ret.insert((Symbol::intern("target_env"), Some(Symbol::intern(env))));
+    ret.insert((Symbol::intern("target_vendor"), Some(Symbol::intern(vendor))));
+    if fam == "windows" || fam == "unix" {
+        ret.insert((fam, None));
     }
     if sess.target.target.options.has_elf_tls {
         ret.insert((Symbol::intern("target_thread_local"), None));
@@ -963,9 +961,9 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     for &i in &[8, 16, 32, 64, 128] {
         if i <= max_atomic_width {
             let s = i.to_string();
-            ret.insert((Symbol::intern("target_has_atomic"), Some(intern(&s))));
+            ret.insert((Symbol::intern("target_has_atomic"), Some(Symbol::intern(&s))));
             if &s == wordsz {
-                ret.insert((Symbol::intern("target_has_atomic"), Some(intern("ptr"))));
+                ret.insert((Symbol::intern("target_has_atomic"), Some(Symbol::intern("ptr"))));
             }
         }
     }

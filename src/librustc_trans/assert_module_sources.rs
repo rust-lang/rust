@@ -29,7 +29,6 @@
 
 use rustc::ty::TyCtxt;
 use syntax::ast;
-use syntax::symbol::Symbol;
 
 use {ModuleSource, ModuleTranslation};
 
@@ -117,7 +116,7 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
         for item in attr.meta_item_list().unwrap_or(&[]) {
             if item.check_name(name) {
                 if let Some(value) = item.value_str() {
-                    return Symbol::intern(&value);
+                    return value;
                 } else {
                     self.tcx.sess.span_fatal(
                         item.span,

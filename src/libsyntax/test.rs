@@ -38,12 +38,12 @@ use parse::{token, ParseSess};
 use print::pprust;
 use ast::{self, Ident};
 use ptr::P;
-use symbol::{self, Symbol, keywords, InternedString};
+use symbol::{self, Symbol, keywords};
 use util::small_vector::SmallVector;
 
 enum ShouldPanic {
     No,
-    Yes(Option<InternedString>),
+    Yes(Option<Symbol>),
 }
 
 struct Test {
@@ -60,7 +60,7 @@ struct TestCtxt<'a> {
     path: Vec<Ident>,
     ext_cx: ExtCtxt<'a>,
     testfns: Vec<Test>,
-    reexport_test_harness_main: Option<InternedString>,
+    reexport_test_harness_main: Option<Symbol>,
     is_test_crate: bool,
 
     // top-level re-export submodule, filled out after folding is finished
@@ -267,7 +267,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
 
 fn generate_test_harness(sess: &ParseSess,
                          resolver: &mut Resolver,
-                         reexport_test_harness_main: Option<InternedString>,
+                         reexport_test_harness_main: Option<Symbol>,
                          krate: ast::Crate,
                          sd: &errors::Handler) -> ast::Crate {
     // Remove the entry points
@@ -548,9 +548,9 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
         vis: ast::Visibility::Public,
         span: DUMMY_SP,
     })).pop().unwrap();
-    let reexport = cx.reexport_test_harness_main.as_ref().map(|s| {
+    let reexport = cx.reexport_test_harness_main.map(|s| {
         // building `use <ident> = __test::main`
-        let reexport_ident = Ident::from_str(&s);
+        let reexport_ident = Ident::with_empty_ctxt(s);
 
         let use_path =
             nospan(ast::ViewPathSimple(reexport_ident,
@@ -618,7 +618,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
     match attr::find_crate_name(&krate.attrs) {
-        Some(ref s) if "test" == &s[..] => true,
+        Some(s) if "test" == &*s.as_str() => true,
         _ => false
     }
 }
@@ -664,7 +664,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
 
     // path to the #[test] function: "foo::bar::baz"
     let path_string = path_name_i(&path[..]);
-    let name_expr = ecx.expr_str(span, symbol::intern_and_get_ident(&path_string[..]));
+    let name_expr = ecx.expr_str(span, Symbol::intern(&path_string));
 
     // self::test::StaticTestName($name_expr)
     let name_expr = ecx.expr_call(span,
@@ -677,10 +677,10 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     };
     let fail_expr = match test.should_panic {
         ShouldPanic::No => ecx.expr_path(should_panic_path("No")),
-        ShouldPanic::Yes(ref msg) => {
-            match *msg {
-                Some(ref msg) => {
-                    let msg = ecx.expr_str(span, msg.clone());
+        ShouldPanic::Yes(msg) => {
+            match msg {
+                Some(msg) => {
+                    let msg = ecx.expr_str(span, msg);
                     let path = should_panic_path("YesWithMessage");
                     ecx.expr_call(span, ecx.expr_path(path), vec![msg])
                 }

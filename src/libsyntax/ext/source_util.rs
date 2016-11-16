@@ -17,7 +17,7 @@ use parse::token;
 use parse;
 use print::pprust;
 use ptr::P;
-use symbol;
+use symbol::Symbol;
 use tokenstream;
 use util::small_vector::SmallVector;
 
@@ -61,14 +61,13 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
 
     let topmost = cx.expansion_cause();
     let loc = cx.codemap().lookup_char_pos(topmost.lo);
-    let filename = symbol::intern_and_get_ident(&loc.file.name);
-    base::MacEager::expr(cx.expr_str(topmost, filename))
+    base::MacEager::expr(cx.expr_str(topmost, Symbol::intern(&loc.file.name)))
 }
 
 pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
                         -> Box<base::MacResult+'static> {
     let s = pprust::tts_to_string(tts);
-    base::MacEager::expr(cx.expr_str(sp, symbol::intern_and_get_ident(&s)))
+    base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&s)))
 }
 
 pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
@@ -77,7 +76,7 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
     let mod_path = &cx.current_expansion.module.mod_path;
     let string = mod_path.iter().map(|x| x.to_string()).collect::<Vec<String>>().join("::");
 
-    base::MacEager::expr(cx.expr_str(sp, symbol::intern_and_get_ident(&string)))
+    base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&string)))
 }
 
 /// include! : parse the given file as an expr
@@ -142,10 +141,9 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
             // Add this input file to the code map to make it available as
             // dependency information
             let filename = format!("{}", file.display());
-            let interned = symbol::intern_and_get_ident(&src);
             cx.codemap().new_filemap_and_lines(&filename, None, &src);
 
-            base::MacEager::expr(cx.expr_str(sp, interned))
+            base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&src)))
         }
         Err(_) => {
             cx.span_err(sp,

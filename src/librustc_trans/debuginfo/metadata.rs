@@ -808,7 +808,7 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
     };
 
     fn fallback_path(scc: &SharedCrateContext) -> CString {
-        CString::new(scc.link_meta().crate_name.clone()).unwrap()
+        CString::new(scc.link_meta().crate_name.to_string()).unwrap()
     }
 }
 

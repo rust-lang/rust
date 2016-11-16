@@ -290,10 +290,10 @@ fn mk_registrar(cx: &mut ExtCtxt,
     let register_custom_derive = Ident::from_str("register_custom_derive");
     let stmts = custom_derives.iter().map(|cd| {
         let path = cx.path_global(cd.span, vec![cd.function_name]);
-        let trait_name = cx.expr_str(cd.span, cd.trait_name.as_str());
+        let trait_name = cx.expr_str(cd.span, cd.trait_name);
         let attrs = cx.expr_vec_slice(
             span,
-            cd.attrs.iter().map(|s| cx.expr_str(cd.span, s.as_str())).collect::<Vec<_>>()
+            cd.attrs.iter().map(|&s| cx.expr_str(cd.span, s)).collect::<Vec<_>>()
         );
         (path, trait_name, attrs)
     }).map(|(path, trait_name, attrs)| {

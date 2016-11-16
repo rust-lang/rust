@@ -48,7 +48,6 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use syntax::ast::{self, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc::ty::TyCtxt;
 use ich::Fingerprint;
@@ -286,7 +285,7 @@ fn check_config(tcx: TyCtxt, attr: &ast::Attribute) -> bool {
 
 fn expect_associated_value(tcx: TyCtxt, item: &NestedMetaItem) -> ast::Name {
     if let Some(value) = item.value_str() {
-        Symbol::intern(&value)
+        value
     } else {
         let msg = if let Some(name) = item.name() {
             format!("associated value expected for `{}`", name)

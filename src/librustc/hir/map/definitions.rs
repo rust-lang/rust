@@ -115,9 +115,9 @@ impl DefPath {
     pub fn to_string(&self, tcx: TyCtxt) -> String {
         let mut s = String::with_capacity(self.data.len() * 16);
 
-        s.push_str(&tcx.original_crate_name(self.krate));
+        s.push_str(&tcx.original_crate_name(self.krate).as_str());
         s.push_str("/");
-        s.push_str(&tcx.crate_disambiguator(self.krate));
+        s.push_str(&tcx.crate_disambiguator(self.krate).as_str());
 
         for component in &self.data {
             write!(s,
@@ -137,8 +137,8 @@ impl DefPath {
     }
 
     pub fn deterministic_hash_to<H: Hasher>(&self, tcx: TyCtxt, state: &mut H) {
-        tcx.original_crate_name(self.krate).hash(state);
-        tcx.crate_disambiguator(self.krate).hash(state);
+        tcx.original_crate_name(self.krate).as_str().hash(state);
+        tcx.crate_disambiguator(self.krate).as_str().hash(state);
         self.data.hash(state);
     }
 }

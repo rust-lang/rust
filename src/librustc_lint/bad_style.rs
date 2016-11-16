@@ -241,8 +241,8 @@ impl LateLintPass for NonSnakeCase {
             .and_then(|at| at.value_str().map(|s| (at, s)));
         if let Some(ref name) = cx.tcx.sess.opts.crate_name {
             self.check_snake_case(cx, "crate", name, None);
-        } else if let Some((attr, ref name)) = attr_crate_name {
-            self.check_snake_case(cx, "crate", name, Some(attr.span));
+        } else if let Some((attr, name)) = attr_crate_name {
+            self.check_snake_case(cx, "crate", &name.as_str(), Some(attr.span));
         }
     }
 

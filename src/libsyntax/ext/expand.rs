@@ -780,7 +780,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 if inline_module {
                     if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, "path") {
                         self.cx.current_expansion.no_noninline_mod = false;
-                        module.directory.push(&*path);
+                        module.directory.push(&*path.as_str());
                     } else {
                         module.directory.push(&*item.ident.name.as_str());
                     }

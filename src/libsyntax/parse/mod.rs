@@ -18,7 +18,7 @@ use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
 use ptr::P;
 use str::char_at;
-use symbol::{self, InternedString};
+use symbol::Symbol;
 use tokenstream;
 
 use std::cell::RefCell;
@@ -372,13 +372,18 @@ fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
         s[1..].chars().all(|c| '0' <= c && c <= '9')
 }
 
-fn filtered_float_lit(data: InternedString, suffix: Option<&str>,
-                      sd: &Handler, sp: Span) -> ast::LitKind {
+fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, sd: &Handler, sp: Span)
+                      -> ast::LitKind {
     debug!("filtered_float_lit: {}, {:?}", data, suffix);
-    match suffix.as_ref().map(|s| &**s) {
-        Some("f32") => ast::LitKind::Float(data, ast::FloatTy::F32),
-        Some("f64") => ast::LitKind::Float(data, ast::FloatTy::F64),
-        Some(suf) => {
+    let suffix = match suffix {
+        Some(suffix) => suffix,
+        None => return ast::LitKind::FloatUnsuffixed(data),
+    };
+
+    match &*suffix.as_str() {
+        "f32" => ast::LitKind::Float(data, ast::FloatTy::F32),
+        "f64" => ast::LitKind::Float(data, ast::FloatTy::F64),
+        suf => {
             if suf.len() >= 2 && looks_like_width_suffix(&['f'], suf) {
                 // if it looks like a width, lets try to be helpful.
                 sd.struct_span_err(sp, &format!("invalid width `{}` for float literal", &suf[1..]))
@@ -392,16 +397,13 @@ fn filtered_float_lit(data: InternedString, suffix: Option<&str>,
 
             ast::LitKind::FloatUnsuffixed(data)
         }
-        None => ast::LitKind::FloatUnsuffixed(data)
     }
 }
-pub fn float_lit(s: &str, suffix: Option<InternedString>,
-                 sd: &Handler, sp: Span) -> ast::LitKind {
+pub fn float_lit(s: &str, suffix: Option<Symbol>, sd: &Handler, sp: Span) -> ast::LitKind {
     debug!("float_lit: {:?}, {:?}", s, suffix);
     // FIXME #2252: bounds checking float literals is deferred until trans
     let s = s.chars().filter(|&c| c != '_').collect::<String>();
-    let data = symbol::intern_and_get_ident(&s);
-    filtered_float_lit(data, suffix.as_ref().map(|s| &**s), sd, sp)
+    filtered_float_lit(Symbol::intern(&s), suffix, sd, sp)
 }
 
 /// Parse a string representing a byte literal into its final form. Similar to `char_lit`
@@ -496,11 +498,7 @@ pub fn byte_str_lit(lit: &str) -> Rc<Vec<u8>> {
     Rc::new(res)
 }
 
-pub fn integer_lit(s: &str,
-                   suffix: Option<InternedString>,
-                   sd: &Handler,
-                   sp: Span)
-                   -> ast::LitKind {
+pub fn integer_lit(s: &str, suffix: Option<Symbol>, sd: &Handler, sp: Span) -> ast::LitKind {
     // s can only be ascii, byte indexing is fine
 
     let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
@@ -522,16 +520,15 @@ pub fn integer_lit(s: &str,
     }
 
     // 1f64 and 2f32 etc. are valid float literals.
-    if let Some(ref suf) = suffix {
-        if looks_like_width_suffix(&['f'], suf) {
+    if let Some(suf) = suffix {
+        if looks_like_width_suffix(&['f'], &suf.as_str()) {
             match base {
                 16 => sd.span_err(sp, "hexadecimal float literal is not supported"),
                 8 => sd.span_err(sp, "octal float literal is not supported"),
                 2 => sd.span_err(sp, "binary float literal is not supported"),
                 _ => ()
             }
-            let ident = symbol::intern_and_get_ident(&s);
-            return filtered_float_lit(ident, Some(&suf), sd, sp)
+            return filtered_float_lit(Symbol::intern(&s), Some(suf), sd, sp)
         }
     }
 
@@ -539,9 +536,9 @@ pub fn integer_lit(s: &str,
         s = &s[2..];
     }
 
-    if let Some(ref suf) = suffix {
-        if suf.is_empty() { sd.span_bug(sp, "found empty literal suffix in Some")}
-        ty = match &**suf {
+    if let Some(suf) = suffix {
+        if suf.as_str().is_empty() { sd.span_bug(sp, "found empty literal suffix in Some")}
+        ty = match &*suf.as_str() {
             "isize" => ast::LitIntType::Signed(ast::IntTy::Is),
             "i8"  => ast::LitIntType::Signed(ast::IntTy::I8),
             "i16" => ast::LitIntType::Signed(ast::IntTy::I16),
@@ -552,7 +549,7 @@ pub fn integer_lit(s: &str,
             "u16" => ast::LitIntType::Unsigned(ast::UintTy::U16),
             "u32" => ast::LitIntType::Unsigned(ast::UintTy::U32),
             "u64" => ast::LitIntType::Unsigned(ast::UintTy::U64),
-            _ => {
+            suf => {
                 // i<digits> and u<digits> look like widths, so lets
                 // give an error message along those lines
                 if looks_like_width_suffix(&['i', 'u'], suf) {

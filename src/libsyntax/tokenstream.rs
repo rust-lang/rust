@@ -34,7 +34,7 @@ use parse::lexer;
 use parse;
 use parse::token::{self, Token, Lit, Nonterminal};
 use print::pprust;
-use symbol::{self, Symbol};
+use symbol::Symbol;
 
 use std::fmt;
 use std::iter::*;
@@ -296,7 +296,7 @@ impl TokenTree {
     pub fn maybe_str(&self) -> Option<ast::Lit> {
         match *self {
             TokenTree::Token(sp, Token::Literal(Lit::Str_(s), _)) => {
-                let l = LitKind::Str(symbol::intern_and_get_ident(&parse::str_lit(&s.as_str())),
+                let l = LitKind::Str(Symbol::intern(&parse::str_lit(&s.as_str())),
                                      ast::StrStyle::Cooked);
                 Some(Spanned {
                     node: l,
@@ -304,7 +304,7 @@ impl TokenTree {
                 })
             }
             TokenTree::Token(sp, Token::Literal(Lit::StrRaw(s, n), _)) => {
-                let l = LitKind::Str(symbol::intern_and_get_ident(&parse::raw_str_lit(&s.as_str())),
+                let l = LitKind::Str(Symbol::intern(&parse::raw_str_lit(&s.as_str())),
                                      ast::StrStyle::Raw(n));
                 Some(Spanned {
                     node: l,
