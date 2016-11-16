@@ -944,7 +944,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         match *tt {
             tokenstream::TokenTree::Token(span, ref token) => {
                 hash_span!(self, span);
-                self.hash_token(token);
+                self.hash_token(token, span);
             }
             tokenstream::TokenTree::Delimited(span, ref delimited) => {
                 hash_span!(self, span);
@@ -978,7 +978,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                 }
                 self.hash_discriminant(separator);
                 if let Some(ref separator) = *separator {
-                    self.hash_token(separator);
+                    self.hash_token(separator, span);
                 }
                 op.hash(self.st);
                 num_captures.hash(self.st);
@@ -986,7 +986,9 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         }
     }
 
-    fn hash_token(&mut self, token: &token::Token) {
+    fn hash_token(&mut self,
+                  token: &token::Token,
+                  error_reporting_span: Span) {
         self.hash_discriminant(token);
         match *token {
             token::Token::Eq |
@@ -1061,7 +1063,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                     let msg = format!("Quasi-quoting might make incremental \
                                        compilation very inefficient: {:?}",
                                       non_terminal);
-                    self.tcx.sess.warn(&msg[..]);
+                    self.tcx.sess.span_warn(error_reporting_span, &msg[..]);
                 }
 
                 non_terminal.hash(self.st);
