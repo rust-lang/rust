@@ -120,8 +120,8 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
     for file in t!(fs::read_dir(build.src.join("src/rtstartup"))) {
         let file = t!(file);
         let mut cmd = Command::new(&compiler_path);
-        build.add_bootstrap_key(&mut cmd);
-        build.run(cmd.arg("--target").arg(target)
+        build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
+                     .arg("--target").arg(target)
                      .arg("--emit=obj")
                      .arg("--out-dir").arg(into)
                      .arg(file.path()));

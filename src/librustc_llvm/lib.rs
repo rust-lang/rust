@@ -24,11 +24,11 @@
 
 #![feature(associated_consts)]
 #![feature(box_syntax)]
+#![feature(concat_idents)]
 #![feature(libc)]
 #![feature(link_args)]
-#![feature(staged_api)]
 #![feature(linked_from)]
-#![feature(concat_idents)]
+#![feature(staged_api)]
 
 extern crate libc;
 

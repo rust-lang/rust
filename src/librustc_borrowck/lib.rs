@@ -19,14 +19,12 @@
 
 #![allow(non_camel_case_types)]
 
-#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(associated_consts)]
 #![feature(nonzero)]
-#![cfg_attr(stage0, feature(question_mark))]
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;

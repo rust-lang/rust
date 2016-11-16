@@ -4,12 +4,6 @@ name = "compiletest"
 version = "0.0.0"
 build = "build.rs"
 
-# Curiously, this will segfault if compiled with opt-level=3 on 64-bit MSVC when
-# running the compile-fail test suite when a should-fail test panics. But hey if
-# this is removed and it gets past the bots, sounds good to me.
-[profile.release]
-opt-level = 2
-
 [dependencies]
 log = "0.3"
 env_logger = { version = "0.3.5", default-features = false }

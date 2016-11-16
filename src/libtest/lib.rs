@@ -38,7 +38,6 @@
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
-#![cfg_attr(stage0, feature(question_mark))]
 #![feature(panic_unwind)]
 
 extern crate getopts;
