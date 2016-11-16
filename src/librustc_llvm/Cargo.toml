@@ -12,9 +12,6 @@ crate-type = ["dylib"]
 [features]
 static-libstdcpp = []
 
-[dependencies]
-rustc_bitflags = { path = "../librustc_bitflags" }
-
 [build-dependencies]
 build_helper = { path = "../build_helper" }
 gcc = "0.3.27"
