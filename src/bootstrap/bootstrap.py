@@ -294,6 +294,8 @@ class RustBuild(object):
         env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib")
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
                       os.pathsep + env["PATH"]
+        if not os.path.isfile(self.cargo()):
+            raise Exception("no cargo executable found at `%s`" % self.cargo())
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
         if self.use_vendored_sources:

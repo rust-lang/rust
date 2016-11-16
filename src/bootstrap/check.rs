@@ -190,7 +190,7 @@ pub fn compiletest(build: &Build,
 
     cmd.args(&build.flags.cmd.test_args());
 
-    if build.config.verbose || build.flags.verbose {
+    if build.config.verbose() || build.flags.verbose() {
         cmd.arg("--verbose");
     }
 
