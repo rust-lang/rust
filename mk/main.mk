@@ -372,15 +372,12 @@ CFG_INFO := $(info cfg: disabling unstable features (CFG_DISABLE_UNSTABLE_FEATUR
 # Turn on feature-staging
 export CFG_DISABLE_UNSTABLE_FEATURES
 # Subvert unstable feature lints to do the self-build
-export RUSTC_BOOTSTRAP=1
 endif
 ifdef CFG_MUSL_ROOT
 export CFG_MUSL_ROOT
 endif
 
-# FIXME: Transitionary measure to bootstrap using the old bootstrap logic.
-# Remove this once the bootstrap compiler uses the new login in Issue #36548.
-export RUSTC_BOOTSTRAP_KEY=62b3e239
+export RUSTC_BOOTSTRAP := 1
 
 ######################################################################
 # Per-stage targets and runner
@@ -443,10 +440,7 @@ endif
 TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HSREQ$(1)_H_$(3)) \
 	$$(foreach obj,$$(REQUIRED_OBJECTS_$(2)),\
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(obj)) \
-	$$(TLIB0_T_$(2)_H_$(3))/$$(call CFG_STATIC_LIB_NAME_$(2),compiler-rt)
-# ^ This copies `libcompiler-rt.a` to the stage0 sysroot
-# ^ TODO(stage0) update this to not copy `libcompiler-rt.a` to stage0
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(obj))
 
 # Prerequisites for a working stageN compiler and libraries, for a specific
 # target

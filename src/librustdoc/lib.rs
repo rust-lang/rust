@@ -20,7 +20,6 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
@@ -28,7 +27,6 @@
 #![feature(staged_api)]
 #![feature(test)]
 #![feature(unicode)]
-#![cfg_attr(stage0, feature(question_mark))]
 
 extern crate arena;
 extern crate getopts;
