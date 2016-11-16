@@ -13,7 +13,7 @@ use llvm::LLVMRustHasFeature;
 use rustc::session::Session;
 use rustc_trans::back::write::create_target_machine;
 use syntax::feature_gate::UnstableFeatures;
-use syntax::symbol::{Symbol, intern_and_get_ident as intern};
+use syntax::symbol::Symbol;
 use libc::c_char;
 
 // WARNING: the features must be known to LLVM or the feature
@@ -44,7 +44,7 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
     for feat in whitelist {
         assert_eq!(feat.chars().last(), Some('\0'));
         if unsafe { LLVMRustHasFeature(target_machine, feat.as_ptr() as *const c_char) } {
-            cfg.insert((tf, Some(intern(&feat[..feat.len() - 1]))));
+            cfg.insert((tf, Some(Symbol::intern(&feat[..feat.len() - 1]))));
         }
     }
 
@@ -73,6 +73,6 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
     }
 
     if crt_static {
-        cfg.insert((tf, Some(intern("crt-static"))));
+        cfg.insert((tf, Some(Symbol::intern("crt-static"))));
     }
 }

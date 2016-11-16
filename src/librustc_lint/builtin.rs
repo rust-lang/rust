@@ -45,6 +45,7 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use rustc::hir::{self, PatKind};
@@ -633,9 +634,9 @@ impl Deprecated {
             stability: &Option<&attr::Stability>,
             deprecation: &Option<stability::DeprecationEntry>) {
         // Deprecated attributes apply in-crate and cross-crate.
-        if let Some(&attr::Stability{rustc_depr: Some(attr::RustcDeprecation{ref reason, ..}), ..})
+        if let Some(&attr::Stability{rustc_depr: Some(attr::RustcDeprecation{reason, ..}), ..})
                 = *stability {
-            output(cx, DEPRECATED, span, Some(&reason))
+            output(cx, DEPRECATED, span, Some(reason))
         } else if let Some(ref depr_entry) = *deprecation {
             if let Some(parent_depr) = cx.tcx.lookup_deprecation_entry(self.parent_def(cx)) {
                 if parent_depr.same_origin(depr_entry) {
@@ -643,10 +644,10 @@ impl Deprecated {
                 }
             }
 
-            output(cx, DEPRECATED, span, depr_entry.attr.note.as_ref().map(|x| &**x))
+            output(cx, DEPRECATED, span, depr_entry.attr.note)
         }
 
-        fn output(cx: &LateContext, lint: &'static Lint, span: Span, note: Option<&str>) {
+        fn output(cx: &LateContext, lint: &'static Lint, span: Span, note: Option<Symbol>) {
             let msg = if let Some(note) = note {
                 format!("use of deprecated item: {}", note)
             } else {

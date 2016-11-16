@@ -88,7 +88,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         AsmDialect::Intel => llvm::AsmDialect::Intel,
     };
 
-    let asm = CString::new(ia.asm.as_bytes()).unwrap();
+    let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
     let constraint_cstr = CString::new(all_constraints).unwrap();
     let r = InlineAsmCall(bcx,
                           asm.as_ptr(),

@@ -29,6 +29,7 @@ use std::path::PathBuf;
 use flate::Bytes;
 use syntax::{ast, attr};
 use syntax::ext::base::SyntaxExtension;
+use syntax::symbol::Symbol;
 use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibrary, LinkagePreference};
@@ -58,7 +59,7 @@ pub struct ImportedFileMap {
 }
 
 pub struct CrateMetadata {
-    pub name: String,
+    pub name: Symbol,
 
     /// Information about the extern crate that caused this crate to
     /// be loaded. If this is `None`, then the crate was injected
@@ -213,7 +214,7 @@ impl CStore {
     }
 
     pub fn add_used_library(&self, lib: NativeLibrary) {
-        assert!(!lib.name.is_empty());
+        assert!(!lib.name.as_str().is_empty());
         self.used_libraries.borrow_mut().push(lib);
     }
 
@@ -249,14 +250,14 @@ impl CStore {
 }
 
 impl CrateMetadata {
-    pub fn name(&self) -> &str {
-        &self.root.name
+    pub fn name(&self) -> Symbol {
+        self.root.name
     }
     pub fn hash(&self) -> Svh {
         self.root.hash
     }
-    pub fn disambiguator(&self) -> &str {
-        &self.root.disambiguator
+    pub fn disambiguator(&self) -> Symbol {
+        self.root.disambiguator
     }
 
     pub fn is_staged_api(&self) -> bool {

@@ -1221,7 +1221,7 @@ fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
     use syntax::ast::*;
     use syntax::ast::LitIntType::*;
     match *lit {
-        LitKind::Str(ref s, _) => Ok(Str((*s).clone())),
+        LitKind::Str(ref s, _) => Ok(Str(s.as_str())),
         LitKind::ByteStr(ref data) => Ok(ByteStr(data.clone())),
         LitKind::Byte(n) => Ok(Integral(U8(n))),
         LitKind::Int(n, Signed(ity)) => {
@@ -1249,15 +1249,15 @@ fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
             infer(Infer(n), tcx, &ty::TyUint(ity)).map(Integral)
         },
 
-        LitKind::Float(ref n, fty) => {
-            parse_float(n, Some(fty)).map(Float)
+        LitKind::Float(n, fty) => {
+            parse_float(&n.as_str(), Some(fty)).map(Float)
         }
-        LitKind::FloatUnsuffixed(ref n) => {
+        LitKind::FloatUnsuffixed(n) => {
             let fty_hint = match ty_hint.map(|t| &t.sty) {
                 Some(&ty::TyFloat(fty)) => Some(fty),
                 _ => None
             };
-            parse_float(n, fty_hint).map(Float)
+            parse_float(&n.as_str(), fty_hint).map(Float)
         }
         LitKind::Bool(b) => Ok(Bool(b)),
         LitKind::Char(c) => Ok(Char(c)),

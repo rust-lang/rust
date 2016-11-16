@@ -21,7 +21,7 @@ use fold::{self, Folder};
 use parse::{self, parser};
 use parse::token;
 use ptr::P;
-use symbol::{Symbol, InternedString};
+use symbol::Symbol;
 use util::small_vector::SmallVector;
 
 use std::path::PathBuf;
@@ -754,7 +754,7 @@ impl<'a> ExtCtxt<'a> {
 /// emitting `err_msg` if `expr` is not a string literal. This does not stop
 /// compilation on error, merely emits a non-fatal error and returns None.
 pub fn expr_to_spanned_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
-                              -> Option<Spanned<(InternedString, ast::StrStyle)>> {
+                              -> Option<Spanned<(Symbol, ast::StrStyle)>> {
     // Update `expr.span`'s expn_id now in case expr is an `include!` macro invocation.
     let expr = expr.map(|mut expr| {
         expr.span.expn_id = cx.backtrace();
@@ -765,7 +765,7 @@ pub fn expr_to_spanned_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &st
     let expr = cx.expander().fold_expr(expr);
     match expr.node {
         ast::ExprKind::Lit(ref l) => match l.node {
-            ast::LitKind::Str(ref s, style) => return Some(respan(expr.span, (s.clone(), style))),
+            ast::LitKind::Str(s, style) => return Some(respan(expr.span, (s, style))),
             _ => cx.span_err(l.span, err_msg)
         },
         _ => cx.span_err(expr.span, err_msg)
@@ -774,7 +774,7 @@ pub fn expr_to_spanned_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &st
 }
 
 pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
-                      -> Option<(InternedString, ast::StrStyle)> {
+                      -> Option<(Symbol, ast::StrStyle)> {
     expr_to_spanned_string(cx, expr, err_msg).map(|s| s.node)
 }
 

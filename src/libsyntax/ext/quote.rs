@@ -33,7 +33,7 @@ pub mod rt {
     use parse::{self, token, classify};
     use ptr::P;
     use std::rc::Rc;
-    use symbol;
+    use symbol::Symbol;
 
     use tokenstream::{self, TokenTree};
 
@@ -239,8 +239,7 @@ pub mod rt {
 
     impl ToTokens for str {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-            let lit = ast::LitKind::Str(
-                symbol::intern_and_get_ident(self), ast::StrStyle::Cooked);
+            let lit = ast::LitKind::Str(Symbol::intern(self), ast::StrStyle::Cooked);
             dummy_spanned(lit).to_tokens(cx)
         }
     }
@@ -538,7 +537,7 @@ fn id_ext(s: &str) -> ast::Ident {
 
 // Lift an ident to the expr that evaluates to that ident.
 fn mk_ident(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> P<ast::Expr> {
-    let e_str = cx.expr_str(sp, ident.name.as_str());
+    let e_str = cx.expr_str(sp, ident.name);
     cx.expr_method_call(sp,
                         cx.expr_ident(sp, id_ext("ext_cx")),
                         id_ext("ident_of"),
@@ -547,7 +546,7 @@ fn mk_ident(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> P<ast::Expr> {
 
 // Lift a name to the expr that evaluates to that name
 fn mk_name(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> P<ast::Expr> {
-    let e_str = cx.expr_str(sp, ident.name.as_str());
+    let e_str = cx.expr_str(sp, ident.name);
     cx.expr_method_call(sp,
                         cx.expr_ident(sp, id_ext("ext_cx")),
                         id_ext("name_of"),

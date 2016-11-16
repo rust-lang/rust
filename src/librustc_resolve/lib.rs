@@ -57,7 +57,7 @@ use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, Ident, SpannedIdent, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
-use syntax::symbol::{Symbol, InternedString, keywords};
+use syntax::symbol::{Symbol, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
@@ -90,7 +90,7 @@ mod resolve_imports;
 
 enum SuggestionType {
     Macro(String),
-    Function(InternedString),
+    Function(Symbol),
     NotFound,
 }
 
@@ -2891,7 +2891,7 @@ impl<'a> Resolver<'a> {
                     .flat_map(|rib| rib.bindings.keys().map(|ident| &ident.name));
 
         if let Some(found) = find_best_match_for_name(names, name, None) {
-            if name != found {
+            if found != name {
                 return SuggestionType::Function(found);
             }
         } SuggestionType::NotFound

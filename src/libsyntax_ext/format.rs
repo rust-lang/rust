@@ -19,7 +19,7 @@ use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax::symbol::{self, keywords};
+use syntax::symbol::{Symbol, keywords};
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::tokenstream;
 
@@ -370,7 +370,7 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Translate the accumulated string literals to a literal expression
     fn trans_literal_string(&mut self) -> P<ast::Expr> {
         let sp = self.fmtsp;
-        let s = symbol::intern_and_get_ident(&self.literal);
+        let s = Symbol::intern(&self.literal);
         self.literal.clear();
         self.ecx.expr_str(sp, s)
     }
@@ -728,7 +728,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         fmtsp: fmt.span,
     };
 
-    let mut parser = parse::Parser::new(&fmt.node.0);
+    let fmt_str = &*fmt.node.0.as_str();
+    let mut parser = parse::Parser::new(fmt_str);
     let mut pieces = vec![];
 
     loop {
@@ -809,7 +810,6 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         // Decide if we want to look for foreign formatting directives.
         if args_used < args_unused {
             use super::format_foreign as foreign;
-            let fmt_str = &fmt.node.0[..];
 
             // The set of foreign substitutions we've explained.  This prevents spamming the user
             // with `%d should be written as {}` over and over again.

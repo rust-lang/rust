@@ -305,13 +305,6 @@ impl Encodable for InternedString {
     }
 }
 
-/// Interns and returns the string contents of an identifier, using the
-/// thread-local interner.
-#[inline]
-pub fn intern_and_get_ident(s: &str) -> InternedString {
-    Symbol::intern(s).as_str()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

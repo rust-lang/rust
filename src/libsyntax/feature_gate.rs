@@ -33,7 +33,7 @@ use syntax_pos::Span;
 use errors::{DiagnosticBuilder, Handler};
 use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
-use symbol::InternedString;
+use symbol::Symbol;
 
 use std::ascii::AsciiExt;
 use std::env;
@@ -59,9 +59,9 @@ macro_rules! declare_features {
         /// A set of features to be used by later passes.
         pub struct Features {
             /// #![feature] attrs for stable language features, for error reporting
-            pub declared_stable_lang_features: Vec<(InternedString, Span)>,
+            pub declared_stable_lang_features: Vec<(Symbol, Span)>,
             /// #![feature] attrs for non-language (library) features
-            pub declared_lib_features: Vec<(InternedString, Span)>,
+            pub declared_lib_features: Vec<(Symbol, Span)>,
             $(pub $feature: bool),+
         }
 
@@ -1121,9 +1121,8 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
     }
 
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
-        let links_to_llvm = match attr::first_attr_value_str_by_name(&i.attrs,
-                                                                     "link_name") {
-            Some(val) => val.starts_with("llvm."),
+        let links_to_llvm = match attr::first_attr_value_str_by_name(&i.attrs, "link_name") {
+            Some(val) => val.as_str().starts_with("llvm."),
             _ => false
         };
         if links_to_llvm {
@@ -1351,7 +1350,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
             Some(list) => {
                 for mi in list {
                     let name = if let Some(word) = mi.word() {
-                        word.name().as_str()
+                        word.name()
                     } else {
                         span_err!(span_handler, mi.span, E0556,
                                   "malformed feature, expected just one word");

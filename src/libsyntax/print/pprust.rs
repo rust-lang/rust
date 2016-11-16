@@ -630,7 +630,7 @@ pub trait PrintState<'a> {
             _ => ()
         }
         match lit.node {
-            ast::LitKind::Str(ref st, style) => self.print_string(&st, style),
+            ast::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
             ast::LitKind::Byte(byte) => {
                 let mut res = String::from("b'");
                 res.extend(ascii::escape_default(byte).map(|c| c as char));
@@ -664,7 +664,7 @@ pub trait PrintState<'a> {
                          &f,
                          t.ty_to_string()))
             }
-            ast::LitKind::FloatUnsuffixed(ref f) => word(self.writer(), &f[..]),
+            ast::LitKind::FloatUnsuffixed(ref f) => word(self.writer(), &f.as_str()),
             ast::LitKind::Bool(val) => {
                 if val { word(self.writer(), "true") } else { word(self.writer(), "false") }
             }
@@ -752,7 +752,7 @@ pub trait PrintState<'a> {
         }
         try!(self.maybe_print_comment(attr.span.lo));
         if attr.is_sugared_doc {
-            try!(word(self.writer(), &attr.value_str().unwrap()));
+            try!(word(self.writer(), &attr.value_str().unwrap().as_str()));
             hardbreak(self.writer())
         } else {
             match attr.style {
@@ -2220,19 +2220,18 @@ impl<'a> State<'a> {
             ast::ExprKind::InlineAsm(ref a) => {
                 try!(word(&mut self.s, "asm!"));
                 try!(self.popen());
-                try!(self.print_string(&a.asm, a.asm_str_style));
+                try!(self.print_string(&a.asm.as_str(), a.asm_str_style));
                 try!(self.word_space(":"));
 
-                try!(self.commasep(Inconsistent, &a.outputs,
-                                   |s, out| {
-                    let mut ch = out.constraint.chars();
+                try!(self.commasep(Inconsistent, &a.outputs, |s, out| {
+                    let constraint = out.constraint.as_str();
+                    let mut ch = constraint.chars();
                     match ch.next() {
                         Some('=') if out.is_rw => {
                             try!(s.print_string(&format!("+{}", ch.as_str()),
                                            ast::StrStyle::Cooked))
                         }
-                        _ => try!(s.print_string(&out.constraint,
-                                            ast::StrStyle::Cooked))
+                        _ => try!(s.print_string(&constraint, ast::StrStyle::Cooked))
                     }
                     try!(s.popen());
                     try!(s.print_expr(&out.expr));
@@ -2242,9 +2241,8 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.word_space(":"));
 
-                try!(self.commasep(Inconsistent, &a.inputs,
-                                   |s, &(ref co, ref o)| {
-                    try!(s.print_string(&co, ast::StrStyle::Cooked));
+                try!(self.commasep(Inconsistent, &a.inputs, |s, &(co, ref o)| {
+                    try!(s.print_string(&co.as_str(), ast::StrStyle::Cooked));
                     try!(s.popen());
                     try!(s.print_expr(&o));
                     try!(s.pclose());
@@ -2255,7 +2253,7 @@ impl<'a> State<'a> {
 
                 try!(self.commasep(Inconsistent, &a.clobbers,
                                    |s, co| {
-                    try!(s.print_string(&co, ast::StrStyle::Cooked));
+                    try!(s.print_string(&co.as_str(), ast::StrStyle::Cooked));
                     Ok(())
                 }));
 

@@ -32,7 +32,7 @@ use std::path::PathBuf;
 use syntax::ast;
 use syntax::attr;
 use syntax::parse::new_parser_from_source_str;
-use syntax::symbol::{InternedString, intern_and_get_ident};
+use syntax::symbol::Symbol;
 use syntax_pos::mk_sp;
 use rustc::hir::svh::Svh;
 use rustc_back::target::Target;
@@ -263,14 +263,14 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(cnum).panic_strategy()
     }
 
-    fn crate_name(&self, cnum: CrateNum) -> InternedString
+    fn crate_name(&self, cnum: CrateNum) -> Symbol
     {
-        intern_and_get_ident(&self.get_crate_data(cnum).name[..])
+        self.get_crate_data(cnum).name
     }
 
-    fn original_crate_name(&self, cnum: CrateNum) -> InternedString
+    fn original_crate_name(&self, cnum: CrateNum) -> Symbol
     {
-        intern_and_get_ident(&self.get_crate_data(cnum).name())
+        self.get_crate_data(cnum).name()
     }
 
     fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>
@@ -283,9 +283,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_hash(cnum)
     }
 
-    fn crate_disambiguator(&self, cnum: CrateNum) -> InternedString
+    fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol
     {
-        intern_and_get_ident(&self.get_crate_data(cnum).disambiguator())
+        self.get_crate_data(cnum).disambiguator()
     }
 
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>

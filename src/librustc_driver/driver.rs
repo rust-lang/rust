@@ -561,8 +561,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     *sess.features.borrow_mut() = features;
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
-    *sess.crate_disambiguator.borrow_mut() =
-        Symbol::intern(&compute_crate_disambiguator(sess)).as_str();
+    *sess.crate_disambiguator.borrow_mut() = Symbol::intern(&compute_crate_disambiguator(sess));
 
     time(time_passes, "recursion limit", || {
         middle::recursion_limit::update_recursion_limit(sess, &krate);
@@ -1105,7 +1104,7 @@ pub fn phase_6_link_output(sess: &Session,
                            outputs: &OutputFilenames) {
     time(sess.time_passes(),
          "linking",
-         || link::link_binary(sess, trans, outputs, &trans.link.crate_name));
+         || link::link_binary(sess, trans, outputs, &trans.link.crate_name.as_str()));
 }
 
 fn escape_dep_filename(filename: &str) -> String {

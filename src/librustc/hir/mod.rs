@@ -41,7 +41,7 @@ use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::ptr::P;
-use syntax::symbol::{keywords, InternedString};
+use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenTree;
 use syntax::util::ThinVec;
 
@@ -1163,18 +1163,18 @@ pub enum Ty_ {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsmOutput {
-    pub constraint: InternedString,
+    pub constraint: Symbol,
     pub is_rw: bool,
     pub is_indirect: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsm {
-    pub asm: InternedString,
+    pub asm: Symbol,
     pub asm_str_style: StrStyle,
     pub outputs: HirVec<InlineAsmOutput>,
-    pub inputs: HirVec<InternedString>,
-    pub clobbers: HirVec<InternedString>,
+    pub inputs: HirVec<Symbol>,
+    pub clobbers: HirVec<Symbol>,
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,

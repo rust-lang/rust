@@ -25,7 +25,7 @@ use feature_gate::{Features, GatedCfg};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::ParseSess;
 use ptr::P;
-use symbol::{self, Symbol, InternedString};
+use symbol::Symbol;
 use util::ThinVec;
 
 use std::cell::{RefCell, Cell};
@@ -140,7 +140,7 @@ impl NestedMetaItem {
 
     /// Gets the string value if self is a MetaItem and the MetaItem is a
     /// MetaItemKind::NameValue variant containing a string, otherwise None.
-    pub fn value_str(&self) -> Option<InternedString> {
+    pub fn value_str(&self) -> Option<Symbol> {
         self.meta_item().and_then(|meta_item| meta_item.value_str())
     }
 
@@ -195,7 +195,7 @@ impl Attribute {
 
     pub fn name(&self) -> Name { self.meta().name() }
 
-    pub fn value_str(&self) -> Option<InternedString> {
+    pub fn value_str(&self) -> Option<Symbol> {
         self.meta().value_str()
     }
 
@@ -222,7 +222,7 @@ impl MetaItem {
         self.name
     }
 
-    pub fn value_str(&self) -> Option<InternedString> {
+    pub fn value_str(&self) -> Option<Symbol> {
         match self.node {
             MetaItemKind::NameValue(ref v) => {
                 match v.node {
@@ -279,8 +279,7 @@ impl Attribute {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
                 Symbol::intern("doc"),
-                symbol::intern_and_get_ident(&strip_doc_comment_decoration(
-                        &comment)));
+                Symbol::intern(&strip_doc_comment_decoration(&comment.as_str())));
             if self.style == ast::AttrStyle::Outer {
                 f(&mk_attr_outer(self.id, meta))
             } else {
@@ -294,7 +293,7 @@ impl Attribute {
 
 /* Constructors */
 
-pub fn mk_name_value_item_str(name: Name, value: InternedString) -> MetaItem {
+pub fn mk_name_value_item_str(name: Name, value: Symbol) -> MetaItem {
     let value_lit = dummy_spanned(ast::LitKind::Str(value, ast::StrStyle::Cooked));
     mk_spanned_name_value_item(DUMMY_SP, name, value_lit)
 }
@@ -383,9 +382,9 @@ pub fn mk_doc_attr_outer(id: AttrId, item: MetaItem, is_sugared_doc: bool) -> At
     }
 }
 
-pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos, hi: BytePos)
+pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, lo: BytePos, hi: BytePos)
                            -> Attribute {
-    let style = doc_comment_style(&text);
+    let style = doc_comment_style(&text.as_str());
     let lit = spanned(lo, hi, ast::LitKind::Str(text, ast::StrStyle::Cooked));
     Attribute {
         id: id,
@@ -416,14 +415,13 @@ pub fn contains_name(attrs: &[Attribute], name: &str) -> bool {
     })
 }
 
-pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
-                                 -> Option<InternedString> {
+pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str) -> Option<Symbol> {
     attrs.iter()
         .find(|at| at.check_name(name))
         .and_then(|at| at.value_str())
 }
 
-pub fn last_meta_item_value_str_by_name(items: &[MetaItem], name: &str) -> Option<InternedString> {
+pub fn last_meta_item_value_str_by_name(items: &[MetaItem], name: &str) -> Option<Symbol> {
     items.iter()
          .rev()
          .find(|mi| mi.check_name(name))
@@ -432,12 +430,12 @@ pub fn last_meta_item_value_str_by_name(items: &[MetaItem], name: &str) -> Optio
 
 /* Higher-level applications */
 
-pub fn find_crate_name(attrs: &[Attribute]) -> Option<InternedString> {
+pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
     first_attr_value_str_by_name(attrs, "crate_name")
 }
 
 /// Find the value of #[export_name=*] attribute and check its validity.
-pub fn find_export_name_attr(diag: &Handler, attrs: &[Attribute]) -> Option<InternedString> {
+pub fn find_export_name_attr(diag: &Handler, attrs: &[Attribute]) -> Option<Symbol> {
     attrs.iter().fold(None, |ia,attr| {
         if attr.check_name("export_name") {
             if let s@Some(_) = attr.value_str() {
@@ -555,7 +553,7 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Stability {
     pub level: StabilityLevel,
-    pub feature: InternedString,
+    pub feature: Symbol,
     pub rustc_depr: Option<RustcDeprecation>,
 }
 
@@ -563,20 +561,20 @@ pub struct Stability {
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<InternedString>, issue: u32 },
-    Stable { since: InternedString },
+    Unstable { reason: Option<Symbol>, issue: u32 },
+    Stable { since: Symbol },
 }
 
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
 pub struct RustcDeprecation {
-    pub since: InternedString,
-    pub reason: InternedString,
+    pub since: Symbol,
+    pub reason: Symbol,
 }
 
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
 pub struct Deprecation {
-    pub since: Option<InternedString>,
-    pub note: Option<InternedString>,
+    pub since: Option<Symbol>,
+    pub note: Option<Symbol>,
 }
 
 impl StabilityLevel {
@@ -602,7 +600,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
         mark_used(attr);
 
         if let Some(metas) = attr.meta_item_list() {
-            let get = |meta: &MetaItem, item: &mut Option<InternedString>| {
+            let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
                     handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()));
                     return false
@@ -693,7 +691,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 level: Unstable {
                                     reason: reason,
                                     issue: {
-                                        if let Ok(issue) = issue.parse() {
+                                        if let Ok(issue) = issue.as_str().parse() {
                                             issue
                                         } else {
                                             span_err!(diagnostic, attr.span(), E0545,
@@ -804,7 +802,7 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
         }
 
         depr = if let Some(metas) = attr.meta_item_list() {
-            let get = |meta: &MetaItem, item: &mut Option<InternedString>| {
+            let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
                     handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()));
                     return false

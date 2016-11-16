@@ -94,14 +94,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     if let Some(extern_crate_def_id) = opt_extern_crate {
                         self.push_item_path(buffer, extern_crate_def_id);
                     } else {
-                        buffer.push(&self.crate_name(cnum));
+                        buffer.push(&self.crate_name(cnum).as_str());
                     }
                 }
             }
             RootMode::Absolute => {
                 // In absolute mode, just write the crate name
                 // unconditionally.
-                buffer.push(&self.original_crate_name(cnum));
+                buffer.push(&self.original_crate_name(cnum).as_str());
             }
         }
     }
@@ -126,7 +126,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         return true;
                     }
                     None => {
-                        buffer.push(&self.crate_name(cur_def.krate));
+                        buffer.push(&self.crate_name(cur_def.krate).as_str());
                         cur_path.iter().rev().map(|segment| buffer.push(&segment.as_str())).count();
                         return true;
                     }

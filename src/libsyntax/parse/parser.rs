@@ -55,7 +55,7 @@ use print::pprust;
 use ptr::P;
 use parse::PResult;
 use tokenstream::{self, Delimited, SequenceRepetition, TokenTree};
-use symbol::{self, Symbol, keywords, InternedString};
+use symbol::{Symbol, keywords};
 use util::ThinVec;
 
 use std::collections::HashSet;
@@ -999,10 +999,6 @@ impl<'a> Parser<'a> {
         &self.sess.span_diagnostic
     }
 
-    pub fn id_to_interned_str(&mut self, id: Ident) -> InternedString {
-        id.name.as_str()
-    }
-
     /// Is the current token one of the keywords that signals a bare function
     /// type?
     pub fn token_is_bare_fn_keyword(&mut self) -> bool {
@@ -1524,34 +1520,28 @@ impl<'a> Parser<'a> {
                     // float literals, so all the handling is done
                     // internally.
                     token::Integer(s) => {
-                        (false, parse::integer_lit(&s.as_str(),
-                                                   suf.as_ref().map(|s| s.as_str()),
-                                                   &self.sess.span_diagnostic,
-                                                   self.span))
+                        let diag = &self.sess.span_diagnostic;
+                        (false, parse::integer_lit(&s.as_str(), suf, diag, self.span))
                     }
                     token::Float(s) => {
-                        (false, parse::float_lit(&s.as_str(),
-                                                 suf.as_ref().map(|s| s.as_str()),
-                                                  &self.sess.span_diagnostic,
-                                                 self.span))
+                        let diag = &self.sess.span_diagnostic;
+                        (false, parse::float_lit(&s.as_str(), suf, diag, self.span))
                     }
 
                     token::Str_(s) => {
-                        (true,
-                         LitKind::Str(symbol::intern_and_get_ident(&parse::str_lit(&s.as_str())),
-                                      ast::StrStyle::Cooked))
+                        let s = Symbol::intern(&parse::str_lit(&s.as_str()));
+                        (true, LitKind::Str(s, ast::StrStyle::Cooked))
                     }
                     token::StrRaw(s, n) => {
-                        (true,
-                         LitKind::Str(
-                            symbol::intern_and_get_ident(&parse::raw_str_lit(&s.as_str())),
-                            ast::StrStyle::Raw(n)))
+                        let s = Symbol::intern(&parse::raw_str_lit(&s.as_str()));
+                        (true, LitKind::Str(s, ast::StrStyle::Raw(n)))
                     }
-                    token::ByteStr(i) =>
-                        (true, LitKind::ByteStr(parse::byte_str_lit(&i.as_str()))),
-                    token::ByteStrRaw(i, _) =>
-                        (true,
-                         LitKind::ByteStr(Rc::new(i.to_string().into_bytes()))),
+                    token::ByteStr(i) => {
+                        (true, LitKind::ByteStr(parse::byte_str_lit(&i.as_str())))
+                    }
+                    token::ByteStrRaw(i, _) => {
+                        (true, LitKind::ByteStr(Rc::new(i.to_string().into_bytes())))
+                    }
                 };
 
                 if suffix_illegal {
@@ -5303,17 +5293,16 @@ impl<'a> Parser<'a> {
 
     fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) -> Restrictions {
         if let Some(path) = ::attr::first_attr_value_str_by_name(attrs, "path") {
-            self.directory.push(&*path);
+            self.directory.push(&*path.as_str());
             self.restrictions - Restrictions::NO_NONINLINE_MOD
         } else {
-            let default_path = self.id_to_interned_str(id);
-            self.directory.push(&*default_path);
+            self.directory.push(&*id.name.as_str());
             self.restrictions
         }
     }
 
     pub fn submod_path_from_attr(attrs: &[ast::Attribute], dir_path: &Path) -> Option<PathBuf> {
-        ::attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&*d))
+        ::attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&*d.as_str()))
     }
 
     /// Returns either a path to a module, or .
@@ -6127,26 +6116,17 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub fn parse_optional_str(&mut self)
-                              -> Option<(InternedString,
-                                         ast::StrStyle,
-                                         Option<ast::Name>)> {
+    pub fn parse_optional_str(&mut self) -> Option<(Symbol, ast::StrStyle, Option<ast::Name>)> {
         let ret = match self.token {
-            token::Literal(token::Str_(s), suf) => {
-                let s = self.id_to_interned_str(ast::Ident::with_empty_ctxt(s));
-                (s, ast::StrStyle::Cooked, suf)
-            }
-            token::Literal(token::StrRaw(s, n), suf) => {
-                let s = self.id_to_interned_str(ast::Ident::with_empty_ctxt(s));
-                (s, ast::StrStyle::Raw(n), suf)
-            }
+            token::Literal(token::Str_(s), suf) => (s, ast::StrStyle::Cooked, suf),
+            token::Literal(token::StrRaw(s, n), suf) => (s, ast::StrStyle::Raw(n), suf),
             _ => return None
         };
         self.bump();
         Some(ret)
     }
 
-    pub fn parse_str(&mut self) -> PResult<'a, (InternedString, StrStyle)> {
+    pub fn parse_str(&mut self) -> PResult<'a, (Symbol, StrStyle)> {
         match self.parse_optional_str() {
             Some((s, style, suf)) => {
                 let sp = self.prev_span;
