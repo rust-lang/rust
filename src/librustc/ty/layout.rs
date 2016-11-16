@@ -550,6 +550,7 @@ impl<'a, 'gcx, 'tcx> Struct {
                      -> Result<(), LayoutError<'gcx>>
     where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>> {
         let fields = fields.collect::<Result<Vec<_>, LayoutError<'gcx>>>()?;
+        if is_enum_variant { assert!(fields.len() >= 1, "Enum variants must have at least a discriminant field.") }
         if fields.len() == 0 {return Ok(())};
 
         self.offsets = vec![Size::from_bytes(0); fields.len()];
@@ -566,6 +567,7 @@ impl<'a, 'gcx, 'tcx> Struct {
                 let optimizing  = &mut inverse_gep_index[start..end];
                 optimizing.sort_by_key(|&x| fields[x as usize].align(dl).abi());
             }
+        if is_enum_variant { assert_eq!(inverse_gep_index[0], 0, "Enums must have field 0 as the field with lowest offset.") }
         }
         
         // At this point, inverse_gep_index holds field indices by increasing offset.
@@ -1053,7 +1055,7 @@ impl<'a, 'gcx, 'tcx> Layout {
             // Tuples and closures.
             ty::TyClosure(def_id, ref substs) => {
                 let tys = substs.upvar_tys(def_id, tcx);
-                let mut st = Struct::new(dl,
+                let st = Struct::new(dl,
                     tys.map(|ty| ty.layout(infcx)),
                     attr::ReprAny,
                     false, ty)?;
@@ -1228,7 +1230,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                         hint, false, ty)?;
                     // Find the first field we can't move later
                     // to make room for a larger discriminant.
-                    for i in st.field_index_by_increasing_offset() {
+                    // It is important to skip the first field.
+                    for i in st.field_index_by_increasing_offset().skip(1) {
                         let field = fields[i].unwrap();
                         let field_align = field.align(dl);
                         if field.size(dl).bytes() != 0 || field_align.abi() != 1 {
@@ -1270,7 +1273,9 @@ impl<'a, 'gcx, 'tcx> Layout {
                     let new_ity_size = Int(ity).size(dl);
                     for variant in &mut variants {
                         for i in variant.offsets.iter_mut() {
-                            if *i <= old_ity_size {
+                            // The first field is the discrimminant, at offset 0.
+                            // These aren't in order, and we need to skip it.
+                            if *i <= old_ity_size && *i > Size::from_bytes(0){
                                 *i = new_ity_size;
                             }
                         }

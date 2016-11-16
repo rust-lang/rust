@@ -11,6 +11,9 @@
 #![warn(variant_size_differences)]
 #![allow(dead_code)]
 
+// Note that the following test only works because all fields of the enum variants are of the same size.
+// If this test is modified so that the reordering logic in librustc/ty/layout.rs kicks in, it will fail.
+
 enum Enum1 { }
 
 enum Enum2 { A, B, C }
