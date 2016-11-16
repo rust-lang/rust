@@ -103,11 +103,11 @@ impl<'a, 'gcx, 'tcx> BuildMir<'a, 'gcx> {
 
 impl<'a, 'gcx, 'tcx> CxBuilder<'a, 'gcx, 'tcx> {
     fn build<F>(&'tcx mut self, f: F)
-        where F: for<'b> FnOnce(Cx<'b, 'gcx, 'tcx>) -> (Mir<'tcx>, build::ScopeAuxiliaryVec)
+        where F: for<'b> FnOnce(Cx<'b, 'gcx, 'tcx>) -> Mir<'tcx>
     {
         let (src, def_id) = (self.src, self.def_id);
         self.infcx.enter(|infcx| {
-            let (mut mir, scope_auxiliary) = f(Cx::new(&infcx, src));
+            let mut mir = f(Cx::new(&infcx, src));
 
             // Convert the Mir to global types.
             let tcx = infcx.tcx.global_tcx();
@@ -120,7 +120,7 @@ impl<'a, 'gcx, 'tcx> CxBuilder<'a, 'gcx, 'tcx> {
                 mem::transmute::<Mir, Mir<'gcx>>(mir)
             };
 
-            pretty::dump_mir(tcx, "mir_map", &0, src, &mir, Some(&scope_auxiliary));
+            pretty::dump_mir(tcx, "mir_map", &0, src, &mir);
 
             let mir = tcx.alloc_mir(mir);
             assert!(tcx.mir_map.borrow_mut().insert(def_id, mir).is_none());

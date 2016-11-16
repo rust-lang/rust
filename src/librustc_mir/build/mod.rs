@@ -36,13 +36,6 @@ pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// see the `scope` module for more details
     scopes: Vec<scope::Scope<'tcx>>,
 
-    ///  for each scope, a span of blocks that defines it;
-    ///  we track these for use in region and borrow checking,
-    ///  but these are liable to get out of date once optimization
-    ///  begins. They are also hopefully temporary, and will be
-    ///  no longer needed when we adopt graph-based regions.
-    scope_auxiliary: IndexVec<ScopeId, ScopeAuxiliary>,
-
     /// the current set of loops; see the `scope` module for more
     /// details
     loop_scopes: Vec<scope::LoopScope>,
@@ -81,30 +74,6 @@ impl Idx for ScopeId {
         self.0 as usize
     }
 }
-
-/// For each scope, we track the extent (from the HIR) and a
-/// single-entry-multiple-exit subgraph that contains all the
-/// statements/terminators within it.
-///
-/// This information is separated out from the main `ScopeData`
-/// because it is short-lived. First, the extent contains node-ids,
-/// so it cannot be saved and re-loaded. Second, any optimization will mess up
-/// the dominator/postdominator information.
-///
-/// The intention is basically to use this information to do
-/// regionck/borrowck and then throw it away once we are done.
-pub struct ScopeAuxiliary {
-    /// extent of this scope from the MIR.
-    pub extent: CodeExtent,
-
-    /// "entry point": dominator of all nodes in the scope
-    pub dom: Location,
-
-    /// "exit points": mutual postdominators of all nodes in the scope
-    pub postdoms: Vec<Location>,
-}
-
-pub type ScopeAuxiliaryVec = IndexVec<ScopeId, ScopeAuxiliary>;
 
 ///////////////////////////////////////////////////////////////////////////
 /// The `BlockAnd` "monad" packages up the new basic block along with a
@@ -158,7 +127,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                        abi: Abi,
                                        return_ty: Ty<'gcx>,
                                        ast_body: &'gcx hir::Expr)
-                                       -> (Mir<'tcx>, ScopeAuxiliaryVec)
+                                       -> Mir<'tcx>
     where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
 {
     let arguments: Vec<_> = arguments.collect();
@@ -221,15 +190,15 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         }).collect()
     });
 
-    let (mut mir, aux) = builder.finish(upvar_decls, return_ty);
+    let mut mir = builder.finish(upvar_decls, return_ty);
     mir.spread_arg = spread_arg;
-    (mir, aux)
+    mir
 }
 
 pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
                                        item_id: ast::NodeId,
                                        ast_expr: &'tcx hir::Expr)
-                                       -> (Mir<'tcx>, ScopeAuxiliaryVec) {
+                                       -> Mir<'tcx> {
     let tcx = hir.tcx();
     let ty = tcx.tables().expr_ty_adjusted(ast_expr);
     let span = tcx.map.span(item_id);
@@ -269,7 +238,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             scopes: vec![],
             visibility_scopes: IndexVec::new(),
             visibility_scope: ARGUMENT_VISIBILITY_SCOPE,
-            scope_auxiliary: IndexVec::new(),
             loop_scopes: vec![],
             local_decls: IndexVec::from_elem_n(LocalDecl::new_return_pointer(return_ty), 1),
             var_indices: NodeMap(),
@@ -288,22 +256,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn finish(self,
               upvar_decls: Vec<UpvarDecl>,
               return_ty: Ty<'tcx>)
-              -> (Mir<'tcx>, ScopeAuxiliaryVec) {
+              -> Mir<'tcx> {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
             if block.terminator.is_none() {
                 span_bug!(self.fn_span, "no terminator on block {:?}", index);
             }
         }
 
-        (Mir::new(self.cfg.basic_blocks,
-                  self.visibility_scopes,
-                  IndexVec::new(),
-                  return_ty,
-                  self.local_decls,
-                  self.arg_count,
-                  upvar_decls,
-                  self.fn_span
-        ), self.scope_auxiliary)
+        Mir::new(self.cfg.basic_blocks,
+                 self.visibility_scopes,
+                 IndexVec::new(),
+                 return_ty,
+                 self.local_decls,
+                 self.arg_count,
+                 upvar_decls,
+                 self.fn_span
+        )
     }
 
     fn args_and_body(&mut self,

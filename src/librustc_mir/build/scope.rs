@@ -86,7 +86,7 @@ should go to.
 
 */
 
-use build::{BlockAnd, BlockAndExtension, Builder, CFG, ScopeAuxiliary, ScopeId};
+use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
 use rustc::ty::subst::{Kind, Subst};
@@ -97,14 +97,10 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::fx::FxHashMap;
 
 pub struct Scope<'tcx> {
-    /// the scope-id within the scope_auxiliary
-    id: ScopeId,
-
     /// The visibility scope this scope was created in.
     visibility_scope: VisibilityScope,
 
-    /// the extent of this scope within source code; also stored in
-    /// `ScopeAuxiliary`, but kept here for convenience
+    /// the extent of this scope within source code.
     extent: CodeExtent,
 
     /// Whether there's anything to do for the cleanup path, that is,
@@ -276,7 +272,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
-        self.push_scope(extent, block);
+        self.push_scope(extent);
         let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(extent, block));
         debug!("in_scope: exiting extent={:?} block={:?}", extent, block);
@@ -287,23 +283,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
     /// wrapper maybe preferable.
-    pub fn push_scope(&mut self, extent: CodeExtent, entry: BasicBlock) {
+    pub fn push_scope(&mut self, extent: CodeExtent) {
         debug!("push_scope({:?})", extent);
-        let id = ScopeId::new(self.scope_auxiliary.len());
         let vis_scope = self.visibility_scope;
         self.scopes.push(Scope {
-            id: id,
             visibility_scope: vis_scope,
             extent: extent,
             needs_cleanup: false,
             drops: vec![],
             free: None,
             cached_exits: FxHashMap()
-        });
-        self.scope_auxiliary.push(ScopeAuxiliary {
-            extent: extent,
-            dom: self.cfg.current_location(entry),
-            postdoms: vec![]
         });
     }
 
@@ -325,9 +314,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                           &self.scopes,
                                           block,
                                           self.arg_count));
-        self.scope_auxiliary[scope.id]
-            .postdoms
-            .push(self.cfg.current_location(block));
         block.unit()
     }
 
@@ -375,9 +361,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.cfg.terminate(block, scope.source_info(span), free);
                 block = next;
             }
-            self.scope_auxiliary[scope.id]
-                .postdoms
-                .push(self.cfg.current_location(block));
         }
         }
         let scope = &self.scopes[len - scope_count];
