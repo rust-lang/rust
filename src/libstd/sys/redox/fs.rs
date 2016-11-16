@@ -387,10 +387,7 @@ pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    let mut options = OpenOptions::new();
-    options.read(true);
-    let file = File::open(p, &options)?;
-    cvt(libc::fcntl(file.0.raw(), libc::F_SETMODE, perm.mode as usize))?;
+    cvt(libc::chmod(p.to_str().unwrap(), perm.mode as usize))?;
     Ok(())
 }
 
