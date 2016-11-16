@@ -156,7 +156,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ty::TyBox(..) | ty::TyRef(..) | ty::TyRawPtr(..) => Some(5),
                 ty::TyArray(..) | ty::TySlice(..) => Some(6),
                 ty::TyFnDef(..) | ty::TyFnPtr(..) => Some(7),
-                ty::TyTrait(..) => Some(8),
+                ty::TyDynamic(..) => Some(8),
                 ty::TyClosure(..) => Some(9),
                 ty::TyTuple(..) => Some(10),
                 ty::TyProjection(..) => Some(11),

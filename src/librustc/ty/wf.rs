@@ -374,12 +374,12 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     // of whatever returned this exact `impl Trait`.
                 }
 
-                ty::TyTrait(ref data) => {
+                ty::TyDynamic(data, r) => {
                     // WfObject
                     //
                     // Here, we defer WF checking due to higher-ranked
                     // regions. This is perhaps not ideal.
-                    self.from_object_ty(ty, data);
+                    self.from_object_ty(ty, data, r);
 
                     // FIXME(#27579) RFC also considers adding trait
                     // obligations that don't refer to Self and
@@ -388,7 +388,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     let cause = self.cause(traits::MiscObligation);
 
                     let component_traits =
-                        data.auto_traits().chain(data.principal().map(|ref p| p.def_id()));
+                        data.auto_traits().chain(data.principal().map(|p| p.def_id()));
                     self.out.extend(
                         component_traits.map(|did| traits::Obligation::new(
                             cause.clone(),
@@ -450,7 +450,9 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                   .collect()
     }
 
-    fn from_object_ty(&mut self, ty: Ty<'tcx>, data: &ty::TraitObject<'tcx>) {
+    fn from_object_ty(&mut self, ty: Ty<'tcx>,
+                      data: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>,
+                      region: &'tcx ty::Region) {
         // Imagine a type like this:
         //
         //     trait Foo { }
@@ -485,11 +487,9 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
         if !data.has_escaping_regions() {
             let implicit_bounds =
-                object_region_bounds(self.infcx.tcx,
-                                     data.principal().unwrap(),
-                                     data.auto_traits());
+                object_region_bounds(self.infcx.tcx, data);
 
-            let explicit_bound = data.region_bound;
+            let explicit_bound = region;
 
             for implicit_bound in implicit_bounds {
                 let cause = self.cause(traits::ObjectTypeBound(ty, explicit_bound));
@@ -506,26 +506,23 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 /// they declare `trait SomeTrait : 'static`, for example, then
 /// `'static` would appear in the list. The hard work is done by
 /// `ty::required_region_bounds`, see that for more information.
-pub fn object_region_bounds<'a, 'gcx, 'tcx, I>(
+pub fn object_region_bounds<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    principal: ty::PolyExistentialTraitRef<'tcx>,
-    others: I)
+    existential_predicates: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>)
     -> Vec<&'tcx ty::Region>
-    where I: Iterator<Item=DefId>
 {
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a skolemized type.
     let open_ty = tcx.mk_infer(ty::FreshTy(0));
 
-    let mut predicates = others.map(|d| {
-        let trait_ref = ty::TraitRef {
-            def_id: d,
-            substs: tcx.mk_substs_trait(open_ty, &[])
-        };
-        trait_ref.to_predicate()
-    }).collect::<Vec<_>>();
-    predicates.push(principal.with_self_ty(tcx, open_ty).to_predicate());
+    let predicates = existential_predicates.iter().filter_map(|predicate| {
+        if let ty::ExistentialPredicate::Projection(_) = *predicate.skip_binder() {
+            None
+        } else {
+            Some(predicate.with_self_ty(tcx, open_ty))
+        }
+    }).collect();
 
     tcx.required_region_bounds(open_ty, predicates)
 }

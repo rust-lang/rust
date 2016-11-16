@@ -432,7 +432,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // But it does not describe the trait's methods.
 
     let containing_scope = match trait_type.sty {
-        ty::TyTrait(ref data) => if let Some(principal) = data.principal() {
+        ty::TyDynamic(ref data, ..) => if let Some(principal) = data.principal() {
             let def_id = principal.def_id();
             get_namespace_and_span_for_item(cx, def_id).0
         } else {
@@ -523,7 +523,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyStr => {
             fixed_vec_metadata(cx, unique_type_id, cx.tcx().types.i8, None, usage_site_span)
         }
-        ty::TyTrait(..) => {
+        ty::TyDynamic(..) => {
             MetadataCreationResult::new(
                         trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
@@ -538,7 +538,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 ty::TyStr => {
                     vec_slice_metadata(cx, t, cx.tcx().types.u8, unique_type_id, usage_site_span)
                 }
-                ty::TyTrait(..) => {
+                ty::TyDynamic(..) => {
                     MetadataCreationResult::new(
                         trait_pointer_metadata(cx, ty, Some(t), unique_type_id),
                         false)

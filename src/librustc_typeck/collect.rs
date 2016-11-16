@@ -1617,12 +1617,11 @@ fn add_unsized_bound<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                        "default bound relaxed for a type parameter, but \
                                        this does nothing because the given bound is not \
                                        a default. Only `?Sized` is supported");
-                    tcx.try_add_builtin_trait(kind_id, bounds);
                 }
             }
         }
         _ if kind_id.is_ok() => {
-            tcx.try_add_builtin_trait(kind_id.unwrap(), bounds);
+            bounds.push(kind_id.unwrap());
         }
         // No lang item for Sized, so we can't add it as a bound.
         None => {}

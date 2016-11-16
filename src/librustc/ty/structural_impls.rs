@@ -324,6 +324,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             TyParamDefaultMismatch(ref x) => {
                 return tcx.lift(x).map(TyParamDefaultMismatch)
             }
+            ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch)
         })
     }
 }
@@ -426,20 +427,33 @@ impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::TraitObject<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::TraitObject::new(
-            self.principal().map(|p| p.fold_with(folder)),
-            self.region_bound.fold_with(folder),
-            self.auto_traits().collect(),
-            self.projection_bounds.fold_with(folder),
-        )
+        let v = self.iter().map(|p| p.fold_with(folder)).collect::<AccumulateVec<[_; 8]>>();
+        folder.tcx().intern_existential_predicates(&v)
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.principal().map(|p| p.visit_with(visitor)).unwrap_or(true) ||
-        self.region_bound.visit_with(visitor) ||
-        self.projection_bounds.visit_with(visitor)
+        self.iter().any(|p| p.visit_with(visitor))
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::ExistentialPredicate<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self  {
+        use ty::ExistentialPredicate::*;
+        match *self {
+            Trait(ref tr) => Trait(tr.fold_with(folder)),
+            Projection(ref p) => Projection(p.fold_with(folder)),
+            AutoTrait(did) => AutoTrait(did),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match *self {
+            ty::ExistentialPredicate::Trait(ref tr) => tr.visit_with(visitor),
+            ty::ExistentialPredicate::Projection(ref p) => p.visit_with(visitor),
+            ty::ExistentialPredicate::AutoTrait(_) => false,
+        }
     }
 }
 
@@ -462,7 +476,8 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyArray(typ, sz) => ty::TyArray(typ.fold_with(folder), sz),
             ty::TySlice(typ) => ty::TySlice(typ.fold_with(folder)),
             ty::TyAdt(tid, substs) => ty::TyAdt(tid, substs.fold_with(folder)),
-            ty::TyTrait(ref trait_ty) => ty::TyTrait(trait_ty.fold_with(folder)),
+            ty::TyDynamic(ref trait_ty, ref region) =>
+                ty::TyDynamic(trait_ty.fold_with(folder), region.fold_with(folder)),
             ty::TyTuple(ts) => ty::TyTuple(ts.fold_with(folder)),
             ty::TyFnDef(def_id, substs, f) => {
                 ty::TyFnDef(def_id,
@@ -499,7 +514,8 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyArray(typ, _sz) => typ.visit_with(visitor),
             ty::TySlice(typ) => typ.visit_with(visitor),
             ty::TyAdt(_, substs) => substs.visit_with(visitor),
-            ty::TyTrait(ref trait_ty) => trait_ty.visit_with(visitor),
+            ty::TyDynamic(ref trait_ty, ref reg) =>
+                trait_ty.visit_with(visitor) || reg.visit_with(visitor),
             ty::TyTuple(ts) => ts.visit_with(visitor),
             ty::TyFnDef(_, substs, ref f) => {
                 substs.visit_with(visitor) || f.visit_with(visitor)

@@ -2778,8 +2778,8 @@ fn main() {
 }
 ```
 
-Builtin traits are an exception to this rule: it's possible to have bounds of
-one non-builtin type, plus any number of builtin types. For example, the
+Send and Sync are an exception to this rule: it's possible to have bounds of
+one non-builtin trait, plus either or both of Send and Sync. For example, the
 following compiles correctly:
 
 ```

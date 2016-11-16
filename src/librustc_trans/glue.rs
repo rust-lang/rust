@@ -394,7 +394,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
             (size, align)
         }
-        ty::TyTrait(..) => {
+        ty::TyDynamic(..) => {
             // info points to the vtable and the second entry in the vtable is the
             // dynamic size of the object.
             let info = bcx.pointercast(info, Type::int(bcx.ccx()).ptr_to());
@@ -463,7 +463,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 trans_exchange_free_ty(bcx, llbox, content_ty, DebugLoc::None)
             }
         }
-        ty::TyTrait(..) => {
+        ty::TyDynamic(..) => {
             // No support in vtable for distinguishing destroying with
             // versus without calling Drop::drop. Assert caller is
             // okay with always calling the Drop impl, if any.

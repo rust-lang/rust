@@ -49,6 +49,7 @@
 //! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 
 use rustc_const_eval::eval_length;
+use rustc_data_structures::accumulate_vec::AccumulateVec;
 use hir::{self, SelfKind};
 use hir::def::Def;
 use hir::def_id::DefId;
@@ -69,6 +70,7 @@ use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::{NodeMap, FxHashSet};
 
 use std::cell::RefCell;
+use std::iter;
 use syntax::{abi, ast};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::symbol::{Symbol, keywords};
@@ -1052,8 +1054,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             let b = &trait_bounds[0];
             let span = b.trait_ref.path.span;
             struct_span_err!(self.tcx().sess, span, E0225,
-                             "only the builtin traits can be used as closure or object bounds")
-                .span_label(span, &format!("non-builtin trait used as bounds"))
+                "only Send/Sync traits can be used as additional traits in a trait object")
+                .span_label(span, &format!("non-Send/Sync additional trait"))
                 .emit();
         }
 
@@ -1070,30 +1072,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     ty: b.ty
                 }
             })
-        }).collect();
-
-        let region_bound =
-            self.compute_object_lifetime_bound(span,
-                                               &region_bounds,
-                                               existential_principal,
-                                               &auto_traits);
-
-        let region_bound = match region_bound {
-            Some(r) => r,
-            None => {
-                tcx.mk_region(match rscope.object_lifetime_default(span) {
-                    Some(r) => r,
-                    None => {
-                        span_err!(self.tcx().sess, span, E0228,
-                                  "the lifetime bound for this object type cannot be deduced \
-                                   from context; please supply an explicit bound");
-                        ty::ReStatic
-                    }
-                })
-            }
-        };
-
-        debug!("region_bound: {:?}", region_bound);
+        });
 
         // ensure the super predicates and stop if we encountered an error
         if self.ensure_super_predicates(span, principal.def_id()).is_err() {
@@ -1135,12 +1114,37 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         .emit();
         }
 
-        let ty = tcx.mk_trait(ty::TraitObject::new(
-            Some(existential_principal),
-            region_bound,
-            auto_traits,
-            existential_projections
-        ));
+        let mut v =
+            iter::once(ty::ExistentialPredicate::Trait(*existential_principal.skip_binder()))
+            .chain(auto_traits.into_iter().map(ty::ExistentialPredicate::AutoTrait))
+            .chain(existential_projections
+                   .map(|x| ty::ExistentialPredicate::Projection(*x.skip_binder())))
+            .collect::<AccumulateVec<[_; 8]>>();
+        v.sort_by(|a, b| a.cmp(tcx, b));
+        let existential_predicates = ty::Binder(tcx.mk_existential_predicates(v.into_iter()));
+
+        let region_bound = self.compute_object_lifetime_bound(span,
+                                                              &region_bounds,
+                                                              existential_predicates);
+
+        let region_bound = match region_bound {
+            Some(r) => r,
+            None => {
+                tcx.mk_region(match rscope.object_lifetime_default(span) {
+                    Some(r) => r,
+                    None => {
+                        span_err!(self.tcx().sess, span, E0228,
+                                  "the lifetime bound for this object type cannot be deduced \
+                                   from context; please supply an explicit bound");
+                        ty::ReStatic
+                    }
+                })
+            }
+        };
+
+        debug!("region_bound: {:?}", region_bound);
+
+        let ty = tcx.mk_dynamic(existential_predicates, region_bound);
         debug!("trait_object_type: {:?}", ty);
         ty
     }
@@ -1922,38 +1926,36 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn compute_object_lifetime_bound(&self,
         span: Span,
         explicit_region_bounds: &[&hir::Lifetime],
-        principal_trait_ref: ty::PolyExistentialTraitRef<'tcx>,
-        auto_traits: &[DefId])
+        existential_predicates: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>)
         -> Option<&'tcx ty::Region> // if None, use the default
     {
         let tcx = self.tcx();
 
         debug!("compute_opt_region_bound(explicit_region_bounds={:?}, \
-               principal_trait_ref={:?}, auto_traits={:?})",
+               existential_predicates={:?})",
                explicit_region_bounds,
-               principal_trait_ref,
-               auto_traits);
+               existential_predicates);
 
         if explicit_region_bounds.len() > 1 {
             span_err!(tcx.sess, explicit_region_bounds[1].span, E0226,
                 "only a single explicit lifetime bound is permitted");
         }
 
-        if !explicit_region_bounds.is_empty() {
+        if let Some(&r) = explicit_region_bounds.get(0) {
             // Explicitly specified region bound. Use that.
-            let r = explicit_region_bounds[0];
             return Some(ast_region_to_region(tcx, r));
         }
 
-        if let Err(ErrorReported) =
-                self.ensure_super_predicates(span, principal_trait_ref.def_id()) {
-            return Some(tcx.mk_region(ty::ReStatic));
+        if let Some(principal) = existential_predicates.principal() {
+            if let Err(ErrorReported) = self.ensure_super_predicates(span, principal.def_id()) {
+                return Some(tcx.mk_region(ty::ReStatic));
+            }
         }
 
         // No explicit region bound specified. Therefore, examine trait
         // bounds and see if we can derive region bounds from those.
         let derived_region_bounds =
-            object_region_bounds(tcx, principal_trait_ref, auto_traits.into_iter().cloned());
+            object_region_bounds(tcx, existential_predicates);
 
         // If there are no derived region bounds, then report back that we
         // can find no region bound. The caller will use the default.
@@ -2000,7 +2002,11 @@ pub fn partition_bounds<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             hir::TraitTyParamBound(ref b, hir::TraitBoundModifier::None) => {
                 match b.trait_ref.path.def {
                     Def::Trait(trait_did) => {
-                        if tcx.try_add_builtin_trait(trait_did, &mut auto_traits) {
+                        // Checks whether `trait_did` refers to one of the builtin
+                        // traits, like `Send`, and adds it to `auto_traits` if so.
+                        if Some(trait_did) == tcx.lang_items.send_trait() ||
+                            Some(trait_did) == tcx.lang_items.sync_trait() {
+                            auto_traits.push(trait_did);
                             let segments = &b.trait_ref.path.segments;
                             let parameters = &segments[segments.len() - 1].parameters;
                             if !parameters.types().is_empty() {
@@ -2115,12 +2121,15 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
     {
         let mut vec = Vec::new();
 
-        for trait_did in &self.auto_traits {
-           let trait_ref = ty::TraitRef {
-               def_id: *trait_did,
-               substs: tcx.mk_substs_trait(param_ty, &[]),
-           };
-           vec.push(trait_ref.to_predicate());
+        // If it could be sized, and is, add the sized predicate
+        if self.implicitly_sized {
+            if let Some(sized) = tcx.lang_items.sized_trait() {
+                let trait_ref = ty::TraitRef {
+                    def_id: sized,
+                    substs: tcx.mk_substs_trait(param_ty, &[])
+                };
+                vec.push(trait_ref.to_predicate());
+            }
         }
 
         for &region_bound in &self.region_bounds {

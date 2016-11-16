@@ -416,6 +416,15 @@ impl<'a, 'tcx> SpecializedDecoder<ty::AdtDef<'tcx>> for DecodeContext<'a, 'tcx> 
     }
 }
 
+impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>
+    for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self)
+        -> Result<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>, Self::Error> {
+        Ok(self.tcx().mk_existential_predicates((0..self.read_usize()?)
+                                                .map(|_| Decodable::decode(self)))?)
+    }
+}
+
 impl<'a, 'tcx> MetadataBlob {
     pub fn is_compatible(&self) -> bool {
         self.raw_bytes().starts_with(METADATA_HEADER)

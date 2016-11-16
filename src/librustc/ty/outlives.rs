@@ -177,7 +177,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::TyTuple(..) |       // ...
             ty::TyFnDef(..) |       // OutlivesFunction (*)
             ty::TyFnPtr(_) |        // OutlivesFunction (*)
-            ty::TyTrait(..) |       // OutlivesObject, OutlivesFragment (*)
+            ty::TyDynamic(..) |       // OutlivesObject, OutlivesFragment (*)
             ty::TyError => {
                 // (*) Bare functions and traits are both binders. In the
                 // RFC, this means we would add the bound regions to the

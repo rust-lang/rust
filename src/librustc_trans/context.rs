@@ -95,7 +95,8 @@ pub struct LocalCrateContext<'tcx> {
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
     /// Cache generated vtables
-    vtables: RefCell<FxHashMap<ty::PolyTraitRef<'tcx>, ValueRef>>,
+    vtables: RefCell<FxHashMap<(ty::Ty<'tcx>,
+                                Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>>,
     /// Cache of constant strings,
     const_cstr_cache: RefCell<FxHashMap<InternedString, ValueRef>>,
 
@@ -800,7 +801,9 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().instances
     }
 
-    pub fn vtables<'a>(&'a self) -> &'a RefCell<FxHashMap<ty::PolyTraitRef<'tcx>, ValueRef>> {
+    pub fn vtables<'a>(&'a self)
+        -> &'a RefCell<FxHashMap<(ty::Ty<'tcx>,
+                                  Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>> {
         &self.local().vtables
     }
 
