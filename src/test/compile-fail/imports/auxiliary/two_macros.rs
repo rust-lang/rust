@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo { pub struct Bar; }
+#[macro_export]
+macro_rules! m { ($($t:tt)*) => { $($t)* } }
 
-fn main() {
-    {
-        struct Bar;
-        use foo::Bar;
-        //~^ ERROR a type named `Bar` has already been defined in this block
-    }
-}
+#[macro_export]
+macro_rules! n { ($($t:tt)*) => { $($t)* } }
