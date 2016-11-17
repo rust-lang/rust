@@ -17,7 +17,7 @@ the language.
 
 [**The Rust Reference**][ref]. While Rust does not have a
 specification, the reference tries to describe its working in
-detail. It tends to be out of date.
+detail.
 
 [**Standard Library API Reference**][api]. Documentation for the
 standard library.
