@@ -13,4 +13,4 @@
 # released on `$date`
 
 rustc: beta-2016-09-28
-cargo: nightly-2016-09-26
+cargo: nightly-2016-11-02
