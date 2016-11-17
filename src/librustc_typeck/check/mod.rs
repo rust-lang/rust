@@ -4412,13 +4412,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Check provided lifetime parameters.
         let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
         if lifetimes.len() > lifetime_defs.len() {
-            let span = lifetimes[..].into_iter().skip(1).map(|lft| lft.span)
-                .fold(lifetimes[0].span, |acc, n| Span {
-                    expn_id: acc.expn_id,
-                    lo: acc.lo,
-                    hi: n.hi,
-                });
-
+            let span = lifetimes[lifetime_defs.len()].span;
             struct_span_err!(self.tcx.sess, span, E0088,
                              "too many lifetime parameters provided: \
                               expected {}, found {}",
@@ -4430,7 +4424,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         // The case where there is not enough lifetime parameters is not checked,
-        // because this is not possible - a function never takes lifetime parameters. 
+        // because this is not possible - a function never takes lifetime parameters.
         // See discussion for Pull Request 36208.
 
         // Check provided type parameters.
