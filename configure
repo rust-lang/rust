@@ -854,6 +854,12 @@ probe_need CFG_CMAKE cmake
 # probe for it only in this case.
 if [ -n "$CFG_ANTLR4" ]
 then
+   CFG_ANTLR4_JAR="\"$(find /usr/ -name antlr-complete.jar 2>/dev/null | head -n 1)\""
+   if [ "x" -eq "x$CFG_ANTLR4_JAR" ]
+   then
+     CFG_ANTLR4_JAR="\"$(find ~ -name antlr-complete.jar 2>/dev/null | head -n 1)\""
+   fi
+   putvar CFG_ANTLR4_JAR      $CFG_ANTLR4_JAR
    probe CFG_JAVAC            javac
 fi
 
