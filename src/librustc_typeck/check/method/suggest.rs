@@ -308,7 +308,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             let limit = if candidates.len() == 5 { 5 } else { 4 };
             for (i, trait_did) in candidates.iter().take(limit).enumerate() {
-                err.help(&format!("candidate #{}: `use {}`",
+                err.help(&format!("candidate #{}: `use {};`",
                                   i + 1,
                                   self.tcx.item_path_str(*trait_did)));
             }
