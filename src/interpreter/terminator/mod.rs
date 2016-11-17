@@ -5,7 +5,6 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, Ty, TyCtxt, BareFnTy};
-use std::rc::Rc;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::{ast, attr};
 
@@ -479,7 +478,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     _ => bug!("cannot convert {:?} to {:?}", closure_kind, trait_closure_kind),
                 }
-                Ok((vtable_closure.closure_def_id, vtable_closure.substs.func_substs))
+                Ok((vtable_closure.closure_def_id, vtable_closure.substs.substs))
             }
 
             traits::VtableFnPointer(vtable_fn_ptr) => {
@@ -715,7 +714,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
 #[derive(Debug)]
 pub(super) struct ImplMethod<'tcx> {
-    pub(super) method: Rc<ty::Method<'tcx>>,
+    pub(super) method: ty::AssociatedItem,
     pub(super) substs: &'tcx Substs<'tcx>,
     pub(super) is_provided: bool,
 }
@@ -733,7 +732,7 @@ pub(super) fn get_impl_method<'a, 'tcx>(
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
 
-    match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
+    match trait_def.ancestors(impl_def_id).defs(tcx, name, ty::AssociatedKind::Method).next() {
         Some(node_item) => {
             let substs = tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_substs);
@@ -770,7 +769,7 @@ pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
 
-    match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
+    match trait_def.ancestors(impl_def_id).defs(tcx, name, ty::AssociatedKind::Method).next() {
         Some(node_item) => {
             let substs = tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_substs);

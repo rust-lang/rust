@@ -144,7 +144,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         });
         self.create_fn_alloc(FunctionDefinition {
             def_id: def_id,
-            substs: substs.func_substs,
+            substs: substs.substs,
             abi: fn_ty.abi,
             // FIXME: why doesn't this compile?
             //sig: tcx.erase_late_bound_regions(&fn_ty.sig),

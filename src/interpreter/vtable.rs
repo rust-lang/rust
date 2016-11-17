@@ -1,6 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::traits::{self, Reveal, SelectionContext};
-use rustc::ty::subst::{Substs, Subst};
+use rustc::ty::subst::Substs;
 use rustc::ty;
 
 use super::EvalContext;
@@ -35,7 +35,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     self.get_vtable_methods(id, substs)
                         .into_iter()
                         .map(|opt_mth| opt_mth.map(|mth| {
-                            let fn_ty = self.tcx.erase_regions(&mth.method.fty);
+                            let fn_ty = self.tcx.item_type(mth.method.def_id);
+                            let fn_ty = match fn_ty.sty {
+                                ty::TyFnDef(_, _, fn_ty) => fn_ty,
+                                _ => bug!("bad function type: {}", fn_ty),
+                            };
+                            let fn_ty = self.tcx.erase_regions(&fn_ty);
                             self.memory.create_fn_ptr(self.tcx, mth.method.def_id, mth.substs, fn_ty)
                         }))
                         .collect::<Vec<_>>()
@@ -85,8 +90,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.memory.write_usize(vtable, 0)?;
         if let ty::TyAdt(adt_def, substs) = trait_ref.self_ty().sty {
             if let Some(drop_def_id) = adt_def.destructor() {
-                let ty_scheme = self.tcx.lookup_item_type(drop_def_id);
-                let fn_ty = match ty_scheme.ty.sty {
+                let fn_ty = match  self.tcx.item_type(drop_def_id).sty {
                     ty::TyFnDef(_, _, fn_ty) => self.tcx.erase_regions(&fn_ty),
                     _ => bug!("drop method is not a TyFnDef"),
                 };
@@ -120,18 +124,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         self.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
-        let trait_item_def_ids = self.tcx.impl_or_trait_items(trait_id);
-        trait_item_def_ids
-            .iter()
-
+        self.tcx
+            .associated_items(trait_id)
             // Filter out non-method items.
-            .filter_map(|&trait_method_def_id| {
-                let trait_method_type = match self.tcx.impl_or_trait_item(trait_method_def_id) {
-                    ty::MethodTraitItem(trait_method_type) => trait_method_type,
-                    _ => return None,
-                };
-                debug!("get_vtable_methods: trait_method_def_id={:?}",
-                       trait_method_def_id);
+            .filter_map(|trait_method_type| {
+                if trait_method_type.kind != ty::AssociatedKind::Method {
+                    return None;
+                }
+                debug!("get_vtable_methods: trait_method_type={:?}",
+                       trait_method_type);
 
                 let name = trait_method_type.name;
 
@@ -146,7 +147,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 // the method may have some early-bound lifetimes, add
                 // regions for those
-                let method_substs = Substs::for_item(self.tcx, trait_method_def_id,
+                let method_substs = Substs::for_item(self.tcx, trait_method_type.def_id,
                                                      |_, _| self.tcx.mk_region(ty::ReErased),
                                                      |_, _| self.tcx.types.err);
 
@@ -162,8 +163,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // method could then never be called, so we do not want to
                 // try and trans it, in that case. Issue #23435.
                 if mth.is_provided {
-                    let predicates = mth.method.predicates.predicates.subst(self.tcx, mth.substs);
-                    if !self.normalize_and_test_predicates(predicates) {
+                    let predicates = self.tcx.item_predicates(trait_method_type.def_id).instantiate_own(self.tcx, mth.substs);
+                    if !self.normalize_and_test_predicates(predicates.predicates) {
                         debug!("get_vtable_methods: predicates do not hold");
                         return Some(None);
                     }
