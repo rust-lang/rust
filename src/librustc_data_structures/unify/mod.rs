@@ -344,7 +344,7 @@ impl<'tcx, K, V> UnificationTable<K>
     }
 
     pub fn probe(&mut self, a_id: K) -> Option<V> {
-        self.get(a_id).value.clone()
+        self.get(a_id).value
     }
 
     pub fn unsolved_variables(&mut self) -> Vec<K> {
