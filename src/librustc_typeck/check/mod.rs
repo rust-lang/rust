@@ -785,7 +785,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
-    let mut fcx = FnCtxt::new(inherited, body.id);
+    let mut fcx = FnCtxt::new(inherited, None, body.id);
     let ret_ty = fn_sig.output();
     *fcx.ps.borrow_mut() = UnsafetyState::function(unsafety, unsafety_id);
 
@@ -1246,7 +1246,7 @@ fn check_const_with_type<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
                                    expected_type: Ty<'tcx>,
                                    id: ast::NodeId) {
     ccx.inherited(id).enter(|inh| {
-        let fcx = FnCtxt::new(&inh, expr.id);
+        let fcx = FnCtxt::new(&inh, None, expr.id);
         fcx.require_type_is_sized(expected_type, expr.span, traits::ConstSized);
 
         // Gather locals in statics (because of block expressions).
@@ -1531,6 +1531,7 @@ enum TupleArgumentsFlag {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn new(inh: &'a Inherited<'a, 'gcx, 'tcx>,
+               rty: Option<Ty<'tcx>>,
                body_id: ast::NodeId)
                -> FnCtxt<'a, 'gcx, 'tcx> {
         FnCtxt {
@@ -1538,7 +1539,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             body_id: body_id,
             writeback_errors: Cell::new(false),
             err_count_on_creation: inh.tcx.sess.err_count(),
-            ret_ty: None,
+            ret_ty: rty,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
                                                      ast::CRATE_NODE_ID)),
             diverges: Cell::new(Diverges::Maybe),
