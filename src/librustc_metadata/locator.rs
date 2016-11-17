@@ -217,7 +217,7 @@ use creader::Library;
 use schema::{METADATA_HEADER, rustc_version};
 
 use rustc::hir::svh::Svh;
-use rustc::session::Session;
+use rustc::session::{config, Session};
 use rustc::session::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
 use rustc::session::search_paths::PathKind;
 use rustc::util::common;
@@ -355,6 +355,11 @@ impl<'a> Context<'a> {
                                            "can't find crate for `{}`{}",
                                            self.ident,
                                            add);
+
+            if (self.ident == "std" || self.ident == "core")
+                && self.triple != config::host_triple() {
+                err.note(&format!("the `{}` target may not be installed", self.triple));
+            }
             err.span_label(self.span, &format!("can't find crate"));
             err
         };
