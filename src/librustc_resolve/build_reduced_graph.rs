@@ -138,7 +138,7 @@ impl<'b> Resolver<'b> {
                 match view_path.node {
                     ViewPathSimple(binding, ref full_path) => {
                         let mut source = full_path.segments.last().unwrap().identifier;
-                        let source_name = source.name.as_str();
+                        let source_name = source.name;
                         if source_name == "mod" || source_name == "self" {
                             resolve_error(self,
                                           view_path.span,

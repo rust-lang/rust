@@ -244,14 +244,6 @@ pub struct InternedString {
     string: Rc<str>,
 }
 
-impl InternedString {
-    pub fn new(string: &'static str) -> InternedString {
-        InternedString {
-            string: Rc::__from_str(string),
-        }
-    }
-}
-
 impl ::std::ops::Deref for InternedString {
     type Target = str;
     fn deref(&self) -> &str { &self.string }
@@ -266,30 +258,6 @@ impl fmt::Debug for InternedString {
 impl fmt::Display for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.string, f)
-    }
-}
-
-impl<'a> PartialEq<&'a str> for InternedString {
-    fn eq(&self, other: & &'a str) -> bool {
-        PartialEq::eq(&self.string[..], *other)
-    }
-}
-
-impl<'a> PartialEq<InternedString> for &'a str {
-    fn eq(&self, other: &InternedString) -> bool {
-        PartialEq::eq(*self, &other.string[..])
-    }
-}
-
-impl PartialEq<str> for InternedString {
-    fn eq(&self, other: &str) -> bool {
-        PartialEq::eq(&self.string[..], other)
-    }
-}
-
-impl PartialEq<InternedString> for str {
-    fn eq(&self, other: &InternedString) -> bool {
-        PartialEq::eq(self, &other.string[..])
     }
 }
 

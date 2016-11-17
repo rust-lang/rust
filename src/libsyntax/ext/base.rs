@@ -643,7 +643,7 @@ impl<'a> ExtCtxt<'a> {
         loop {
             if self.codemap().with_expn_info(expn_id, |info| {
                 info.map_or(None, |i| {
-                    if i.callee.name().as_str() == "include" {
+                    if i.callee.name() == "include" {
                         // Stop going up the backtrace once include! is encountered
                         return None;
                     }

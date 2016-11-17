@@ -663,7 +663,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                 -> bool {
             (bare_fn_ty.abi == Abi::RustIntrinsic ||
              bare_fn_ty.abi == Abi::PlatformIntrinsic) &&
-            tcx.item_name(def_id).as_str() == "drop_in_place"
+            tcx.item_name(def_id) == "drop_in_place"
         }
     }
 }

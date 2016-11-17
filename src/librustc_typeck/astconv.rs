@@ -1252,7 +1252,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         if bounds.len() > 1 {
             let spans = bounds.iter().map(|b| {
                 self.tcx().associated_items(b.def_id()).find(|item| {
-                    item.kind == ty::AssociatedKind::Type && item.name.as_str() == assoc_name
+                    item.kind == ty::AssociatedKind::Type && item.name == assoc_name
                 })
                 .and_then(|item| self.tcx().map.as_local_node_id(item.def_id))
                 .and_then(|node_id| self.tcx().map.opt_span(node_id))
