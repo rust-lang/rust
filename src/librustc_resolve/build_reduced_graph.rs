@@ -362,9 +362,11 @@ impl<'b> Resolver<'b> {
 
     // Constructs the reduced graph for one variant. Variants exist in the
     // type and value namespaces.
-    fn build_reduced_graph_for_variant(
-        &mut self, variant: &Variant, parent: Module<'b>, vis: ty::Visibility, expansion: Mark,
-    ) {
+    fn build_reduced_graph_for_variant(&mut self,
+                                       variant: &Variant,
+                                       parent: Module<'b>,
+                                       vis: ty::Visibility,
+                                       expansion: Mark) {
         let name = variant.node.name.name;
         let def_id = self.definitions.local_def_id(variant.node.data.id());
 
@@ -381,22 +383,20 @@ impl<'b> Resolver<'b> {
     }
 
     /// Constructs the reduced graph for one foreign item.
-    fn build_reduced_graph_for_foreign_item(
-        &mut self, foreign_item: &ForeignItem, expansion: Mark,
-    ) {
+    fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem, expansion: Mark) {
         let parent = self.current_module;
-        let name = foreign_item.ident.name;
+        let name = item.ident.name;
 
-        let def = match foreign_item.node {
+        let def = match item.node {
             ForeignItemKind::Fn(..) => {
-                Def::Fn(self.definitions.local_def_id(foreign_item.id))
+                Def::Fn(self.definitions.local_def_id(item.id))
             }
             ForeignItemKind::Static(_, m) => {
-                Def::Static(self.definitions.local_def_id(foreign_item.id), m)
+                Def::Static(self.definitions.local_def_id(item.id), m)
             }
         };
-        let vis = self.resolve_visibility(&foreign_item.vis);
-        self.define(parent, name, ValueNS, (def, vis, foreign_item.span, expansion));
+        let vis = self.resolve_visibility(&item.vis);
+        self.define(parent, name, ValueNS, (def, vis, item.span, expansion));
     }
 
     fn build_reduced_graph_for_block(&mut self, block: &Block) {
@@ -415,8 +415,7 @@ impl<'b> Resolver<'b> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'b>,
-                                                  child: Export) {
+    fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'b>, child: Export) {
         let name = child.name;
         let def = child.def;
         let def_id = def.def_id();
@@ -545,9 +544,11 @@ impl<'b> Resolver<'b> {
         module.populated.set(true)
     }
 
-    fn legacy_import_macro(
-        &mut self, name: Name, binding: &'b NameBinding<'b>, span: Span, allow_shadowing: bool,
-    ) {
+    fn legacy_import_macro(&mut self,
+                           name: Name,
+                           binding: &'b NameBinding<'b>,
+                           span: Span,
+                           allow_shadowing: bool) {
         self.used_crates.insert(binding.def().def_id().krate);
         self.macro_names.insert(name);
         if self.builtin_macros.insert(name, binding).is_some() && !allow_shadowing {
