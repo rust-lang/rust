@@ -34,8 +34,9 @@ fn for_all_targets<F: FnMut(String)>(sysroot: &str, mut f: F) {
             continue;
         }
         let target = target.file_name().into_string().unwrap();
-        if target == "etc" {
-            continue;
+        match &*target {
+            "etc" | "src" => continue,
+            _ => {},
         }
         let stderr = std::io::stderr();
         writeln!(stderr.lock(), "running tests for target {}", target).unwrap();
