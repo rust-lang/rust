@@ -262,9 +262,11 @@ impl<'a> base::Resolver for Resolver<'a> {
 
 impl<'a> Resolver<'a> {
     // Resolve the name in the module's lexical scope, excluding non-items.
-    fn resolve_in_item_lexical_scope(
-        &mut self, name: Name, ns: Namespace, record_used: Option<Span>,
-    ) -> Option<&'a NameBinding<'a>> {
+    fn resolve_in_item_lexical_scope(&mut self,
+                                     name: Name,
+                                     ns: Namespace,
+                                     record_used: Option<Span>)
+                                     -> Option<&'a NameBinding<'a>> {
         let mut module = self.current_module;
         let mut potential_expanded_shadower = None;
         loop {
@@ -298,9 +300,11 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn resolve_legacy_scope(
-        &mut self, mut scope: LegacyScope<'a>, name: ast::Name, record_used: bool,
-    ) -> Option<MacroBinding<'a>> {
+    pub fn resolve_legacy_scope(&mut self,
+                                mut scope: LegacyScope<'a>,
+                                name: Name,
+                                record_used: bool)
+                                -> Option<MacroBinding<'a>> {
         let mut possible_time_travel = None;
         let mut relative_depth: u32 = 0;
         let mut binding = None;
