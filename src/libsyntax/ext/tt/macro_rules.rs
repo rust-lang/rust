@@ -791,8 +791,7 @@ fn is_in_follow(tok: &Token, frag: &str) -> Result<bool, (String, &'static str)>
             "pat" => {
                 match *tok {
                     FatArrow | Comma | Eq | BinOp(token::Or) => Ok(true),
-                    Ident(i) if (i.name.as_str() == "if" ||
-                                 i.name.as_str() == "in") => Ok(true),
+                    Ident(i) if i.name == "if" || i.name == "in" => Ok(true),
                     _ => Ok(false)
                 }
             },
@@ -800,8 +799,8 @@ fn is_in_follow(tok: &Token, frag: &str) -> Result<bool, (String, &'static str)>
                 match *tok {
                     OpenDelim(token::DelimToken::Brace) | OpenDelim(token::DelimToken::Bracket) |
                     Comma | FatArrow | Colon | Eq | Gt | Semi | BinOp(token::Or) => Ok(true),
-                    MatchNt(_, ref frag) if frag.name.as_str() == "block" => Ok(true),
-                    Ident(i) if i.name.as_str() == "as" || i.name.as_str() == "where" => Ok(true),
+                    MatchNt(_, ref frag) if frag.name == "block" => Ok(true),
+                    Ident(i) if i.name == "as" || i.name == "where" => Ok(true),
                     _ => Ok(false)
                 }
             },

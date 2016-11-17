@@ -343,7 +343,7 @@ impl DefPathData {
 
     pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
-        match *self {
+        let s = match *self {
             TypeNs(ref name) |
             ValueNs(ref name) |
             Module(ref name) |
@@ -353,43 +353,24 @@ impl DefPathData {
             EnumVariant(ref name) |
             Binding(ref name) |
             Field(ref name) => {
-                name.clone()
-            }
-
-            Impl => {
-                InternedString::new("{{impl}}")
+                return name.clone();
             }
 
             // note that this does not show up in user printouts
-            CrateRoot => {
-                InternedString::new("{{root}}")
-            }
+            CrateRoot => "{{root}}",
 
             // note that this does not show up in user printouts
-            InlinedRoot(_) => {
-                InternedString::new("{{inlined-root}}")
-            }
+            InlinedRoot(_) => "{{inlined-root}}",
 
-            Misc => {
-                InternedString::new("{{?}}")
-            }
+            Impl => "{{impl}}",
+            Misc => "{{?}}",
+            ClosureExpr => "{{closure}}",
+            StructCtor => "{{constructor}}",
+            Initializer => "{{initializer}}",
+            ImplTrait => "{{impl-Trait}}",
+        };
 
-            ClosureExpr => {
-                InternedString::new("{{closure}}")
-            }
-
-            StructCtor => {
-                InternedString::new("{{constructor}}")
-            }
-
-            Initializer => {
-                InternedString::new("{{initializer}}")
-            }
-
-            ImplTrait => {
-                InternedString::new("{{impl-Trait}}")
-            }
-        }
+        Symbol::intern(s).as_str()
     }
 
     pub fn to_string(&self) -> String {

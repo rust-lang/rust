@@ -1229,7 +1229,7 @@ impl LateLintPass for MutableTransmutes {
                 ty::TyFnDef(.., ref bfty) if bfty.abi == RustIntrinsic => (),
                 _ => return false,
             }
-            cx.tcx.item_name(def_id).as_str() == "transmute"
+            cx.tcx.item_name(def_id) == "transmute"
         }
     }
 }

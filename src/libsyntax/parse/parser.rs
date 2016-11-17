@@ -2535,7 +2535,7 @@ impl<'a> Parser<'a> {
                     let prev_span = self.prev_span;
                     let fstr = n.as_str();
                     let mut err = self.diagnostic().struct_span_err(prev_span,
-                        &format!("unexpected token: `{}`", n.as_str()));
+                        &format!("unexpected token: `{}`", n));
                     if fstr.chars().all(|x| "0123456789.".contains(x)) {
                         let float = match fstr.parse::<f64>().ok() {
                             Some(f) => f,

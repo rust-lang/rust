@@ -943,7 +943,7 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         Position::ArgumentNamed(s) if s == "Self" => (),
                         // So is `{A}` if A is a type parameter
                         Position::ArgumentNamed(s) => match types.iter().find(|t| {
-                            t.name.as_str() == s
+                            t.name == s
                         }) {
                             Some(_) => (),
                             None => {
@@ -3127,7 +3127,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
                     struct_span_err!(self.tcx.sess, field.name.span, E0559,
                                     "{} `{}::{}` has no field named `{}`",
-                                    kind_name, actual, variant.name.as_str(), field.name.node)
+                                    kind_name, actual, variant.name, field.name.node)
                 }
                 _ => {
                     struct_span_err!(self.tcx.sess, field.name.span, E0560,
@@ -3147,7 +3147,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
                     err.span_label(field.name.span, &format!("`{}::{}` does not have this field",
-                                                             ty, variant.name.as_str()));
+                                                             ty, variant.name));
                 }
                 _ => {
                     err.span_label(field.name.span, &format!("`{}` does not have this field", ty));

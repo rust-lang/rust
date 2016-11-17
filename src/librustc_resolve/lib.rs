@@ -1462,7 +1462,6 @@ impl<'a> Resolver<'a> {
             let name = module_path[index].name;
             match self.resolve_name_in_module(search_module, name, TypeNS, false, false, span) {
                 Failed(_) => {
-                    let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
                     let msg = if "???" == &module_name {
                         let current_module = self.current_module;
@@ -1480,10 +1479,10 @@ impl<'a> Resolver<'a> {
 
                                 format!("Did you mean `{}{}`?", prefix, path_str)
                             }
-                            None => format!("Maybe a missing `extern crate {};`?", segment_name),
+                            None => format!("Maybe a missing `extern crate {};`?", name),
                         }
                     } else {
-                        format!("Could not find `{}` in `{}`", segment_name, module_name)
+                        format!("Could not find `{}` in `{}`", name, module_name)
                     };
 
                     return Failed(span.map(|span| (span, msg)));
@@ -1651,7 +1650,7 @@ impl<'a> Resolver<'a> {
     /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
     fn resolve_module_prefix(&mut self, module_path: &[Ident], span: Option<Span>)
                              -> ResolveResult<ModulePrefixResult<'a>> {
-        if &*module_path[0].name.as_str() == "$crate" {
+        if module_path[0].name == "$crate" {
             return Success(PrefixFound(self.resolve_crate_var(module_path[0].ctxt), 1));
         }
 
@@ -1667,7 +1666,7 @@ impl<'a> Resolver<'a> {
             self.module_map[&self.current_module.normal_ancestor_id.unwrap()];
 
         // Now loop through all the `super`s we find.
-        while i < module_path.len() && "super" == module_path[i].name.as_str() {
+        while i < module_path.len() && module_path[i].name == "super" {
             debug!("(resolving module prefix) resolving `super` at {}",
                    module_to_string(&containing_module));
             if let Some(parent) = containing_module.parent {
@@ -2635,7 +2634,7 @@ impl<'a> Resolver<'a> {
         let qualified_binding = self.resolve_module_relative_path(span, segments, namespace);
         match (qualified_binding, unqualified_def) {
             (Ok(binding), Some(ref ud)) if binding.def() == ud.def &&
-                                           segments[0].identifier.name.as_str() != "$crate" => {
+                                           segments[0].identifier.name != "$crate" => {
                 self.session
                     .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                               id,
@@ -2881,7 +2880,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn find_best_match(&mut self, name: &str) -> SuggestionType {
-        if let Some(macro_name) = self.macro_names.iter().find(|n| n.as_str() == name) {
+        if let Some(macro_name) = self.macro_names.iter().find(|&n| n == &name) {
             return SuggestionType::Macro(format!("{}!", macro_name));
         }
 
@@ -3000,8 +2999,7 @@ impl<'a> Resolver<'a> {
                                 false // Stop advancing
                             });
 
-                            if method_scope &&
-                                    &path_name[..] == keywords::SelfValue.name().as_str() {
+                            if method_scope && keywords::SelfValue.name() == &*path_name {
                                 resolve_error(self,
                                               expr.span,
                                               ResolutionError::SelfNotAvailableInStaticMethod);

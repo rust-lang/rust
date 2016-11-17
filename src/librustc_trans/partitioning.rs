@@ -320,7 +320,7 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
 
             let codegen_unit_name = match characteristic_def_id {
                 Some(def_id) => compute_codegen_unit_name(tcx, def_id, is_volatile),
-                None => InternedString::new(FALLBACK_CODEGEN_UNIT),
+                None => Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str(),
             };
 
             let make_codegen_unit = || {
@@ -365,7 +365,7 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     // always ensure we have at least one CGU; otherwise, if we have a
     // crate with just types (for example), we could wind up with no CGU
     if codegen_units.is_empty() {
-        let codegen_unit_name = InternedString::new(FALLBACK_CODEGEN_UNIT);
+        let codegen_unit_name = Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str();
         codegen_units.entry(codegen_unit_name.clone())
                      .or_insert_with(|| CodegenUnit::empty(codegen_unit_name.clone()));
     }

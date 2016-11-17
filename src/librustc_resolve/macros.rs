@@ -115,7 +115,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         impl<'a, 'b> Folder for EliminateCrateVar<'a, 'b> {
             fn fold_path(&mut self, mut path: ast::Path) -> ast::Path {
                 let ident = path.segments[0].identifier;
-                if &ident.name.as_str() == "$crate" {
+                if ident.name == "$crate" {
                     path.global = true;
                     let module = self.0.resolve_crate_var(ident.ctxt);
                     if module.is_local() {
@@ -151,7 +151,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef, export: bool) {
-        if &def.ident.name.as_str() == "macro_rules" {
+        if def.ident.name == "macro_rules" {
             self.session.span_err(def.span, "user-defined macros may not be named `macro_rules`");
         }
 

@@ -107,7 +107,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let sig = tcx.erase_late_bound_regions_and_normalize(&fty.sig);
     let arg_tys = sig.inputs;
     let ret_ty = sig.output;
-    let name = tcx.item_name(def_id).as_str();
+    let name = &*tcx.item_name(def_id).as_str();
 
     let span = match call_debug_location {
         DebugLoc::ScopeAt(_, span) => span,
@@ -123,15 +123,15 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         Call(bcx, llfn, &[], call_debug_location);
         Unreachable(bcx);
         return Result::new(bcx, C_undef(Type::nil(ccx).ptr_to()));
-    } else if &name[..] == "unreachable" {
+    } else if name == "unreachable" {
         Unreachable(bcx);
         return Result::new(bcx, C_nil(ccx));
     }
 
     let llret_ty = type_of::type_of(ccx, ret_ty);
 
-    let simple = get_simple_intrinsic(ccx, &name);
-    let llval = match (simple, &name[..]) {
+    let simple = get_simple_intrinsic(ccx, name);
+    let llval = match (simple, name) {
         (Some(llfn), _) => {
             Call(bcx, llfn, &llargs, call_debug_location)
         }
@@ -340,7 +340,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let sty = &arg_tys[0].sty;
             match int_type_width_signed(sty, ccx) {
                 Some((width, signed)) =>
-                    match &*name {
+                    match name {
                         "ctlz" => count_zeros_intrinsic(bcx, &format!("llvm.ctlz.i{}", width),
                                                         llargs[0], call_debug_location),
                         "cttz" => count_zeros_intrinsic(bcx, &format!("llvm.cttz.i{}", width),
@@ -394,7 +394,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let sty = &arg_tys[0].sty;
             match float_type_width(sty) {
                 Some(_width) =>
-                    match &*name {
+                    match name {
                         "fadd_fast" => FAddFast(bcx, llargs[0], llargs[1], call_debug_location),
                         "fsub_fast" => FSubFast(bcx, llargs[0], llargs[1], call_debug_location),
                         "fmul_fast" => FMulFast(bcx, llargs[0], llargs[1], call_debug_location),

@@ -498,8 +498,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
                       span: syntax_pos::Span,
                       name: ast::Name,
                       node_type: &str) {
-        let name = name.as_str();
-        if !name.starts_with("_") {
+        if !name.as_str().starts_with("_") {
             self.tcx
                 .sess
                 .add_lint(lint::builtin::DEAD_CODE,

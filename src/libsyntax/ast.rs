@@ -373,7 +373,7 @@ impl Generics {
     }
     pub fn span_for_name(&self, name: &str) -> Option<Span> {
         for t in &self.ty_params {
-            if t.ident.name.as_str() == name {
+            if t.ident.name == name {
                 return Some(t.span);
             }
         }
