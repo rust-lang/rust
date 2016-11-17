@@ -26,7 +26,7 @@ use super::{
 
 use fmt_macros::{Parser, Piece, Position};
 use hir::def_id::DefId;
-use infer::{self, InferCtxt, TypeOrigin};
+use infer::{self, InferCtxt};
 use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::ExpectedFound;
@@ -100,7 +100,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         self.probe(|_| {
-            let origin = TypeOrigin::Misc(obligation.cause.span);
             let err_buf;
             let mut err = &error.err;
             let mut values = None;
@@ -121,9 +120,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     obligation.cause.clone(),
                     0
                 );
-                let origin = TypeOrigin::Misc(obligation.cause.span);
                 if let Err(error) = self.eq_types(
-                    false, origin,
+                    false, &obligation.cause,
                     data.ty, normalized.value
                 ) {
                     values = Some(infer::ValuePairs::Types(ExpectedFound {
@@ -136,10 +134,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             let mut diag = struct_span_err!(
-                self.tcx.sess, origin.span(), E0271,
+                self.tcx.sess, obligation.cause.span, E0271,
                 "type mismatch resolving `{}`", predicate
             );
-            self.note_type_err(&mut diag, origin, None, values, err);
+            self.note_type_err(&mut diag, &obligation.cause, None, values, err);
             self.note_obligation_cause(&mut diag, obligation);
             diag.emit();
         });
@@ -529,7 +527,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                         ty::Predicate::Equate(ref predicate) => {
                             let predicate = self.resolve_type_vars_if_possible(predicate);
-                            let err = self.equality_predicate(span,
+                            let err = self.equality_predicate(&obligation.cause,
                                                               &predicate).err().unwrap();
                             struct_span_err!(self.tcx.sess, span, E0278,
                                 "the requirement `{}` is not satisfied (`{}`)",
@@ -851,7 +849,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         let tcx = self.tcx;
         match *cause_code {
-            ObligationCauseCode::MiscObligation => { }
+            ObligationCauseCode::ExprAssignable |
+            ObligationCauseCode::MatchExpressionArm { .. } |
+            ObligationCauseCode::IfExpression |
+            ObligationCauseCode::IfExpressionWithNoElse |
+            ObligationCauseCode::EquatePredicate |
+            ObligationCauseCode::MainFunctionType |
+            ObligationCauseCode::StartFunctionType |
+            ObligationCauseCode::IntrinsicType |
+            ObligationCauseCode::MethodReceiver |
+            ObligationCauseCode::MiscObligation => {
+            }
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }

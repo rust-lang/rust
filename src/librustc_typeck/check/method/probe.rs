@@ -16,13 +16,13 @@ use super::suggest;
 use check::FnCtxt;
 use hir::def_id::DefId;
 use hir::def::Def;
+use rustc::infer::InferOk;
 use rustc::ty::subst::{Subst, Substs};
-use rustc::traits;
+use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
-use rustc::infer::{InferOk, TypeOrigin};
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 use rustc::hir;
 use std::mem;
 use std::ops::Deref;
@@ -1032,10 +1032,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         self.probe(|_| {
             // First check that the self type can be related.
             match self.sub_types(false,
-                                 TypeOrigin::Misc(DUMMY_SP),
+                                 &ObligationCause::dummy(),
                                  self_ty,
                                  probe.xform_self_ty) {
-                Ok(InferOk { obligations, .. }) => {
+                Ok(InferOk { obligations, value: () }) => {
                     // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty())
                 }

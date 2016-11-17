@@ -21,9 +21,9 @@ use rustc::middle::region::CodeExtentData;
 use rustc::middle::resolve_lifetime;
 use rustc::middle::stability;
 use rustc::ty::subst::{Kind, Subst};
-use rustc::traits::Reveal;
+use rustc::traits::{ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
+use rustc::infer::{self, InferOk, InferResult};
 use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
@@ -36,7 +36,6 @@ use errors::emitter::Emitter;
 use errors::{Level, DiagnosticBuilder};
 use syntax::parse::token;
 use syntax::feature_gate::UnstableFeatures;
-use syntax_pos::DUMMY_SP;
 
 use rustc::hir;
 
@@ -245,7 +244,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn make_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-        match self.infcx.sub_types(true, TypeOrigin::Misc(DUMMY_SP), a, b) {
+        match self.infcx.sub_types(true, &ObligationCause::dummy(), a, b) {
             Ok(_) => true,
             Err(ref e) => panic!("Encountered error: {}", e),
         }

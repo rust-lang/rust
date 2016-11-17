@@ -106,10 +106,10 @@ pub use rustc::util;
 
 use dep_graph::DepNode;
 use hir::map as hir_map;
-use rustc::infer::{InferOk, TypeOrigin};
+use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::{self, Reveal};
+use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use session::{config, CompileResult};
 use util::common::time;
 
@@ -172,19 +172,19 @@ fn require_c_abi_if_variadic(tcx: TyCtxt,
 }
 
 fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                origin: TypeOrigin,
+                                cause: &ObligationCause<'tcx>,
                                 expected: Ty<'tcx>,
                                 actual: Ty<'tcx>)
                                 -> bool {
     ccx.tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
-        match infcx.eq_types(false, origin.clone(), expected, actual) {
+        match infcx.eq_types(false, &cause, expected, actual) {
             Ok(InferOk { obligations, .. }) => {
                 // FIXME(#32730) propagate obligations
                 assert!(obligations.is_empty());
                 true
             }
             Err(err) => {
-                infcx.report_mismatched_types(origin, expected, actual, err);
+                infcx.report_mismatched_types(cause, expected, actual, err);
                 false
             }
         }
@@ -231,7 +231,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
 
             require_same_types(
                 ccx,
-                TypeOrigin::MainFunctionType(main_span),
+                &ObligationCause::new(main_span, main_id, ObligationCauseCode::MainFunctionType),
                 se_ty,
                 main_t);
         }
@@ -286,7 +286,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
 
             require_same_types(
                 ccx,
-                TypeOrigin::StartFunctionType(start_span),
+                &ObligationCause::new(start_span, start_id, ObligationCauseCode::StartFunctionType),
                 se_ty,
                 start_t);
         }

@@ -11,7 +11,8 @@
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
-use rustc::infer::{self, InferOk, TypeOrigin};
+use rustc::infer;
+use rustc::traits::ObligationCauseCode;
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{FnCtxt, Expectation, Diverges};
 use util::nodemap::FxHashMap;
@@ -450,17 +451,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 _ => false
             };
 
-            let origin = if is_if_let_fallback {
-                TypeOrigin::IfExpressionWithNoElse(expr.span)
+            let cause = if is_if_let_fallback {
+                self.cause(expr.span, ObligationCauseCode::IfExpressionWithNoElse)
             } else {
-                TypeOrigin::MatchExpressionArm(expr.span, arm.body.span, match_src)
+                self.cause(expr.span, ObligationCauseCode::MatchExpressionArm {
+                    arm_span: arm.body.span,
+                    source: match_src
+                })
             };
 
             let result = if is_if_let_fallback {
-                self.eq_types(true, origin, arm_ty, result_ty)
-                    .map(|InferOk { obligations, .. }| {
-                        // FIXME(#32730) propagate obligations
-                        assert!(obligations.is_empty());
+                self.eq_types(true, &cause, arm_ty, result_ty)
+                    .map(|infer_ok| {
+                        self.register_infer_ok_obligations(infer_ok);
                         arm_ty
                     })
             } else if i == 0 {
@@ -468,7 +471,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.try_coerce(&arm.body, arm_ty, coerce_first)
             } else {
                 let prev_arms = || arms[..i].iter().map(|arm| &*arm.body);
-                self.try_find_coercion_lub(origin, prev_arms, result_ty, &arm.body, arm_ty)
+                self.try_find_coercion_lub(&cause, prev_arms, result_ty, &arm.body, arm_ty)
             };
 
             result_ty = match result {
@@ -479,7 +482,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     } else {
                         (result_ty, arm_ty)
                     };
-                    self.report_mismatched_types(origin, expected, found, e);
+                    self.report_mismatched_types(&cause, expected, found, e);
                     self.tcx.types.err
                 }
             };

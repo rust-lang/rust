@@ -19,7 +19,7 @@ use hir::def_id::DefId;
 use middle::lang_items::UnsizeTraitLangItem;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
-use rustc::traits::{self, Reveal};
+use rustc::traits::{self, ObligationCause, Reveal};
 use rustc::ty::ParameterEnvironment;
 use rustc::ty::{Ty, TyBool, TyChar, TyError};
 use rustc::ty::{TyParam, TyRawPtr};
@@ -30,7 +30,7 @@ use rustc::ty::{TyProjection, TyAnon};
 use rustc::ty::util::CopyImplementationError;
 use middle::free_region::FreeRegionMap;
 use CrateCtxt;
-use rustc::infer::{self, InferCtxt, TypeOrigin};
+use rustc::infer::{self, InferCtxt};
 use syntax_pos::Span;
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
@@ -344,12 +344,12 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                    target);
 
             tcx.infer_ctxt(None, Some(param_env), Reveal::ExactMatch).enter(|infcx| {
-                let origin = TypeOrigin::Misc(span);
+                let cause = ObligationCause::misc(span, impl_node_id);
                 let check_mutbl = |mt_a: ty::TypeAndMut<'gcx>,
                                    mt_b: ty::TypeAndMut<'gcx>,
                                    mk_ptr: &Fn(Ty<'gcx>) -> Ty<'gcx>| {
                     if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
-                        infcx.report_mismatched_types(origin,
+                        infcx.report_mismatched_types(&cause,
                                                       mk_ptr(mt_b.ty),
                                                       target,
                                                       ty::error::TypeError::Mutability);
@@ -397,7 +397,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                                 }
 
                                 // Ignore fields that aren't significantly changed
-                                if let Ok(ok) = infcx.sub_types(false, origin, b, a) {
+                                if let Ok(ok) = infcx.sub_types(false, &cause, b, a) {
                                     if ok.obligations.is_empty() {
                                         return None;
                                     }
