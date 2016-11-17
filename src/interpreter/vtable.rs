@@ -35,7 +35,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     self.get_vtable_methods(id, substs)
                         .into_iter()
                         .map(|opt_mth| opt_mth.map(|mth| {
-                            self.memory.create_fn_ptr(mth.method.def_id, mth.substs, mth.method.fty)
+                            let fn_ty = self.tcx.erase_regions(&mth.method.fty);
+                            self.memory.create_fn_ptr(self.tcx, mth.method.def_id, mth.substs, fn_ty)
                         }))
                         .collect::<Vec<_>>()
                         .into_iter()
@@ -46,22 +47,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         substs,
                         nested: _ }) => {
                     let closure_type = self.tcx.closure_type(closure_def_id, substs);
-                    let fn_ty = ty::BareFnTy {
-                        unsafety: closure_type.unsafety,
-                        abi: closure_type.abi,
-                        sig: closure_type.sig,
-                    };
-                    let _fn_ty = self.tcx.mk_bare_fn(fn_ty);
-                    unimplemented!()
-                    //vec![Some(self.memory.create_fn_ptr(closure_def_id, substs.func_substs, fn_ty))].into_iter()
+                    vec![Some(self.memory.create_closure_ptr(self.tcx, closure_def_id, substs, closure_type))].into_iter()
                 }
                 traits::VtableFnPointer(
                     traits::VtableFnPointerData {
-                        fn_ty: _bare_fn_ty,
+                        fn_ty,
                         nested: _ }) => {
-                    let _trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_ref.def_id()).unwrap();
-                    //vec![trans_fn_pointer_shim(ccx, trait_closure_kind, bare_fn_ty)].into_iter()
-                    unimplemented!()
+                    match fn_ty.sty {
+                        ty::TyFnDef(did, substs, bare_fn_ty) => {
+                            vec![Some(self.memory.create_fn_ptr(self.tcx, did, substs, bare_fn_ty))].into_iter()
+                        },
+                        _ => bug!("bad VtableFnPointer fn_ty: {:?}", fn_ty),
+                    }
                 }
                 traits::VtableObject(ref data) => {
                     // this would imply that the Self type being erased is
@@ -78,7 +75,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
         }).collect();
 
-        let size = self.type_size(trait_ref.self_ty());
+        let size = self.type_size(trait_ref.self_ty()).expect("can't create a vtable for an unsized type");
         let align = self.type_align(trait_ref.self_ty());
 
         let ptr_size = self.memory.pointer_size();
@@ -90,10 +87,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             if let Some(drop_def_id) = adt_def.destructor() {
                 let ty_scheme = self.tcx.lookup_item_type(drop_def_id);
                 let fn_ty = match ty_scheme.ty.sty {
-                    ty::TyFnDef(_, _, fn_ty) => fn_ty,
+                    ty::TyFnDef(_, _, fn_ty) => self.tcx.erase_regions(&fn_ty),
                     _ => bug!("drop method is not a TyFnDef"),
                 };
-                let fn_ptr = self.memory.create_fn_ptr(drop_def_id, substs, fn_ty);
+                let fn_ptr = self.memory.create_fn_ptr(self.tcx, drop_def_id, substs, fn_ty);
                 self.memory.write_ptr(vtable, fn_ptr)?;
             }
         }

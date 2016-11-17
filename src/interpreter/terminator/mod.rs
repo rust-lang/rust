@@ -85,11 +85,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let func_ty = self.operand_ty(func);
                 match func_ty.sty {
                     ty::TyFnPtr(bare_fn_ty) => {
-                        let fn_ptr = self.eval_operand_to_primval(func)?
-                            .expect_fn_ptr("TyFnPtr callee did not evaluate to FnPtr");
-                        let (def_id, substs, fn_ty) = self.memory.get_fn(fn_ptr.alloc_id)?;
-                        if fn_ty != bare_fn_ty {
-                            return Err(EvalError::FunctionPointerTyMismatch(fn_ty, bare_fn_ty));
+                        let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr();
+                        let (def_id, substs, abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
+                        if abi != bare_fn_ty.abi || sig != bare_fn_ty.sig.skip_binder() {
+                            return Err(EvalError::FunctionPointerTyMismatch(abi, sig, bare_fn_ty));
                         }
                         self.eval_fn_call(def_id, substs, bare_fn_ty, destination, args,
                                           terminator.source_info.span)?
@@ -193,7 +192,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Abi::C => {
                 let ty = fn_ty.sig.0.output;
-                let size = self.type_size(ty);
+                let size = self.type_size(ty).expect("function return type cannot be unsized");
                 let (ret, target) = destination.unwrap();
                 self.call_c_abi(def_id, arg_operands, ret, size)?;
                 self.goto_block(target);
@@ -263,14 +262,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.read_int(adt_ptr, discr_size as usize)? as u64
             }
 
-            RawNullablePointer { nndiscr, .. } => {
-                self.read_nonnull_discriminant_value(adt_ptr, nndiscr)?
+            RawNullablePointer { nndiscr, value } => {
+                let discr_size = value.size(&self.tcx.data_layout).bytes() as usize;
+                self.read_nonnull_discriminant_value(adt_ptr, nndiscr, discr_size)?
             }
 
             StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-                let offset = self.nonnull_offset(adt_ty, nndiscr, discrfield)?;
+                let (offset, ty) = self.nonnull_offset_and_ty(adt_ty, nndiscr, discrfield)?;
                 let nonnull = adt_ptr.offset(offset.bytes() as isize);
-                self.read_nonnull_discriminant_value(nonnull, nndiscr)?
+                // only the pointer part of a fat pointer is used for this space optimization
+                let discr_size = self.type_size(ty).expect("bad StructWrappedNullablePointer discrfield");
+                self.read_nonnull_discriminant_value(nonnull, nndiscr, discr_size)?
             }
 
             // The discriminant_value intrinsic returns 0 for non-sum types.
@@ -281,8 +283,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(discr_val)
     }
 
-    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u64) -> EvalResult<'tcx, u64> {
-        let not_null = match self.memory.read_usize(ptr) {
+    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u64, discr_size: usize) -> EvalResult<'tcx, u64> {
+        let not_null = match self.memory.read_uint(ptr, discr_size) {
             Ok(0) => false,
             Ok(_) | Err(EvalError::ReadPointerAsBytes) => true,
             Err(e) => return Err(e),
@@ -498,9 +500,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let idx = idx + 3;
                     let offset = idx * self.memory.pointer_size();
                     let fn_ptr = self.memory.read_ptr(vtable.offset(offset as isize))?;
-                    let (def_id, substs, ty) = self.memory.get_fn(fn_ptr.alloc_id)?;
-                    // FIXME: skip_binder is wrong for HKL
-                    *first_ty = ty.sig.skip_binder().inputs[0];
+                    let (def_id, substs, _abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
+                    *first_ty = sig.inputs[0];
                     Ok((def_id, substs))
                 } else {
                     Err(EvalError::VtableForArgumentlessMethod)
@@ -539,14 +540,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByRef(_) => bug!("follow_by_ref_value can't result in ByRef"),
                     Value::ByVal(ptr) => {
                         assert!(self.type_is_sized(contents_ty));
-                        let contents_ptr = ptr.expect_ptr("value of Box type must be a pointer");
+                        let contents_ptr = ptr.to_ptr();
                         self.drop(Lvalue::from_ptr(contents_ptr), contents_ty, drop)?;
                     },
                     Value::ByValPair(prim_ptr, extra) => {
-                        let ptr = prim_ptr.expect_ptr("value of Box type must be a pointer");
-                        let extra = match extra.try_as_ptr() {
-                            Some(vtable) => LvalueExtra::Vtable(vtable),
-                            None => LvalueExtra::Length(extra.expect_uint("slice length")),
+                        let ptr = prim_ptr.to_ptr();
+                        let extra = match self.tcx.struct_tail(contents_ty).sty {
+                            ty::TyTrait(_) => LvalueExtra::Vtable(extra.to_ptr()),
+                            ty::TyStr | ty::TySlice(_) => LvalueExtra::Length(extra.try_as_uint()?),
+                            _ => bug!("invalid fat pointer type: {}", ty),
                         };
                         self.drop(
                             Lvalue::Ptr {
@@ -639,10 +641,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 let drop_fn = self.memory.read_ptr(vtable)?;
                 // some values don't need to call a drop impl, so the value is null
-                if !drop_fn.points_to_zst() {
-                    let (def_id, substs, ty) = self.memory.get_fn(drop_fn.alloc_id)?;
-                    let fn_sig = self.tcx.erase_late_bound_regions_and_normalize(&ty.sig);
-                    let real_ty = fn_sig.inputs[0];
+                if drop_fn != Pointer::from_int(0) {
+                    let (def_id, substs, _abi, sig) = self.memory.get_fn(drop_fn.alloc_id)?;
+                    let real_ty = sig.inputs[0];
                     self.drop(Lvalue::from_ptr(ptr), real_ty, drop)?;
                     drop.push((def_id, Value::ByVal(PrimVal::from_ptr(ptr)), substs));
                 } else {
@@ -655,7 +656,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => (ptr, len as isize),
                     _ => bug!("expected an lvalue with a length"),
                 };
-                let size = self.type_size(elem_ty) as isize;
+                let size = self.type_size(elem_ty).expect("slice element must be sized") as isize;
                 // FIXME: this creates a lot of stack frames if the element type has
                 // a drop impl
                 for i in 0..len {
@@ -668,7 +669,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::Ptr { ptr, extra } => (ptr, extra),
                     _ => bug!("expected an lvalue with optional extra data"),
                 };
-                let size = self.type_size(elem_ty) as isize;
+                let size = self.type_size(elem_ty).expect("array element cannot be unsized") as isize;
                 // FIXME: this creates a lot of stack frames if the element type has
                 // a drop impl
                 for i in 0..len {

@@ -22,10 +22,7 @@ impl<'a, 'tcx: 'a> Value {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr),
-
-            ByVal(ptr) | ByValPair(ptr, _) => {
-                Ok(ptr.try_as_ptr().expect("unimplemented: `read_ptr` on non-ptr primval"))
-            }
+            ByVal(ptr) | ByValPair(ptr, _) => Ok(ptr.to_ptr()),
         }
     }
 
@@ -35,29 +32,29 @@ impl<'a, 'tcx: 'a> Value {
     ) -> EvalResult<'tcx, (Pointer, Pointer)> {
         use self::Value::*;
         match *self {
-            ByRef(ptr) => {
-                let ptr = mem.read_ptr(ptr)?;
-                let vtable = mem.read_ptr(ptr.offset(mem.pointer_size() as isize))?;
+            ByRef(ref_ptr) => {
+                let ptr = mem.read_ptr(ref_ptr)?;
+                let vtable = mem.read_ptr(ref_ptr.offset(mem.pointer_size() as isize))?;
                 Ok((ptr, vtable))
             }
 
-            ByValPair(ptr, vtable)
-                if ptr.try_as_ptr().is_some() && vtable.try_as_ptr().is_some()
-            => {
-                let ptr = ptr.try_as_ptr().unwrap();
-                let vtable = vtable.try_as_ptr().unwrap();
-                Ok((ptr, vtable))
-            }
+            ByValPair(ptr, vtable) => Ok((ptr.to_ptr(), vtable.to_ptr())),
 
             _ => bug!("expected ptr and vtable, got {:?}", self),
         }
     }
 
-    pub(super) fn expect_slice_len(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, u64> {
+    pub(super) fn expect_slice(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, (Pointer, u64)> {
         use self::Value::*;
         match *self {
-            ByRef(ptr) => mem.read_usize(ptr.offset(mem.pointer_size() as isize)),
-            ByValPair(_, val) if val.kind.is_int() => Ok(val.bits),
+            ByRef(ref_ptr) => {
+                let ptr = mem.read_ptr(ref_ptr)?;
+                let len = mem.read_usize(ref_ptr.offset(mem.pointer_size() as isize))?;
+                Ok((ptr, len))
+            },
+            ByValPair(ptr, val) => {
+                Ok((ptr.to_ptr(), val.try_as_uint()?))
+            },
             _ => unimplemented!(),
         }
     }

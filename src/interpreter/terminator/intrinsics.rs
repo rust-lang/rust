@@ -57,6 +57,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "atomic_load" |
+            "atomic_load_acq" |
             "volatile_load" => {
                 let ty = substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
@@ -73,6 +74,53 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "atomic_fence_acq" => {
                 // we are inherently singlethreaded and singlecored, this is a nop
             }
+
+            "atomic_xchg" => {
+                let ty = substs.type_at(0);
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let change = self.value_to_primval(arg_vals[1], ty)?;
+                let old = self.read_value(ptr, ty)?;
+                let old = match old {
+                    Value::ByVal(val) => val,
+                    Value::ByRef(_) => bug!("just read the value, can't be byref"),
+                    Value::ByValPair(..) => bug!("atomic_xchg doesn't work with nonprimitives"),
+                };
+                self.write_primval(dest, old)?;
+                self.write_primval(Lvalue::from_ptr(ptr), change)?;
+            }
+
+            "atomic_cxchg" => {
+                let ty = substs.type_at(0);
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let expect_old = self.value_to_primval(arg_vals[1], ty)?;
+                let change = self.value_to_primval(arg_vals[2], ty)?;
+                let old = self.read_value(ptr, ty)?;
+                let old = match old {
+                    Value::ByVal(val) => val,
+                    Value::ByRef(_) => bug!("just read the value, can't be byref"),
+                    Value::ByValPair(..) => bug!("atomic_cxchg doesn't work with nonprimitives"),
+                };
+                let (val, _) = primval::binary_op(mir::BinOp::Eq, old, expect_old)?;
+                let dest = self.force_allocation(dest)?.to_ptr();
+                self.write_pair_to_ptr(old, val, dest, dest_ty)?;
+                self.write_primval(Lvalue::from_ptr(ptr), change)?;
+            }
+
+            "atomic_xadd_relaxed" => {
+                let ty = substs.type_at(0);
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let change = self.value_to_primval(arg_vals[1], ty)?;
+                let old = self.read_value(ptr, ty)?;
+                let old = match old {
+                    Value::ByVal(val) => val,
+                    Value::ByRef(_) => bug!("just read the value, can't be byref"),
+                    Value::ByValPair(..) => bug!("atomic_xadd_relaxed doesn't work with nonprimitives"),
+                };
+                self.write_primval(dest, old)?;
+                // FIXME: what do atomics do on overflow?
+                let (val, _) = primval::binary_op(mir::BinOp::Add, old, change)?;
+                self.write_primval(Lvalue::from_ptr(ptr), val)?;
+            },
 
             "atomic_xsub_rel" => {
                 let ty = substs.type_at(0);
@@ -96,7 +144,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "copy_nonoverlapping" => {
                 // FIXME: check whether overlapping occurs
                 let elem_ty = substs.type_at(0);
-                let elem_size = self.type_size(elem_ty);
+                let elem_size = self.type_size(elem_ty).expect("cannot copy unsized value");
                 let elem_align = self.type_align(elem_ty);
                 let src = arg_vals[0].read_ptr(&self.memory)?;
                 let dest = arg_vals[1].read_ptr(&self.memory)?;
@@ -124,15 +172,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "drop_in_place" => {
                 let ty = substs.type_at(0);
+                trace!("drop in place on {}", ty);
                 let ptr_ty = self.tcx.mk_mut_ptr(ty);
                 let lvalue = match self.follow_by_ref_value(arg_vals[0], ptr_ty)? {
                     Value::ByRef(_) => bug!("follow_by_ref_value returned ByRef"),
-                    Value::ByVal(ptr) => Lvalue::from_ptr(ptr.expect_ptr("drop_in_place first arg not a pointer")),
+                    Value::ByVal(value) => Lvalue::from_ptr(value.to_ptr()),
                     Value::ByValPair(ptr, extra) => Lvalue::Ptr {
-                        ptr: ptr.expect_ptr("drop_in_place first arg not a pointer"),
-                        extra: match extra.try_as_ptr() {
-                            Some(vtable) => LvalueExtra::Vtable(vtable),
-                            None => LvalueExtra::Length(extra.expect_uint("either pointer or not, but not neither")),
+                        ptr: ptr.to_ptr(),
+                        extra: match self.tcx.struct_tail(ty).sty {
+                            ty::TyTrait(_) => LvalueExtra::Vtable(extra.to_ptr()),
+                            ty::TyStr | ty::TySlice(_) => LvalueExtra::Length(extra.try_as_uint()?),
+                            _ => bug!("invalid fat pointer type: {}", ptr_ty),
                         },
                     },
                 };
@@ -230,7 +280,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "offset" => {
                 let pointee_ty = substs.type_at(0);
-                let pointee_size = self.type_size(pointee_ty) as isize;
+                let pointee_size = self.type_size(pointee_ty).expect("cannot offset a pointer to an unsized type") as isize;
                 let offset = self.value_to_primval(arg_vals[1], isize)?
                     .expect_int("offset second arg not isize");
 
@@ -281,7 +331,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "size_of" => {
                 let ty = substs.type_at(0);
-                let size = self.type_size(ty) as u64;
+                // FIXME: change the `box_free` lang item to take `T: ?Sized` and have it use the
+                // `size_of_val` intrinsic, then change this back to
+                // .expect("size_of intrinsic called on unsized value")
+                // see https://github.com/rust-lang/rust/pull/37708
+                let size = self.type_size(ty).unwrap_or(!0) as u64;
                 let size_val = self.usize_primval(size);
                 self.write_primval(dest, size_val)?;
             }
@@ -360,8 +414,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         value: Value,
     ) -> EvalResult<'tcx, (u64, u64)> {
         let pointer_size = self.memory.pointer_size();
-        if self.type_is_sized(ty) {
-            Ok((self.type_size(ty) as u64, self.type_align(ty) as u64))
+        if let Some(size) = self.type_size(ty) {
+            Ok((size as u64, self.type_align(ty) as u64))
         } else {
             match ty.sty {
                 ty::TyAdt(def, substs) => {
@@ -435,8 +489,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 ty::TySlice(_) | ty::TyStr => {
                     let elem_ty = ty.sequence_element_type(self.tcx);
-                    let elem_size = self.type_size(elem_ty) as u64;
-                    let len = value.expect_slice_len(&self.memory)?;
+                    let elem_size = self.type_size(elem_ty).expect("slice element must be sized") as u64;
+                    let (_, len) = value.expect_slice(&self.memory)?;
                     let align = self.type_align(elem_ty);
                     Ok((len * elem_size, align as u64))
                 }

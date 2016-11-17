@@ -21,10 +21,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Bool | Char | U8 | U16 | U32 | U64 => self.cast_int(val.bits, ty, false),
 
-            FnPtr | Ptr => {
-                let ptr = val.expect_ptr("FnPtr- or Ptr-tagged PrimVal had no relocation");
-                self.cast_ptr(ptr, ty)
-            }
+            FnPtr | Ptr => self.cast_ptr(val.to_ptr(), ty),
         }
     }
 

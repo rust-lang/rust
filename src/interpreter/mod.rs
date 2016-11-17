@@ -182,7 +182,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ty: Ty<'tcx>,
         substs: &'tcx Substs<'tcx>
     ) -> EvalResult<'tcx, Pointer> {
-        let size = self.type_size_with_substs(ty, substs);
+        let size = self.type_size_with_substs(ty, substs).expect("cannot alloc memory for unsized type");
         let align = self.type_align_with_substs(ty, substs);
         self.memory.allocate(size, align)
     }
@@ -201,10 +201,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn usize_primval(&self, n: u64) -> PrimVal {
         PrimVal::from_uint_with_size(n, self.memory.pointer_size())
-    }
-
-    fn isize_primval(&self, n: i64) -> PrimVal {
-        PrimVal::from_int_with_size(n, self.memory.pointer_size())
     }
 
     fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
@@ -290,7 +286,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.tcx.normalize_associated_type(&substituted)
     }
 
-    fn type_size(&self, ty: Ty<'tcx>) -> usize {
+    fn type_size(&self, ty: Ty<'tcx>) -> Option<usize> {
         self.type_size_with_substs(ty, self.substs())
     }
 
@@ -298,8 +294,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.type_align_with_substs(ty, self.substs())
     }
 
-    fn type_size_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> usize {
-        self.type_layout_with_substs(ty, substs).size(&self.tcx.data_layout).bytes() as usize
+    fn type_size_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Option<usize> {
+        let layout = self.type_layout_with_substs(ty, substs);
+        if layout.is_unsized() {
+            None
+        } else {
+            Some(layout.size(&self.tcx.data_layout).bytes() as usize)
+        }
     }
 
     fn type_align_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> usize {
@@ -480,7 +481,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     Array { .. } => {
                         let elem_size = match dest_ty.sty {
-                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty) as u64,
+                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty).expect("array elements are sized") as u64,
                             _ => bug!("tried to assign {:?} to non-array type {:?}", kind, dest_ty),
                         };
                         let offsets = (0..).map(|i| i * elem_size);
@@ -517,8 +518,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 let value_ty = self.operand_ty(operand);
                                 self.write_value(value, dest, value_ty)?;
                             } else {
-                                assert_eq!(operands.len(), 0);
-                                let zero = self.isize_primval(0);
+                                if let Some(operand) = operands.get(0) {
+                                    assert_eq!(operands.len(), 1);
+                                    let operand_ty = self.operand_ty(operand);
+                                    assert_eq!(self.type_size(operand_ty), Some(0));
+                                }
+                                let value_size = self.type_size(dest_ty).expect("pointer types are sized");
+                                let zero = PrimVal::from_int_with_size(0, value_size);
                                 self.write_primval(dest, zero)?;
                             }
                         } else {
@@ -534,15 +540,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             } else {
                                 for operand in operands {
                                     let operand_ty = self.operand_ty(operand);
-                                    assert_eq!(self.type_size(operand_ty), 0);
+                                    assert_eq!(self.type_size(operand_ty), Some(0));
                                 }
-                                let offset = self.nonnull_offset(dest_ty, nndiscr, discrfield)?;
+                                let (offset, ty) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
 
                                 // FIXME(solson)
                                 let dest = self.force_allocation(dest)?.to_ptr();
 
                                 let dest = dest.offset(offset.bytes() as isize);
-                                try!(self.memory.write_isize(dest, 0));
+                                let dest_size = self.type_size(ty).expect("bad StructWrappedNullablePointer discrfield");
+                                try!(self.memory.write_int(dest, 0, dest_size));
                             }
                         } else {
                             bug!("tried to assign {:?} to Layout::RawNullablePointer", kind);
@@ -567,6 +574,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     }
 
+                    Vector { element, count } => {
+                        let elem_size = element.size(&self.tcx.data_layout).bytes();
+                        debug_assert_eq!(count, operands.len() as u64);
+                        let offsets = (0..).map(|i| i * elem_size);
+                        self.assign_fields(dest, offsets, operands)?;
+                    }
+
                     _ => return Err(EvalError::Unimplemented(format!("can't handle destination layout {:?} when assigning {:?}", dest_layout, kind))),
                 }
             }
@@ -576,7 +590,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     ty::TyArray(elem_ty, n) => (elem_ty, n),
                     _ => bug!("tried to assign array-repeat to non-array type {:?}", dest_ty),
                 };
-                let elem_size = self.type_size(elem_ty);
+                let elem_size = self.type_size(elem_ty).expect("repeat element type must be sized");
                 let value = self.eval_operand(operand)?;
 
                 // FIXME(solson)
@@ -651,7 +665,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     ReifyFnPointer => match self.operand_ty(operand).sty {
                         ty::TyFnDef(def_id, substs, fn_ty) => {
-                            let fn_ptr = self.memory.create_fn_ptr(def_id, substs, fn_ty);
+                            let fn_ty = self.tcx.erase_regions(&fn_ty);
+                            let fn_ptr = self.memory.create_fn_ptr(self.tcx,def_id, substs, fn_ty);
                             self.write_value(Value::ByVal(PrimVal::from_fn_ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("reify fn pointer on {:?}", other),
@@ -661,8 +676,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         ty::TyFnPtr(unsafe_fn_ty) => {
                             let src = self.eval_operand(operand)?;
                             let ptr = src.read_ptr(&self.memory)?;
-                            let (def_id, substs, _) = self.memory.get_fn(ptr.alloc_id)?;
-                            let fn_ptr = self.memory.create_fn_ptr(def_id, substs, unsafe_fn_ty);
+                            let (def_id, substs, _, _) = self.memory.get_fn(ptr.alloc_id)?;
+                            let unsafe_fn_ty = self.tcx.erase_regions(&unsafe_fn_ty);
+                            let fn_ptr = self.memory.create_fn_ptr(self.tcx, def_id, substs, unsafe_fn_ty);
                             self.write_value(Value::ByVal(PrimVal::from_fn_ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("fn to unsafe fn cast on {:?}", other),
@@ -689,7 +705,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn nonnull_offset(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> EvalResult<'tcx, Size> {
+    fn nonnull_offset_and_ty(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
         // Skip the constant 0 at the start meant for LLVM GEP.
         let mut path = discrfield.iter().skip(1).map(|&i| i as usize);
 
@@ -704,10 +720,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             _ => bug!("non-enum for StructWrappedNullablePointer: {}", ty),
         };
 
-        self.field_path_offset(inner_ty, path)
+        self.field_path_offset_and_ty(inner_ty, path)
     }
 
-    fn field_path_offset<I: Iterator<Item = usize>>(&self, mut ty: Ty<'tcx>, path: I) -> EvalResult<'tcx, Size> {
+    fn field_path_offset_and_ty<I: Iterator<Item = usize>>(&self, mut ty: Ty<'tcx>, path: I) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
         let mut offset = Size::from_bytes(0);
 
         // Skip the initial 0 intended for LLVM GEP.
@@ -717,7 +733,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             offset = offset.checked_add(field_offset, &self.tcx.data_layout).unwrap();
         }
 
-        Ok(offset)
+        Ok((offset, ty))
     }
 
     fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
@@ -731,8 +747,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
             ty::TyBox(ty) => {
-                assert_eq!(field_index, 0);
-                Ok(ty)
+                match (field_index, &self.tcx.struct_tail(ty).sty) {
+                    (1, &ty::TyStr) |
+                    (1, &ty::TySlice(_)) => Ok(self.tcx.types.usize),
+                    (1, &ty::TyTrait(_)) |
+                    (0, _) => Ok(self.tcx.mk_imm_ptr(self.tcx.types.u8)),
+                    _ => bug!("invalid fat pointee type: {}", ty),
+                }
             }
             _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, {:?}", ty, ty.sty))),
         }
@@ -955,33 +976,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Deref => {
-                use interpreter::value::Value::*;
+                let val = self.eval_and_read_lvalue(&proj.base)?;
 
-                let val = match self.eval_and_read_lvalue(&proj.base)? {
-                    ByRef(ptr) => self.read_value(ptr, base_ty)?,
-                    v => v,
+                let pointee_type = match base_ty.sty {
+                    ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
+                    ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
+                    ty::TyBox(ty) => ty,
+                    _ => bug!("can only deref pointer types"),
                 };
 
-                match val {
-                    ByValPair(ptr, vtable)
-                        if ptr.try_as_ptr().is_some() && vtable.try_as_ptr().is_some()
-                    => {
-                        let ptr = ptr.try_as_ptr().unwrap();
-                        let vtable = vtable.try_as_ptr().unwrap();
+                trace!("deref to {} on {:?}", pointee_type, val);
+
+                match self.tcx.struct_tail(pointee_type).sty {
+                    ty::TyTrait(_) => {
+                        let (ptr, vtable) = val.expect_ptr_vtable_pair(&self.memory)?;
                         (ptr, LvalueExtra::Vtable(vtable))
-                    }
-
-                    ByValPair(ptr, n) if ptr.try_as_ptr().is_some() => {
-                        let ptr = ptr.try_as_ptr().unwrap();
-                        (ptr, LvalueExtra::Length(n.expect_uint("slice length")))
-                    }
-
-                    ByVal(ptr) if ptr.try_as_ptr().is_some() => {
-                        let ptr = ptr.try_as_ptr().unwrap();
-                        (ptr, LvalueExtra::None)
-                    }
-
-                    _ => bug!("can't deref non pointer types"),
+                    },
+                    ty::TyStr | ty::TySlice(_) => {
+                        let (ptr, len) = val.expect_slice(&self.memory)?;
+                        (ptr, LvalueExtra::Length(len))
+                    },
+                    _ => (val.read_ptr(&self.memory)?, LvalueExtra::None),
                 }
             }
 
@@ -991,7 +1006,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (base_ptr, _) = base.to_ptr_and_extra();
 
                 let (elem_ty, len) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty);
+                let elem_size = self.type_size(elem_ty).expect("slice element must be sized");
                 let n_ptr = self.eval_operand(operand)?;
                 let usize = self.tcx.types.usize;
                 let n = self.value_to_primval(n_ptr, usize)?
@@ -1007,7 +1022,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (base_ptr, _) = base.to_ptr_and_extra();
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty);
+                let elem_size = self.type_size(elem_ty).expect("sequence element must be sized");
                 assert!(n >= min_length as u64);
 
                 let index = if from_end {
@@ -1026,7 +1041,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (base_ptr, _) = base.to_ptr_and_extra();
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty);
+                let elem_size = self.type_size(elem_ty).expect("slice element must be sized");
                 assert!((from as u64) <= n - (to as u64));
                 let ptr = base_ptr.offset(from as isize * elem_size as isize);
                 let extra = LvalueExtra::Length(n - to as u64 - from as u64);
@@ -1046,7 +1061,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
-        let size = self.type_size(ty);
+        let size = self.type_size(ty).expect("cannot copy from an unsized type");
         let align = self.type_align(ty);
         self.memory.copy(src, dest, size, align)?;
         Ok(())
@@ -1388,7 +1403,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr)?),
 
             ty::TyFnDef(def_id, substs, fn_ty) => {
-                PrimVal::from_fn_ptr(self.memory.create_fn_ptr(def_id, substs, fn_ty))
+                PrimVal::from_fn_ptr(self.memory.create_fn_ptr(self.tcx, def_id, substs, fn_ty))
             },
             ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::from_fn_ptr)?,
             ty::TyBox(ty) |
@@ -1398,7 +1413,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if self.type_is_sized(ty) {
                     PrimVal::from_ptr(p)
                 } else {
-                    // FIXME: extract the offset to the tail field for `Box<(i64, i32, [u8])>`
+                    trace!("reading fat pointer extra of type {}", ty);
                     let extra = ptr.offset(self.memory.pointer_size() as isize);
                     let extra = match self.tcx.struct_tail(ty).sty {
                         ty::TyTrait(..) => PrimVal::from_ptr(self.memory.read_ptr(extra)?),
@@ -1505,14 +1520,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 //let dst = adt::MaybeSizedValue::sized(dst);
                 let src_ptr = match src {
                     Value::ByRef(ptr) => ptr,
-                    _ => panic!("expected pointer, got {:?}", src),
+                    _ => bug!("expected pointer, got {:?}", src),
                 };
 
                 let iter = src_fields.zip(dst_fields).enumerate();
                 for (i, (src_f, dst_f)) in iter {
                     let src_fty = monomorphize_field_ty(self.tcx, src_f, substs_a);
                     let dst_fty = monomorphize_field_ty(self.tcx, dst_f, substs_b);
-                    if self.type_size(dst_fty) == 0 {
+                    if self.type_size(dst_fty) == Some(0) {
                         continue;
                     }
                     let src_field_offset = self.get_field_offset(src_ty, i)?.bytes() as isize;
