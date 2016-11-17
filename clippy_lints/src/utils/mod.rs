@@ -773,3 +773,22 @@ pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
 pub fn is_automatically_derived(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "automatically_derived")
 }
+
+/// Remove blocks around an expression.
+///
+/// Ie. `x`, `{ x }` and `{{{{ x }}}}` all give `x`. `{ x; y }` and `{}` return themselves.
+pub fn remove_blocks(expr: &Expr) -> &Expr {
+    if let ExprBlock(ref block) = expr.node {
+        if block.stmts.is_empty() {
+            if let Some(ref expr) = block.expr {
+                remove_blocks(expr)
+            } else {
+                expr
+            }
+        } else {
+            expr
+        }
+    } else {
+        expr
+    }
+}

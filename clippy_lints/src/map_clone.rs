@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use syntax::ast;
-use utils::{is_adjusted, match_path, match_trait_method, match_type, paths, snippet,
+use utils::{is_adjusted, match_path, match_trait_method, match_type, remove_blocks, paths, snippet,
             span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 
 /// **What it does:** Checks for mapping `clone()` over an iterator.
@@ -31,6 +31,7 @@ impl LateLintPass for Pass {
             if name.node.as_str() == "map" && args.len() == 2 {
                 match args[1].node {
                     ExprClosure(_, ref decl, ref closure_expr, _) => {
+                        let closure_expr = remove_blocks(closure_expr);
                         if_let_chain! {[
                             // nothing special in the argument, besides reference bindings
                             // (e.g. .map(|&x| x) )
