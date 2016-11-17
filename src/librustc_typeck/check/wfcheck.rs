@@ -51,8 +51,7 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
         let id = self.id;
         let span = self.span;
         self.inherited.enter(|inh| {
-            let mut fcx = FnCtxt::new(&inh, id);
-            fcx.ret_ty = Some(inh.ccx.tcx.types.never);
+            let fcx = FnCtxt::new(&inh, Some(inh.ccx.tcx.types.never), id);
             let wf_tys = f(&fcx, &mut CheckTypeWellFormedVisitor {
                 ccx: fcx.ccx,
                 code: code
