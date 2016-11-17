@@ -586,3 +586,45 @@ you add more examples.
 
 We haven’t covered all of the details with writing documentation tests. For more,
 please see the [Documentation chapter](documentation.html).
+
+# Testing and concurrency
+
+One thing that is important to note when writing tests are run concurrently
+using threads. For this reason you should take care that your tests are written
+in such a way as to not depend on each-other, or on any shared state. "Shared
+state" can also include the environment, such as the current working directory,
+or environment variables.
+
+If this is an issue it is possible to control this concurrency, either by
+setting the environment variable `RUST_TEST_THREADS`, or by passing the argument
+`--test-threads` to the tests:
+
+```bash
+$ RUST_TEST_THREADS=1 cargo test   # Run tests with no concurrency
+...
+$ cargo test -- --test-threads=1   # Same as above
+...
+```
+
+# Test output
+
+By default Rust's test library captures and discards output to standard
+out/error, e.g. output from `println!()`. This too can be controlled using the
+environment or a switch:
+
+
+```bash
+$ RUST_TEST_NOCAPTURE=1 cargo test   # Preserve stdout/stderr
+...
+$ cargo test -- --nocapture          # Same as above
+...
+```
+
+However a better method avoiding capture is to use logging rather than raw
+output. Rust has a [standard logging API][log], which provides a frontend to
+multiple logging implementations. This can be used in conjunction with the
+default [env_logger] to output any debugging information in a manner that can be
+controlled at runtime.
+
+[log]: https://crates.io/crates/log
+[env_logger]: https://crates.io/crates/env_logger
