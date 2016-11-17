@@ -123,13 +123,24 @@ fn main() {
        .cpp_link_stdlib(None) // we handle this below
        .compile("librustllvm.a");
 
+    // Find out LLVM's default linking mode.
+    let mut cmd = Command::new(&llvm_config);
+    cmd.arg("--shared-mode");
+    let mut llvm_kind = if output(&mut cmd).trim() == "shared" {
+        "dylib"
+    } else {
+        "static"
+    };
+
     // Link in all LLVM libraries, if we're uwring the "wrong" llvm-config then
     // we don't pick up system libs because unfortunately they're for the host
     // of llvm-config, not the target that we're attempting to link.
     let mut cmd = Command::new(&llvm_config);
     cmd.arg("--libs");
 
-    // Force static linking with "--link-static" if available.
+    // Force static linking with "--link-static" if available, or
+    // force "--link-shared" if the configuration requested it.
+    let llvm_link_shared = env::var_os("LLVM_LINK_SHARED").is_some();
     let mut version_cmd = Command::new(&llvm_config);
     version_cmd.arg("--version");
     let version_output = output(&mut version_cmd);
@@ -137,7 +148,13 @@ fn main() {
     if let (Some(major), Some(minor)) = (parts.next().and_then(|s| s.parse::<u32>().ok()),
                                          parts.next().and_then(|s| s.parse::<u32>().ok())) {
         if major > 3 || (major == 3 && minor >= 9) {
-            cmd.arg("--link-static");
+            if llvm_link_shared {
+                cmd.arg("--link-shared");
+                llvm_kind = "dylib";
+            } else {
+                cmd.arg("--link-static");
+                llvm_kind = "static";
+            }
         }
     }
 
@@ -174,7 +191,7 @@ fn main() {
         }
 
         let kind = if name.starts_with("LLVM") {
-            "static"
+            llvm_kind
         } else {
             "dylib"
         };
