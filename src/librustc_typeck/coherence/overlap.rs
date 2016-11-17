@@ -14,7 +14,7 @@
 
 use hir::def_id::DefId;
 use rustc::traits::{self, Reveal};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, TypeFoldable};
 use syntax::ast;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
@@ -133,6 +133,12 @@ impl<'cx, 'tcx, 'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                 let impl_def_id = self.tcx.map.local_def_id(item.id);
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
+
+                if trait_ref.references_error() {
+                    debug!("coherence: skipping impl {:?} with error {:?}",
+                           impl_def_id, trait_ref);
+                    return
+                }
 
                 let _task =
                     self.tcx.dep_graph.in_task(DepNode::CoherenceOverlapCheck(trait_def_id));
