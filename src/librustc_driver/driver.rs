@@ -54,7 +54,7 @@ use syntax::{ast, diagnostics, visit};
 use syntax::attr;
 use syntax::ext::base::ExtCtxt;
 use syntax::parse::{self, PResult};
-use syntax::symbol::{self, Symbol};
+use syntax::symbol::Symbol;
 use syntax::util::node_count::NodeCounter;
 use syntax;
 use syntax_ext;

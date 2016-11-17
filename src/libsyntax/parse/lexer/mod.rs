@@ -1702,6 +1702,7 @@ mod tests {
     use super::*;
 
     use ast::Ident;
+    use symbol::Symbol;
     use syntax_pos::{BytePos, Span, NO_EXPANSION};
     use codemap::CodeMap;
     use errors;
@@ -1752,7 +1753,7 @@ mod tests {
         // read another token:
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan {
-            tok: token::Ident(str_to_ident("main")),
+            tok: token::Ident(Ident::from_str("main")),
             sp: Span {
                 lo: BytePos(24),
                 hi: BytePos(28),
@@ -1774,7 +1775,7 @@ mod tests {
 
     // make the identifier by looking up the string in the interner
     fn mk_ident(id: &str) -> token::Token {
-        token::Ident(str_to_ident(id))
+        token::Ident(Ident::from_str(id))
     }
 
     #[test]
@@ -1838,7 +1839,7 @@ mod tests {
         let cm = Rc::new(CodeMap::new());
         let sh = mk_sh(cm.clone());
         assert_eq!(setup(&cm, &sh, "'abc".to_string()).next_token().tok,
-                   token::Lifetime(token::str_to_ident("'abc")));
+                   token::Lifetime(Ident::from_str("'abc")));
     }
 
     #[test]
@@ -1848,7 +1849,7 @@ mod tests {
         assert_eq!(setup(&cm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string())
                        .next_token()
                        .tok,
-                   token::Literal(token::StrRaw(Symol::intern("\"#a\\b\x00c\""), 3), None));
+                   token::Literal(token::StrRaw(Symbol::intern("\"#a\\b\x00c\""), 3), None));
     }
 
     #[test]

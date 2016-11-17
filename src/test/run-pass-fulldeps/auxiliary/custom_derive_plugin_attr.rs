@@ -23,7 +23,7 @@ extern crate rustc_plugin;
 use syntax::ast;
 use syntax::ext::base::{MultiDecorator, ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token;
+use syntax::symbol::Symbol;
 use syntax::ptr::P;
 use syntax_ext::deriving::generic::{TraitDef, MethodDef, combine_substructure};
 use syntax_ext::deriving::generic::{Substructure, Struct, EnumMatching};
@@ -34,7 +34,7 @@ use rustc_plugin::Registry;
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_syntax_extension(
-        token::intern("derive_TotalSum"),
+        Symbol::intern("derive_TotalSum"),
         MultiDecorator(box expand));
 }
 

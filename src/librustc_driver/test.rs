@@ -34,8 +34,8 @@ use syntax::codemap::CodeMap;
 use errors;
 use errors::emitter::Emitter;
 use errors::{Level, DiagnosticBuilder};
-use syntax::parse::token;
 use syntax::feature_gate::UnstableFeatures;
+use syntax::symbol::Symbol;
 
 use rustc::hir;
 
@@ -288,11 +288,11 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     pub fn t_param(&self, index: u32) -> Ty<'tcx> {
         let name = format!("T{}", index);
-        self.infcx.tcx.mk_param(index, token::intern(&name[..]))
+        self.infcx.tcx.mk_param(index, Symbol::intern(&name[..]))
     }
 
     pub fn re_early_bound(&self, index: u32, name: &'static str) -> &'tcx ty::Region {
-        let name = token::intern(name);
+        let name = Symbol::intern(name);
         self.infcx.tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
             index: index,
             name: name,

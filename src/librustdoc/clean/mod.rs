@@ -24,9 +24,9 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap::Spanned;
-use syntax::parse::token::keywords;
 use syntax::ptr::P;
 use syntax::print::pprust as syntax_pprust;
+use syntax::symbol::keywords;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
 use rustc_trans::back::link;
@@ -242,7 +242,7 @@ impl Clean<ExternalCrate> for CrateNum {
             }
         });
         ExternalCrate {
-            name: (&cx.sess().cstore.crate_name(self.0)[..]).to_owned(),
+            name: cx.sess().cstore.crate_name(self.0).to_string(),
             attrs: cx.sess().cstore.item_attrs(root).clean(cx),
             primitives: primitives,
         }
@@ -2577,7 +2577,7 @@ impl Clean<Vec<Item>> for doctree::Import {
         // #[doc(no_inline)] attribute is present.
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let denied = self.vis != hir::Public || self.attrs.iter().any(|a| {
-            &a.name()[..] == "doc" && match a.meta_item_list() {
+            a.name() == "doc" && match a.meta_item_list() {
                 Some(l) => attr::list_contains_name(l, "no_inline") ||
                            attr::list_contains_name(l, "hidden"),
                 None => false,

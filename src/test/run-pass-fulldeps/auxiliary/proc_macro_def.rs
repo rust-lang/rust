@@ -18,18 +18,19 @@ use proc_macro_tokens::prelude::*;
 use rustc_plugin::Registry;
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::proc_macro_shim::prelude::*;
+use syntax::symbol::Symbol;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_syntax_extension(token::intern("attr_tru"),
+    reg.register_syntax_extension(Symbol::intern("attr_tru"),
                                   SyntaxExtension::AttrProcMacro(Box::new(attr_tru)));
-    reg.register_syntax_extension(token::intern("attr_identity"),
+    reg.register_syntax_extension(Symbol::intern("attr_identity"),
                                   SyntaxExtension::AttrProcMacro(Box::new(attr_identity)));
-    reg.register_syntax_extension(token::intern("tru"),
+    reg.register_syntax_extension(Symbol::intern("tru"),
                                   SyntaxExtension::ProcMacro(Box::new(tru)));
-    reg.register_syntax_extension(token::intern("ret_tru"),
+    reg.register_syntax_extension(Symbol::intern("ret_tru"),
                                   SyntaxExtension::ProcMacro(Box::new(ret_tru)));
-    reg.register_syntax_extension(token::intern("identity"),
+    reg.register_syntax_extension(Symbol::intern("identity"),
                                   SyntaxExtension::ProcMacro(Box::new(identity)));
 }
 

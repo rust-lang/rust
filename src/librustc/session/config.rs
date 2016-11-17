@@ -1764,9 +1764,7 @@ mod tests {
     use std::rc::Rc;
     use super::{OutputType, OutputTypes, Externs};
     use rustc_back::PanicStrategy;
-    use syntax::{ast, attr};
-    use syntax::parse::token::InternedString;
-    use syntax::codemap::dummy_spanned;
+    use syntax::symbol::Symbol;
 
     fn optgroups() -> Vec<OptGroup> {
         super::rustc_optgroups().into_iter()
@@ -1795,9 +1793,7 @@ mod tests {
         let (sessopts, cfg) = build_session_options_and_crate_config(matches);
         let sess = build_session(sessopts, &dep_graph, None, registry, Rc::new(DummyCrateStore));
         let cfg = build_configuration(&sess, cfg);
-        assert!(attr::contains(&cfg, &dummy_spanned(ast::MetaItemKind::Word({
-            InternedString::new("test")
-        }))));
+        assert!(cfg.contains(&(Symbol::intern("test"), None)));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add
@@ -1818,7 +1814,7 @@ mod tests {
         let sess = build_session(sessopts, &dep_graph, None, registry,
                                  Rc::new(DummyCrateStore));
         let cfg = build_configuration(&sess, cfg);
-        let mut test_items = cfg.iter().filter(|m| m.name() == "test");
+        let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());
     }
