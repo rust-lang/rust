@@ -144,7 +144,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn eval_drop_impls(&mut self, drops: Vec<(DefId, Value, &'tcx Substs<'tcx>)>) -> EvalResult<'tcx, ()> {
+    pub fn eval_drop_impls(&mut self, drops: Vec<(DefId, Value, &'tcx Substs<'tcx>)>) -> EvalResult<'tcx, ()> {
         let span = self.frame().span;
         // add them to the stack in reverse order, because the impl that needs to run the last
         // is the one that needs to be at the bottom of the stack
@@ -249,6 +249,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty);
+        trace!("read_discriminant_value {:?}", adt_layout);
 
         let discr_val = match *adt_layout {
             General { discr, .. } | CEnum { discr, signed: false, .. } => {
@@ -263,12 +264,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             RawNullablePointer { nndiscr, value } => {
                 let discr_size = value.size(&self.tcx.data_layout).bytes() as usize;
+                trace!("rawnullablepointer with size {}", discr_size);
                 self.read_nonnull_discriminant_value(adt_ptr, nndiscr, discr_size)?
             }
 
             StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
                 let (offset, ty) = self.nonnull_offset_and_ty(adt_ty, nndiscr, discrfield)?;
                 let nonnull = adt_ptr.offset(offset.bytes() as isize);
+                trace!("struct wrapped nullable pointer type: {}", ty);
                 // only the pointer part of a fat pointer is used for this space optimization
                 let discr_size = self.type_size(ty).expect("bad StructWrappedNullablePointer discrfield");
                 self.read_nonnull_discriminant_value(nonnull, nndiscr, discr_size)?
@@ -515,7 +518,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     /// push DefIds of drop impls and their argument on the given vector
-    fn drop(
+    pub fn drop(
         &mut self,
         lval: Lvalue<'tcx>,
         ty: Ty<'tcx>,

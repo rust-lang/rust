@@ -212,6 +212,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if ptr.points_to_zst() {
             return self.allocate(new_size, align);
         }
+        if self.get(ptr.alloc_id).map(|alloc| alloc.immutable) == Ok(true) {
+            return Err(EvalError::ReallocatedFrozenMemory);
+        }
 
         let size = self.get(ptr.alloc_id)?.bytes.len();
 
@@ -241,6 +244,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if ptr.offset != 0 {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
+        }
+        if self.get(ptr.alloc_id).map(|alloc| alloc.immutable) == Ok(true) {
+            return Err(EvalError::DeallocatedFrozenMemory);
         }
 
         if let Some(alloc) = self.alloc_map.remove(&ptr.alloc_id) {
@@ -446,9 +452,24 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 /// Reading and writing
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn freeze(&mut self, alloc_id: AllocId) -> EvalResult<'tcx, ()> {
+        // FIXME: the comment is wrong and do we really still need this check?
         // It's not possible to freeze the zero-sized allocation, because it doesn't exist.
         if alloc_id != ZST_ALLOC_ID {
-            self.get_mut(alloc_id)?.immutable = true;
+            // do not use `self.get_mut(alloc_id)` here, because we might have already frozen a
+            // sub-element or have circular pointers (e.g. `Rc`-cycles)
+            let allocs: Vec<_> = match self.alloc_map.get_mut(&alloc_id) {
+                Some(ref mut alloc) if !alloc.immutable => {
+                    alloc.immutable = true;
+                    alloc.relocations.values().cloned().collect()
+                },
+                None if alloc_id == NEVER_ALLOC_ID || alloc_id == ZST_ALLOC_ID => Vec::new(),
+                None if !self.functions.contains_key(&alloc_id) => return Err(EvalError::DanglingPointerDeref),
+                _ => Vec::new(),
+            };
+            // recurse into inner allocations
+            for alloc in allocs {
+                self.freeze(alloc)?;
+            }
         }
         Ok(())
     }

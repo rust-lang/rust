@@ -7,7 +7,7 @@ use memory::Pointer;
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum EvalError<'tcx> {
     FunctionPointerTyMismatch(Abi, &'tcx FnSig<'tcx>, &'tcx BareFnTy<'tcx>),
     NoMirFor(String),
@@ -48,6 +48,8 @@ pub enum EvalError<'tcx> {
     AssumptionNotHeld,
     InlineAsm,
     TypeNotPrimitive(Ty<'tcx>),
+    ReallocatedFrozenMemory,
+    DeallocatedFrozenMemory,
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -110,6 +112,10 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "cannot evaluate inline assembly",
             EvalError::TypeNotPrimitive(_) =>
                 "expected primitive type, got nonprimitive",
+            EvalError::ReallocatedFrozenMemory =>
+                "tried to reallocate frozen memory",
+            EvalError::DeallocatedFrozenMemory =>
+                "tried to deallocate frozen memory",
         }
     }
 
