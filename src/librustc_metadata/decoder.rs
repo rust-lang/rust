@@ -23,7 +23,7 @@ use rustc::hir::intravisit::IdRange;
 
 use rustc::middle::cstore::{DepKind, InlinedItem, LinkagePreference};
 use rustc::hir::def::{self, Def, CtorKind};
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
@@ -513,7 +513,14 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_def(&self, index: DefIndex) -> Option<Def> {
-        self.entry(index).kind.to_def(self.local_def_id(index))
+        if self.proc_macros.is_some() {
+            Some(match index {
+                CRATE_DEF_INDEX => Def::Mod(self.local_def_id(index)),
+                _ => Def::Macro(self.local_def_id(index)),
+            })
+        } else {
+            self.entry(index).kind.to_def(self.local_def_id(index))
+        }
     }
 
     pub fn get_trait_def(&self,
@@ -643,15 +650,24 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_stability(&self, id: DefIndex) -> Option<attr::Stability> {
-        self.entry(id).stability.map(|stab| stab.decode(self))
+        match self.proc_macros {
+            Some(_) if id != CRATE_DEF_INDEX => None,
+            _ => self.entry(id).stability.map(|stab| stab.decode(self)),
+        }
     }
 
     pub fn get_deprecation(&self, id: DefIndex) -> Option<attr::Deprecation> {
-        self.entry(id).deprecation.map(|depr| depr.decode(self))
+        match self.proc_macros {
+            Some(_) if id != CRATE_DEF_INDEX => None,
+            _ => self.entry(id).deprecation.map(|depr| depr.decode(self)),
+        }
     }
 
     pub fn get_visibility(&self, id: DefIndex) -> ty::Visibility {
-        self.entry(id).visibility
+        match self.proc_macros {
+            Some(_) => ty::Visibility::Public,
+            _ => self.entry(id).visibility,
+        }
     }
 
     fn get_impl_data(&self, id: DefIndex) -> ImplData<'tcx> {
@@ -692,11 +708,11 @@ impl<'a, 'tcx> CrateMetadata {
         where F: FnMut(def::Export)
     {
         if let Some(ref proc_macros) = self.proc_macros {
-            for (id, &(name, _)) in proc_macros.iter().enumerate() {
-                callback(def::Export {
-                    name: name,
-                    def: Def::Macro(DefId { krate: self.cnum, index: DefIndex::new(id), }),
-                })
+            if id == CRATE_DEF_INDEX {
+                for (id, &(name, _)) in proc_macros.iter().enumerate() {
+                    let def = Def::Macro(DefId { krate: self.cnum, index: DefIndex::new(id + 1) });
+                    callback(def::Export { name: name, def: def });
+                }
             }
             return
         }
@@ -894,6 +910,9 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_item_attrs(&self, node_id: DefIndex) -> Vec<ast::Attribute> {
+        if self.proc_macros.is_some() && node_id != CRATE_DEF_INDEX {
+            return Vec::new();
+        }
         // The attributes for a tuple struct are attached to the definition, not the ctor;
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
