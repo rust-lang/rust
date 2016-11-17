@@ -825,6 +825,21 @@ pub fn exit(code: i32) -> ! {
     ::sys::os::exit(code)
 }
 
+/// Terminates the process in an abnormal fashion.
+///
+/// The function will never return and will immediately terminate the current
+/// process in a platform specific "abnormal" manner.
+///
+/// Note that because this function never returns, and that it terminates the
+/// process, no destructors on the current stack or any other thread's stack
+/// will be run. If a clean shutdown is needed it is recommended to only call
+/// this function at a known point where there are no more destructors left
+/// to run.
+#[unstable(feature = "process_abort", issue = "37838")]
+pub fn abort() -> ! {
+    unsafe { ::sys::abort_internal() };
+}
+
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use io::prelude::*;
