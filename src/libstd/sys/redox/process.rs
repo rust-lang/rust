@@ -287,10 +287,10 @@ impl Command {
         }
 
         if let Some(g) = self.gid {
-            t!(cvt(libc::setgid(g)));
+            t!(cvt(libc::setregid(g, g)));
         }
         if let Some(u) = self.uid {
-            t!(cvt(libc::setuid(u)));
+            t!(cvt(libc::setreuid(u, u)));
         }
         if let Some(ref cwd) = self.cwd {
             t!(cvt(libc::chdir(cwd)));
