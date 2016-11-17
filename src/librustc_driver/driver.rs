@@ -709,10 +709,12 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
             let crate_types = sess.crate_types.borrow();
             let num_crate_types = crate_types.len();
             let is_proc_macro_crate = crate_types.contains(&config::CrateTypeProcMacro);
+            let is_test_crate = sess.opts.test;
             syntax_ext::proc_macro_registrar::modify(&sess.parse_sess,
                                                      &mut resolver,
                                                      krate,
                                                      is_proc_macro_crate,
+                                                     is_test_crate,
                                                      num_crate_types,
                                                      sess.diagnostic(),
                                                      &sess.features.borrow())
