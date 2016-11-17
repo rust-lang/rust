@@ -874,12 +874,12 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
 impl<'a> DocFolder for SourceCollector<'a> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         // If we're including source files, and we haven't seen this file yet,
-        // then we need to render it out to the filesystem
+        // then we need to render it out to the filesystem.
         if self.scx.include_sources
             // skip all invalid spans
             && item.source.filename != ""
-            // macros from other libraries get special filenames which we can
-            // safely ignore
+            // Macros from other libraries get special filenames which we can
+            // safely ignore.
             && !(item.source.filename.starts_with("<")
                 && item.source.filename.ends_with("macros>")) {
 
@@ -974,13 +974,13 @@ impl DocFolder for Cache {
         };
 
         // Register any generics to their corresponding string. This is used
-        // when pretty-printing types
+        // when pretty-printing types.
         if let Some(generics) = item.inner.generics() {
             self.generics(generics);
         }
 
-        // Propagate a trait methods' documentation to all implementors of the
-        // trait
+        // Propagate a trait method's documentation to all implementors of the
+        // trait.
         if let clean::TraitItem(ref t) = item.inner {
             self.traits.entry(item.def_id).or_insert_with(|| t.clone());
         }
@@ -996,7 +996,7 @@ impl DocFolder for Cache {
             }
         }
 
-        // Index this method for searching later on
+        // Index this method for searching later on.
         if let Some(ref s) = item.name {
             let (parent, is_inherent_impl_item) = match item.inner {
                 clean::StrippedItem(..) => ((None, None), false),
@@ -1097,8 +1097,8 @@ impl DocFolder for Cache {
                                       (self.stack.clone(), item.type_()));
                 }
             }
-            // link variants to their parent enum because pages aren't emitted
-            // for each variant
+            // Link variants to their parent enum because pages aren't emitted
+            // for each variant.
             clean::VariantItem(..) if !self.stripped_mod => {
                 let mut stack = self.stack.clone();
                 stack.pop();
@@ -1144,8 +1144,8 @@ impl DocFolder for Cache {
             _ => false
         };
 
-        // Once we've recursively found all the generics, then hoard off all the
-        // implementations elsewhere
+        // Once we've recursively found all the generics, hoard off all the
+        // implementations elsewhere.
         let ret = self.fold_item_recur(item).and_then(|item| {
             if let clean::Item { inner: clean::ImplItem(_), .. } = item {
                 // Figure out the id of this impl. This may map to a
@@ -1206,7 +1206,7 @@ impl Context {
     }
 
     /// Recurse in the directory structure and change the "root path" to make
-    /// sure it always points to the top (relatively)
+    /// sure it always points to the top (relatively).
     fn recurse<T, F>(&mut self, s: String, f: F) -> T where
         F: FnOnce(&mut Context) -> T,
     {
@@ -1237,11 +1237,11 @@ impl Context {
     fn krate(self, mut krate: clean::Crate) -> Result<(), Error> {
         let mut item = match krate.module.take() {
             Some(i) => i,
-            None => return Ok(())
+            None => return Ok(()),
         };
         item.name = Some(krate.name);
 
-        // render the crate documentation
+        // Render the crate documentation
         let mut work = vec![(self, item)];
 
         while let Some((mut cx, item)) = work.pop() {
@@ -2987,7 +2987,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
         let it = self.item;
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
 
-        // the sidebar is designed to display sibling functions, modules and
+        // The sidebar is designed to display sibling functions, modules and
         // other miscellaneous information. since there are lots of sibling
         // items (and that causes quadratic growth in large modules),
         // we refactor common parts into a shared JavaScript file per module.
@@ -3006,7 +3006,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
         }
         write!(fmt, "</p>")?;
 
-        // sidebar refers to the enclosing module, not this module
+        // Sidebar refers to the enclosing module, not this module.
         let relpath = if it.is_mod() { "../" } else { "" };
         write!(fmt,
                "<script>window.sidebarCurrent = {{\
@@ -3018,7 +3018,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                ty = it.type_().css_class(),
                path = relpath)?;
         if parentlen == 0 {
-            // there is no sidebar-items.js beyond the crate root path
+            // There is no sidebar-items.js beyond the crate root path
             // FIXME maybe dynamic crate loading can be merged here
         } else {
             write!(fmt, "<script defer src=\"{path}sidebar-items.js\"></script>",
