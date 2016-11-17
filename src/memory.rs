@@ -212,7 +212,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if ptr.points_to_zst() {
             return self.allocate(new_size, align);
         }
-        if self.get(ptr.alloc_id).map(|alloc| alloc.immutable) == Ok(true) {
+        if self.get(ptr.alloc_id).map(|alloc| alloc.immutable).ok() == Some(true) {
             return Err(EvalError::ReallocatedFrozenMemory);
         }
 
@@ -245,7 +245,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
-        if self.get(ptr.alloc_id).map(|alloc| alloc.immutable) == Ok(true) {
+        if self.get(ptr.alloc_id).map(|alloc| alloc.immutable).ok() == Some(true) {
             return Err(EvalError::DeallocatedFrozenMemory);
         }
 

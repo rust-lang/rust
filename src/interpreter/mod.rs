@@ -188,8 +188,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ty: Ty<'tcx>,
         substs: &'tcx Substs<'tcx>
     ) -> EvalResult<'tcx, Pointer> {
-        let size = self.type_size_with_substs(ty, substs).expect("cannot alloc memory for unsized type");
-        let align = self.type_align_with_substs(ty, substs);
+        let size = self.type_size_with_substs(ty, substs)?.expect("cannot alloc memory for unsized type");
+        let align = self.type_align_with_substs(ty, substs)?;
         self.memory.allocate(size, align)
     }
 
@@ -292,38 +292,38 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.tcx.normalize_associated_type(&substituted)
     }
 
-    fn type_size(&self, ty: Ty<'tcx>) -> Option<usize> {
+    fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<usize>> {
         self.type_size_with_substs(ty, self.substs())
     }
 
-    fn type_align(&self, ty: Ty<'tcx>) -> usize {
+    fn type_align(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, usize> {
         self.type_align_with_substs(ty, self.substs())
     }
 
-    fn type_size_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Option<usize> {
-        let layout = self.type_layout_with_substs(ty, substs);
+    fn type_size_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, Option<usize>> {
+        let layout = self.type_layout_with_substs(ty, substs)?;
         if layout.is_unsized() {
-            None
+            Ok(None)
         } else {
-            Some(layout.size(&self.tcx.data_layout).bytes() as usize)
+            Ok(Some(layout.size(&self.tcx.data_layout).bytes() as usize))
         }
     }
 
-    fn type_align_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> usize {
-        self.type_layout_with_substs(ty, substs).align(&self.tcx.data_layout).abi() as usize
+    fn type_align_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, usize> {
+        self.type_layout_with_substs(ty, substs).map(|layout| layout.align(&self.tcx.data_layout).abi() as usize)
     }
 
-    fn type_layout(&self, ty: Ty<'tcx>) -> &'tcx Layout {
+    fn type_layout(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, &'tcx Layout> {
         self.type_layout_with_substs(ty, self.substs())
     }
 
-    fn type_layout_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> &'tcx Layout {
+    fn type_layout_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, &'tcx Layout> {
         // TODO(solson): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty, substs);
 
         self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
             // TODO(solson): Report this error properly.
-            ty.layout(&infcx).unwrap()
+            ty.layout(&infcx).map_err(EvalError::Layout)
         })
     }
 
@@ -482,7 +482,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, ()> {
         let dest = self.eval_lvalue(lvalue)?;
         let dest_ty = self.lvalue_ty(lvalue);
-        let dest_layout = self.type_layout(dest_ty);
+        let dest_layout = self.type_layout(dest_ty)?;
 
         use rustc::mir::Rvalue::*;
         match *rvalue {
@@ -516,7 +516,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     Array { .. } => {
                         let elem_size = match dest_ty.sty {
-                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty).expect("array elements are sized") as u64,
+                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty)?.expect("array elements are sized") as u64,
                             _ => bug!("tried to assign {:?} to non-array type {:?}", kind, dest_ty),
                         };
                         let offsets = (0..).map(|i| i * elem_size);
@@ -556,9 +556,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 if let Some(operand) = operands.get(0) {
                                     assert_eq!(operands.len(), 1);
                                     let operand_ty = self.operand_ty(operand);
-                                    assert_eq!(self.type_size(operand_ty), Some(0));
+                                    assert_eq!(self.type_size(operand_ty)?, Some(0));
                                 }
-                                let value_size = self.type_size(dest_ty).expect("pointer types are sized");
+                                let value_size = self.type_size(dest_ty)?.expect("pointer types are sized");
                                 let zero = PrimVal::from_int_with_size(0, value_size);
                                 self.write_primval(dest, zero)?;
                             }
@@ -575,7 +575,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             } else {
                                 for operand in operands {
                                     let operand_ty = self.operand_ty(operand);
-                                    assert_eq!(self.type_size(operand_ty), Some(0));
+                                    assert_eq!(self.type_size(operand_ty)?, Some(0));
                                 }
                                 let (offset, ty) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
 
@@ -583,7 +583,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 let dest = self.force_allocation(dest)?.to_ptr();
 
                                 let dest = dest.offset(offset.bytes() as isize);
-                                let dest_size = self.type_size(ty).expect("bad StructWrappedNullablePointer discrfield");
+                                let dest_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
                                 try!(self.memory.write_int(dest, 0, dest_size));
                             }
                         } else {
@@ -625,8 +625,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     ty::TyArray(elem_ty, n) => (elem_ty, n),
                     _ => bug!("tried to assign array-repeat to non-array type {:?}", dest_ty),
                 };
-                let elem_size = self.type_size(elem_ty).expect("repeat element type must be sized");
                 self.inc_step_counter_and_check_limit(length as u64)?;
+                let elem_size = self.type_size(elem_ty)?.expect("repeat element type must be sized");
                 let value = self.eval_operand(operand)?;
 
                 // FIXME(solson)
@@ -797,7 +797,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn get_field_offset(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Size> {
-        let layout = self.type_layout(ty);
+        let layout = self.type_layout(ty)?;
 
         use rustc::ty::layout::Layout::*;
         match *layout {
@@ -816,7 +816,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn get_field_count(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, usize> {
-        let layout = self.type_layout(ty);
+        let layout = self.type_layout(ty)?;
 
         use rustc::ty::layout::Layout::*;
         match *layout {
@@ -944,7 +944,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, Lvalue<'tcx>> {
         let base = self.eval_lvalue(&proj.base)?;
         let base_ty = self.lvalue_ty(&proj.base);
-        let base_layout = self.type_layout(base_ty);
+        let base_layout = self.type_layout(base_ty)?;
 
         use rustc::mir::ProjectionElem::*;
         let (ptr, extra) = match proj.elem {
@@ -1043,7 +1043,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (base_ptr, _) = base.to_ptr_and_extra();
 
                 let (elem_ty, len) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty).expect("slice element must be sized");
+                let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
                 let n_ptr = self.eval_operand(operand)?;
                 let usize = self.tcx.types.usize;
                 let n = self.value_to_primval(n_ptr, usize)?
@@ -1059,7 +1059,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (base_ptr, _) = base.to_ptr_and_extra();
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty).expect("sequence element must be sized");
+                let elem_size = self.type_size(elem_ty)?.expect("sequence element must be sized");
                 assert!(n >= min_length as u64);
 
                 let index = if from_end {
@@ -1078,7 +1078,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (base_ptr, _) = base.to_ptr_and_extra();
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty).expect("slice element must be sized");
+                let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
                 assert!((from as u64) <= n - (to as u64));
                 let ptr = base_ptr.offset(from as isize * elem_size as isize);
                 let extra = LvalueExtra::Length(n - to as u64 - from as u64);
@@ -1098,8 +1098,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
-        let size = self.type_size(ty).expect("cannot copy from an unsized type");
-        let align = self.type_align(ty);
+        let size = self.type_size(ty)?.expect("cannot copy from an unsized type");
+        let align = self.type_align(ty)?;
         self.memory.copy(src, dest, size, align)?;
         Ok(())
     }
@@ -1368,7 +1368,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             ty::TyAdt(..) => {
                 use rustc::ty::layout::Layout::*;
-                if let CEnum { discr, signed, .. } = *self.type_layout(ty) {
+                if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
                     let size = discr.size().bytes() as usize;
                     if signed {
                         PrimValKind::from_int_size(size)
@@ -1464,7 +1464,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             ty::TyAdt(..) => {
                 use rustc::ty::layout::Layout::*;
-                if let CEnum { discr, signed, .. } = *self.type_layout(ty) {
+                if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
                     let size = discr.size().bytes() as usize;
                     if signed {
                         let n = self.memory.read_int(ptr, size)?;
@@ -1564,7 +1564,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 for (i, (src_f, dst_f)) in iter {
                     let src_fty = monomorphize_field_ty(self.tcx, src_f, substs_a);
                     let dst_fty = monomorphize_field_ty(self.tcx, dst_f, substs_b);
-                    if self.type_size(dst_fty) == Some(0) {
+                    if self.type_size(dst_fty)? == Some(0) {
                         continue;
                     }
                     let src_field_offset = self.get_field_offset(src_ty, i)?.bytes() as isize;
