@@ -37,7 +37,7 @@ $(BG):
 
 $(BG)RustLexer.class: $(BG) $(SG)RustLexer.g4
 	$(Q)$(CFG_ANTLR4) -o $(BG) $(SG)RustLexer.g4
-	$(Q)$(CFG_JAVAC) -d $(BG) $(BG)RustLexer.java
+	$(Q)$(CFG_JAVAC) -d $(BG) -classpath $(CFG_ANTLR4_JAR) $(BG)RustLexer.java
 
 check-build-lexer-verifier: $(BG)verify
 
