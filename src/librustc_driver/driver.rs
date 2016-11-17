@@ -755,8 +755,6 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
          || ast_validation::check_crate(sess, &krate));
 
     time(sess.time_passes(), "name resolution", || -> CompileResult {
-        resolver.resolve_imports();
-
         // Since import resolution will eventually happen in expansion,
         // don't perform `after_expand` until after import resolution.
         after_expand(&krate)?;

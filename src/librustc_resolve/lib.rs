@@ -76,7 +76,7 @@ use std::fmt;
 use std::mem::replace;
 use std::rc::Rc;
 
-use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution};
+use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
 use macros::{InvocationData, LegacyBinding, LegacyScope};
 
 // NB: This module needs to be declared first so diagnostics are
@@ -536,6 +536,34 @@ pub enum Namespace {
     MacroNS,
 }
 
+#[derive(Clone, Default, Debug)]
+pub struct PerNS<T> {
+    value_ns: T,
+    type_ns: T,
+    macro_ns: Option<T>,
+}
+
+impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
+    type Output = T;
+    fn index(&self, ns: Namespace) -> &T {
+        match ns {
+            ValueNS => &self.value_ns,
+            TypeNS => &self.type_ns,
+            MacroNS => self.macro_ns.as_ref().unwrap(),
+        }
+    }
+}
+
+impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
+    fn index_mut(&mut self, ns: Namespace) -> &mut T {
+        match ns {
+            ValueNS => &mut self.value_ns,
+            TypeNS => &mut self.type_ns,
+            MacroNS => self.macro_ns.as_mut().unwrap(),
+        }
+    }
+}
+
 impl<'a> Visitor for Resolver<'a> {
     fn visit_item(&mut self, item: &Item) {
         self.resolve_item(item);
@@ -612,7 +640,7 @@ impl<'a> Visitor for Resolver<'a> {
         };
 
         // Create a value rib for the function.
-        self.value_ribs.push(Rib::new(rib_kind));
+        self.ribs[ValueNS].push(Rib::new(rib_kind));
 
         // Create a label rib for the function.
         self.label_ribs.push(Rib::new(rib_kind));
@@ -642,13 +670,13 @@ impl<'a> Visitor for Resolver<'a> {
         debug!("(resolving function) leaving function");
 
         self.label_ribs.pop();
-        self.value_ribs.pop();
+        self.ribs[ValueNS].pop();
     }
 }
 
 pub type ErrorMessage = Option<(Span, String)>;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum ResolveResult<T> {
     Failed(ErrorMessage), // Failed to resolve the name, optional helpful error message.
     Indeterminate, // Couldn't determine due to unresolved globs.
@@ -656,14 +684,6 @@ pub enum ResolveResult<T> {
 }
 
 impl<T> ResolveResult<T> {
-    fn and_then<U, F: FnOnce(T) -> ResolveResult<U>>(self, f: F) -> ResolveResult<U> {
-        match self {
-            Failed(msg) => Failed(msg),
-            Indeterminate => Indeterminate,
-            Success(t) => f(t),
-        }
-    }
-
     fn success(self) -> Option<T> {
         match self {
             Success(t) => Some(t),
@@ -798,6 +818,10 @@ pub struct ModuleS<'a> {
     normal_ancestor_id: Option<NodeId>,
 
     resolutions: RefCell<FxHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
+    legacy_macro_resolutions: RefCell<Vec<(Mark, Name, Span)>>,
+
+    // Macro invocations that can expand into items in this module.
+    unresolved_invocations: RefCell<FxHashSet<Mark>>,
 
     no_implicit_prelude: bool,
 
@@ -822,6 +846,8 @@ impl<'a> ModuleS<'a> {
             kind: kind,
             normal_ancestor_id: None,
             resolutions: RefCell::new(FxHashMap()),
+            legacy_macro_resolutions: RefCell::new(Vec::new()),
+            unresolved_invocations: RefCell::new(FxHashSet()),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
@@ -877,6 +903,7 @@ impl<'a> fmt::Debug for ModuleS<'a> {
 #[derive(Clone, Debug)]
 pub struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
+    expansion: Mark,
     span: Span,
     vis: ty::Visibility,
 }
@@ -911,6 +938,7 @@ struct PrivacyError<'a>(Span, Name, &'a NameBinding<'a>);
 struct AmbiguityError<'a> {
     span: Span,
     name: Name,
+    lexical: bool,
     b1: &'a NameBinding<'a>,
     b2: &'a NameBinding<'a>,
 }
@@ -969,7 +997,7 @@ impl<'a> NameBinding<'a> {
     fn is_glob_import(&self) -> bool {
         match self.kind {
             NameBindingKind::Import { directive, .. } => directive.is_glob(),
-            NameBindingKind::Ambiguity { .. } => true,
+            NameBindingKind::Ambiguity { b1, .. } => b1.is_glob_import(),
             _ => false,
         }
     }
@@ -1044,12 +1072,9 @@ pub struct Resolver<'a> {
     // The module that represents the current item scope.
     current_module: Module<'a>,
 
-    // The current set of local scopes, for values.
+    // The current set of local scopes for types and values.
     // FIXME #4948: Reuse ribs to avoid allocation.
-    value_ribs: Vec<Rib<'a>>,
-
-    // The current set of local scopes, for types.
-    type_ribs: Vec<Rib<'a>>,
+    ribs: PerNS<Vec<Rib<'a>>>,
 
     // The current set of local scopes, for labels.
     label_ribs: Vec<Rib<'a>>,
@@ -1107,11 +1132,12 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
     new_import_semantics: bool, // true if `#![feature(item_like_imports)]`
+    use_extern_macros: bool, // true if `#![feature(use_extern_macros)]`
 
     pub exported_macros: Vec<ast::MacroDef>,
     crate_loader: &'a mut CrateLoader,
     macro_names: FxHashSet<Name>,
-    builtin_macros: FxHashMap<Name, DefId>,
+    builtin_macros: FxHashMap<Name, &'a NameBinding<'a>>,
     lexical_macro_resolutions: Vec<(Name, LegacyScope<'a>)>,
     macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
     macro_exports: Vec<Export>,
@@ -1268,8 +1294,11 @@ impl<'a> Resolver<'a> {
             indeterminate_imports: Vec::new(),
 
             current_module: graph_root,
-            value_ribs: vec![Rib::new(ModuleRibKind(graph_root))],
-            type_ribs: vec![Rib::new(ModuleRibKind(graph_root))],
+            ribs: PerNS {
+                value_ns: vec![Rib::new(ModuleRibKind(graph_root))],
+                type_ns: vec![Rib::new(ModuleRibKind(graph_root))],
+                macro_ns: None,
+            },
             label_ribs: Vec::new(),
 
             current_trait_ref: None,
@@ -1300,10 +1329,12 @@ impl<'a> Resolver<'a> {
             arenas: arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Def(Def::Err),
+                expansion: Mark::root(),
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             }),
             new_import_semantics: session.features.borrow().item_like_imports,
+            use_extern_macros: session.features.borrow().use_extern_macros,
 
             exported_macros: Vec::new(),
             crate_loader: crate_loader,
@@ -1329,8 +1360,20 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    fn per_ns<T, F: FnMut(&mut Self, Namespace) -> T>(&mut self, mut f: F) -> PerNS<T> {
+        PerNS {
+            type_ns: f(self, TypeNS),
+            value_ns: f(self, ValueNS),
+            macro_ns: match self.use_extern_macros {
+                true => Some(f(self, MacroNS)),
+                false => None,
+            },
+        }
+    }
+
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
+        ImportResolver { resolver: self }.finalize_imports();
         self.current_module = self.graph_root;
         visit::walk_crate(self, krate);
 
@@ -1345,14 +1388,6 @@ impl<'a> Resolver<'a> {
             populated: Cell::new(local),
             ..ModuleS::new(Some(parent), kind)
         })
-    }
-
-    fn get_ribs<'b>(&'b mut self, ns: Namespace) -> &'b mut Vec<Rib<'a>> {
-        match ns {
-            ValueNS => &mut self.value_ribs,
-            TypeNS => &mut self.type_ribs,
-            MacroNS => panic!("The macro namespace has no ribs"),
-        }
     }
 
     fn record_use(&mut self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
@@ -1371,8 +1406,9 @@ impl<'a> Resolver<'a> {
             }
             NameBindingKind::Import { .. } => false,
             NameBindingKind::Ambiguity { b1, b2 } => {
-                let ambiguity_error = AmbiguityError { span: span, name: name, b1: b1, b2: b2 };
-                self.ambiguity_errors.push(ambiguity_error);
+                self.ambiguity_errors.push(AmbiguityError {
+                    span: span, name: name, lexical: false, b1: b1, b2: b2,
+                });
                 true
             }
             _ => false
@@ -1406,7 +1442,7 @@ impl<'a> Resolver<'a> {
                                      -> ResolveResult<Module<'a>> {
         fn search_parent_externals<'a>(this: &mut Resolver<'a>, needle: Name, module: Module<'a>)
                                        -> Option<Module<'a>> {
-            match this.resolve_name_in_module(module, needle, TypeNS, false, None) {
+            match this.resolve_name_in_module(module, needle, TypeNS, false, false, None) {
                 Success(binding) if binding.is_extern_crate() => Some(module),
                 _ => if let (&ModuleKind::Def(..), Some(parent)) = (&module.kind, module.parent) {
                     search_parent_externals(this, needle, parent)
@@ -1424,7 +1460,7 @@ impl<'a> Resolver<'a> {
         // modules as we go.
         while index < module_path_len {
             let name = module_path[index].name;
-            match self.resolve_name_in_module(search_module, name, TypeNS, false, span) {
+            match self.resolve_name_in_module(search_module, name, TypeNS, false, false, span) {
                 Failed(_) => {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
@@ -1570,8 +1606,8 @@ impl<'a> Resolver<'a> {
         }
 
         // Walk backwards up the ribs in scope.
-        for i in (0 .. self.get_ribs(ns).len()).rev() {
-            if let Some(def) = self.get_ribs(ns)[i].bindings.get(&ident).cloned() {
+        for i in (0 .. self.ribs[ns].len()).rev() {
+            if let Some(def) = self.ribs[ns][i].bindings.get(&ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::LocalDef(LocalDef {
                     ribs: Some((ns, i)),
@@ -1579,9 +1615,9 @@ impl<'a> Resolver<'a> {
                 }));
             }
 
-            if let ModuleRibKind(module) = self.get_ribs(ns)[i].kind {
+            if let ModuleRibKind(module) = self.ribs[ns][i].kind {
                 let name = ident.name;
-                let item = self.resolve_name_in_module(module, name, ns, true, record_used);
+                let item = self.resolve_name_in_module(module, name, ns, true, false, record_used);
                 if let Success(binding) = item {
                     // The ident resolves to an item.
                     return Some(LexicalScopeBinding::Item(binding));
@@ -1590,14 +1626,14 @@ impl<'a> Resolver<'a> {
                 if let ModuleKind::Block(..) = module.kind { // We can see through blocks
                 } else if !module.no_implicit_prelude {
                     return self.prelude.and_then(|prelude| {
-                        self.resolve_name_in_module(prelude, name, ns, false, None).success()
+                        self.resolve_name_in_module(prelude, name, ns, false, false, None).success()
                     }).map(LexicalScopeBinding::Item)
                 } else {
                     return None;
                 }
             }
 
-            if let MacroDefinition(mac) = self.get_ribs(ns)[i].kind {
+            if let MacroDefinition(mac) = self.ribs[ns][i].kind {
                 // If an invocation of this macro created `ident`, give up on `ident`
                 // and switch to `ident`'s source from the macro definition.
                 let (source_ctxt, source_macro) = ident.ctxt.source();
@@ -1682,14 +1718,15 @@ impl<'a> Resolver<'a> {
         if let Some(module) = module {
             // Move down in the graph.
             let orig_module = replace(&mut self.current_module, module);
-            self.value_ribs.push(Rib::new(ModuleRibKind(module)));
-            self.type_ribs.push(Rib::new(ModuleRibKind(module)));
+            self.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
+            self.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
 
+            self.finalize_current_module_macro_resolutions();
             f(self);
 
             self.current_module = orig_module;
-            self.value_ribs.pop();
-            self.type_ribs.pop();
+            self.ribs[ValueNS].pop();
+            self.ribs[TypeNS].pop();
         } else {
             f(self);
         }
@@ -1864,7 +1901,7 @@ impl<'a> Resolver<'a> {
                     function_type_rib.bindings.insert(Ident::with_empty_ctxt(name), def);
                     self.record_def(type_parameter.id, PathResolution::new(def));
                 }
-                self.type_ribs.push(function_type_rib);
+                self.ribs[TypeNS].push(function_type_rib);
             }
 
             NoTypeParameters => {
@@ -1875,7 +1912,7 @@ impl<'a> Resolver<'a> {
         f(self);
 
         if let HasTypeParameters(..) = type_parameters {
-            self.type_ribs.pop();
+            self.ribs[TypeNS].pop();
         }
     }
 
@@ -1890,11 +1927,11 @@ impl<'a> Resolver<'a> {
     fn with_constant_rib<F>(&mut self, f: F)
         where F: FnOnce(&mut Resolver)
     {
-        self.value_ribs.push(Rib::new(ConstantItemRibKind));
-        self.type_ribs.push(Rib::new(ConstantItemRibKind));
+        self.ribs[ValueNS].push(Rib::new(ConstantItemRibKind));
+        self.ribs[TypeNS].push(Rib::new(ConstantItemRibKind));
         f(self);
-        self.type_ribs.pop();
-        self.value_ribs.pop();
+        self.ribs[TypeNS].pop();
+        self.ribs[ValueNS].pop();
     }
 
     fn resolve_trait_reference(&mut self,
@@ -2004,9 +2041,9 @@ impl<'a> Resolver<'a> {
 
         // plain insert (no renaming, types are not currently hygienic....)
         self_type_rib.bindings.insert(keywords::SelfType.ident(), self_def);
-        self.type_ribs.push(self_type_rib);
+        self.ribs[TypeNS].push(self_type_rib);
         f(self);
-        self.type_ribs.pop();
+        self.ribs[TypeNS].pop();
     }
 
     fn resolve_implementation(&mut self,
@@ -2160,7 +2197,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_arm(&mut self, arm: &Arm) {
-        self.value_ribs.push(Rib::new(NormalRibKind));
+        self.ribs[ValueNS].push(Rib::new(NormalRibKind));
 
         let mut bindings_list = FxHashMap();
         for pattern in &arm.pats {
@@ -2174,7 +2211,7 @@ impl<'a> Resolver<'a> {
         walk_list!(self, visit_expr, &arm.guard);
         self.visit_expr(&arm.body);
 
-        self.value_ribs.pop();
+        self.ribs[ValueNS].pop();
     }
 
     fn resolve_block(&mut self, block: &Block) {
@@ -2186,11 +2223,12 @@ impl<'a> Resolver<'a> {
         let mut num_macro_definition_ribs = 0;
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
-            self.value_ribs.push(Rib::new(ModuleRibKind(anonymous_module)));
-            self.type_ribs.push(Rib::new(ModuleRibKind(anonymous_module)));
+            self.ribs[ValueNS].push(Rib::new(ModuleRibKind(anonymous_module)));
+            self.ribs[TypeNS].push(Rib::new(ModuleRibKind(anonymous_module)));
             self.current_module = anonymous_module;
+            self.finalize_current_module_macro_resolutions();
         } else {
-            self.value_ribs.push(Rib::new(NormalRibKind));
+            self.ribs[ValueNS].push(Rib::new(NormalRibKind));
         }
 
         // Descend into the block.
@@ -2198,7 +2236,7 @@ impl<'a> Resolver<'a> {
             if let Some(marks) = self.macros_at_scope.remove(&stmt.id) {
                 num_macro_definition_ribs += marks.len() as u32;
                 for mark in marks {
-                    self.value_ribs.push(Rib::new(MacroDefinition(mark)));
+                    self.ribs[ValueNS].push(Rib::new(MacroDefinition(mark)));
                     self.label_ribs.push(Rib::new(MacroDefinition(mark)));
                 }
             }
@@ -2209,12 +2247,12 @@ impl<'a> Resolver<'a> {
         // Move back up.
         self.current_module = orig_module;
         for _ in 0 .. num_macro_definition_ribs {
-            self.value_ribs.pop();
+            self.ribs[ValueNS].pop();
             self.label_ribs.pop();
         }
-        self.value_ribs.pop();
+        self.ribs[ValueNS].pop();
         if let Some(_) = anonymous_module {
-            self.type_ribs.pop();
+            self.ribs[TypeNS].pop();
         }
         debug!("(resolving block) leaving block");
     }
@@ -2333,7 +2371,7 @@ impl<'a> Resolver<'a> {
             Some(..) if pat_src == PatternSource::Match => {
                 // `Variant1(a) | Variant2(a)`, ok
                 // Reuse definition from the first `a`.
-                def = self.value_ribs.last_mut().unwrap().bindings[&ident.node];
+                def = self.ribs[ValueNS].last_mut().unwrap().bindings[&ident.node];
             }
             Some(..) => {
                 span_bug!(ident.span, "two bindings with the same name from \
@@ -2343,7 +2381,7 @@ impl<'a> Resolver<'a> {
                 // A completely fresh binding, add to the lists if it's valid.
                 if ident.node.name != keywords::Invalid.name() {
                     bindings.insert(ident.node, outer_pat_id);
-                    self.value_ribs.last_mut().unwrap().bindings.insert(ident.node, def);
+                    self.ribs[ValueNS].last_mut().unwrap().bindings.insert(ident.node, def);
                 }
             }
         }
@@ -2627,9 +2665,8 @@ impl<'a> Resolver<'a> {
     // Resolve a local definition, potentially adjusting for closures.
     fn adjust_local_def(&mut self, local_def: LocalDef, span: Span) -> Option<Def> {
         let ribs = match local_def.ribs {
-            Some((TypeNS, i)) => &self.type_ribs[i + 1..],
-            Some((ValueNS, i)) => &self.value_ribs[i + 1..],
-            _ => &[] as &[_],
+            Some((ns, i)) => &self.ribs[ns][i + 1..],
+            None => &[] as &[_],
         };
         let mut def = local_def.def;
         match def {
@@ -2723,8 +2760,7 @@ impl<'a> Resolver<'a> {
         let module_path =
             segments.split_last().unwrap().1.iter().map(|ps| ps.identifier).collect::<Vec<_>>();
 
-        let containing_module;
-        match self.resolve_module_path(&module_path, UseLexicalScope, Some(span)) {
+        let module = match self.resolve_module_path(&module_path, UseLexicalScope, Some(span)) {
             Failed(err) => {
                 if let Some((span, msg)) = err {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
@@ -2732,14 +2768,11 @@ impl<'a> Resolver<'a> {
                 return Err(true);
             }
             Indeterminate => return Err(false),
-            Success(resulting_module) => {
-                containing_module = resulting_module;
-            }
-        }
+            Success(module) => module,
+        };
 
         let name = segments.last().unwrap().identifier.name;
-        let result =
-            self.resolve_name_in_module(containing_module, name, namespace, false, Some(span));
+        let result = self.resolve_name_in_module(module, name, namespace, false, false, Some(span));
         result.success().ok_or(false)
     }
 
@@ -2751,10 +2784,9 @@ impl<'a> Resolver<'a> {
         where T: Named,
     {
         let module_path = segments.split_last().unwrap().1.iter().map(T::ident).collect::<Vec<_>>();
-        let root_module = self.graph_root;
+        let root = self.graph_root;
 
-        let containing_module;
-        match self.resolve_module_path_from_root(root_module, &module_path, 0, Some(span)) {
+        let module = match self.resolve_module_path_from_root(root, &module_path, 0, Some(span)) {
             Failed(err) => {
                 if let Some((span, msg)) = err {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
@@ -2764,14 +2796,11 @@ impl<'a> Resolver<'a> {
 
             Indeterminate => return Err(false),
 
-            Success(resulting_module) => {
-                containing_module = resulting_module;
-            }
-        }
+            Success(module) => module,
+        };
 
         let name = segments.last().unwrap().ident().name;
-        let result =
-            self.resolve_name_in_module(containing_module, name, namespace, false, Some(span));
+        let result = self.resolve_name_in_module(module, name, namespace, false, false, Some(span));
         result.success().ok_or(false)
     }
 
@@ -2791,8 +2820,8 @@ impl<'a> Resolver<'a> {
         where F: FnOnce(&mut Resolver<'a>) -> T,
     {
         self.with_empty_ribs(|this| {
-            this.value_ribs.push(Rib::new(ModuleRibKind(module)));
-            this.type_ribs.push(Rib::new(ModuleRibKind(module)));
+            this.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
+            this.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
             f(this)
         })
     }
@@ -2800,13 +2829,11 @@ impl<'a> Resolver<'a> {
     fn with_empty_ribs<T, F>(&mut self, f: F) -> T
         where F: FnOnce(&mut Resolver<'a>) -> T,
     {
-        let value_ribs = replace(&mut self.value_ribs, Vec::new());
-        let type_ribs = replace(&mut self.type_ribs, Vec::new());
+        let ribs = replace(&mut self.ribs, PerNS::<Vec<Rib>>::default());
         let label_ribs = replace(&mut self.label_ribs, Vec::new());
 
         let result = f(self);
-        self.value_ribs = value_ribs;
-        self.type_ribs = type_ribs;
+        self.ribs = ribs;
         self.label_ribs = label_ribs;
         result
     }
@@ -2858,7 +2885,7 @@ impl<'a> Resolver<'a> {
             return SuggestionType::Macro(format!("{}!", macro_name));
         }
 
-        let names = self.value_ribs
+        let names = self.ribs[ValueNS]
                     .iter()
                     .rev()
                     .flat_map(|rib| rib.bindings.keys().map(|ident| &ident.name));
@@ -2961,7 +2988,7 @@ impl<'a> Resolver<'a> {
                         } else {
                             let mut method_scope = false;
                             let mut is_static = false;
-                            self.value_ribs.iter().rev().all(|rib| {
+                            self.ribs[ValueNS].iter().rev().all(|rib| {
                                 method_scope = match rib.kind {
                                     MethodRibKind(is_static_) => {
                                         is_static = is_static_;
@@ -3072,10 +3099,10 @@ impl<'a> Resolver<'a> {
             ExprKind::IfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {
                 self.visit_expr(subexpression);
 
-                self.value_ribs.push(Rib::new(NormalRibKind));
+                self.ribs[ValueNS].push(Rib::new(NormalRibKind));
                 self.resolve_pattern(pattern, PatternSource::IfLet, &mut FxHashMap());
                 self.visit_block(if_block);
-                self.value_ribs.pop();
+                self.ribs[ValueNS].pop();
 
                 optional_else.as_ref().map(|expr| self.visit_expr(expr));
             }
@@ -3089,22 +3116,22 @@ impl<'a> Resolver<'a> {
 
             ExprKind::WhileLet(ref pattern, ref subexpression, ref block, label) => {
                 self.visit_expr(subexpression);
-                self.value_ribs.push(Rib::new(NormalRibKind));
+                self.ribs[ValueNS].push(Rib::new(NormalRibKind));
                 self.resolve_pattern(pattern, PatternSource::WhileLet, &mut FxHashMap());
 
                 self.resolve_labeled_block(label, expr.id, block);
 
-                self.value_ribs.pop();
+                self.ribs[ValueNS].pop();
             }
 
             ExprKind::ForLoop(ref pattern, ref subexpression, ref block, label) => {
                 self.visit_expr(subexpression);
-                self.value_ribs.push(Rib::new(NormalRibKind));
+                self.ribs[ValueNS].push(Rib::new(NormalRibKind));
                 self.resolve_pattern(pattern, PatternSource::For, &mut FxHashMap());
 
                 self.resolve_labeled_block(label, expr.id, block);
 
-                self.value_ribs.pop();
+                self.ribs[ValueNS].pop();
             }
 
             ExprKind::Field(ref subexpression, _) => {
@@ -3354,14 +3381,18 @@ impl<'a> Resolver<'a> {
         self.report_shadowing_errors();
         let mut reported_spans = FxHashSet();
 
-        for &AmbiguityError { span, name, b1, b2 } in &self.ambiguity_errors {
+        for &AmbiguityError { span, name, b1, b2, lexical } in &self.ambiguity_errors {
             if !reported_spans.insert(span) { continue }
             let msg1 = format!("`{}` could resolve to the name imported here", name);
             let msg2 = format!("`{}` could also resolve to the name imported here", name);
             self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
                 .span_note(b1.span, &msg1)
                 .span_note(b2.span, &msg2)
-                .note(&format!("Consider adding an explicit import of `{}` to disambiguate", name))
+                .note(&if lexical || !b1.is_glob_import() {
+                    "macro-expanded macro imports do not shadow".to_owned()
+                } else {
+                    format!("consider adding an explicit import of `{}` to disambiguate", name)
+                })
                 .emit();
         }
 
@@ -3384,12 +3415,12 @@ impl<'a> Resolver<'a> {
 
     fn report_shadowing_errors(&mut self) {
         for (name, scope) in replace(&mut self.lexical_macro_resolutions, Vec::new()) {
-            self.resolve_macro_name(scope, name);
+            self.resolve_legacy_scope(scope, name, true);
         }
 
         let mut reported_errors = FxHashSet();
         for binding in replace(&mut self.disallowed_shadowing, Vec::new()) {
-            if self.resolve_macro_name(binding.parent, binding.name).is_some() &&
+            if self.resolve_legacy_scope(binding.parent, binding.name, false).is_some() &&
                reported_errors.insert((binding.name, binding.span)) {
                 let msg = format!("`{}` is already in scope", binding.name);
                 self.session.struct_span_err(binding.span, &msg)
