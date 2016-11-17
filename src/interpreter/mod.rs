@@ -40,6 +40,11 @@ pub struct EvalContext<'a, 'tcx: 'a> {
 
     /// The maximum number of stack frames allowed
     stack_limit: usize,
+
+    /// The maximum number of operations that may be executed.
+    /// This prevents infinite loops and huge computations from freezing up const eval.
+    /// Remove once halting problem is solved.
+    steps_remaining: u64,
 }
 
 /// A stack frame.
@@ -162,13 +167,14 @@ pub enum StackPopCleanup {
 }
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, memory_size: usize, stack_limit: usize) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, memory_size: usize, stack_limit: usize, step_limit: u64) -> Self {
         EvalContext {
             tcx: tcx,
             memory: Memory::new(&tcx.data_layout, memory_size),
             globals: HashMap::new(),
             stack: Vec::new(),
             stack_limit: stack_limit,
+            steps_remaining: step_limit,
         }
     }
 
@@ -500,6 +506,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Aggregate(ref kind, ref operands) => {
+                self.inc_step_counter_and_check_limit(operands.len() as u64)?;
                 use rustc::ty::layout::Layout::*;
                 match *dest_layout {
                     Univariant { ref variant, .. } => {
@@ -619,6 +626,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => bug!("tried to assign array-repeat to non-array type {:?}", dest_ty),
                 };
                 let elem_size = self.type_size(elem_ty).expect("repeat element type must be sized");
+                self.inc_step_counter_and_check_limit(length as u64)?;
                 let value = self.eval_operand(operand)?;
 
                 // FIXME(solson)
@@ -1696,7 +1704,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     step_limit: u64,
     stack_limit: usize,
 ) {
-    let mut ecx = EvalContext::new(tcx, memory_size, stack_limit);
+    let mut ecx = EvalContext::new(tcx, memory_size, stack_limit, step_limit);
     let mir = ecx.load_mir(def_id).expect("main function's MIR not found");
 
     ecx.push_stack_frame(
@@ -1708,7 +1716,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
         StackPopCleanup::None,
     ).expect("could not allocate first stack frame");
 
-    for _ in 0..step_limit {
+    loop {
         match ecx.step() {
             Ok(true) => {}
             Ok(false) => return,
@@ -1718,7 +1726,6 @@ pub fn eval_main<'a, 'tcx: 'a>(
             }
         }
     }
-    report(tcx, &ecx, EvalError::ExecutionTimeLimitReached);
 }
 
 fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {

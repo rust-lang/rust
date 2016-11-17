@@ -10,7 +10,7 @@ use super::{
     Global,
     MirRef,
 };
-use error::EvalResult;
+use error::{EvalResult, EvalError};
 use rustc::mir;
 use rustc::ty::{subst, self};
 use rustc::hir::def_id::DefId;
@@ -20,8 +20,18 @@ use std::cell::Ref;
 use syntax::codemap::Span;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+    pub fn inc_step_counter_and_check_limit(&mut self, n: u64) -> EvalResult<'tcx, ()> {
+        self.steps_remaining = self.steps_remaining.saturating_sub(n);
+        if self.steps_remaining > 0 {
+            Ok(())
+        } else {
+            Err(EvalError::ExecutionTimeLimitReached)
+        }
+    }
+
     /// Returns true as long as there are more things to do.
     pub fn step(&mut self) -> EvalResult<'tcx, bool> {
+        self.inc_step_counter_and_check_limit(1)?;
         if self.stack.is_empty() {
             return Ok(false);
         }
