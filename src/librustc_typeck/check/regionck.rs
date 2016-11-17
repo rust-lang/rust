@@ -91,7 +91,7 @@ use middle::region::{self, CodeExtent};
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, MethodCall, TypeFoldable};
-use rustc::infer::{self, GenericKind, InferOk, SubregionOrigin, TypeOrigin, VerifyBound};
+use rustc::infer::{self, GenericKind, SubregionOrigin, VerifyBound};
 use hir::pat_util;
 use rustc::ty::adjustment;
 use rustc::ty::wf::ImpliedBound;
@@ -1762,10 +1762,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                            outlives);
 
                     // check whether this predicate applies to our current projection
-                    match self.eq_types(false, TypeOrigin::Misc(span), ty, outlives.0) {
-                        Ok(InferOk { obligations, .. }) => {
-                            // FIXME(#32730) propagate obligations
-                            assert!(obligations.is_empty());
+                    let cause = self.fcx.misc(span);
+                    match self.eq_types(false, &cause, ty, outlives.0) {
+                        Ok(ok) => {
+                            self.register_infer_ok_obligations(ok);
                             Ok(outlives.1)
                         }
                         Err(_) => { Err(()) }

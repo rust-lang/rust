@@ -11,7 +11,8 @@
 
 use check::FnCtxt;
 use rustc::ty::Ty;
-use rustc::infer::{InferOk, TypeOrigin};
+use rustc::infer::{InferOk};
+use rustc::traits::ObligationCause;
 
 use syntax_pos::Span;
 use rustc::hir;
@@ -20,34 +21,32 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Requires that the two types unify, and prints an error message if
     // they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        let origin = TypeOrigin::Misc(sp);
-        match self.sub_types(false, origin, actual, expected) {
-            Ok(InferOk { obligations, .. }) => {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
+        let cause = self.misc(sp);
+        match self.sub_types(false, &cause, actual, expected) {
+            Ok(InferOk { obligations, value: () }) => {
+                self.register_predicates(obligations);
             },
             Err(e) => {
-                self.report_mismatched_types(origin, expected, actual, e);
+                self.report_mismatched_types(&cause, expected, actual, e);
             }
         }
     }
 
     pub fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        self.demand_eqtype_with_origin(TypeOrigin::Misc(sp), expected, actual);
+        self.demand_eqtype_with_origin(&self.misc(sp), expected, actual);
     }
 
     pub fn demand_eqtype_with_origin(&self,
-                                     origin: TypeOrigin,
+                                     cause: &ObligationCause<'tcx>,
                                      expected: Ty<'tcx>,
                                      actual: Ty<'tcx>)
     {
-        match self.eq_types(false, origin, actual, expected) {
-            Ok(InferOk { obligations, .. }) => {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
+        match self.eq_types(false, cause, actual, expected) {
+            Ok(InferOk { obligations, value: () }) => {
+                self.register_predicates(obligations);
             },
             Err(e) => {
-                self.report_mismatched_types(origin, expected, actual, e);
+                self.report_mismatched_types(cause, expected, actual, e);
             }
         }
     }
@@ -56,9 +55,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
         let expected = self.resolve_type_vars_with_obligations(expected);
         if let Err(e) = self.try_coerce(expr, checked_ty, expected) {
-            let origin = TypeOrigin::Misc(expr.span);
+            let cause = self.misc(expr.span);
             let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
-            self.report_mismatched_types(origin, expected, expr_ty, e);
+            self.report_mismatched_types(&cause, expected, expr_ty, e);
         }
     }
 }
