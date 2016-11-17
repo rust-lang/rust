@@ -212,6 +212,9 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
         cargo.env("LLVM_STATIC_STDCPP",
                   compiler_file(build.cxx(target), "libstdc++.a"));
     }
+    if build.config.llvm_link_shared {
+        cargo.env("LLVM_LINK_SHARED", "1");
+    }
     if let Some(ref s) = build.config.rustc_default_linker {
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
