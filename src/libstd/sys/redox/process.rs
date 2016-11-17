@@ -13,7 +13,7 @@ use env;
 use ffi::OsStr;
 use fmt;
 use io::{self, Error, ErrorKind};
-use libc::{self, pid_t, c_int, gid_t, uid_t};
+use libc::{self, pid_t, gid_t, uid_t};
 use path::Path;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
@@ -145,33 +145,79 @@ impl Command {
 
     pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
                  -> io::Result<(Process, StdioPipes)> {
-        if self.saw_nul {
-            return Err(io::Error::new(ErrorKind::InvalidInput,
-                                      "nul byte found in provided data"));
-        }
+         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
-        let (ours, theirs) = self.setup_io(default, needs_stdin)?;
+         if self.saw_nul {
+             return Err(io::Error::new(ErrorKind::InvalidInput,
+                                       "nul byte found in provided data"));
+         }
 
-        let pid = unsafe {
-            match cvt(libc::clone(libc::CLONE_VFORK))? {
-                0 => {
-                    let err = self.do_exec(theirs);
-                    let _ = libc::exit((-err.raw_os_error().unwrap_or(libc::EINVAL)) as usize);
-                    unreachable!();
-                }
-                n => n as pid_t,
-            }
-        };
+         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
+         let (input, output) = pipe::anon_pipe()?;
 
-        let mut status_mux = 0;
-        if cvt(libc::waitpid(pid, &mut status_mux, libc::WNOHANG))? == pid {
-            match libc::Error::demux(status_mux) {
-                Ok(status) => Ok((Process { pid: pid, status: Some(ExitStatus::from(status as c_int)) }, ours)),
-                Err(err) => Err(io::Error::from_raw_os_error(err.errno)),
-            }
-        } else {
-            Ok((Process { pid: pid, status: None }, ours))
-        }
+         let pid = unsafe {
+             match cvt(libc::clone(0))? {
+                 0 => {
+                     drop(input);
+                     let err = self.do_exec(theirs);
+                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
+                     let bytes = [
+                         (errno >> 24) as u8,
+                         (errno >> 16) as u8,
+                         (errno >>  8) as u8,
+                         (errno >>  0) as u8,
+                         CLOEXEC_MSG_FOOTER[0], CLOEXEC_MSG_FOOTER[1],
+                         CLOEXEC_MSG_FOOTER[2], CLOEXEC_MSG_FOOTER[3]
+                     ];
+                     // pipe I/O up to PIPE_BUF bytes should be atomic, and then
+                     // we want to be sure we *don't* run at_exit destructors as
+                     // we're being torn down regardless
+                     assert!(output.write(&bytes).is_ok());
+                     let _ = libc::exit(1);
+                     panic!("failed to exit");
+                 }
+                 n => n,
+             }
+         };
+
+         let mut p = Process { pid: pid, status: None };
+         drop(output);
+         let mut bytes = [0; 8];
+
+         // loop to handle EINTR
+         loop {
+             match input.read(&mut bytes) {
+                 Ok(0) => return Ok((p, ours)),
+                 Ok(8) => {
+                     assert!(combine(CLOEXEC_MSG_FOOTER) == combine(&bytes[4.. 8]),
+                             "Validation on the CLOEXEC pipe failed: {:?}", bytes);
+                     let errno = combine(&bytes[0.. 4]);
+                     assert!(p.wait().is_ok(),
+                             "wait() should either return Ok or panic");
+                     return Err(Error::from_raw_os_error(errno))
+                 }
+                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                 Err(e) => {
+                     assert!(p.wait().is_ok(),
+                             "wait() should either return Ok or panic");
+                     panic!("the CLOEXEC pipe failed: {:?}", e)
+                 },
+                 Ok(..) => { // pipe I/O up to PIPE_BUF bytes should be atomic
+                     assert!(p.wait().is_ok(),
+                             "wait() should either return Ok or panic");
+                     panic!("short read on the CLOEXEC pipe")
+                 }
+             }
+         }
+
+         fn combine(arr: &[u8]) -> i32 {
+             let a = arr[0] as u32;
+             let b = arr[1] as u32;
+             let c = arr[2] as u32;
+             let d = arr[3] as u32;
+
+             ((a << 24) | (b << 16) | (c << 8) | (d << 0)) as i32
+         }
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
@@ -378,11 +424,11 @@ impl fmt::Debug for Command {
 
 /// Unix exit statuses
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatus(c_int);
+pub struct ExitStatus(i32);
 
 impl ExitStatus {
     fn exited(&self) -> bool {
-        true
+        self.0 & 0x7F == 0
     }
 
     pub fn success(&self) -> bool {
@@ -391,7 +437,7 @@ impl ExitStatus {
 
     pub fn code(&self) -> Option<i32> {
         if self.exited() {
-            Some(self.0)
+            Some((self.0 >> 8) & 0xFF)
         } else {
             None
         }
@@ -399,15 +445,15 @@ impl ExitStatus {
 
     pub fn signal(&self) -> Option<i32> {
         if !self.exited() {
-            Some(self.0)
+            Some(self.0 & 0x7F)
         } else {
             None
         }
     }
 }
 
-impl From<c_int> for ExitStatus {
-    fn from(a: c_int) -> ExitStatus {
+impl From<i32> for ExitStatus {
+    fn from(a: i32) -> ExitStatus {
         ExitStatus(a)
     }
 }
