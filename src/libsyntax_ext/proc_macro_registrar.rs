@@ -38,12 +38,14 @@ struct CollectCustomDerives<'a> {
     in_root: bool,
     handler: &'a errors::Handler,
     is_proc_macro_crate: bool,
+    is_test_crate: bool,
 }
 
 pub fn modify(sess: &ParseSess,
               resolver: &mut ::syntax::ext::base::Resolver,
               mut krate: ast::Crate,
               is_proc_macro_crate: bool,
+              is_test_crate: bool,
               num_crate_types: usize,
               handler: &errors::Handler,
               features: &Features) -> ast::Crate {
@@ -55,6 +57,7 @@ pub fn modify(sess: &ParseSess,
         in_root: true,
         handler: handler,
         is_proc_macro_crate: is_proc_macro_crate,
+        is_test_crate: is_test_crate,
     };
     visit::walk_crate(&mut collect, &krate);
 
@@ -135,6 +138,12 @@ impl<'a> Visitor for CollectCustomDerives<'a> {
         if let Some(a) = attrs.next() {
             self.handler.span_err(a.span(), "multiple `#[proc_macro_derive]` \
                                              attributes found");
+        }
+
+        if self.is_test_crate {
+            self.handler.span_err(attr.span(),
+                                  "`--test` cannot be used with proc-macro crates");
+            return;
         }
 
         if !self.is_proc_macro_crate {
