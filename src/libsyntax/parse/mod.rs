@@ -597,12 +597,11 @@ mod tests {
     use std::rc::Rc;
     use syntax_pos::{self, Span, BytePos, Pos, NO_EXPANSION};
     use codemap::Spanned;
-    use ast::{self, PatKind};
+    use ast::{self, Ident, PatKind};
     use abi::Abi;
     use attr::first_attr_value_str_by_name;
     use parse;
     use parse::parser::Parser;
-    use parse::token::{str_to_ident};
     use print::pprust::item_to_string;
     use ptr::P;
     use tokenstream::{self, TokenTree};
@@ -624,7 +623,7 @@ mod tests {
                         global: false,
                         segments: vec![
                             ast::PathSegment {
-                                identifier: str_to_ident("a"),
+                                identifier: Ident::from_str("a"),
                                 parameters: ast::PathParameters::none(),
                             }
                         ],
@@ -643,11 +642,11 @@ mod tests {
                             global: true,
                             segments: vec![
                                 ast::PathSegment {
-                                    identifier: str_to_ident("a"),
+                                    identifier: Ident::from_str("a"),
                                     parameters: ast::PathParameters::none(),
                                 },
                                 ast::PathSegment {
-                                    identifier: str_to_ident("b"),
+                                    identifier: Ident::from_str("b"),
                                     parameters: ast::PathParameters::none(),
                                 }
                             ]
@@ -676,8 +675,8 @@ mod tests {
                 Some(&TokenTree::Token(_, token::Ident(name_zip))),
                 Some(&TokenTree::Delimited(_, ref macro_delimed)),
             )
-            if name_macro_rules.name.as_str() == "macro_rules"
-            && name_zip.name.as_str() == "zip" => {
+            if name_macro_rules.name == "macro_rules"
+            && name_zip.name == "zip" => {
                 let tts = &macro_delimed.tts[..];
                 match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
                     (
@@ -694,8 +693,7 @@ mod tests {
                                 Some(&TokenTree::Token(_, token::Dollar)),
                                 Some(&TokenTree::Token(_, token::Ident(ident))),
                             )
-                            if first_delimed.delim == token::Paren
-                            && ident.name.as_str() == "a" => {},
+                            if first_delimed.delim == token::Paren && ident.name == "a" => {},
                             _ => panic!("value 3: {:?}", **first_delimed),
                         }
                         let tts = &second_delimed.tts[..];
@@ -706,7 +704,7 @@ mod tests {
                                 Some(&TokenTree::Token(_, token::Ident(ident))),
                             )
                             if second_delimed.delim == token::Paren
-                            && ident.name.as_str() == "a" => {},
+                            && ident.name == "a" => {},
                             _ => panic!("value 4: {:?}", **second_delimed),
                         }
                     },
@@ -722,17 +720,17 @@ mod tests {
         let tts = string_to_tts("fn a (b : i32) { b; }".to_string());
 
         let expected = vec![
-            TokenTree::Token(sp(0, 2), token::Ident(str_to_ident("fn"))),
-            TokenTree::Token(sp(3, 4), token::Ident(str_to_ident("a"))),
+            TokenTree::Token(sp(0, 2), token::Ident(Ident::from_str("fn"))),
+            TokenTree::Token(sp(3, 4), token::Ident(Ident::from_str("a"))),
             TokenTree::Delimited(
                 sp(5, 14),
                 Rc::new(tokenstream::Delimited {
                     delim: token::DelimToken::Paren,
                     open_span: sp(5, 6),
                     tts: vec![
-                        TokenTree::Token(sp(6, 7), token::Ident(str_to_ident("b"))),
+                        TokenTree::Token(sp(6, 7), token::Ident(Ident::from_str("b"))),
                         TokenTree::Token(sp(8, 9), token::Colon),
-                        TokenTree::Token(sp(10, 13), token::Ident(str_to_ident("i32"))),
+                        TokenTree::Token(sp(10, 13), token::Ident(Ident::from_str("i32"))),
                     ],
                     close_span: sp(13, 14),
                 })),
@@ -742,7 +740,7 @@ mod tests {
                     delim: token::DelimToken::Brace,
                     open_span: sp(15, 16),
                     tts: vec![
-                        TokenTree::Token(sp(17, 18), token::Ident(str_to_ident("b"))),
+                        TokenTree::Token(sp(17, 18), token::Ident(Ident::from_str("b"))),
                         TokenTree::Token(sp(18, 19), token::Semi),
                     ],
                     close_span: sp(20, 21),
@@ -763,7 +761,7 @@ mod tests {
                             global: false,
                             segments: vec![
                                 ast::PathSegment {
-                                    identifier: str_to_ident("d"),
+                                    identifier: Ident::from_str("d"),
                                     parameters: ast::PathParameters::none(),
                                 }
                             ],
@@ -786,7 +784,7 @@ mod tests {
                                global:false,
                                segments: vec![
                                 ast::PathSegment {
-                                    identifier: str_to_ident("b"),
+                                    identifier: Ident::from_str("b"),
                                     parameters: ast::PathParameters::none(),
                                 }
                                ],
@@ -810,7 +808,7 @@ mod tests {
                 id: ast::DUMMY_NODE_ID,
                 node: PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Immutable),
                                     Spanned{ span:sp(0, 1),
-                                             node: str_to_ident("b")
+                                             node: Ident::from_str("b")
                     },
                                     None),
                 span: sp(0,1)}));
@@ -822,7 +820,7 @@ mod tests {
         // this test depends on the intern order of "fn" and "i32"
         assert_eq!(string_to_item("fn a (b : i32) { b; }".to_string()),
                   Some(
-                      P(ast::Item{ident:str_to_ident("a"),
+                      P(ast::Item{ident:Ident::from_str("a"),
                             attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
                             node: ast::ItemKind::Fn(P(ast::FnDecl {
@@ -833,8 +831,7 @@ mod tests {
                                         global:false,
                                         segments: vec![
                                             ast::PathSegment {
-                                                identifier:
-                                                    str_to_ident("i32"),
+                                                identifier: Ident::from_str("i32"),
                                                 parameters: ast::PathParameters::none(),
                                             }
                                         ],
@@ -847,7 +844,7 @@ mod tests {
                                             ast::BindingMode::ByValue(ast::Mutability::Immutable),
                                                 Spanned{
                                                     span: sp(6,7),
-                                                    node: str_to_ident("b")},
+                                                    node: Ident::from_str("b")},
                                                 None
                                                     ),
                                             span: sp(6,7)
@@ -882,9 +879,7 @@ mod tests {
                                                         global:false,
                                                         segments: vec![
                                                             ast::PathSegment {
-                                                                identifier:
-                                                                str_to_ident(
-                                                                    "b"),
+                                                                identifier: Ident::from_str("b"),
                                                                 parameters:
                                                                 ast::PathParameters::none(),
                                                             }
@@ -996,12 +991,12 @@ mod tests {
         let item = parse_item_from_source_str(name.clone(), source, &sess)
             .unwrap().unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-        assert_eq!(&doc[..], "/// doc comment");
+        assert_eq!(doc, "/// doc comment");
 
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name.clone(), source, &sess)
             .unwrap().unwrap();
-        let docs = item.attrs.iter().filter(|a| &*a.name() == "doc")
+        let docs = item.attrs.iter().filter(|a| a.name() == "doc")
                     .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
         let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
         assert_eq!(&docs[..], b);
@@ -1009,7 +1004,7 @@ mod tests {
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name, source, &sess).unwrap().unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-        assert_eq!(&doc[..], "/** doc comment\n *  with CRLF */");
+        assert_eq!(doc, "/** doc comment\n *  with CRLF */");
     }
 
     #[test]

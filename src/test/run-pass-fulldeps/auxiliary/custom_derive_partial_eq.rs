@@ -25,12 +25,12 @@ use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token::{intern, InternedString};
+use syntax::symbol::Symbol;
 use syntax::ptr::P;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_syntax_extension(intern("derive_CustomPartialEq"),
+    reg.register_syntax_extension(Symbol::intern("derive_CustomPartialEq"),
                                   MultiDecorator(Box::new(expand_deriving_partial_eq)));
 }
 
@@ -52,7 +52,7 @@ fn expand_deriving_partial_eq(cx: &mut ExtCtxt, span: Span, mitem: &MetaItem, it
                 substr)
     }
 
-    let inline = cx.meta_word(span, InternedString::new("inline"));
+    let inline = cx.meta_word(span, Symbol::intern("inline"));
     let attrs = vec![cx.attribute(span, inline)];
     let methods = vec![MethodDef {
         name: "eq",

@@ -1332,9 +1332,8 @@ pub fn noop_fold_vis<T: Folder>(vis: Visibility, folder: &mut T) -> Visibility {
 #[cfg(test)]
 mod tests {
     use std::io;
-    use ast;
+    use ast::{self, Ident};
     use util::parser_testing::{string_to_crate, matches_codepattern};
-    use parse::token;
     use print::pprust;
     use fold;
     use super::*;
@@ -1350,7 +1349,7 @@ mod tests {
 
     impl Folder for ToZzIdentFolder {
         fn fold_ident(&mut self, _: ast::Ident) -> ast::Ident {
-            token::str_to_ident("zz")
+            Ident::from_str("zz")
         }
         fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
             fold::noop_fold_mac(mac, self)
