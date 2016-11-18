@@ -75,9 +75,9 @@ const TEST_WARN_TIMEOUT_S: u64 = 60;
 // to be used by rustc to compile tests in libtest
 pub mod test {
     pub use {Bencher, TestName, TestResult, TestDesc, TestDescAndFn, TestOpts, TrFailed,
-             TrIgnored, TrOk, Metric, MetricMap, StaticTestFn, StaticTestName, DynTestName,
-             DynTestFn, run_test, test_main, test_main_static, filter_tests, parse_opts,
-             StaticBenchFn, ShouldPanic};
+             TrFailedMsg, TrIgnored, TrOk, Metric, MetricMap, StaticTestFn, StaticTestName,
+             DynTestName, DynTestFn, run_test, test_main, test_main_static, filter_tests,
+             parse_opts, StaticBenchFn, ShouldPanic};
 }
 
 pub mod stats;
@@ -473,6 +473,7 @@ pub struct BenchSamples {
 pub enum TestResult {
     TrOk,
     TrFailed,
+    TrFailedMsg(String),
     TrIgnored,
     TrMetrics(MetricMap),
     TrBench(BenchSamples),
@@ -611,7 +612,7 @@ impl<T: Write> ConsoleTestState<T> {
     pub fn write_result(&mut self, result: &TestResult) -> io::Result<()> {
         match *result {
             TrOk => self.write_ok(),
-            TrFailed => self.write_failed(),
+            TrFailed | TrFailedMsg(_) => self.write_failed(),
             TrIgnored => self.write_ignored(),
             TrMetrics(ref mm) => {
                 self.write_metric()?;
@@ -638,6 +639,7 @@ impl<T: Write> ConsoleTestState<T> {
                                 match *result {
                                     TrOk => "ok".to_owned(),
                                     TrFailed => "failed".to_owned(),
+                                    TrFailedMsg(ref msg) => format!("failed: {}", msg),
                                     TrIgnored => "ignored".to_owned(),
                                     TrMetrics(ref mm) => mm.fmt_metrics(),
                                     TrBench(ref bs) => fmt_bench_samples(bs),
@@ -771,6 +773,14 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
                     }
                     TrFailed => {
                         st.failed += 1;
+                        st.failures.push((test, stdout));
+                    }
+                    TrFailedMsg(msg) => {
+                        st.failed += 1;
+                        let mut stdout = stdout;
+                        stdout.extend_from_slice(
+                            format!("note: {}", msg).as_bytes()
+                        );
                         st.failures.push((test, stdout));
                     }
                 }
@@ -1270,12 +1280,16 @@ fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any + Send>>) -> Tes
     match (&desc.should_panic, task_result) {
         (&ShouldPanic::No, Ok(())) |
         (&ShouldPanic::Yes, Err(_)) => TrOk,
-        (&ShouldPanic::YesWithMessage(msg), Err(ref err))
+        (&ShouldPanic::YesWithMessage(msg), Err(ref err)) =>
             if err.downcast_ref::<String>()
-               .map(|e| &**e)
-               .or_else(|| err.downcast_ref::<&'static str>().map(|e| *e))
-               .map(|e| e.contains(msg))
-               .unwrap_or(false) => TrOk,
+                  .map(|e| &**e)
+                  .or_else(|| err.downcast_ref::<&'static str>().map(|e| *e))
+                  .map(|e| e.contains(msg))
+                  .unwrap_or(false) {
+                TrOk
+            } else {
+                TrFailedMsg(format!("Panic did not include expected string '{}'", msg))
+            },
         _ => TrFailed,
     }
 }
@@ -1482,8 +1496,9 @@ pub mod bench {
 
 #[cfg(test)]
 mod tests {
-    use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts, TestDesc, TestDescAndFn,
-               TestOpts, run_test, MetricMap, StaticTestName, DynTestName, DynTestFn, ShouldPanic};
+    use test::{TrFailed, TrFailedMsg, TrIgnored, TrOk, filter_tests, parse_opts, TestDesc,
+               TestDescAndFn, TestOpts, run_test, MetricMap, StaticTestName, DynTestName,
+               DynTestFn, ShouldPanic};
     use std::sync::mpsc::channel;
 
     #[test]
@@ -1565,18 +1580,20 @@ mod tests {
         fn f() {
             panic!("an error message");
         }
+        let expected = "foobar";
+        let failed_msg = "Panic did not include expected string";
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: false,
-                should_panic: ShouldPanic::YesWithMessage("foobar"),
+                should_panic: ShouldPanic::YesWithMessage(expected),
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
         let (_, res, _) = rx.recv().unwrap();
-        assert!(res == TrFailed);
+        assert!(res == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
     }
 
     #[test]
