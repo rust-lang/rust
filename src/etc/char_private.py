@@ -11,10 +11,15 @@
 # except according to those terms.
 
 # This script uses the following Unicode tables:
-# - Categories.txt
+# - UnicodeData.txt
 
+
+from collections import namedtuple
+import csv
 import os
 import subprocess
+
+NUM_CODEPOINTS=0x110000
 
 def to_ranges(iter):
     current = None
@@ -28,10 +33,10 @@ def to_ranges(iter):
     if current is not None:
         yield tuple(current)
 
-def get_escaped(dictionary):
-    for i in range(0x110000):
-        if dictionary.get(i, "Cn") in "Cc Cf Cs Co Cn Zl Zp Zs".split() and i != ord(' '):
-            yield i
+def get_escaped(codepoints):
+    for c in codepoints:
+        if (c.class_ or "Cn") in "Cc Cf Cs Co Cn Zl Zp Zs".split() and c.value != ord(' '):
+            yield c.value
 
 def get_file(f):
     try:
@@ -40,10 +45,41 @@ def get_file(f):
         subprocess.run(["curl", "-O", f], check=True)
         return open(os.path.basename(f))
 
-def main():
-    file = get_file("http://www.unicode.org/notes/tn36/Categories.txt")
+Codepoint = namedtuple('Codepoint', 'value class_')
 
-    dictionary = {int(line.split()[0], 16): line.split()[1] for line in file}
+def get_codepoints(f):
+    r = csv.reader(f, delimiter=";")
+    prev_codepoint = 0
+    class_first = None
+    for row in r:
+        codepoint = int(row[0], 16)
+        name = row[1]
+        class_ = row[2]
+
+        if class_first is not None:
+            if not name.endswith("Last>"):
+                raise ValueError("Missing Last after First")
+
+        for c in range(prev_codepoint + 1, codepoint):
+            yield Codepoint(c, class_first)
+
+        class_first = None
+        if name.endswith("First>"):
+            class_first = class_
+
+        yield Codepoint(codepoint, class_)
+        prev_codepoint = codepoint
+
+    if class_first != None:
+        raise ValueError("Missing Last after First")
+
+    for c in range(prev_codepoint + 1, NUM_CODEPOINTS):
+        yield Codepoint(c, None)
+
+def main():
+    file = get_file("http://www.unicode.org/Public/UNIDATA/UnicodeData.txt")
+
+    codepoints = get_codepoints(file)
 
     CUTOFF=0x10000
     singletons0 = []
@@ -52,7 +88,7 @@ def main():
     normal1 = []
     extra = []
 
-    for a, b in to_ranges(get_escaped(dictionary)):
+    for a, b in to_ranges(get_escaped(codepoints)):
         if a > 2 * CUTOFF:
             extra.append((a, b - a))
         elif a == b - 1:
