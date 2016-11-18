@@ -22,7 +22,8 @@ use context::SharedCrateContext;
 use session::Session;
 
 use llvm::{self, ValueRef};
-use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType, DILexicalBlock};
+use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
+                      DICompositeType, DILexicalBlock, DIFlags};
 
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::DefId;
@@ -68,8 +69,6 @@ pub const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
 // ptr::null() doesn't work :(
 pub const NO_SCOPE_METADATA: DIScope = (0 as DIScope);
-
-const FLAGS_NONE: c_uint = 0;
 
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
 pub struct UniqueTypeId(ast::Name);
@@ -347,14 +346,14 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             llvm_type: member_llvm_types[0],
             type_metadata: element_type_metadata,
             offset: ComputedMemberOffset,
-            flags: FLAGS_NONE
+            flags: DIFlags::FlagZero,
         },
         MemberDescription {
             name: "length".to_string(),
             llvm_type: member_llvm_types[1],
             type_metadata: type_metadata(cx, cx.tcx().types.usize, span),
             offset: ComputedMemberOffset,
-            flags: FLAGS_NONE
+            flags: DIFlags::FlagZero,
         },
     ];
 
@@ -838,7 +837,7 @@ struct MemberDescription {
     llvm_type: Type,
     type_metadata: DIType,
     offset: MemberOffset,
-    flags: c_uint
+    flags: DIFlags,
 }
 
 // A factory for MemberDescriptions. It produces a list of member descriptions
@@ -922,7 +921,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
                 llvm_type: type_of::type_of(cx, fty),
                 type_metadata: type_metadata(cx, fty, self.span),
                 offset: offset,
-                flags: FLAGS_NONE,
+                flags: DIFlags::FlagZero,
             }
         }).collect()
     }
@@ -987,7 +986,7 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
                 llvm_type: type_of::type_of(cx, component_type),
                 type_metadata: type_metadata(cx, component_type, self.span),
                 offset: ComputedMemberOffset,
-                flags: FLAGS_NONE,
+                flags: DIFlags::FlagZero,
             }
         }).collect()
     }
@@ -1039,7 +1038,7 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
                 llvm_type: type_of::type_of(cx, fty),
                 type_metadata: type_metadata(cx, fty, self.span),
                 offset: FixedMemberOffset { bytes: 0 },
-                flags: FLAGS_NONE,
+                flags: DIFlags::FlagZero,
             }
         }).collect()
     }
@@ -1137,7 +1136,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                             llvm_type: variant_llvm_type,
                             type_metadata: variant_type_metadata,
                             offset: FixedMemberOffset { bytes: 0 },
-                            flags: FLAGS_NONE
+                            flags: DIFlags::FlagZero
                         }
                     }).collect()
             },
@@ -1171,7 +1170,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                             llvm_type: variant_llvm_type,
                             type_metadata: variant_type_metadata,
                             offset: FixedMemberOffset { bytes: 0 },
-                            flags: FLAGS_NONE
+                            flags: DIFlags::FlagZero
                         }
                     ]
                 }
@@ -1208,7 +1207,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     llvm_type: non_null_llvm_type,
                     type_metadata: non_null_type_metadata,
                     offset: FixedMemberOffset { bytes: 0 },
-                    flags: FLAGS_NONE
+                    flags: DIFlags::FlagZero
                 };
 
                 let unique_type_id = debug_context(cx).type_map
@@ -1245,7 +1244,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         llvm_type: artificial_struct_llvm_type,
                         type_metadata: artificial_struct_metadata,
                         offset: FixedMemberOffset { bytes: 0 },
-                        flags: FLAGS_NONE
+                        flags: DIFlags::FlagZero
                     }
                 ]
             },
@@ -1289,7 +1288,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         llvm_type: variant_llvm_type,
                         type_metadata: variant_type_metadata,
                         offset: FixedMemberOffset { bytes: 0 },
-                        flags: FLAGS_NONE
+                        flags: DIFlags::FlagZero
                     }
                 ]
             },
@@ -1318,7 +1317,7 @@ impl<'tcx> VariantMemberDescriptionFactory<'tcx> {
                     _ => type_metadata(cx, ty, self.span)
                 },
                 offset: ComputedMemberOffset,
-                flags: FLAGS_NONE
+                flags: DIFlags::FlagZero
             }
         }).collect()
     }
@@ -1535,7 +1534,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         UNKNOWN_LINE_NUMBER,
         bytes_to_bits(enum_type_size),
         bytes_to_bits(enum_type_align),
-        0, // Flags
+        DIFlags::FlagZero,
         ptr::null_mut(),
         0, // RuntimeLang
         unique_type_id_str.as_ptr())
@@ -1680,7 +1679,7 @@ fn create_struct_stub(cx: &CrateContext,
             UNKNOWN_LINE_NUMBER,
             bytes_to_bits(struct_size),
             bytes_to_bits(struct_align),
-            0,
+            DIFlags::FlagZero,
             ptr::null_mut(),
             empty_array,
             0,
@@ -1717,7 +1716,7 @@ fn create_union_stub(cx: &CrateContext,
             UNKNOWN_LINE_NUMBER,
             bytes_to_bits(union_size),
             bytes_to_bits(union_align),
-            0, // Flags
+            DIFlags::FlagZero,
             empty_array,
             0, // RuntimeLang
             unique_type_id.as_ptr())

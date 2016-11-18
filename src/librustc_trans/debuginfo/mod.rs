@@ -22,8 +22,7 @@ use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
-use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
-                      FlagPrototyped};
+use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray, DIFlags};
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 
@@ -286,7 +285,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             is_local_to_unit,
             true,
             scope_line as c_uint,
-            FlagPrototyped as c_uint,
+            DIFlags::FlagPrototyped,
             cx.sess().opts.optimize != config::OptLevel::No,
             llfn,
             template_parameters,
@@ -478,7 +477,7 @@ pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     loc.line as c_uint,
                     type_metadata,
                     cx.sess().opts.optimize != config::OptLevel::No,
-                    0,
+                    DIFlags::FlagZero,
                     argument_index)
             };
             source_loc::set_debug_location(cx, None,
