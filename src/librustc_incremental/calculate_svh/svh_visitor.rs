@@ -199,6 +199,8 @@ enum SawAbiComponent<'a> {
     SawExpr(SawExprComponent<'a>),
     SawStmt,
     SawVis,
+    SawAssociatedItemKind(hir::AssociatedItemKind),
+    SawDefaultness(hir::Defaultness),
     SawWherePredicate,
     SawTyParamBound,
     SawPolyTraitRef,
@@ -499,10 +501,6 @@ macro_rules! hash_span {
 }
 
 impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'hash, 'tcx> {
-    fn visit_nested_item(&mut self, _: ItemId) {
-        // Each item is hashed independently; ignore nested items.
-    }
-
     fn visit_variant_data(&mut self,
                           s: &'tcx VariantData,
                           name: Name,
@@ -695,6 +693,18 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         SawVis.hash(self.st);
         self.hash_discriminant(v);
         visit::walk_vis(self, v)
+    }
+
+    fn visit_associated_item_kind(&mut self, kind: &'tcx AssociatedItemKind) {
+        debug!("visit_associated_item_kind: st={:?}", self.st);
+        SawAssociatedItemKind(*kind).hash(self.st);
+        visit::walk_associated_item_kind(self, kind);
+    }
+
+    fn visit_defaultness(&mut self, defaultness: &'tcx Defaultness) {
+        debug!("visit_associated_item_kind: st={:?}", self.st);
+        SawDefaultness(*defaultness).hash(self.st);
+        visit::walk_defaultness(self, defaultness);
     }
 
     fn visit_where_predicate(&mut self, predicate: &'tcx WherePredicate) {

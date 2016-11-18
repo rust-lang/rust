@@ -45,7 +45,7 @@ use super::load::DirtyNodes;
 use rustc::dep_graph::{DepGraphQuery, DepNode};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::Visitor;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use syntax::ast::{self, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use syntax::parse::token::InternedString;
@@ -74,7 +74,7 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let query = tcx.dep_graph.query();
     debug!("query-nodes: {:?}", query.nodes());
     let krate = tcx.map.krate();
-    krate.visit_all_items(&mut DirtyCleanVisitor {
+    krate.visit_all_item_likes(&mut DirtyCleanVisitor {
         tcx: tcx,
         query: &query,
         dirty_inputs: dirty_inputs,
@@ -169,7 +169,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let def_id = self.tcx.map.local_def_id(item.id);
         for attr in self.tcx.get_attrs(def_id).iter() {
@@ -184,6 +184,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
             }
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    }
 }
 
 pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -195,7 +198,7 @@ pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     tcx.dep_graph.with_ignore(||{
         let krate = tcx.map.krate();
-        krate.visit_all_items(&mut DirtyCleanMetadataVisitor {
+        krate.visit_all_item_likes(&mut DirtyCleanMetadataVisitor {
             tcx: tcx,
             prev_metadata_hashes: prev_metadata_hashes,
             current_metadata_hashes: current_metadata_hashes,
@@ -209,7 +212,7 @@ pub struct DirtyCleanMetadataVisitor<'a, 'tcx:'a, 'm> {
     current_metadata_hashes: &'m FxHashMap<DefId, Fingerprint>,
 }
 
-impl<'a, 'tcx, 'm> Visitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
+impl<'a, 'tcx, 'm> ItemLikeVisitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let def_id = self.tcx.map.local_def_id(item.id);
 
@@ -224,6 +227,9 @@ impl<'a, 'tcx, 'm> Visitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
                 }
             }
         }
+    }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }
 

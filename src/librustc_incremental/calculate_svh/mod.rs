@@ -34,6 +34,7 @@ use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::intravisit as visit;
+use rustc::hir::intravisit::Visitor;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::util::common::record_time;
@@ -107,7 +108,8 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     record_time(&tcx.sess.perf_stats.incr_comp_hashes_time, || {
         visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX),
                                  |v| visit::walk_crate(v, krate));
-        krate.visit_all_items(&mut visitor);
+        // FIXME(#37713) if foreign items were item likes, could use ItemLikeVisitor
+        krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
     });
 
     tcx.sess.perf_stats.incr_comp_hashes_count.set(visitor.hashes.len() as u64);
@@ -199,10 +201,15 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
 }
 
 
-impl<'a, 'tcx> visit::Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.calculate_node_id(item.id, |v| v.visit_item(item));
         visit::walk_item(self, item);
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+        self.calculate_node_id(impl_item.id, |v| v.visit_impl_item(impl_item));
+        visit::walk_impl_item(self, impl_item);
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {

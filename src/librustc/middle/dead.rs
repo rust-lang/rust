@@ -16,6 +16,7 @@ use dep_graph::DepNode;
 use hir::map as ast_map;
 use hir::{self, pat_util, PatKind};
 use hir::intravisit::{self, Visitor};
+use hir::itemlikevisit::ItemLikeVisitor;
 
 use middle::privacy;
 use ty::{self, TyCtxt};
@@ -329,11 +330,12 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
 //   or
 //   2) We are not sure to be live or not
 //     * Implementation of a trait method
-struct LifeSeeder {
-    worklist: Vec<ast::NodeId>
+struct LifeSeeder<'k> {
+    worklist: Vec<ast::NodeId>,
+    krate: &'k hir::Crate,
 }
 
-impl<'v> Visitor<'v> for LifeSeeder {
+impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
     fn visit_item(&mut self, item: &hir::Item) {
         let allow_dead_code = has_allow_dead_code_or_lang_attr(&item.attrs);
         if allow_dead_code {
@@ -357,16 +359,21 @@ impl<'v> Visitor<'v> for LifeSeeder {
                     }
                 }
             }
-            hir::ItemImpl(.., ref opt_trait, _, ref impl_items) => {
-                for impl_item in impl_items {
+            hir::ItemImpl(.., ref opt_trait, _, ref impl_item_refs) => {
+                for impl_item_ref in impl_item_refs {
+                    let impl_item = self.krate.impl_item(impl_item_ref.id);
                     if opt_trait.is_some() ||
                             has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
-                        self.worklist.push(impl_item.id);
+                        self.worklist.push(impl_item_ref.id.node_id);
                     }
                 }
             }
             _ => ()
         }
+    }
+
+    fn visit_impl_item(&mut self, _item: &hir::ImplItem) {
+        // ignore: we are handling this in `visit_item` above
     }
 }
 
@@ -386,9 +393,10 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Seed implemented trait items
     let mut life_seeder = LifeSeeder {
-        worklist: worklist
+        worklist: worklist,
+        krate: krate,
     };
-    krate.visit_all_items(&mut life_seeder);
+    krate.visit_all_item_likes(&mut life_seeder);
 
     return life_seeder.worklist;
 }
@@ -503,17 +511,16 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     /// Walk nested items in place so that we don't report dead-code
     /// on inner functions when the outer function is already getting
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
-    fn visit_nested_item(&mut self, item: hir::ItemId) {
-        let tcx = self.tcx;
-        self.visit_item(tcx.map.expect_item(item.id))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
 
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item) {
         if self.should_warn_about_item(item) {
             self.warn_dead_code(
                 item.id,
@@ -527,7 +534,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_variant(&mut self, variant: &hir::Variant, g: &hir::Generics, id: ast::NodeId) {
+    fn visit_variant(&mut self,
+                     variant: &'tcx hir::Variant,
+                     g: &'tcx hir::Generics,
+                     id: ast::NodeId) {
         if self.should_warn_about_variant(&variant.node) {
             self.warn_dead_code(variant.node.data.id(), variant.span,
                                 variant.node.name, "variant");
@@ -536,14 +546,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_foreign_item(&mut self, fi: &hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem) {
         if !self.symbol_is_live(fi.id, None) {
             self.warn_dead_code(fi.id, fi.span, fi.name, fi.node.descriptive_variant());
         }
         intravisit::walk_foreign_item(self, fi);
     }
 
-    fn visit_struct_field(&mut self, field: &hir::StructField) {
+    fn visit_struct_field(&mut self, field: &'tcx hir::StructField) {
         if self.should_warn_about_field(&field) {
             self.warn_dead_code(field.id, field.span,
                                 field.name, "field");
@@ -552,7 +562,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
         intravisit::walk_struct_field(self, field);
     }
 
-    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         match impl_item.node {
             hir::ImplItemKind::Const(_, ref expr) => {
                 if !self.symbol_is_live(impl_item.id, None) {
@@ -573,7 +583,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     }
 
     // Overwrite so that we don't warn the trait item itself.
-    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         match trait_item.node {
             hir::ConstTraitItem(_, Some(ref body))|
             hir::MethodTraitItem(_, Some(ref body)) => {

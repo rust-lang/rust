@@ -12,12 +12,12 @@
 //! crate or pertains to a type defined in this crate.
 
 use rustc::ty::TyCtxt;
-use rustc::hir::intravisit;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, Unsafety};
 
 pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut orphan = UnsafetyChecker { tcx: tcx };
-    tcx.map.krate().visit_all_items(&mut orphan);
+    let mut unsafety = UnsafetyChecker { tcx: tcx };
+    tcx.map.krate().visit_all_item_likes(&mut unsafety);
 }
 
 struct UnsafetyChecker<'cx, 'tcx: 'cx> {
@@ -94,7 +94,7 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx, 'v> intravisit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
+impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for UnsafetyChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
             hir::ItemDefaultImpl(unsafety, _) => {
@@ -105,5 +105,8 @@ impl<'cx, 'tcx, 'v> intravisit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
             }
             _ => {}
         }
+    }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }

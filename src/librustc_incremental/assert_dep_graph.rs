@@ -51,7 +51,7 @@ use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::{Direction, INCOMING, OUTGOING, NodeIndex};
 use rustc::hir;
-use rustc::hir::intravisit::Visitor;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use graphviz::IntoCow;
 use std::env;
 use std::fs::File;
@@ -81,7 +81,7 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
                                           if_this_changed: vec![],
                                           then_this_would_need: vec![] };
         visitor.process_attrs(ast::CRATE_NODE_ID, &tcx.map.krate().attrs);
-        tcx.map.krate().visit_all_items(&mut visitor);
+        tcx.map.krate().visit_all_item_likes(&mut visitor);
         (visitor.if_this_changed, visitor.then_this_would_need)
     };
 
@@ -167,9 +167,13 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for IfThisChanged<'a, 'tcx> {
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for IfThisChanged<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.process_attrs(item.id, &item.attrs);
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+        self.process_attrs(impl_item.id, &impl_item.attrs);
     }
 }
 

@@ -27,7 +27,7 @@ use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
 use rustc::hir;
-use rustc::hir::intravisit::Visitor;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use util::nodemap::NodeMap;
 
 use self::VarianceTerm::*;
@@ -109,7 +109,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     };
 
     // See README.md for a discussion on dep-graph management.
-    tcx.visit_all_items_in_krate(|def_id| ItemVariances::to_dep_node(&def_id), &mut terms_cx);
+    tcx.visit_all_item_likes_in_krate(|def_id| ItemVariances::to_dep_node(&def_id), &mut terms_cx);
 
     terms_cx
 }
@@ -227,7 +227,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
+impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         debug!("add_inferreds for item {}",
                self.tcx.map.node_to_string(item.id));
@@ -256,5 +256,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
             hir::ItemForeignMod(..) |
             hir::ItemTy(..) => {}
         }
+    }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }

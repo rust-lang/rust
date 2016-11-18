@@ -29,6 +29,7 @@ use syntax::ast;
 use syntax::attr;
 use hir;
 use hir::intravisit::Visitor;
+use hir::itemlikevisit::ItemLikeVisitor;
 use hir::intravisit;
 
 // Returns true if the given set of generics implies that the item it's
@@ -324,16 +325,20 @@ struct CollectPrivateImplItemsVisitor<'a> {
     worklist: &'a mut Vec<ast::NodeId>,
 }
 
-impl<'a, 'v> Visitor<'v> for CollectPrivateImplItemsVisitor<'a> {
+impl<'a, 'v> ItemLikeVisitor<'v> for CollectPrivateImplItemsVisitor<'a> {
     fn visit_item(&mut self, item: &hir::Item) {
         // We need only trait impls here, not inherent impls, and only non-exported ones
-        if let hir::ItemImpl(.., Some(_), _, ref impl_items) = item.node {
+        if let hir::ItemImpl(.., Some(_), _, ref impl_item_refs) = item.node {
             if !self.access_levels.is_reachable(item.id) {
-                for impl_item in impl_items {
-                    self.worklist.push(impl_item.id);
+                for impl_item_ref in impl_item_refs {
+                    self.worklist.push(impl_item_ref.id.node_id);
                 }
             }
         }
+    }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+        // processed in visit_item above
     }
 }
 
@@ -364,7 +369,7 @@ pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             access_levels: access_levels,
             worklist: &mut reachable_context.worklist,
         };
-        tcx.map.krate().visit_all_items(&mut collect_private_impl_items);
+        tcx.map.krate().visit_all_item_likes(&mut collect_private_impl_items);
     }
 
     // Step 2: Mark all symbols that the symbols on the worklist touch.

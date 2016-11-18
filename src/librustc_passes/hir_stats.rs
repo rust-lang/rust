@@ -106,10 +106,18 @@ impl<'k> StatCollector<'k> {
 }
 
 impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> {
+        panic!("visit_nested_xxx must be manually implemented in this visitor")
+    }
 
     fn visit_nested_item(&mut self, id: hir::ItemId) {
         let nested_item = self.krate.unwrap().item(id.id);
         self.visit_item(nested_item)
+    }
+
+    fn visit_nested_impl_item(&mut self, impl_item_id: hir::ImplItemId) {
+        let nested_impl_item = self.krate.unwrap().impl_item(impl_item_id);
+        self.visit_impl_item(nested_impl_item)
     }
 
     fn visit_item(&mut self, i: &'v hir::Item) {

@@ -77,13 +77,13 @@ use CrateCtxt;
 use rustc_const_math::ConstInt;
 
 use std::cell::RefCell;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use syntax::{abi, ast, attr};
 use syntax::parse::token::{self, keywords};
 use syntax_pos::Span;
 
-use rustc::hir::{self, intravisit, map as hir_map, print as pprust};
+use rustc::hir::{self, map as hir_map, print as pprust};
+use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 
@@ -92,7 +92,7 @@ use rustc::hir::def_id::DefId;
 
 pub fn collect_item_types(ccx: &CrateCtxt) {
     let mut visitor = CollectItemTypesVisitor { ccx: ccx };
-    ccx.tcx.visit_all_items_in_krate(DepNode::CollectItem, &mut visitor);
+    ccx.tcx.visit_all_item_likes_in_krate(DepNode::CollectItem, &mut visitor.as_deep_visitor());
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -128,7 +128,7 @@ struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         convert_item(self.ccx, item);
         intravisit::walk_item(self, item);
@@ -147,6 +147,11 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx>
             generics_of_def_id(self.ccx, def_id);
         }
         intravisit::walk_ty(self, ty);
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
+        convert_impl_item(self.ccx, impl_item);
+        intravisit::walk_impl_item(self, impl_item);
     }
 }
 
@@ -726,7 +731,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                       ref generics,
                       ref opt_trait_ref,
                       ref selfty,
-                      ref impl_items) => {
+                      _) => {
             // Create generics from the generics specified in the impl head.
             debug!("convert: ast_generics={:?}", generics);
             let def_id = ccx.tcx.map.local_def_id(it.id);
@@ -747,73 +752,16 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             });
             tcx.impl_trait_refs.borrow_mut().insert(def_id, trait_ref);
 
-            enforce_impl_params_are_constrained(ccx, generics, &mut ty_predicates, def_id);
+            // Subtle: before we store the predicates into the tcx, we
+            // sort them so that predicates like `T: Foo<Item=U>` come
+            // before uses of `U`.  This avoids false ambiguity errors
+            // in trait checking. See `setup_constraining_predicates`
+            // for details.
+            ctp::setup_constraining_predicates(&mut ty_predicates.predicates,
+                                               trait_ref,
+                                               &mut ctp::parameters_for_impl(selfty, trait_ref));
+
             tcx.predicates.borrow_mut().insert(def_id, ty_predicates.clone());
-
-
-            // Convert all the associated consts.
-            // Also, check if there are any duplicate associated items
-            let mut seen_type_items = FxHashMap();
-            let mut seen_value_items = FxHashMap();
-
-            for impl_item in impl_items {
-                let seen_items = match impl_item.node {
-                    hir::ImplItemKind::Type(_) => &mut seen_type_items,
-                    _                    => &mut seen_value_items,
-                };
-                match seen_items.entry(impl_item.name) {
-                    Occupied(entry) => {
-                        let mut err = struct_span_err!(tcx.sess, impl_item.span, E0201,
-                                                       "duplicate definitions with name `{}`:",
-                                                       impl_item.name);
-                        err.span_label(*entry.get(),
-                                   &format!("previous definition of `{}` here",
-                                        impl_item.name));
-                        err.span_label(impl_item.span, &format!("duplicate definition"));
-                        err.emit();
-                    }
-                    Vacant(entry) => {
-                        entry.insert(impl_item.span);
-                    }
-                }
-
-                if let hir::ImplItemKind::Const(ref ty, _) = impl_item.node {
-                    let const_def_id = ccx.tcx.map.local_def_id(impl_item.id);
-                    generics_of_def_id(ccx, const_def_id);
-                    let ty = ccx.icx(&ty_predicates)
-                                .to_ty(&ExplicitRscope, &ty);
-                    tcx.item_types.borrow_mut().insert(const_def_id, ty);
-                    convert_associated_const(ccx, ImplContainer(def_id),
-                                             impl_item.id, ty);
-                }
-            }
-
-            // Convert all the associated types.
-            for impl_item in impl_items {
-                if let hir::ImplItemKind::Type(ref ty) = impl_item.node {
-                    let type_def_id = ccx.tcx.map.local_def_id(impl_item.id);
-                    generics_of_def_id(ccx, type_def_id);
-
-                    if opt_trait_ref.is_none() {
-                        span_err!(tcx.sess, impl_item.span, E0202,
-                                  "associated types are not allowed in inherent impls");
-                    }
-
-                    let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
-
-                    convert_associated_type(ccx, ImplContainer(def_id), impl_item.id, Some(typ));
-                }
-            }
-
-            for impl_item in impl_items {
-                if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
-                    convert_method(ccx, ImplContainer(def_id),
-                                   impl_item.id, sig, selfty,
-                                   &ty_predicates);
-                }
-            }
-
-            enforce_impl_lifetimes_are_constrained(ccx, generics, def_id, impl_items);
         },
         hir::ItemTrait(.., ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);
@@ -896,6 +844,49 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             generics_of_def_id(ccx, def_id);
             predicates_of_item(ccx, it);
         },
+    }
+}
+
+fn convert_impl_item(ccx: &CrateCtxt, impl_item: &hir::ImplItem) {
+    let tcx = ccx.tcx;
+
+    // we can lookup details about the impl because items are visited
+    // before impl-items
+    let impl_def_id = tcx.map.get_parent_did(impl_item.id);
+    let impl_predicates = tcx.item_predicates(impl_def_id);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
+    let impl_self_ty = tcx.item_type(impl_def_id);
+
+    match impl_item.node {
+        hir::ImplItemKind::Const(ref ty, _) => {
+            let const_def_id = ccx.tcx.map.local_def_id(impl_item.id);
+            generics_of_def_id(ccx, const_def_id);
+            let ty = ccx.icx(&impl_predicates)
+                        .to_ty(&ExplicitRscope, &ty);
+            tcx.item_types.borrow_mut().insert(const_def_id, ty);
+            convert_associated_const(ccx, ImplContainer(impl_def_id),
+                                     impl_item.id, ty);
+        }
+
+        hir::ImplItemKind::Type(ref ty) => {
+            let type_def_id = ccx.tcx.map.local_def_id(impl_item.id);
+            generics_of_def_id(ccx, type_def_id);
+
+            if impl_trait_ref.is_none() {
+                span_err!(tcx.sess, impl_item.span, E0202,
+                          "associated types are not allowed in inherent impls");
+            }
+
+            let typ = ccx.icx(&impl_predicates).to_ty(&ExplicitRscope, ty);
+
+            convert_associated_type(ccx, ImplContainer(impl_def_id), impl_item.id, Some(typ));
+        }
+
+        hir::ImplItemKind::Method(ref sig, _) => {
+            convert_method(ccx, ImplContainer(impl_def_id),
+                           impl_item.id, sig, impl_self_ty,
+                           &impl_predicates);
+        }
     }
 }
 
@@ -2066,111 +2057,4 @@ pub fn mk_item_substs<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     Substs::for_item(tcx, def_id,
                      |def, _| tcx.mk_region(def.to_early_bound_region()),
                      |def, _| tcx.mk_param_from_def(def))
-}
-
-/// Checks that all the type parameters on an impl
-fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                                 generics: &hir::Generics,
-                                                 impl_predicates: &mut ty::GenericPredicates<'tcx>,
-                                                 impl_def_id: DefId)
-{
-    let impl_ty = ccx.tcx.item_type(impl_def_id);
-    let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
-
-    // The trait reference is an input, so find all type parameters
-    // reachable from there, to start (if this is an inherent impl,
-    // then just examine the self type).
-    let mut input_parameters: FxHashSet<_> =
-        ctp::parameters_for(&impl_ty, false).into_iter().collect();
-    if let Some(ref trait_ref) = impl_trait_ref {
-        input_parameters.extend(ctp::parameters_for(trait_ref, false));
-    }
-
-    ctp::setup_constraining_predicates(&mut impl_predicates.predicates,
-                                       impl_trait_ref,
-                                       &mut input_parameters);
-
-    let ty_generics = generics_of_def_id(ccx, impl_def_id);
-    for (ty_param, param) in ty_generics.types.iter().zip(&generics.ty_params) {
-        let param_ty = ty::ParamTy::for_def(ty_param);
-        if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
-            report_unused_parameter(ccx, param.span, "type", &param_ty.to_string());
-        }
-    }
-}
-
-fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                                    ast_generics: &hir::Generics,
-                                                    impl_def_id: DefId,
-                                                    impl_items: &[hir::ImplItem])
-{
-    // Every lifetime used in an associated type must be constrained.
-    let impl_ty = ccx.tcx.item_type(impl_def_id);
-    let impl_predicates = ccx.tcx.item_predicates(impl_def_id);
-    let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
-
-    let mut input_parameters: FxHashSet<_> =
-        ctp::parameters_for(&impl_ty, false).into_iter().collect();
-    if let Some(ref trait_ref) = impl_trait_ref {
-        input_parameters.extend(ctp::parameters_for(trait_ref, false));
-    }
-    ctp::identify_constrained_type_params(
-        &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
-
-    let lifetimes_in_associated_types: FxHashSet<_> = impl_items.iter()
-        .map(|item|  ccx.tcx.map.local_def_id(item.id))
-        .filter(|&def_id| {
-            let item = ccx.tcx.associated_item(def_id);
-            item.kind == ty::AssociatedKind::Type && item.has_value
-        })
-        .flat_map(|def_id| {
-            ctp::parameters_for(&ccx.tcx.item_type(def_id), true)
-        }).collect();
-
-    for (ty_lifetime, lifetime) in ccx.tcx.item_generics(impl_def_id).regions.iter()
-        .zip(&ast_generics.lifetimes)
-    {
-        let param = ctp::Parameter::from(ty_lifetime.to_early_bound_region_data());
-
-        if
-            lifetimes_in_associated_types.contains(&param) && // (*)
-            !input_parameters.contains(&param)
-        {
-            report_unused_parameter(ccx, lifetime.lifetime.span,
-                                    "lifetime", &lifetime.lifetime.name.to_string());
-        }
-    }
-
-    // (*) This is a horrible concession to reality. I think it'd be
-    // better to just ban unconstrianed lifetimes outright, but in
-    // practice people do non-hygenic macros like:
-    //
-    // ```
-    // macro_rules! __impl_slice_eq1 {
-    //     ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
-    //         impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
-    //            ....
-    //         }
-    //     }
-    // }
-    // ```
-    //
-    // In a concession to backwards compatbility, we continue to
-    // permit those, so long as the lifetimes aren't used in
-    // associated types. I believe this is sound, because lifetimes
-    // used elsewhere are not projected back out.
-}
-
-fn report_unused_parameter(ccx: &CrateCtxt,
-                           span: Span,
-                           kind: &str,
-                           name: &str)
-{
-    struct_span_err!(
-        ccx.tcx.sess, span, E0207,
-        "the {} parameter `{}` is not constrained by the \
-        impl trait, self type, or predicates",
-        kind, name)
-        .span_label(span, &format!("unconstrained {} parameter", kind))
-        .emit();
 }

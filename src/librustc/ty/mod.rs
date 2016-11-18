@@ -50,7 +50,7 @@ use syntax_pos::{DUMMY_SP, Span};
 use rustc_const_math::ConstInt;
 
 use hir;
-use hir::intravisit::Visitor;
+use hir::itemlikevisit::ItemLikeVisitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{BuiltinBound, BuiltinBounds};
@@ -189,7 +189,6 @@ pub struct AssociatedItem {
     pub kind: AssociatedKind,
     pub vis: Visibility,
     pub defaultness: hir::Defaultness,
-    pub has_value: bool,
     pub container: AssociatedItemContainer,
 
     /// Whether this is a method with an explicit self
@@ -2072,7 +2071,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn provided_trait_methods(self, id: DefId) -> Vec<AssociatedItem> {
         self.associated_items(id)
-            .filter(|item| item.kind == AssociatedKind::Method && item.has_value)
+            .filter(|item| item.kind == AssociatedKind::Method && item.defaultness.has_value())
             .collect()
     }
 
@@ -2113,67 +2112,107 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                            .expect("missing AssociatedItem in metadata");
             }
 
+            // When the user asks for a given associated item, we
+            // always go ahead and convert all the associated items in
+            // the container. Note that we are also careful only to
+            // ever register a read on the *container* of the assoc
+            // item, not the assoc item itself. This prevents changes
+            // in the details of an item (for example, the type to
+            // which an associated type is bound) from contaminating
+            // those tasks that just need to scan the names of items
+            // and so forth.
+
             let id = self.map.as_local_node_id(def_id).unwrap();
             let parent_id = self.map.get_parent(id);
             let parent_def_id = self.map.local_def_id(parent_id);
-            match self.map.get(id) {
-                ast_map::NodeTraitItem(trait_item) => {
-                    let (kind, has_self, has_value) = match trait_item.node {
-                        hir::MethodTraitItem(ref sig, ref body) => {
-                            (AssociatedKind::Method, sig.decl.get_self().is_some(),
-                             body.is_some())
-                        }
-                        hir::ConstTraitItem(_, ref value) => {
-                            (AssociatedKind::Const, false, value.is_some())
-                        }
-                        hir::TypeTraitItem(_, ref ty) => {
-                            (AssociatedKind::Type, false, ty.is_some())
-                        }
-                    };
-
-                    AssociatedItem {
-                        name: trait_item.name,
-                        kind: kind,
-                        vis: Visibility::from_hir(&hir::Inherited, id, self),
-                        defaultness: hir::Defaultness::Default,
-                        has_value: has_value,
-                        def_id: def_id,
-                        container: TraitContainer(parent_def_id),
-                        method_has_self_argument: has_self
+            let parent_item = self.map.expect_item(parent_id);
+            match parent_item.node {
+                hir::ItemImpl(.., ref impl_trait_ref, _, ref impl_item_refs) => {
+                    for impl_item_ref in impl_item_refs {
+                        let assoc_item =
+                            self.associated_item_from_impl_item_ref(parent_def_id,
+                                                                    impl_trait_ref.is_some(),
+                                                                    impl_item_ref);
+                        self.associated_items.borrow_mut().insert(assoc_item.def_id, assoc_item);
                     }
                 }
-                ast_map::NodeImplItem(impl_item) => {
-                    let (kind, has_self) = match impl_item.node {
-                        hir::ImplItemKind::Method(ref sig, _) => {
-                            (AssociatedKind::Method, sig.decl.get_self().is_some())
-                        }
-                        hir::ImplItemKind::Const(..) => (AssociatedKind::Const, false),
-                        hir::ImplItemKind::Type(..) => (AssociatedKind::Type, false)
-                    };
 
-                    // Trait impl items are always public.
-                    let public = hir::Public;
-                    let parent_item = self.map.expect_item(parent_id);
-                    let vis = if let hir::ItemImpl(.., Some(_), _, _) = parent_item.node {
-                        &public
-                    } else {
-                        &impl_item.vis
-                    };
-
-                    AssociatedItem {
-                        name: impl_item.name,
-                        kind: kind,
-                        vis: Visibility::from_hir(vis, id, self),
-                        defaultness: impl_item.defaultness,
-                        has_value: true,
-                        def_id: def_id,
-                        container: ImplContainer(parent_def_id),
-                        method_has_self_argument: has_self
+                hir::ItemTrait(.., ref trait_items) => {
+                    for trait_item in trait_items {
+                        let assoc_item =
+                            self.associated_item_from_trait_item_ref(parent_def_id, trait_item);
+                        self.associated_items.borrow_mut().insert(assoc_item.def_id, assoc_item);
                     }
                 }
-                item => bug!("associated_item: {:?} not an associated item", item)
+
+                ref r => {
+                    panic!("unexpected container of associated items: {:?}", r)
+                }
             }
+
+            // memoize wants us to return something, so return
+            // the one we generated for this def-id
+            *self.associated_items.borrow().get(&def_id).unwrap()
         })
+    }
+
+    fn associated_item_from_trait_item_ref(self,
+                                           parent_def_id: DefId,
+                                           trait_item: &hir::TraitItem)
+                                           -> AssociatedItem {
+        let def_id = self.map.local_def_id(trait_item.id);
+
+        let (kind, has_self, has_value) = match trait_item.node {
+            hir::MethodTraitItem(ref sig, ref body) => {
+                (AssociatedKind::Method, sig.decl.get_self().is_some(),
+                 body.is_some())
+            }
+            hir::ConstTraitItem(_, ref value) => {
+                (AssociatedKind::Const, false, value.is_some())
+            }
+            hir::TypeTraitItem(_, ref ty) => {
+                (AssociatedKind::Type, false, ty.is_some())
+            }
+        };
+
+        AssociatedItem {
+            name: trait_item.name,
+            kind: kind,
+            vis: Visibility::from_hir(&hir::Inherited, trait_item.id, self),
+            defaultness: hir::Defaultness::Default { has_value: has_value },
+            def_id: def_id,
+            container: TraitContainer(parent_def_id),
+            method_has_self_argument: has_self
+        }
+    }
+
+    fn associated_item_from_impl_item_ref(self,
+                                          parent_def_id: DefId,
+                                          from_trait_impl: bool,
+                                          impl_item_ref: &hir::ImplItemRef)
+                                          -> AssociatedItem {
+        let def_id = self.map.local_def_id(impl_item_ref.id.node_id);
+        let (kind, has_self) = match impl_item_ref.kind {
+            hir::AssociatedItemKind::Const => (ty::AssociatedKind::Const, false),
+            hir::AssociatedItemKind::Method { has_self } => {
+                (ty::AssociatedKind::Method, has_self)
+            }
+            hir::AssociatedItemKind::Type => (ty::AssociatedKind::Type, false),
+        };
+
+        // Trait impl items are always public.
+        let public = hir::Public;
+        let vis = if from_trait_impl { &public } else { &impl_item_ref.vis };
+
+        ty::AssociatedItem {
+            name: impl_item_ref.name,
+            kind: kind,
+            vis: ty::Visibility::from_hir(vis, impl_item_ref.id.node_id, self),
+            defaultness: impl_item_ref.defaultness,
+            def_id: def_id,
+            container: ImplContainer(parent_def_id),
+            method_has_self_argument: has_self
+        }
     }
 
     pub fn associated_item_def_ids(self, def_id: DefId) -> Rc<Vec<DefId>> {
@@ -2184,19 +2223,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             let id = self.map.as_local_node_id(def_id).unwrap();
             let item = self.map.expect_item(id);
-            match item.node {
+            let vec: Vec<_> = match item.node {
                 hir::ItemTrait(.., ref trait_items) => {
-                    Rc::new(trait_items.iter().map(|trait_item| {
-                        self.map.local_def_id(trait_item.id)
-                    }).collect())
+                    trait_items.iter()
+                               .map(|trait_item| trait_item.id)
+                               .map(|id| self.map.local_def_id(id))
+                               .collect()
                 }
-                hir::ItemImpl(.., ref impl_items) => {
-                    Rc::new(impl_items.iter().map(|impl_item| {
-                        self.map.local_def_id(impl_item.id)
-                    }).collect())
+                hir::ItemImpl(.., ref impl_item_refs) => {
+                    impl_item_refs.iter()
+                                  .map(|impl_item_ref| impl_item_ref.id)
+                                  .map(|id| self.map.local_def_id(id.node_id))
+                                  .collect()
                 }
                 _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait")
-            }
+            };
+            Rc::new(vec)
         })
     }
 
@@ -2695,12 +2737,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_region(ty::ReScope(self.region_maps.node_extent(id)))
     }
 
-    pub fn visit_all_items_in_krate<V,F>(self,
-                                         dep_node_fn: F,
-                                         visitor: &mut V)
-        where F: FnMut(DefId) -> DepNode<DefId>, V: Visitor<'gcx>
+    pub fn visit_all_item_likes_in_krate<V,F>(self,
+                                              dep_node_fn: F,
+                                              visitor: &mut V)
+        where F: FnMut(DefId) -> DepNode<DefId>, V: ItemLikeVisitor<'gcx>
     {
-        dep_graph::visit_all_items_in_krate(self.global_tcx(), dep_node_fn, visitor);
+        dep_graph::visit_all_item_likes_in_krate(self.global_tcx(), dep_node_fn, visitor);
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`

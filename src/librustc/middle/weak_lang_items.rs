@@ -50,7 +50,7 @@ pub fn check_crate(krate: &hir::Crate,
 
     {
         let mut cx = Context { sess: sess, items: items };
-        krate.visit_all_items(&mut cx);
+        krate.visit_all_item_likes(&mut cx.as_deep_visitor());
     }
     verify(sess, items);
 }

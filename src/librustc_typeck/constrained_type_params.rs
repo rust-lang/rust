@@ -23,6 +23,18 @@ impl From<ty::EarlyBoundRegion> for Parameter {
     fn from(param: ty::EarlyBoundRegion) -> Self { Parameter(param.index) }
 }
 
+/// Return the set of parameters constrained by the impl header.
+pub fn parameters_for_impl<'tcx>(impl_self_ty: Ty<'tcx>,
+                                 impl_trait_ref: Option<ty::TraitRef<'tcx>>)
+                                 -> FxHashSet<Parameter>
+{
+    let vec = match impl_trait_ref {
+        Some(tr) => parameters_for(&tr, false),
+        None => parameters_for(&impl_self_ty, false),
+    };
+    vec.into_iter().collect()
+}
+
 /// If `include_projections` is false, returns the list of parameters that are
 /// constrained by `t` - i.e. the value of each parameter in the list is
 /// uniquely determined by `t` (see RFC 447). If it is true, return the list

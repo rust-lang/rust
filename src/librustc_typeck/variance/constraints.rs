@@ -22,7 +22,7 @@ use rustc::ty::maps::ItemVariances;
 use rustc::hir::map as hir_map;
 use syntax::ast;
 use rustc::hir;
-use rustc::hir::intravisit::Visitor;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 use super::terms::*;
 use super::terms::VarianceTerm::*;
@@ -65,13 +65,13 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
     };
 
     // See README.md for a discussion on dep-graph management.
-    tcx.visit_all_items_in_krate(|def_id| ItemVariances::to_dep_node(&def_id),
-                                 &mut constraint_cx);
+    tcx.visit_all_item_likes_in_krate(|def_id| ItemVariances::to_dep_node(&def_id),
+                                      &mut constraint_cx);
 
     constraint_cx
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
+impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         let tcx = self.terms_cx.tcx;
         let did = tcx.map.local_def_id(item.id);
@@ -114,6 +114,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
             hir::ItemImpl(..) |
             hir::ItemDefaultImpl(..) => {}
         }
+    }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }
 

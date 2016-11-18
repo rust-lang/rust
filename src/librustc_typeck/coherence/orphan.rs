@@ -17,12 +17,12 @@ use rustc::ty::{self, TyCtxt};
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::dep_graph::DepNode;
-use rustc::hir::intravisit;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
 
 pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut orphan = OrphanChecker { tcx: tcx };
-    tcx.visit_all_items_in_krate(DepNode::CoherenceOrphanCheck, &mut orphan);
+    tcx.visit_all_item_likes_in_krate(DepNode::CoherenceOrphanCheck, &mut orphan);
 }
 
 struct OrphanChecker<'cx, 'tcx: 'cx> {
@@ -380,8 +380,12 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx, 'v> intravisit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
+impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         self.check_item(item);
+    }
+
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }
