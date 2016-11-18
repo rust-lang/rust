@@ -162,6 +162,10 @@ pub fn opts() -> Vec<RustcOptGroup> {
         unstable(optmulti("Z", "",
                           "internal and debugging options (only on nightly build)", "FLAG")),
         stable(optopt("", "sysroot", "Override the system root", "PATH")),
+        stable(optopt("", "playground-url",
+                      "URL to send code snippets to, may be reset by --markdown-playground-url \
+                       or `#![doc(html_playground_url=...)]`",
+                      "URL")),
     ]
 }
 
@@ -229,6 +233,10 @@ pub fn main_args(args: &[String]) -> isize {
             return 1;
         }
     };
+
+    if let Some(playground) = matches.opt_str("playground-url") {
+        html::markdown::PLAYGROUND.with(|s| { *s.borrow_mut() = Some((None, playground)); });
+    }
 
     let test_args = matches.opt_strs("test-args");
     let test_args: Vec<String> = test_args.iter()
