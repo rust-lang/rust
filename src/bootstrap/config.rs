@@ -90,6 +90,7 @@ pub struct Config {
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
+    pub python: Option<PathBuf>,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -130,6 +131,7 @@ struct Build {
     gdb: Option<String>,
     vendor: Option<bool>,
     nodejs: Option<String>,
+    python: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -237,6 +239,7 @@ impl Config {
         config.cargo = build.cargo.map(PathBuf::from);
         config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
+        config.python = build.python.map(PathBuf::from);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
@@ -465,6 +468,10 @@ impl Config {
                     let path = parse_configure_path(value);
                     self.rustc = Some(push_exe_path(path.clone(), &["bin", "rustc"]));
                     self.cargo = Some(push_exe_path(path, &["bin", "cargo"]));
+                }
+                "CFG_PYTHON" if value.len() > 0 => {
+                    let path = parse_configure_path(value);
+                    self.python = Some(path);
                 }
                 _ => {}
             }
