@@ -322,7 +322,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let ty = self.monomorphize(ty, substs);
 
         self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
-            // TODO(solson): Report this error properly.
             ty.layout(&infcx).map_err(EvalError::Layout)
         })
     }
