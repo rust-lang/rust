@@ -56,10 +56,7 @@ struct ExVisitor<'v> {
 impl<'v> Visitor<'v> for ExVisitor<'v> {
     fn visit_expr(&mut self, expr: &'v Expr) {
         if let ExprClosure(_, _, ref expr, _) = expr.node {
-            let complex = {
-                matches!(expr.node, ExprBlock(_))
-            };
-            if complex {
+            if matches!(expr.node, ExprBlock(_)) {
                 self.found_block = Some(expr);
                 return;
             }
@@ -111,7 +108,7 @@ impl LateLintPass for BlockInIfCondition {
                 let mut visitor = ExVisitor { found_block: None };
                 walk_expr(&mut visitor, check);
                 if let Some(block) = visitor.found_block {
-                    span_help_and_lint(cx, BLOCK_IN_IF_CONDITION_STMT, block.span, COMPLEX_BLOCK_MESSAGE, "");
+                    span_lint(cx, BLOCK_IN_IF_CONDITION_STMT, block.span, COMPLEX_BLOCK_MESSAGE);
                 }
             }
         }

@@ -27,7 +27,6 @@ fn macro_if() {
 }
 
 fn condition_has_block() -> i32 {
-
     if { //~ERROR in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
         let x = 3;
         x == 3
