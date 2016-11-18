@@ -17,4 +17,9 @@ fn main() {
     println!("{} %f", "one", 2.0);
 
     println!("Hi there, $NAME.", NAME="Tim");
+
+    println!("%*2$.*1$s",
+             "Some text",
+             20,
+             8);
 }
