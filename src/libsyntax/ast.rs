@@ -1852,6 +1852,7 @@ pub enum ItemKind {
     /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`
     Impl(Unsafety,
              ImplPolarity,
+             Defaultness,
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self

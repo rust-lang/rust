@@ -87,7 +87,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for UnsafetyChecker<'cx, 'tcx> {
             hir::ItemDefaultImpl(unsafety, _) => {
                 self.check_unsafety_coherence(item, None, unsafety, hir::ImplPolarity::Positive);
             }
-            hir::ItemImpl(unsafety, polarity, ref generics, Some(_), _, _) => {
+            hir::ItemImpl(unsafety, polarity, _, ref generics, ..) => {
                 self.check_unsafety_coherence(item, Some(generics), unsafety, polarity);
             }
             _ => {}
