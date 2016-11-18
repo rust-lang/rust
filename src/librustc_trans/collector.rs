@@ -189,7 +189,7 @@
 //! regardless of whether it is actually needed or not.
 
 use rustc::hir;
-use rustc::hir::intravisit as hir_visit;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
@@ -306,10 +306,9 @@ fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             scx: scx,
             mode: mode,
             output: &mut roots,
-            enclosing_item: None,
         };
 
-        scx.tcx().map.krate().visit_all_items(&mut visitor);
+        scx.tcx().map.krate().visit_all_item_likes(&mut visitor);
     }
 
     roots
@@ -1030,14 +1029,10 @@ struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     scx: &'b SharedCrateContext<'a, 'tcx>,
     mode: TransItemCollectionMode,
     output: &'b mut Vec<TransItem<'tcx>>,
-    enclosing_item: Option<&'tcx hir::Item>,
 }
 
-impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
+impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
     fn visit_item(&mut self, item: &'v hir::Item) {
-        let old_enclosing_item = self.enclosing_item;
-        self.enclosing_item = Some(item);
-
         match item.node {
             hir::ItemExternCrate(..) |
             hir::ItemUse(..)         |
@@ -1094,9 +1089,6 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                 }
             }
         }
-
-        hir_visit::walk_item(self, item);
-        self.enclosing_item = old_enclosing_item;
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
@@ -1131,8 +1123,6 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
             }
             _ => { /* Nothing to do here */ }
         }
-
-        hir_visit::walk_impl_item(self, ii)
     }
 }
 
@@ -1145,7 +1135,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                       _,
                       ref generics,
                       ..,
-                      ref items) => {
+                      ref impl_item_refs) => {
             if generics.is_type_parameterized() {
                 return
             }
@@ -1157,9 +1147,10 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
                 let callee_substs = tcx.erase_regions(&trait_ref.substs);
-                let overridden_methods: FxHashSet<_> = items.iter()
-                                                            .map(|item| item.name)
-                                                            .collect();
+                let overridden_methods: FxHashSet<_> =
+                    impl_item_refs.iter()
+                                  .map(|iiref| iiref.name)
+                                  .collect();
                 for method in tcx.provided_trait_methods(trait_ref.def_id) {
                     if overridden_methods.contains(&method.name) {
                         continue;

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::dep_graph::DepNode;
-use rustc::hir::intravisit::Visitor;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map::Map;
 use rustc::hir;
 use syntax::ast;
@@ -20,7 +20,7 @@ pub fn find(hir_map: &Map) -> Option<ast::NodeId> {
     let krate = hir_map.krate();
 
     let mut finder = Finder { registrar: None };
-    krate.visit_all_items(&mut finder);
+    krate.visit_all_item_likes(&mut finder);
     finder.registrar
 }
 
@@ -28,10 +28,14 @@ struct Finder {
     registrar: Option<ast::NodeId>,
 }
 
-impl<'v> Visitor<'v> for Finder {
+impl<'v> ItemLikeVisitor<'v> for Finder {
     fn visit_item(&mut self, item: &hir::Item) {
         if attr::contains_name(&item.attrs, "rustc_derive_registrar") {
             self.registrar = Some(item.id);
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    }
 }
+

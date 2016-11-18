@@ -100,7 +100,8 @@ pub fn check_crate<'ast>(sess: &Session,
         discriminant_map: RefCell::new(NodeMap()),
     };
     sess.track_errors(|| {
-        ast_map.krate().visit_all_items(&mut visitor);
+        // FIXME(#37712) could use ItemLikeVisitor if trait items were item-like
+        ast_map.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
     })
 }
 

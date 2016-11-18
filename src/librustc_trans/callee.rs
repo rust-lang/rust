@@ -600,13 +600,8 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // reference. It also occurs when testing libcore and in some
     // other weird situations. Annoying.
 
-    let fn_ptr_ty = match fn_ty.sty {
-        ty::TyFnDef(.., fty) => {
-            // Create a fn pointer with the substituted signature.
-            tcx.mk_fn_ptr(fty)
-        }
-        _ => bug!("expected fn item type, found {}", fn_ty)
-    };
+    // Create a fn pointer with the substituted signature.
+    let fn_ptr_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(common::ty_fn_ty(ccx, fn_ty).into_owned()));
     let llptrty = type_of::type_of(ccx, fn_ptr_ty);
 
     let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {

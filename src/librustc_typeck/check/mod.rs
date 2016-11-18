@@ -121,6 +121,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{self, BytePos, Span};
 
 use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
 use rustc_back::slice;
@@ -525,30 +526,35 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &'tcx hir::Item) {
         check_item_body(self.ccx, i);
+    }
+
+    fn visit_impl_item(&mut self, _item: &'tcx hir::ImplItem) {
+        // done as part of `visit_item` above
     }
 }
 
 pub fn check_wf_new(ccx: &CrateCtxt) -> CompileResult {
     ccx.tcx.sess.track_errors(|| {
         let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(ccx);
-        ccx.tcx.visit_all_items_in_krate(DepNode::WfCheck, &mut visit);
+        ccx.tcx.visit_all_item_likes_in_krate(DepNode::WfCheck, &mut visit.as_deep_visitor());
     })
 }
 
 pub fn check_item_types(ccx: &CrateCtxt) -> CompileResult {
     ccx.tcx.sess.track_errors(|| {
         let mut visit = CheckItemTypesVisitor { ccx: ccx };
-        ccx.tcx.visit_all_items_in_krate(DepNode::TypeckItemType, &mut visit);
+        ccx.tcx.visit_all_item_likes_in_krate(DepNode::TypeckItemType,
+                                              &mut visit.as_deep_visitor());
     })
 }
 
 pub fn check_item_bodies(ccx: &CrateCtxt) -> CompileResult {
     ccx.tcx.sess.track_errors(|| {
         let mut visit = CheckItemBodiesVisitor { ccx: ccx };
-        ccx.tcx.visit_all_items_in_krate(DepNode::TypeckItemBody, &mut visit);
+        ccx.tcx.visit_all_item_likes_in_krate(DepNode::TypeckItemBody, &mut visit);
 
         // Process deferred obligations, now that all functions
         // bodies have been fully inferred.
@@ -809,7 +815,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                             it.id);
       }
       hir::ItemFn(..) => {} // entirely within check_item_body
-      hir::ItemImpl(.., ref impl_items) => {
+      hir::ItemImpl(.., ref impl_item_refs) => {
           debug!("ItemImpl {} with id {}", it.name, it.id);
           let impl_def_id = ccx.tcx.map.local_def_id(it.id);
           if let Some(impl_trait_ref) = ccx.tcx.impl_trait_ref(impl_def_id) {
@@ -817,7 +823,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                                              it.span,
                                              impl_def_id,
                                              impl_trait_ref,
-                                             impl_items);
+                                             impl_item_refs);
               let trait_def_id = impl_trait_ref.def_id;
               check_on_unimplemented(ccx, trait_def_id, it);
           }
@@ -879,10 +885,11 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       hir::ItemFn(ref decl, .., ref body) => {
         check_bare_fn(ccx, &decl, &body, it.id, it.span);
       }
-      hir::ItemImpl(.., ref impl_items) => {
+      hir::ItemImpl(.., ref impl_item_refs) => {
         debug!("ItemImpl {} with id {}", it.name, it.id);
 
-        for impl_item in impl_items {
+        for impl_item_ref in impl_item_refs {
+            let impl_item = ccx.tcx.map.impl_item(impl_item_ref.id);
             match impl_item.node {
                 hir::ImplItemKind::Const(_, ref expr) => {
                     check_const(ccx, &expr, impl_item.id)
@@ -1019,7 +1026,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_span: Span,
                                             impl_id: DefId,
                                             impl_trait_ref: ty::TraitRef<'tcx>,
-                                            impl_items: &[hir::ImplItem]) {
+                                            impl_item_refs: &[hir::ImplItemRef]) {
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
     // isn't populated for such impls.
@@ -1030,9 +1037,11 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let trait_def = tcx.lookup_trait_def(impl_trait_ref.def_id);
     let mut overridden_associated_type = None;
 
+    let impl_items = || impl_item_refs.iter().map(|iiref| ccx.tcx.map.impl_item(iiref.id));
+
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
-    for impl_item in impl_items {
+    for impl_item in impl_items() {
         let ty_impl_item = tcx.associated_item(tcx.map.local_def_id(impl_item.id));
         let ty_trait_item = tcx.associated_items(impl_trait_ref.def_id)
             .find(|ac| ac.name == ty_impl_item.name);
@@ -1101,7 +1110,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 }
                 hir::ImplItemKind::Type(_) => {
                     if ty_trait_item.kind == ty::AssociatedKind::Type {
-                        if ty_trait_item.has_value {
+                        if ty_trait_item.defaultness.has_value() {
                             overridden_associated_type = Some(impl_item);
                         }
                     } else {
@@ -1135,7 +1144,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             .unwrap_or(false);
 
         if !is_implemented {
-            if !trait_item.has_value {
+            if !trait_item.defaultness.has_value() {
                 missing_items.push(trait_item);
             } else if associated_type_overridden {
                 invalidated_items.push(trait_item.name);

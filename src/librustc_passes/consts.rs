@@ -644,13 +644,13 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.visit_all_items_in_krate(DepNode::CheckConst,
-                                 &mut CheckCrateVisitor {
-                                     tcx: tcx,
-                                     mode: Mode::Var,
-                                     qualif: ConstQualif::NOT_CONST,
-                                     rvalue_borrows: NodeMap(),
-                                 });
+    tcx.visit_all_item_likes_in_krate(DepNode::CheckConst,
+                                      &mut CheckCrateVisitor {
+                                          tcx: tcx,
+                                          mode: Mode::Var,
+                                          qualif: ConstQualif::NOT_CONST,
+                                          rvalue_borrows: NodeMap(),
+                                      }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 

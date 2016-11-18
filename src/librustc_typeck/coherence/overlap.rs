@@ -18,7 +18,7 @@ use rustc::ty::{self, TyCtxt, TypeFoldable};
 use syntax::ast;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
-use rustc::hir::intravisit;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use util::nodemap::DefIdMap;
 use lint;
 
@@ -30,7 +30,7 @@ pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     // this secondary walk specifically checks for some other cases,
     // like defaulted traits, for which additional overlap rules exist
-    tcx.visit_all_items_in_krate(DepNode::CoherenceOverlapCheckSpecial, &mut overlap);
+    tcx.visit_all_item_likes_in_krate(DepNode::CoherenceOverlapCheckSpecial, &mut overlap);
 }
 
 struct OverlapChecker<'cx, 'tcx: 'cx> {
@@ -97,7 +97,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx, 'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
+impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OverlapChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
             hir::ItemEnum(..) |
@@ -204,5 +204,8 @@ impl<'cx, 'tcx, 'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
             }
             _ => {}
         }
+    }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }

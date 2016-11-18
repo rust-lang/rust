@@ -105,6 +105,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_crate(&mut self, c: &Crate) -> hir::Crate {
         struct ItemLowerer<'lcx, 'interner: 'lcx> {
             items: BTreeMap<NodeId, hir::Item>,
+            impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
             lctx: &'lcx mut LoweringContext<'interner>,
         }
 
@@ -113,12 +114,20 @@ impl<'a> LoweringContext<'a> {
                 self.items.insert(item.id, self.lctx.lower_item(item));
                 visit::walk_item(self, item);
             }
+
+            fn visit_impl_item(&mut self, item: &ImplItem) {
+                let id = self.lctx.lower_impl_item_ref(item).id;
+                self.impl_items.insert(id, self.lctx.lower_impl_item(item));
+                visit::walk_impl_item(self, item);
+            }
         }
 
-        let items = {
-            let mut item_lowerer = ItemLowerer { items: BTreeMap::new(), lctx: self };
+        let (items, impl_items) = {
+            let mut item_lowerer = ItemLowerer { items: BTreeMap::new(),
+                                                 impl_items: BTreeMap::new(),
+                                                 lctx: self };
             visit::walk_crate(&mut item_lowerer, c);
-            item_lowerer.items
+            (item_lowerer.items, item_lowerer.impl_items)
         };
 
         hir::Crate {
@@ -127,6 +136,7 @@ impl<'a> LoweringContext<'a> {
             span: c.span,
             exported_macros: c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect(),
             items: items,
+            impl_items: impl_items,
         }
     }
 
@@ -631,7 +641,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Impl(unsafety, polarity, ref generics, ref ifce, ref ty, ref impl_items) => {
                 let new_impl_items = impl_items.iter()
-                                               .map(|item| self.lower_impl_item(item))
+                                               .map(|item| self.lower_impl_item_ref(item))
                                                .collect();
                 let ifce = ifce.as_ref().map(|trait_ref| self.lower_trait_ref(trait_ref));
                 hir::ItemImpl(self.lower_unsafety(unsafety),
@@ -689,7 +699,7 @@ impl<'a> LoweringContext<'a> {
                 name: i.ident.name,
                 attrs: this.lower_attrs(&i.attrs),
                 vis: this.lower_visibility(&i.vis),
-                defaultness: this.lower_defaultness(i.defaultness),
+                defaultness: this.lower_defaultness(i.defaultness, true /* [1] */),
                 node: match i.node {
                     ImplItemKind::Const(ref ty, ref expr) => {
                         hir::ImplItemKind::Const(this.lower_ty(ty), this.lower_expr(expr))
@@ -705,6 +715,28 @@ impl<'a> LoweringContext<'a> {
                 span: i.span,
             }
         })
+
+        // [1] since `default impl` is not yet implemented, this is always true in impls
+    }
+
+    fn lower_impl_item_ref(&mut self, i: &ImplItem) -> hir::ImplItemRef {
+        hir::ImplItemRef {
+            id: hir::ImplItemId { node_id: i.id },
+            name: i.ident.name,
+            span: i.span,
+            vis: self.lower_visibility(&i.vis),
+            defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
+            kind: match i.node {
+                ImplItemKind::Const(..) => hir::AssociatedItemKind::Const,
+                ImplItemKind::Type(..) => hir::AssociatedItemKind::Type,
+                ImplItemKind::Method(ref sig, _) => hir::AssociatedItemKind::Method {
+                    has_self: sig.decl.get_self().is_some(),
+                },
+                ImplItemKind::Macro(..) => unimplemented!(),
+            },
+        }
+
+        // [1] since `default impl` is not yet implemented, this is always true in impls
     }
 
     fn lower_mod(&mut self, m: &Mod) -> hir::Mod {
@@ -1620,10 +1652,13 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_defaultness(&mut self, d: Defaultness) -> hir::Defaultness {
+    fn lower_defaultness(&mut self, d: Defaultness, has_value: bool) -> hir::Defaultness {
         match d {
-            Defaultness::Default => hir::Defaultness::Default,
-            Defaultness::Final => hir::Defaultness::Final,
+            Defaultness::Default => hir::Defaultness::Default { has_value: has_value },
+            Defaultness::Final => {
+                assert!(has_value);
+                hir::Defaultness::Final
+            }
         }
     }
 

@@ -850,7 +850,6 @@ impl<'a, 'tcx> CrateMetadata {
                     kind: ty::AssociatedKind::Const,
                     vis: item.visibility,
                     defaultness: container.defaultness(),
-                    has_value: container.has_value(),
                     def_id: self.local_def_id(id),
                     container: container.with_def_id(parent),
                     method_has_self_argument: false
@@ -864,7 +863,6 @@ impl<'a, 'tcx> CrateMetadata {
                     kind: ty::AssociatedKind::Method,
                     vis: item.visibility,
                     defaultness: data.container.defaultness(),
-                    has_value: data.container.has_value(),
                     def_id: self.local_def_id(id),
                     container: data.container.with_def_id(parent),
                     method_has_self_argument: data.has_self
@@ -877,7 +875,6 @@ impl<'a, 'tcx> CrateMetadata {
                     kind: ty::AssociatedKind::Type,
                     vis: item.visibility,
                     defaultness: container.defaultness(),
-                    has_value: container.has_value(),
                     def_id: self.local_def_id(id),
                     container: container.with_def_id(parent),
                     method_has_self_argument: false

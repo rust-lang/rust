@@ -38,6 +38,7 @@ use syntax;
 use syntax_pos;
 
 use rustc::hir::{self, PatKind};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit::Visitor;
 use rustc::hir::intravisit;
 
@@ -459,10 +460,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let ast_item = tcx.map.expect_trait_item(node_id);
         let trait_item = tcx.associated_item(def_id);
 
-        let container = if trait_item.has_value {
-            AssociatedContainer::TraitWithDefault
-        } else {
-            AssociatedContainer::TraitRequired
+        let container = match trait_item.defaultness {
+            hir::Defaultness::Default { has_value: true } =>
+                AssociatedContainer::TraitWithDefault,
+            hir::Defaultness::Default { has_value: false } =>
+                AssociatedContainer::TraitRequired,
+            hir::Defaultness::Final =>
+                span_bug!(ast_item.span, "traits cannot have final items"),
         };
 
         let kind = match trait_item.kind {
@@ -500,7 +504,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     Some(self.encode_item_type(def_id))
                 }
                 ty::AssociatedKind::Type => {
-                    if trait_item.has_value {
+                    if trait_item.defaultness.has_value() {
                         Some(self.encode_item_type(def_id))
                     } else {
                         None
@@ -529,8 +533,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let impl_def_id = impl_item.container.id();
 
         let container = match impl_item.defaultness {
-            hir::Defaultness::Default => AssociatedContainer::ImplDefault,
+            hir::Defaultness::Default { has_value: true } => AssociatedContainer::ImplDefault,
             hir::Defaultness::Final => AssociatedContainer::ImplFinal,
+            hir::Defaultness::Default { has_value: false } =>
+                span_bug!(ast_item.span, "impl items always have values (currently)"),
         };
 
         let kind = match impl_item.kind {
@@ -1074,7 +1080,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                      EncodeContext::encode_info_for_mod,
                      FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &hir::Public)));
         let mut visitor = EncodeVisitor { index: index };
-        krate.visit_all_items(&mut visitor);
+        krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
         for macro_def in &krate.exported_macros {
             visitor.visit_macro_def(macro_def);
         }
@@ -1159,7 +1165,7 @@ struct ImplVisitor<'a, 'tcx: 'a> {
     impls: FxHashMap<DefId, Vec<DefIndex>>,
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemImpl(..) = item.node {
             let impl_id = self.tcx.map.local_def_id(item.id);
@@ -1171,6 +1177,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
             }
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem) {
+        // handled in `visit_item` above
+    }
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
@@ -1180,7 +1190,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             tcx: self.tcx,
             impls: FxHashMap(),
         };
-        self.tcx.map.krate().visit_all_items(&mut visitor);
+        self.tcx.map.krate().visit_all_item_likes(&mut visitor);
 
         let all_impls: Vec<_> = visitor.impls
             .into_iter()

@@ -16,7 +16,7 @@ use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir;
-use rustc::hir::intravisit::Visitor;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 struct UnusedTraitImportVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -40,7 +40,7 @@ impl<'a, 'tcx> UnusedTraitImportVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for UnusedTraitImportVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for UnusedTraitImportVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if item.vis == hir::Public || item.span == DUMMY_SP {
             return;
@@ -58,10 +58,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for UnusedTraitImportVisitor<'a, 'tcx> {
             }
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    }
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::UnusedTraitCheck);
     let mut visitor = UnusedTraitImportVisitor { tcx: tcx };
-    tcx.map.krate().visit_all_items(&mut visitor);
+    tcx.map.krate().visit_all_item_likes(&mut visitor);
 }

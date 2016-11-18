@@ -310,21 +310,16 @@ impl AssociatedContainer {
         }
     }
 
-    pub fn has_value(&self) -> bool {
-        match *self {
-            AssociatedContainer::TraitRequired => false,
-
-            AssociatedContainer::TraitWithDefault |
-            AssociatedContainer::ImplDefault |
-            AssociatedContainer::ImplFinal => true,
-        }
-    }
-
     pub fn defaultness(&self) -> hir::Defaultness {
         match *self {
-            AssociatedContainer::TraitRequired |
+            AssociatedContainer::TraitRequired => hir::Defaultness::Default {
+                has_value: false,
+            },
+
             AssociatedContainer::TraitWithDefault |
-            AssociatedContainer::ImplDefault => hir::Defaultness::Default,
+            AssociatedContainer::ImplDefault => hir::Defaultness::Default {
+                has_value: true,
+            },
 
             AssociatedContainer::ImplFinal => hir::Defaultness::Final,
         }

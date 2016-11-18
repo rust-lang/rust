@@ -120,7 +120,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
     // stability. The stability is recorded in the index and used as the parent.
     fn annotate<F>(&mut self, id: NodeId, attrs: &[Attribute],
                    item_sp: Span, kind: AnnotationKind, visit_children: F)
-        where F: FnOnce(&mut Annotator)
+        where F: FnOnce(&mut Self)
     {
         if self.index.staged_api[&LOCAL_CRATE] && self.tcx.sess.features.borrow().staged_api {
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
@@ -234,16 +234,15 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     /// Because stability levels are scoped lexically, we want to walk
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
-    fn visit_nested_item(&mut self, item: hir::ItemId) {
-        let tcx = self.tcx;
-        self.visit_item(tcx.map.expect_item(item.id))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
 
-    fn visit_item(&mut self, i: &Item) {
+    fn visit_item(&mut self, i: &'tcx Item) {
         let orig_in_trait_impl = self.in_trait_impl;
         let mut kind = AnnotationKind::Required;
         match i.node {
@@ -272,13 +271,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
         self.in_trait_impl = orig_in_trait_impl;
     }
 
-    fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
         self.annotate(ti.id, &ti.attrs, ti.span, AnnotationKind::Required, |v| {
             intravisit::walk_trait_item(v, ti);
         });
     }
 
-    fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
         let kind = if self.in_trait_impl {
             AnnotationKind::Prohibited
         } else {
@@ -289,25 +288,25 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
         });
     }
 
-    fn visit_variant(&mut self, var: &Variant, g: &'v Generics, item_id: NodeId) {
+    fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: NodeId) {
         self.annotate(var.node.data.id(), &var.node.attrs, var.span, AnnotationKind::Required, |v| {
             intravisit::walk_variant(v, var, g, item_id);
         })
     }
 
-    fn visit_struct_field(&mut self, s: &StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx StructField) {
         self.annotate(s.id, &s.attrs, s.span, AnnotationKind::Required, |v| {
             intravisit::walk_struct_field(v, s);
         });
     }
 
-    fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
         self.annotate(i.id, &i.attrs, i.span, AnnotationKind::Required, |v| {
             intravisit::walk_foreign_item(v, i);
         });
     }
 
-    fn visit_macro_def(&mut self, md: &'v hir::MacroDef) {
+    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
         if md.imported_from.is_none() {
             self.annotate(md.id, &md.attrs, md.span, AnnotationKind::Required, |_| {});
         }
@@ -444,16 +443,15 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     }
 }
 
-impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
     /// Because stability levels are scoped lexically, we want to walk
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
-    fn visit_nested_item(&mut self, item: hir::ItemId) {
-        let tcx = self.tcx;
-        self.visit_item(tcx.map.expect_item(item.id))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
 
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item) {
         // When compiling with --test we don't enforce stability on the
         // compiler-generated test module, demarcated with `DUMMY_SP` plus the
         // name `__test`
@@ -464,31 +462,31 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         intravisit::walk_item(self, item);
     }
 
-    fn visit_expr(&mut self, ex: &hir::Expr) {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         check_expr(self.tcx, ex,
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_expr(self, ex);
     }
 
-    fn visit_path(&mut self, path: &hir::Path, id: ast::NodeId) {
+    fn visit_path(&mut self, path: &'tcx hir::Path, id: ast::NodeId) {
         check_path(self.tcx, path, id,
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_path(self, path)
     }
 
-    fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
+    fn visit_path_list_item(&mut self, prefix: &'tcx hir::Path, item: &'tcx hir::PathListItem) {
         check_path_list_item(self.tcx, item,
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_path_list_item(self, prefix, item)
     }
 
-    fn visit_pat(&mut self, pat: &hir::Pat) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
         check_pat(self.tcx, pat,
                   &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_pat(self, pat)
     }
 
-    fn visit_block(&mut self, b: &hir::Block) {
+    fn visit_block(&mut self, b: &'tcx hir::Block) {
         let old_skip_count = self.in_skip_block;
         match b.rules {
             hir::BlockCheckMode::PushUnstableBlock => {
@@ -527,9 +525,10 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // For implementations of traits, check the stability of each item
         // individually as it's possible to have a stable trait with unstable
         // items.
-        hir::ItemImpl(.., Some(ref t), _, ref impl_items) => {
+        hir::ItemImpl(.., Some(ref t), _, ref impl_item_refs) => {
             let trait_did = tcx.expect_def(t.ref_id).def_id();
-            for impl_item in impl_items {
+            for impl_item_ref in impl_item_refs {
+                let impl_item = tcx.map.impl_item(impl_item_ref.id);
                 let item = tcx.associated_items(trait_did)
                     .find(|item| item.name == impl_item.name).unwrap();
                 if warn_about_defns {

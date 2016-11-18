@@ -95,6 +95,7 @@ extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
+extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 
 pub use rustc::dep_graph;
@@ -130,6 +131,7 @@ mod rscope;
 mod astconv;
 pub mod collect;
 mod constrained_type_params;
+mod impl_wf_check;
 pub mod coherence;
 pub mod variance;
 
@@ -332,6 +334,11 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
     time(time_passes, "variance inference", ||
          variance::infer_variance(tcx));
+
+    tcx.sess.track_errors(|| {
+        time(time_passes, "impl wf inference", ||
+             impl_wf_check::impl_wf_check(&ccx));
+    })?;
 
     tcx.sess.track_errors(|| {
       time(time_passes, "coherence checking", ||

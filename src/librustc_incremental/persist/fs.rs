@@ -201,6 +201,19 @@ pub fn prepare_session_directory(tcx: TyCtxt) -> Result<bool, ()> {
     debug!("crate-dir: {}", crate_dir.display());
     try!(create_dir(tcx.sess, &crate_dir, "crate"));
 
+    // Hack: canonicalize the path *after creating the directory*
+    // because, on windows, long paths can cause problems;
+    // canonicalization inserts this weird prefix that makes windows
+    // tolerate long paths.
+    let crate_dir = match crate_dir.canonicalize() {
+        Ok(v) => v,
+        Err(err) => {
+            tcx.sess.err(&format!("incremental compilation: error canonicalizing path `{}`: {}",
+                                  crate_dir.display(), err));
+            return Err(());
+        }
+    };
+
     let mut source_directories_already_tried = FxHashSet();
 
     loop {

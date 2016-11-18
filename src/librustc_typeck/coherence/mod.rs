@@ -34,7 +34,7 @@ use rustc::infer::{self, InferCtxt};
 use syntax_pos::Span;
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
-use rustc::hir::intravisit;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{Item, ItemImpl};
 use rustc::hir;
 
@@ -51,11 +51,14 @@ struct CoherenceCheckVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     cc: &'a CoherenceChecker<'a, 'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceCheckVisitor<'a, 'gcx, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         if let ItemImpl(..) = item.node {
             self.cc.check_implementation(item)
         }
+    }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }
 
@@ -87,8 +90,9 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
-        self.crate_context.tcx.visit_all_items_in_krate(DepNode::CoherenceCheckImpl,
-                                                        &mut CoherenceCheckVisitor { cc: self });
+        self.crate_context.tcx.visit_all_item_likes_in_krate(
+            DepNode::CoherenceCheckImpl,
+            &mut CoherenceCheckVisitor { cc: self });
 
         // Populate the table of destructors. It might seem a bit strange to
         // do this here, but it's actually the most convenient place, since

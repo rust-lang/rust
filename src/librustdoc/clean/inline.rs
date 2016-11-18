@@ -364,7 +364,7 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
     let trait_items = tcx.associated_items(did).filter_map(|item| {
         match item.kind {
             ty::AssociatedKind::Const => {
-                let default = if item.has_value {
+                let default = if item.defaultness.has_value() {
                     Some(pprust::expr_to_string(
                         lookup_const_by_id(tcx, item.def_id, None).unwrap().0))
                 } else {
@@ -407,7 +407,7 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                             abi: abi
                         })
                     }
-                    _ => panic!("not a tymethod"),
+                    ref r => panic!("not a tymethod: {:?}", r),
                 };
                 Some(cleaned)
             }

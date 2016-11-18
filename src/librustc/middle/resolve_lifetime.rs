@@ -119,7 +119,7 @@ pub fn krate(sess: &Session,
         late_bound: NodeMap(),
     };
     sess.track_errors(|| {
-        krate.visit_all_items(&mut LifetimeContext {
+        intravisit::walk_crate(&mut LifetimeContext {
             sess: sess,
             hir_map: hir_map,
             map: &mut map,
@@ -127,14 +127,21 @@ pub fn krate(sess: &Session,
             def_map: def_map,
             trait_ref_hack: false,
             labels_in_fn: vec![],
-        });
+        }, krate);
     })?;
     Ok(map)
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
-        assert!(self.labels_in_fn.is_empty());
+impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
+    // Override the nested functions -- lifetimes follow lexical scope,
+    // so it's convenient to walk the tree in lexical order.
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.hir_map)
+    }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item) {
+        // Save labels for nested items.
+        let saved_labels_in_fn = replace(&mut self.labels_in_fn, vec![]);
 
         // Items always introduce a new root scope
         self.with(RootScope, |_, this| {
@@ -175,10 +182,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
         });
 
         // Done traversing the item; remove any labels it created
-        self.labels_in_fn.truncate(0);
+        self.labels_in_fn = saved_labels_in_fn;
     }
 
-    fn visit_foreign_item(&mut self, item: &hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {
         // Items save/restore the set of labels. This way inner items
         // can freely reuse names, be they loop labels or lifetimes.
         let saved = replace(&mut self.labels_in_fn, vec![]);
@@ -201,8 +208,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
         replace(&mut self.labels_in_fn, saved);
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'v>, decl: &'v hir::FnDecl,
-                b: &'v hir::Expr, s: Span, fn_id: ast::NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'tcx>, decl: &'tcx hir::FnDecl,
+                b: &'tcx hir::Expr, s: Span, fn_id: ast::NodeId) {
         match fk {
             FnKind::ItemFn(_, generics, ..) => {
                 self.visit_early_late(fn_id,decl, generics, |this| {
@@ -227,7 +234,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_ty(&mut self, ty: &hir::Ty) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         match ty.node {
             hir::TyBareFn(ref c) => {
                 self.with(LateScope(&c.lifetimes, self.scope), |old_scope, this| {
@@ -257,7 +264,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         // We reset the labels on every trait item, so that different
         // methods in an impl can reuse label names.
         let saved = replace(&mut self.labels_in_fn, vec![]);
@@ -274,7 +281,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
         replace(&mut self.labels_in_fn, saved);
     }
 
-    fn visit_lifetime(&mut self, lifetime_ref: &hir::Lifetime) {
+    fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
         if lifetime_ref.name == keywords::StaticLifetime.name() {
             self.insert_lifetime(lifetime_ref, DefStaticRegion);
             return;
@@ -282,7 +289,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
         self.resolve_lifetime_ref(lifetime_ref);
     }
 
-    fn visit_generics(&mut self, generics: &hir::Generics) {
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
         for ty_param in generics.ty_params.iter() {
             walk_list!(self, visit_ty_param_bound, &ty_param.bounds);
             if let Some(ref ty) = ty_param.default {
@@ -331,8 +338,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_poly_trait_ref(&mut self,
-                            trait_ref: &hir::PolyTraitRef,
-                            _modifier: &hir::TraitBoundModifier) {
+                            trait_ref: &'tcx hir::PolyTraitRef,
+                            _modifier: &'tcx hir::TraitBoundModifier) {
         debug!("visit_poly_trait_ref trait_ref={:?}", trait_ref);
 
         if !self.trait_ref_hack || !trait_ref.bound_lifetimes.is_empty() {
@@ -490,13 +497,12 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Expr) {
 }
 
 impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
-    fn add_scope_and_walk_fn<'b>(&mut self,
-                                 fk: FnKind,
-                                 fd: &hir::FnDecl,
-                                 fb: &'b hir::Expr,
-                                 _span: Span,
-                                 fn_id: ast::NodeId) {
-
+    fn add_scope_and_walk_fn(&mut self,
+                             fk: FnKind<'tcx>,
+                             fd: &'tcx hir::FnDecl,
+                             fb: &'tcx hir::Expr,
+                             _span: Span,
+                             fn_id: ast::NodeId) {
         match fk {
             FnKind::ItemFn(_, generics, ..) => {
                 intravisit::walk_fn_decl(self, fd);
@@ -519,8 +525,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                   |_old_scope, this| this.visit_expr(fb))
     }
 
+    // FIXME(#37666) this works around a limitation in the region inferencer
+    fn hack<F>(&mut self, f: F) where
+        F: for<'b> FnOnce(&mut LifetimeContext<'b, 'tcx>),
+    {
+        f(self)
+    }
+
     fn with<F>(&mut self, wrap_scope: ScopeChain, f: F) where
-        F: FnOnce(Scope, &mut LifetimeContext),
+        F: for<'b> FnOnce(Scope, &mut LifetimeContext<'b, 'tcx>),
     {
         let LifetimeContext {sess, hir_map, ref mut map, ..} = *self;
         let mut this = LifetimeContext {
@@ -557,10 +570,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     /// ordering is not important there.
     fn visit_early_late<F>(&mut self,
                            fn_id: ast::NodeId,
-                           decl: &hir::FnDecl,
-                           generics: &hir::Generics,
+                           decl: &'tcx hir::FnDecl,
+                           generics: &'tcx hir::Generics,
                            walk: F) where
-        F: FnOnce(&mut LifetimeContext),
+        F: for<'b, 'c> FnOnce(&'b mut LifetimeContext<'c, 'tcx>),
     {
         let fn_def_id = self.hir_map.local_def_id(fn_id);
         insert_late_bound_lifetimes(self.map,
@@ -590,11 +603,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
 
-        let this = self;
-        this.with(EarlyScope(&early, start as u32, this.scope), move |old_scope, this| {
+        self.with(EarlyScope(&early, start as u32, self.scope), move |old_scope, this| {
             this.with(LateScope(&late, this.scope), move |_, this| {
                 this.check_lifetime_defs(old_scope, &generics.lifetimes);
-                walk(this);
+                this.hack(walk); // FIXME(#37666) workaround in place of `walk(this)`
             });
         });
     }

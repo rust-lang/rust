@@ -203,7 +203,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                                                free_id_outlive, self_ty);
                 }
                 ty::AssociatedKind::Type => {
-                    if item.has_value {
+                    if item.defaultness.has_value() {
                         let ty = fcx.tcx.item_type(item.def_id);
                         let ty = fcx.instantiate_type_scheme(span, free_substs, &ty);
                         fcx.register_wf_obligation(ty, span, code.clone());
