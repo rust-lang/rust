@@ -774,6 +774,11 @@ impl Build {
             .or(self.config.musl_root.as_ref())
             .map(|p| &**p)
     }
+
+    /// Path to the python interpreter to use
+    fn python(&self) -> &Path {
+        self.config.python.as_ref().unwrap()
+    }
 }
 
 impl<'a> Compiler<'a> {

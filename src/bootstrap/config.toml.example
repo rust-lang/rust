@@ -82,8 +82,18 @@
 # Indicate whether submodules are managed and updated automatically.
 #submodules = true
 
-# The path to (or name of) the GDB executable to use
+# The path to (or name of) the GDB executable to use. This is only used for
+# executing the debuginfo test suite.
 #gdb = "gdb"
+
+# The node.js executable to use. Note that this is only used for the emscripten
+# target when running tests, otherwise this can be omitted.
+#nodejs = "node"
+
+# Python interpreter to use for various tasks throughout the build, notably
+# rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
+# Note that Python 2 is currently required.
+#python = "python2.7"
 
 # Indicate whether the vendored sources are used for Rust dependencies or not
 #vendor = false

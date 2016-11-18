@@ -130,9 +130,7 @@ pub fn compiletest(build: &Build,
                              build.test_helpers_out(target).display()));
     cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
 
-    // FIXME: CFG_PYTHON should probably be detected more robustly elsewhere
-    let python_default = "python";
-    cmd.arg("--docck-python").arg(python_default);
+    cmd.arg("--docck-python").arg(build.python());
 
     if build.config.build.ends_with("apple-darwin") {
         // Force /usr/bin/python on OSX for LLDB tests because we're loading the
@@ -140,7 +138,7 @@ pub fn compiletest(build: &Build,
         // (namely not Homebrew-installed python)
         cmd.arg("--lldb-python").arg("/usr/bin/python");
     } else {
-        cmd.arg("--lldb-python").arg(python_default);
+        cmd.arg("--lldb-python").arg(build.python());
     }
 
     if let Some(ref gdb) = build.config.gdb {
