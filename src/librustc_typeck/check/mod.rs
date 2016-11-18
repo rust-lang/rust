@@ -1142,7 +1142,23 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if let Some(parent) = parent {
         if parent.item.is_final() {
-            report_forbidden_specialization(tcx, impl_item, parent.node.def_id());
+            let is_final = match tcx.map.as_local_node_id(parent.node.def_id()) {
+                Some(node_id) => {
+                    let item = tcx.map.expect_item(node_id);
+                    if let hir::ItemImpl(_, _, defaultness, ..) = item.node {
+                        defaultness.is_final()
+                    } else {
+                        true
+                    }
+                }
+                None => {
+                    tcx.global_tcx().sess.cstore.impl_defaultness(parent.node.def_id()).is_final()
+                }
+            };
+
+            if is_final {
+                report_forbidden_specialization(tcx, impl_item, parent.node.def_id());
+            }
         }
     }
 

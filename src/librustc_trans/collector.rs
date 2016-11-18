@@ -880,7 +880,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 let parent_node_id = hir_map.get_parent_node(ii.id);
                 let is_impl_generic = match hir_map.expect_item(parent_node_id) {
                     &hir::Item {
-                        node: hir::ItemImpl(_, _, ref generics, ..),
+                        node: hir::ItemImpl(_, _, _, ref generics, ..),
                         ..
                     } => {
                         generics.is_type_parameterized()
@@ -911,6 +911,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
     let tcx = scx.tcx();
     match item.node {
         hir::ItemImpl(_,
+                      _,
                       _,
                       ref generics,
                       ..,

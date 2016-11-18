@@ -266,7 +266,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::DefaultImpl(_, ref trait_ref) => {
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemKind::Impl(_, _,
+        ItemKind::Impl(_, _, _,
                  ref type_parameters,
                  ref opt_trait_reference,
                  ref typ,

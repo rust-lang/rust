@@ -1317,12 +1317,14 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Impl(unsafety,
                           polarity,
+                          defaultness,
                           ref generics,
                           ref opt_trait,
                           ref ty,
                           ref impl_items) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
+                self.print_defaultness(defaultness)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("impl")?;
 
@@ -1477,6 +1479,13 @@ impl<'a> State<'a> {
         }
     }
 
+    pub fn print_defaultness(&mut self, defatulness: ast::Defaultness) -> io::Result<()> {
+        if let ast::Defaultness::Default = defatulness {
+            try!(self.word_nbsp("default"));
+        }
+        Ok(())
+    }
+
     pub fn print_struct(&mut self,
                         struct_def: &ast::VariantData,
                         generics: &ast::Generics,
@@ -1602,9 +1611,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol()?;
         self.maybe_print_comment(ii.span.lo)?;
         self.print_outer_attributes(&ii.attrs)?;
-        if let ast::Defaultness::Default = ii.defaultness {
-            self.word_nbsp("default")?;
-        }
+        self.print_defaultness(ii.defaultness)?;
         match ii.node {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
                 self.print_associated_const(ii.ident, &ty, Some(&expr), &ii.vis)?;

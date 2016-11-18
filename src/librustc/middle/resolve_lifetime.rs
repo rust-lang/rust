@@ -331,7 +331,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::ItemStruct(_, ref generics) |
             hir::ItemUnion(_, ref generics) |
             hir::ItemTrait(_, ref generics, ..) |
-            hir::ItemImpl(_, _, ref generics, ..) => {
+            hir::ItemImpl(_, _, _, ref generics, ..) => {
                 // These kinds of items have only early bound lifetime parameters.
                 let mut index = if let hir::ItemTrait(..) = item.node {
                     1 // Self comes before lifetimes
@@ -834,7 +834,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
             match parent.node {
                 hir::ItemTrait(_, ref generics, ..) |
-                hir::ItemImpl(_, _, ref generics, ..) => {
+                hir::ItemImpl(_, _, _, ref generics, ..) => {
                     index += (generics.lifetimes.len() + generics.ty_params.len()) as u32;
                 }
                 _ => {}

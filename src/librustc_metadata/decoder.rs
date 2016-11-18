@@ -629,6 +629,10 @@ impl<'a, 'tcx> CrateMetadata {
         self.get_impl_data(id).polarity
     }
 
+    pub fn get_impl_defaultness(&self, id: DefIndex) -> hir::Defaultness {
+        self.get_impl_data(id).defaultness
+    }
+
     pub fn get_coerce_unsized_info(&self,
                                    id: DefIndex)
                                    -> Option<ty::adjustment::CoerceUnsizedInfo> {

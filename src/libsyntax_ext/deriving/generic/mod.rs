@@ -658,6 +658,7 @@ impl<'a> TraitDef<'a> {
                 a,
                 ast::ItemKind::Impl(unsafety,
                                     ast::ImplPolarity::Positive,
+                                    ast::Defaultness::Final,
                                     trait_generics,
                                     opt_trait_ref,
                                     self_type,
