@@ -397,8 +397,13 @@ inline LLVMRustDIFlags visibility(LLVMRustDIFlags f) {
     return static_cast<LLVMRustDIFlags>(static_cast<uint32_t>(f) & 0x3);
 }
 
+#if LLVM_VERSION_GE(4, 0)
+static DINode::DIFlags from_rust(LLVMRustDIFlags flags) {
+    DINode::DIFlags result = DINode::DIFlags::FlagZero;
+#else
 static unsigned from_rust(LLVMRustDIFlags flags) {
     unsigned result = 0;
+#endif
 
     switch (visibility(flags)) {
     case LLVMRustDIFlags::FlagPrivate:
