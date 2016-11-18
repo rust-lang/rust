@@ -1,7 +1,7 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian, self};
 use std::collections::Bound::{Included, Excluded};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
-use std::{fmt, iter, ptr};
+use std::{fmt, iter, ptr, mem};
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, BareFnTy, ClosureTy, ClosureSubsts, TyCtxt};
@@ -452,25 +452,25 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 /// Reading and writing
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn freeze(&mut self, alloc_id: AllocId) -> EvalResult<'tcx, ()> {
-        // FIXME: the comment is wrong and do we really still need this check?
-        // It's not possible to freeze the zero-sized allocation, because it doesn't exist.
-        if alloc_id != ZST_ALLOC_ID {
-            // do not use `self.get_mut(alloc_id)` here, because we might have already frozen a
-            // sub-element or have circular pointers (e.g. `Rc`-cycles)
-            let allocs: Vec<_> = match self.alloc_map.get_mut(&alloc_id) {
-                Some(ref mut alloc) if !alloc.immutable => {
-                    alloc.immutable = true;
-                    alloc.relocations.values().cloned().collect()
-                },
-                None if alloc_id == NEVER_ALLOC_ID || alloc_id == ZST_ALLOC_ID => Vec::new(),
-                None if !self.functions.contains_key(&alloc_id) => return Err(EvalError::DanglingPointerDeref),
-                _ => Vec::new(),
-            };
-            // recurse into inner allocations
-            for alloc in allocs {
-                self.freeze(alloc)?;
-            }
+        // do not use `self.get_mut(alloc_id)` here, because we might have already frozen a
+        // sub-element or have circular pointers (e.g. `Rc`-cycles)
+        let relocations = match self.alloc_map.get_mut(&alloc_id) {
+            Some(ref mut alloc) if !alloc.immutable => {
+                alloc.immutable = true;
+                // take out the relocations vector to free the borrow on self, so we can call
+                // freeze recursively
+                mem::replace(&mut alloc.relocations, Default::default())
+            },
+            None if alloc_id == NEVER_ALLOC_ID || alloc_id == ZST_ALLOC_ID => return Ok(()),
+            None if !self.functions.contains_key(&alloc_id) => return Err(EvalError::DanglingPointerDeref),
+            _ => return Ok(()),
+        };
+        // recurse into inner allocations
+        for &alloc in relocations.values() {
+            self.freeze(alloc)?;
         }
+        // put back the relocations
+        self.alloc_map.get_mut(&alloc_id).expect("checked above").relocations = relocations;
         Ok(())
     }
 

@@ -389,12 +389,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             StackPopCleanup::Goto(target) => self.goto_block(target),
             StackPopCleanup::None => {},
         }
-        // check that all locals have been deallocated through StorageDead
+        // deallocate all locals that are backed by an allocation
         for (i, local) in frame.locals.into_iter().enumerate() {
             if let Some(Value::ByRef(ptr)) = local {
                 trace!("deallocating local {}: {:?}", i + 1, ptr);
                 self.memory.dump(ptr.alloc_id);
                 match self.memory.deallocate(ptr) {
+                    // Any frozen memory means that it belongs to a constant or something referenced
+                    // by a constant. We could alternatively check whether the alloc_id is frozen
+                    // before calling deallocate, but this is much simpler and is probably the
+                    // rare case.
                     Ok(()) | Err(EvalError::DeallocatedFrozenMemory) => {},
                     other => return other,
                 }
