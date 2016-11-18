@@ -813,14 +813,11 @@ pub fn const_get_field<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
     let l = ccx.layout_of(t);
     match *l {
         layout::CEnum { .. } => bug!("element access in C-like enum const"),
-        layout::Univariant { .. } | layout::Vector { .. } => const_struct_field(val, ix),
+        layout::Univariant { ref variant, .. } => {
+            const_struct_field(val, variant.gep_index[ix] as usize)
+        }
+        layout::Vector { .. } => const_struct_field(val, ix),
         layout::UntaggedUnion { .. } => const_struct_field(val, 0),
-        layout::General { .. } => const_struct_field(val, ix + 1),
-        layout::RawNullablePointer { .. } => {
-            assert_eq!(ix, 0);
-            val
-        },
-        layout::StructWrappedNullablePointer{ .. } => const_struct_field(val, ix),
         _ => bug!("{} does not have fields.", t)
     }
 }
