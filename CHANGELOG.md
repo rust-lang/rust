@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.99 — 2016-11-18
+* Update to rustc 1.15.0-nightly (0ed951993 2016-11-14)
+
 ## 0.0.98 — 2016-11-08
 * Fixes a an issue due to a change in how cargo handles `--sysroot`, which broke `cargo clippy`
 
