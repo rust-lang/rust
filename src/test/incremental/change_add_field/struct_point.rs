@@ -69,7 +69,13 @@ mod point {
     }
 }
 
-/// A fn item that calls (public) methods on `Point` from the same impl which changed
+/// A fn that has the changed type in its signature; must currently be
+/// rebuilt.
+///
+/// You could imagine that, in the future, if the change were
+/// sufficiently "private", we might not need to type-check again.
+/// Rebuilding is probably always necessary since the layout may be
+/// affected.
 mod fn_with_type_in_sig {
     use point::Point;
 
@@ -79,6 +85,13 @@ mod fn_with_type_in_sig {
     }
 }
 
+/// Call a fn that has the changed type in its signature; this
+/// currently must also be rebuilt.
+///
+/// You could imagine that, in the future, if the change were
+/// sufficiently "private", we might not need to type-check again.
+/// Rebuilding is probably always necessary since the layout may be
+/// affected.
 mod call_fn_with_type_in_sig {
     use fn_with_type_in_sig;
 
@@ -88,7 +101,13 @@ mod call_fn_with_type_in_sig {
     }
 }
 
-/// A fn item that calls (public) methods on `Point` from the same impl which changed
+/// A fn that uses the changed type, but only in its body, not its
+/// signature.
+///
+/// You could imagine that, in the future, if the change were
+/// sufficiently "private", we might not need to type-check again.
+/// Rebuilding is probably always necessary since the layout may be
+/// affected.
 mod fn_with_type_in_body {
     use point::Point;
 
@@ -98,7 +117,10 @@ mod fn_with_type_in_body {
     }
 }
 
-/// A fn item that calls (public) methods on `Point` from the same impl which changed
+/// A fn X that calls a fn Y, where Y uses the changed type in its
+/// body. In this case, the effects of the change should be contained
+/// to Y; X should not have to be rebuilt, nor should it need to be
+/// typechecked again.
 mod call_fn_with_type_in_body {
     use fn_with_type_in_body;
 
