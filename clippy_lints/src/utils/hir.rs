@@ -368,11 +368,11 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(e);
                 // TODO: _ty
             }
-            ExprClosure(cap, _, ref b, _) => {
+            ExprClosure(cap, _, ref e, _) => {
                 let c: fn(_, _, _, _) -> _ = ExprClosure;
                 c.hash(&mut self.s);
                 cap.hash(&mut self.s);
-                self.hash_block(b);
+                self.hash_expr(e);
             }
             ExprField(ref e, ref f) => {
                 let c: fn(_, _) -> _ = ExprField;

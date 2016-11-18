@@ -73,7 +73,7 @@ impl LintPass for Derive {
 impl LateLintPass for Derive {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node {
-            let ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(item.id)).ty;
+            let ty = cx.tcx.item_type(cx.tcx.map.local_def_id(item.id));
             let is_automatically_derived = is_automatically_derived(&*item.attrs);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);

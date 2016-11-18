@@ -69,7 +69,7 @@ impl LintPass for Functions {
 }
 
 impl LateLintPass for Functions {
-    fn check_fn(&mut self, cx: &LateContext, kind: intravisit::FnKind, decl: &hir::FnDecl, block: &hir::Block, span: Span, nodeid: ast::NodeId) {
+    fn check_fn(&mut self, cx: &LateContext, kind: intravisit::FnKind, decl: &hir::FnDecl, expr: &hir::Expr, span: Span, nodeid: ast::NodeId) {
         use rustc::hir::map::Node::*;
 
         let is_impl = if let Some(NodeItem(item)) = cx.tcx.map.find(cx.tcx.map.get_parent_node(nodeid)) {
@@ -94,18 +94,18 @@ impl LateLintPass for Functions {
             }
         }
 
-        self.check_raw_ptr(cx, unsafety, decl, block, nodeid);
+        self.check_raw_ptr(cx, unsafety, decl, expr, nodeid);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
-        if let hir::MethodTraitItem(ref sig, ref block) = item.node {
+        if let hir::MethodTraitItem(ref sig, ref expr) = item.node {
             // don't lint extern functions decls, it's not their fault
             if sig.abi == Abi::Rust {
                 self.check_arg_number(cx, &sig.decl, item.span);
             }
 
-            if let Some(ref block) = *block {
-                self.check_raw_ptr(cx, sig.unsafety, &sig.decl, block, item.id);
+            if let Some(ref expr) = *expr {
+                self.check_raw_ptr(cx, sig.unsafety, &sig.decl, expr, item.id);
             }
         }
     }
@@ -122,7 +122,7 @@ impl Functions {
         }
     }
 
-    fn check_raw_ptr(&self, cx: &LateContext, unsafety: hir::Unsafety, decl: &hir::FnDecl, block: &hir::Block, nodeid: ast::NodeId) {
+    fn check_raw_ptr(&self, cx: &LateContext, unsafety: hir::Unsafety, decl: &hir::FnDecl, expr: &hir::Expr, nodeid: ast::NodeId) {
         if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(nodeid) {
             let raw_ptrs = decl.inputs.iter().filter_map(|arg| raw_ptr_arg(cx, arg)).collect::<HashSet<_>>();
 
@@ -132,7 +132,7 @@ impl Functions {
                     ptrs: raw_ptrs,
                 };
 
-                hir::intravisit::walk_block(&mut v, block);
+                hir::intravisit::walk_expr(&mut v, expr);
             }
         }
     }
@@ -155,7 +155,7 @@ impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for DerefVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'v hir::Expr) {
         match expr.node {
             hir::ExprCall(ref f, ref args) => {
-                let ty = self.cx.tcx.expr_ty(f);
+                let ty = self.cx.tcx.tables().expr_ty(f);
 
                 if type_is_unsafe_function(ty) {
                     for arg in args {

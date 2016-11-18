@@ -3,7 +3,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(custom_attribute)]
-#![feature(dotdot_in_tuple_patterns)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]

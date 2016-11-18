@@ -48,60 +48,53 @@ impl LateLintPass for EtaPass {
 }
 
 fn check_closure(cx: &LateContext, expr: &Expr) {
-    if let ExprClosure(_, ref decl, ref blk, _) = expr.node {
-        if !blk.stmts.is_empty() {
-            // || {foo(); bar()}; can't be reduced here
-            return;
-        }
-
-        if let Some(ref ex) = blk.expr {
-            if let ExprCall(ref caller, ref args) = ex.node {
-                if args.len() != decl.inputs.len() {
-                    // Not the same number of arguments, there
-                    // is no way the closure is the same as the function
-                    return;
+    if let ExprClosure(_, ref decl, ref ex, _) = expr.node {
+        if let ExprCall(ref caller, ref args) = ex.node {
+            if args.len() != decl.inputs.len() {
+                // Not the same number of arguments, there
+                // is no way the closure is the same as the function
+                return;
+            }
+            if is_adjusted(cx, ex) || args.iter().any(|arg| is_adjusted(cx, arg)) {
+                // Are the expression or the arguments type-adjusted? Then we need the closure
+                return;
+            }
+            let fn_ty = cx.tcx.tables().expr_ty(caller);
+            match fn_ty.sty {
+                // Is it an unsafe function? They don't implement the closure traits
+                ty::TyFnDef(_, _, fn_ty) |
+                ty::TyFnPtr(fn_ty) => {
+                    if fn_ty.unsafety == Unsafety::Unsafe ||
+                       fn_ty.sig.skip_binder().output.sty == ty::TyNever {
+                        return;
+                    }
                 }
-                if is_adjusted(cx, ex) || args.iter().any(|arg| is_adjusted(cx, arg)) {
-                    // Are the expression or the arguments type-adjusted? Then we need the closure
-                    return;
-                }
-                let fn_ty = cx.tcx.expr_ty(caller);
-                match fn_ty.sty {
-                    // Is it an unsafe function? They don't implement the closure traits
-                    ty::TyFnDef(_, _, fn_ty) |
-                    ty::TyFnPtr(fn_ty) => {
-                        if fn_ty.unsafety == Unsafety::Unsafe ||
-                           fn_ty.sig.skip_binder().output.sty == ty::TyNever {
+                _ => (),
+            }
+            for (a1, a2) in decl.inputs.iter().zip(args) {
+                if let PatKind::Binding(_, ident, _) = a1.pat.node {
+                    // XXXManishearth Should I be checking the binding mode here?
+                    if let ExprPath(None, ref p) = a2.node {
+                        if p.segments.len() != 1 {
+                            // If it's a proper path, it can't be a local variable
                             return;
                         }
-                    }
-                    _ => (),
-                }
-                for (a1, a2) in decl.inputs.iter().zip(args) {
-                    if let PatKind::Binding(_, ident, _) = a1.pat.node {
-                        // XXXManishearth Should I be checking the binding mode here?
-                        if let ExprPath(None, ref p) = a2.node {
-                            if p.segments.len() != 1 {
-                                // If it's a proper path, it can't be a local variable
-                                return;
-                            }
-                            if p.segments[0].name != ident.node {
-                                // The two idents should be the same
-                                return;
-                            }
-                        } else {
+                        if p.segments[0].name != ident.node {
+                            // The two idents should be the same
                             return;
                         }
                     } else {
                         return;
                     }
+                } else {
+                    return;
                 }
-                span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found", |db| {
-                    if let Some(snippet) = snippet_opt(cx, caller.span) {
-                        db.span_suggestion(expr.span, "remove closure as shown:", snippet);
-                    }
-                });
             }
+            span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found", |db| {
+                if let Some(snippet) = snippet_opt(cx, caller.span) {
+                    db.span_suggestion(expr.span, "remove closure as shown:", snippet);
+                }
+            });
         }
     }
 }

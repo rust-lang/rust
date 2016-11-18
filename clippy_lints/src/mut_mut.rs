@@ -65,7 +65,7 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for MutVisitor<'a, 'tcx> {
         } else if let hir::ExprAddrOf(hir::MutMutable, ref e) = expr.node {
             if let hir::ExprAddrOf(hir::MutMutable, _) = e.node {
                 span_lint(self.cx, MUT_MUT, expr.span, "generally you want to avoid `&mut &mut _` if possible");
-            } else if let TyRef(_, TypeAndMut { mutbl: hir::MutMutable, .. }) = self.cx.tcx.expr_ty(e).sty {
+            } else if let TyRef(_, TypeAndMut { mutbl: hir::MutMutable, .. }) = self.cx.tcx.tables().expr_ty(e).sty {
                 span_lint(self.cx,
                           MUT_MUT,
                           expr.span,

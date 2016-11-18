@@ -59,7 +59,7 @@ impl LateLintPass for ArrayIndexing {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprIndex(ref array, ref index) = e.node {
             // Array with known size can be checked statically
-            let ty = cx.tcx.expr_ty(array);
+            let ty = cx.tcx.tables().expr_ty(array);
             if let ty::TyArray(_, size) = ty.sty {
                 let size = ConstInt::Infer(size as u64);
 

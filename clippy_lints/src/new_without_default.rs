@@ -90,7 +90,7 @@ impl LintPass for NewWithoutDefault {
 }
 
 impl LateLintPass for NewWithoutDefault {
-    fn check_fn(&mut self, cx: &LateContext, kind: FnKind, decl: &hir::FnDecl, _: &hir::Block, span: Span, id: ast::NodeId) {
+    fn check_fn(&mut self, cx: &LateContext, kind: FnKind, decl: &hir::FnDecl, _: &hir::Expr, span: Span, id: ast::NodeId) {
         if in_external_macro(cx, span) {
             return;
         }
@@ -102,8 +102,7 @@ impl LateLintPass for NewWithoutDefault {
             }
             if decl.inputs.is_empty() && name.as_str() == "new" && cx.access_levels.is_reachable(id) {
                 let self_ty = cx.tcx
-                    .lookup_item_type(cx.tcx.map.local_def_id(cx.tcx.map.get_parent(id)))
-                    .ty;
+                    .item_type(cx.tcx.map.local_def_id(cx.tcx.map.get_parent(id)));
                 if_let_chain!{[
                     self_ty.walk_shallow().next().is_none(), // implements_trait does not work with generics
                     same_tys(cx, self_ty, return_ty(cx, id), id),

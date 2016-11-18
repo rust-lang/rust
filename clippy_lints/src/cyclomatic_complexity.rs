@@ -42,12 +42,12 @@ impl LintPass for CyclomaticComplexity {
 }
 
 impl CyclomaticComplexity {
-    fn check<'a, 'tcx>(&mut self, cx: &'a LateContext<'a, 'tcx>, block: &Block, span: Span) {
+    fn check<'a, 'tcx>(&mut self, cx: &'a LateContext<'a, 'tcx>, expr: &Expr, span: Span) {
         if in_macro(cx, span) {
             return;
         }
 
-        let cfg = CFG::new(cx.tcx, block);
+        let cfg = CFG::new(cx.tcx, expr);
         let n = cfg.graph.len_nodes() as u64;
         let e = cfg.graph.len_edges() as u64;
         if e + 2 < n {
@@ -62,9 +62,9 @@ impl CyclomaticComplexity {
             returns: 0,
             tcx: &cx.tcx,
         };
-        helper.visit_block(block);
+        helper.visit_expr(expr);
         let CCHelper { match_arms, divergence, short_circuits, returns, .. } = helper;
-        let ret_ty = cx.tcx.node_id_to_type(block.id);
+        let ret_ty = cx.tcx.tables().node_id_to_type(expr.id);
         let ret_adjust = if match_type(cx, ret_ty, &paths::RESULT) {
             returns
         } else {
@@ -92,22 +92,22 @@ impl CyclomaticComplexity {
 
 impl LateLintPass for CyclomaticComplexity {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
-        if let ItemFn(_, _, _, _, _, ref block) = item.node {
+        if let ItemFn(_, _, _, _, _, ref expr) = item.node {
             if !attr::contains_name(&item.attrs, "test") {
-                self.check(cx, block, item.span);
+                self.check(cx, expr, item.span);
             }
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
-        if let ImplItemKind::Method(_, ref block) = item.node {
-            self.check(cx, block, item.span);
+        if let ImplItemKind::Method(_, ref expr) = item.node {
+            self.check(cx, expr, item.span);
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
-        if let MethodTraitItem(_, Some(ref block)) = item.node {
-            self.check(cx, block, item.span);
+        if let MethodTraitItem(_, Some(ref expr)) = item.node {
+            self.check(cx, expr, item.span);
         }
     }
 
@@ -139,7 +139,7 @@ impl<'a, 'b, 'tcx, 'gcx> Visitor<'a> for CCHelper<'b, 'gcx, 'tcx> {
             }
             ExprCall(ref callee, _) => {
                 walk_expr(self, e);
-                let ty = self.tcx.node_id_to_type(callee.id);
+                let ty = self.tcx.tables().node_id_to_type(callee.id);
                 match ty.sty {
                     ty::TyFnDef(_, _, ty) |
                     ty::TyFnPtr(ty) if ty.sig.skip_binder().output.sty == ty::TyNever => {

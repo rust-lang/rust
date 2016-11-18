@@ -15,6 +15,12 @@ fn map_clone_iter() {
                           //~^ HELP try
     x.iter().map(|y| *y); //~ ERROR you seem to be using .map()
                           //~^ HELP try
+    x.iter().map(|y| { y.clone() }); //~ ERROR you seem to be using .map()
+                                 //~^ HELP try
+    x.iter().map(|&y| { y }); //~ ERROR you seem to be using .map()
+                          //~^ HELP try
+    x.iter().map(|y| { *y }); //~ ERROR you seem to be using .map()
+                          //~^ HELP try
     x.iter().map(Clone::clone); //~ ERROR you seem to be using .map()
                                 //~^ HELP try
 }

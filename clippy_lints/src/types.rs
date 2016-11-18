@@ -126,7 +126,7 @@ declare_lint! {
 
 fn check_let_unit(cx: &LateContext, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
-        let bindtype = &cx.tcx.pat_ty(&local.pat).sty;
+        let bindtype = &cx.tcx.tables().pat_ty(&local.pat).sty;
         match *bindtype {
             ty::TyTuple(slice) if slice.is_empty() => {
                 if in_external_macro(cx, decl.span) || in_macro(cx, local.pat.span) {
@@ -197,7 +197,7 @@ impl LateLintPass for UnitCmp {
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
             if op.is_comparison() {
-                let sty = &cx.tcx.expr_ty(left).sty;
+                let sty = &cx.tcx.tables().expr_ty(left).sty;
                 match *sty {
                     ty::TyTuple(slice) if slice.is_empty() => {
                         let result = match op {
@@ -449,7 +449,7 @@ impl LintPass for CastPass {
 impl LateLintPass for CastPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprCast(ref ex, _) = expr.node {
-            let (cast_from, cast_to) = (cx.tcx.expr_ty(ex), cx.tcx.expr_ty(expr));
+            let (cast_from, cast_to) = (cx.tcx.tables().expr_ty(ex), cx.tcx.tables().expr_ty(expr));
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
@@ -535,7 +535,7 @@ impl LintPass for TypeComplexityPass {
 }
 
 impl LateLintPass for TypeComplexityPass {
-    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
+    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Expr, _: Span, _: NodeId) {
         self.check_fndecl(cx, decl);
     }
 
@@ -683,7 +683,7 @@ impl LateLintPass for CharLitAsU8 {
         if let ExprCast(ref e, _) = expr.node {
             if let ExprLit(ref l) = e.node {
                 if let LitKind::Char(_) = l.node {
-                    if ty::TyUint(UintTy::U8) == cx.tcx.expr_ty(expr).sty && !in_macro(cx, expr.span) {
+                    if ty::TyUint(UintTy::U8) == cx.tcx.tables().expr_ty(expr).sty && !in_macro(cx, expr.span) {
                         let msg = "casting character literal to u8. `char`s \
                                    are 4 bytes wide in rust, so casting to u8 \
                                    truncates them";
@@ -791,7 +791,7 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
     use rustc_const_eval::*;
     use types::ExtremeType::*;
 
-    let ty = &cx.tcx.expr_ty(expr).sty;
+    let ty = &cx.tcx.tables().expr_ty(expr).sty;
 
     match *ty {
         ty::TyBool | ty::TyInt(_) | ty::TyUint(_) => (),
@@ -953,7 +953,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
     use std::*;
 
     if let ExprCast(ref cast_exp, _) = expr.node {
-        match cx.tcx.expr_ty(cast_exp).sty {
+        match cx.tcx.tables().expr_ty(cast_exp).sty {
             TyInt(int_ty) => {
                 Some(match int_ty {
                     IntTy::I8 => (FullInt::S(i8::min_value() as i64), FullInt::S(i8::max_value() as i64)),

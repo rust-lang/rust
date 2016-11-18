@@ -5,7 +5,6 @@ use rustc::infer::InferCtxt;
 use rustc::lint::*;
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::{cmt, Categorization};
-use rustc::ty::adjustment::AutoAdjustment;
 use rustc::ty;
 use rustc::ty::layout::TargetDataLayout;
 use rustc::util::nodemap::NodeSet;
@@ -62,7 +61,7 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
-    fn check_fn(&mut self, cx: &LateContext, _: visit::FnKind, decl: &FnDecl, body: &Block, _: Span, id: NodeId) {
+    fn check_fn(&mut self, cx: &LateContext, _: visit::FnKind, decl: &FnDecl, body: &Expr, _: Span, id: NodeId) {
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
 
         let infcx = cx.tcx.borrowck_fake_infer_ctxt(param_env);
@@ -146,17 +145,19 @@ impl<'a, 'tcx: 'a+'gcx, 'gcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx, 'g
     }
     fn borrow(&mut self, borrow_id: NodeId, _: Span, cmt: cmt<'tcx>, _: &ty::Region, _: ty::BorrowKind,
               loan_cause: LoanCause) {
+        use rustc::ty::adjustment::Adjust;
 
         if let Categorization::Local(lid) = cmt.cat {
             if self.set.contains(&lid) {
-                if let Some(&AutoAdjustment::AdjustDerefRef(adj)) = self.tcx
+                if let Some(&Adjust::DerefRef { autoderefs, .. }) = self.tcx
                                                                         .tables
                                                                         .borrow()
                                                                         .adjustments
-                                                                        .get(&borrow_id) {
+                                                                        .get(&borrow_id)
+                                                                        .map(|a| &a.kind) {
                     if LoanCause::AutoRef == loan_cause {
                         // x.foo()
-                        if adj.autoderefs == 0 {
+                        if autoderefs == 0 {
                             self.set.remove(&lid); // Used without autodereffing (i.e. x.clone())
                         }
                     } else {
@@ -164,14 +165,15 @@ impl<'a, 'tcx: 'a+'gcx, 'gcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx, 'g
                     }
                 } else if LoanCause::AddrOf == loan_cause {
                     // &x
-                    if let Some(&AutoAdjustment::AdjustDerefRef(adj)) = self.tcx
+                    if let Some(&Adjust::DerefRef { autoderefs, .. }) = self.tcx
                                                                             .tables
                                                                             .borrow()
                                                                             .adjustments
                                                                             .get(&self.tcx
-                                                                                      .map
-                                                                                      .get_parent_node(borrow_id)) {
-                        if adj.autoderefs <= 1 {
+                                                                            .map
+                                                                            .get_parent_node(borrow_id))
+                                                                            .map(|a| &a.kind) {
+                        if autoderefs <= 1 {
                             // foo(&x) where no extra autoreffing is happening
                             self.set.remove(&lid);
                         }

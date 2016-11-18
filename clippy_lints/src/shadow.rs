@@ -81,22 +81,22 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
-    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, block: &Block, _: Span, _: NodeId) {
-        if in_external_macro(cx, block.span) {
+    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, expr: &Expr, _: Span, _: NodeId) {
+        if in_external_macro(cx, expr.span) {
             return;
         }
-        check_fn(cx, decl, block);
+        check_fn(cx, decl, expr);
     }
 }
 
-fn check_fn(cx: &LateContext, decl: &FnDecl, block: &Block) {
+fn check_fn(cx: &LateContext, decl: &FnDecl, expr: &Expr) {
     let mut bindings = Vec::new();
     for arg in &decl.inputs {
         if let PatKind::Binding(_, ident, _) = arg.pat.node {
             bindings.push((ident.node, ident.span))
         }
     }
-    check_block(cx, block, &mut bindings);
+    check_expr(cx, expr, &mut bindings);
 }
 
 fn check_block(cx: &LateContext, block: &Block, bindings: &mut Vec<(Name, Span)>) {

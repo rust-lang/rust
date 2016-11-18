@@ -86,7 +86,7 @@ fn check_cond<'a, 'tcx, 'b>(cx: &'a LateContext<'a, 'tcx>, check: &'b Expr) -> O
         let ExprAddrOf(_, ref key) = params[1].node
     ], {
         let map = &params[0];
-        let obj_ty = walk_ptrs_ty(cx.tcx.expr_ty(map));
+        let obj_ty = walk_ptrs_ty(cx.tcx.tables().expr_ty(map));
 
         return if match_type(cx, obj_ty, &paths::BTREEMAP) {
             Some(("BTreeMap", map, key))

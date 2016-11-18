@@ -89,7 +89,7 @@ impl LateLintPass for StepByZero {
 fn has_step_by(cx: &LateContext, expr: &Expr) -> bool {
     // No need for walk_ptrs_ty here because step_by moves self, so it
     // can't be called on a borrowed range.
-    let ty = cx.tcx.expr_ty(expr);
+    let ty = cx.tcx.tables().expr_ty(expr);
 
     // Note: `RangeTo`, `RangeToInclusive` and `RangeFull` don't have step_by
     match_type(cx, ty, &paths::RANGE)

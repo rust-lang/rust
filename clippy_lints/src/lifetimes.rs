@@ -247,8 +247,8 @@ impl<'v, 't> RefVisitor<'v, 't> {
                     match def {
                         Def::TyAlias(def_id) |
                         Def::Struct(def_id) => {
-                            let type_scheme = self.cx.tcx.lookup_item_type(def_id);
-                            for _ in type_scheme.generics.regions.as_slice() {
+                            let generics = self.cx.tcx.item_generics(def_id);
+                            for _ in generics.regions.as_slice() {
                                 self.record(&None);
                             }
                         }

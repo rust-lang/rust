@@ -132,7 +132,7 @@ fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
         let Some(fun) = resolve_node(cx, args[1].id),
         match_def_path(cx, fun.def_id(), &paths::DISPLAY_FMT_METHOD),
     ], {
-        let ty = walk_ptrs_ty(cx.tcx.pat_ty(&pat[0]));
+        let ty = walk_ptrs_ty(cx.tcx.tables().pat_ty(&pat[0]));
 
         return ty.sty == TypeVariants::TyStr || match_type(cx, ty, &paths::STRING);
     }}

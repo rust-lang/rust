@@ -126,7 +126,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DivergenceVisitor<'a, 'tcx> {
             ExprAgain(_) |
             ExprBreak(_) |
             ExprRet(_) => self.report_diverging_sub_expr(e),
-            ExprCall(ref func, _) => match self.0.tcx.expr_ty(func).sty {
+            ExprCall(ref func, _) => match self.0.tcx.tables().expr_ty(func).sty {
                 ty::TyFnDef(_, _, fn_ty) |
                 ty::TyFnPtr(fn_ty) => if let ty::TyNever = self.0.tcx.erase_late_bound_regions(&fn_ty.sig).output.sty {
                     self.report_diverging_sub_expr(e);

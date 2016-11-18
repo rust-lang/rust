@@ -159,7 +159,7 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
             // allow match arms with just expressions
             return;
         };
-        let ty = cx.tcx.expr_ty(ex);
+        let ty = cx.tcx.tables().expr_ty(ex);
         if ty.sty != ty::TyBool || cx.current_level(MATCH_BOOL) == Allow {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
             check_single_match_opt_like(cx, ex, arms, expr, ty, els);
@@ -243,7 +243,7 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
 
 fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     // type of expression == bool
-    if cx.tcx.expr_ty(ex).sty == ty::TyBool {
+    if cx.tcx.tables().expr_ty(ex).sty == ty::TyBool {
         span_lint_and_then(cx,
                            MATCH_BOOL,
                            expr.span,
@@ -296,7 +296,7 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 }
 
 fn check_overlapping_arms(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
-    if arms.len() >= 2 && cx.tcx.expr_ty(ex).is_integral() {
+    if arms.len() >= 2 && cx.tcx.tables().expr_ty(ex).is_integral() {
         let ranges = all_ranges(cx, arms);
         let type_ranges = type_ranges(&ranges);
         if !type_ranges.is_empty() {

@@ -152,8 +152,8 @@ impl LateLintPass for AttrPass {
 }
 
 fn is_relevant_item(cx: &LateContext, item: &Item) -> bool {
-    if let ItemFn(_, _, _, _, _, ref block) = item.node {
-        is_relevant_block(cx, block)
+    if let ItemFn(_, _, _, _, _, ref expr) = item.node {
+        is_relevant_expr(cx, expr)
     } else {
         false
     }
@@ -161,7 +161,7 @@ fn is_relevant_item(cx: &LateContext, item: &Item) -> bool {
 
 fn is_relevant_impl(cx: &LateContext, item: &ImplItem) -> bool {
     match item.node {
-        ImplItemKind::Method(_, ref block) => is_relevant_block(cx, block),
+        ImplItemKind::Method(_, ref expr) => is_relevant_expr(cx, expr),
         _ => false,
     }
 }
@@ -169,7 +169,7 @@ fn is_relevant_impl(cx: &LateContext, item: &ImplItem) -> bool {
 fn is_relevant_trait(cx: &LateContext, item: &TraitItem) -> bool {
     match item.node {
         MethodTraitItem(_, None) => true,
-        MethodTraitItem(_, Some(ref block)) => is_relevant_block(cx, block),
+        MethodTraitItem(_, Some(ref expr)) => is_relevant_expr(cx, expr),
         _ => false,
     }
 }

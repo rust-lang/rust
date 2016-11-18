@@ -168,7 +168,7 @@ impl LintPass for Pass {
 }
 
 impl LateLintPass for Pass {
-    fn check_fn(&mut self, cx: &LateContext, k: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
+    fn check_fn(&mut self, cx: &LateContext, k: FnKind, decl: &FnDecl, _: &Expr, _: Span, _: NodeId) {
         if let FnKind::Closure(_) = k {
             // Does not apply to closures
             return;
@@ -353,14 +353,14 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
 }
 
 fn is_float(cx: &LateContext, expr: &Expr) -> bool {
-    matches!(walk_ptrs_ty(cx.tcx.expr_ty(expr)).sty, ty::TyFloat(_))
+    matches!(walk_ptrs_ty(cx.tcx.tables().expr_ty(expr)).sty, ty::TyFloat(_))
 }
 
 fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: Span) {
     let (arg_ty, snip) = match expr.node {
         ExprMethodCall(Spanned { node: ref name, .. }, _, ref args) if args.len() == 1 => {
             if name.as_str() == "to_string" || name.as_str() == "to_owned" && is_str_arg(cx, args) {
-                (cx.tcx.expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
+                (cx.tcx.tables().expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
             } else {
                 return;
             }
@@ -368,7 +368,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
         ExprCall(ref path, ref v) if v.len() == 1 => {
             if let ExprPath(None, ref path) = path.node {
                 if match_path(path, &["String", "from_str"]) || match_path(path, &["String", "from"]) {
-                    (cx.tcx.expr_ty(&v[0]), snippet(cx, v[0].span, ".."))
+                    (cx.tcx.tables().expr_ty(&v[0]), snippet(cx, v[0].span, ".."))
                 } else {
                     return;
                 }
@@ -379,7 +379,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
         _ => return,
     };
 
-    let other_ty = cx.tcx.expr_ty(other);
+    let other_ty = cx.tcx.tables().expr_ty(other);
     let partial_eq_trait_id = match cx.tcx.lang_items.eq_trait() {
         Some(id) => id,
         None => return,
@@ -413,7 +413,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
 
 fn is_str_arg(cx: &LateContext, args: &[P<Expr>]) -> bool {
     args.len() == 1 &&
-        matches!(walk_ptrs_ty(cx.tcx.expr_ty(&args[0])).sty, ty::TyStr)
+        matches!(walk_ptrs_ty(cx.tcx.tables().expr_ty(&args[0])).sty, ty::TyStr)
 }
 
 /// Heuristic to see if an expression is used. Should be compatible with `unused_variables`'s idea
