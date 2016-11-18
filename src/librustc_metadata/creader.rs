@@ -318,11 +318,11 @@ impl<'a> CrateLoader<'a> {
                      name: &str,
                      hash: Option<&Svh>,
                      span: Span,
-                     kind: PathKind,
+                     path_kind: PathKind,
                      mut dep_kind: DepKind)
                      -> (CrateNum, Rc<cstore::CrateMetadata>) {
         info!("resolving crate `extern crate {} as {}`", name, ident);
-        let result = if let Some(cnum) = self.existing_match(name, hash, kind) {
+        let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             LoadResult::Previous(cnum)
         } else {
             info!("falling back to a load");
@@ -332,7 +332,7 @@ impl<'a> CrateLoader<'a> {
                 ident: ident,
                 crate_name: name,
                 hash: hash.map(|a| &*a),
-                filesearch: self.sess.target_filesearch(kind),
+                filesearch: self.sess.target_filesearch(path_kind),
                 target: &self.sess.target.target,
                 triple: &self.sess.opts.target_triple,
                 root: root,
@@ -350,7 +350,7 @@ impl<'a> CrateLoader<'a> {
                 let mut proc_macro_locator = locator::Context {
                     target: &self.sess.host,
                     triple: config::host_triple(),
-                    filesearch: self.sess.host_filesearch(PathKind::Crate),
+                    filesearch: self.sess.host_filesearch(path_kind),
                     rejected_via_hash: vec![],
                     rejected_via_triple: vec![],
                     rejected_via_kind: vec![],
