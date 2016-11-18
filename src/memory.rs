@@ -339,11 +339,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
         while let Some(id) = allocs_to_print.pop_front() {
             allocs_seen.insert(id);
+            if id == ZST_ALLOC_ID || id == NEVER_ALLOC_ID { continue; }
             let mut msg = format!("Alloc {:<5} ", format!("{}:", id));
-            if id == ZST_ALLOC_ID {
-                trace!("{} zst allocation", msg);
-                continue;
-            }
             let prefix_len = msg.len();
             let mut relocations = vec![];
 
@@ -385,7 +382,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 let relocation_width = (self.pointer_size() - 1) * 3;
                 for (i, target_id) in relocations {
                     write!(msg, "{:1$}", "", (i - pos) * 3).unwrap();
-                    write!(msg, "└{0:─^1$}┘ ", format!("({})", target_id), relocation_width).unwrap();
+                    let target = match target_id {
+                        ZST_ALLOC_ID => String::from("zst"),
+                        NEVER_ALLOC_ID => String::from("int ptr"),
+                        _ => format!("({})", target_id),
+                    };
+                    write!(msg, "└{0:─^1$}┘ ", target, relocation_width).unwrap();
                     pos = i + self.pointer_size();
                 }
                 trace!("{}", msg);
