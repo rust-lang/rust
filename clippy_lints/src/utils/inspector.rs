@@ -350,25 +350,25 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
             }
         }
         hir::ItemUse(ref path) => println!("{:?}", path.node),
-        hir::ItemStatic(..) => (), //println!("static item: {:#?}", cx.tcx.opt_lookup_item_type(did)),
-        hir::ItemConst(..) => (), //println!("const item: {:#?}", cx.tcx.opt_lookup_item_type(did)),
+        hir::ItemStatic(..) => println!("static item of type {:#?}", cx.tcx.item_type(did)),
+        hir::ItemConst(..) => println!("const item of type {:#?}", cx.tcx.item_type(did)),
         hir::ItemFn(..) => {
-            //let item_ty = cx.tcx.opt_lookup_item_type(did);
-            //println!("function: {:#?}", item_ty);
+            let item_ty = cx.tcx.item_type(did);
+            println!("function of type {:#?}", item_ty);
         },
         hir::ItemMod(..) => println!("module"),
         hir::ItemForeignMod(ref fm) => println!("foreign module with abi: {}", fm.abi),
         hir::ItemTy(..) => {
-            //println!("type alias: {:?}", cx.tcx.opt_lookup_item_type(did));
+            println!("type alias for {:?}", cx.tcx.item_type(did));
         },
         hir::ItemEnum(..) => {
-            //println!("enum definition: {:?}", cx.tcx.opt_lookup_item_type(did));
+            println!("enum definition of type {:?}", cx.tcx.item_type(did));
         },
         hir::ItemStruct(..) => {
-            //println!("struct definition: {:?}", cx.tcx.opt_lookup_item_type(did));
+            println!("struct definition of type {:?}", cx.tcx.item_type(did));
         },
         hir::ItemUnion(..) => {
-            //println!("union definition: {:?}", cx.tcx.opt_lookup_item_type(did));
+            println!("union definition of type {:?}", cx.tcx.item_type(did));
         },
         hir::ItemTrait(..) => {
             println!("trait decl");
