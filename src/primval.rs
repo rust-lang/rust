@@ -65,7 +65,7 @@ impl PrimValKind {
         }
     }
 
-    pub fn from_uint_size(size: usize) -> Self {
+    pub fn from_uint_size(size: u64) -> Self {
         match size {
             1 => PrimValKind::U8,
             2 => PrimValKind::U16,
@@ -75,7 +75,7 @@ impl PrimValKind {
         }
     }
 
-    pub fn from_int_size(size: usize) -> Self {
+    pub fn from_int_size(size: u64) -> Self {
         match size {
             1 => PrimValKind::I8,
             2 => PrimValKind::I16,
@@ -119,11 +119,11 @@ impl PrimVal {
         PrimVal::new(f64_to_bits(f), PrimValKind::F64)
     }
 
-    pub fn from_uint_with_size(n: u64, size: usize) -> Self {
+    pub fn from_uint_with_size(n: u64, size: u64) -> Self {
         PrimVal::new(n, PrimValKind::from_uint_size(size))
     }
 
-    pub fn from_int_with_size(n: i64, size: usize) -> Self {
+    pub fn from_int_with_size(n: i64, size: u64) -> Self {
         PrimVal::new(n as u64, PrimValKind::from_int_size(size))
     }
 
@@ -139,8 +139,8 @@ impl PrimVal {
 
     pub fn to_ptr(self) -> Pointer {
         self.relocation.map(|alloc_id| {
-            Pointer::new(alloc_id, self.bits as usize)
-        }).unwrap_or_else(|| Pointer::from_int(self.bits as usize))
+            Pointer::new(alloc_id, self.bits)
+        }).unwrap_or_else(|| Pointer::from_int(self.bits))
     }
 
     pub fn try_as_uint<'tcx>(self) -> EvalResult<'tcx, u64> {

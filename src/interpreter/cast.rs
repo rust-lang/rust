@@ -67,7 +67,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             TyChar if v as u8 as u64 == v => Ok(PrimVal::new(v, Char)),
             TyChar => Err(EvalError::InvalidChar(v)),
 
-            TyRawPtr(_) => Ok(PrimVal::from_ptr(Pointer::from_int(v as usize))),
+            TyRawPtr(_) => Ok(PrimVal::from_ptr(Pointer::from_int(v))),
 
             _ => Err(EvalError::Unimplemented(format!("int to {:?} cast", ty))),
         }

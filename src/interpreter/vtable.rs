@@ -84,7 +84,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let align = self.type_align(trait_ref.self_ty())?;
 
         let ptr_size = self.memory.pointer_size();
-        let vtable = self.memory.allocate(ptr_size * (3 + methods.len()), ptr_size)?;
+        let vtable = self.memory.allocate(ptr_size * (3 + methods.len() as u64), ptr_size)?;
 
         // in case there is no drop function to be called, this still needs to be initialized
         self.memory.write_usize(vtable, 0)?;
@@ -99,12 +99,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
         }
 
-        self.memory.write_usize(vtable.offset(ptr_size as isize), size as u64)?;
-        self.memory.write_usize(vtable.offset((ptr_size * 2) as isize), align as u64)?;
+        self.memory.write_usize(vtable.offset(ptr_size), size)?;
+        self.memory.write_usize(vtable.offset((ptr_size * 2)), align)?;
 
         for (i, method) in methods.into_iter().enumerate() {
             if let Some(method) = method {
-                self.memory.write_ptr(vtable.offset(ptr_size as isize * (3 + i as isize)), method)?;
+                self.memory.write_ptr(vtable.offset(ptr_size * (3 + i as u64)), method)?;
             }
         }
 

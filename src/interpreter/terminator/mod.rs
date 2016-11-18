@@ -254,23 +254,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let discr_val = match *adt_layout {
             General { discr, .. } | CEnum { discr, signed: false, .. } => {
                 let discr_size = discr.size().bytes();
-                self.memory.read_uint(adt_ptr, discr_size as usize)?
+                self.memory.read_uint(adt_ptr, discr_size)?
             }
 
             CEnum { discr, signed: true, .. } => {
                 let discr_size = discr.size().bytes();
-                self.memory.read_int(adt_ptr, discr_size as usize)? as u64
+                self.memory.read_int(adt_ptr, discr_size)? as u64
             }
 
             RawNullablePointer { nndiscr, value } => {
-                let discr_size = value.size(&self.tcx.data_layout).bytes() as usize;
+                let discr_size = value.size(&self.tcx.data_layout).bytes();
                 trace!("rawnullablepointer with size {}", discr_size);
                 self.read_nonnull_discriminant_value(adt_ptr, nndiscr, discr_size)?
             }
 
             StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
                 let (offset, ty) = self.nonnull_offset_and_ty(adt_ty, nndiscr, discrfield)?;
-                let nonnull = adt_ptr.offset(offset.bytes() as isize);
+                let nonnull = adt_ptr.offset(offset.bytes());
                 trace!("struct wrapped nullable pointer type: {}", ty);
                 // only the pointer part of a fat pointer is used for this space optimization
                 let discr_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
@@ -285,7 +285,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(discr_val)
     }
 
-    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u64, discr_size: usize) -> EvalResult<'tcx, u64> {
+    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u64, discr_size: u64) -> EvalResult<'tcx, u64> {
         let not_null = match self.memory.read_uint(ptr, discr_size) {
             Ok(0) => false,
             Ok(_) | Err(EvalError::ReadPointerAsBytes) => true,
@@ -300,7 +300,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         def_id: DefId,
         args: &[mir::Operand<'tcx>],
         dest: Lvalue<'tcx>,
-        dest_size: usize,
+        dest_size: u64,
     ) -> EvalResult<'tcx, ()> {
         let name = self.tcx.item_name(def_id);
         let attrs = self.tcx.get_attrs(def_id);
@@ -327,7 +327,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     .expect_uint("__rust_allocate first arg not usize");
                 let align = self.value_to_primval(args[1], usize)?
                     .expect_uint("__rust_allocate second arg not usize");
-                let ptr = self.memory.allocate(size as usize, align as usize)?;
+                let ptr = self.memory.allocate(size, align)?;
                 self.write_primval(dest, PrimVal::from_ptr(ptr))?;
             }
 
@@ -345,14 +345,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = args[0].read_ptr(&self.memory)?;
                 let size = self.value_to_primval(args[2], usize)?.expect_uint("__rust_reallocate third arg not usize");
                 let align = self.value_to_primval(args[3], usize)?.expect_uint("__rust_reallocate fourth arg not usize");
-                let new_ptr = self.memory.reallocate(ptr, size as usize, align as usize)?;
+                let new_ptr = self.memory.reallocate(ptr, size, align)?;
                 self.write_primval(dest, PrimVal::from_ptr(new_ptr))?;
             }
 
             "memcmp" => {
                 let left = args[0].read_ptr(&self.memory)?;
                 let right = args[1].read_ptr(&self.memory)?;
-                let n = self.value_to_primval(args[2], usize)?.expect_uint("__rust_reallocate first arg not usize") as usize;
+                let n = self.value_to_primval(args[2], usize)?.expect_uint("__rust_reallocate first arg not usize");
 
                 let result = {
                     let left_bytes = self.memory.read_bytes(left, n)?;
@@ -414,7 +414,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         _ => bug!("rust-call ABI tuple argument wasn't Value::ByRef"),
                     };
                     for (offset, ty) in offsets.zip(fields) {
-                        let arg = Value::ByRef(last_ptr.offset(offset as isize));
+                        let arg = Value::ByRef(last_ptr.offset(offset));
                         args.push((arg, ty));
                     }
                 }
@@ -496,13 +496,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             traits::VtableObject(ref data) => {
-                let idx = self.tcx.get_vtable_index_of_object_method(data, def_id);
+                let idx = self.tcx.get_vtable_index_of_object_method(data, def_id) as u64;
                 if let Some(&mut(ref mut first_arg, ref mut first_ty)) = args.get_mut(0) {
                     let (self_ptr, vtable) = first_arg.expect_ptr_vtable_pair(&self.memory)?;
                     *first_arg = Value::ByVal(PrimVal::from_ptr(self_ptr));
                     let idx = idx + 3;
                     let offset = idx * self.memory.pointer_size();
-                    let fn_ptr = self.memory.read_ptr(vtable.offset(offset as isize))?;
+                    let fn_ptr = self.memory.read_ptr(vtable.offset(offset))?;
                     let (def_id, substs, _abi, sig) = self.memory.get_fn(fn_ptr.alloc_id)?;
                     *first_ty = sig.inputs[0];
                     Ok((def_id, substs))
@@ -600,6 +600,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
                         let discr = self.read_discriminant_value(adt_ptr, ty)?;
                         if discr == nndiscr {
+                            assert_eq!(discr as usize as u64, discr);
                             adt_def.variants[discr as usize].fields.iter().zip(&nonnull.offsets)
                         } else {
                             // FIXME: the zst variant might contain zst types that impl Drop
@@ -609,6 +610,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Layout::RawNullablePointer { nndiscr, .. } => {
                         let discr = self.read_discriminant_value(adt_ptr, ty)?;
                         if discr == nndiscr {
+                            assert_eq!(discr as usize as u64, discr);
                             assert_eq!(adt_def.variants[discr as usize].fields.len(), 1);
                             let field_ty = &adt_def.variants[discr as usize].fields[0];
                             let field_ty = monomorphize_field_ty(self.tcx, field_ty, substs);
@@ -656,10 +658,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             },
             ty::TySlice(elem_ty) => {
                 let (ptr, len) = match lval {
-                    Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => (ptr, len as isize),
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => (ptr, len),
                     _ => bug!("expected an lvalue with a length"),
                 };
-                let size = self.type_size(elem_ty)?.expect("slice element must be sized") as isize;
+                let size = self.type_size(elem_ty)?.expect("slice element must be sized");
                 // FIXME: this creates a lot of stack frames if the element type has
                 // a drop impl
                 for i in 0..len {
@@ -672,11 +674,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::Ptr { ptr, extra } => (ptr, extra),
                     _ => bug!("expected an lvalue with optional extra data"),
                 };
-                let size = self.type_size(elem_ty)?.expect("array element cannot be unsized") as isize;
+                let size = self.type_size(elem_ty)?.expect("array element cannot be unsized");
                 // FIXME: this creates a lot of stack frames if the element type has
                 // a drop impl
-                for i in 0..len {
-                    self.drop(Lvalue::Ptr { ptr: ptr.offset(i as isize * size), extra: extra }, elem_ty, drop)?;
+                for i in 0..(len as u64) {
+                    self.drop(Lvalue::Ptr { ptr: ptr.offset(i * size), extra: extra }, elem_ty, drop)?;
                 }
             },
             // FIXME: what about TyClosure and TyAnon?
@@ -699,7 +701,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let (adt_ptr, extra) = self.force_allocation(lval)?.to_ptr_and_extra();
         // manual iteration, because we need to be careful about the last field if it is unsized
         while let Some((field_ty, offset)) = fields.next() {
-            let ptr = adt_ptr.offset(offset.bytes() as isize);
+            let ptr = adt_ptr.offset(offset.bytes());
             if self.type_is_sized(field_ty) {
                 self.drop(Lvalue::from_ptr(ptr), field_ty, drop)?;
             } else {

@@ -46,7 +46,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let offset = self.value_to_primval(arg_vals[1], isize)?
                     .expect_int("arith_offset second arg not isize");
-                let new_ptr = ptr.offset(offset as isize);
+                let new_ptr = ptr.signed_offset(offset);
                 self.write_primval(dest, PrimVal::from_ptr(new_ptr))?;
             }
 
@@ -150,7 +150,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let dest = arg_vals[1].read_ptr(&self.memory)?;
                 let count = self.value_to_primval(arg_vals[2], usize)?
                     .expect_uint("arith_offset second arg not isize");
-                self.memory.copy(src, dest, count as usize * elem_size, elem_align)?;
+                self.memory.copy(src, dest, count * elem_size, elem_align)?;
             }
 
             "ctpop" |
@@ -220,7 +220,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "forget" => {}
 
             "init" => {
-                let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
+                let size = dest_layout.size(&self.tcx.data_layout).bytes();
                 let init = |this: &mut Self, val: Option<Value>| {
                     match val {
                         Some(Value::ByRef(ptr)) => {
@@ -280,12 +280,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "offset" => {
                 let pointee_ty = substs.type_at(0);
-                let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as isize;
+                // FIXME: assuming here that type size is < i64::max_value()
+                let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
                 let offset = self.value_to_primval(arg_vals[1], isize)?
                     .expect_int("offset second arg not isize");
 
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
-                let result_ptr = ptr.offset(offset as isize * pointee_size);
+                let result_ptr = ptr.signed_offset(offset * pointee_size);
                 self.write_primval(dest, PrimVal::from_ptr(result_ptr))?;
             }
 
@@ -378,7 +379,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "uninit" => {
-                let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
+                let size = dest_layout.size(&self.tcx.data_layout).bytes();
                 let uninit = |this: &mut Self, val: Option<Value>| {
                     match val {
                         Some(Value::ByRef(ptr)) => {
@@ -482,8 +483,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 ty::TyTrait(..) => {
                     let (_, vtable) = value.expect_ptr_vtable_pair(&self.memory)?;
                     // the second entry in the vtable is the dynamic size of the object.
-                    let size = self.memory.read_usize(vtable.offset(pointer_size as isize))?;
-                    let align = self.memory.read_usize(vtable.offset(pointer_size as isize * 2))?;
+                    let size = self.memory.read_usize(vtable.offset(pointer_size))?;
+                    let align = self.memory.read_usize(vtable.offset(pointer_size * 2))?;
                     Ok((size, align))
                 }
 
