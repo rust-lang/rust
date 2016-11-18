@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test where we change the body of a private method in an impl.
-// We then test what sort of functions must be rebuilt as a result.
+// Test where we change the body of a public, inherent method.
 
 // revisions:rpass1 rpass2
 // compile-flags: -Z query-dep-graph
@@ -49,7 +48,7 @@ mod point {
     }
 }
 
-/// A fn item that calls (public) methods on `Point` from the same impl which changed
+/// A fn item that calls the method on `Point` which changed
 mod fn_calls_changed_method {
     use point::Point;
 
@@ -61,7 +60,7 @@ mod fn_calls_changed_method {
     }
 }
 
-/// A fn item that calls (public) methods on `Point` from the same impl which changed
+/// A fn item that calls a method on `Point` which did not change
 mod fn_calls_another_method {
     use point::Point;
 
