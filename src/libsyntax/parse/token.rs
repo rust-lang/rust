@@ -454,10 +454,6 @@ pub fn reset_ident_interner() {
     with_ident_interner(|interner| *interner = mk_fresh_ident_interner());
 }
 
-pub fn clear_ident_interner() {
-    with_ident_interner(|interner| *interner = IdentInterner::new());
-}
-
 /// Represents a string stored in the thread-local interner. Because the
 /// interner lives for the life of the thread, this can be safely treated as an
 /// immortal string, as long as it never crosses between threads.

@@ -210,9 +210,6 @@ pub fn compile_input(sess: &Session,
                 tcx.print_debug_stats();
             }
 
-            // Discard interned strings as they are no longer required.
-            token::clear_ident_interner();
-
             Ok((outputs, trans))
         })??
     };
