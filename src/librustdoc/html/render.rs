@@ -451,6 +451,14 @@ pub fn run(mut krate: clean::Crate,
         css_file_extension: css_file_extension.clone(),
     };
 
+    // If user passed in `--playground-url` arg, we fill in crate name here
+    markdown::PLAYGROUND.with(|slot| {
+        if slot.borrow().is_some() {
+            let url = slot.borrow().as_ref().unwrap().1.clone();
+            *slot.borrow_mut() = Some((Some(krate.name.clone()), url));
+        }
+    });
+
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
     if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
