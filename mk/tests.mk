@@ -243,8 +243,7 @@ cleantestlibs:
 
 .PHONY: tidy
 tidy: $(HBIN0_H_$(CFG_BUILD))/tidy$(X_$(CFG_BUILD)) \
-		$(SNAPSHOT_RUSTC_POST_CLEANUP) \
-		check-build-lexer-verifier
+		$(SNAPSHOT_RUSTC_POST_CLEANUP)
 	$(TARGET_RPATH_VAR0_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $< $(S)src
 
 $(HBIN0_H_$(CFG_BUILD))/tidy$(X_$(CFG_BUILD)): \
