@@ -1763,6 +1763,10 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 
     let var_name = CString::new(var_name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
+
+    let ty = cx.tcx().item_type(node_def_id);
+    let global_align = type_of::align_of(cx, ty);
+
     unsafe {
         llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
                                                     var_scope,
@@ -1773,7 +1777,9 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                                     type_metadata,
                                                     is_local_to_unit,
                                                     global,
-                                                    ptr::null_mut());
+                                                    ptr::null_mut(),
+                                                    global_align as u64,
+        );
     }
 }
 
