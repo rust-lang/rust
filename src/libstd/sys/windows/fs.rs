@@ -417,6 +417,24 @@ impl File {
             Ok(PathBuf::from(OsString::from_wide(subst)))
         }
     }
+
+    pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
+        let mut info = c::FILE_BASIC_INFO {
+            CreationTime: 0,
+            LastAccessTime: 0,
+            LastWriteTime: 0,
+            ChangeTime: 0,
+            FileAttributes: perm.attrs,
+        };
+        let size = mem::size_of_val(&info);
+        cvt(unsafe {
+            c::SetFileInformationByHandle(self.handle.raw(),
+                                          c::FileBasicInfo,
+                                          &mut info as *mut _ as *mut _,
+                                          size as c::DWORD)
+        })?;
+        Ok(())
+    }
 }
 
 impl FromInner<c::HANDLE> for File {
