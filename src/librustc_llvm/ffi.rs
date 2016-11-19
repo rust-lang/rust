@@ -41,6 +41,7 @@ pub enum CallConv {
     ColdCallConv = 9,
     X86StdcallCallConv = 64,
     X86FastcallCallConv = 65,
+    ArmAapcsCallConv = 67,
     X86_64_SysV = 78,
     X86_64_Win64 = 79,
     X86_VectorCall = 80,
