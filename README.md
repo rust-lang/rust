@@ -17,7 +17,40 @@ Table of contents:
 
 ## Usage
 
+Since this is a tool for helping the developer of a library or application
+write better code, it is recommended to include clippy as an optional
+dependency.
+
 As a general rule clippy will only work with the *latest* Rust nightly for now.
+
+### Optional dependency
+
+If you want to make clippy an optional dependency, you can do the following:
+
+In your `Cargo.toml`:
+
+```toml
+[dependencies]
+clippy = {version = "*", optional = true}
+
+[features]
+default = []
+```
+
+And, in your `main.rs` or `lib.rs`:
+
+```rust
+#![cfg_attr(feature="clippy", feature(plugin))]
+
+#![cfg_attr(feature="clippy", plugin(clippy))]
+```
+
+Then build by enabling the feature: `cargo build --features "clippy"`
+
+Instead of adding the `cfg_attr` attributes you can also run clippy on demand:
+`cargo rustc --features clippy -- -Z no-trans -Z extra-plugins=clippy`
+(the `-Z no trans`, while not neccessary, will stop the compilation process after
+typechecking (and lints) have completed, which can significantly reduce the runtime).
 
 ### As a Compiler Plugin
 
@@ -97,34 +130,6 @@ cargo rustc -- -L /path/to/clippy_so -Z extra-plugins=clippy
 *[Note](https://github.com/Manishearth/rust-clippy/wiki#a-word-of-warning):*
 Be sure that clippy was compiled with the same version of rustc that cargo invokes here!
 
-### Optional dependency
-
-If you want to make clippy an optional dependency, you can do the following:
-
-In your `Cargo.toml`:
-
-```toml
-[dependencies]
-clippy = {version = "*", optional = true}
-
-[features]
-default = []
-```
-
-And, in your `main.rs` or `lib.rs`:
-
-```rust
-#![cfg_attr(feature="clippy", feature(plugin))]
-
-#![cfg_attr(feature="clippy", plugin(clippy))]
-```
-
-Then build by enabling the feature: `cargo build --features "clippy"`
-
-Instead of adding the `cfg_attr` attributes you can also run clippy on demand:
-`cargo rustc --features clippy -- -Z no-trans -Z extra-plugins=clippy`
-(the `-Z no trans`, while not neccessary, will stop the compilation process after
-typechecking (and lints) have completed, which can significantly reduce the runtime).
 
 ## Configuration
 
