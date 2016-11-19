@@ -624,6 +624,7 @@ opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
 opt local-rebuild 0 "assume local-rust matches the current version, for rebuilds; implies local-rust, and is implied if local-rust already matches the current version"
 opt llvm-static-stdcpp 0 "statically link to libstdc++ for LLVM"
+opt llvm-link-shared 0 "prefer shared linking to LLVM (llvm-config --link-shared)"
 opt rpath 1 "build rpaths into rustc itself"
 opt stage0-landing-pads 1 "enable landing pads during bootstrap with stage0"
 # This is used by the automation to produce single-target nightlies

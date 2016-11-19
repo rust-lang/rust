@@ -53,6 +53,7 @@ pub struct Config {
     pub llvm_release_debuginfo: bool,
     pub llvm_version_check: bool,
     pub llvm_static_stdcpp: bool,
+    pub llvm_link_shared: bool,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -346,6 +347,7 @@ impl Config {
                 ("OPTIMIZE_LLVM", self.llvm_optimize),
                 ("LLVM_VERSION_CHECK", self.llvm_version_check),
                 ("LLVM_STATIC_STDCPP", self.llvm_static_stdcpp),
+                ("LLVM_LINK_SHARED", self.llvm_link_shared),
                 ("OPTIMIZE", self.rust_optimize),
                 ("DEBUG_ASSERTIONS", self.rust_debug_assertions),
                 ("DEBUGINFO", self.rust_debuginfo),
