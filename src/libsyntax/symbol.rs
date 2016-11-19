@@ -16,11 +16,13 @@ use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
-use std::rc::Rc;
 
 /// A symbol is an interned or gensymed string.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(u32);
+
+// The interner in thread-local, so `Symbol` shouldn't move between threads.
+impl !Send for Symbol { }
 
 impl Symbol {
     /// Maps a string to its interned representation.
@@ -34,7 +36,11 @@ impl Symbol {
     }
 
     pub fn as_str(self) -> InternedString {
-        with_interner(|interner| InternedString { string: interner.get(self) })
+        with_interner(|interner| unsafe {
+            InternedString {
+                string: ::std::mem::transmute::<&str, &str>(interner.get(self))
+            }
+        })
     }
 
     pub fn as_u32(self) -> u32 {
@@ -74,8 +80,8 @@ impl<'a> PartialEq<&'a str> for Symbol {
 
 #[derive(Default)]
 pub struct Interner {
-    names: HashMap<Rc<str>, Symbol>,
-    strings: Vec<Rc<str>>,
+    names: HashMap<Box<str>, Symbol>,
+    strings: Vec<Box<str>>,
 }
 
 impl Interner {
@@ -97,7 +103,7 @@ impl Interner {
         }
 
         let name = Symbol(self.strings.len() as u32);
-        let string = Rc::__from_str(string);
+        let string = string.to_string().into_boxed_str();
         self.strings.push(string.clone());
         self.names.insert(string, name);
         name
@@ -106,12 +112,12 @@ impl Interner {
     fn gensym(&mut self, string: &str) -> Symbol {
         let gensym = Symbol(self.strings.len() as u32);
         // leave out of `names` to avoid colliding
-        self.strings.push(Rc::__from_str(string));
+        self.strings.push(string.to_string().into_boxed_str());
         gensym
     }
 
-    pub fn get(&self, name: Symbol) -> Rc<str> {
-        self.strings[name.0 as usize].clone()
+    pub fn get(&self, name: Symbol) -> &str {
+        &self.strings[name.0 as usize]
     }
 }
 
@@ -225,11 +231,6 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
     INTERNER.with(|interner| f(&mut *interner.borrow_mut()))
 }
 
-/// Reset the ident interner to its initial state.
-pub fn reset_interner() {
-    with_interner(|interner| *interner = Interner::fresh());
-}
-
 /// Represents a string stored in the thread-local interner. Because the
 /// interner lives for the life of the thread, this can be safely treated as an
 /// immortal string, as long as it never crosses between threads.
@@ -241,23 +242,25 @@ pub fn reset_interner() {
 /// somehow.
 #[derive(Clone, PartialEq, Hash, PartialOrd, Eq, Ord)]
 pub struct InternedString {
-    string: Rc<str>,
+    string: &'static str,
 }
+
+impl !Send for InternedString { }
 
 impl ::std::ops::Deref for InternedString {
     type Target = str;
-    fn deref(&self) -> &str { &self.string }
+    fn deref(&self) -> &str { self.string }
 }
 
 impl fmt::Debug for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.string, f)
+        fmt::Debug::fmt(self.string, f)
     }
 }
 
 impl fmt::Display for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.string, f)
+        fmt::Display::fmt(self.string, f)
     }
 }
 
@@ -269,7 +272,7 @@ impl Decodable for InternedString {
 
 impl Encodable for InternedString {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.string)
+        s.emit_str(self.string)
     }
 }
 

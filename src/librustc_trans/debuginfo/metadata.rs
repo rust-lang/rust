@@ -44,7 +44,6 @@ use std::ffi::CString;
 use std::fmt::Write;
 use std::path::Path;
 use std::ptr;
-use std::rc::Rc;
 use syntax::ast;
 use syntax::symbol::{Interner, InternedString};
 use syntax_pos::{self, Span};
@@ -116,9 +115,8 @@ impl<'tcx> TypeMap<'tcx> {
                                         unique_type_id: UniqueTypeId,
                                         metadata: DIType) {
         if self.unique_id_to_metadata.insert(unique_type_id, metadata).is_some() {
-            let unique_type_id_str = self.get_unique_type_id_as_string(unique_type_id);
             bug!("Type metadata for unique id '{}' is already in the TypeMap!",
-                 &unique_type_id_str[..]);
+                 self.get_unique_type_id_as_string(unique_type_id));
         }
     }
 
@@ -132,7 +130,7 @@ impl<'tcx> TypeMap<'tcx> {
 
     // Get the string representation of a UniqueTypeId. This method will fail if
     // the id is unknown.
-    fn get_unique_type_id_as_string(&self, unique_type_id: UniqueTypeId) -> Rc<str> {
+    fn get_unique_type_id_as_string(&self, unique_type_id: UniqueTypeId) -> &str {
         let UniqueTypeId(interner_key) = unique_type_id;
         self.unique_id_interner.get(interner_key)
     }
@@ -181,7 +179,7 @@ impl<'tcx> TypeMap<'tcx> {
                                               -> UniqueTypeId {
         let enum_type_id = self.get_unique_type_id_of_type(cx, enum_type);
         let enum_variant_type_id = format!("{}::{}",
-                                           &self.get_unique_type_id_as_string(enum_type_id),
+                                           self.get_unique_type_id_as_string(enum_type_id),
                                            variant_name);
         let interner_key = self.unique_id_interner.intern(&enum_variant_type_id);
         UniqueTypeId(interner_key)
@@ -622,14 +620,12 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let metadata_for_uid = match type_map.find_metadata_for_unique_id(unique_type_id) {
                 Some(metadata) => metadata,
                 None => {
-                    let unique_type_id_str =
-                        type_map.get_unique_type_id_as_string(unique_type_id);
                     span_bug!(usage_site_span,
                               "Expected type metadata for unique \
                                type id '{}' to already be in \
                                the debuginfo::TypeMap but it \
                                was not. (Ty = {})",
-                              &unique_type_id_str[..],
+                              type_map.get_unique_type_id_as_string(unique_type_id),
                               t);
                 }
             };
@@ -637,14 +633,12 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             match type_map.find_metadata_for_type(t) {
                 Some(metadata) => {
                     if metadata != metadata_for_uid {
-                        let unique_type_id_str =
-                            type_map.get_unique_type_id_as_string(unique_type_id);
                         span_bug!(usage_site_span,
                                   "Mismatch between Ty and \
                                    UniqueTypeId maps in \
                                    debuginfo::TypeMap. \
                                    UniqueTypeId={}, Ty={}",
-                                  &unique_type_id_str[..],
+                                  type_map.get_unique_type_id_as_string(unique_type_id),
                                   t);
                     }
                 }
@@ -1525,13 +1519,10 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let enum_llvm_type = type_of::type_of(cx, enum_type);
     let (enum_type_size, enum_type_align) = size_and_align_of(cx, enum_llvm_type);
 
-    let unique_type_id_str = debug_context(cx)
-                             .type_map
-                             .borrow()
-                             .get_unique_type_id_as_string(unique_type_id);
-
     let enum_name = CString::new(enum_name).unwrap();
-    let unique_type_id_str = CString::new(unique_type_id_str.as_bytes()).unwrap();
+    let unique_type_id_str = CString::new(
+        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id).as_bytes()
+    ).unwrap();
     let enum_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateUnionType(
         DIB(cx),
@@ -1668,11 +1659,10 @@ fn create_struct_stub(cx: &CrateContext,
                    -> DICompositeType {
     let (struct_size, struct_align) = size_and_align_of(cx, struct_llvm_type);
 
-    let unique_type_id_str = debug_context(cx).type_map
-                                              .borrow()
-                                              .get_unique_type_id_as_string(unique_type_id);
     let name = CString::new(struct_type_name).unwrap();
-    let unique_type_id = CString::new(unique_type_id_str.as_bytes()).unwrap();
+    let unique_type_id = CString::new(
+        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id).as_bytes()
+    ).unwrap();
     let metadata_stub = unsafe {
         // LLVMRustDIBuilderCreateStructType() wants an empty array. A null
         // pointer will lead to hard to trace and debug LLVM assertions
@@ -1706,11 +1696,10 @@ fn create_union_stub(cx: &CrateContext,
                    -> DICompositeType {
     let (union_size, union_align) = size_and_align_of(cx, union_llvm_type);
 
-    let unique_type_id_str = debug_context(cx).type_map
-                                              .borrow()
-                                              .get_unique_type_id_as_string(unique_type_id);
     let name = CString::new(union_type_name).unwrap();
-    let unique_type_id = CString::new(unique_type_id_str.as_bytes()).unwrap();
+    let unique_type_id = CString::new(
+        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id).as_bytes()
+    ).unwrap();
     let metadata_stub = unsafe {
         // LLVMRustDIBuilderCreateUnionType() wants an empty array. A null
         // pointer will lead to hard to trace and debug LLVM assertions

@@ -1355,11 +1355,3 @@ pub fn build_output_filenames(input: &Input,
         }
     }
 }
-
-// For use by the `rusti` project (https://github.com/murarth/rusti).
-pub fn reset_thread_local_state() {
-    // These may be left in an incoherent state after a previous compile.
-    syntax::ext::hygiene::reset_hygiene_data();
-    // `clear_interner` can be used to free memory, but it does not restore the initial state.
-    symbol::reset_interner();
-}
