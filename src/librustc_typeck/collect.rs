@@ -83,7 +83,7 @@ use syntax::symbol::{Symbol, keywords};
 use syntax_pos::Span;
 
 use rustc::hir::{self, map as hir_map, print as pprust};
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitMode};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 
@@ -128,13 +128,17 @@ struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
+        Some((&self.ccx.tcx.map, NestedVisitMode::OnlyBodies))
+    }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item) {
         convert_item(self.ccx, item);
         intravisit::walk_item(self, item);
     }
 
-    fn visit_expr(&mut self, expr: &hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if let hir::ExprClosure(..) = expr.node {
             let def_id = self.ccx.tcx.map.local_def_id(expr.id);
             generics_of_def_id(self.ccx, def_id);
@@ -143,7 +147,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
-    fn visit_ty(&mut self, ty: &hir::Ty) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         if let hir::TyImplTrait(..) = ty.node {
             let def_id = self.ccx.tcx.map.local_def_id(ty.id);
             generics_of_def_id(self.ccx, def_id);
@@ -151,7 +155,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
         intravisit::walk_ty(self, ty);
     }
 
-    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         convert_impl_item(self.ccx, impl_item);
         intravisit::walk_impl_item(self, impl_item);
     }
