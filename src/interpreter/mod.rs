@@ -364,6 +364,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let global_value = self.globals
                                        .get_mut(&id)
                                        .expect("global should have been cached (freeze)");
+                match global_value.data.expect("global should have been initialized") {
+                    Value::ByRef(ptr) => self.memory.freeze(ptr.alloc_id)?,
+                    Value::ByVal(val) => if let Some(alloc_id) = val.relocation {
+                        self.memory.freeze(alloc_id)?;
+                    },
+                    Value::ByValPair(a, b) => {
+                        if let Some(alloc_id) = a.relocation {
+                            self.memory.freeze(alloc_id)?;
+                        }
+                        if let Some(alloc_id) = b.relocation {
+                            self.memory.freeze(alloc_id)?;
+                        }
+                    },
+                }
                 if let Value::ByRef(ptr) = global_value.data.expect("global should have been initialized") {
                     self.memory.freeze(ptr.alloc_id)?;
                 }
@@ -375,7 +389,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             StackPopCleanup::Goto(target) => self.goto_block(target),
             StackPopCleanup::None => {},
         }
-        // TODO(solson): Deallocate local variables.
+        // deallocate all locals that are backed by an allocation
+        for (i, local) in frame.locals.into_iter().enumerate() {
+            if let Some(Value::ByRef(ptr)) = local {
+                trace!("deallocating local {}: {:?}", i + 1, ptr);
+                self.memory.dump(ptr.alloc_id);
+                match self.memory.deallocate(ptr) {
+                    // Any frozen memory means that it belongs to a constant or something referenced
+                    // by a constant. We could alternatively check whether the alloc_id is frozen
+                    // before calling deallocate, but this is much simpler and is probably the
+                    // rare case.
+                    Ok(()) | Err(EvalError::DeallocatedFrozenMemory) => {},
+                    other => return other,
+                }
+            }
+        }
         Ok(())
     }
 
@@ -729,6 +757,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // Skip the initial 0 intended for LLVM GEP.
         for field_index in path {
             let field_offset = self.get_field_offset(ty, field_index)?;
+            trace!("field_path_offset_and_ty: {}, {}, {:?}, {:?}", field_index, ty, field_offset, offset);
             ty = self.get_field_ty(ty, field_index)?;
             offset = offset.checked_add(field_offset, &self.tcx.data_layout).unwrap();
         }
@@ -1595,8 +1624,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, ()> {
         let val = self.stack[frame].get_local(local);
         let val = f(self, val)?;
-        // can't use `set_local` here, because that's only meant for going to an initialized value
-        self.stack[frame].locals[local.index() - 1] = val;
+        if let Some(val) = val {
+            self.stack[frame].set_local(local, val);
+        } else {
+            self.deallocate_local(frame, local)?;
+        }
+        Ok(())
+    }
+
+    pub fn deallocate_local(&mut self, frame: usize, local: mir::Local) -> EvalResult<'tcx, ()> {
+        if let Some(Value::ByRef(ptr)) = self.stack[frame].get_local(local) {
+            self.memory.deallocate(ptr)?;
+        }
+        // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
+        self.stack[frame].locals[local.index() - 1] = None;
         Ok(())
     }
 }

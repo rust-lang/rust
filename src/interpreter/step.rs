@@ -81,8 +81,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Assign(ref lvalue, ref rvalue) => self.eval_rvalue_into_lvalue(rvalue, lvalue)?,
             SetDiscriminant { .. } => unimplemented!(),
 
-            // Miri can safely ignore these. Only translation needs them.
-            StorageLive(_) | StorageDead(_) => {}
+            // Miri can safely ignore these. Only translation needs it.
+            StorageLive(_) |
+            StorageDead(_) => {}
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.

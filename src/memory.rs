@@ -1,7 +1,7 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian, self};
 use std::collections::Bound::{Included, Excluded};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
-use std::{fmt, iter, ptr};
+use std::{fmt, iter, ptr, mem};
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, BareFnTy, ClosureTy, ClosureSubsts, TyCtxt};
@@ -212,6 +212,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if ptr.points_to_zst() {
             return self.allocate(new_size, align);
         }
+        if self.get(ptr.alloc_id).map(|alloc| alloc.immutable) == Ok(true) {
+            return Err(EvalError::ReallocatedFrozenMemory);
+        }
 
         let size = self.get(ptr.alloc_id)?.bytes.len();
 
@@ -241,6 +244,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if ptr.offset != 0 {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
+        }
+        if self.get(ptr.alloc_id).map(|alloc| alloc.immutable) == Ok(true) {
+            return Err(EvalError::DeallocatedFrozenMemory);
         }
 
         if let Some(alloc) = self.alloc_map.remove(&ptr.alloc_id) {
@@ -333,11 +339,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
         while let Some(id) = allocs_to_print.pop_front() {
             allocs_seen.insert(id);
+            if id == ZST_ALLOC_ID || id == NEVER_ALLOC_ID { continue; }
             let mut msg = format!("Alloc {:<5} ", format!("{}:", id));
-            if id == ZST_ALLOC_ID {
-                trace!("{} zst allocation", msg);
-                continue;
-            }
             let prefix_len = msg.len();
             let mut relocations = vec![];
 
@@ -379,7 +382,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 let relocation_width = (self.pointer_size() - 1) * 3;
                 for (i, target_id) in relocations {
                     write!(msg, "{:1$}", "", (i - pos) * 3).unwrap();
-                    write!(msg, "└{0:─^1$}┘ ", format!("({})", target_id), relocation_width).unwrap();
+                    let target = match target_id {
+                        ZST_ALLOC_ID => String::from("zst"),
+                        NEVER_ALLOC_ID => String::from("int ptr"),
+                        _ => format!("({})", target_id),
+                    };
+                    write!(msg, "└{0:─^1$}┘ ", target, relocation_width).unwrap();
                     pos = i + self.pointer_size();
                 }
                 trace!("{}", msg);
@@ -446,10 +454,25 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 /// Reading and writing
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn freeze(&mut self, alloc_id: AllocId) -> EvalResult<'tcx, ()> {
-        // It's not possible to freeze the zero-sized allocation, because it doesn't exist.
-        if alloc_id != ZST_ALLOC_ID {
-            self.get_mut(alloc_id)?.immutable = true;
+        // do not use `self.get_mut(alloc_id)` here, because we might have already frozen a
+        // sub-element or have circular pointers (e.g. `Rc`-cycles)
+        let relocations = match self.alloc_map.get_mut(&alloc_id) {
+            Some(ref mut alloc) if !alloc.immutable => {
+                alloc.immutable = true;
+                // take out the relocations vector to free the borrow on self, so we can call
+                // freeze recursively
+                mem::replace(&mut alloc.relocations, Default::default())
+            },
+            None if alloc_id == NEVER_ALLOC_ID || alloc_id == ZST_ALLOC_ID => return Ok(()),
+            None if !self.functions.contains_key(&alloc_id) => return Err(EvalError::DanglingPointerDeref),
+            _ => return Ok(()),
+        };
+        // recurse into inner allocations
+        for &alloc in relocations.values() {
+            self.freeze(alloc)?;
         }
+        // put back the relocations
+        self.alloc_map.get_mut(&alloc_id).expect("checked above").relocations = relocations;
         Ok(())
     }
 
