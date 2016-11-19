@@ -183,7 +183,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match fn_ty.abi {
             Abi::RustIntrinsic => {
                 let ty = fn_ty.sig.0.output;
-                let layout = self.type_layout(ty);
+                let layout = self.type_layout(ty)?;
                 let (ret, target) = destination.unwrap();
                 self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout, target)?;
                 Ok(())
@@ -191,7 +191,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Abi::C => {
                 let ty = fn_ty.sig.0.output;
-                let size = self.type_size(ty).expect("function return type cannot be unsized");
+                let size = self.type_size(ty)?.expect("function return type cannot be unsized");
                 let (ret, target) = destination.unwrap();
                 self.call_c_abi(def_id, arg_operands, ret, size)?;
                 self.goto_block(target);
@@ -248,7 +248,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
         use rustc::ty::layout::Layout::*;
-        let adt_layout = self.type_layout(adt_ty);
+        let adt_layout = self.type_layout(adt_ty)?;
         trace!("read_discriminant_value {:?}", adt_layout);
 
         let discr_val = match *adt_layout {
@@ -273,7 +273,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let nonnull = adt_ptr.offset(offset.bytes() as isize);
                 trace!("struct wrapped nullable pointer type: {}", ty);
                 // only the pointer part of a fat pointer is used for this space optimization
-                let discr_size = self.type_size(ty).expect("bad StructWrappedNullablePointer discrfield");
+                let discr_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
                 self.read_nonnull_discriminant_value(nonnull, nndiscr, discr_size)?
             }
 
@@ -402,9 +402,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         })
     }
 
-    fn unpack_fn_args(&self, args: &mut Vec<(Value, Ty<'tcx>)>) {
+    fn unpack_fn_args(&self, args: &mut Vec<(Value, Ty<'tcx>)>) -> EvalResult<'tcx, ()> {
         if let Some((last, last_ty)) = args.pop() {
-            let last_layout = self.type_layout(last_ty);
+            let last_layout = self.type_layout(last_ty)?;
             match (&last_ty.sty, last_layout) {
                 (&ty::TyTuple(fields),
                  &Layout::Univariant { ref variant, .. }) => {
@@ -421,6 +421,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
             }
         }
+        Ok(())
     }
 
     /// Trait method, which has to be resolved to an impl method.
@@ -452,7 +453,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     .expect("The substitutions should have no type parameters remaining after passing through fulfill_obligation");
                 let closure_kind = self.tcx.closure_kind(vtable_closure.closure_def_id);
                 trace!("closures {:?}, {:?}", closure_kind, trait_closure_kind);
-                self.unpack_fn_args(args);
+                self.unpack_fn_args(args)?;
                 match (closure_kind, trait_closure_kind) {
                     (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
                     (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
@@ -487,7 +488,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             traits::VtableFnPointer(vtable_fn_ptr) => {
                 if let ty::TyFnDef(did, ref substs, _) = vtable_fn_ptr.fn_ty.sty {
                     args.remove(0);
-                    self.unpack_fn_args(args);
+                    self.unpack_fn_args(args)?;
                     Ok((did, substs))
                 } else {
                     bug!("VtableFnPointer did not contain a concrete function: {:?}", vtable_fn_ptr)
@@ -583,7 +584,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if let Some(drop_def_id) = adt_def.destructor() {
                     drop.push((drop_def_id, Value::ByVal(PrimVal::from_ptr(adt_ptr)), substs));
                 }
-                let layout = self.type_layout(ty);
+                let layout = self.type_layout(ty)?;
                 let fields = match *layout {
                     Layout::Univariant { ref variant, .. } => {
                         adt_def.struct_variant().fields.iter().zip(&variant.offsets)
@@ -630,7 +631,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 )?;
             },
             ty::TyTuple(fields) => {
-                let offsets = match *self.type_layout(ty) {
+                let offsets = match *self.type_layout(ty)? {
                     Layout::Univariant { ref variant, .. } => &variant.offsets,
                     _ => bug!("tuples must be univariant"),
                 };
@@ -658,7 +659,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => (ptr, len as isize),
                     _ => bug!("expected an lvalue with a length"),
                 };
-                let size = self.type_size(elem_ty).expect("slice element must be sized") as isize;
+                let size = self.type_size(elem_ty)?.expect("slice element must be sized") as isize;
                 // FIXME: this creates a lot of stack frames if the element type has
                 // a drop impl
                 for i in 0..len {
@@ -671,7 +672,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::Ptr { ptr, extra } => (ptr, extra),
                     _ => bug!("expected an lvalue with optional extra data"),
                 };
-                let size = self.type_size(elem_ty).expect("array element cannot be unsized") as isize;
+                let size = self.type_size(elem_ty)?.expect("array element cannot be unsized") as isize;
                 // FIXME: this creates a lot of stack frames if the element type has
                 // a drop impl
                 for i in 0..len {

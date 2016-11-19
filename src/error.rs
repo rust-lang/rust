@@ -1,13 +1,13 @@
 use std::error::Error;
 use std::fmt;
 use rustc::mir;
-use rustc::ty::{BareFnTy, Ty, FnSig};
+use rustc::ty::{BareFnTy, Ty, FnSig, layout};
 use syntax::abi::Abi;
 use memory::Pointer;
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum EvalError<'tcx> {
     FunctionPointerTyMismatch(Abi, &'tcx FnSig<'tcx>, &'tcx BareFnTy<'tcx>),
     NoMirFor(String),
@@ -50,6 +50,7 @@ pub enum EvalError<'tcx> {
     TypeNotPrimitive(Ty<'tcx>),
     ReallocatedFrozenMemory,
     DeallocatedFrozenMemory,
+    Layout(layout::LayoutError<'tcx>),
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -116,6 +117,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "tried to reallocate frozen memory",
             EvalError::DeallocatedFrozenMemory =>
                 "tried to deallocate frozen memory",
+            EvalError::Layout(_) =>
+                "rustc layout computation failed",
         }
     }
 
@@ -146,6 +149,8 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                       has, required),
             EvalError::TypeNotPrimitive(ref ty) =>
                 write!(f, "expected primitive type, got {}", ty),
+            EvalError::Layout(ref err) =>
+                write!(f, "rustc layout computation failed: {:?}", err),
             _ => write!(f, "{}", self.description()),
         }
     }
