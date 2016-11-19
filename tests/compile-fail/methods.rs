@@ -535,6 +535,7 @@ fn use_extend_from_slice() {
 
 fn str_extend_chars() {
     let abc = "abc";
+    let def = String::from("def");
     let mut s = String::new();
 
     s.push_str(abc);
@@ -548,6 +549,12 @@ fn str_extend_chars() {
     //~^ERROR calling `.extend(_.chars())`
     //~|HELP try this
     //~|SUGGESTION s.push_str("abc")
+
+    s.push_str(def.as_str());
+    s.extend(def.chars());
+    //~^ERROR calling `.extend(_.chars())`
+    //~|HELP try this
+    //~|SUGGESTION s.push_str(def.as_str())
 
     s.extend(abc.chars().skip(1));
     s.extend("abc".chars().skip(1));

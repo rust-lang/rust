@@ -327,7 +327,7 @@ name                                                                            
 [single_match_else](https://github.com/Manishearth/rust-clippy/wiki#single_match_else)                                 | allow   | a match statement with a two arms where the second arm's pattern is a wildcard instead of `if let`
 [string_add](https://github.com/Manishearth/rust-clippy/wiki#string_add)                                               | allow   | using `x + ..` where x is a `String` instead of `push_str()`
 [string_add_assign](https://github.com/Manishearth/rust-clippy/wiki#string_add_assign)                                 | allow   | using `x = x + ..` where x is a `String` instead of `push_str()`
-[string_extend_chars](https://github.com/Manishearth/rust-clippy/wiki#string_extend_chars)                             | warn    | using `x.extend(s.chars())` where s is a `&str`
+[string_extend_chars](https://github.com/Manishearth/rust-clippy/wiki#string_extend_chars)                             | warn    | using `x.extend(s.chars())` where s is a `&str` or `String`
 [string_lit_as_bytes](https://github.com/Manishearth/rust-clippy/wiki#string_lit_as_bytes)                             | warn    | calling `as_bytes` on a string literal instead of using a byte string literal
 [stutter](https://github.com/Manishearth/rust-clippy/wiki#stutter)                                                     | allow   | type names prefixed/postfixed with their containing module's name
 [suspicious_assignment_formatting](https://github.com/Manishearth/rust-clippy/wiki#suspicious_assignment_formatting)   | warn    | suspicious formatting of `*=`, `-=` or `!=`

@@ -491,7 +491,7 @@ declare_lint! {
 }
 
 /// **What it does:** Checks for the use of `.extend(s.chars())` where s is a
-/// `&str`.
+/// `&str` or `String`.
 ///
 /// **Why is this bad?** `.push_str(s)` is clearer and faster
 ///
@@ -500,20 +500,24 @@ declare_lint! {
 /// **Example:**
 /// ```rust
 /// let abc = "abc";
+/// let def = String::from("def");
 /// let mut s = String::new();
 /// s.extend(abc.chars());
+/// s.extend(def.chars());
 /// ```
 /// The correct use would be:
 /// ```rust
 /// let abc = "abc";
+/// let def = String::from("def");
 /// let mut s = String::new();
 /// s.push_str(abc);
+/// s.push_str(def.as_str());
 /// ```
 
 declare_lint! {
     pub STRING_EXTEND_CHARS,
     Warn,
-    "using `x.extend(s.chars())` where s is a `&str`"
+    "using `x.extend(s.chars())` where s is a `&str` or `String`"
 }
 
 
@@ -839,19 +843,26 @@ fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
         let (self_ty, _) = walk_ptrs_ty_depth(cx.tcx.tables().expr_ty(target));
-        if self_ty.sty == ty::TyStr {
-            span_lint_and_then(
-                cx,
-                STRING_EXTEND_CHARS,
-                expr.span,
-                "calling `.extend(_.chars())`",
-                |db| {
-                    db.span_suggestion(expr.span, "try this",
-                            format!("{}.push_str({})",
-                                    snippet(cx, args[0].span, "_"),
-                                    snippet(cx, target.span, "_")));
-                });
-        }
+        let extra_suggestion = if self_ty.sty == ty::TyStr {
+            ""
+        } else if match_type(cx, self_ty, &paths::STRING) {
+            ".as_str()"
+        } else {
+            return;
+        };
+
+        span_lint_and_then(
+            cx,
+            STRING_EXTEND_CHARS,
+            expr.span,
+            "calling `.extend(_.chars())`",
+            |db| {
+                db.span_suggestion(expr.span, "try this",
+                        format!("{}.push_str({}{})",
+                                snippet(cx, args[0].span, "_"),
+                                snippet(cx, target.span, "_"),
+                                extra_suggestion));
+            });
     }
 }
 
