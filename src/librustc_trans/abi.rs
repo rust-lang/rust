@@ -274,10 +274,10 @@ impl FnType {
             C => llvm::CCallConv,
             Win64 => llvm::X86_64_Win64,
             SysV64 => llvm::X86_64_SysV,
+            Aapcs => llvm::ArmAapcsCallConv,
 
             // These API constants ought to be more specific...
             Cdecl => llvm::CCallConv,
-            Aapcs => llvm::CCallConv,
         };
 
         let mut inputs = &sig.inputs[..];
