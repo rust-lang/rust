@@ -167,7 +167,7 @@ pub enum StackPopCleanup {
 }
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, memory_size: usize, stack_limit: usize, step_limit: u64) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, memory_size: u64, stack_limit: usize, step_limit: u64) -> Self {
         EvalContext {
             tcx: tcx,
             memory: Memory::new(&tcx.data_layout, memory_size),
@@ -211,7 +211,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         // FIXME: cache these allocs
-        let ptr = self.memory.allocate(s.len(), 1)?;
+        let ptr = self.memory.allocate(s.len() as u64, 1)?;
         self.memory.write_bytes(ptr, s.as_bytes())?;
         self.memory.freeze(ptr.alloc_id)?;
         Ok(Value::ByValPair(PrimVal::from_ptr(ptr), self.usize_primval(s.len() as u64)))
@@ -255,7 +255,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Str(ref s) => return self.str_to_value(s),
 
             ByteStr(ref bs) => {
-                let ptr = self.memory.allocate(bs.len(), 1)?;
+                let ptr = self.memory.allocate(bs.len() as u64, 1)?;
                 self.memory.write_bytes(ptr, bs)?;
                 self.memory.freeze(ptr.alloc_id)?;
                 PrimVal::from_ptr(ptr)
@@ -292,25 +292,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.tcx.normalize_associated_type(&substituted)
     }
 
-    fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<usize>> {
+    fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {
         self.type_size_with_substs(ty, self.substs())
     }
 
-    fn type_align(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, usize> {
+    fn type_align(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
         self.type_align_with_substs(ty, self.substs())
     }
 
-    fn type_size_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, Option<usize>> {
+    fn type_size_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, Option<u64>> {
         let layout = self.type_layout_with_substs(ty, substs)?;
         if layout.is_unsized() {
             Ok(None)
         } else {
-            Ok(Some(layout.size(&self.tcx.data_layout).bytes() as usize))
+            Ok(Some(layout.size(&self.tcx.data_layout).bytes()))
         }
     }
 
-    fn type_align_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, usize> {
-        self.type_layout_with_substs(ty, substs).map(|layout| layout.align(&self.tcx.data_layout).abi() as usize)
+    fn type_align_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, u64> {
+        self.type_layout_with_substs(ty, substs).map(|layout| layout.align(&self.tcx.data_layout).abi())
     }
 
     fn type_layout(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, &'tcx Layout> {
@@ -464,7 +464,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         for (offset, operand) in offsets.into_iter().zip(operands) {
             let value = self.eval_operand(operand)?;
             let value_ty = self.operand_ty(operand);
-            let field_dest = dest.offset(offset as isize);
+            let field_dest = dest.offset(offset);
             self.write_value_to_ptr(value, field_dest, value_ty)?;
         }
         Ok(())
@@ -525,8 +525,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     General { discr, ref variants, .. } => {
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
                             let discr_val = adt_def.variants[variant].disr_val.to_u64_unchecked();
-                            let discr_size = discr.size().bytes() as usize;
-                            let discr_offset = variants[variant].offsets[0].bytes() as isize;
+                            let discr_size = discr.size().bytes();
+                            let discr_offset = variants[variant].offsets[0].bytes();
 
                             // FIXME(solson)
                             let dest = self.force_allocation(dest)?;
@@ -581,7 +581,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 // FIXME(solson)
                                 let dest = self.force_allocation(dest)?.to_ptr();
 
-                                let dest = dest.offset(offset.bytes() as isize);
+                                let dest = dest.offset(offset.bytes());
                                 let dest_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
                                 try!(self.memory.write_int(dest, 0, dest_size));
                             }
@@ -594,7 +594,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         assert_eq!(operands.len(), 0);
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
                             let n = adt_def.variants[variant].disr_val.to_u64_unchecked();
-                            let size = discr.size().bytes() as usize;
+                            let size = discr.size().bytes();
 
                             let val = if signed {
                                 PrimVal::from_int_with_size(n as i64, size)
@@ -621,10 +621,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Repeat(ref operand, _) => {
                 let (elem_ty, length) = match dest_ty.sty {
-                    ty::TyArray(elem_ty, n) => (elem_ty, n),
+                    ty::TyArray(elem_ty, n) => (elem_ty, n as u64),
                     _ => bug!("tried to assign array-repeat to non-array type {:?}", dest_ty),
                 };
-                self.inc_step_counter_and_check_limit(length as u64)?;
+                self.inc_step_counter_and_check_limit(length)?;
                 let elem_size = self.type_size(elem_ty)?.expect("repeat element type must be sized");
                 let value = self.eval_operand(operand)?;
 
@@ -632,7 +632,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let dest = self.force_allocation(dest)?.to_ptr();
 
                 for i in 0..length {
-                    let elem_dest = dest.offset((i * elem_size) as isize);
+                    let elem_dest = dest.offset(i * elem_size);
                     self.write_value_to_ptr(value, elem_dest, elem_ty)?;
                 }
             }
@@ -741,15 +741,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn nonnull_offset_and_ty(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
-        // Skip the constant 0 at the start meant for LLVM GEP.
-        let mut path = discrfield.iter().skip(1).map(|&i| i as usize);
+        // Skip the constant 0 at the start meant for LLVM GEP and the outer non-null variant
+        let path = discrfield.iter().skip(2).map(|&i| i as usize);
 
         // Handle the field index for the outer non-null variant.
         let inner_ty = match ty.sty {
             ty::TyAdt(adt_def, substs) => {
                 let variant = &adt_def.variants[nndiscr as usize];
-                let index = path.next().unwrap();
-                let field = &variant.fields[index];
+                let index = discrfield[1];
+                let field = &variant.fields[index as usize];
                 field.ty(self.tcx, substs)
             }
             _ => bug!("non-enum for StructWrappedNullablePointer: {}", ty),
@@ -804,8 +804,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(variant.offsets[field_index])
             }
             FatPointer { .. } => {
-                let bytes = field_index * self.memory.pointer_size();
-                Ok(Size::from_bytes(bytes as u64))
+                let bytes = field_index as u64 * self.memory.pointer_size();
+                Ok(Size::from_bytes(bytes))
             }
             _ => {
                 let msg = format!("can't handle type: {:?}, with layout: {:?}", ty, layout);
@@ -980,7 +980,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => bug!("field access on non-product type: {:?}", base_layout),
                 };
 
-                let ptr = base_ptr.offset(offset.bytes() as isize);
+                let ptr = base_ptr.offset(offset.bytes());
                 let extra = if self.type_is_sized(field_ty) {
                     LvalueExtra::None
                 } else {
@@ -1048,7 +1048,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let n = self.value_to_primval(n_ptr, usize)?
                     .expect_uint("Projection::Index expected usize");
                 assert!(n < len);
-                let ptr = base_ptr.offset(n as isize * elem_size as isize);
+                let ptr = base_ptr.offset(n * elem_size);
                 (ptr, LvalueExtra::None)
             }
 
@@ -1062,12 +1062,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 assert!(n >= min_length as u64);
 
                 let index = if from_end {
-                    n as isize - offset as isize
+                    n - u64::from(offset)
                 } else {
-                    offset as isize
+                    u64::from(offset)
                 };
 
-                let ptr = base_ptr.offset(index * elem_size as isize);
+                let ptr = base_ptr.offset(index * elem_size);
                 (ptr, LvalueExtra::None)
             }
 
@@ -1078,9 +1078,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
                 let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
-                assert!((from as u64) <= n - (to as u64));
-                let ptr = base_ptr.offset(from as isize * elem_size as isize);
-                let extra = LvalueExtra::Length(n - to as u64 - from as u64);
+                assert!(u64::from(from) <= n - u64::from(to));
+                let ptr = base_ptr.offset(u64::from(from) * elem_size);
+                let extra = LvalueExtra::Length(n - u64::from(to) - u64::from(from));
                 (ptr, extra)
             }
         };
@@ -1318,8 +1318,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ty: Ty<'tcx>
     ) -> EvalResult<'tcx, ()> {
         assert_eq!(self.get_field_count(ty)?, 2);
-        let field_0 = self.get_field_offset(ty, 0)?.bytes() as isize;
-        let field_1 = self.get_field_offset(ty, 1)?.bytes() as isize;
+        let field_0 = self.get_field_offset(ty, 0)?.bytes();
+        let field_1 = self.get_field_offset(ty, 1)?.bytes();
         self.memory.write_primval(ptr.offset(field_0), a)?;
         self.memory.write_primval(ptr.offset(field_1), b)?;
         Ok(())
@@ -1368,7 +1368,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyAdt(..) => {
                 use rustc::ty::layout::Layout::*;
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
-                    let size = discr.size().bytes() as usize;
+                    let size = discr.size().bytes();
                     if signed {
                         PrimValKind::from_int_size(size)
                     } else {
@@ -1450,7 +1450,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     PrimVal::from_ptr(p)
                 } else {
                     trace!("reading fat pointer extra of type {}", ty);
-                    let extra = ptr.offset(self.memory.pointer_size() as isize);
+                    let extra = ptr.offset(self.memory.pointer_size());
                     let extra = match self.tcx.struct_tail(ty).sty {
                         ty::TyTrait(..) => PrimVal::from_ptr(self.memory.read_ptr(extra)?),
                         ty::TySlice(..) |
@@ -1464,7 +1464,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyAdt(..) => {
                 use rustc::ty::layout::Layout::*;
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
-                    let size = discr.size().bytes() as usize;
+                    let size = discr.size().bytes();
                     if signed {
                         let n = self.memory.read_int(ptr, size)?;
                         PrimVal::from_int_with_size(n, size)
@@ -1566,8 +1566,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     if self.type_size(dst_fty)? == Some(0) {
                         continue;
                     }
-                    let src_field_offset = self.get_field_offset(src_ty, i)?.bytes() as isize;
-                    let dst_field_offset = self.get_field_offset(dest_ty, i)?.bytes() as isize;
+                    let src_field_offset = self.get_field_offset(src_ty, i)?.bytes();
+                    let dst_field_offset = self.get_field_offset(dest_ty, i)?.bytes();
                     let src_f_ptr = src_ptr.offset(src_field_offset);
                     let dst_f_ptr = dest.offset(dst_field_offset);
                     if src_fty == dst_fty {
@@ -1699,7 +1699,7 @@ impl<'tcx> Lvalue<'tcx> {
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-    memory_size: usize,
+    memory_size: u64,
     step_limit: u64,
     stack_limit: usize,
 ) {

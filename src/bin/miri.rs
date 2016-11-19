@@ -53,7 +53,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
                             NestedMetaItemKind::MetaItem(ref inner) => match inner.node {
                                 MetaItemKind::NameValue(ref name, ref value) => {
                                     match &**name {
-                                        "memory_size" => memory_size = extract_int(value) as usize,
+                                        "memory_size" => memory_size = extract_int(value),
                                         "step_limit" => step_limit = extract_int(value),
                                         "stack_limit" => stack_limit = extract_int(value) as usize,
                                         _ => state.session.span_err(item.span, "unknown miri attribute"),
