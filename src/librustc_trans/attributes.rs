@@ -24,10 +24,9 @@ pub fn inline(val: ValueRef, inline: InlineAttr) {
         Always => Attribute::AlwaysInline.apply_llfn(Function, val),
         Never  => Attribute::NoInline.apply_llfn(Function, val),
         None   => {
-            let attr = Attribute::InlineHint |
-                       Attribute::AlwaysInline |
-                       Attribute::NoInline;
-            attr.unapply_llfn(Function, val)
+            Attribute::InlineHint.unapply_llfn(Function, val);
+            Attribute::AlwaysInline.unapply_llfn(Function, val);
+            Attribute::NoInline.unapply_llfn(Function, val);
         },
     };
 }
