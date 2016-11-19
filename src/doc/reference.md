@@ -2474,18 +2474,19 @@ The currently implemented features of the reference compiler are:
                               internally without imposing on callers
                               (i.e. making them behave like function calls in
                               terms of encapsulation).
-* - `default_type_parameter_fallback` - Allows type parameter defaults to
-                                        influence type inference.
 
-* - `stmt_expr_attributes` - Allows attributes on expressions.
+* `default_type_parameter_fallback` - Allows type parameter defaults to
+                                      influence type inference.
 
-* - `type_ascription` - Allows type ascription expressions `expr: Type`.
+* `stmt_expr_attributes` - Allows attributes on expressions.
 
-* - `abi_vectorcall` - Allows the usage of the vectorcall calling convention
-                             (e.g. `extern "vectorcall" func fn_();`)
+* `type_ascription` - Allows type ascription expressions `expr: Type`.
 
-* - `abi_sysv64` - Allows the usage of the system V AMD64 calling convention
-                             (e.g. `extern "sysv64" func fn_();`)
+* `abi_vectorcall` - Allows the usage of the vectorcall calling convention
+                     (e.g. `extern "vectorcall" func fn_();`)
+
+* `abi_sysv64` - Allows the usage of the system V AMD64 calling convention
+                 (e.g. `extern "sysv64" func fn_();`)
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about `#![feature]` directives which enabled
