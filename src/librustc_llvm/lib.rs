@@ -29,12 +29,8 @@
 #![feature(staged_api)]
 #![feature(linked_from)]
 #![feature(concat_idents)]
-#![cfg_attr(not(stage0), feature(rustc_private))]
 
 extern crate libc;
-#[macro_use]
-#[no_link]
-extern crate rustc_bitflags;
 
 pub use self::IntPredicate::*;
 pub use self::RealPredicate::*;
@@ -68,54 +64,6 @@ impl LLVMRustResult {
     }
 }
 
-#[derive(Copy, Clone, Default, Debug)]
-pub struct Attributes {
-    regular: Attribute,
-    dereferenceable_bytes: u64,
-}
-
-impl Attributes {
-    pub fn set(&mut self, attr: Attribute) -> &mut Self {
-        self.regular = self.regular | attr;
-        self
-    }
-
-    pub fn unset(&mut self, attr: Attribute) -> &mut Self {
-        self.regular = self.regular - attr;
-        self
-    }
-
-    pub fn set_dereferenceable(&mut self, bytes: u64) -> &mut Self {
-        self.dereferenceable_bytes = bytes;
-        self
-    }
-
-    pub fn unset_dereferenceable(&mut self) -> &mut Self {
-        self.dereferenceable_bytes = 0;
-        self
-    }
-
-    pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
-        unsafe {
-            self.regular.apply_llfn(idx, llfn);
-            if self.dereferenceable_bytes != 0 {
-                LLVMRustAddDereferenceableAttr(llfn, idx.as_uint(), self.dereferenceable_bytes);
-            }
-        }
-    }
-
-    pub fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
-        unsafe {
-            self.regular.apply_callsite(idx, callsite);
-            if self.dereferenceable_bytes != 0 {
-                LLVMRustAddDereferenceableCallSiteAttr(callsite,
-                                                       idx.as_uint(),
-                                                       self.dereferenceable_bytes);
-            }
-        }
-    }
-}
-
 pub fn AddFunctionAttrStringValue(llfn: ValueRef,
                                   idx: AttributePlace,
                                   attr: &'static str,
@@ -140,7 +88,7 @@ impl AttributePlace {
         AttributePlace::Argument(0)
     }
 
-    fn as_uint(self) -> c_uint {
+    pub fn as_uint(self) -> c_uint {
         match self {
             AttributePlace::Function => !0,
             AttributePlace::Argument(i) => i,
@@ -228,16 +176,20 @@ pub fn set_thread_local(global: ValueRef, is_thread_local: bool) {
 }
 
 impl Attribute {
+    fn as_object(&self, value: ValueRef) -> AttributeRef {
+        unsafe { LLVMRustCreateAttribute(LLVMRustGetValueContext(value), *self, 0) }
+    }
+
     pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
-        unsafe { LLVMRustAddFunctionAttribute(llfn, idx.as_uint(), self.bits()) }
+        unsafe { LLVMRustAddFunctionAttribute(llfn, idx.as_uint(), self.as_object(llfn)) }
     }
 
     pub fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
-        unsafe { LLVMRustAddCallSiteAttribute(callsite, idx.as_uint(), self.bits()) }
+        unsafe { LLVMRustAddCallSiteAttribute(callsite, idx.as_uint(), self.as_object(callsite)) }
     }
 
     pub fn unapply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
-        unsafe { LLVMRustRemoveFunctionAttributes(llfn, idx.as_uint(), self.bits()) }
+        unsafe { LLVMRustRemoveFunctionAttributes(llfn, idx.as_uint(), self.as_object(llfn)) }
     }
 
     pub fn toggle_llfn(&self, idx: AttributePlace, llfn: ValueRef, set: bool) {

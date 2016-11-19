@@ -83,59 +83,31 @@ pub enum DLLStorageClass {
     DllExport = 2, // Function to be accessible from DLL.
 }
 
-bitflags! {
-    #[derive(Default, Debug)]
-    flags Attribute : u64 {
-        const ZExt            = 1 << 0,
-        const SExt            = 1 << 1,
-        const NoReturn        = 1 << 2,
-        const InReg           = 1 << 3,
-        const StructRet       = 1 << 4,
-        const NoUnwind        = 1 << 5,
-        const NoAlias         = 1 << 6,
-        const ByVal           = 1 << 7,
-        const Nest            = 1 << 8,
-        const ReadNone        = 1 << 9,
-        const ReadOnly        = 1 << 10,
-        const NoInline        = 1 << 11,
-        const AlwaysInline    = 1 << 12,
-        const OptimizeForSize = 1 << 13,
-        const StackProtect    = 1 << 14,
-        const StackProtectReq = 1 << 15,
-        const NoCapture       = 1 << 21,
-        const NoRedZone       = 1 << 22,
-        const NoImplicitFloat = 1 << 23,
-        const Naked           = 1 << 24,
-        const InlineHint      = 1 << 25,
-        const ReturnsTwice    = 1 << 29,
-        const UWTable         = 1 << 30,
-        const NonLazyBind     = 1 << 31,
-
-        // Some of these are missing from the LLVM C API, the rest are
-        // present, but commented out, and preceded by the following warning:
-        // FIXME: These attributes are currently not included in the C API as
-        // a temporary measure until the API/ABI impact to the C API is understood
-        // and the path forward agreed upon.
-        const SanitizeAddress = 1 << 32,
-        const MinSize         = 1 << 33,
-        const NoDuplicate     = 1 << 34,
-        const StackProtectStrong = 1 << 35,
-        const SanitizeThread  = 1 << 36,
-        const SanitizeMemory  = 1 << 37,
-        const NoBuiltin       = 1 << 38,
-        const Returned        = 1 << 39,
-        const Cold            = 1 << 40,
-        const Builtin         = 1 << 41,
-        const OptimizeNone    = 1 << 42,
-        const InAlloca        = 1 << 43,
-        const NonNull         = 1 << 44,
-        const JumpTable       = 1 << 45,
-        const Convergent      = 1 << 46,
-        const SafeStack       = 1 << 47,
-        const NoRecurse       = 1 << 48,
-        const InaccessibleMemOnly         = 1 << 49,
-        const InaccessibleMemOrArgMemOnly = 1 << 50,
-    }
+/// Matches LLVMRustAttribute in rustllvm.h
+/// Semantically a subset of the C++ enum llvm::Attribute::AttrKind,
+/// though it is not ABI compatible (since it's a C++ enum)
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub enum Attribute {
+    AlwaysInline    = 0,
+    ByVal           = 1,
+    Cold            = 2,
+    InlineHint      = 3,
+    MinSize         = 4,
+    Naked           = 5,
+    NoAlias         = 6,
+    NoCapture       = 7,
+    NoInline        = 8,
+    NonNull         = 9,
+    NoRedZone       = 10,
+    NoReturn        = 11,
+    NoUnwind        = 12,
+    OptimizeForSize = 13,
+    ReadOnly        = 14,
+    SExt            = 15,
+    StructRet       = 16,
+    UWTable         = 17,
+    ZExt            = 18,
 }
 
 /// LLVMIntPredicate
@@ -423,6 +395,9 @@ pub type RustArchiveMemberRef = *mut RustArchiveMember_opaque;
 #[allow(missing_copy_implementations)]
 pub enum OperandBundleDef_opaque {}
 pub type OperandBundleDefRef = *mut OperandBundleDef_opaque;
+#[allow(missing_copy_implementations)]
+pub enum Attribute_opaque {}
+pub type AttributeRef = *mut Attribute_opaque;
 
 pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
@@ -529,6 +504,9 @@ extern "C" {
 
     /// See llvm::LLVMType::getContext.
     pub fn LLVMGetTypeContext(Ty: TypeRef) -> ContextRef;
+
+    /// See llvm::Value::getContext
+    pub fn LLVMRustGetValueContext(V: ValueRef) -> ContextRef;
 
     // Operations on integer types
     pub fn LLVMInt1TypeInContext(C: ContextRef) -> TypeRef;
@@ -792,6 +770,8 @@ extern "C" {
                         Name: *const c_char)
                         -> ValueRef;
 
+    pub fn LLVMRustCreateAttribute(C: ContextRef, kind: Attribute, val: u64) -> AttributeRef;
+
     // Operations on functions
     pub fn LLVMAddFunction(M: ModuleRef, Name: *const c_char, FunctionTy: TypeRef) -> ValueRef;
     pub fn LLVMGetNamedFunction(M: ModuleRef, Name: *const c_char) -> ValueRef;
@@ -810,16 +790,12 @@ extern "C" {
     pub fn LLVMGetGC(Fn: ValueRef) -> *const c_char;
     pub fn LLVMSetGC(Fn: ValueRef, Name: *const c_char);
     pub fn LLVMRustAddDereferenceableAttr(Fn: ValueRef, index: c_uint, bytes: u64);
-    pub fn LLVMRustAddFunctionAttribute(Fn: ValueRef, index: c_uint, PA: u64);
-    pub fn LLVMRustAddFunctionAttrString(Fn: ValueRef, index: c_uint, Name: *const c_char);
+    pub fn LLVMRustAddFunctionAttribute(Fn: ValueRef, index: c_uint, attr: AttributeRef);
     pub fn LLVMRustAddFunctionAttrStringValue(Fn: ValueRef,
                                               index: c_uint,
                                               Name: *const c_char,
                                               Value: *const c_char);
-    pub fn LLVMRustRemoveFunctionAttributes(Fn: ValueRef, index: c_uint, attr: u64);
-    pub fn LLVMRustRemoveFunctionAttrString(Fn: ValueRef, index: c_uint, Name: *const c_char);
-    pub fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_uint;
-    pub fn LLVMRemoveFunctionAttr(Fn: ValueRef, val: c_uint);
+    pub fn LLVMRustRemoveFunctionAttributes(Fn: ValueRef, index: c_uint, attr: AttributeRef);
 
     // Operations on parameters
     pub fn LLVMCountParams(Fn: ValueRef) -> c_uint;
@@ -830,9 +806,8 @@ extern "C" {
     pub fn LLVMGetLastParam(Fn: ValueRef) -> ValueRef;
     pub fn LLVMGetNextParam(Arg: ValueRef) -> ValueRef;
     pub fn LLVMGetPreviousParam(Arg: ValueRef) -> ValueRef;
-    pub fn LLVMAddAttribute(Arg: ValueRef, PA: c_uint);
-    pub fn LLVMRemoveAttribute(Arg: ValueRef, PA: c_uint);
-    pub fn LLVMGetAttribute(Arg: ValueRef) -> c_uint;
+    pub fn LLVMAddAttribute(Arg: ValueRef, attr: AttributeRef);
+    pub fn LLVMRemoveAttribute(Arg: ValueRef, attr: AttributeRef);
     pub fn LLVMSetParamAlignment(Arg: ValueRef, align: c_uint);
 
     // Operations on basic blocks
@@ -876,7 +851,7 @@ extern "C" {
     pub fn LLVMAddInstrAttribute(Instr: ValueRef, index: c_uint, IA: c_uint);
     pub fn LLVMRemoveInstrAttribute(Instr: ValueRef, index: c_uint, IA: c_uint);
     pub fn LLVMSetInstrParamAlignment(Instr: ValueRef, index: c_uint, align: c_uint);
-    pub fn LLVMRustAddCallSiteAttribute(Instr: ValueRef, index: c_uint, Val: u64);
+    pub fn LLVMRustAddCallSiteAttribute(Instr: ValueRef, index: c_uint, attr: AttributeRef);
     pub fn LLVMRustAddDereferenceableCallSiteAttr(Instr: ValueRef, index: c_uint, bytes: u64);
 
     // Operations on call instructions (only)

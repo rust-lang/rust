@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, ValueRef, Integer, Pointer, Float, Double, Struct, Array, Vector};
+use llvm::{self, ValueRef, Integer, Pointer, Float, Double, Struct, Array, Vector, AttributePlace};
 use base;
 use build::AllocaFcx;
 use common::{type_is_fat_ptr, BlockAndBuilder, C_uint};
@@ -50,6 +50,93 @@ enum ArgKind {
     Ignore,
 }
 
+// Hack to disable non_upper_case_globals only for the bitflags! and not for the rest
+// of this module
+pub use self::attr_impl::ArgAttribute;
+
+#[allow(non_upper_case_globals)]
+mod attr_impl {
+    // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
+    bitflags! {
+        #[derive(Default, Debug)]
+        flags ArgAttribute : u8 {
+            const ByVal     = 1 << 0,
+            const NoAlias   = 1 << 1,
+            const NoCapture = 1 << 2,
+            const NonNull   = 1 << 3,
+            const ReadOnly  = 1 << 4,
+            const SExt      = 1 << 5,
+            const StructRet = 1 << 6,
+            const ZExt      = 1 << 7,
+        }
+    }
+}
+
+macro_rules! for_each_kind {
+    ($flags: ident, $f: ident, $($kind: ident),+) => ({
+        $(if $flags.contains(ArgAttribute::$kind) { $f(llvm::Attribute::$kind) })+
+    })
+}
+
+impl ArgAttribute {
+    fn for_each_kind<F>(&self, mut f: F) where F: FnMut(llvm::Attribute) {
+        for_each_kind!(self, f,
+                       ByVal, NoAlias, NoCapture, NonNull, ReadOnly, SExt, StructRet, ZExt)
+    }
+}
+
+/// A compact representation of LLVM attributes (at least those relevant for this module)
+/// that can be manipulated without interacting with LLVM's Attribute machinery.
+#[derive(Copy, Clone, Debug, Default)]
+pub struct ArgAttributes {
+    regular: ArgAttribute,
+    dereferenceable_bytes: u64,
+}
+
+impl ArgAttributes {
+    pub fn set(&mut self, attr: ArgAttribute) -> &mut Self {
+        self.regular = self.regular | attr;
+        self
+    }
+
+    pub fn unset(&mut self, attr: ArgAttribute) -> &mut Self {
+        self.regular = self.regular - attr;
+        self
+    }
+
+    pub fn set_dereferenceable(&mut self, bytes: u64) -> &mut Self {
+        self.dereferenceable_bytes = bytes;
+        self
+    }
+
+    pub fn unset_dereferenceable(&mut self) -> &mut Self {
+        self.dereferenceable_bytes = 0;
+        self
+    }
+
+    pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
+        unsafe {
+            self.regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
+            if self.dereferenceable_bytes != 0 {
+                llvm::LLVMRustAddDereferenceableAttr(llfn,
+                                                     idx.as_uint(),
+                                                     self.dereferenceable_bytes);
+            }
+        }
+    }
+
+    pub fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
+        unsafe {
+            self.regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
+            if self.dereferenceable_bytes != 0 {
+                llvm::LLVMRustAddDereferenceableCallSiteAttr(callsite,
+                                                             idx.as_uint(),
+                                                             self.dereferenceable_bytes);
+            }
+        }
+    }
+}
+
 /// Information about how a specific C type
 /// should be passed to or returned from a function
 ///
@@ -81,7 +168,7 @@ pub struct ArgType {
     /// Dummy argument, which is emitted before the real argument
     pub pad: Option<Type>,
     /// LLVM attributes of argument
-    pub attrs: llvm::Attributes
+    pub attrs: ArgAttributes
 }
 
 impl ArgType {
@@ -93,7 +180,7 @@ impl ArgType {
             signedness: None,
             cast: None,
             pad: None,
-            attrs: llvm::Attributes::default()
+            attrs: ArgAttributes::default()
         }
     }
 
@@ -101,15 +188,15 @@ impl ArgType {
         assert_eq!(self.kind, ArgKind::Direct);
 
         // Wipe old attributes, likely not valid through indirection.
-        self.attrs = llvm::Attributes::default();
+        self.attrs = ArgAttributes::default();
 
         let llarg_sz = llsize_of_alloc(ccx, self.ty);
 
         // For non-immediate arguments the callee gets its own copy of
         // the value on the stack, so there are no aliases. It's also
         // program-invisible so can't possibly capture
-        self.attrs.set(llvm::Attribute::NoAlias)
-                  .set(llvm::Attribute::NoCapture)
+        self.attrs.set(ArgAttribute::NoAlias)
+                  .set(ArgAttribute::NoCapture)
                   .set_dereferenceable(llarg_sz);
 
         self.kind = ArgKind::Indirect;
@@ -125,9 +212,9 @@ impl ArgType {
         if let Some(signed) = self.signedness {
             if self.ty.int_width() < bits {
                 self.attrs.set(if signed {
-                    llvm::Attribute::SExt
+                    ArgAttribute::SExt
                 } else {
-                    llvm::Attribute::ZExt
+                    ArgAttribute::ZExt
                 });
             }
         }
@@ -315,7 +402,7 @@ impl FnType {
             if ty.is_bool() {
                 let llty = Type::i1(ccx);
                 let mut arg = ArgType::new(llty, llty);
-                arg.attrs.set(llvm::Attribute::ZExt);
+                arg.attrs.set(ArgAttribute::ZExt);
                 arg
             } else {
                 let mut arg = ArgType::new(type_of::type_of(ccx, ty),
@@ -350,7 +437,7 @@ impl FnType {
             if let ty::TyBox(_) = ret_ty.sty {
                 // `Box` pointer return values never alias because ownership
                 // is transferred
-                ret.attrs.set(llvm::Attribute::NoAlias);
+                ret.attrs.set(ArgAttribute::NoAlias);
             }
 
             // We can also mark the return value as `dereferenceable` in certain cases
@@ -372,7 +459,7 @@ impl FnType {
         let rust_ptr_attrs = |ty: Ty<'tcx>, arg: &mut ArgType| match ty.sty {
             // `Box` pointer parameters never alias because ownership is transferred
             ty::TyBox(inner) => {
-                arg.attrs.set(llvm::Attribute::NoAlias);
+                arg.attrs.set(ArgAttribute::NoAlias);
                 Some(inner)
             }
 
@@ -387,18 +474,18 @@ impl FnType {
                 let interior_unsafe = mt.ty.type_contents(ccx.tcx()).interior_unsafe();
 
                 if mt.mutbl != hir::MutMutable && !interior_unsafe {
-                    arg.attrs.set(llvm::Attribute::NoAlias);
+                    arg.attrs.set(ArgAttribute::NoAlias);
                 }
 
                 if mt.mutbl == hir::MutImmutable && !interior_unsafe {
-                    arg.attrs.set(llvm::Attribute::ReadOnly);
+                    arg.attrs.set(ArgAttribute::ReadOnly);
                 }
 
                 // When a reference in an argument has no named lifetime, it's
                 // impossible for that reference to escape this function
                 // (returned or stored beyond the call by a closure).
                 if let ReLateBound(_, BrAnon(_)) = *b {
-                    arg.attrs.set(llvm::Attribute::NoCapture);
+                    arg.attrs.set(ArgAttribute::NoCapture);
                 }
 
                 Some(mt.ty)
@@ -418,9 +505,9 @@ impl FnType {
                 let mut info = ArgType::new(original_tys[1], sizing_tys[1]);
 
                 if let Some(inner) = rust_ptr_attrs(ty, &mut data) {
-                    data.attrs.set(llvm::Attribute::NonNull);
+                    data.attrs.set(ArgAttribute::NonNull);
                     if ccx.tcx().struct_tail(inner).is_trait() {
-                        info.attrs.set(llvm::Attribute::NonNull);
+                        info.attrs.set(ArgAttribute::NonNull);
                     }
                 }
                 args.push(data);
@@ -491,7 +578,7 @@ impl FnType {
                 fixup(arg);
             }
             if self.ret.is_indirect() {
-                self.ret.attrs.set(llvm::Attribute::StructRet);
+                self.ret.attrs.set(ArgAttribute::StructRet);
             }
             return;
         }
@@ -526,7 +613,7 @@ impl FnType {
         }
 
         if self.ret.is_indirect() {
-            self.ret.attrs.set(llvm::Attribute::StructRet);
+            self.ret.attrs.set(ArgAttribute::StructRet);
         }
     }
 
