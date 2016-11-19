@@ -58,10 +58,21 @@ impl ReturnPass {
 
     // Check a the final expression in a block if it's a return.
     fn check_final_expr(&mut self, cx: &EarlyContext, expr: &ast::Expr, span: Option<Span>) {
+        fn attr_is_cfg(attr: &ast::Attribute) -> bool {
+            if let ast::MetaItemKind::List(ref key, _) = attr.node.value.node {
+                *key == "cfg"
+            } else {
+                false
+            }
+        }
+
         match expr.node {
             // simple return is always "bad"
             ast::ExprKind::Ret(Some(ref inner)) => {
-                self.emit_return_lint(cx, span.expect("`else return` is not possible"), inner.span);
+                // allow `#[cfg(a)] return a; #[cfg(b)] return b;`
+                if !expr.attrs.iter().any(attr_is_cfg) {
+                    self.emit_return_lint(cx, span.expect("`else return` is not possible"), inner.span);
+                }
             }
             // a whole block? check it!
             ast::ExprKind::Block(ref block) => {
