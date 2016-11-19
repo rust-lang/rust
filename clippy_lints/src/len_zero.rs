@@ -92,7 +92,11 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItem]) {
     fn is_named_self(item: &TraitItem, name: &str) -> bool {
         item.name.as_str() == name &&
         if let MethodTraitItem(ref sig, _) = item.node {
-            is_self_sig(sig)
+            if sig.decl.has_self() {
+                sig.decl.inputs.len() == 1
+            } else {
+                false
+            }
         } else {
             false
         }
@@ -111,18 +115,22 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItem]) {
     }
 }
 
-fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItem]) {
-    fn is_named_self(item: &ImplItem, name: &str) -> bool {
+fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
+    fn is_named_self(cx: &LateContext, item: &ImplItemRef, name: &str) -> bool {
         item.name.as_str() == name &&
-        if let ImplItemKind::Method(ref sig, _) = item.node {
-            is_self_sig(sig)
+        if let AssociatedItemKind::Method { has_self } = item.kind {
+            has_self && {
+                let did = cx.tcx.map.local_def_id(item.id.node_id);
+                let impl_ty = cx.tcx.item_type(did);
+                impl_ty.fn_args().skip_binder().len() == 1
+            }
         } else {
             false
         }
     }
 
-    let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(i, "is_empty")) {
-        if cx.access_levels.is_exported(is_empty.id) {
+    let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(cx, i, "is_empty")) {
+        if cx.access_levels.is_exported(is_empty.id.node_id) {
             return;
         } else {
             "a private"
@@ -131,8 +139,8 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItem]) {
         "no corresponding"
     };
 
-    if let Some(i) = impl_items.iter().find(|i| is_named_self(i, "len")) {
-        if cx.access_levels.is_exported(i.id) {
+    if let Some(i) = impl_items.iter().find(|i| is_named_self(cx, i, "len")) {
+        if cx.access_levels.is_exported(i.id.node_id) {
             let def_id = cx.tcx.map.local_def_id(item.id);
             let ty = cx.tcx.item_type(def_id);
 
@@ -143,14 +151,6 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItem]) {
                                ty,
                                is_empty));
         }
-    }
-}
-
-fn is_self_sig(sig: &MethodSig) -> bool {
-    if sig.decl.has_self() {
-        sig.decl.inputs.len() == 1
-    } else {
-        false
     }
 }
 
