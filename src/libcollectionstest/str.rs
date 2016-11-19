@@ -815,6 +815,14 @@ fn test_iterator_clone() {
 }
 
 #[test]
+fn test_iterator_last() {
+    let s = "ศไทย中华Việt Nam";
+    let mut it = s.chars();
+    it.next();
+    assert_eq!(it.last(), Some('m'));
+}
+
+#[test]
 fn test_bytesator() {
     let s = "ศไทย中华Việt Nam";
     let v = [
