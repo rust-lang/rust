@@ -359,6 +359,7 @@ All notable changes to this project will be documented in this file.
 [`str_to_string`]: https://github.com/Manishearth/rust-clippy/wiki#str_to_string
 [`string_add`]: https://github.com/Manishearth/rust-clippy/wiki#string_add
 [`string_add_assign`]: https://github.com/Manishearth/rust-clippy/wiki#string_add_assign
+[`string_extend_chars`]: https://github.com/Manishearth/rust-clippy/wiki#string_extend_chars
 [`string_lit_as_bytes`]: https://github.com/Manishearth/rust-clippy/wiki#string_lit_as_bytes
 [`string_to_string`]: https://github.com/Manishearth/rust-clippy/wiki#string_to_string
 [`stutter`]: https://github.com/Manishearth/rust-clippy/wiki#stutter

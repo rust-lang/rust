@@ -391,6 +391,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::SEARCH_IS_SOME,
         methods::SHOULD_IMPLEMENT_TRAIT,
         methods::SINGLE_CHAR_PATTERN,
+        methods::STRING_EXTEND_CHARS,
         methods::TEMPORARY_CSTRING_AS_PTR,
         methods::WRONG_SELF_CONVENTION,
         minmax::MIN_MAX,

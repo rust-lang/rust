@@ -180,6 +180,15 @@ impl IteratorFalsePositives {
     }
 }
 
+#[derive(Copy, Clone)]
+struct HasChars;
+
+impl HasChars {
+    fn chars(self) -> std::str::Chars<'static> {
+        "HasChars".chars()
+    }
+}
+
 /// Checks implementation of `FILTER_NEXT` lint
 fn filter_next() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
@@ -522,6 +531,30 @@ fn use_extend_from_slice() {
     //~^ERROR use of `extend
     //~| HELP try this
     //~| SUGGESTION v.extend_from_slice(&["But", "this"]);
+}
+
+fn str_extend_chars() {
+    let abc = "abc";
+    let mut s = String::new();
+
+    s.push_str(abc);
+    s.extend(abc.chars());
+    //~^ERROR calling `.extend(_.chars())`
+    //~|HELP try this
+    //~|SUGGESTION s.push_str(abc)
+
+    s.push_str("abc");
+    s.extend("abc".chars());
+    //~^ERROR calling `.extend(_.chars())`
+    //~|HELP try this
+    //~|SUGGESTION s.push_str("abc")
+
+    s.extend(abc.chars().skip(1));
+    s.extend("abc".chars().skip(1));
+    s.extend(['a', 'b', 'c'].iter());
+
+    let f = HasChars;
+    s.extend(f.chars());
 }
 
 fn clone_on_copy() {

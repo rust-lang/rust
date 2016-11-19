@@ -490,6 +490,32 @@ declare_lint! {
     "using `.get().unwrap()` or `.get_mut().unwrap()` when using `[]` would work instead"
 }
 
+/// **What it does:** Checks for the use of `.extend(s.chars())` where s is a
+/// `&str`.
+///
+/// **Why is this bad?** `.push_str(s)` is clearer and faster
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let abc = "abc";
+/// let mut s = String::new();
+/// s.extend(abc.chars());
+/// ```
+/// The correct use would be:
+/// ```rust
+/// let abc = "abc";
+/// let mut s = String::new();
+/// s.push_str(abc);
+/// ```
+
+declare_lint! {
+    pub STRING_EXTEND_CHARS,
+    Warn,
+    "using `x.extend(s.chars())` where s is a `&str`"
+}
+
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
@@ -514,7 +540,8 @@ impl LintPass for Pass {
                     FILTER_MAP,
                     ITER_NTH,
                     ITER_SKIP_NEXT,
-                    GET_UNWRAP)
+                    GET_UNWRAP,
+                    STRING_EXTEND_CHARS)
     }
 }
 
@@ -807,10 +834,33 @@ fn lint_vec_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
     }
 }
 
+fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
+    let arg = &args[1];
+    if let Some(arglists) = method_chain_args(arg, &["chars"]) {
+        let target = &arglists[0][0];
+        let (self_ty, _) = walk_ptrs_ty_depth(cx.tcx.tables().expr_ty(target));
+        if self_ty.sty == ty::TyStr {
+            span_lint_and_then(
+                cx,
+                STRING_EXTEND_CHARS,
+                expr.span,
+                "calling `.extend(_.chars())`",
+                |db| {
+                    db.span_suggestion(expr.span, "try this",
+                            format!("{}.push_str({})",
+                                    snippet(cx, args[0].span, "_"),
+                                    snippet(cx, target.span, "_")));
+                });
+        }
+    }
+}
+
 fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.tables().expr_ty(&args[0]));
     if match_type(cx, obj_ty, &paths::VEC) {
         lint_vec_extend(cx, expr, args);
+    } else if match_type(cx, obj_ty, &paths::STRING) {
+        lint_string_extend(cx, expr, args);
     }
 }
 
