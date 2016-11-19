@@ -27,6 +27,7 @@
 #![feature(associated_consts)]
 #![feature(const_fn)]
 #![feature(libc)]
+#![feature(optin_builtin_traits)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(str_escape)]
