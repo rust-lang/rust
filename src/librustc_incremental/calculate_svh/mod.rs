@@ -46,6 +46,7 @@ use self::caching_codemap_view::CachingCodemapView;
 use self::hasher::IchHasher;
 use ich::Fingerprint;
 
+
 mod def_path_hash;
 mod svh_visitor;
 mod caching_codemap_view;
@@ -88,7 +89,12 @@ impl<'a> ::std::ops::Index<&'a DepNode<DefId>> for IncrementalHashesMap {
     type Output = Fingerprint;
 
     fn index(&self, index: &'a DepNode<DefId>) -> &Fingerprint {
-        &self.hashes[index]
+        match self.hashes.get(index) {
+            Some(fingerprint) => fingerprint,
+            None => {
+                bug!("Could not find ICH for {:?}", index);
+            }
+        }
     }
 }
 
@@ -108,8 +114,12 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     record_time(&tcx.sess.perf_stats.incr_comp_hashes_time, || {
         visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX),
                                  |v| visit::walk_crate(v, krate));
-        // FIXME(#37713) if foreign items were item likes, could use ItemLikeVisitor
         krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
+
+        for macro_def in krate.exported_macros.iter() {
+            visitor.calculate_node_id(macro_def.id,
+                                      |v| v.visit_macro_def(macro_def));
+        }
     });
 
     tcx.sess.perf_stats.incr_comp_hashes_count.set(visitor.hashes.len() as u64);
