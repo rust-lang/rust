@@ -767,6 +767,7 @@ fn test_iterator() {
         pos += 1;
     }
     assert_eq!(pos, v.len());
+    assert_eq!(s.chars().count(), v.len());
 }
 
 #[test]
