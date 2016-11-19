@@ -383,9 +383,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     },
                 }
-                if let Value::ByRef(ptr) = global_value.data.expect("global should have been initialized") {
-                    self.memory.freeze(ptr.alloc_id)?;
-                }
                 assert!(global_value.mutable);
                 global_value.mutable = false;
             } else {
