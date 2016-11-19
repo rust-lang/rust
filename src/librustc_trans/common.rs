@@ -18,6 +18,7 @@ use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
+use rustc::hir::map::DefPathData;
 use rustc::infer::TransNormalize;
 use rustc::mir::Mir;
 use rustc::util::common::MemoizationMap;
@@ -1099,4 +1100,8 @@ pub fn ty_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
     }
+}
+
+pub fn is_closure(tcx: TyCtxt, def_id: DefId) -> bool {
+    tcx.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
 }
