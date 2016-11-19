@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME (#14132): Even this SVH computation still has implementation
-// artifacts: namely, the order of item declaration will affect the
-// hash computation, but for many kinds of items the order of
-// declaration should be irrelevant to the ABI.
-
 use self::SawExprComponent::*;
 use self::SawAbiComponent::*;
 use self::SawItemComponent::*;
@@ -24,6 +19,7 @@ use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::parse::token;
 use syntax_pos::{Span, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
+use syntax::tokenstream;
 use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::def::{Def, PathResolution};
@@ -769,9 +765,10 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         debug!("visit_macro_def: st={:?}", self.st);
         SawMacroDef.hash(self.st);
         hash_attrs!(self, &macro_def.attrs);
+        for tt in &macro_def.body {
+            self.hash_token_tree(tt);
+        }
         visit::walk_macro_def(self, macro_def)
-        // FIXME(mw): We should hash the body of the macro too but we don't
-        //            have a stable way of doing so yet.
     }
 }
 
@@ -939,6 +936,141 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
     fn maybe_enable_overflow_checks(&mut self, item_attrs: &[ast::Attribute]) {
         if attr::contains_name(item_attrs, "rustc_inherit_overflow_checks") {
             self.overflow_checks_enabled = true;
+        }
+    }
+
+    fn hash_token_tree(&mut self, tt: &tokenstream::TokenTree) {
+        self.hash_discriminant(tt);
+        match *tt {
+            tokenstream::TokenTree::Token(span, ref token) => {
+                hash_span!(self, span);
+                self.hash_token(token, span);
+            }
+            tokenstream::TokenTree::Delimited(span, ref delimited) => {
+                hash_span!(self, span);
+                let tokenstream::Delimited {
+                    ref delim,
+                    open_span,
+                    ref tts,
+                    close_span,
+                } = **delimited;
+
+                delim.hash(self.st);
+                hash_span!(self, open_span);
+                tts.len().hash(self.st);
+                for sub_tt in tts {
+                    self.hash_token_tree(sub_tt);
+                }
+                hash_span!(self, close_span);
+            }
+            tokenstream::TokenTree::Sequence(span, ref sequence_repetition) => {
+                hash_span!(self, span);
+                let tokenstream::SequenceRepetition {
+                    ref tts,
+                    ref separator,
+                    op,
+                    num_captures,
+                } = **sequence_repetition;
+
+                tts.len().hash(self.st);
+                for sub_tt in tts {
+                    self.hash_token_tree(sub_tt);
+                }
+                self.hash_discriminant(separator);
+                if let Some(ref separator) = *separator {
+                    self.hash_token(separator, span);
+                }
+                op.hash(self.st);
+                num_captures.hash(self.st);
+            }
+        }
+    }
+
+    fn hash_token(&mut self,
+                  token: &token::Token,
+                  error_reporting_span: Span) {
+        self.hash_discriminant(token);
+        match *token {
+            token::Token::Eq |
+            token::Token::Lt |
+            token::Token::Le |
+            token::Token::EqEq |
+            token::Token::Ne |
+            token::Token::Ge |
+            token::Token::Gt |
+            token::Token::AndAnd |
+            token::Token::OrOr |
+            token::Token::Not |
+            token::Token::Tilde |
+            token::Token::At |
+            token::Token::Dot |
+            token::Token::DotDot |
+            token::Token::DotDotDot |
+            token::Token::Comma |
+            token::Token::Semi |
+            token::Token::Colon |
+            token::Token::ModSep |
+            token::Token::RArrow |
+            token::Token::LArrow |
+            token::Token::FatArrow |
+            token::Token::Pound |
+            token::Token::Dollar |
+            token::Token::Question |
+            token::Token::Underscore |
+            token::Token::Whitespace |
+            token::Token::Comment |
+            token::Token::Eof => {}
+
+            token::Token::BinOp(bin_op_token) |
+            token::Token::BinOpEq(bin_op_token) => bin_op_token.hash(self.st),
+
+            token::Token::OpenDelim(delim_token) |
+            token::Token::CloseDelim(delim_token) => delim_token.hash(self.st),
+
+            token::Token::Literal(ref lit, ref opt_name) => {
+                self.hash_discriminant(lit);
+                match *lit {
+                    token::Lit::Byte(val) |
+                    token::Lit::Char(val) |
+                    token::Lit::Integer(val) |
+                    token::Lit::Float(val) |
+                    token::Lit::Str_(val) |
+                    token::Lit::ByteStr(val) => val.as_str().hash(self.st),
+                    token::Lit::StrRaw(val, n) |
+                    token::Lit::ByteStrRaw(val, n) => {
+                        val.as_str().hash(self.st);
+                        n.hash(self.st);
+                    }
+                };
+                opt_name.map(ast::Name::as_str).hash(self.st);
+            }
+
+            token::Token::Ident(ident) |
+            token::Token::Lifetime(ident) |
+            token::Token::SubstNt(ident) => ident.name.as_str().hash(self.st),
+            token::Token::MatchNt(ident1, ident2) => {
+                ident1.name.as_str().hash(self.st);
+                ident2.name.as_str().hash(self.st);
+            }
+
+            token::Token::Interpolated(ref non_terminal) => {
+                // FIXME(mw): This could be implemented properly. It's just a
+                //            lot of work, since we would need to hash the AST
+                //            in a stable way, in addition to the HIR.
+                //            Since this is hardly used anywhere, just emit a
+                //            warning for now.
+                if self.tcx.sess.opts.debugging_opts.incremental.is_some() {
+                    let msg = format!("Quasi-quoting might make incremental \
+                                       compilation very inefficient: {:?}",
+                                      non_terminal);
+                    self.tcx.sess.span_warn(error_reporting_span, &msg[..]);
+                }
+
+                non_terminal.hash(self.st);
+            }
+
+            token::Token::DocComment(val) |
+            token::Token::Shebang(val) => val.as_str().hash(self.st),
         }
     }
 }
