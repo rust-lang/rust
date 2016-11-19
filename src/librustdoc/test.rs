@@ -88,7 +88,7 @@ pub fn run(input: &str,
         config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
 
     let krate = panictry!(driver::phase_1_parse_input(&sess, &input));
-    let driver::ExpansionResult { defs, mut hir_forest, .. } = {
+    let driver::ExpansionResult { hir_forest, .. } = {
         phase_2_configure_and_expand(
             &sess, &cstore, krate, None, "rustdoc-test", None, MakeGlobMap::No, |_| Ok(())
         ).expect("phase_2_configure_and_expand aborted in rustdoc!")
@@ -183,8 +183,6 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         name: driver::anon_src(),
         input: test.to_owned(),
     };
-    let test = format!("Error in \"{}\" at line {}.\n",
-                       filename, line_number);
     let outputs = OutputTypes::new(&[(OutputType::Exe, None)]);
 
     let sessopts = config::Options {
@@ -265,7 +263,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
                     if count > 0 && !compile_fail {
                         sess.fatal("aborting due to previous error(s)")
                     } else if count == 0 && compile_fail {
-                        panic!("test compiled while it wasn't supposed to:\n\n{}\n", test)
+                        panic!("test compiled while it wasn't supposed to")
                     }
                     if count > 0 && error_codes.len() > 0 {
                         let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
@@ -273,14 +271,14 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
                     }
                 }
                 Ok(()) if compile_fail => {
-                    panic!("test compiled while it wasn't supposed to:\n\n{}\n", test)
+                    panic!("test compiled while it wasn't supposed to")
                 }
                 _ => {}
             }
         }
         Err(_) => {
             if !compile_fail {
-                panic!("couldn't compile the test:\n\n{}\n", test);
+                panic!("couldn't compile the test");
             }
             if error_codes.len() > 0 {
                 let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
@@ -290,7 +288,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     }
 
     if error_codes.len() > 0 {
-        panic!("Some expected error codes were not found: {:?}\n\n{}\n", error_codes, test);
+        panic!("Some expected error codes were not found: {:?}", error_codes);
     }
 
     if no_run { return }
@@ -312,18 +310,17 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     cmd.env(var, &newpath);
 
     match cmd.output() {
-        Err(e) => panic!("couldn't run the test: {}{}\n\n{}\n", e,
+        Err(e) => panic!("couldn't run the test: {}{}", e,
                         if e.kind() == io::ErrorKind::PermissionDenied {
                             " - maybe your tempdir is mounted with noexec?"
-                        } else { "" }, test),
+                        } else { "" }),
         Ok(out) => {
             if should_panic && out.status.success() {
-                panic!("test executable succeeded when it should have failed\n\n{}\n", test);
+                panic!("test executable succeeded when it should have failed");
             } else if !should_panic && !out.status.success() {
-                panic!("test executable failed:\n{}\n{}\n\n{}\n",
+                panic!("test executable failed:\n{}\n{}\n",
                        str::from_utf8(&out.stdout).unwrap_or(""),
-                       str::from_utf8(&out.stderr).unwrap_or(""),
-                       test);
+                       str::from_utf8(&out.stderr).unwrap_or(""));
             }
         }
     }
@@ -458,12 +455,8 @@ impl Collector {
                     should_panic: bool, no_run: bool, should_ignore: bool,
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
                     original: String) {
-        let name = if self.use_headers {
-            let s = self.current_header.as_ref().map(|s| &**s).unwrap_or("");
-            format!("{}_{}", s, self.cnt)
-        } else {
-            format!("{}_{}", self.names.join("::"), self.cnt)
-        };
+        let line_number = self.get_line_from_key(&format!("{}\n{}\n", original, test));
+        let name = format!("{} - line {}", self.filename, line_number);
         self.cnt += 1;
         let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
@@ -472,8 +465,6 @@ impl Collector {
         let opts = self.opts.clone();
         let maybe_sysroot = self.maybe_sysroot.clone();
         debug!("Creating test {}: {}", name, test);
-        let line_number = self.get_line_from_key(&format!("{}\n{}\n", original, test));
-        let filename = self.filename.clone();
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
                 name: testing::DynTestName(name),
