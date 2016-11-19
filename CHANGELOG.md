@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.100 — 2016-11-20
+* Update to *rustc 1.15.0-nightly (ac635aa95 2016-11-18)*
+
 ## 0.0.99 — 2016-11-18
 * Update to rustc 1.15.0-nightly (0ed951993 2016-11-14)
 
