@@ -246,7 +246,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                          lldest: ValueRef,
                          operand: OperandRef<'tcx>)
     {
-        debug!("store_operand: operand={:?}", operand);
+        debug!("store_operand: operand={:?} lldest={:?}", operand, lldest);
         bcx.with_block(|bcx| self.store_operand_direct(bcx, lldest, operand))
     }
 
