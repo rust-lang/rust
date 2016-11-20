@@ -162,6 +162,8 @@ fn test_escape_debug() {
     assert_eq!(s, "~");
     let s = string('é');
     assert_eq!(s, "é");
+    let s = string('文');
+    assert_eq!(s, "文");
     let s = string('\x00');
     assert_eq!(s, "\\u{0}");
     let s = string('\x1f');
