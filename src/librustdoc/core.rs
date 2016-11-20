@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-pub use self::MaybeTyped::*;
 
 use rustc_lint;
 use rustc_driver::{driver, target_features, abort_on_err};
@@ -42,21 +41,12 @@ use html::render::RenderInfo;
 pub use rustc::session::config::Input;
 pub use rustc::session::search_paths::SearchPaths;
 
-/// Are we generating documentation (`Typed`) or tests (`NotTyped`)?
-pub enum MaybeTyped<'a, 'tcx: 'a> {
-    Typed(TyCtxt<'a, 'tcx, 'tcx>),
-    NotTyped(&'a session::Session)
-}
-
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
 pub struct DocContext<'a, 'tcx: 'a> {
-    pub map: &'a hir_map::Map<'tcx>,
-    pub maybe_typed: MaybeTyped<'a, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub input: Input,
     pub populated_all_crate_impls: Cell<bool>,
-    pub deref_trait_did: Cell<Option<DefId>>,
-    pub deref_mut_trait_did: Cell<Option<DefId>>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
     // the access levels from crateanalysis.
@@ -77,24 +67,9 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub export_map: ExportMap,
 }
 
-impl<'b, 'tcx> DocContext<'b, 'tcx> {
-    pub fn sess<'a>(&'a self) -> &'a session::Session {
-        match self.maybe_typed {
-            Typed(tcx) => &tcx.sess,
-            NotTyped(ref sess) => sess
-        }
-    }
-
-    pub fn tcx_opt<'a>(&'a self) -> Option<TyCtxt<'a, 'tcx, 'tcx>> {
-        match self.maybe_typed {
-            Typed(tcx) => Some(tcx),
-            NotTyped(_) => None
-        }
-    }
-
-    pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
-        let tcx_opt = self.tcx_opt();
-        tcx_opt.expect("tcx not present")
+impl<'a, 'tcx> DocContext<'a, 'tcx> {
+    pub fn sess(&self) -> &session::Session {
+        &self.tcx.sess
     }
 
     /// Call the closure with the given parameters set as
@@ -208,12 +183,9 @@ pub fn run_core(search_paths: SearchPaths,
         };
 
         let ctxt = DocContext {
-            map: &tcx.map,
-            maybe_typed: Typed(tcx),
+            tcx: tcx,
             input: input,
             populated_all_crate_impls: Cell::new(false),
-            deref_trait_did: Cell::new(None),
-            deref_mut_trait_did: Cell::new(None),
             access_levels: RefCell::new(access_levels),
             external_traits: Default::default(),
             renderinfo: Default::default(),
@@ -221,11 +193,11 @@ pub fn run_core(search_paths: SearchPaths,
             lt_substs: Default::default(),
             export_map: export_map,
         };
-        debug!("crate: {:?}", ctxt.map.krate());
+        debug!("crate: {:?}", tcx.map.krate());
 
         let krate = {
             let mut v = RustdocVisitor::new(&ctxt);
-            v.visit(ctxt.map.krate());
+            v.visit(tcx.map.krate());
             v.clean(&ctxt)
         };
 
