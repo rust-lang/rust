@@ -18,8 +18,9 @@ Table of contents:
 ## Usage
 
 Since this is a tool for helping the developer of a library or application
-write better code, it is recommended to include clippy as an optional
-dependency.
+write better code, it is recommended not to include clippy as a hard dependency.
+Options include using it as an optional dependency, as a cargo subcommand, or
+as an included feature during build. All of these options are detailed below.
 
 As a general rule clippy will only work with the *latest* Rust nightly for now.
 
@@ -52,7 +53,42 @@ Instead of adding the `cfg_attr` attributes you can also run clippy on demand:
 (the `-Z no trans`, while not neccessary, will stop the compilation process after
 typechecking (and lints) have completed, which can significantly reduce the runtime).
 
+### As a cargo subcommand (`cargo clippy`)
+
+An alternate way to use clippy is by installing clippy through cargo as a cargo
+subcommand.
+
+```terminal
+cargo install clippy
+```
+
+Now you can run clippy by invoking `cargo clippy`, or
+`rustup run nightly cargo clippy` directly from a directory that is usually
+compiled with stable.
+
+In case you are not using rustup, you need to set the environment flag
+`SYSROOT` during installation so clippy knows where to find `librustc` and
+similar crates.
+
+```terminal
+SYSROOT=/path/to/rustc/sysroot cargo install clippy
+```
+
+### Running clippy from the command line without installing
+
+To have cargo compile your crate with clippy without needing `#![plugin(clippy)]`
+in your code, you can use:
+
+```terminal
+cargo rustc -- -L /path/to/clippy_so -Z extra-plugins=clippy
+```
+
+*[Note](https://github.com/Manishearth/rust-clippy/wiki#a-word-of-warning):*
+Be sure that clippy was compiled with the same version of rustc that cargo invokes here!
+
 ### As a Compiler Plugin
+
+*Note:* This is not a recommended installation method.
 
 Since stable Rust is backwards compatible, you should be able to
 compile your stable programs with nightly Rust with clippy plugged in to
@@ -96,40 +132,6 @@ src/main.rs:11     }
 src/main.rs:8:5: 11:6 help: Try
 if let Some(y) = x { println!("{:?}", y) }
 ```
-
-### As a cargo subcommand (`cargo clippy`)
-
-An alternate way to use clippy is by installing clippy through cargo as a cargo
-subcommand.
-
-```terminal
-cargo install clippy
-```
-
-Now you can run clippy by invoking `cargo clippy`, or
-`rustup run nightly cargo clippy` directly from a directory that is usually
-compiled with stable.
-
-In case you are not using rustup, you need to set the environment flag
-`SYSROOT` during installation so clippy knows where to find `librustc` and
-similar crates.
-
-```terminal
-SYSROOT=/path/to/rustc/sysroot cargo install clippy
-```
-
-### Running clippy from the command line without installing
-
-To have cargo compile your crate with clippy without needing `#![plugin(clippy)]`
-in your code, you can use:
-
-```terminal
-cargo rustc -- -L /path/to/clippy_so -Z extra-plugins=clippy
-```
-
-*[Note](https://github.com/Manishearth/rust-clippy/wiki#a-word-of-warning):*
-Be sure that clippy was compiled with the same version of rustc that cargo invokes here!
-
 
 ## Configuration
 
