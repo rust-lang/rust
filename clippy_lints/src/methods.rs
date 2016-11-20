@@ -493,7 +493,7 @@ declare_lint! {
 /// **What it does:** Checks for the use of `.extend(s.chars())` where s is a
 /// `&str` or `String`.
 ///
-/// **Why is this bad?** `.push_str(s)` is clearer and faster
+/// **Why is this bad?** `.push_str(s)` is clearer
 ///
 /// **Known problems:** None.
 ///
