@@ -1198,7 +1198,9 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                 if def.is_enum() && def.variants.iter().all(|v| v.fields.is_empty()) {
                     // All bodies empty -> intlike
-                    let (mut min, mut max, mut non_zero) = (i128::max_value(), i128::min_value(), true);
+                    let (mut min, mut max, mut non_zero) = (i128::max_value(),
+                                                            i128::min_value(),
+                                                            true);
                     for v in &def.variants {
                         let x = v.disr_val.to_u128_unchecked() as i128;
                         if x == 0 { non_zero = false; }
