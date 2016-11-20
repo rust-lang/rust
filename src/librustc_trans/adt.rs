@@ -588,14 +588,14 @@ fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     //   * Packed struct - There is no alignment padding
     //   * Field is sized - pointer is properly aligned already
     if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed || type_is_sized(bcx.tcx(), fty) {
-        return bcx.struct_gep(ptr_val, st.gep_index[ix] as usize);
+        return bcx.struct_gep(ptr_val, st.memory_index[ix] as usize);
     }
 
     // If the type of the last field is [T] or str, then we don't need to do
     // any adjusments
     match fty.sty {
         ty::TySlice(..) | ty::TyStr => {
-            return bcx.struct_gep(ptr_val, st.gep_index[ix] as usize);
+            return bcx.struct_gep(ptr_val, st.memory_index[ix] as usize);
         }
         _ => ()
     }
@@ -814,7 +814,7 @@ pub fn const_get_field<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
     match *l {
         layout::CEnum { .. } => bug!("element access in C-like enum const"),
         layout::Univariant { ref variant, .. } => {
-            const_struct_field(val, variant.gep_index[ix] as usize)
+            const_struct_field(val, variant.memory_index[ix] as usize)
         }
         layout::Vector { .. } => const_struct_field(val, ix),
         layout::UntaggedUnion { .. } => const_struct_field(val, 0),
