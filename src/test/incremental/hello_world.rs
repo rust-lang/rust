@@ -18,12 +18,12 @@ fn main() { }
 
 mod x {
     #[cfg(rpass1)]
-    pub fn x() -> i32 {
+    pub fn xxxx() -> i32 {
         1
     }
 
     #[cfg(rpass2)]
-    pub fn x() -> i32 {
+    pub fn xxxx() -> i32 {
         2
     }
 }
@@ -31,9 +31,10 @@ mod x {
 mod y {
     use x;
 
-    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
-    pub fn y() {
-        x::x();
+    // FIXME: This should be clean
+    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+    pub fn yyyy() {
+        x::xxxx();
     }
 }
 
@@ -42,6 +43,6 @@ mod z {
 
     #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
     pub fn z() {
-        y::y();
+        y::yyyy();
     }
 }
