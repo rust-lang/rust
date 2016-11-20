@@ -20,7 +20,7 @@ use codemap::{LineRangeUtils, SpanUtils};
 use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
-use macros::rewrite_macro;
+use macros::{rewrite_macro, MacroPosition};
 use items::{rewrite_static, rewrite_associated_type, rewrite_type_alias, format_impl, format_trait};
 
 fn is_use_item(item: &ast::Item) -> bool {
@@ -66,7 +66,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, _macro_style, _) = **mac;
-                self.visit_mac(mac, None);
+                self.visit_mac(mac, None, MacroPosition::Statement);
             }
         }
     }
@@ -124,13 +124,14 @@ impl<'a> FmtVisitor<'a> {
     fn visit_fn(&mut self,
                 fk: visit::FnKind,
                 fd: &ast::FnDecl,
-                b: &ast::Block,
                 s: Span,
                 _: ast::NodeId,
                 defaultness: ast::Defaultness) {
         let indent = self.block_indent;
+        let block;
         let rewrite = match fk {
-            visit::FnKind::ItemFn(ident, generics, unsafety, constness, abi, vis) => {
+            visit::FnKind::ItemFn(ident, generics, unsafety, constness, abi, vis, b) => {
+                block = b;
                 self.rewrite_fn(indent,
                                 ident,
                                 fd,
@@ -141,9 +142,10 @@ impl<'a> FmtVisitor<'a> {
                                 abi,
                                 vis,
                                 codemap::mk_sp(s.lo, b.span.lo),
-                                b)
+                                &b)
             }
-            visit::FnKind::Method(ident, sig, vis) => {
+            visit::FnKind::Method(ident, sig, vis, b) => {
+                block = b;
                 self.rewrite_fn(indent,
                                 ident,
                                 fd,
@@ -154,9 +156,9 @@ impl<'a> FmtVisitor<'a> {
                                 sig.abi,
                                 vis.unwrap_or(&ast::Visibility::Inherited),
                                 codemap::mk_sp(s.lo, b.span.lo),
-                                b)
+                                &b)
             }
-            visit::FnKind::Closure => None,
+            visit::FnKind::Closure(_) => unreachable!(),
         };
 
         if let Some(fn_str) = rewrite {
@@ -164,16 +166,16 @@ impl<'a> FmtVisitor<'a> {
             self.buffer.push_str(&fn_str);
             if let Some(c) = fn_str.chars().last() {
                 if c == '}' {
-                    self.last_pos = source!(self, b.span).hi;
+                    self.last_pos = source!(self, block.span).hi;
                     return;
                 }
             }
         } else {
-            self.format_missing(source!(self, b.span).lo);
+            self.format_missing(source!(self, block.span).lo);
         }
 
-        self.last_pos = source!(self, b.span).lo;
-        self.visit_block(b)
+        self.last_pos = source!(self, block.span).lo;
+        self.visit_block(block)
     }
 
     pub fn visit_item(&mut self, item: &ast::Item) {
@@ -261,11 +263,9 @@ impl<'a> FmtVisitor<'a> {
                                            item.span,
                                            indent,
                                            None)
-                        .map(|s| {
-                            match *def {
-                                ast::VariantData::Tuple(..) => s + ";",
-                                _ => s,
-                            }
+                        .map(|s| match *def {
+                            ast::VariantData::Tuple(..) => s + ";",
+                            _ => s,
                         })
                 };
                 self.push_rewrite(item.span, rewrite);
@@ -280,7 +280,7 @@ impl<'a> FmtVisitor<'a> {
                 self.format_mod(module, &item.vis, item.span, item.ident);
             }
             ast::ItemKind::Mac(ref mac) => {
-                self.visit_mac(mac, Some(item.ident));
+                self.visit_mac(mac, Some(item.ident), MacroPosition::Item);
             }
             ast::ItemKind::ForeignMod(ref foreign_mod) => {
                 self.format_missing_with_indent(source!(self, item.span).lo);
@@ -315,9 +315,9 @@ impl<'a> FmtVisitor<'a> {
                                                     unsafety,
                                                     constness,
                                                     abi,
-                                                    &item.vis),
+                                                    &item.vis,
+                                                    body),
                               decl,
-                              body,
                               item.span,
                               item.id,
                               ast::Defaultness::Final)
@@ -361,9 +361,8 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(ti.span, rewrite);
             }
             ast::TraitItemKind::Method(ref sig, Some(ref body)) => {
-                self.visit_fn(visit::FnKind::Method(ti.ident, sig, None),
+                self.visit_fn(visit::FnKind::Method(ti.ident, sig, None, body),
                               &sig.decl,
-                              body,
                               ti.span,
                               ti.id,
                               ast::Defaultness::Final);
@@ -390,9 +389,8 @@ impl<'a> FmtVisitor<'a> {
 
         match ii.node {
             ast::ImplItemKind::Method(ref sig, ref body) => {
-                self.visit_fn(visit::FnKind::Method(ii.ident, sig, Some(&ii.vis)),
+                self.visit_fn(visit::FnKind::Method(ii.ident, sig, Some(&ii.vis), body),
                               &sig.decl,
-                              body,
                               ii.span,
                               ii.id,
                               ii.defaultness);
@@ -416,15 +414,20 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(ii.span, rewrite);
             }
             ast::ImplItemKind::Macro(ref mac) => {
-                self.visit_mac(mac, Some(ii.ident));
+                self.visit_mac(mac, Some(ii.ident), MacroPosition::Item);
             }
         }
     }
 
-    fn visit_mac(&mut self, mac: &ast::Mac, ident: Option<ast::Ident>) {
+    fn visit_mac(&mut self, mac: &ast::Mac, ident: Option<ast::Ident>, pos: MacroPosition) {
         // 1 = ;
         let width = self.config.max_width - self.block_indent.width() - 1;
-        let rewrite = rewrite_macro(mac, ident, &self.get_context(), width, self.block_indent);
+        let rewrite = rewrite_macro(mac,
+                                    ident,
+                                    &self.get_context(),
+                                    width,
+                                    self.block_indent,
+                                    pos);
         self.push_rewrite(mac.span, rewrite);
     }
 
@@ -513,7 +516,9 @@ impl<'a> FmtVisitor<'a> {
     fn format_mod(&mut self, m: &ast::Mod, vis: &ast::Visibility, s: Span, ident: ast::Ident) {
         // Decide whether this is an inline mod or an external mod.
         let local_file_name = self.codemap.span_to_filename(s);
-        let is_internal = local_file_name == self.codemap.span_to_filename(source!(self, m.inner));
+        let inner_span = source!(self, m.inner);
+        let is_internal = !(inner_span.lo.0 == 0 && inner_span.hi.0 == 0) &&
+                          local_file_name == self.codemap.span_to_filename(inner_span);
 
         self.buffer.push_str(&*utils::format_visibility(vis));
         self.buffer.push_str("mod ");

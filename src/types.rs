@@ -279,32 +279,27 @@ fn format_function_type<'a, I>(inputs: I,
     // 1 for (
     let offset = offset + 1;
     let list_lo = context.codemap.span_after(span, "(");
-    let items = itemize_list(context.codemap,
-                             // FIXME Would be nice to avoid this allocation,
-                             // but I couldn't get the types to work out.
-                             inputs.map(|i| ArgumentKind::Regular(Box::new(i)))
-                                 .chain(variadic_arg),
-                             ")",
-                             |arg| {
-                                 match *arg {
-                                     ArgumentKind::Regular(ref ty) => ty.span().lo,
-                                     ArgumentKind::Variadic(start) => start,
-                                 }
-                             },
-                             |arg| {
-                                 match *arg {
-                                     ArgumentKind::Regular(ref ty) => ty.span().hi,
-                                     ArgumentKind::Variadic(start) => start + BytePos(3),
-                                 }
-                             },
-                             |arg| {
-        match *arg {
-            ArgumentKind::Regular(ref ty) => ty.rewrite(context, budget, offset),
-            ArgumentKind::Variadic(_) => Some("...".to_owned()),
-        }
-    },
-                             list_lo,
-                             span.hi);
+    let items =
+        itemize_list(context.codemap,
+                     // FIXME Would be nice to avoid this allocation,
+                     // but I couldn't get the types to work out.
+                     inputs.map(|i| ArgumentKind::Regular(Box::new(i)))
+                         .chain(variadic_arg),
+                     ")",
+                     |arg| match *arg {
+                         ArgumentKind::Regular(ref ty) => ty.span().lo,
+                         ArgumentKind::Variadic(start) => start,
+                     },
+                     |arg| match *arg {
+                         ArgumentKind::Regular(ref ty) => ty.span().hi,
+                         ArgumentKind::Variadic(start) => start + BytePos(3),
+                     },
+                     |arg| match *arg {
+                         ArgumentKind::Regular(ref ty) => ty.rewrite(context, budget, offset),
+                         ArgumentKind::Variadic(_) => Some("...".to_owned()),
+                     },
+                     list_lo,
+                     span.hi);
 
     let list_str = try_opt!(format_fn_args(items, budget, offset, context.config));
 
@@ -606,7 +601,7 @@ impl Rewrite for ast::Ty {
                         format!("({})", ty_str)
                     })
             }
-            ast::TyKind::Vec(ref ty) => {
+            ast::TyKind::Slice(ref ty) => {
                 let budget = if context.config.spaces_within_square_brackets {
                     try_opt!(width.checked_sub(4))
                 } else {
@@ -630,7 +625,7 @@ impl Rewrite for ast::Ty {
             ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, false, q_self.as_ref(), path, width, offset)
             }
-            ast::TyKind::FixedLengthVec(ref ty, ref repeats) => {
+            ast::TyKind::Array(ref ty, ref repeats) => {
                 let use_spaces = context.config.spaces_within_square_brackets;
                 let lbr = if use_spaces { "[ " } else { "[" };
                 let rbr = if use_spaces { " ]" } else { "]" };

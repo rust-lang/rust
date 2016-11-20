@@ -46,7 +46,6 @@ pub trait LineRangeUtils {
 }
 
 impl SpanUtils for CodeMap {
-    #[inline]
     fn span_after(&self, original: Span, needle: &str) -> BytePos {
         let snippet = self.span_to_snippet(original).unwrap();
         let offset = snippet.find_uncommented(needle).unwrap() + needle.len();
@@ -54,7 +53,6 @@ impl SpanUtils for CodeMap {
         original.lo + BytePos(offset as u32)
     }
 
-    #[inline]
     fn span_after_last(&self, original: Span, needle: &str) -> BytePos {
         let snippet = self.span_to_snippet(original).unwrap();
         let mut offset = 0;
@@ -66,7 +64,6 @@ impl SpanUtils for CodeMap {
         original.lo + BytePos(offset as u32)
     }
 
-    #[inline]
     fn span_before(&self, original: Span, needle: &str) -> BytePos {
         let snippet = self.span_to_snippet(original).unwrap();
         let offset = snippet.find_uncommented(needle).unwrap();

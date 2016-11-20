@@ -78,7 +78,7 @@ impl Rewrite for Pat {
                                   offset)
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, width, offset),
-            PatKind::Vec(ref prefix, ref slice_pat, ref suffix) => {
+            PatKind::Slice(ref prefix, ref slice_pat, ref suffix) => {
                 // Rewrite all the sub-patterns.
                 let prefix = prefix.iter().map(|p| p.rewrite(context, width, offset));
                 let slice_pat = slice_pat.as_ref()

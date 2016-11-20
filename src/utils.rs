@@ -127,11 +127,9 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
 pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
     typaram.bounds
         .last()
-        .map_or(typaram.span, |bound| {
-            match *bound {
-                ast::RegionTyParamBound(ref lt) => lt.span,
-                ast::TraitTyParamBound(ref prt, _) => prt.span,
-            }
+        .map_or(typaram.span, |bound| match *bound {
+            ast::RegionTyParamBound(ref lt) => lt.span,
+            ast::TraitTyParamBound(ref prt, _) => prt.span,
         })
         .hi
 }
@@ -160,19 +158,6 @@ pub fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
         }
         ast::StmtKind::Expr(..) => false,
         _ => true,
-    }
-}
-
-#[inline]
-pub fn stmt_block(stmt: &ast::Stmt) -> Option<&ast::Block> {
-    match stmt.node {
-        ast::StmtKind::Expr(ref expr) => {
-            match expr.node {
-                ast::ExprKind::Block(ref inner) => Some(inner),
-                _ => None,
-            }
-        }
-        _ => None,
     }
 }
 
@@ -334,13 +319,11 @@ pub fn binary_search<C, T>(mut lo: usize, mut hi: usize, callback: C) -> Option<
 
 #[test]
 fn bin_search_test() {
-    let closure = |i| {
-        match i {
-            4 => Ok(()),
-            j if j > 4 => Err(Ordering::Less),
-            j if j < 4 => Err(Ordering::Greater),
-            _ => unreachable!(),
-        }
+    let closure = |i| match i {
+        4 => Ok(()),
+        j if j > 4 => Err(Ordering::Less),
+        j if j < 4 => Err(Ordering::Greater),
+        _ => unreachable!(),
     };
 
     assert_eq!(Some(()), binary_search(1, 10, &closure));

@@ -3,14 +3,13 @@
 fn main() {
     let square = (|i: i32| i * i);
 
-    let commented = |// first
-                     a, // argument
-                     // second
-                     b: WithType, // argument
-                     // ignored
-                     _| {
-        (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)
-    };
+    let commented =
+        |// first
+         a, // argument
+         // second
+         b: WithType, // argument
+         // ignored
+         _| (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
 
     let block_body = move |xxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
                            ref yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy| {

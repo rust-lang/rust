@@ -364,13 +364,11 @@ impl<'a> FmtVisitor<'a> {
         let items = itemize_list(self.codemap,
                                  enum_def.variants.iter(),
                                  "}",
-                                 |f| {
-            if !f.node.attrs.is_empty() {
-                f.node.attrs[0].span.lo
-            } else {
-                f.span.lo
-            }
-        },
+                                 |f| if !f.node.attrs.is_empty() {
+                                     f.node.attrs[0].span.lo
+                                 } else {
+                                     f.span.lo
+                                 },
                                  |f| f.span.hi,
                                  |f| self.format_variant(f),
                                  body_lo,
@@ -1629,23 +1627,17 @@ fn rewrite_args(context: &RewriteContext,
                                           .map(ArgumentKind::Regular)
                                           .chain(variadic_arg),
                                       ")",
-                                      |arg| {
-                                          match *arg {
-                                              ArgumentKind::Regular(arg) => span_lo_for_arg(arg),
-                                              ArgumentKind::Variadic(start) => start,
-                                          }
+                                      |arg| match *arg {
+                                          ArgumentKind::Regular(arg) => span_lo_for_arg(arg),
+                                          ArgumentKind::Variadic(start) => start,
                                       },
-                                      |arg| {
-                                          match *arg {
-                                              ArgumentKind::Regular(arg) => arg.ty.span.hi,
-                                              ArgumentKind::Variadic(start) => start + BytePos(3),
-                                          }
+                                      |arg| match *arg {
+                                          ArgumentKind::Regular(arg) => arg.ty.span.hi,
+                                          ArgumentKind::Variadic(start) => start + BytePos(3),
                                       },
-                                      |arg| {
-                                          match *arg {
-                                              ArgumentKind::Regular(..) => None,
-                                              ArgumentKind::Variadic(..) => Some("...".to_owned()),
-                                          }
+                                      |arg| match *arg {
+                                          ArgumentKind::Regular(..) => None,
+                                          ArgumentKind::Variadic(..) => Some("...".to_owned()),
                                       },
                                       comment_span_start,
                                       span.hi);

@@ -98,10 +98,8 @@ fn format_crate(verbosity: Verbosity) -> Result<ExitStatus, std::io::Error> {
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets.into_iter()
         .filter(|t| t.kind.should_format())
-        .inspect(|t| {
-            if verbosity == Verbosity::Verbose {
-                println!("[{:?}] {:?}", t.kind, t.path)
-            }
+        .inspect(|t| if verbosity == Verbosity::Verbose {
+            println!("[{:?}] {:?}", t.kind, t.path)
         })
         .map(|t| t.path)
         .collect();
@@ -204,15 +202,12 @@ fn format_files(files: &[PathBuf],
         .args(files)
         .args(fmt_args)
         .spawn()
-        .map_err(|e| {
-            match e.kind() {
-                std::io::ErrorKind::NotFound => {
-                    std::io::Error::new(std::io::ErrorKind::Other,
-                                        "Could not run rustfmt, please make sure it is in your \
-                                         PATH.")
-                }
-                _ => e,
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => {
+                std::io::Error::new(std::io::ErrorKind::Other,
+                                    "Could not run rustfmt, please make sure it is in your PATH.")
             }
+            _ => e,
         }));
     command.wait()
 }

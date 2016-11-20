@@ -22,14 +22,14 @@ use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTacti
             DefinitiveListTactic, definitive_tactic, ListItem, format_item_list};
 use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
-            semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_block, stmt_expr};
+            semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr};
 use visitor::FmtVisitor;
 use config::{Config, StructLitStyle, MultilineStyle, ElseIfBraceStyle, ControlBraceStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg};
 use chains::rewrite_chain;
-use macros::rewrite_macro;
+use macros::{rewrite_macro, MacroPosition};
 
 use syntax::{ast, ptr};
 use syntax::codemap::{CodeMap, Span, BytePos, mk_sp};
@@ -180,12 +180,13 @@ fn format_expr(expr: &ast::Expr,
         ast::ExprKind::Mac(ref mac) => {
             // Failure to rewrite a marco should not imply failure to
             // rewrite the expression.
-            rewrite_macro(mac, None, context, width, offset).or_else(|| {
-                wrap_str(context.snippet(expr.span),
-                         context.config.max_width,
-                         width,
-                         offset)
-            })
+            rewrite_macro(mac, None, context, width, offset, MacroPosition::Expression)
+                .or_else(|| {
+                    wrap_str(context.snippet(expr.span),
+                             context.config.max_width,
+                             width,
+                             offset)
+                })
         }
         ast::ExprKind::Ret(None) => {
             wrap_str("return".to_owned(), context.config.max_width, width, offset)
@@ -356,8 +357,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
 }
 
 // This functions is pretty messy because of the rules around closures and blocks:
-//   * the body of a closure is represented by an ast::Block, but that does not
-//     imply there are `{}` (unless the block is empty) (see rust issue #27872),
+// TODO
 //   * if there is a return type, then there must be braces,
 //   * given a closure with braces, whether that is parsed to give an inner block
 //     or not depends on if there is a return type and if there are statements
@@ -367,7 +367,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
 //     can change whether it is treated as an expression or statement.
 fn rewrite_closure(capture: ast::CaptureBy,
                    fn_decl: &ast::FnDecl,
-                   body: &ast::Block,
+                   body: &ast::Expr,
                    span: Span,
                    context: &RewriteContext,
                    width: usize,
@@ -386,7 +386,6 @@ fn rewrite_closure(capture: ast::CaptureBy,
     // 1 = |
     let argument_offset = offset + 1;
     let ret_str = try_opt!(fn_decl.output.rewrite(context, budget, argument_offset));
-    let force_block = !ret_str.is_empty();
 
     // 1 = space between arguments and return type.
     let horizontal_budget = budget.checked_sub(ret_str.len() + 1).unwrap_or(0);
@@ -428,97 +427,181 @@ fn rewrite_closure(capture: ast::CaptureBy,
         prefix.push_str(&ret_str);
     }
 
-    if body.stmts.is_empty() {
-        return Some(format!("{} {{}}", prefix));
-    }
-
     // 1 = space between `|...|` and body.
     let extra_offset = extra_offset(&prefix, offset) + 1;
     let budget = try_opt!(width.checked_sub(extra_offset));
+    let total_offset = offset + extra_offset;
 
-    // This is where we figure out whether to use braces or not.
-    let mut had_braces = true;
-    let mut inner_block = body;
-
-    let mut trailing_expr = stmt_expr(&inner_block.stmts[inner_block.stmts.len() - 1]);
-
-    // If there is an inner block and we can ignore it, do so.
-    if body.stmts.len() == 1 && trailing_expr.is_some() {
-        if let Some(ref inner) = stmt_block(&inner_block.stmts[0]) {
-            inner_block = inner;
-            trailing_expr = if inner_block.stmts.is_empty() {
-                None
-            } else {
-                stmt_expr(&inner_block.stmts[inner_block.stmts.len() - 1])
-            };
-        } else if !force_block {
-            had_braces = false;
+    if let ast::ExprKind::Block(ref block) = body.node {
+        // The body of the closure is a block.
+        if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) {
+            return Some(format!("{} {{}}", prefix));
         }
-    }
 
-    let try_single_line = is_simple_block(inner_block, context.codemap) &&
-                          inner_block.rules == ast::BlockCheckMode::Default;
+        // Figure out if the block is necessary.
+        let needs_block = block.rules != ast::BlockCheckMode::Default || block.stmts.len() > 1 ||
+                          block_contains_comment(block, context.codemap) ||
+                          prefix.contains('\n');
 
-    if try_single_line && !force_block {
-        let must_preserve_braces =
-            trailing_expr.is_none() ||
-            !classify::expr_requires_semi_to_be_stmt(left_most_sub_expr(trailing_expr.unwrap()));
-        if !(must_preserve_braces && had_braces) &&
-           (must_preserve_braces || !prefix.contains('\n')) {
-            // If we got here, then we can try to format without braces.
-
-            let inner_expr = &inner_block.stmts[0];
-            let mut rewrite = inner_expr.rewrite(context, budget, offset + extra_offset);
-
-            if must_preserve_braces {
-                // If we are here, then failure to rewrite is unacceptable.
-                if rewrite.is_none() {
-                    return None;
+        if ret_str.is_empty() && !needs_block {
+            // lock.stmts.len() == 1
+            if let Some(ref expr) = stmt_expr(&block.stmts[0]) {
+                if let Some(rw) = rewrite_closure_expr(expr,
+                                                       &prefix,
+                                                       context,
+                                                       budget,
+                                                       total_offset) {
+                    return Some(rw);
                 }
-            } else {
-                // Checks if rewrite succeeded and fits on a single line.
-                rewrite = and_one_line(rewrite);
             }
+        }
+
+        if !needs_block {
+            // We need braces, but we might still prefer a one-liner.
+            let stmt = &block.stmts[0];
+            // 4 = braces and spaces.
+            let mut rewrite = stmt.rewrite(context, try_opt!(budget.checked_sub(4)), total_offset);
+
+            // Checks if rewrite succeeded and fits on a single line.
+            rewrite = and_one_line(rewrite);
 
             if let Some(rewrite) = rewrite {
-                return Some(format!("{} {}", prefix, rewrite));
+                return Some(format!("{} {{ {} }}", prefix, rewrite));
             }
         }
+
+        // Either we require a block, or tried without and failed.
+        return rewrite_closure_block(&block, prefix, context, budget);
     }
 
-    // If we fell through the above block, then we need braces, but we might
-    // still prefer a one-liner (we might also have fallen through because of
-    // lack of space).
-    if try_single_line && !prefix.contains('\n') {
-        let inner_expr = &inner_block.stmts[0];
-        // 4 = braces and spaces.
-        let mut rewrite = inner_expr.rewrite(context,
-                                             try_opt!(budget.checked_sub(4)),
-                                             offset + extra_offset);
+    if let Some(rw) = rewrite_closure_expr(body, &prefix, context, budget, total_offset) {
+        return Some(rw);
+    }
 
-        // Checks if rewrite succeeded and fits on a single line.
-        rewrite = and_one_line(rewrite);
+    // The closure originally had a non-block expression, but we can't fit on
+    // one line, so we'll insert a block.
+    let block = ast::Block {
+        stmts: vec![ast::Stmt {
+                        id: ast::NodeId::new(0),
+                        node: ast::StmtKind::Expr(ptr::P(body.clone())),
+                        span: body.span,
+                    }],
+        id: ast::NodeId::new(0),
+        rules: ast::BlockCheckMode::Default,
+        span: body.span,
+    };
+    return rewrite_closure_block(&block, prefix, context, budget);
 
-        if let Some(rewrite) = rewrite {
-            return Some(format!("{} {{ {} }}", prefix, rewrite));
+    fn rewrite_closure_expr(expr: &ast::Expr,
+                            prefix: &str,
+                            context: &RewriteContext,
+                            budget: usize,
+                            offset: Indent)
+                            -> Option<String> {
+        let mut rewrite = expr.rewrite(context, budget, offset);
+        if classify::expr_requires_semi_to_be_stmt(left_most_sub_expr(expr)) {
+            rewrite = and_one_line(rewrite);
         }
+        rewrite.map(|rw| format!("{} {}", prefix, rw))
     }
 
-    // We couldn't format the closure body as a single line expression; fall
-    // back to block formatting.
-    let body_rewrite = try_opt!(inner_block.rewrite(&context, budget, Indent::empty()));
+    fn rewrite_closure_block(block: &ast::Block,
+                             prefix: String,
+                             context: &RewriteContext,
+                             budget: usize)
+                             -> Option<String> {
+        // Start with visual indent, then fall back to block indent if the
+        // closure is large.
+        let rewrite = try_opt!(block.rewrite(&context, budget, Indent::empty()));
 
-    let block_threshold = context.config.closure_block_indent_threshold;
-    if block_threshold < 0 || body_rewrite.matches('\n').count() <= block_threshold as usize {
-        return Some(format!("{} {}", prefix, body_rewrite));
+        let block_threshold = context.config.closure_block_indent_threshold;
+        if block_threshold < 0 || rewrite.matches('\n').count() <= block_threshold as usize {
+            return Some(format!("{} {}", prefix, rewrite));
+        }
+
+        // The body of the closure is big enough to be block indented, that
+        // means we must re-format.
+        let mut context = context.clone();
+        context.block_indent.alignment = 0;
+        let rewrite = try_opt!(block.rewrite(&context, budget, Indent::empty()));
+        Some(format!("{} {}", prefix, rewrite))
     }
 
-    // The body of the closure is big enough to be block indented, that means we
-    // must re-format.
-    let mut context = context.clone();
-    context.block_indent.alignment = 0;
-    let body_rewrite = try_opt!(inner_block.rewrite(&context, budget, Indent::empty()));
-    Some(format!("{} {}", prefix, body_rewrite))
+    // // This is where we figure out whether to use braces or not.
+    // let mut had_braces = true;
+    // let mut inner_block = body;
+
+    // let mut trailing_expr = stmt_expr(&inner_block.stmts[inner_block.stmts.len() - 1]);
+
+    // // If there is an inner block and we can ignore it, do so.
+    // if body.stmts.len() == 1 && trailing_expr.is_some() {
+    //     if let Some(ref inner) = stmt_block(&inner_block.stmts[0]) {
+    //         inner_block = inner;
+    //         trailing_expr = if inner_block.stmts.is_empty() {
+    //             None
+    //         } else {
+    //             stmt_expr(&inner_block.stmts[inner_block.stmts.len() - 1])
+    //         };
+    //     } else if !force_block {
+    //         had_braces = false;
+    //     }
+    // }
+
+    // let try_single_line = is_simple_block(inner_block, context.codemap) &&
+    //                       inner_block.rules == ast::BlockCheckMode::Default;
+
+
+    // if try_single_line && !force_block {
+    //     let must_preserve_braces =
+    //         trailing_expr.is_none() ||
+    //         !classify::expr_requires_semi_to_be_stmt(left_most_sub_expr(trailing_expr.unwrap()));
+    //     if !(must_preserve_braces && had_braces) &&
+    //        (must_preserve_braces || !prefix.contains('\n')) {
+    //         // If we got here, then we can try to format without braces.
+
+    //         let inner_expr = &inner_block.stmts[0];
+    //         let mut rewrite = inner_expr.rewrite(context, budget, offset + extra_offset);
+
+    //         if must_preserve_braces {
+    //             // If we are here, then failure to rewrite is unacceptable.
+    //             if rewrite.is_none() {
+    //                 return None;
+    //             }
+    //         } else {
+    //             // Checks if rewrite succeeded and fits on a single line.
+    //             rewrite = and_one_line(rewrite);
+    //         }
+
+    //         if let Some(rewrite) = rewrite {
+    //             return Some(format!("{} {}", prefix, rewrite));
+    //         }
+    //     }
+    // }
+
+    // // If we fell through the above block, then we need braces, but we might
+    // // still prefer a one-liner (we might also have fallen through because of
+    // // lack of space).
+    // if try_single_line && !prefix.contains('\n') {
+    //     let inner_expr = &inner_block.stmts[0];
+    //     // 4 = braces and spaces.
+    //     let mut rewrite = inner_expr.rewrite(context,
+    //                                          try_opt!(budget.checked_sub(4)),
+    //                                          offset + extra_offset);
+
+    //     // Checks if rewrite succeeded and fits on a single line.
+    //     rewrite = and_one_line(rewrite);
+
+    //     if let Some(rewrite) = rewrite {
+    //         return Some(format!("{} {{ {} }}", prefix, rewrite));
+    //     }
+    // }
+
+    // // We couldn't format the closure body as a single line expression; fall
+    // // back to block formatting.
+    // let mut context = context.clone();
+    // context.block_indent.alignment = 0;
+    // let body_rewrite = try_opt!(inner_block.rewrite(&context, budget, Indent::empty()));
+    // Some(format!("{} {}", prefix, body_rewrite))
 }
 
 fn and_one_line(x: Option<String>) -> Option<String> {
@@ -526,13 +609,12 @@ fn and_one_line(x: Option<String>) -> Option<String> {
 }
 
 fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
-    block_str.map(|block_str| {
-        if block_str.starts_with('{') && budget >= 2 &&
-           (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() == block_str.len() - 2) {
-            "{}".to_owned()
-        } else {
-            block_str.to_owned()
-        }
+    block_str.map(|block_str| if block_str.starts_with('{') && budget >= 2 &&
+                                 (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() ==
+                                  block_str.len() - 2) {
+        "{}".to_owned()
+    } else {
+        block_str.to_owned()
     })
 }
 
@@ -1616,22 +1698,20 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     let items = itemize_list(context.codemap,
                              field_iter,
                              "}",
-                             |item| {
-        match *item {
-            StructLitField::Regular(field) => field.span.lo,
-            StructLitField::Base(expr) => {
-                let last_field_hi = fields.last().map_or(span.lo, |field| field.span.hi);
-                let snippet = context.snippet(mk_sp(last_field_hi, expr.span.lo));
-                let pos = snippet.find_uncommented("..").unwrap();
-                last_field_hi + BytePos(pos as u32)
-            }
-        }
-    },
-                             |item| {
-                                 match *item {
-                                     StructLitField::Regular(field) => field.span.hi,
-                                     StructLitField::Base(expr) => expr.span.hi,
+                             |item| match *item {
+                                 StructLitField::Regular(field) => field.span.lo,
+                                 StructLitField::Base(expr) => {
+                                     let last_field_hi = fields.last()
+                                         .map_or(span.lo, |field| field.span.hi);
+                                     let snippet =
+                                         context.snippet(mk_sp(last_field_hi, expr.span.lo));
+                                     let pos = snippet.find_uncommented("..").unwrap();
+                                     last_field_hi + BytePos(pos as u32)
                                  }
+                             },
+                             |item| match *item {
+                                 StructLitField::Regular(field) => field.span.hi,
+                                 StructLitField::Base(expr) => expr.span.hi,
                              },
                              |item| {
         match *item {

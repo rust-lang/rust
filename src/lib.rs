@@ -393,9 +393,9 @@ fn parse_input(input: Input,
                parse_session: &ParseSess)
                -> Result<ast::Crate, Option<DiagnosticBuilder>> {
     let result = match input {
-        Input::File(file) => parse::parse_crate_from_file(&file, Vec::new(), parse_session),
+        Input::File(file) => parse::parse_crate_from_file(&file, parse_session),
         Input::Text(text) => {
-            parse::parse_crate_from_source_str("stdin".to_owned(), text, Vec::new(), parse_session)
+            parse::parse_crate_from_source_str("stdin".to_owned(), text, parse_session)
         }
     };
 

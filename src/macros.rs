@@ -41,6 +41,13 @@ enum MacroStyle {
     Braces,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MacroPosition {
+    Item,
+    Statement,
+    Expression,
+}
+
 impl MacroStyle {
     fn opener(&self) -> &'static str {
         match *self {
@@ -55,7 +62,8 @@ pub fn rewrite_macro(mac: &ast::Mac,
                      extra_ident: Option<ast::Ident>,
                      context: &RewriteContext,
                      width: usize,
-                     offset: Indent)
+                     offset: Indent,
+                     position: MacroPosition)
                      -> Option<String> {
     if context.config.use_try_shorthand {
         if let Some(expr) = convert_try_mac(mac, context) {
@@ -77,13 +85,16 @@ pub fn rewrite_macro(mac: &ast::Mac,
 
     if mac.node.tts.is_empty() && !contains_comment(&context.snippet(mac.span)) {
         return match style {
+            MacroStyle::Parens if position == MacroPosition::Item => {
+                Some(format!("{}();", macro_name))
+            }
             MacroStyle::Parens => Some(format!("{}()", macro_name)),
             MacroStyle::Brackets => Some(format!("{}[]", macro_name)),
             MacroStyle::Braces => Some(format!("{}{{}}", macro_name)),
         };
     }
 
-    let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone(), Vec::new());
+    let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone());
     let mut expr_vec = Vec::new();
 
     if MacroStyle::Braces != style {
@@ -128,6 +139,10 @@ pub fn rewrite_macro(mac: &ast::Mac,
         MacroStyle::Parens => {
             // Format macro invocation as function call.
             rewrite_call(context, &macro_name, &expr_vec, mac.span, width, offset)
+                .map(|rw| match position {
+                    MacroPosition::Item => format!("{};", rw),
+                    _ => rw,
+                })
         }
         MacroStyle::Brackets => {
             // Format macro invocation as array literal.
@@ -155,10 +170,10 @@ pub fn rewrite_macro(mac: &ast::Mac,
 /// failed).
 pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::Expr> {
     if &format!("{}", mac.node.path)[..] == "try" {
-        let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone(), Vec::new());
+        let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone());
 
         Some(ast::Expr {
-            id: 0, // dummy value
+            id: ast::NodeId::new(0), // dummy value
             node: ast::ExprKind::Try(try_opt!(parser.parse_expr().ok())),
             span: mac.span, // incorrect span, but shouldn't matter too much
             attrs: ThinVec::new(),
