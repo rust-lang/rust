@@ -290,6 +290,7 @@ pub struct StructData {
     pub fields: Vec<NodeId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Signature,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -404,4 +405,29 @@ pub struct VariableRefData {
     pub span: Span,
     pub scope: NodeId,
     pub ref_id: DefId,
+}
+
+
+/// Encodes information about the signature of a definition. This should have
+/// enough information to create a nice display about a definition without
+/// access to the source code.
+#[derive(Debug, RustcEncodable)]
+pub struct Signature {
+    pub span: Span,
+    pub text: String,
+    // These identify the main identifier for the defintion as byte offsets into
+    // `text`. E.g., of `foo` in `pub fn foo(...)`
+    pub ident_start: usize,
+    pub ident_end: usize,
+    pub defs: Vec<SigElement>,
+    pub refs: Vec<SigElement>,
+}
+
+/// An element of a signature. `start` and `end` are byte offsets into the `text`
+/// of the parent `Signature`.
+#[derive(Debug, RustcEncodable)]
+pub struct SigElement {
+    pub id: DefId,
+    pub start: usize,
+    pub end: usize,
 }

@@ -86,6 +86,7 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
             children: data.items.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
+            sig: None,
         };
         if def.span.file_name != def.value {
             // If the module is an out-of-line defintion, then we'll make the
@@ -223,6 +224,7 @@ struct Def {
     children: Vec<Id>,
     decl_id: Option<Id>,
     docs: String,
+    sig: Option<Signature>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -264,6 +266,7 @@ impl From<EnumData> for Def {
             children: data.variants.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
+            sig: None,
         }
     }
 }
@@ -280,6 +283,7 @@ impl From<TupleVariantData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
+            sig: None,
         }
     }
 }
@@ -295,6 +299,7 @@ impl From<StructVariantData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
+            sig: None,
         }
     }
 }
@@ -310,6 +315,7 @@ impl From<StructData> for Def {
             children: data.fields.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
+            sig: Some(data.sig),
         }
     }
 }
@@ -325,6 +331,7 @@ impl From<TraitData> for Def {
             children: data.items.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
+            sig: None,
         }
     }
 }
@@ -340,6 +347,7 @@ impl From<FunctionData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
+            sig: None,
         }
     }
 }
@@ -355,6 +363,7 @@ impl From<MethodData> for Def {
             children: vec![],
             decl_id: data.decl_id.map(|id| From::from(id)),
             docs: data.docs,
+            sig: None,
         }
     }
 }
@@ -370,10 +379,10 @@ impl From<MacroData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
+            sig: None,
         }
     }
 }
-
 impl From<TypeDefData> for Def {
     fn from(data: TypeDefData) -> Def {
         Def {
@@ -386,6 +395,7 @@ impl From<TypeDefData> for Def {
             children: vec![],
             decl_id: None,
             docs: String::new(),
+            sig: None,
         }
     }
 }
@@ -406,6 +416,7 @@ impl From<VariableData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
+            sig: None,
         }
     }
 }
