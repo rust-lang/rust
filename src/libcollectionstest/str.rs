@@ -920,6 +920,14 @@ fn test_char_indices_revator() {
 }
 
 #[test]
+fn test_char_indices_last() {
+    let s = "ศไทย中华Việt Nam";
+    let mut it = s.char_indices();
+    it.next();
+    assert_eq!(it.last(), Some((27, 'm')));
+}
+
+#[test]
 fn test_splitn_char_iterator() {
     let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
