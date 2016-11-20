@@ -49,7 +49,7 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
 
     // Updates node level and returns the updated level
     fn update(&mut self, did: DefId, level: Option<AccessLevel>) -> Option<AccessLevel> {
-        let is_hidden = self.cx.tcx().get_attrs(did).lists("doc").has_word("hidden");
+        let is_hidden = self.cx.tcx.get_attrs(did).lists("doc").has_word("hidden");
 
         let old_level = self.access_levels.map.get(&did).cloned();
         // Accessibility levels can only grow

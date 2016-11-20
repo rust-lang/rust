@@ -65,18 +65,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
-        self.cx.tcx_opt().and_then(|tcx| {
-            self.cx.map.opt_local_def_id(id)
-                       .and_then(|def_id| tcx.lookup_stability(def_id))
-                       .cloned()
-        })
+        self.cx.tcx.map.opt_local_def_id(id)
+            .and_then(|def_id| self.cx.tcx.lookup_stability(def_id)).cloned()
     }
 
     fn deprecation(&self, id: ast::NodeId) -> Option<attr::Deprecation> {
-        self.cx.tcx_opt().and_then(|tcx| {
-            self.cx.map.opt_local_def_id(id)
-                       .and_then(|def_id| tcx.lookup_deprecation(def_id))
-        })
+        self.cx.tcx.map.opt_local_def_id(id)
+            .and_then(|def_id| self.cx.tcx.lookup_deprecation(def_id))
     }
 
     pub fn visit(&mut self, krate: &hir::Crate) {
@@ -196,7 +191,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis == hir::Public;
         for i in &m.item_ids {
-            let item = self.cx.map.expect_item(i.id);
+            let item = self.cx.tcx.map.expect_item(i.id);
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
@@ -279,9 +274,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                   glob: bool, om: &mut Module, please_inline: bool) -> bool {
 
         fn inherits_doc_hidden(cx: &core::DocContext, mut node: ast::NodeId) -> bool {
-            while let Some(id) = cx.map.get_enclosing_scope(node) {
+            while let Some(id) = cx.tcx.map.get_enclosing_scope(node) {
                 node = id;
-                if cx.map.attrs(node).lists("doc").has_word("hidden") {
+                if cx.tcx.map.attrs(node).lists("doc").has_word("hidden") {
                     return true;
                 }
                 if node == ast::CRATE_NODE_ID {
@@ -291,10 +286,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             false
         }
 
-        let tcx = match self.cx.tcx_opt() {
-            Some(tcx) => tcx,
-            None => return false
-        };
+        let tcx = self.cx.tcx;
         let def = tcx.expect_def(id);
         let def_did = def.def_id();
 
@@ -308,7 +300,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // made reachable by cross-crate inlining which we're checking here.
         // (this is done here because we need to know this upfront)
         if !def_did.is_local() && !is_no_inline {
-            let attrs = clean::inline::load_attrs(self.cx, tcx, def_did);
+            let attrs = clean::inline::load_attrs(self.cx, def_did);
             let self_is_hidden = attrs.lists("doc").has_word("hidden");
             match def {
                 Def::Trait(did) |
@@ -347,7 +339,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     match it.node {
                         hir::ItemMod(ref m) => {
                             for i in &m.item_ids {
-                                let i = self.cx.map.expect_item(i.id);
+                                let i = self.cx.tcx.map.expect_item(i.id);
                                 self.visit_item(i, None, om);
                             }
                         }
@@ -506,7 +498,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 // regardless of where they're located.
                 if !self.inlining {
                     let items = item_ids.iter()
-                                        .map(|ii| self.cx.map.impl_item(ii.id).clone())
+                                        .map(|ii| self.cx.tcx.map.impl_item(ii.id).clone())
                                         .collect();
                     let i = Impl {
                         unsafety: unsafety,
