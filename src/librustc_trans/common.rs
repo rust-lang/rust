@@ -592,23 +592,18 @@ fn is_const_integral(v: ValueRef) -> bool {
     }
 }
 
-
+#[inline]
 #[cfg(stage0)]
-pub fn const_to_opt_u128(v: ValueRef, sign_ext: bool) -> Option<u128> {
-    unsafe {
-        if is_const_integral(v) {
-            if !sign_ext {
-                Some(llvm::LLVMConstIntGetZExtValue(v))
-            } else {
-                Some(llvm::LLVMConstIntGetSExtValue(v) as u64)
-            }
-        } else {
-            None
-        }
-    }
+fn hi_lo_to_u128(lo: u64, _: u64) -> u128 {
+    lo as u128
 }
 
+#[inline]
 #[cfg(not(stage0))]
+fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
+    ((hi as u128) << 64) | (lo as u128)
+}
+
 pub fn const_to_opt_u128(v: ValueRef, sign_ext: bool) -> Option<u128> {
     unsafe {
         if is_const_integral(v) {
@@ -616,7 +611,7 @@ pub fn const_to_opt_u128(v: ValueRef, sign_ext: bool) -> Option<u128> {
             let success = llvm::LLVMRustConstInt128Get(v, sign_ext,
                                                        &mut hi as *mut u64, &mut lo as *mut u64);
             if success {
-                Some(((hi as u128) << 64) | (lo as u128))
+                Some(hi_lo_to_u128(lo, hi))
             } else {
                 None
             }
