@@ -18,9 +18,9 @@ impl Drop for HasDrop {
 fn main() {
     let x = HasDrop;
 
-    // do stuff
+    // Do stuff.
 
-} // x goes out of scope here
+} // `x` goes out of scope here.
 ```
 
 When `x` goes out of scope at the end of `main()`, the code for `Drop` will

@@ -235,5 +235,5 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         unsafe_context: UnsafeContext::new(SafeContext),
     };
 
-    tcx.map.krate().visit_all_items(&mut visitor);
+    tcx.map.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
 }

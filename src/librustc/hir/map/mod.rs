@@ -254,9 +254,14 @@ impl<'ast> Map<'ast> {
                         return DepNode::Hir(def_id);
                     }
 
+                    EntryImplItem(..) => {
+                        let def_id = self.local_def_id(id);
+                        assert!(!self.is_inlined_def_id(def_id));
+                        return DepNode::Hir(def_id);
+                    }
+
                     EntryForeignItem(p, _) |
                     EntryTraitItem(p, _) |
-                    EntryImplItem(p, _) |
                     EntryVariant(p, _) |
                     EntryExpr(p, _) |
                     EntryStmt(p, _) |
@@ -376,6 +381,14 @@ impl<'ast> Map<'ast> {
 
     pub fn krate(&self) -> &'ast Crate {
         self.forest.krate()
+    }
+
+    pub fn impl_item(&self, id: ImplItemId) -> &'ast ImplItem {
+        self.read(id.node_id);
+
+        // NB: intentionally bypass `self.forest.krate()` so that we
+        // do not trigger a read of the whole krate here
+        self.forest.krate.impl_item(id)
     }
 
     /// Get the attributes on the krate. This is preferable to

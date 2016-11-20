@@ -34,6 +34,7 @@ use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::intravisit as visit;
+use rustc::hir::intravisit::Visitor;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::util::common::record_time;
@@ -44,6 +45,7 @@ use self::svh_visitor::StrictVersionHashVisitor;
 use self::caching_codemap_view::CachingCodemapView;
 use self::hasher::IchHasher;
 use ich::Fingerprint;
+
 
 mod def_path_hash;
 mod svh_visitor;
@@ -87,7 +89,12 @@ impl<'a> ::std::ops::Index<&'a DepNode<DefId>> for IncrementalHashesMap {
     type Output = Fingerprint;
 
     fn index(&self, index: &'a DepNode<DefId>) -> &Fingerprint {
-        &self.hashes[index]
+        match self.hashes.get(index) {
+            Some(fingerprint) => fingerprint,
+            None => {
+                bug!("Could not find ICH for {:?}", index);
+            }
+        }
     }
 }
 
@@ -107,7 +114,12 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     record_time(&tcx.sess.perf_stats.incr_comp_hashes_time, || {
         visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX),
                                  |v| visit::walk_crate(v, krate));
-        krate.visit_all_items(&mut visitor);
+        krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
+
+        for macro_def in krate.exported_macros.iter() {
+            visitor.calculate_node_id(macro_def.id,
+                                      |v| v.visit_macro_def(macro_def));
+        }
     });
 
     tcx.sess.perf_stats.incr_comp_hashes_count.set(visitor.hashes.len() as u64);
@@ -199,10 +211,15 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
 }
 
 
-impl<'a, 'tcx> visit::Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.calculate_node_id(item.id, |v| v.visit_item(item));
         visit::walk_item(self, item);
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+        self.calculate_node_id(impl_item.id, |v| v.visit_impl_item(impl_item));
+        visit::walk_impl_item(self, impl_item);
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {

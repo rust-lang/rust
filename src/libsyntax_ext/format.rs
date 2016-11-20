@@ -22,7 +22,7 @@ use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::tokenstream;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 
 #[derive(PartialEq)]
@@ -756,8 +756,12 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     }
 
     if !parser.errors.is_empty() {
-        cx.ecx.span_err(cx.fmtsp,
-                        &format!("invalid format string: {}", parser.errors.remove(0)));
+        let (err, note) = parser.errors.remove(0);
+        let mut e = cx.ecx.struct_span_err(cx.fmtsp, &format!("invalid format string: {}", err));
+        if let Some(note) = note {
+            e.note(&note);
+        }
+        e.emit();
         return DummyResult::raw_expr(sp);
     }
     if !cx.literal.is_empty() {
@@ -767,6 +771,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
 
     // Make sure that all arguments were used and all arguments have types.
     let num_pos_args = cx.args.len() - cx.names.len();
+    let mut errs = vec![];
     for (i, ty) in cx.arg_types.iter().enumerate() {
         if ty.len() == 0 {
             if cx.count_positions.contains_key(&i) {
@@ -779,8 +784,79 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                 // positional argument
                 "argument never used"
             };
-            cx.ecx.span_err(cx.args[i].span, msg);
+            errs.push((cx.args[i].span, msg));
         }
+    }
+    if errs.len() > 0 {
+        let args_used = cx.arg_types.len() - errs.len();
+        let args_unused = errs.len();
+
+        let mut diag = {
+            if errs.len() == 1 {
+                let (sp, msg) = errs.into_iter().next().unwrap();
+                cx.ecx.struct_span_err(sp, msg)
+            } else {
+                let mut diag = cx.ecx.struct_span_err(cx.fmtsp,
+                    "multiple unused formatting arguments");
+                for (sp, msg) in errs {
+                    diag.span_note(sp, msg);
+                }
+                diag
+            }
+        };
+
+        // Decide if we want to look for foreign formatting directives.
+        if args_used < args_unused {
+            use super::format_foreign as foreign;
+            let fmt_str = &fmt.node.0[..];
+
+            // The set of foreign substitutions we've explained.  This prevents spamming the user
+            // with `%d should be written as {}` over and over again.
+            let mut explained = HashSet::new();
+
+            // Used to ensure we only report translations for *one* kind of foreign format.
+            let mut found_foreign = false;
+
+            macro_rules! check_foreign {
+                ($kind:ident) => {{
+                    let mut show_doc_note = false;
+
+                    for sub in foreign::$kind::iter_subs(fmt_str) {
+                        let trn = match sub.translate() {
+                            Some(trn) => trn,
+
+                            // If it has no translation, don't call it out specifically.
+                            None => continue,
+                        };
+
+                        let sub = String::from(sub.as_str());
+                        if explained.contains(&sub) {
+                            continue;
+                        }
+                        explained.insert(sub.clone());
+
+                        if !found_foreign {
+                            found_foreign = true;
+                            show_doc_note = true;
+                        }
+
+                        diag.help(&format!("`{}` should be written as `{}`", sub, trn));
+                    }
+
+                    if show_doc_note {
+                        diag.note(concat!(stringify!($kind), " formatting not supported; see \
+                                the documentation for `std::fmt`"));
+                    }
+                }};
+            }
+
+            check_foreign!(printf);
+            if !found_foreign {
+                check_foreign!(shell);
+            }
+        }
+
+        diag.emit();
     }
 
     cx.into_expr()

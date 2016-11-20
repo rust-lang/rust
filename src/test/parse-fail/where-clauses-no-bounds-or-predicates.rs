@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -19,6 +19,9 @@ fn equal2<T>(_: &T, _: &T) -> bool where T: {
 //~^ ERROR each predicate in a `where` clause must have at least one bound
     true
 }
+
+fn foo<'a>() where 'a {}
+//~^ ERROR expected `:`, found `{`
 
 fn main() {
 }

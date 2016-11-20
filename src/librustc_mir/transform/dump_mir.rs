@@ -64,8 +64,7 @@ impl<'tcx> MirPassHook<'tcx> for DumpMir {
                 is_after: is_after
             },
             src,
-            mir,
-            None
+            mir
         );
     }
 }

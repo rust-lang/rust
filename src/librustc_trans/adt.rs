@@ -108,9 +108,9 @@ fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
             }).collect::<Vec<_>>()
         },
         ty::TyTuple(fields) => fields.to_vec(),
-        ty::TyClosure(_, substs) => {
+        ty::TyClosure(def_id, substs) => {
             if variant_index > 0 { bug!("{} is a closure, which only has one variant", t);}
-            substs.upvar_tys.to_vec()
+            substs.upvar_tys(def_id, cx.tcx()).collect()
         },
         _ => bug!("{} is not a type that can have fields.", t)
     }
@@ -245,8 +245,6 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // So we start with the discriminant, pad it up to the alignment with
             // more of its own type, then use alignment-sized ints to get the rest
             // of the size.
-            //
-            // FIXME #10604: this breaks when vector types are present.
             let size = size.bytes();
             let align = align.abi();
             let discr_ty = Type::from_integer(cx, discr);

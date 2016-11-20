@@ -89,6 +89,13 @@ pub enum NativeLibraryKind {
     NativeUnknown,   // default way to specify a dynamic library
 }
 
+#[derive(Clone, Hash, RustcEncodable, RustcDecodable)]
+pub struct NativeLibrary {
+    pub kind: NativeLibraryKind,
+    pub name: String,
+    pub cfg: Option<P<ast::MetaItem>>,
+}
+
 /// The data we save and restore about an inlined item or method.  This is not
 /// part of the AST that we parse from a file, but it becomes part of the tree
 /// that we trans.
@@ -204,7 +211,7 @@ pub trait CrateStore<'tcx> {
     fn crate_hash(&self, cnum: CrateNum) -> Svh;
     fn crate_disambiguator(&self, cnum: CrateNum) -> InternedString;
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
-    fn native_libraries(&self, cnum: CrateNum) -> Vec<(NativeLibraryKind, String)>;
+    fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>;
     fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId>;
     fn is_no_builtins(&self, cnum: CrateNum) -> bool;
 
@@ -231,7 +238,7 @@ pub trait CrateStore<'tcx> {
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<CrateNum>;
-    fn used_libraries(&self) -> Vec<(String, NativeLibraryKind)>;
+    fn used_libraries(&self) -> Vec<NativeLibrary>;
     fn used_link_args(&self) -> Vec<String>;
 
     // utility functions
@@ -377,7 +384,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                            -> InternedString { bug!("crate_disambiguator") }
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
         { bug!("plugin_registrar_fn") }
-    fn native_libraries(&self, cnum: CrateNum) -> Vec<(NativeLibraryKind, String)>
+    fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
         { bug!("native_libraries") }
     fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId> { bug!("reachable_ids") }
     fn is_no_builtins(&self, cnum: CrateNum) -> bool { bug!("is_no_builtins") }
@@ -412,7 +419,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<CrateNum> { vec![] }
-    fn used_libraries(&self) -> Vec<(String, NativeLibraryKind)> { vec![] }
+    fn used_libraries(&self) -> Vec<NativeLibrary> {
+        vec![]
+    }
     fn used_link_args(&self) -> Vec<String> { vec![] }
 
     // utility functions

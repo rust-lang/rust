@@ -110,7 +110,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         }
     };
 
-    tcx.visit_all_items_in_krate(DepNode::BorrowCheck, &mut bccx);
+    tcx.visit_all_item_likes_in_krate(DepNode::BorrowCheck, &mut bccx.as_deep_visitor());
 
     if tcx.sess.borrowck_stats() {
         println!("--- borrowck stats ---");
@@ -993,27 +993,34 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         if let Categorization::Local(local_id) = err.cmt.cat {
                             let span = self.tcx.map.span(local_id);
                             if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
-                                if snippet.starts_with("ref ") {
-                                    db.span_label(span,
-                                        &format!("use `{}` here to make mutable",
-                                            snippet.replace("ref ", "ref mut ")));
-                                } else if snippet != "self" {
-                                    db.span_label(span,
-                                        &format!("use `mut {}` here to make mutable", snippet));
+                                if snippet.starts_with("ref mut ") || snippet.starts_with("&mut ") {
+                                    db.span_label(error_span, &format!("cannot reborrow mutably"));
+                                    db.span_label(error_span, &format!("try removing `&mut` here"));
+                                } else {
+                                    if snippet.starts_with("ref ") {
+                                        db.span_label(span,
+                                            &format!("use `{}` here to make mutable",
+                                                snippet.replace("ref ", "ref mut ")));
+                                    } else if snippet != "self" {
+                                        db.span_label(span,
+                                            &format!("use `mut {}` here to make mutable", snippet));
+                                    }
+                                    db.span_label(error_span, &format!("cannot borrow mutably"));
                                 }
+                            } else {
+                                db.span_label(error_span, &format!("cannot borrow mutably"));
                             }
-                            db.span_label(error_span, &format!("cannot borrow mutably"));
                         }
                     }
                 }
             }
 
             err_out_of_scope(super_scope, sub_scope, cause) => {
-                let (value_kind, value_msg, is_temporary) = match err.cmt.cat {
+                let (value_kind, value_msg) = match err.cmt.cat {
                     mc::Categorization::Rvalue(_) =>
-                        ("temporary value", "temporary value created here", true),
+                        ("temporary value", "temporary value created here"),
                     _ =>
-                        ("borrowed value", "does not live long enough", false)
+                        ("borrowed value", "borrow occurs here")
                 };
 
                 let is_closure = match cause {
@@ -1026,14 +1033,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             Some(primary) => {
                                 db.span = MultiSpan::from_span(s);
                                 db.span_label(primary, &format!("capture occurs here"));
-                                db.span_label(s, &value_msg);
+                                db.span_label(s, &"does not live long enough");
                                 true
                             }
                             None => false
                         }
                     }
                     _ => {
-                        db.span_label(error_span, &value_msg);
+                        db.span_label(error_span, &"does not live long enough");
                         false
                     }
                 };
@@ -1043,11 +1050,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 match (sub_span, super_span) {
                     (Some(s1), Some(s2)) if s1 == s2 => {
-                        if !is_temporary && !is_closure {
+                        if !is_closure {
                             db.span = MultiSpan::from_span(s1);
-                            db.span_label(error_span, &format!("borrow occurs here"));
+                            db.span_label(error_span, &value_msg);
                             let msg = match opt_loan_path(&err.cmt) {
-                                None => "borrowed value".to_string(),
+                                None => value_kind.to_string(),
                                 Some(lp) => {
                                     format!("`{}`", self.loan_path_to_string(&lp))
                                 }
@@ -1060,17 +1067,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         db.note("values in a scope are dropped in the opposite order \
                                 they are created");
                     }
-                    (Some(s1), Some(s2)) if !is_temporary && !is_closure => {
+                    (Some(s1), Some(s2)) if !is_closure => {
                         db.span = MultiSpan::from_span(s2);
-                        db.span_label(error_span, &format!("borrow occurs here"));
+                        db.span_label(error_span, &value_msg);
                         let msg = match opt_loan_path(&err.cmt) {
-                            None => "borrowed value".to_string(),
+                            None => value_kind.to_string(),
                             Some(lp) => {
                                 format!("`{}`", self.loan_path_to_string(&lp))
                             }
                         };
-                        db.span_label(s2,
-                                      &format!("{} dropped here while still borrowed", msg));
+                        db.span_label(s2, &format!("{} dropped here while still borrowed", msg));
                         db.span_label(s1, &format!("{} needs to live until here", value_kind));
                     }
                     _ => {

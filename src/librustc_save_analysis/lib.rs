@@ -286,7 +286,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                           scope: NodeId) -> Option<VariableData> {
         if let Some(ident) = field.ident {
             let qualname = format!("::{}::{}", self.tcx.node_path_str(scope), ident);
-            let typ = self.tcx.tables().node_types.get(&field.id).unwrap().to_string();
+            let def_id = self.tcx.map.local_def_id(field.id);
+            let typ = self.tcx.item_type(def_id).to_string();
             let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
             filter!(self.span_utils, sub_span, field.span, None);
             Some(VariableData {
@@ -535,7 +536,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.associated_item(decl_id);
                     self.tcx.associated_items(ti.container.id())
-                        .find(|item| item.name == ti.name && item.has_value)
+                        .find(|item| item.name == ti.name && item.defaultness.has_value())
                         .map(|item| item.def_id)
                 } else {
                     None

@@ -945,9 +945,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 let ref_ty = self.overloaded_method_return_ty(method_ty);
                 base_cmt = self.cat_rvalue_node(elt.id(), elt.span(), ref_ty);
 
-                // FIXME(#20649) -- why are we using the `self_ty` as the element type...?
-                let self_ty = method_ty.fn_sig().input(0);
-                (self.tcx().no_late_bound_regions(&self_ty).unwrap(),
+                (ref_ty.builtin_deref(false, ty::NoPreference).unwrap().ty,
                  ElementKind::OtherElement)
             }
             None => {

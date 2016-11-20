@@ -16,12 +16,12 @@
 //! somewhat differently during the collect and check phases,
 //! particularly with respect to looking up the types of top-level
 //! items.  In the collect phase, the crate context is used as the
-//! `AstConv` instance; in this phase, the `get_item_type_scheme()`
-//! function triggers a recursive call to `type_scheme_of_item()`
+//! `AstConv` instance; in this phase, the `get_item_type()`
+//! function triggers a recursive call to `type_of_item()`
 //! (note that `ast_ty_to_ty()` will detect recursive types and report
 //! an error).  In the check phase, when the FnCtxt is used as the
-//! `AstConv`, `get_item_type_scheme()` just looks up the item type in
-//! `tcx.tcache` (using `ty::lookup_item_type`).
+//! `AstConv`, `get_item_type()` just looks up the item type in
+//! `tcx.types` (using `TyCtxt::item_type`).
 //!
 //! The `RegionScope` trait controls what happens when the user does
 //! not specify a region in some location where a region is required
@@ -85,11 +85,8 @@ pub trait AstConv<'gcx, 'tcx> {
     fn get_generics(&self, span: Span, id: DefId)
                     -> Result<&'tcx ty::Generics<'tcx>, ErrorReported>;
 
-    /// Identify the type scheme for an item with a type, like a type
-    /// alias, fn, or struct. This allows you to figure out the set of
-    /// type parameters defined on the item.
-    fn get_item_type_scheme(&self, span: Span, id: DefId)
-                            -> Result<ty::TypeScheme<'tcx>, ErrorReported>;
+    /// Identify the type for an item, like a type alias, fn, or struct.
+    fn get_item_type(&self, span: Span, id: DefId) -> Result<Ty<'tcx>, ErrorReported>;
 
     /// Returns the `TraitDef` for a given trait. This allows you to
     /// figure out the set of type parameters defined on the trait.
@@ -938,8 +935,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         -> Ty<'tcx>
     {
         let tcx = self.tcx();
-        let decl_ty = match self.get_item_type_scheme(span, did) {
-            Ok(type_scheme) => type_scheme.ty,
+        let decl_ty = match self.get_item_type(span, did) {
+            Ok(ty) => ty,
             Err(ErrorReported) => {
                 return tcx.types.err;
             }
@@ -1521,8 +1518,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // Self in impl (we know the concrete type).
 
                 tcx.prohibit_type_params(base_segments);
-                let impl_id = tcx.map.as_local_node_id(def_id).unwrap();
-                let ty = tcx.tables().node_id_to_type(impl_id);
+                let ty = tcx.item_type(def_id);
                 if let Some(free_substs) = self.get_free_substs() {
                     ty.subst(tcx, free_substs)
                 } else {
@@ -2152,27 +2148,32 @@ fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
             "expected"
         };
         let arguments_plural = if required == 1 { "" } else { "s" };
-        struct_span_err!(tcx.sess, span, E0243, "wrong number of type arguments")
-            .span_label(
-                span,
-                &format!("{} {} type argument{}, found {}",
-                         expected, required, arguments_plural, supplied)
-            )
+
+        struct_span_err!(tcx.sess, span, E0243,
+                "wrong number of type arguments: {} {}, found {}",
+                expected, required, supplied)
+            .span_label(span,
+                &format!("{} {} type argument{}",
+                    expected,
+                    required,
+                    arguments_plural))
             .emit();
     } else if supplied > accepted {
-        let expected = if required == 0 {
-            "expected no".to_string()
-        } else if required < accepted {
+        let expected = if required < accepted {
             format!("expected at most {}", accepted)
         } else {
             format!("expected {}", accepted)
         };
         let arguments_plural = if accepted == 1 { "" } else { "s" };
 
-        struct_span_err!(tcx.sess, span, E0244, "wrong number of type arguments")
+        struct_span_err!(tcx.sess, span, E0244,
+                "wrong number of type arguments: {}, found {}",
+                expected, supplied)
             .span_label(
                 span,
-                &format!("{} type argument{}, found {}", expected, arguments_plural, supplied)
+                &format!("{} type argument{}",
+                    if accepted == 0 { "expected no" } else { &expected },
+                    arguments_plural)
             )
             .emit();
     }

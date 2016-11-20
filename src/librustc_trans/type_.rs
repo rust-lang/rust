@@ -15,7 +15,6 @@ use llvm::{TypeRef, Bool, False, True, TypeKind};
 use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use context::CrateContext;
-use util::nodemap::FxHashMap;
 
 use syntax::ast;
 use rustc::ty::layout;
@@ -24,7 +23,6 @@ use std::ffi::CString;
 use std::fmt;
 use std::mem;
 use std::ptr;
-use std::cell::RefCell;
 
 use libc::c_uint;
 
@@ -319,28 +317,5 @@ impl Type {
             layout::F64 => Type::f64(ccx),
             layout::Pointer => bug!("It is not possible to convert Pointer directly to Type.")
         }
-    }
-}
-
-/* Memory-managed object interface to type handles. */
-
-pub struct TypeNames {
-    named_types: RefCell<FxHashMap<String, TypeRef>>,
-}
-
-impl TypeNames {
-    pub fn new() -> TypeNames {
-        TypeNames {
-            named_types: RefCell::new(FxHashMap())
-        }
-    }
-
-    pub fn associate_type(&self, s: &str, t: &Type) {
-        assert!(self.named_types.borrow_mut().insert(s.to_string(),
-                                                     t.to_ref()).is_none());
-    }
-
-    pub fn find_type(&self, s: &str) -> Option<Type> {
-        self.named_types.borrow().get(s).map(|x| Type::from_ref(*x))
     }
 }

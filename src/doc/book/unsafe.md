@@ -12,7 +12,7 @@ four contexts. The first one is to mark a function as unsafe:
 
 ```rust
 unsafe fn danger_will_robinson() {
-    // scary stuff
+    // Scary stuff...
 }
 ```
 
@@ -23,7 +23,7 @@ The second use of `unsafe` is an unsafe block:
 
 ```rust
 unsafe {
-    // scary stuff
+    // Scary stuff...
 }
 ```
 

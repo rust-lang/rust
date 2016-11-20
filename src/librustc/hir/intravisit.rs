@@ -8,7 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! HIR walker. Each overridden visit method has full control over what
+//! HIR walker for walking the contents of nodes.
+//!
+//! **For an overview of the visitor strategy, see the docs on the
+//! `super::itemlikevisit::ItemLikeVisitor` trait.**
+//!
+//! If you have decided to use this visitor, here are some general
+//! notes on how to do it:
+//!
+//! Each overridden visit method has full control over what
 //! happens with its node, it can do its own traversal of the node's children,
 //! call `intravisit::walk_*` to apply the default traversal algorithm, or prevent
 //! deeper traversal by doing nothing.
@@ -30,6 +38,8 @@ use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
 use syntax::codemap::Spanned;
 use syntax_pos::Span;
 use hir::*;
+use hir::map::Map;
+use super::itemlikevisit::DeepVisitor;
 
 use std::cmp;
 use std::u32;
@@ -76,20 +86,68 @@ pub trait Visitor<'v> : Sized {
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
-    /// Invoked when a nested item is encountered. By default, does
-    /// nothing. If you want a deep walk, you need to override to
-    /// fetch the item contents. But most of the time, it is easier
-    /// (and better) to invoke `Crate::visit_all_items`, which visits
-    /// all items in the crate in some order (but doesn't respect
-    /// nesting).
-    #[allow(unused_variables)]
-    fn visit_nested_item(&mut self, id: ItemId) {
+    /// The default versions of the `visit_nested_XXX` routines invoke
+    /// this method to get a map to use; if they get back `None`, they
+    /// just skip nested things. Otherwise, they will lookup the
+    /// nested item-like things in the map and visit it. So the best
+    /// way to implement a nested visitor is to override this method
+    /// to return a `Map`; one advantage of this is that if we add
+    /// more types of nested things in the future, they will
+    /// automatically work.
+    ///
+    /// **If for some reason you want the nested behavior, but don't
+    /// have a `Map` are your disposal:** then you should override the
+    /// `visit_nested_XXX` methods, and override this method to
+    /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
+    /// added in the future, we will see the panic in your code and
+    /// fix it appropriately.
+    fn nested_visit_map(&mut self) -> Option<&Map<'v>> {
+        None
     }
 
-    /// Visit the top-level item and (optionally) nested items. See
+    /// Invoked when a nested item is encountered. By default does
+    /// nothing unless you override `nested_visit_map` to return
+    /// `Some(_)`, in which case it will walk the item. **You probably
+    /// don't want to override this method** -- instead, override
+    /// `nested_visit_map` or use the "shallow" or "deep" visit
+    /// patterns described on `itemlikevisit::ItemLikeVisitor`. The only
+    /// reason to override this method is if you want a nested pattern
+    /// but cannot supply a `Map`; see `nested_visit_map` for advice.
+    #[allow(unused_variables)]
+    fn visit_nested_item(&mut self, id: ItemId) {
+        let opt_item = self.nested_visit_map()
+                           .map(|map| map.expect_item(id.id));
+        if let Some(item) = opt_item {
+            self.visit_item(item);
+        }
+    }
+
+    /// Like `visit_nested_item()`, but for impl items. See
+    /// `visit_nested_item()` for advice on when to override this
+    /// method.
+    #[allow(unused_variables)]
+    fn visit_nested_impl_item(&mut self, id: ImplItemId) {
+        let opt_item = self.nested_visit_map()
+                           .map(|map| map.impl_item(id));
+        if let Some(item) = opt_item {
+            self.visit_impl_item(item);
+        }
+    }
+
+    /// Visit the top-level item and (optionally) nested items / impl items. See
     /// `visit_nested_item` for details.
     fn visit_item(&mut self, i: &'v Item) {
         walk_item(self, i)
+    }
+
+    /// When invoking `visit_all_item_likes()`, you need to supply an
+    /// item-like visitor.  This method converts a "intra-visit"
+    /// visitor into an item-like visitor that walks the entire tree.
+    /// If you use this, you probably don't want to process the
+    /// contents of nested item-like things, since the outer loop will
+    /// visit them as well.
+    fn as_deep_visitor<'s>(&'s mut self) -> DeepVisitor<'s, Self> {
+        DeepVisitor::new(self)
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -146,6 +204,9 @@ pub trait Visitor<'v> : Sized {
     }
     fn visit_impl_item(&mut self, ii: &'v ImplItem) {
         walk_impl_item(self, ii)
+    }
+    fn visit_impl_item_ref(&mut self, ii: &'v ImplItemRef) {
+        walk_impl_item_ref(self, ii)
     }
     fn visit_trait_ref(&mut self, t: &'v TraitRef) {
         walk_trait_ref(self, t)
@@ -205,6 +266,12 @@ pub trait Visitor<'v> : Sized {
     }
     fn visit_vis(&mut self, vis: &'v Visibility) {
         walk_vis(self, vis)
+    }
+    fn visit_associated_item_kind(&mut self, kind: &'v AssociatedItemKind) {
+        walk_associated_item_kind(self, kind);
+    }
+    fn visit_defaultness(&mut self, defaultness: &'v Defaultness) {
+        walk_defaultness(self, defaultness);
     }
 }
 
@@ -341,12 +408,14 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemImpl(.., ref type_parameters, ref opt_trait_reference, ref typ, ref impl_items) => {
+        ItemImpl(.., ref type_parameters, ref opt_trait_reference, ref typ, ref impl_item_refs) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(type_parameters);
             walk_list!(visitor, visit_trait_ref, opt_trait_reference);
             visitor.visit_ty(typ);
-            walk_list!(visitor, visit_impl_item, impl_items);
+            for impl_item_ref in impl_item_refs {
+                visitor.visit_impl_item_ref(impl_item_ref);
+            }
         }
         ItemStruct(ref struct_definition, ref generics) |
         ItemUnion(ref struct_definition, ref generics) => {
@@ -677,10 +746,14 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
 }
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem) {
-    visitor.visit_vis(&impl_item.vis);
-    visitor.visit_name(impl_item.span, impl_item.name);
-    walk_list!(visitor, visit_attribute, &impl_item.attrs);
-    match impl_item.node {
+    // NB: Deliberately force a compilation error if/when new fields are added.
+    let ImplItem { id: _, name, ref vis, ref defaultness, ref attrs, ref node, span } = *impl_item;
+
+    visitor.visit_name(span, name);
+    visitor.visit_vis(vis);
+    visitor.visit_defaultness(defaultness);
+    walk_list!(visitor, visit_attribute, attrs);
+    match *node {
         ImplItemKind::Const(ref ty, ref expr) => {
             visitor.visit_id(impl_item.id);
             visitor.visit_ty(ty);
@@ -702,6 +775,17 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         }
     }
 }
+
+pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, impl_item_ref: &'v ImplItemRef) {
+    // NB: Deliberately force a compilation error if/when new fields are added.
+    let ImplItemRef { id, name, ref kind, span, ref vis, ref defaultness } = *impl_item_ref;
+    visitor.visit_nested_impl_item(id);
+    visitor.visit_name(span, name);
+    visitor.visit_associated_item_kind(kind);
+    visitor.visit_vis(vis);
+    visitor.visit_defaultness(defaultness);
+}
+
 
 pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V, struct_definition: &'v VariantData) {
     visitor.visit_id(struct_definition.id());
@@ -870,6 +954,18 @@ pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility) {
         visitor.visit_id(id);
         visitor.visit_path(path, id)
     }
+}
+
+pub fn walk_associated_item_kind<'v, V: Visitor<'v>>(_: &mut V, _: &'v AssociatedItemKind) {
+    // No visitable content here: this fn exists so you can call it if
+    // the right thing to do, should content be added in the future,
+    // would be to walk it.
+}
+
+pub fn walk_defaultness<'v, V: Visitor<'v>>(_: &mut V, _: &'v Defaultness) {
+    // No visitable content here: this fn exists so you can call it if
+    // the right thing to do, should content be added in the future,
+    // would be to walk it.
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq)]

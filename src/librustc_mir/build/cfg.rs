@@ -40,11 +40,6 @@ impl<'tcx> CFG<'tcx> {
         self.block_data_mut(block).statements.push(statement);
     }
 
-    pub fn current_location(&mut self, block: BasicBlock) -> Location {
-        let index = self.block_data(block).statements.len();
-        Location { block: block, statement_index: index }
-    }
-
     pub fn push_assign(&mut self,
                        block: BasicBlock,
                        source_info: SourceInfo,

@@ -22,7 +22,7 @@ use super::util::impl_trait_ref_and_oblig;
 
 use rustc_data_structures::fx::FxHashMap;
 use hir::def_id::DefId;
-use infer::{InferCtxt, InferOk, TypeOrigin};
+use infer::{InferCtxt, InferOk};
 use middle::region;
 use ty::subst::{Subst, Substs};
 use traits::{self, Reveal, ObligationCause};
@@ -223,8 +223,10 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                                                    target_substs);
 
     // do the impls unify? If not, no specialization.
-    match infcx.eq_trait_refs(true, TypeOrigin::Misc(DUMMY_SP), source_trait_ref,
-                                                                target_trait_ref) {
+    match infcx.eq_trait_refs(true,
+                              &ObligationCause::dummy(),
+                              source_trait_ref,
+                              target_trait_ref) {
         Ok(InferOk { obligations, .. }) => {
             // FIXME(#32730) propagate obligations
             assert!(obligations.is_empty())

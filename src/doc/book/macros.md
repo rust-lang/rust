@@ -533,33 +533,33 @@ An example:
 ```rust
 macro_rules! m1 { () => (()) }
 
-// visible here: m1
+// Visible here: `m1`.
 
 mod foo {
-    // visible here: m1
+    // Visible here: `m1`.
 
     #[macro_export]
     macro_rules! m2 { () => (()) }
 
-    // visible here: m1, m2
+    // Visible here: `m1`, `m2`.
 }
 
-// visible here: m1
+// Visible here: `m1`.
 
 macro_rules! m3 { () => (()) }
 
-// visible here: m1, m3
+// Visible here: `m1`, `m3`.
 
 #[macro_use]
 mod bar {
-    // visible here: m1, m3
+    // Visible here: `m1`, `m3`.
 
     macro_rules! m4 { () => (()) }
 
-    // visible here: m1, m3, m4
+    // Visible here: `m1`, `m3`, `m4`.
 }
 
-// visible here: m1, m3, m4
+// Visible here: `m1`, `m3`, `m4`.
 # fn main() { }
 ```
 
@@ -644,7 +644,7 @@ macro_rules! bct {
     (1, $p:tt, $($ps:tt),* ; $($ds:tt),*)
         => (bct!($($ps),*, 1, $p ; $($ds),*));
 
-    // halt on empty data string
+    // Halt on empty data string:
     ( $($ps:tt),* ; )
         => (());
 }
@@ -694,7 +694,7 @@ Like this:
 assert!(true);
 assert_eq!(5, 3 + 2);
 
-// nope :(
+// Nope :(
 
 assert!(5 < 3);
 assert_eq!(5, 3);

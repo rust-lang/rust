@@ -145,6 +145,7 @@ supported_targets! {
     ("arm-unknown-linux-gnueabihf", arm_unknown_linux_gnueabihf),
     ("arm-unknown-linux-musleabi", arm_unknown_linux_musleabi),
     ("arm-unknown-linux-musleabihf", arm_unknown_linux_musleabihf),
+    ("armv5te-unknown-linux-gnueabi", armv5te_unknown_linux_gnueabi),
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
@@ -358,6 +359,11 @@ pub struct TargetOptions {
     // will 'just work'.
     pub obj_is_bitcode: bool,
 
+    // LLVM can't produce object files for this target. Instead, we'll make LLVM
+    // emit assembly and then use `gcc` to turn that assembly into an object
+    // file
+    pub no_integrated_as: bool,
+
     /// Don't use this field; instead use the `.max_atomic_width()` method.
     pub max_atomic_width: Option<u64>,
 
@@ -367,6 +373,9 @@ pub struct TargetOptions {
     /// A blacklist of ABIs unsupported by the current target. Note that generic
     /// ABIs are considered to be supported on all platforms and cannot be blacklisted.
     pub abi_blacklist: Vec<Abi>,
+
+    /// Whether or not the CRT is statically linked by default.
+    pub crt_static_default: bool,
 }
 
 impl Default for TargetOptions {
@@ -415,9 +424,11 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
+            no_integrated_as: false,
             max_atomic_width: None,
             panic_strategy: PanicStrategy::Unwind,
             abi_blacklist: vec![],
+            crt_static_default: false,
         }
     }
 }
@@ -575,8 +586,10 @@ impl Target {
         key!(exe_allocation_crate);
         key!(has_elf_tls, bool);
         key!(obj_is_bitcode, bool);
+        key!(no_integrated_as, bool);
         key!(max_atomic_width, Option<u64>);
         try!(key!(panic_strategy, PanicStrategy));
+        key!(crt_static_default, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -734,8 +747,10 @@ impl ToJson for Target {
         target_option_val!(exe_allocation_crate);
         target_option_val!(has_elf_tls);
         target_option_val!(obj_is_bitcode);
+        target_option_val!(no_integrated_as);
         target_option_val!(max_atomic_width);
         target_option_val!(panic_strategy);
+        target_option_val!(crt_static_default);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

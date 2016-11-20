@@ -18,7 +18,7 @@ use std::cell::{Cell, RefCell};
 use hir;
 use util::nodemap::FxHashMap;
 
-/// As `TypeScheme` but for a trait ref.
+/// A trait's definition with type information.
 pub struct TraitDef<'tcx> {
     pub unsafety: hir::Unsafety,
 

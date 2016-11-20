@@ -14,8 +14,8 @@ use super::{SelectionContext, Obligation, ObligationCause};
 
 use hir::def_id::{DefId, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
-use infer::{InferCtxt, InferOk, TypeOrigin};
-use syntax_pos::DUMMY_SP;
+
+use infer::{InferCtxt, InferOk};
 
 #[derive(Copy, Clone)]
 struct InferIsLocal(bool);
@@ -55,8 +55,10 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     debug!("overlap: b_impl_header={:?}", b_impl_header);
 
     // Do `a` and `b` unify? If not, no overlap.
-    match selcx.infcx().eq_impl_headers(true, TypeOrigin::Misc(DUMMY_SP), &a_impl_header,
-                                                                          &b_impl_header) {
+    match selcx.infcx().eq_impl_headers(true,
+                                        &ObligationCause::dummy(),
+                                        &a_impl_header,
+                                        &b_impl_header) {
         Ok(InferOk { obligations, .. }) => {
             // FIXME(#32730) propagate obligations
             assert!(obligations.is_empty());

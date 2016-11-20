@@ -198,11 +198,8 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::Binder<T> {
 impl<'a, 'tcx> Lift<'tcx> for ty::ClosureSubsts<'a> {
     type Lifted = ty::ClosureSubsts<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&(self.func_substs, self.upvar_tys)).map(|(substs, upvar_tys)| {
-            ty::ClosureSubsts {
-                func_substs: substs,
-                upvar_tys: upvar_tys
-            }
+        tcx.lift(&self.substs).map(|substs| {
+            ty::ClosureSubsts { substs: substs }
         })
     }
 }
@@ -482,7 +479,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyAnon(did, substs) => ty::TyAnon(did, substs.fold_with(folder)),
             ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyError | ty::TyInfer(_) |
-            ty::TyParam(..) | ty::TyNever => self.sty.clone(),
+            ty::TyParam(..) | ty::TyNever => return self
         };
         folder.tcx().mk_ty(sty)
     }
@@ -654,13 +651,12 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Region {
 impl<'tcx> TypeFoldable<'tcx> for ty::ClosureSubsts<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ClosureSubsts {
-            func_substs: self.func_substs.fold_with(folder),
-            upvar_tys: self.upvar_tys.fold_with(folder),
+            substs: self.substs.fold_with(folder),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.func_substs.visit_with(visitor) || self.upvar_tys.visit_with(visitor)
+        self.substs.visit_with(visitor)
     }
 }
 

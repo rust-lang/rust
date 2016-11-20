@@ -424,6 +424,7 @@ pub fn build_rules(build: &Build) -> Rules {
          .host(true)
          .run(move |_| dist::rust_src(build));
     rules.dist("dist-docs", "src/doc")
+         .default(true)
          .dep(|s| s.name("default:doc"))
          .run(move |s| dist::docs(build, s.stage, s.target));
     rules.dist("install", "src")
@@ -564,7 +565,8 @@ impl<'a> Rules<'a> {
             for dep in rule.deps.iter() {
                 let dep = dep(&self.sbuild.name(rule.name));
                 if self.rules.contains_key(&dep.name) || dep.name.starts_with("default:") {
-                    continue }
+                    continue
+                }
                 panic!("\
 
 invalid rule dependency graph detected, was a rule added and maybe typo'd?
@@ -685,8 +687,9 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
                     "dist" => Kind::Dist,
                     kind => panic!("unknown kind: `{}`", kind),
                 };
+                let host = self.build.config.host.iter().any(|h| h == dep.target);
                 let rules = self.rules.values().filter(|r| r.default);
-                for rule in rules.filter(|r| r.kind == kind) {
+                for rule in rules.filter(|r| r.kind == kind && (!r.host || host)) {
                     self.fill(dep.name(rule.name), order, added);
                 }
             } else {

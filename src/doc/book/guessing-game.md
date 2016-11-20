@@ -158,8 +158,8 @@ take a name on the left hand side of the assignment, it actually accepts a
 to use for now:
 
 ```rust
-let foo = 5; // immutable.
-let mut bar = 5; // mutable
+let foo = 5; // `foo` is immutable.
+let mut bar = 5; // `bar` is mutable.
 ```
 
 [immutable]: mutability.html

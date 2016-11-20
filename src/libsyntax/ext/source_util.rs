@@ -104,7 +104,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::T
         }
         fn make_items(mut self: Box<ExpandResult<'a>>)
                       -> Option<SmallVector<P<ast::Item>>> {
-            let mut ret = SmallVector::zero();
+            let mut ret = SmallVector::new();
             while self.p.token != token::Eof {
                 match panictry!(self.p.parse_item()) {
                     Some(item) => ret.push(item),

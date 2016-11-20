@@ -86,9 +86,10 @@ use fmt_macros::{Parser, Piece, Position};
 use hir::def::{Def, CtorKind, PathResolution};
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::pat_util;
-use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
+use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin,
+                   TypeTrace, type_variable};
 use rustc::ty::subst::{Kind, Subst, Substs};
-use rustc::traits::{self, Reveal};
+use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, Visibility};
@@ -120,6 +121,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{self, BytePos, Span};
 
 use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
 use rustc_back::slice;
@@ -524,30 +526,35 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &'tcx hir::Item) {
         check_item_body(self.ccx, i);
+    }
+
+    fn visit_impl_item(&mut self, _item: &'tcx hir::ImplItem) {
+        // done as part of `visit_item` above
     }
 }
 
 pub fn check_wf_new(ccx: &CrateCtxt) -> CompileResult {
     ccx.tcx.sess.track_errors(|| {
         let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(ccx);
-        ccx.tcx.visit_all_items_in_krate(DepNode::WfCheck, &mut visit);
+        ccx.tcx.visit_all_item_likes_in_krate(DepNode::WfCheck, &mut visit.as_deep_visitor());
     })
 }
 
 pub fn check_item_types(ccx: &CrateCtxt) -> CompileResult {
     ccx.tcx.sess.track_errors(|| {
         let mut visit = CheckItemTypesVisitor { ccx: ccx };
-        ccx.tcx.visit_all_items_in_krate(DepNode::TypeckItemType, &mut visit);
+        ccx.tcx.visit_all_item_likes_in_krate(DepNode::TypeckItemType,
+                                              &mut visit.as_deep_visitor());
     })
 }
 
 pub fn check_item_bodies(ccx: &CrateCtxt) -> CompileResult {
     ccx.tcx.sess.track_errors(|| {
         let mut visit = CheckItemBodiesVisitor { ccx: ccx };
-        ccx.tcx.visit_all_items_in_krate(DepNode::TypeckItemBody, &mut visit);
+        ccx.tcx.visit_all_item_likes_in_krate(DepNode::TypeckItemBody, &mut visit);
 
         // Process deferred obligations, now that all functions
         // bodies have been fully inferred.
@@ -597,7 +604,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            body: &'tcx hir::Expr,
                            fn_id: ast::NodeId,
                            span: Span) {
-    let raw_fty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(fn_id)).ty;
+    let raw_fty = ccx.tcx.item_type(ccx.tcx.map.local_def_id(fn_id));
     let fn_ty = match raw_fty.sty {
         ty::TyFnDef(.., f) => f,
         _ => span_bug!(body.span, "check_bare_fn: function type expected")
@@ -780,15 +787,16 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 }
 
 fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
-    check_representable(ccx.tcx, span, id);
+    let def_id = ccx.tcx.map.local_def_id(id);
+    check_representable(ccx.tcx, span, def_id);
 
-    if ccx.tcx.lookup_simd(ccx.tcx.map.local_def_id(id)) {
-        check_simd(ccx.tcx, span, id);
+    if ccx.tcx.lookup_simd(def_id) {
+        check_simd(ccx.tcx, span, def_id);
     }
 }
 
 fn check_union(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
-    check_representable(ccx.tcx, span, id);
+    check_representable(ccx.tcx, span, ccx.tcx.map.local_def_id(id));
 }
 
 pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
@@ -807,7 +815,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                             it.id);
       }
       hir::ItemFn(..) => {} // entirely within check_item_body
-      hir::ItemImpl(.., ref impl_items) => {
+      hir::ItemImpl(.., ref impl_item_refs) => {
           debug!("ItemImpl {} with id {}", it.name, it.id);
           let impl_def_id = ccx.tcx.map.local_def_id(it.id);
           if let Some(impl_trait_ref) = ccx.tcx.impl_trait_ref(impl_def_id) {
@@ -815,7 +823,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                                              it.span,
                                              impl_def_id,
                                              impl_trait_ref,
-                                             impl_items);
+                                             impl_item_refs);
               let trait_def_id = impl_trait_ref.def_id;
               check_on_unimplemented(ccx, trait_def_id, it);
           }
@@ -831,7 +839,8 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         check_union(ccx, it.id, it.span);
       }
       hir::ItemTy(_, ref generics) => {
-        let pty_ty = ccx.tcx.tables().node_id_to_type(it.id);
+        let def_id = ccx.tcx.map.local_def_id(it.id);
+        let pty_ty = ccx.tcx.item_type(def_id);
         check_bounds_are_used(ccx, generics, pty_ty);
       }
       hir::ItemForeignMod(ref m) => {
@@ -847,8 +856,8 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
             }
         } else {
             for item in &m.items {
-                let pty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(item.id));
-                if !pty.generics.types.is_empty() {
+                let generics = ccx.tcx.item_generics(ccx.tcx.map.local_def_id(item.id));
+                if !generics.types.is_empty() {
                     let mut err = struct_span_err!(ccx.tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
                     span_help!(&mut err, item.span,
@@ -876,10 +885,11 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       hir::ItemFn(ref decl, .., ref body) => {
         check_bare_fn(ccx, &decl, &body, it.id, it.span);
       }
-      hir::ItemImpl(.., ref impl_items) => {
+      hir::ItemImpl(.., ref impl_item_refs) => {
         debug!("ItemImpl {} with id {}", it.name, it.id);
 
-        for impl_item in impl_items {
+        for impl_item_ref in impl_item_refs {
+            let impl_item = ccx.tcx.map.impl_item(impl_item_ref.id);
             match impl_item.node {
                 hir::ImplItemKind::Const(_, ref expr) => {
                     check_const(ccx, &expr, impl_item.id)
@@ -917,7 +927,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
 fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     def_id: DefId,
                                     item: &hir::Item) {
-    let generics = ccx.tcx.lookup_generics(def_id);
+    let generics = ccx.tcx.item_generics(def_id);
     if let Some(ref attr) = item.attrs.iter().find(|a| {
         a.check_name("rustc_on_unimplemented")
     }) {
@@ -1016,7 +1026,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_span: Span,
                                             impl_id: DefId,
                                             impl_trait_ref: ty::TraitRef<'tcx>,
-                                            impl_items: &[hir::ImplItem]) {
+                                            impl_item_refs: &[hir::ImplItemRef]) {
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
     // isn't populated for such impls.
@@ -1027,9 +1037,11 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let trait_def = tcx.lookup_trait_def(impl_trait_ref.def_id);
     let mut overridden_associated_type = None;
 
+    let impl_items = || impl_item_refs.iter().map(|iiref| ccx.tcx.map.impl_item(iiref.id));
+
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
-    for impl_item in impl_items {
+    for impl_item in impl_items() {
         let ty_impl_item = tcx.associated_item(tcx.map.local_def_id(impl_item.id));
         let ty_trait_item = tcx.associated_items(impl_trait_ref.def_id)
             .find(|ac| ac.name == ty_impl_item.name);
@@ -1098,7 +1110,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 }
                 hir::ImplItemKind::Type(_) => {
                     if ty_trait_item.kind == ty::AssociatedKind::Type {
-                        if ty_trait_item.has_value {
+                        if ty_trait_item.defaultness.has_value() {
                             overridden_associated_type = Some(impl_item);
                         }
                     } else {
@@ -1132,7 +1144,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             .unwrap_or(false);
 
         if !is_implemented {
-            if !trait_item.has_value {
+            if !trait_item.defaultness.has_value() {
                 missing_items.push(trait_item);
             } else if associated_type_overridden {
                 invalidated_items.push(trait_item.name);
@@ -1143,12 +1155,11 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let signature = |item: &ty::AssociatedItem| {
         match item.kind {
             ty::AssociatedKind::Method => {
-                format!("{}", tcx.lookup_item_type(item.def_id).ty.fn_sig().0)
+                format!("{}", tcx.item_type(item.def_id).fn_sig().0)
             }
             ty::AssociatedKind::Type => format!("type {};", item.name.to_string()),
             ty::AssociatedKind::Const => {
-                format!("const {}: {:?};", item.name.to_string(),
-                        tcx.lookup_item_type(item.def_id).ty)
+                format!("const {}: {:?};", item.name.to_string(), tcx.item_type(item.def_id))
             }
         }
     };
@@ -1218,7 +1229,7 @@ fn check_const_with_type<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
 fn check_const<'a, 'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                          expr: &'tcx hir::Expr,
                          id: ast::NodeId) {
-    let decl_ty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(id)).ty;
+    let decl_ty = ccx.tcx.item_type(ccx.tcx.map.local_def_id(id));
     check_const_with_type(ccx, expr, decl_ty, id);
 }
 
@@ -1227,9 +1238,9 @@ fn check_const<'a, 'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 /// pointer, which would mean their size is unbounded.
 fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  sp: Span,
-                                 item_id: ast::NodeId)
+                                 item_def_id: DefId)
                                  -> bool {
-    let rty = tcx.tables().node_id_to_type(item_id);
+    let rty = tcx.item_type(item_def_id);
 
     // Check that it is possible to represent this type. This call identifies
     // (1) types that contain themselves and (2) types that contain a different
@@ -1238,7 +1249,6 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
         Representability::SelfRecursive => {
-            let item_def_id = tcx.map.local_def_id(item_id);
             tcx.recursive_type_with_infinite_size_error(item_def_id).emit();
             return false
         }
@@ -1247,8 +1257,8 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     return true
 }
 
-pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, id: ast::NodeId) {
-    let t = tcx.tables().node_id_to_type(id);
+pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId) {
+    let t = tcx.item_type(def_id);
     match t.sty {
         ty::TyAdt(def, substs) if def.is_struct() => {
             let fields = &def.struct_variant().fields;
@@ -1328,7 +1338,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         disr_vals.push(current_disr_val);
     }
 
-    check_representable(ccx.tcx, sp, id);
+    check_representable(ccx.tcx, sp, def_id);
 }
 
 impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
@@ -1341,13 +1351,12 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn get_generics(&self, _: Span, id: DefId)
                     -> Result<&'tcx ty::Generics<'tcx>, ErrorReported>
     {
-        Ok(self.tcx().lookup_generics(id))
+        Ok(self.tcx().item_generics(id))
     }
 
-    fn get_item_type_scheme(&self, _: Span, id: DefId)
-                            -> Result<ty::TypeScheme<'tcx>, ErrorReported>
+    fn get_item_type(&self, _: Span, id: DefId) -> Result<Ty<'tcx>, ErrorReported>
     {
-        Ok(self.tcx().lookup_item_type(id))
+        Ok(self.tcx().item_type(id))
     }
 
     fn get_trait_def(&self, _: Span, id: DefId)
@@ -1521,6 +1530,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn cause(&self,
+                 span: Span,
+                 code: ObligationCauseCode<'tcx>)
+                 -> ObligationCause<'tcx> {
+        ObligationCause::new(span, self.body_id, code)
+    }
+
+    pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
+        self.cause(span, ObligationCauseCode::MiscObligation)
+    }
+
     /// Resolves type variables in `ty` if possible. Unlike the infcx
     /// version (resolve_type_vars_if_possible), this version will
     /// also select obligations if it seems useful, in an effort
@@ -1662,7 +1682,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// generic type scheme.
     fn instantiate_bounds(&self, span: Span, def_id: DefId, substs: &Substs<'tcx>)
                           -> ty::InstantiatedPredicates<'tcx> {
-        let bounds = self.tcx.lookup_predicates(def_id);
+        let bounds = self.tcx.item_predicates(def_id);
         let result = bounds.instantiate(self.tcx, substs);
         let result = self.normalize_associated_types_in(span, &result.predicates);
         debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}",
@@ -1687,7 +1707,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let ty_var = self.next_ty_var();
                 self.anon_types.borrow_mut().insert(def_id, ty_var);
 
-                let item_predicates = self.tcx.lookup_predicates(def_id);
+                let item_predicates = self.tcx.item_predicates(def_id);
                 let bounds = item_predicates.instantiate(self.tcx, substs);
 
                 let span = self.tcx.map.def_id_span(def_id, codemap::DUMMY_SP);
@@ -1784,6 +1804,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.fulfillment_cx
             .borrow_mut()
             .register_predicate_obligation(self, obligation);
+    }
+
+    pub fn register_predicates(&self,
+                               obligations: Vec<traits::PredicateObligation<'tcx>>)
+    {
+        for obligation in obligations {
+            self.register_predicate(obligation);
+        }
+    }
+
+    pub fn register_infer_ok_obligations<T>(&self, infer_ok: InferOk<'tcx, T>) -> T {
+        self.register_predicates(infer_ok.obligations);
+        infer_ok.value
     }
 
     pub fn to_ty(&self, ast_t: &hir::Ty) -> Ty<'tcx> {
@@ -2096,15 +2129,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 if let Some(default) = default_map.get(ty) {
                                     let default = default.clone();
                                     match self.eq_types(false,
-                                            TypeOrigin::Misc(default.origin_span),
-                                            ty, default.ty) {
-                                        Ok(InferOk { obligations, .. }) => {
-                                            // FIXME(#32730) propagate obligations
-                                            assert!(obligations.is_empty())
-                                        },
-                                        Err(_) => {
-                                            conflicts.push((*ty, default));
-                                        }
+                                                        &self.misc(default.origin_span),
+                                                        ty,
+                                                        default.ty) {
+                                        Ok(ok) => self.register_infer_ok_obligations(ok),
+                                        Err(_) => conflicts.push((*ty, default)),
                                     }
                                 }
                             }
@@ -2146,6 +2175,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     self.report_conflicting_default_types(
                         first_default.origin_span,
+                        self.body_id,
                         first_default,
                         second_default)
                 }
@@ -2194,10 +2224,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(default) = default_map.get(ty) {
                             let default = default.clone();
                             match self.eq_types(false,
-                                    TypeOrigin::Misc(default.origin_span),
-                                    ty, default.ty) {
-                                // FIXME(#32730) propagate obligations
-                                Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
+                                                &self.misc(default.origin_span),
+                                                ty,
+                                                default.ty) {
+                                Ok(ok) => self.register_infer_ok_obligations(ok),
                                 Err(_) => {
                                     result = Some(default);
                                 }
@@ -2742,11 +2772,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         span: Span, // (potential) receiver for this impl
                         did: DefId)
                         -> TypeAndSubsts<'tcx> {
-        let ity = self.tcx.lookup_item_type(did);
+        let ity = self.tcx.item_type(did);
         debug!("impl_self_ty: ity={:?}", ity);
 
         let substs = self.fresh_substs_for_item(span, did);
-        let substd_ty = self.instantiate_type_scheme(span, &substs, &ity.ty);
+        let substd_ty = self.instantiate_type_scheme(span, &substs, &ity);
 
         TypeAndSubsts { substs: substs, ty: substd_ty }
     }
@@ -2760,18 +2790,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   formal_args: &[Ty<'tcx>])
                                   -> Vec<Ty<'tcx>> {
         let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {
-            self.commit_regions_if_ok(|| {
+            self.fudge_regions_if_ok(&RegionVariableOrigin::Coercion(call_span), || {
                 // Attempt to apply a subtyping relationship between the formal
                 // return type (likely containing type variables if the function
                 // is polymorphic) and the expected return type.
                 // No argument expectations are produced if unification fails.
-                let origin = TypeOrigin::Misc(call_span);
-                let ures = self.sub_types(false, origin, formal_ret, ret_ty);
+                let origin = self.misc(call_span);
+                let ures = self.sub_types(false, &origin, formal_ret, ret_ty);
                 // FIXME(#15760) can't use try! here, FromError doesn't default
                 // to identity so the resulting type is not constrained.
                 match ures {
-                    // FIXME(#32730) propagate obligations
-                    Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
+                    Ok(ok) => self.register_infer_ok_obligations(ok),
                     Err(e) => return Err(e),
                 }
 
@@ -2852,16 +2881,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.diverges.set(Diverges::Maybe);
 
         let unit = self.tcx.mk_nil();
-        let (origin, expected, found, result) =
+        let (cause, expected_ty, found_ty, result);
         if let Some(else_expr) = opt_else_expr {
             let else_ty = self.check_expr_with_expectation(else_expr, expected);
             let else_diverges = self.diverges.get();
+            cause = self.cause(sp, ObligationCauseCode::IfExpression);
 
             // Only try to coerce-unify if we have a then expression
             // to assign coercions to, otherwise it's () or diverging.
-            let origin = TypeOrigin::IfExpression(sp);
-            let result = if let Some(ref then) = then_blk.expr {
-                let res = self.try_find_coercion_lub(origin, || Some(&**then),
+            expected_ty = then_ty;
+            found_ty = else_ty;
+            result = if let Some(ref then) = then_blk.expr {
+                let res = self.try_find_coercion_lub(&cause, || Some(&**then),
                                                      then_ty, else_expr, else_ty);
 
                 // In case we did perform an adjustment, we have to update
@@ -2876,33 +2907,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 res
             } else {
                 self.commit_if_ok(|_| {
-                    let trace = TypeTrace::types(origin, true, then_ty, else_ty);
+                    let trace = TypeTrace::types(&cause, true, then_ty, else_ty);
                     self.lub(true, trace, &then_ty, &else_ty)
-                        .map(|InferOk { value, obligations }| {
-                            // FIXME(#32730) propagate obligations
-                            assert!(obligations.is_empty());
-                            value
-                        })
+                        .map(|ok| self.register_infer_ok_obligations(ok))
                 })
             };
 
             // We won't diverge unless both branches do (or the condition does).
             self.diverges.set(cond_diverges | then_diverges & else_diverges);
-
-            (origin, then_ty, else_ty, result)
         } else {
             // If the condition is false we can't diverge.
             self.diverges.set(cond_diverges);
 
-            let origin = TypeOrigin::IfExpressionWithNoElse(sp);
-            (origin, unit, then_ty,
-             self.eq_types(true, origin, unit, then_ty)
-                 .map(|InferOk { obligations, .. }| {
-                     // FIXME(#32730) propagate obligations
-                     assert!(obligations.is_empty());
-                     unit
-                 }))
-        };
+            cause = self.cause(sp, ObligationCauseCode::IfExpressionWithNoElse);
+            expected_ty = unit;
+            found_ty = then_ty;
+            result = self.eq_types(true, &cause, unit, then_ty)
+                         .map(|ok| {
+                             self.register_infer_ok_obligations(ok);
+                             unit
+                         });
+        }
 
         match result {
             Ok(ty) => {
@@ -2913,7 +2938,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             Err(e) => {
-                self.report_mismatched_types(origin, expected, found, e);
+                self.report_mismatched_types(&cause, expected_ty, found_ty, e);
                 self.tcx.types.err
             }
         }
@@ -3564,17 +3589,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if let Some(ref e) = *expr_opt {
                 self.check_expr_coercable_to_type(&e, self.ret_ty);
             } else {
-                let eq_result = self.eq_types(false,
-                                              TypeOrigin::Misc(expr.span),
-                                              self.ret_ty,
-                                              tcx.mk_nil())
-                    // FIXME(#32730) propagate obligations
-                    .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()));
-                if eq_result.is_err() {
-                    struct_span_err!(tcx.sess, expr.span, E0069,
-                             "`return;` in a function whose return type is not `()`")
-                        .span_label(expr.span, &format!("return type is not ()"))
-                        .emit();
+                match self.eq_types(false,
+                                    &self.misc(expr.span),
+                                    self.ret_ty,
+                                    tcx.mk_nil())
+                {
+                    Ok(ok) => self.register_infer_ok_obligations(ok),
+                    Err(_) => {
+                        struct_span_err!(tcx.sess, expr.span, E0069,
+                                         "`return;` in a function whose return type is not `()`")
+                            .span_label(expr.span, &format!("return type is not ()"))
+                            .emit();
+                    }
                 }
             }
             tcx.types.never
@@ -3695,20 +3721,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             for (i, e) in args.iter().enumerate() {
                 let e_ty = self.check_expr_with_hint(e, coerce_to);
-                let origin = TypeOrigin::Misc(e.span);
+                let cause = self.misc(e.span);
 
                 // Special-case the first element, as it has no "previous expressions".
                 let result = if i == 0 {
                     self.try_coerce(e, e_ty, coerce_to)
                 } else {
                     let prev_elems = || args[..i].iter().map(|e| &**e);
-                    self.try_find_coercion_lub(origin, prev_elems, unified, e, e_ty)
+                    self.try_find_coercion_lub(&cause, prev_elems, unified, e, e_ty)
                 };
 
                 match result {
                     Ok(ty) => unified = ty,
                     Err(e) => {
-                        self.report_mismatched_types(origin, unified, e_ty, e);
+                        self.report_mismatched_types(&cause, unified, e_ty, e);
                     }
                 }
             }
@@ -4064,9 +4090,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // We're not diverging and there's an expected type, which,
                 // in case it's not `()`, could result in an error higher-up.
                 // We have a chance to error here early and be more helpful.
-                let origin = TypeOrigin::Misc(blk.span);
-                let trace = TypeTrace::types(origin, false, ty, ety);
-                match self.sub_types(false, origin, ty, ety) {
+                let cause = self.misc(blk.span);
+                let trace = TypeTrace::types(&cause, false, ty, ety);
+                match self.sub_types(false, &cause, ty, ety) {
                     Ok(InferOk { obligations, .. }) => {
                         // FIXME(#32730) propagate obligations
                         assert!(obligations.is_empty());
@@ -4184,11 +4210,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::VariantCtor(def_id, ..) => {
                 // Everything but the final segment should have no
                 // parameters at all.
-                let mut generics = self.tcx.lookup_generics(def_id);
+                let mut generics = self.tcx.item_generics(def_id);
                 if let Some(def_id) = generics.parent {
                     // Variant and struct constructors use the
                     // generics of their parent type definition.
-                    generics = self.tcx.lookup_generics(def_id);
+                    generics = self.tcx.item_generics(def_id);
                 }
                 type_segment = Some((segments.last().unwrap(), generics));
             }
@@ -4198,7 +4224,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Const(def_id) |
             Def::Static(def_id, _) => {
                 fn_segment = Some((segments.last().unwrap(),
-                                   self.tcx.lookup_generics(def_id)));
+                                   self.tcx.item_generics(def_id)));
             }
 
             // Case 3. Reference to a method or associated const.
@@ -4212,9 +4238,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::ImplContainer(_) => {}
                 }
 
-                let generics = self.tcx.lookup_generics(def_id);
+                let generics = self.tcx.item_generics(def_id);
                 if segments.len() >= 2 {
-                    let parent_generics = self.tcx.lookup_generics(generics.parent.unwrap());
+                    let parent_generics = self.tcx.item_generics(generics.parent.unwrap());
                     type_segment = Some((&segments[segments.len() - 2], parent_generics));
                 } else {
                     // `<T>::assoc` will end up here, and so can `T::assoc`.
@@ -4344,9 +4370,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
-        let scheme = self.tcx.lookup_item_type(def.def_id());
+        let ty = self.tcx.item_type(def.def_id());
         assert!(!substs.has_escaping_regions());
-        assert!(!scheme.ty.has_escaping_regions());
+        assert!(!ty.has_escaping_regions());
 
         // Add all the obligations that are required, substituting and
         // normalized appropriately.
@@ -4357,21 +4383,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
-        let ty_substituted = self.instantiate_type_scheme(span, &substs, &scheme.ty);
+        let ty_substituted = self.instantiate_type_scheme(span, &substs, &ty);
 
         if let Some((ty::ImplContainer(impl_def_id), self_ty)) = ufcs_associated {
             // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
             // is inherent, there is no `Self` parameter, instead, the impl needs
             // type parameters, which we can infer by unifying the provided `Self`
             // with the substituted impl type.
-            let impl_scheme = self.tcx.lookup_item_type(impl_def_id);
+            let ty = self.tcx.item_type(impl_def_id);
 
-            let impl_ty = self.instantiate_type_scheme(span, &substs, &impl_scheme.ty);
-            match self.sub_types(false, TypeOrigin::Misc(span), self_ty, impl_ty) {
-                Ok(InferOk { obligations, .. }) => {
-                    // FIXME(#32730) propagate obligations
-                    assert!(obligations.is_empty());
-                }
+            let impl_ty = self.instantiate_type_scheme(span, &substs, &ty);
+            match self.sub_types(false, &self.misc(span), self_ty, impl_ty) {
+                Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
                     span_bug!(span,
                         "instantiate_value_path: (UFCS) {:?} was a subtype of {:?} but now is not?",

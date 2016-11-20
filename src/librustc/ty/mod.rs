@@ -50,7 +50,7 @@ use syntax_pos::{DUMMY_SP, Span};
 use rustc_const_math::ConstInt;
 
 use hir;
-use hir::intravisit::Visitor;
+use hir::itemlikevisit::ItemLikeVisitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{BuiltinBound, BuiltinBounds};
@@ -169,9 +169,9 @@ impl<'a, 'gcx, 'tcx> ImplHeader<'tcx> {
 
         let header = ImplHeader {
             impl_def_id: impl_def_id,
-            self_ty: tcx.lookup_item_type(impl_def_id).ty,
+            self_ty: tcx.item_type(impl_def_id),
             trait_ref: tcx.impl_trait_ref(impl_def_id),
-            predicates: tcx.lookup_predicates(impl_def_id).predicates
+            predicates: tcx.item_predicates(impl_def_id).predicates
         }.subst(tcx, impl_substs);
 
         let traits::Normalized { value: mut header, obligations } =
@@ -189,7 +189,6 @@ pub struct AssociatedItem {
     pub kind: AssociatedKind,
     pub vis: Visibility,
     pub defaultness: hir::Defaultness,
-    pub has_value: bool,
     pub container: AssociatedItemContainer,
 
     /// Whether this is a method with an explicit self
@@ -708,7 +707,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
                         instantiated: &mut InstantiatedPredicates<'tcx>,
                         substs: &Substs<'tcx>) {
         if let Some(def_id) = self.parent {
-            tcx.lookup_predicates(def_id).instantiate_into(tcx, instantiated, substs);
+            tcx.item_predicates(def_id).instantiate_into(tcx, instantiated, substs);
         }
         instantiated.predicates.extend(self.predicates.iter().map(|p| p.subst(tcx, substs)))
     }
@@ -1301,31 +1300,6 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
     }
 }
 
-/// A "type scheme", in ML terminology, is a type combined with some
-/// set of generic types that the type is, well, generic over. In Rust
-/// terms, it is the "type" of a fn item or struct -- this type will
-/// include various generic parameters that must be substituted when
-/// the item/struct is referenced. That is called converting the type
-/// scheme to a monotype.
-///
-/// - `generics`: the set of type parameters and their bounds
-/// - `ty`: the base types, which may reference the parameters defined
-///   in `generics`
-///
-/// Note that TypeSchemes are also sometimes called "polytypes" (and
-/// in fact this struct used to carry that name, so you may find some
-/// stray references in a comment or something). We try to reserve the
-/// "poly" prefix to refer to higher-ranked things, as in
-/// `PolyTraitRef`.
-///
-/// Note that each item also comes with predicates, see
-/// `lookup_predicates`.
-#[derive(Clone, Debug)]
-pub struct TypeScheme<'tcx> {
-    pub generics: &'tcx Generics<'tcx>,
-    pub ty: Ty<'tcx>,
-}
-
 bitflags! {
     flags AdtFlags: u32 {
         const NO_ADT_FLAGS        = 0,
@@ -1359,8 +1333,6 @@ pub struct VariantDefData<'tcx, 'container: 'tcx> {
 }
 
 pub struct FieldDefData<'tcx, 'container: 'tcx> {
-    /// The field's DefId. NOTE: the fields of tuple-like enum variants
-    /// are not real items, and don't have entries in tcache etc.
     pub did: DefId,
     pub name: Name,
     pub vis: Visibility,
@@ -1542,13 +1514,8 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     }
 
     #[inline]
-    pub fn type_scheme(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> TypeScheme<'gcx> {
-        tcx.lookup_item_type(self.did)
-    }
-
-    #[inline]
     pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> GenericPredicates<'gcx> {
-        tcx.lookup_predicates(self.did)
+        tcx.item_predicates(self.did)
     }
 
     /// Returns an iterator over all fields contained
@@ -1784,7 +1751,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
                     def_id: sized_trait,
                     substs: tcx.mk_substs_trait(ty, &[])
                 }).to_predicate();
-                let predicates = tcx.lookup_predicates(self.did).predicates;
+                let predicates = tcx.item_predicates(self.did).predicates;
                 if predicates.into_iter().any(|p| p == sized_predicate) {
                     vec![]
                 } else {
@@ -1963,7 +1930,7 @@ impl LvaluePreference {
 }
 
 /// Helper for looking things up in the various maps that are populated during
-/// typeck::collect (e.g., `tcx.associated_items`, `tcx.tcache`, etc).  All of
+/// typeck::collect (e.g., `tcx.associated_items`, `tcx.types`, etc).  All of
 /// these share the pattern that if the id is local, it should have been loaded
 /// into the map by the `typeck::collect` phase.  If the def-id is external,
 /// then we have to go consult the crate loading code (and cache the result for
@@ -2104,7 +2071,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn provided_trait_methods(self, id: DefId) -> Vec<AssociatedItem> {
         self.associated_items(id)
-            .filter(|item| item.kind == AssociatedKind::Method && item.has_value)
+            .filter(|item| item.kind == AssociatedKind::Method && item.defaultness.has_value())
             .collect()
     }
 
@@ -2145,67 +2112,107 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                            .expect("missing AssociatedItem in metadata");
             }
 
+            // When the user asks for a given associated item, we
+            // always go ahead and convert all the associated items in
+            // the container. Note that we are also careful only to
+            // ever register a read on the *container* of the assoc
+            // item, not the assoc item itself. This prevents changes
+            // in the details of an item (for example, the type to
+            // which an associated type is bound) from contaminating
+            // those tasks that just need to scan the names of items
+            // and so forth.
+
             let id = self.map.as_local_node_id(def_id).unwrap();
             let parent_id = self.map.get_parent(id);
             let parent_def_id = self.map.local_def_id(parent_id);
-            match self.map.get(id) {
-                ast_map::NodeTraitItem(trait_item) => {
-                    let (kind, has_self, has_value) = match trait_item.node {
-                        hir::MethodTraitItem(ref sig, ref body) => {
-                            (AssociatedKind::Method, sig.decl.get_self().is_some(),
-                             body.is_some())
-                        }
-                        hir::ConstTraitItem(_, ref value) => {
-                            (AssociatedKind::Const, false, value.is_some())
-                        }
-                        hir::TypeTraitItem(_, ref ty) => {
-                            (AssociatedKind::Type, false, ty.is_some())
-                        }
-                    };
-
-                    AssociatedItem {
-                        name: trait_item.name,
-                        kind: kind,
-                        vis: Visibility::from_hir(&hir::Inherited, id, self),
-                        defaultness: hir::Defaultness::Default,
-                        has_value: has_value,
-                        def_id: def_id,
-                        container: TraitContainer(parent_def_id),
-                        method_has_self_argument: has_self
+            let parent_item = self.map.expect_item(parent_id);
+            match parent_item.node {
+                hir::ItemImpl(.., ref impl_trait_ref, _, ref impl_item_refs) => {
+                    for impl_item_ref in impl_item_refs {
+                        let assoc_item =
+                            self.associated_item_from_impl_item_ref(parent_def_id,
+                                                                    impl_trait_ref.is_some(),
+                                                                    impl_item_ref);
+                        self.associated_items.borrow_mut().insert(assoc_item.def_id, assoc_item);
                     }
                 }
-                ast_map::NodeImplItem(impl_item) => {
-                    let (kind, has_self) = match impl_item.node {
-                        hir::ImplItemKind::Method(ref sig, _) => {
-                            (AssociatedKind::Method, sig.decl.get_self().is_some())
-                        }
-                        hir::ImplItemKind::Const(..) => (AssociatedKind::Const, false),
-                        hir::ImplItemKind::Type(..) => (AssociatedKind::Type, false)
-                    };
 
-                    // Trait impl items are always public.
-                    let public = hir::Public;
-                    let parent_item = self.map.expect_item(parent_id);
-                    let vis = if let hir::ItemImpl(.., Some(_), _, _) = parent_item.node {
-                        &public
-                    } else {
-                        &impl_item.vis
-                    };
-
-                    AssociatedItem {
-                        name: impl_item.name,
-                        kind: kind,
-                        vis: Visibility::from_hir(vis, id, self),
-                        defaultness: impl_item.defaultness,
-                        has_value: true,
-                        def_id: def_id,
-                        container: ImplContainer(parent_def_id),
-                        method_has_self_argument: has_self
+                hir::ItemTrait(.., ref trait_items) => {
+                    for trait_item in trait_items {
+                        let assoc_item =
+                            self.associated_item_from_trait_item_ref(parent_def_id, trait_item);
+                        self.associated_items.borrow_mut().insert(assoc_item.def_id, assoc_item);
                     }
                 }
-                item => bug!("associated_item: {:?} not an associated item", item)
+
+                ref r => {
+                    panic!("unexpected container of associated items: {:?}", r)
+                }
             }
+
+            // memoize wants us to return something, so return
+            // the one we generated for this def-id
+            *self.associated_items.borrow().get(&def_id).unwrap()
         })
+    }
+
+    fn associated_item_from_trait_item_ref(self,
+                                           parent_def_id: DefId,
+                                           trait_item: &hir::TraitItem)
+                                           -> AssociatedItem {
+        let def_id = self.map.local_def_id(trait_item.id);
+
+        let (kind, has_self, has_value) = match trait_item.node {
+            hir::MethodTraitItem(ref sig, ref body) => {
+                (AssociatedKind::Method, sig.decl.get_self().is_some(),
+                 body.is_some())
+            }
+            hir::ConstTraitItem(_, ref value) => {
+                (AssociatedKind::Const, false, value.is_some())
+            }
+            hir::TypeTraitItem(_, ref ty) => {
+                (AssociatedKind::Type, false, ty.is_some())
+            }
+        };
+
+        AssociatedItem {
+            name: trait_item.name,
+            kind: kind,
+            vis: Visibility::from_hir(&hir::Inherited, trait_item.id, self),
+            defaultness: hir::Defaultness::Default { has_value: has_value },
+            def_id: def_id,
+            container: TraitContainer(parent_def_id),
+            method_has_self_argument: has_self
+        }
+    }
+
+    fn associated_item_from_impl_item_ref(self,
+                                          parent_def_id: DefId,
+                                          from_trait_impl: bool,
+                                          impl_item_ref: &hir::ImplItemRef)
+                                          -> AssociatedItem {
+        let def_id = self.map.local_def_id(impl_item_ref.id.node_id);
+        let (kind, has_self) = match impl_item_ref.kind {
+            hir::AssociatedItemKind::Const => (ty::AssociatedKind::Const, false),
+            hir::AssociatedItemKind::Method { has_self } => {
+                (ty::AssociatedKind::Method, has_self)
+            }
+            hir::AssociatedItemKind::Type => (ty::AssociatedKind::Type, false),
+        };
+
+        // Trait impl items are always public.
+        let public = hir::Public;
+        let vis = if from_trait_impl { &public } else { &impl_item_ref.vis };
+
+        ty::AssociatedItem {
+            name: impl_item_ref.name,
+            kind: kind,
+            vis: ty::Visibility::from_hir(vis, impl_item_ref.id.node_id, self),
+            defaultness: impl_item_ref.defaultness,
+            def_id: def_id,
+            container: ImplContainer(parent_def_id),
+            method_has_self_argument: has_self
+        }
     }
 
     pub fn associated_item_def_ids(self, def_id: DefId) -> Rc<Vec<DefId>> {
@@ -2216,19 +2223,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             let id = self.map.as_local_node_id(def_id).unwrap();
             let item = self.map.expect_item(id);
-            match item.node {
+            let vec: Vec<_> = match item.node {
                 hir::ItemTrait(.., ref trait_items) => {
-                    Rc::new(trait_items.iter().map(|trait_item| {
-                        self.map.local_def_id(trait_item.id)
-                    }).collect())
+                    trait_items.iter()
+                               .map(|trait_item| trait_item.id)
+                               .map(|id| self.map.local_def_id(id))
+                               .collect()
                 }
-                hir::ItemImpl(.., ref impl_items) => {
-                    Rc::new(impl_items.iter().map(|impl_item| {
-                        self.map.local_def_id(impl_item.id)
-                    }).collect())
+                hir::ItemImpl(.., ref impl_item_refs) => {
+                    impl_item_refs.iter()
+                                  .map(|impl_item_ref| impl_item_ref.id)
+                                  .map(|id| self.map.local_def_id(id.node_id))
+                                  .collect()
                 }
                 _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait")
-            }
+            };
+            Rc::new(vec)
         })
     }
 
@@ -2351,38 +2361,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Register a given item type
-    pub fn register_item_type(self, did: DefId, scheme: TypeScheme<'gcx>) {
-        self.tcache.borrow_mut().insert(did, scheme.ty);
-        self.generics.borrow_mut().insert(did, scheme.generics);
-    }
-
     // If the given item is in an external crate, looks up its type and adds it to
     // the type cache. Returns the type parameters and type.
-    pub fn lookup_item_type(self, did: DefId) -> TypeScheme<'gcx> {
-        let ty = lookup_locally_or_in_crate_store(
-            "tcache", did, &self.tcache,
-            || self.sess.cstore.item_type(self.global_tcx(), did));
-
-        TypeScheme {
-            ty: ty,
-            generics: self.lookup_generics(did)
-        }
-    }
-
-    pub fn opt_lookup_item_type(self, did: DefId) -> Option<TypeScheme<'gcx>> {
-        if did.krate != LOCAL_CRATE {
-            return Some(self.lookup_item_type(did));
-        }
-
-        if let Some(ty) = self.tcache.borrow().get(&did).cloned() {
-            Some(TypeScheme {
-                ty: ty,
-                generics: self.lookup_generics(did)
-            })
-        } else {
-            None
-        }
+    pub fn item_type(self, did: DefId) -> Ty<'gcx> {
+        lookup_locally_or_in_crate_store(
+            "item_types", did, &self.item_types,
+            || self.sess.cstore.item_type(self.global_tcx(), did))
     }
 
     /// Given the did of a trait, returns its canonical trait ref.
@@ -2411,21 +2395,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Given the did of an item, returns its generics.
-    pub fn lookup_generics(self, did: DefId) -> &'gcx Generics<'gcx> {
+    pub fn item_generics(self, did: DefId) -> &'gcx Generics<'gcx> {
         lookup_locally_or_in_crate_store(
             "generics", did, &self.generics,
             || self.alloc_generics(self.sess.cstore.item_generics(self.global_tcx(), did)))
     }
 
     /// Given the did of an item, returns its full set of predicates.
-    pub fn lookup_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
+    pub fn item_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
         lookup_locally_or_in_crate_store(
             "predicates", did, &self.predicates,
             || self.sess.cstore.item_predicates(self.global_tcx(), did))
     }
 
     /// Given the did of a trait, returns its superpredicates.
-    pub fn lookup_super_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
+    pub fn item_super_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
         lookup_locally_or_in_crate_store(
             "super_predicates", did, &self.super_predicates,
             || self.sess.cstore.item_super_predicates(self.global_tcx(), did))
@@ -2602,12 +2586,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // tables by typeck; else, it will be retreived from
         // the external crate metadata.
         if let Some(ty) = self.tables.borrow().closure_tys.get(&def_id) {
-            return ty.subst(self, substs.func_substs);
+            return ty.subst(self, substs.substs);
         }
 
         let ty = self.sess.cstore.closure_ty(self.global_tcx(), def_id);
         self.tables.borrow_mut().closure_tys.insert(def_id, ty.clone());
-        ty.subst(self, substs.func_substs)
+        ty.subst(self, substs.substs)
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.
@@ -2718,7 +2702,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         //
 
         let tcx = self.global_tcx();
-        let generic_predicates = tcx.lookup_predicates(def_id);
+        let generic_predicates = tcx.item_predicates(def_id);
         let bounds = generic_predicates.instantiate(tcx, free_substs);
         let bounds = tcx.liberate_late_bound_regions(free_id_outlive, &ty::Binder(bounds));
         let predicates = bounds.predicates;
@@ -2753,12 +2737,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_region(ty::ReScope(self.region_maps.node_extent(id)))
     }
 
-    pub fn visit_all_items_in_krate<V,F>(self,
-                                         dep_node_fn: F,
-                                         visitor: &mut V)
-        where F: FnMut(DefId) -> DepNode<DefId>, V: Visitor<'gcx>
+    pub fn visit_all_item_likes_in_krate<V,F>(self,
+                                              dep_node_fn: F,
+                                              visitor: &mut V)
+        where F: FnMut(DefId) -> DepNode<DefId>, V: ItemLikeVisitor<'gcx>
     {
-        dep_graph::visit_all_items_in_krate(self.global_tcx(), dep_node_fn, visitor);
+        dep_graph::visit_all_item_likes_in_krate(self.global_tcx(), dep_node_fn, visitor);
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`

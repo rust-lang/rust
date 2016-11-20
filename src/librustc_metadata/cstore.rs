@@ -31,7 +31,7 @@ use syntax::{ast, attr};
 use syntax::ext::base::SyntaxExtension;
 use syntax_pos;
 
-pub use rustc::middle::cstore::{NativeLibraryKind, LinkagePreference};
+pub use rustc::middle::cstore::{NativeLibrary, LinkagePreference};
 pub use rustc::middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
 pub use rustc::middle::cstore::{CrateSource, LinkMeta};
 
@@ -97,7 +97,7 @@ pub struct CStore {
     metas: RefCell<FxHashMap<CrateNum, Rc<CrateMetadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
-    used_libraries: RefCell<Vec<(String, NativeLibraryKind)>>,
+    used_libraries: RefCell<Vec<NativeLibrary>>,
     used_link_args: RefCell<Vec<String>>,
     statically_included_foreign_items: RefCell<NodeSet>,
     pub inlined_item_cache: RefCell<DefIdMap<Option<CachedInlinedItem>>>,
@@ -212,12 +212,12 @@ impl CStore {
         libs
     }
 
-    pub fn add_used_library(&self, lib: String, kind: NativeLibraryKind) {
-        assert!(!lib.is_empty());
-        self.used_libraries.borrow_mut().push((lib, kind));
+    pub fn add_used_library(&self, lib: NativeLibrary) {
+        assert!(!lib.name.is_empty());
+        self.used_libraries.borrow_mut().push(lib);
     }
 
-    pub fn get_used_libraries<'a>(&'a self) -> &'a RefCell<Vec<(String, NativeLibraryKind)>> {
+    pub fn get_used_libraries(&self) -> &RefCell<Vec<NativeLibrary>> {
         &self.used_libraries
     }
 

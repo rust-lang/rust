@@ -15,6 +15,5 @@ fn main() {
         struct Bar;
         use foo::Bar;
         //~^ ERROR a type named `Bar` has already been defined in this block
-        //~^^ ERROR a value named `Bar` has already been defined in this block
     }
 }

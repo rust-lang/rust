@@ -1499,26 +1499,7 @@ impl<T> ops::DerefMut for Vec<T> {
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
-        // Unroll the first iteration, as the vector is going to be
-        // expanded on this iteration in every case when the iterable is not
-        // empty, but the loop in extend_desugared() is not going to see the
-        // vector being full in the few subsequent loop iterations.
-        // So we get better branch prediction.
-        let mut iterator = iter.into_iter();
-        let mut vector = match iterator.next() {
-            None => return Vec::new(),
-            Some(element) => {
-                let (lower, _) = iterator.size_hint();
-                let mut vector = Vec::with_capacity(lower.saturating_add(1));
-                unsafe {
-                    ptr::write(vector.get_unchecked_mut(0), element);
-                    vector.set_len(1);
-                }
-                vector
-            }
-        };
-        vector.extend_desugared(iterator);
-        vector
+        <Self as SpecExtend<_>>::from_iter(iter.into_iter())
     }
 }
 
@@ -1586,36 +1567,64 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        self.extend_desugared(iter.into_iter())
+        self.spec_extend(iter.into_iter())
     }
 }
 
-trait IsTrustedLen : Iterator {
-    fn trusted_len(&self) -> Option<usize> { None }
+// Specialization trait used for Vec::from_iter and Vec::extend
+trait SpecExtend<I> {
+    fn from_iter(iter: I) -> Self;
+    fn spec_extend(&mut self, iter: I);
 }
-impl<I> IsTrustedLen for I where I: Iterator { }
 
-impl<I> IsTrustedLen for I where I: TrustedLen
+impl<I, T> SpecExtend<I> for Vec<T>
+    where I: Iterator<Item=T>,
 {
-    fn trusted_len(&self) -> Option<usize> {
-        let (low, high) = self.size_hint();
+    default fn from_iter(mut iterator: I) -> Self {
+        // Unroll the first iteration, as the vector is going to be
+        // expanded on this iteration in every case when the iterable is not
+        // empty, but the loop in extend_desugared() is not going to see the
+        // vector being full in the few subsequent loop iterations.
+        // So we get better branch prediction.
+        let mut vector = match iterator.next() {
+            None => return Vec::new(),
+            Some(element) => {
+                let (lower, _) = iterator.size_hint();
+                let mut vector = Vec::with_capacity(lower.saturating_add(1));
+                unsafe {
+                    ptr::write(vector.get_unchecked_mut(0), element);
+                    vector.set_len(1);
+                }
+                vector
+            }
+        };
+        vector.spec_extend(iterator);
+        vector
+    }
+
+    default fn spec_extend(&mut self, iter: I) {
+        self.extend_desugared(iter)
+    }
+}
+
+impl<I, T> SpecExtend<I> for Vec<T>
+    where I: TrustedLen<Item=T>,
+{
+    fn from_iter(iterator: I) -> Self {
+        let mut vector = Vec::new();
+        vector.spec_extend(iterator);
+        vector
+    }
+
+    fn spec_extend(&mut self, iterator: I) {
+        // This is the case for a TrustedLen iterator.
+        let (low, high) = iterator.size_hint();
         if let Some(high_value) = high {
             debug_assert_eq!(low, high_value,
                              "TrustedLen iterator's size hint is not exact: {:?}",
                              (low, high));
         }
-        high
-    }
-}
-
-impl<T> Vec<T> {
-    fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
-        // This function should be the moral equivalent of:
-        //
-        //      for item in iterator {
-        //          self.push(item);
-        //      }
-        if let Some(additional) = iterator.trusted_len() {
+        if let Some(additional) = high {
             self.reserve(additional);
             unsafe {
                 let mut ptr = self.as_mut_ptr().offset(self.len() as isize);
@@ -1628,17 +1637,30 @@ impl<T> Vec<T> {
                 }
             }
         } else {
-            while let Some(element) = iterator.next() {
-                let len = self.len();
-                if len == self.capacity() {
-                    let (lower, _) = iterator.size_hint();
-                    self.reserve(lower.saturating_add(1));
-                }
-                unsafe {
-                    ptr::write(self.get_unchecked_mut(len), element);
-                    // NB can't overflow since we would have had to alloc the address space
-                    self.set_len(len + 1);
-                }
+            self.extend_desugared(iterator)
+        }
+    }
+}
+
+impl<T> Vec<T> {
+    fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
+        // This is the case for a general iterator.
+        //
+        // This function should be the moral equivalent of:
+        //
+        //      for item in iterator {
+        //          self.push(item);
+        //      }
+        while let Some(element) = iterator.next() {
+            let len = self.len();
+            if len == self.capacity() {
+                let (lower, _) = iterator.size_hint();
+                self.reserve(lower.saturating_add(1));
+            }
+            unsafe {
+                ptr::write(self.get_unchecked_mut(len), element);
+                // NB can't overflow since we would have had to alloc the address space
+                self.set_len(len + 1);
             }
         }
     }

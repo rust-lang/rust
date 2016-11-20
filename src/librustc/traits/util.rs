@@ -128,7 +128,7 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
         match *predicate {
             ty::Predicate::Trait(ref data) => {
                 // Predicates declared on the trait.
-                let predicates = tcx.lookup_super_predicates(data.def_id());
+                let predicates = tcx.item_super_predicates(data.def_id());
 
                 let mut predicates: Vec<_> =
                     predicates.predicates
@@ -295,7 +295,7 @@ impl<'cx, 'gcx, 'tcx> Iterator for SupertraitDefIds<'cx, 'gcx, 'tcx> {
             None => { return None; }
         };
 
-        let predicates = self.tcx.lookup_super_predicates(def_id);
+        let predicates = self.tcx.item_super_predicates(def_id);
         let visited = &mut self.visited;
         self.stack.extend(
             predicates.predicates
@@ -362,7 +362,7 @@ pub fn impl_trait_ref_and_oblig<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a,
     let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
         super::normalize(selcx, ObligationCause::dummy(), &impl_trait_ref);
 
-    let predicates = selcx.tcx().lookup_predicates(impl_def_id);
+    let predicates = selcx.tcx().item_predicates(impl_def_id);
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
     let Normalized { value: predicates, obligations: normalization_obligations2 } =
         super::normalize(selcx, ObligationCause::dummy(), &predicates);

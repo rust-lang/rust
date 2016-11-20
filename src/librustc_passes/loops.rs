@@ -33,15 +33,19 @@ struct CheckLoopVisitor<'a> {
 pub fn check_crate(sess: &Session, map: &Map) {
     let _task = map.dep_graph.in_task(DepNode::CheckLoops);
     let krate = map.krate();
-    krate.visit_all_items(&mut CheckLoopVisitor {
+    krate.visit_all_item_likes(&mut CheckLoopVisitor {
         sess: sess,
         cx: Normal,
-    });
+    }.as_deep_visitor());
 }
 
 impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
     fn visit_item(&mut self, i: &hir::Item) {
         self.with_context(Normal, |v| intravisit::walk_item(v, i));
+    }
+
+    fn visit_impl_item(&mut self, i: &hir::ImplItem) {
+        self.with_context(Normal, |v| intravisit::walk_impl_item(v, i));
     }
 
     fn visit_expr(&mut self, e: &hir::Expr) {

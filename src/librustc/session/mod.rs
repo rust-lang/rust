@@ -258,14 +258,15 @@ impl Session {
     pub fn unimpl(&self, msg: &str) -> ! {
         self.diagnostic().unimpl(msg)
     }
-    pub fn add_lint(&self,
-                    lint: &'static lint::Lint,
-                    id: ast::NodeId,
-                    sp: Span,
-                    msg: String)
+    pub fn add_lint<S: Into<MultiSpan>>(&self,
+                                        lint: &'static lint::Lint,
+                                        id: ast::NodeId,
+                                        sp: S,
+                                        msg: String)
     {
         self.add_lint_diagnostic(lint, id, (sp, &msg[..]))
     }
+
     pub fn add_lint_diagnostic<M>(&self,
                                   lint: &'static lint::Lint,
                                   id: ast::NodeId,

@@ -79,17 +79,28 @@ pub fn check(build: &mut Build) {
         break
     }
 
-    need_cmd("python".as_ref());
-
-    // Look for the nodejs command, needed for emscripten testing
-    if let Some(node) = have_cmd("node".as_ref()) {
-        build.config.nodejs = Some(node);
-    } else if let Some(node) = have_cmd("nodejs".as_ref()) {
-        build.config.nodejs = Some(node);
+    if build.config.python.is_none() {
+        build.config.python = have_cmd("python2.7".as_ref());
     }
+    if build.config.python.is_none() {
+        build.config.python = have_cmd("python2".as_ref());
+    }
+    if build.config.python.is_none() {
+        need_cmd("python".as_ref());
+        build.config.python = Some("python".into());
+    }
+    need_cmd(build.config.python.as_ref().unwrap().as_ref());
+
 
     if let Some(ref s) = build.config.nodejs {
         need_cmd(s.as_ref());
+    } else {
+        // Look for the nodejs command, needed for emscripten testing
+        if let Some(node) = have_cmd("node".as_ref()) {
+            build.config.nodejs = Some(node);
+        } else if let Some(node) = have_cmd("nodejs".as_ref()) {
+            build.config.nodejs = Some(node);
+        }
     }
 
     if let Some(ref gdb) = build.config.gdb {

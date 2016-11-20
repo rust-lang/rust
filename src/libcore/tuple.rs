@@ -13,11 +13,6 @@
 use cmp::*;
 use cmp::Ordering::*;
 
-// FIXME(#19630) Remove this work-around
-macro_rules! e {
-    ($e:expr) => { $e }
-}
-
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
     ($(
@@ -29,7 +24,7 @@ macro_rules! tuple_impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T:Clone),+> Clone for ($($T,)+) {
                 fn clone(&self) -> ($($T,)+) {
-                    ($(e!(self.$idx.clone()),)+)
+                    ($(self.$idx.clone(),)+)
                 }
             }
 
@@ -37,11 +32,11 @@ macro_rules! tuple_impls {
             impl<$($T:PartialEq),+> PartialEq for ($($T,)+) {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
-                    e!($(self.$idx == other.$idx)&&+)
+                    $(self.$idx == other.$idx)&&+
                 }
                 #[inline]
                 fn ne(&self, other: &($($T,)+)) -> bool {
-                    e!($(self.$idx != other.$idx)||+)
+                    $(self.$idx != other.$idx)||+
                 }
             }
 

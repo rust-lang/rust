@@ -470,8 +470,8 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
             } else {
                 (arg_ty, false)
             };
-            let upvar_tys = if let ty::TyClosure(_, ref substs) = closure_ty.sty {
-                &substs.upvar_tys[..]
+            let upvar_tys = if let ty::TyClosure(def_id, substs) = closure_ty.sty {
+                substs.upvar_tys(def_id, tcx)
             } else {
                 bug!("upvar_decls with non-closure arg0 type `{}`", closure_ty);
             };

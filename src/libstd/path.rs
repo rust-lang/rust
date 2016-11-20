@@ -25,11 +25,18 @@
 //!
 //! ```rust
 //! use std::path::Path;
+//! use std::ffi::OsStr;
 //!
 //! let path = Path::new("/tmp/foo/bar.txt");
-//! let file = path.file_name();
+//!
+//! let parent = path.parent();
+//! assert_eq!(parent, Some(Path::new("/tmp/foo")));
+//!
+//! let file_stem = path.file_stem();
+//! assert_eq!(file_stem, Some(OsStr::new("bar")));
+//!
 //! let extension = path.extension();
-//! let parent_dir = path.parent();
+//! assert_eq!(extension, Some(OsStr::new("txt")));
 //! ```
 //!
 //! To build or modify paths, use `PathBuf`:
@@ -990,17 +997,24 @@ impl PathBuf {
     ///
     /// # Examples
     ///
+    /// Pushing a relative path extends the existing path:
+    ///
     /// ```
     /// use std::path::PathBuf;
     ///
-    /// let mut path = PathBuf::new();
-    /// path.push("/tmp");
+    /// let mut path = PathBuf::from("/tmp");
     /// path.push("file.bk");
     /// assert_eq!(path, PathBuf::from("/tmp/file.bk"));
+    /// ```
     ///
-    /// // Pushing an absolute path replaces the current path
-    /// path.push("/etc/passwd");
-    /// assert_eq!(path, PathBuf::from("/etc/passwd"));
+    /// Pushing an absolute path replaces the existing path:
+    ///
+    /// ```
+    /// use std::path::PathBuf;
+    ///
+    /// let mut path = PathBuf::from("/tmp");
+    /// path.push("/etc");
+    /// assert_eq!(path, PathBuf::from("/etc"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push<P: AsRef<Path>>(&mut self, path: P) {
@@ -1319,13 +1333,19 @@ impl AsRef<OsStr> for PathBuf {
 ///
 /// ```
 /// use std::path::Path;
+/// use std::ffi::OsStr;
 ///
 /// let path = Path::new("/tmp/foo/bar.txt");
-/// let file = path.file_name();
-/// let extension = path.extension();
-/// let parent_dir = path.parent();
-/// ```
 ///
+/// let parent = path.parent();
+/// assert_eq!(parent, Some(Path::new("/tmp/foo")));
+///
+/// let file_stem = path.file_stem();
+/// assert_eq!(file_stem, Some(OsStr::new("bar")));
+///
+/// let extension = path.extension();
+/// assert_eq!(extension, Some(OsStr::new("txt")));
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Path {
     inner: OsStr,

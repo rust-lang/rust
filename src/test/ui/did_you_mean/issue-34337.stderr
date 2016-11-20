@@ -1,0 +1,11 @@
+error: cannot borrow immutable local variable `key` as mutable
+  --> $DIR/issue-34337.rs:16:14
+   |
+16 |     get(&mut key);
+   |              ^^^
+   |              |
+   |              try removing `&mut` here
+   |              cannot reborrow mutably
+
+error: aborting due to previous error
+

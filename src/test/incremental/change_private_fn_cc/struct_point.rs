@@ -23,10 +23,7 @@
 #![rustc_partition_reused(module="struct_point-fn_calls_methods_in_another_impl", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_read_field", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_write_field", cfg="rpass2")]
-
-// FIXME(#37335) -- should be reused, but an errant Krate edge causes
-// it to get translated (at least I *think* this is that same problem)
-#![rustc_partition_translated(module="struct_point-fn_make_struct", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="rpass2")]
 
 extern crate point;
 

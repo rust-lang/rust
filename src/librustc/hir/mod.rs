@@ -68,6 +68,7 @@ pub mod check_attr;
 pub mod def;
 pub mod def_id;
 pub mod intravisit;
+pub mod itemlikevisit;
 pub mod lowering;
 pub mod map;
 pub mod pat_util;
@@ -423,11 +424,17 @@ pub struct Crate {
     // detected, which in turn can make compile-fail tests yield
     // slightly different results.
     pub items: BTreeMap<NodeId, Item>,
+
+    pub impl_items: BTreeMap<ImplItemId, ImplItem>,
 }
 
 impl Crate {
     pub fn item(&self, id: NodeId) -> &Item {
         &self.items[&id]
+    }
+
+    pub fn impl_item(&self, id: ImplItemId) -> &ImplItem {
+        &self.impl_items[&id]
     }
 
     /// Visits all items in the crate in some determinstic (but
@@ -438,11 +445,15 @@ impl Crate {
     /// follows lexical scoping rules -- then you want a different
     /// approach. You should override `visit_nested_item` in your
     /// visitor and then call `intravisit::walk_crate` instead.
-    pub fn visit_all_items<'hir, V>(&'hir self, visitor: &mut V)
-        where V: intravisit::Visitor<'hir>
+    pub fn visit_all_item_likes<'hir, V>(&'hir self, visitor: &mut V)
+        where V: itemlikevisit::ItemLikeVisitor<'hir>
     {
         for (_, item) in &self.items {
             visitor.visit_item(item);
+        }
+
+        for (_, impl_item) in &self.impl_items {
+            visitor.visit_impl_item(impl_item);
         }
     }
 }
@@ -1041,6 +1052,14 @@ pub enum TraitItem_ {
     TypeTraitItem(TyParamBounds, Option<P<Ty>>),
 }
 
+// The bodies for items are stored "out of line", in a separate
+// hashmap in the `Crate`. Here we just record the node-id of the item
+// so it can fetched later.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct ImplItemId {
+    pub node_id: NodeId,
+}
+
 /// Represents anything within an `impl` block
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ImplItem {
@@ -1240,17 +1259,27 @@ pub enum Constness {
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Defaultness {
-    Default,
+    Default { has_value: bool },
     Final,
 }
 
 impl Defaultness {
+    pub fn has_value(&self) -> bool {
+        match *self {
+            Defaultness::Default { has_value, .. } => has_value,
+            Defaultness::Final => true,
+        }
+    }
+
     pub fn is_final(&self) -> bool {
         *self == Defaultness::Final
     }
 
     pub fn is_default(&self) -> bool {
-        *self == Defaultness::Default
+        match *self {
+            Defaultness::Default { .. } => true,
+            _ => false,
+        }
     }
 }
 
@@ -1527,7 +1556,7 @@ pub enum Item_ {
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
-             HirVec<ImplItem>),
+             HirVec<ImplItemRef>),
 }
 
 impl Item_ {
@@ -1549,6 +1578,29 @@ impl Item_ {
             ItemDefaultImpl(..) => "item",
         }
     }
+}
+
+/// A reference from an impl to one of its associated items. This
+/// contains the item's id, naturally, but also the item's name and
+/// some other high-level details (like whether it is an associated
+/// type or method, and whether it is public). This allows other
+/// passes to find the impl they want without loading the id (which
+/// means fewer edges in the incremental compilation graph).
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct ImplItemRef {
+    pub id: ImplItemId,
+    pub name: Name,
+    pub kind: AssociatedItemKind,
+    pub span: Span,
+    pub vis: Visibility,
+    pub defaultness: Defaultness,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum AssociatedItemKind {
+    Const,
+    Method { has_self: bool },
+    Type,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

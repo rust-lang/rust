@@ -20,10 +20,13 @@ fn create_graph() -> TestGraph {
 
     // Create a simple graph
     //
-    //    A -+> B --> C
-    //       |  |     ^
-    //       |  v     |
-    //       F  D --> E
+    //          F
+    //          |
+    //          V
+    //    A --> B --> C
+    //          |     ^
+    //          v     |
+    //          D --> E
 
     let a = graph.add_node("A");
     let b = graph.add_node("B");
@@ -38,6 +41,29 @@ fn create_graph() -> TestGraph {
     graph.add_edge(d, e, "DE");
     graph.add_edge(e, c, "EC");
     graph.add_edge(f, b, "FB");
+
+    return graph;
+}
+
+fn create_graph_with_cycle() -> TestGraph {
+    let mut graph = Graph::new();
+
+    // Create a graph with a cycle.
+    //
+    //    A --> B <-- +
+    //          |     |
+    //          v     |
+    //          C --> D
+
+    let a = graph.add_node("A");
+    let b = graph.add_node("B");
+    let c = graph.add_node("C");
+    let d = graph.add_node("D");
+
+    graph.add_edge(a, b, "AB");
+    graph.add_edge(b, c, "BC");
+    graph.add_edge(c, d, "CD");
+    graph.add_edge(d, b, "DB");
 
     return graph;
 }
@@ -138,4 +164,16 @@ fn each_adjacent_from_c() {
 fn each_adjacent_from_d() {
     let graph = create_graph();
     test_adjacent_edges(&graph, NodeIndex(3), "D", &[("BD", "B")], &[("DE", "E")]);
+}
+
+#[test]
+fn is_node_cyclic_a() {
+    let graph = create_graph_with_cycle();
+    assert!(!graph.is_node_cyclic(NodeIndex(0)));
+}
+
+#[test]
+fn is_node_cyclic_b() {
+    let graph = create_graph_with_cycle();
+    assert!(graph.is_node_cyclic(NodeIndex(1)));
 }

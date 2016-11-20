@@ -1334,8 +1334,18 @@ actual:\n\
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec![input_file.to_str().unwrap().to_owned(),
                             "-L".to_owned(),
-                            self.config.build_base.to_str().unwrap().to_owned(),
-                            format!("--target={}", target)];
+                            self.config.build_base.to_str().unwrap().to_owned()];
+
+        // Optionally prevent default --target if specified in test compile-flags.
+        let custom_target = self.props.compile_flags
+            .iter()
+            .fold(false, |acc, ref x| acc || x.starts_with("--target"));
+
+        if !custom_target {
+            args.extend(vec![
+                format!("--target={}", target),
+            ]);
+        }
 
         if let Some(revision) = self.revision {
             args.extend(vec![
@@ -1456,8 +1466,11 @@ actual:\n\
 
         // If this is emscripten, then run tests under nodejs
         if self.config.target.contains("emscripten") {
-            let nodejs = self.config.nodejs.clone().unwrap_or("nodejs".to_string());
-            args.push(nodejs);
+            if let Some(ref p) = self.config.nodejs {
+                args.push(p.clone());
+            } else {
+                self.fatal("no NodeJS binary found (--nodejs)");
+            }
         }
 
         let exe_file = self.make_exe_name();

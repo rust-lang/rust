@@ -1,8 +1,8 @@
 error: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion.rs:12:13
+  --> $DIR/borrowck-let-suggestion.rs:12:23
    |
 12 |     let x = [1].iter();
-   |             ^^^       - temporary value only lives until here
+   |             ---       ^ temporary value dropped here while still borrowed
    |             |
    |             temporary value created here
 13 | }

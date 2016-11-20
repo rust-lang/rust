@@ -38,7 +38,7 @@ so as to avoid copying a large data structure. For example:
 struct BigStruct {
     one: i32,
     two: i32,
-    // etc
+    // Etc.
     one_hundred: i32,
 }
 
@@ -68,7 +68,7 @@ This is an antipattern in Rust. Instead, write this:
 struct BigStruct {
     one: i32,
     two: i32,
-    // etc
+    // Etc.
     one_hundred: i32,
 }
 

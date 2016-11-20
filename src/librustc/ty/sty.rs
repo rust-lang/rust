@@ -11,6 +11,7 @@
 //! This module contains TypeVariants and its major components
 
 use hir::def_id::DefId;
+
 use middle::region;
 use ty::subst::Substs;
 use ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TypeFoldable};
@@ -164,7 +165,7 @@ pub enum TypeVariants<'tcx> {
     /// Anonymized (`impl Trait`) type found in a return type.
     /// The DefId comes from the `impl Trait` ast::Ty node, and the
     /// substitutions are for the generics of the function in question.
-    /// After typeck, the concrete type can be found in the `tcache` map.
+    /// After typeck, the concrete type can be found in the `types` map.
     TyAnon(DefId, &'tcx Substs<'tcx>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
@@ -254,15 +255,23 @@ pub enum TypeVariants<'tcx> {
 /// handle). Plus it fixes an ICE. :P
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ClosureSubsts<'tcx> {
-    /// Lifetime and type parameters from the enclosing function.
+    /// Lifetime and type parameters from the enclosing function,
+    /// concatenated with the types of the upvars.
+    ///
     /// These are separated out because trans wants to pass them around
     /// when monomorphizing.
-    pub func_substs: &'tcx Substs<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
+}
 
-    /// The types of the upvars. The list parallels the freevars and
-    /// `upvar_borrows` lists. These are kept distinct so that we can
-    /// easily index into them.
-    pub upvar_tys: &'tcx Slice<Ty<'tcx>>
+impl<'a, 'gcx, 'acx, 'tcx> ClosureSubsts<'tcx> {
+    #[inline]
+    pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'acx>) ->
+        impl Iterator<Item=Ty<'tcx>> + 'tcx
+    {
+        let generics = tcx.item_generics(def_id);
+        self.substs[self.substs.len()-generics.own_count()..].iter().map(
+            |t| t.as_type().expect("unexpected region in upvars"))
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -556,7 +565,7 @@ pub struct DebruijnIndex {
 ///
 /// These are regions that are stored behind a binder and must be substituted
 /// with some concrete region before being used. There are 2 kind of
-/// bound regions: early-bound, which are bound in a TypeScheme/TraitDef,
+/// bound regions: early-bound, which are bound in an item's Generics,
 /// and are substituted by a Substs,  and late-bound, which are part of
 /// higher-ranked types (e.g. `for<'a> fn(&'a ())`) and are substituted by
 /// the likes of `liberate_late_bound_regions`. The distinction exists
@@ -1234,7 +1243,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 substs.regions().collect()
             }
             TyClosure(_, ref substs) => {
-                substs.func_substs.regions().collect()
+                substs.substs.regions().collect()
             }
             TyProjection(ref data) => {
                 data.trait_ref.substs.regions().collect()

@@ -10,8 +10,8 @@
 
 #![allow(non_upper_case_globals)]
 
-use llvm::{Struct, Array, Attribute};
-use abi::{FnType, ArgType};
+use llvm::{Struct, Array};
+use abi::{FnType, ArgType, ArgAttribute};
 use context::CrateContext;
 
 // Data layout: e-p:32:32-i64:64-v128:32:128-n32-S128
@@ -39,7 +39,7 @@ fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
     if arg.ty.is_aggregate() {
         arg.make_indirect(ccx);
-        arg.attrs.set(Attribute::ByVal);
+        arg.attrs.set(ArgAttribute::ByVal);
     }
 }
 

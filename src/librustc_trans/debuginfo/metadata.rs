@@ -574,10 +574,11 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
 
         }
-        ty::TyClosure(_, ref substs) => {
+        ty::TyClosure(def_id, substs) => {
+            let upvar_tys : Vec<_> = substs.upvar_tys(def_id, cx.tcx()).collect();
             prepare_tuple_metadata(cx,
                                    t,
-                                   &substs.upvar_tys,
+                                   &upvar_tys,
                                    unique_type_id,
                                    usage_site_span).finalize(cx)
         }
@@ -1765,7 +1766,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = tcx.erase_regions(&tcx.tables().node_id_to_type(node_id));
+    let variable_type = tcx.erase_regions(&tcx.item_type(node_def_id));
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = tcx.item_name(node_def_id).to_string();
     let linkage_name = mangled_name_of_item(cx, node_def_id, "");

@@ -33,17 +33,11 @@ const XUnit: u8 = 0;
 extern crate variant_namespacing;
 pub use variant_namespacing::XE::*;
 //~^ ERROR `XStruct` has already been defined
-//~| ERROR `XStruct` has already been defined
 //~| ERROR `XTuple` has already been defined
-//~| ERROR `XTuple` has already been defined
-//~| ERROR `XUnit` has already been defined
 //~| ERROR `XUnit` has already been defined
 pub use E::*;
 //~^ ERROR `Struct` has already been defined
-//~| ERROR `Struct` has already been defined
 //~| ERROR `Tuple` has already been defined
-//~| ERROR `Tuple` has already been defined
-//~| ERROR `Unit` has already been defined
 //~| ERROR `Unit` has already been defined
 
 fn main() {}

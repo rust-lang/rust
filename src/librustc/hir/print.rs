@@ -809,7 +809,7 @@ impl<'a> State<'a> {
                 self.bopen()?;
                 self.print_inner_attributes(&item.attrs)?;
                 for impl_item in impl_items {
-                    self.print_impl_item(impl_item)?;
+                    self.print_impl_item_ref(impl_item)?;
                 }
                 self.bclose(item.span)?;
             }
@@ -1020,14 +1020,25 @@ impl<'a> State<'a> {
         self.ann.post(self, NodeSubItem(ti.id))
     }
 
+    pub fn print_impl_item_ref(&mut self, item_ref: &hir::ImplItemRef) -> io::Result<()> {
+        if let Some(krate) = self.krate {
+            // skip nested items if krate context was not provided
+            let item = &krate.impl_item(item_ref.id);
+            self.print_impl_item(item)
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn print_impl_item(&mut self, ii: &hir::ImplItem) -> io::Result<()> {
         self.ann.pre(self, NodeSubItem(ii.id))?;
         self.hardbreak_if_not_bol()?;
         self.maybe_print_comment(ii.span.lo)?;
         self.print_outer_attributes(&ii.attrs)?;
 
-        if let hir::Defaultness::Default = ii.defaultness {
-            self.word_nbsp("default")?;
+        match ii.defaultness {
+            hir::Defaultness::Default { .. } => self.word_nbsp("default")?,
+            hir::Defaultness::Final => (),
         }
 
         match ii.node {

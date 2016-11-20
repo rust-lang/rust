@@ -132,7 +132,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                         path: self.cx.path.clone(),
                         bench: is_bench_fn(&self.cx, &i),
                         ignore: is_ignored(&i),
-                        should_panic: should_panic(&i)
+                        should_panic: should_panic(&i, &self.cx)
                     };
                     self.cx.testfns.push(test);
                     self.tests.push(i.ident);
@@ -395,14 +395,44 @@ fn is_ignored(i: &ast::Item) -> bool {
     i.attrs.iter().any(|attr| attr.check_name("ignore"))
 }
 
-fn should_panic(i: &ast::Item) -> ShouldPanic {
+fn should_panic(i: &ast::Item, cx: &TestCtxt) -> ShouldPanic {
     match i.attrs.iter().find(|attr| attr.check_name("should_panic")) {
         Some(attr) => {
-            let msg = attr.meta_item_list()
-                .and_then(|list| list.iter().find(|mi| mi.check_name("expected")))
-                .and_then(|li| li.meta_item())
-                .and_then(|mi| mi.value_str());
-            ShouldPanic::Yes(msg)
+            let sd = cx.span_diagnostic;
+            if attr.is_value_str() {
+                sd.struct_span_warn(
+                    attr.span(),
+                    "attribute must be of the form: \
+                     `#[should_panic]` or \
+                     `#[should_panic(expected = \"error message\")]`"
+                ).note("Errors in this attribute were erroneously allowed \
+                        and will become a hard error in a future release.")
+                .emit();
+                return ShouldPanic::Yes(None);
+            }
+            match attr.meta_item_list() {
+                // Handle #[should_panic]
+                None => ShouldPanic::Yes(None),
+                // Handle #[should_panic(expected = "foo")]
+                Some(list) => {
+                    let msg = list.iter()
+                        .find(|mi| mi.check_name("expected"))
+                        .and_then(|mi| mi.meta_item())
+                        .and_then(|mi| mi.value_str());
+                    if list.len() != 1 || msg.is_none() {
+                        sd.struct_span_warn(
+                            attr.span(),
+                            "argument must be of the form: \
+                             `expected = \"error message\"`"
+                        ).note("Errors in this attribute were erroneously \
+                                allowed and will become a hard error in a \
+                                future release.").emit();
+                        ShouldPanic::Yes(None)
+                    } else {
+                        ShouldPanic::Yes(msg)
+                    }
+                },
+            }
         }
         None => ShouldPanic::No,
     }
