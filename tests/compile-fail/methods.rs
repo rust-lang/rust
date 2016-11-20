@@ -550,11 +550,11 @@ fn str_extend_chars() {
     //~|HELP try this
     //~|SUGGESTION s.push_str("abc")
 
-    s.push_str(def.as_str());
+    s.push_str(&def);
     s.extend(def.chars());
     //~^ERROR calling `.extend(_.chars())`
     //~|HELP try this
-    //~|SUGGESTION s.push_str(def.as_str())
+    //~|SUGGESTION s.push_str(&def)
 
     s.extend(abc.chars().skip(1));
     s.extend("abc".chars().skip(1));

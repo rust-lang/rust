@@ -511,7 +511,7 @@ declare_lint! {
 /// let def = String::from("def");
 /// let mut s = String::new();
 /// s.push_str(abc);
-/// s.push_str(def.as_str());
+/// s.push_str(&def));
 /// ```
 
 declare_lint! {
@@ -843,10 +843,10 @@ fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
         let (self_ty, _) = walk_ptrs_ty_depth(cx.tcx.tables().expr_ty(target));
-        let extra_suggestion = if self_ty.sty == ty::TyStr {
+        let ref_str = if self_ty.sty == ty::TyStr {
             ""
         } else if match_type(cx, self_ty, &paths::STRING) {
-            ".as_str()"
+            "&"
         } else {
             return;
         };
@@ -860,8 +860,8 @@ fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
                 db.span_suggestion(expr.span, "try this",
                         format!("{}.push_str({}{})",
                                 snippet(cx, args[0].span, "_"),
-                                snippet(cx, target.span, "_"),
-                                extra_suggestion));
+                                ref_str,
+                                snippet(cx, target.span, "_")));
             });
     }
 }
