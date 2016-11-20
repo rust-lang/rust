@@ -619,6 +619,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         };
 
         if !self.span.filter_generated(sub_span, item.span) {
+            let mut sig = self.sig_base(item);
+            sig.ident_start = sig.text.find(&name).expect("Name not in struct signature?");
+            sig.ident_end = sig.ident_start + name.len();
             self.dumper.struct_data(StructData {
                 span: sub_span.expect("No span found for struct"),
                 id: item.id,
@@ -630,17 +633,28 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 fields: fields,
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
+                sig: sig,
             }.lower(self.tcx));
         }
 
-
-        // fields
         for field in def.fields() {
             self.process_struct_field_def(field, item.id);
             self.visit_ty(&field.ty);
         }
 
         self.process_generic_params(ty_params, item.span, &qualname, item.id);
+    }
+
+    fn sig_base(&self, item: &ast::Item) -> Signature {
+        let text = self.span.signature_string_for_span(item.span).expect("Couldn't make signature");
+        Signature {
+            span: mk_sp(item.span.lo, item.span.lo + BytePos(text.len() as u32)),
+            text: text,
+            ident_start: 0,
+            ident_end: 0,
+            defs: vec![],
+            refs: vec![],
+        }
     }
 
     fn process_enum(&mut self,
