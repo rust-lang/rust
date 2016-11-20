@@ -432,6 +432,12 @@ impl<'a> Iterator for Chars<'a> {
         // `isize::MAX` (that's well below `usize::MAX`).
         ((len + 3) / 4, Some(len))
     }
+
+    #[inline]
+    fn last(mut self) -> Option<char> {
+        // No need to go through the entire string.
+        self.next_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -504,6 +510,12 @@ impl<'a> Iterator for CharIndices<'a> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<(usize, char)> {
+        // No need to go through the entire string.
+        self.next_back()
     }
 }
 
