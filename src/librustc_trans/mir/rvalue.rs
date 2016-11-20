@@ -136,7 +136,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         // If this is a tuple or closure, we need to translate GEP indices.
                         let layout = bcx.ccx().layout_of(dest.ty.to_ty(bcx.tcx()));
                         let translation = if let Layout::Univariant { ref variant, .. } = *layout {
-                            Some(&variant.gep_index)
+                            Some(&variant.memory_index)
                         } else {
                             None
                         };

@@ -512,14 +512,14 @@ pub struct Struct {
     /// If true, the size is exact, otherwise it's only a lower bound.
     pub sized: bool,
 
-    /// Offsets for the first byte of each field, ordered to match the tys.
+    /// Offsets for the first byte of each field, ordered to match the source definition order.
     /// This vector does not go in increasing order.
     /// FIXME(eddyb) use small vector optimization for the common case.
     pub offsets: Vec<Size>,
 
-    /// Maps field indices to GEP indices, depending how fields were permuted.
+    /// Maps source order field indices to memory order indices, depending how fields were permuted.
     /// FIXME (camlorn) also consider small vector  optimization here.
-    pub gep_index: Vec<u32>,
+    pub memory_index: Vec<u32>,
 
     pub min_size: Size,
 }
@@ -535,91 +535,78 @@ impl<'a, 'gcx, 'tcx> Struct {
             packed: packed,
             sized: true,
             offsets: vec![],
-            gep_index: vec![],
+            memory_index: vec![],
             min_size: Size::from_bytes(0),
         };
-        ret.fill_in_fields(dl, fields, scapegoat, repr, is_enum_variant)?;
-        Ok(ret)
-    }
 
-    fn fill_in_fields<I>(&mut self, dl: &TargetDataLayout,
-                     fields: I,
-                     scapegoat: Ty<'gcx>,
-                     repr: attr::ReprAttr,
-                     is_enum_variant: bool)
-                     -> Result<(), LayoutError<'gcx>>
-    where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>> {
         let fields = fields.collect::<Result<Vec<_>, LayoutError<'gcx>>>()?;
         if is_enum_variant { assert!(fields.len() >= 1, "Enum variants must have at least a discriminant field.") }
-        if fields.len() == 0 {return Ok(())};
+        if fields.len() == 0 {return Ok(ret)};
 
-        self.offsets = vec![Size::from_bytes(0); fields.len()];
-        let mut inverse_gep_index: Vec<u32> = Vec::with_capacity(fields.len());
-        inverse_gep_index.extend(0..fields.len() as u32);
+        ret.offsets = vec![Size::from_bytes(0); fields.len()];
+        let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
         if repr == attr::ReprAny {
-            let start: usize = if is_enum_variant {1} else {0};
+            let start = if is_enum_variant {1} else {0};
             // FIXME(camlorn): we can't reorder the last field because it is possible for structs to be coerced to unsized.
             // Example: struct Foo<T: ?Sized> { x: i32, y: T }
             // We can coerce &Foo<u8> to &Foo<Trait>.
-            let end = inverse_gep_index.len()-1;
+            let end = inverse_memory_index.len()-1;
             if end > start {
-                let optimizing  = &mut inverse_gep_index[start..end];
+                let optimizing  = &mut inverse_memory_index[start..end];
                 optimizing.sort_by_key(|&x| fields[x as usize].align(dl).abi());
             }
-        if is_enum_variant { assert_eq!(inverse_gep_index[0], 0, "Enums must have field 0 as the field with lowest offset.") }
+            if is_enum_variant { assert_eq!(inverse_memory_index[0], 0, "Enums must have field 0 as the field with lowest offset.") }
         }
         
-        // At this point, inverse_gep_index holds field indices by increasing offset.
-        // That is, if field 5 has offset 0, the first element of inverse_gep_index is 5.
+        // At this point, inverse_memory_index holds field indices by increasing offset.
+        // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
         // We now write field offsets to the corresponding offset slot; field 5 with offset 0 puts 0 in offsets[5].
-        // At the bottom of this function, we use inverse_gep_index to produce gep_index.
+        // At the bottom of this function, we use inverse_memory_index to produce memory_index.
 
         let mut offset = Size::from_bytes(0);
 
-        for i in inverse_gep_index.iter() {
+        for i in inverse_memory_index.iter() {
             let field = fields[*i as usize];
-            if !self.sized {
-                bug!("Struct::extend: field #{} of `{}` comes after unsized field",
-                     self.offsets.len(), scapegoat);
+            if !ret.sized {
+                bug!("Struct::new: field #{} of `{}` comes after unsized field",
+                     ret.offsets.len(), scapegoat);
             }
 
             if field.is_unsized() {
-                self.sized = false;
+                ret.sized = false;
             }
 
             // Invariant: offset < dl.obj_size_bound() <= 1<<61
-            if !self.packed {
+            if !ret.packed {
                 let align = field.align(dl);
-                self.align = self.align.max(align);
+                ret.align = ret.align.max(align);
                 offset = offset.abi_align(align);
             }
 
-
-            debug!("Struct::extend offset: {:?} field: {:?} {:?}", offset, field, field.size(dl));
-            self.offsets[*i as usize] = offset;
-
+            debug!("Struct::new offset: {:?} field: {:?} {:?}", offset, field, field.size(dl));
+            ret.offsets[*i as usize] = offset;
 
             offset = offset.checked_add(field.size(dl), dl)
                            .map_or(Err(LayoutError::SizeOverflow(scapegoat)), Ok)?;
         }
 
-        debug!("Struct::extend min_size: {:?}", offset);
 
-        self.min_size = offset;
+        debug!("Struct::new min_size: {:?}", offset);
+        ret.min_size = offset;
 
-        // As stated above, inverse_gep_index holds field indices by increasing offset.
+        // As stated above, inverse_memory_index holds field indices by increasing offset.
         // This makes it an already-sorted view of the offsets vec.
         // To invert it, consider:
-        // If field 5 has offset 0, offsets[0] is 5, and gep_index[5] should be 0.
-        // Field 5 would be the first element, so gep_index is i:
-        self.gep_index = vec![0; inverse_gep_index.len()];
+        // If field 5 has offset 0, offsets[0] is 5, and memory_index[5] should be 0.
+        // Field 5 would be the first element, so memory_index is i:
+        ret.memory_index = vec![0; inverse_memory_index.len()];
 
-        for i in 0..inverse_gep_index.len() {
-            self.gep_index[inverse_gep_index[i] as usize]  = i as u32;
+        for i in 0..inverse_memory_index.len() {
+            ret.memory_index[inverse_memory_index[i] as usize]  = i as u32;
         }
 
-        Ok(())
+        Ok(ret)
     }
 
     /// Get the size with trailing alignment padding.
@@ -645,21 +632,21 @@ impl<'a, 'gcx, 'tcx> Struct {
     pub fn field_index_by_increasing_offset<'b>(&'b self) -> impl iter::Iterator<Item=usize>+'b {
         let mut inverse_small = [0u8; 64];
         let mut inverse_big = vec![];
-        let use_small = self.gep_index.len() <= inverse_small.len();
+        let use_small = self.memory_index.len() <= inverse_small.len();
 
         // We have to write this logic twice in order to keep the array small.
         if use_small {
-            for i in 0..self.gep_index.len() {
-                inverse_small[self.gep_index[i] as usize] = i as u8;
+            for i in 0..self.memory_index.len() {
+                inverse_small[self.memory_index[i] as usize] = i as u8;
             }
         } else {
-            inverse_big = vec![0; self.gep_index.len()];
-            for i in 0..self.gep_index.len() {
-                inverse_big[self.gep_index[i] as usize] = i as u32;
+            inverse_big = vec![0; self.memory_index.len()];
+            for i in 0..self.memory_index.len() {
+                inverse_big[self.memory_index[i] as usize] = i as u32;
             }
         }
 
-        (0..self.gep_index.len()).map(move |i| {
+        (0..self.memory_index.len()).map(move |i| {
             if use_small { inverse_small[i] as usize }
             else { inverse_big[i] as usize }
         })
@@ -703,19 +690,19 @@ impl<'a, 'gcx, 'tcx> Struct {
                                                       .iter().map(|field| {
                     field.ty(tcx, substs)
                 }),
-                Some(&variant.gep_index[..]))
+                Some(&variant.memory_index[..]))
             }
 
             // Perhaps one of the upvars of this closure is non-zero
             (&Univariant { ref variant, .. }, &ty::TyClosure(def, substs)) => {
                 let upvar_tys = substs.upvar_tys(def, tcx);
                 Struct::non_zero_field_path(infcx, upvar_tys,
-                    Some(&variant.gep_index[..]))
+                    Some(&variant.memory_index[..]))
             }
             // Can we use one of the fields in this tuple?
             (&Univariant { ref variant, .. }, &ty::TyTuple(tys)) => {
                 Struct::non_zero_field_path(infcx, tys.iter().cloned(),
-                    Some(&variant.gep_index[..]))
+                    Some(&variant.memory_index[..]))
             }
 
             // Is this a fixed-size array of something non-zero
@@ -1193,7 +1180,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                         // We have to fix the last element of path here as only we know the right value.
                         let mut i = *path.last().unwrap();
-                        i = st.gep_index[i as usize];
+                        i = st.memory_index[i as usize];
                         *path.last_mut().unwrap() = i;
                         path.push(0); // For GEP through a pointer.
                         path.reverse();
