@@ -201,7 +201,6 @@ dependencies = [
 name = "proc_macro"
 version = "0.0.0"
 dependencies = [
- "rustc_i128 0.0.0",
  "syntax 0.0.0",
 ]
 
@@ -388,6 +387,7 @@ dependencies = [
  "log 0.0.0",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
+ "rustc_i128 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",

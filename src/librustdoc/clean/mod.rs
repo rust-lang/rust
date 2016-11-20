@@ -1606,7 +1606,7 @@ impl PrimitiveType {
     }
 
     pub fn as_str(&self) -> &'static str {
-        use PrimitiveType::*;
+        use self::PrimitiveType::*;
         match *self {
             Isize => "isize",
             I8 => "i8",
