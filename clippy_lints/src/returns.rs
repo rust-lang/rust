@@ -58,14 +58,6 @@ impl ReturnPass {
 
     // Check a the final expression in a block if it's a return.
     fn check_final_expr(&mut self, cx: &EarlyContext, expr: &ast::Expr, span: Option<Span>) {
-        fn attr_is_cfg(attr: &ast::Attribute) -> bool {
-            if let ast::MetaItemKind::List(ref key, _) = attr.node.value.node {
-                *key == "cfg"
-            } else {
-                false
-            }
-        }
-
         match expr.node {
             // simple return is always "bad"
             ast::ExprKind::Ret(Some(ref inner)) => {
@@ -116,6 +108,7 @@ impl ReturnPass {
             let ast::StmtKind::Expr(ref retexpr) = retexpr.node,
             let Some(stmt) = it.next_back(),
             let ast::StmtKind::Local(ref local) = stmt.node,
+            !local.attrs.iter().any(attr_is_cfg),
             let Some(ref initexpr) = local.init,
             let ast::PatKind::Ident(_, Spanned { node: id, .. }, _) = local.pat.node,
             let ast::ExprKind::Path(_, ref path) = retexpr.node,
@@ -151,3 +144,12 @@ impl EarlyLintPass for ReturnPass {
         self.check_let_return(cx, block);
     }
 }
+
+fn attr_is_cfg(attr: &ast::Attribute) -> bool {
+    if let ast::MetaItemKind::List(ref key, _) = attr.node.value.node {
+        *key == "cfg"
+    } else {
+        false
+    }
+}
+
