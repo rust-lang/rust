@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::Cell;
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
@@ -23,7 +22,8 @@ use std::sync::{Arc, Mutex};
 use testing;
 use rustc_lint;
 use rustc::dep_graph::DepGraph;
-use rustc::hir::map as hir_map;
+use rustc::hir;
+use rustc::hir::intravisit;
 use rustc::session::{self, config};
 use rustc::session::config::{OutputType, OutputTypes, Externs};
 use rustc::session::search_paths::{SearchPaths, PathKind};
@@ -33,18 +33,15 @@ use rustc_driver::{driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
+use rustc_trans::back::link;
+use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
 use errors;
 use errors::emitter::ColorConfig;
 
-use core;
-use clean;
-use clean::Clean;
-use fold::DocFolder;
+use clean::Attributes;
 use html::markdown;
-use passes;
-use visit_ast::RustdocVisitor;
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -87,48 +84,36 @@ pub fn run(input: &str,
         config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
 
     let krate = panictry!(driver::phase_1_parse_input(&sess, &input));
-    let driver::ExpansionResult { defs, mut hir_forest, analysis, .. } = {
+    let driver::ExpansionResult { defs, mut hir_forest, .. } = {
         phase_2_configure_and_expand(
             &sess, &cstore, krate, None, "rustdoc-test", None, MakeGlobMap::No, |_| Ok(())
         ).expect("phase_2_configure_and_expand aborted in rustdoc!")
     };
 
-    let dep_graph = DepGraph::new(false);
+    let crate_name = crate_name.unwrap_or_else(|| {
+        link::find_crate_name(None, &hir_forest.krate().attrs, &input)
+    });
     let opts = scrape_test_config(hir_forest.krate());
-    let _ignore = dep_graph.in_ignore();
-    let map = hir_map::map_crate(&mut hir_forest, defs);
-
-    let ctx = core::DocContext {
-        map: &map,
-        maybe_typed: core::NotTyped(&sess),
-        input: input,
-        populated_all_crate_impls: Cell::new(false),
-        external_traits: Default::default(),
-        deref_trait_did: Cell::new(None),
-        deref_mut_trait_did: Cell::new(None),
-        access_levels: Default::default(),
-        renderinfo: Default::default(),
-        ty_substs: Default::default(),
-        lt_substs: Default::default(),
-        export_map: analysis.export_map,
-    };
-
-    let mut v = RustdocVisitor::new(&ctx);
-    v.visit(ctx.map.krate());
-    let mut krate = v.clean(&ctx);
-    if let Some(name) = crate_name {
-        krate.name = name;
-    }
-    let krate = passes::collapse_docs(krate);
-    let krate = passes::unindent_comments(krate);
-
-    let mut collector = Collector::new(krate.name.to_string(),
+    let mut collector = Collector::new(crate_name,
                                        cfgs,
                                        libs,
                                        externs,
                                        false,
                                        opts);
-    collector.fold_crate(krate);
+
+    {
+        let dep_graph = DepGraph::new(false);
+        let _ignore = dep_graph.in_ignore();
+        let map = hir::map::map_crate(&mut hir_forest, defs);
+        let krate = map.krate();
+        let mut hir_collector = HirCollector {
+            collector: &mut collector,
+            map: &map
+        };
+        hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
+            intravisit::walk_crate(this, krate);
+        });
+    }
 
     test_args.insert(0, "rustdoctest".to_string());
 
@@ -472,56 +457,84 @@ impl Collector {
     }
 }
 
-impl DocFolder for Collector {
-    fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
-        let current_name = match item.name {
-            Some(ref name) if !name.is_empty() => Some(name.clone()),
-            _ => typename_if_impl(&item)
+struct HirCollector<'a, 'hir: 'a> {
+    collector: &'a mut Collector,
+    map: &'a hir::map::Map<'hir>
+}
+
+impl<'a, 'hir> HirCollector<'a, 'hir> {
+    fn visit_testable<F: FnOnce(&mut Self)>(&mut self,
+                                            name: String,
+                                            attrs: &[ast::Attribute],
+                                            nested: F) {
+        let has_name = !name.is_empty();
+        if has_name {
+            self.collector.names.push(name);
+        }
+
+        let mut attrs = Attributes::from_ast(attrs);
+        attrs.collapse_doc_comments();
+        attrs.unindent_doc_comments();
+        if let Some(doc) = attrs.doc_value() {
+            self.collector.cnt = 0;
+            markdown::find_testable_code(doc, self.collector);
+        }
+
+        nested(self);
+
+        if has_name {
+            self.collector.names.pop();
+        }
+    }
+}
+
+impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'hir>> {
+        Some(self.map)
+    }
+
+    fn visit_item(&mut self, item: &'hir hir::Item) {
+        let name = if let hir::ItemImpl(.., ref ty, _) = item.node {
+            hir::print::ty_to_string(ty)
+        } else {
+            item.name.to_string()
         };
 
-        let pushed = current_name.map(|name| self.names.push(name)).is_some();
+        self.visit_testable(name, &item.attrs, |this| {
+            intravisit::walk_item(this, item);
+        });
+    }
 
-        if let Some(doc) = item.doc_value() {
-            self.cnt = 0;
-            markdown::find_testable_code(doc, &mut *self);
-        }
+    fn visit_trait_item(&mut self, item: &'hir hir::TraitItem) {
+        self.visit_testable(item.name.to_string(), &item.attrs, |this| {
+            intravisit::walk_trait_item(this, item);
+        });
+    }
 
-        let ret = self.fold_item_recur(item);
-        if pushed {
-            self.names.pop();
-        }
+    fn visit_impl_item(&mut self, item: &'hir hir::ImplItem) {
+        self.visit_testable(item.name.to_string(), &item.attrs, |this| {
+            intravisit::walk_impl_item(this, item);
+        });
+    }
 
-        return ret;
+    fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem) {
+        self.visit_testable(item.name.to_string(), &item.attrs, |this| {
+            intravisit::walk_foreign_item(this, item);
+        });
+    }
 
-        // FIXME: it would be better to not have the escaped version in the first place
-        fn unescape_for_testname(mut s: String) -> String {
-            // for refs `&foo`
-            if s.contains("&amp;") {
-                s = s.replace("&amp;", "&");
+    fn visit_variant(&mut self,
+                     v: &'hir hir::Variant,
+                     g: &'hir hir::Generics,
+                     item_id: ast::NodeId) {
+        self.visit_testable(v.node.name.to_string(), &v.node.attrs, |this| {
+            intravisit::walk_variant(this, v, g, item_id);
+        });
+    }
 
-                // `::&'a mut Foo::` looks weird, let's make it `::<&'a mut Foo>`::
-                if let Some('&') = s.chars().nth(0) {
-                    s = format!("<{}>", s);
-                }
-            }
-
-            // either `<..>` or `->`
-            if s.contains("&gt;") {
-                s.replace("&gt;", ">")
-                 .replace("&lt;", "<")
-            } else {
-                s
-            }
-        }
-
-        fn typename_if_impl(item: &clean::Item) -> Option<String> {
-            if let clean::ItemEnum::ImplItem(ref impl_) = item.inner {
-                let path = impl_.for_.to_string();
-                let unescaped_path = unescape_for_testname(path);
-                Some(unescaped_path)
-            } else {
-                None
-            }
-        }
+    fn visit_struct_field(&mut self, f: &'hir hir::StructField) {
+        self.visit_testable(f.name.to_string(), &f.attrs, |this| {
+            intravisit::walk_struct_field(this, f);
+        });
     }
 }
