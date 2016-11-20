@@ -47,12 +47,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                      body: &'gcx hir::Expr,
                      expected_sig: Option<ty::FnSig<'tcx>>)
                      -> Ty<'tcx> {
-        let expr_def_id = self.tcx.map.local_def_id(expr.id);
-
         debug!("check_closure opt_kind={:?} expected_sig={:?}",
                opt_kind,
                expected_sig);
 
+        let expr_def_id = self.tcx.map.local_def_id(expr.id);
         let mut fn_ty = AstConv::ty_of_closure(self,
                                                hir::Unsafety::Normal,
                                                decl,
@@ -62,16 +61,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Create type variables (for now) to represent the transformed
         // types of upvars. These will be unified during the upvar
         // inference phase (`upvar.rs`).
-        let num_upvars = self.tcx.with_freevars(expr.id, |fv| fv.len());
-        let upvar_tys = self.next_ty_vars(num_upvars);
-
-        debug!("check_closure: expr.id={:?} upvar_tys={:?}",
-               expr.id,
-               upvar_tys);
-
         let closure_type = self.tcx.mk_closure(expr_def_id,
-                                               self.parameter_environment.free_substs,
-                                               &upvar_tys);
+            self.parameter_environment.free_substs.extend_to(self.tcx, expr_def_id,
+                |_, _| span_bug!(expr.span, "closure has region param"),
+                |_, _| self.infcx.next_ty_var()
+            )
+        );
+
+        debug!("check_closure: expr.id={:?} closure_type={:?}", expr.id, closure_type);
 
         let fn_sig = self.tcx
             .liberate_late_bound_regions(self.tcx.region_maps.call_site_extent(expr.id, body.id),

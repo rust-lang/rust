@@ -531,8 +531,8 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     let mut cx = cx;
     match t.sty {
-        ty::TyClosure(_, ref substs) => {
-            for (i, upvar_ty) in substs.upvar_tys.iter().enumerate() {
+        ty::TyClosure(def_id, substs) => {
+            for (i, upvar_ty) in substs.upvar_tys(def_id, cx.tcx()).enumerate() {
                 let llupvar = adt::trans_field_ptr(cx, t, value, Disr(0), i);
                 cx = drop_ty(cx, llupvar, upvar_ty, DebugLoc::None);
             }

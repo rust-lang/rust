@@ -19,12 +19,13 @@
 #![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 
-// FIXME(#37333) -- the following modules *should* be reused but are not
+#![rustc_partition_reused(module="struct_point-fn_read_field", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_write_field", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="rpass2")]
+
+// FIXME(#37720) these two should be reused, but data gets entangled across crates
 #![rustc_partition_translated(module="struct_point-fn_calls_methods_in_same_impl", cfg="rpass2")]
 #![rustc_partition_translated(module="struct_point-fn_calls_methods_in_another_impl", cfg="rpass2")]
-#![rustc_partition_translated(module="struct_point-fn_make_struct", cfg="rpass2")]
-#![rustc_partition_translated(module="struct_point-fn_read_field", cfg="rpass2")]
-#![rustc_partition_translated(module="struct_point-fn_write_field", cfg="rpass2")]
 
 extern crate point;
 
@@ -32,7 +33,7 @@ extern crate point;
 mod fn_calls_methods_in_same_impl {
     use point::Point;
 
-    // FIXME(#37333) -- we should not need to typeck this again
+    // FIXME(#37720) data gets entangled across crates
     #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
     pub fn check() {
         let x = Point { x: 2.0, y: 2.0 };
@@ -44,9 +45,9 @@ mod fn_calls_methods_in_same_impl {
 mod fn_calls_methods_in_another_impl {
     use point::Point;
 
-    // FIXME(#37333) -- we should not need to typeck this again
+    // FIXME(#37720) data gets entangled across crates
     #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
-    pub fn check() {
+    pub fn dirty() {
         let mut x = Point { x: 2.0, y: 2.0 };
         x.translate(3.0, 3.0);
     }
@@ -56,8 +57,7 @@ mod fn_calls_methods_in_another_impl {
 mod fn_make_struct {
     use point::Point;
 
-    // FIXME(#37333) -- we should not need to typeck this again
-    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
     pub fn make_origin() -> Point {
         Point { x: 2.0, y: 2.0 }
     }
@@ -67,8 +67,7 @@ mod fn_make_struct {
 mod fn_read_field {
     use point::Point;
 
-    // FIXME(#37333) -- we should not need to typeck this again
-    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
     pub fn get_x(p: Point) -> f32 {
         p.x
     }
@@ -78,8 +77,7 @@ mod fn_read_field {
 mod fn_write_field {
     use point::Point;
 
-    // FIXME(#37333) -- we should not need to typeck this again
-    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
     pub fn inc_x(p: &mut Point) {
         p.x += 1.0;
     }

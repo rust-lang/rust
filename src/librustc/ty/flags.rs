@@ -88,8 +88,7 @@ impl FlagComputation {
             &ty::TyClosure(_, ref substs) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
-                self.add_substs(&substs.func_substs);
-                self.add_tys(&substs.upvar_tys);
+                self.add_substs(&substs.substs);
             }
 
             &ty::TyInfer(infer) => {

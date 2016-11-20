@@ -1342,13 +1342,13 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.kind {
             ty::AssociatedKind::Const => {
-                let ty = cx.tcx().lookup_item_type(self.def_id).ty;
+                let ty = cx.tcx().item_type(self.def_id);
                 AssociatedConstItem(ty.clean(cx), None)
             }
             ty::AssociatedKind::Method => {
-                let generics = (cx.tcx().lookup_generics(self.def_id),
-                                &cx.tcx().lookup_predicates(self.def_id)).clean(cx);
-                let fty = match cx.tcx().lookup_item_type(self.def_id).ty.sty {
+                let generics = (cx.tcx().item_generics(self.def_id),
+                                &cx.tcx().item_predicates(self.def_id)).clean(cx);
+                let fty = match cx.tcx().item_type(self.def_id).sty {
                     ty::TyFnDef(_, _, f) => f,
                     _ => unreachable!()
                 };
@@ -1357,7 +1357,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                 if self.method_has_self_argument {
                     let self_ty = match self.container {
                         ty::ImplContainer(def_id) => {
-                            cx.tcx().lookup_item_type(def_id).ty
+                            cx.tcx().item_type(def_id)
                         }
                         ty::TraitContainer(_) => cx.tcx().mk_self_type()
                     };
@@ -1373,9 +1373,10 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                         }
                     }
                 }
+
                 let provided = match self.container {
                     ty::ImplContainer(_) => false,
-                    ty::TraitContainer(_) => self.has_value
+                    ty::TraitContainer(_) => self.defaultness.has_value()
                 };
                 if provided {
                     MethodItem(Method {
@@ -1405,7 +1406,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     // all of the generics from there and then look for bounds that are
                     // applied to this associated type in question.
                     let def = cx.tcx().lookup_trait_def(did);
-                    let predicates = cx.tcx().lookup_predicates(did);
+                    let predicates = cx.tcx().item_predicates(did);
                     let generics = (def.generics, &predicates).clean(cx);
                     generics.where_predicates.iter().filter_map(|pred| {
                         let (name, self_type, trait_, bounds) = match *pred {
@@ -1440,8 +1441,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     None => bounds.push(TyParamBound::maybe_sized(cx)),
                 }
 
-                let ty = if self.has_value {
-                    Some(cx.tcx().lookup_item_type(self.def_id).ty)
+                let ty = if self.defaultness.has_value() {
+                    Some(cx.tcx().item_type(self.def_id))
                 } else {
                     None
                 };
@@ -1901,7 +1902,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyAnon(def_id, substs) => {
                 // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                 // by looking up the projections associated with the def_id.
-                let item_predicates = cx.tcx().lookup_predicates(def_id);
+                let item_predicates = cx.tcx().item_predicates(def_id);
                 let substs = cx.tcx().lift(&substs).unwrap();
                 let bounds = item_predicates.instantiate(cx.tcx(), substs);
                 ImplTrait(bounds.predicates.into_iter().filter_map(|predicate| {
@@ -2890,7 +2891,8 @@ pub struct Stability {
     pub feature: String,
     pub since: String,
     pub deprecated_since: String,
-    pub reason: String,
+    pub deprecated_reason: String,
+    pub unstable_reason: String,
     pub issue: Option<u32>
 }
 
@@ -2913,12 +2915,13 @@ impl Clean<Stability> for attr::Stability {
                 Some(attr::RustcDeprecation {ref since, ..}) => since.to_string(),
                 _=> "".to_string(),
             },
-            reason: {
-                match (&self.rustc_depr, &self.level) {
-                    (&Some(ref depr), _) => depr.reason.to_string(),
-                    (&None, &attr::Unstable {reason: Some(ref reason), ..}) => reason.to_string(),
-                    _ => "".to_string(),
-                }
+            deprecated_reason: match self.rustc_depr {
+                Some(ref depr) => depr.reason.to_string(),
+                _ => "".to_string(),
+            },
+            unstable_reason: match self.level {
+                attr::Unstable { reason: Some(ref reason), .. } => reason.to_string(),
+                _ => "".to_string(),
             },
             issue: match self.level {
                 attr::Unstable {issue, ..} => Some(issue),

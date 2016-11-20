@@ -15,6 +15,7 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
 
+use hir;
 use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use ty::subst::Substs;
@@ -148,6 +149,35 @@ pub enum ObligationCauseCode<'tcx> {
         trait_item_def_id: DefId,
         lint_id: Option<ast::NodeId>,
     },
+
+    // Checking that this expression can be assigned where it needs to be
+    // FIXME(eddyb) #11161 is the original Expr required?
+    ExprAssignable,
+
+    // Computing common supertype in the arms of a match expression
+    MatchExpressionArm { arm_span: Span,
+                         source: hir::MatchSource },
+
+    // Computing common supertype in an if expression
+    IfExpression,
+
+    // Computing common supertype of an if expression with no else counter-part
+    IfExpressionWithNoElse,
+
+    // `where a == b`
+    EquatePredicate,
+
+    // `main` has wrong type
+    MainFunctionType,
+
+    // `start` has wrong type
+    StartFunctionType,
+
+    // intrinsic has wrong type
+    IntrinsicType,
+
+    // method receiver
+    MethodReceiver,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -603,7 +633,7 @@ pub fn get_vtable_methods<'a, 'tcx>(
             // do not hold for this particular set of type parameters.
             // Note that this method could then never be called, so we
             // do not want to try and trans it, in that case (see #23435).
-            let predicates = tcx.lookup_predicates(def_id).instantiate_own(tcx, substs);
+            let predicates = tcx.item_predicates(def_id).instantiate_own(tcx, substs);
             if !normalize_and_test_predicates(tcx, predicates.predicates) {
                 debug!("get_vtable_methods: predicates do not hold");
                 return None;

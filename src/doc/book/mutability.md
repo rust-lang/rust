@@ -6,7 +6,7 @@ status:
 
 ```rust,ignore
 let x = 5;
-x = 6; // error!
+x = 6; // Error!
 ```
 
 We can introduce mutability with the `mut` keyword:
@@ -14,7 +14,7 @@ We can introduce mutability with the `mut` keyword:
 ```rust
 let mut x = 5;
 
-x = 6; // no problem!
+x = 6; // No problem!
 ```
 
 This is a mutable [variable binding][vb]. When a binding is mutable, it means
@@ -136,7 +136,7 @@ some fields mutable and some immutable:
 ```rust,ignore
 struct Point {
     x: i32,
-    mut y: i32, // nope
+    mut y: i32, // Nope.
 }
 ```
 
@@ -154,7 +154,7 @@ a.x = 10;
 
 let b = Point { x: 5, y: 6};
 
-b.x = 10; // error: cannot assign to immutable field `b.x`
+b.x = 10; // Error: cannot assign to immutable field `b.x`.
 ```
 
 [struct]: structs.html

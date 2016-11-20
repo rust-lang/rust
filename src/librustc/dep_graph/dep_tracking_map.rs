@@ -112,15 +112,15 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
     /// switched to `Map(key)`. Therefore, if `op` makes use of any
     /// HIR nodes or shared state accessed through its closure
     /// environment, it must explicitly register a read of that
-    /// state. As an example, see `type_scheme_of_item` in `collect`,
+    /// state. As an example, see `type_of_item` in `collect`,
     /// which looks something like this:
     ///
     /// ```
-    /// fn type_scheme_of_item(..., item: &hir::Item) -> ty::TypeScheme<'tcx> {
+    /// fn type_of_item(..., item: &hir::Item) -> Ty<'tcx> {
     ///     let item_def_id = ccx.tcx.map.local_def_id(it.id);
-    ///     ccx.tcx.tcache.memoized(item_def_id, || {
+    ///     ccx.tcx.item_types.memoized(item_def_id, || {
     ///         ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id)); // (*)
-    ///         compute_type_scheme_of_item(ccx, item)
+    ///         compute_type_of_item(ccx, item)
     ///     });
     /// }
     /// ```

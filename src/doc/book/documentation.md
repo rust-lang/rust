@@ -28,7 +28,7 @@ code. You can use documentation comments for this purpose:
 /// let five = Rc::new(5);
 /// ```
 pub fn new(value: T) -> Rc<T> {
-    // implementation goes here
+    // Implementation goes here.
 }
 ```
 
@@ -483,7 +483,7 @@ you have a module in `foo.rs`, you'll often open its code and see this:
 ```rust
 //! A module for using `foo`s.
 //!
-//! The `foo` module contains a lot of useful functionality blah blah blah
+//! The `foo` module contains a lot of useful functionality blah blah blah...
 ```
 
 ### Crate documentation

@@ -84,7 +84,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         return g;
     }
 
-    let ty = ccx.tcx().lookup_item_type(def_id).ty;
+    let ty = ccx.tcx().item_type(def_id);
     let g = if let Some(id) = ccx.tcx().map.as_local_node_id(def_id) {
 
         let llty = type_of::type_of(ccx, ty);
@@ -226,7 +226,7 @@ pub fn trans_static(ccx: &CrateContext,
             v
         };
 
-        let ty = ccx.tcx().lookup_item_type(def_id).ty;
+        let ty = ccx.tcx().item_type(def_id);
         let llty = type_of::type_of(ccx, ty);
         let g = if val_llty == llty {
             g

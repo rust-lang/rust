@@ -58,7 +58,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         // Start a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
         return self.infcx.commit_if_ok(|snapshot| {
-            let span = self.trace.origin.span();
+            let span = self.trace.cause.span;
 
             // First, we instantiate each bound region in the subtype with a fresh
             // region variable.
@@ -230,7 +230,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         // created as part of this type comparison".
         return self.infcx.commit_if_ok(|snapshot| {
             // Instantiate each bound region with a fresh region variable.
-            let span = self.trace.origin.span();
+            let span = self.trace.cause.span;
             let (a_with_fresh, a_map) =
                 self.infcx.replace_late_bound_regions_with_fresh_var(
                     span, HigherRankedType, a);
@@ -247,7 +247,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
             // Generalize the regions appearing in result0 if possible
             let new_vars = self.infcx.region_vars_confined_to_snapshot(snapshot);
-            let span = self.trace.origin.span();
+            let span = self.trace.cause.span;
             let result1 =
                 fold_regions_in(
                     self.tcx(),
@@ -325,10 +325,10 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // Instantiate each bound region with a fresh region variable.
             let (a_with_fresh, a_map) =
                 self.infcx.replace_late_bound_regions_with_fresh_var(
-                    self.trace.origin.span(), HigherRankedType, a);
+                    self.trace.cause.span, HigherRankedType, a);
             let (b_with_fresh, b_map) =
                 self.infcx.replace_late_bound_regions_with_fresh_var(
-                    self.trace.origin.span(), HigherRankedType, b);
+                    self.trace.cause.span, HigherRankedType, b);
             let a_vars = var_ids(self, &a_map);
             let b_vars = var_ids(self, &b_map);
 
@@ -341,7 +341,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
             // Generalize the regions appearing in result0 if possible
             let new_vars = self.infcx.region_vars_confined_to_snapshot(snapshot);
-            let span = self.trace.origin.span();
+            let span = self.trace.cause.span;
             let result1 =
                 fold_regions_in(
                     self.tcx(),
@@ -463,7 +463,7 @@ fn var_ids<'a, 'gcx, 'tcx>(fields: &CombineFields<'a, 'gcx, 'tcx>,
            ty::ReVar(r) => { r }
            _ => {
                span_bug!(
-                   fields.trace.origin.span(),
+                   fields.trace.cause.span,
                    "found non-region-vid: {:?}",
                    r);
            }

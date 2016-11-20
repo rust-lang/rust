@@ -24,7 +24,7 @@ use super::VtableImplData;
 use super::util;
 
 use hir::def_id::DefId;
-use infer::{InferOk, TypeOrigin};
+use infer::InferOk;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::parse::token;
 use syntax::ast;
@@ -209,11 +209,8 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
            obligations);
 
     let infcx = selcx.infcx();
-    let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
-    match infcx.eq_types(true, origin, normalized_ty, obligation.predicate.ty) {
-        Ok(InferOk { obligations: inferred_obligations, .. }) => {
-            // FIXME(#32730) once obligations are generated in inference, drop this assertion
-            assert!(inferred_obligations.is_empty());
+    match infcx.eq_types(true, &obligation.cause, normalized_ty, obligation.predicate.ty) {
+        Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
             Ok(Some(obligations))
         },
@@ -311,7 +308,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
             ty::TyAnon(def_id, substs) if !substs.has_escaping_regions() => { // (*)
                 // Only normalize `impl Trait` after type-checking, usually in trans.
                 if self.selcx.projection_mode() == Reveal::All {
-                    let generic_ty = self.tcx().lookup_item_type(def_id).ty;
+                    let generic_ty = self.tcx().item_type(def_id);
                     let concrete_ty = generic_ty.subst(self.tcx(), substs);
                     self.fold_ty(concrete_ty)
                 } else {
@@ -809,7 +806,7 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
     };
 
     // If so, extract what we know from the trait and try to come up with a good answer.
-    let trait_predicates = selcx.tcx().lookup_predicates(def_id);
+    let trait_predicates = selcx.tcx().item_predicates(def_id);
     let bounds = trait_predicates.instantiate(selcx.tcx(), substs);
     let bounds = elaborate_predicates(selcx.tcx(), bounds.predicates);
     assemble_candidates_from_predicates(selcx,
@@ -840,18 +837,18 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
                 let same_name = data.item_name() == obligation.predicate.item_name;
 
                 let is_match = same_name && infcx.probe(|_| {
-                    let origin = TypeOrigin::Misc(obligation.cause.span);
                     let data_poly_trait_ref =
                         data.to_poly_trait_ref();
                     let obligation_poly_trait_ref =
                         obligation_trait_ref.to_poly_trait_ref();
                     infcx.sub_poly_trait_refs(false,
-                                              origin,
+                                              obligation.cause.clone(),
                                               data_poly_trait_ref,
                                               obligation_poly_trait_ref)
-                        // FIXME(#32730) once obligations are propagated from unification in
-                        // inference, drop this assertion
-                        .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
+                        .map(|InferOk { obligations: _, value: () }| {
+                            // FIXME(#32730) -- do we need to take obligations
+                            // into account in any way? At the moment, no.
+                        })
                         .is_ok()
                 });
 
@@ -943,7 +940,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                         // an error when we confirm the candidate
                         // (which will ultimately lead to `normalize_to_error`
                         // being invoked).
-                        node_item.item.has_value
+                        node_item.item.defaultness.has_value()
                     } else {
                         node_item.item.defaultness.is_default()
                     };
@@ -1007,8 +1004,9 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                     // types, which appear not to unify -- so the
                     // overlap check succeeds, when it should
                     // fail.
-                    bug!("Tried to project an inherited associated type during \
-                          coherence checking, which is currently not supported.");
+                    span_bug!(obligation.cause.span,
+                              "Tried to project an inherited associated type during \
+                               coherence checking, which is currently not supported.");
                 };
                 candidate_set.vec.extend(new_candidate);
             }
@@ -1153,12 +1151,11 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
 
         // select those with a relevant trait-ref
         let mut env_predicates = env_predicates.filter(|data| {
-            let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
             let data_poly_trait_ref = data.to_poly_trait_ref();
             let obligation_poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
             selcx.infcx().probe(|_| {
                 selcx.infcx().sub_poly_trait_refs(false,
-                                                  origin,
+                                                  obligation.cause.clone(),
                                                   data_poly_trait_ref,
                                                   obligation_poly_trait_ref).is_ok()
             })
@@ -1187,12 +1184,10 @@ fn confirm_fn_pointer_candidate<'cx, 'gcx, 'tcx>(
     fn_pointer_vtable: VtableFnPointerData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
 {
-    // FIXME(#32730) drop this assertion once obligations are propagated from inference (fn pointer
-    // vtable nested obligations ONLY come from unification in inference)
-    assert!(fn_pointer_vtable.nested.is_empty());
     let fn_type = selcx.infcx().shallow_resolve(fn_pointer_vtable.fn_ty);
     let sig = fn_type.fn_sig();
     confirm_callable_candidate(selcx, obligation, sig, util::TupleArgumentsFlag::Yes)
+        .with_addl_obligations(fn_pointer_vtable.nested)
 }
 
 fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
@@ -1265,12 +1260,10 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
     -> Progress<'tcx>
 {
     let infcx = selcx.infcx();
-    let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
+    let cause = obligation.cause.clone();
     let trait_ref = obligation.predicate.trait_ref;
-    match infcx.match_poly_projection_predicate(origin, poly_projection, trait_ref) {
+    match infcx.match_poly_projection_predicate(cause, poly_projection, trait_ref) {
         Ok(InferOk { value: ty_match, obligations }) => {
-            // FIXME(#32730) once obligations are generated in inference, drop this assertion
-            assert!(obligations.is_empty());
             Progress {
                 ty: ty_match.value,
                 obligations: obligations,
@@ -1303,7 +1296,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
 
     match assoc_ty {
         Some(node_item) => {
-            let ty = if !node_item.item.has_value {
+            let ty = if !node_item.item.defaultness.has_value() {
                 // This means that the impl is missing a definition for the
                 // associated type. This error will be reported by the type
                 // checker method `check_impl_items_against_trait`, so here we
@@ -1313,7 +1306,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
                        obligation.predicate.trait_ref);
                 tcx.types.err
             } else {
-                tcx.lookup_item_type(node_item.item.def_id).ty
+                tcx.item_type(node_item.item.def_id)
             };
             let substs = translate_substs(selcx.infcx(), impl_def_id, substs, node_item.node);
             Progress {

@@ -177,10 +177,26 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                             -> &'tcx Substs<'tcx>
     where FR: FnMut(&ty::RegionParameterDef, &[Kind<'tcx>]) -> &'tcx ty::Region,
           FT: FnMut(&ty::TypeParameterDef<'tcx>, &[Kind<'tcx>]) -> Ty<'tcx> {
-        let defs = tcx.lookup_generics(def_id);
+        let defs = tcx.item_generics(def_id);
         let mut substs = Vec::with_capacity(defs.count());
         Substs::fill_item(&mut substs, tcx, defs, &mut mk_region, &mut mk_type);
         tcx.intern_substs(&substs)
+    }
+
+    pub fn extend_to<FR, FT>(&self,
+                             tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                             def_id: DefId,
+                             mut mk_region: FR,
+                             mut mk_type: FT)
+                             -> &'tcx Substs<'tcx>
+    where FR: FnMut(&ty::RegionParameterDef, &[Kind<'tcx>]) -> &'tcx ty::Region,
+          FT: FnMut(&ty::TypeParameterDef<'tcx>, &[Kind<'tcx>]) -> Ty<'tcx>
+    {
+        let defs = tcx.item_generics(def_id);
+        let mut result = Vec::with_capacity(defs.count());
+        result.extend(self[..].iter().cloned());
+        Substs::fill_single(&mut result, defs, &mut mk_region, &mut mk_type);
+        tcx.intern_substs(&result)
     }
 
     fn fill_item<FR, FT>(substs: &mut Vec<Kind<'tcx>>,
@@ -192,10 +208,18 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
           FT: FnMut(&ty::TypeParameterDef<'tcx>, &[Kind<'tcx>]) -> Ty<'tcx> {
 
         if let Some(def_id) = defs.parent {
-            let parent_defs = tcx.lookup_generics(def_id);
+            let parent_defs = tcx.item_generics(def_id);
             Substs::fill_item(substs, tcx, parent_defs, mk_region, mk_type);
         }
+        Substs::fill_single(substs, defs, mk_region, mk_type)
+    }
 
+    fn fill_single<FR, FT>(substs: &mut Vec<Kind<'tcx>>,
+                           defs: &ty::Generics<'tcx>,
+                           mk_region: &mut FR,
+                           mk_type: &mut FT)
+    where FR: FnMut(&ty::RegionParameterDef, &[Kind<'tcx>]) -> &'tcx ty::Region,
+          FT: FnMut(&ty::TypeParameterDef<'tcx>, &[Kind<'tcx>]) -> Ty<'tcx> {
         // Handle Self first, before all regions.
         let mut types = defs.types.iter();
         if defs.parent.is_none() && defs.has_self {
@@ -271,8 +295,13 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                        source_ancestor: DefId,
                        target_substs: &Substs<'tcx>)
                        -> &'tcx Substs<'tcx> {
-        let defs = tcx.lookup_generics(source_ancestor);
+        let defs = tcx.item_generics(source_ancestor);
         tcx.mk_substs(target_substs.iter().chain(&self[defs.own_count()..]).cloned())
+    }
+
+    pub fn truncate_to(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, generics: &ty::Generics<'tcx>)
+                       -> &'tcx Substs<'tcx> {
+        tcx.mk_substs(self.iter().take(generics.count()).cloned())
     }
 }
 
@@ -519,7 +548,7 @@ impl<'a, 'gcx, 'tcx> ty::TraitRef<'tcx> {
                        trait_id: DefId,
                        substs: &Substs<'tcx>)
                        -> ty::TraitRef<'tcx> {
-        let defs = tcx.lookup_generics(trait_id);
+        let defs = tcx.item_generics(trait_id);
 
         ty::TraitRef {
             def_id: trait_id,

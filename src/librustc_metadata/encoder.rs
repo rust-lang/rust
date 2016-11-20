@@ -13,7 +13,7 @@ use index::Index;
 use schema::*;
 
 use rustc::middle::cstore::{InlinedItemRef, LinkMeta};
-use rustc::middle::cstore::{LinkagePreference, NativeLibraryKind};
+use rustc::middle::cstore::{LinkagePreference, NativeLibrary};
 use rustc::hir::def;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId};
 use rustc::middle::dependency_format::Linkage;
@@ -38,6 +38,7 @@ use syntax;
 use syntax_pos;
 
 use rustc::hir::{self, PatKind};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit::Visitor;
 use rustc::hir::intravisit;
 
@@ -246,7 +247,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_item_type(&mut self, def_id: DefId) -> Lazy<Ty<'tcx>> {
         let tcx = self.tcx;
-        self.lazy(&tcx.lookup_item_type(def_id).ty)
+        self.lazy(&tcx.item_type(def_id))
     }
 
     /// Encode data for the given variant of the given ADT. The
@@ -444,12 +445,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_generics(&mut self, def_id: DefId) -> Lazy<ty::Generics<'tcx>> {
         let tcx = self.tcx;
-        self.lazy(tcx.lookup_generics(def_id))
+        self.lazy(tcx.item_generics(def_id))
     }
 
     fn encode_predicates(&mut self, def_id: DefId) -> Lazy<ty::GenericPredicates<'tcx>> {
         let tcx = self.tcx;
-        self.lazy(&tcx.lookup_predicates(def_id))
+        self.lazy(&tcx.item_predicates(def_id))
     }
 
     fn encode_info_for_trait_item(&mut self, def_id: DefId) -> Entry<'tcx> {
@@ -459,10 +460,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let ast_item = tcx.map.expect_trait_item(node_id);
         let trait_item = tcx.associated_item(def_id);
 
-        let container = if trait_item.has_value {
-            AssociatedContainer::TraitWithDefault
-        } else {
-            AssociatedContainer::TraitRequired
+        let container = match trait_item.defaultness {
+            hir::Defaultness::Default { has_value: true } =>
+                AssociatedContainer::TraitWithDefault,
+            hir::Defaultness::Default { has_value: false } =>
+                AssociatedContainer::TraitRequired,
+            hir::Defaultness::Final =>
+                span_bug!(ast_item.span, "traits cannot have final items"),
         };
 
         let kind = match trait_item.kind {
@@ -500,7 +504,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     Some(self.encode_item_type(def_id))
                 }
                 ty::AssociatedKind::Type => {
-                    if trait_item.has_value {
+                    if trait_item.defaultness.has_value() {
                         Some(self.encode_item_type(def_id))
                     } else {
                         None
@@ -529,8 +533,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let impl_def_id = impl_item.container.id();
 
         let container = match impl_item.defaultness {
-            hir::Defaultness::Default => AssociatedContainer::ImplDefault,
+            hir::Defaultness::Default { has_value: true } => AssociatedContainer::ImplDefault,
             hir::Defaultness::Final => AssociatedContainer::ImplFinal,
+            hir::Defaultness::Default { has_value: false } =>
+                span_bug!(ast_item.span, "impl items always have values (currently)"),
         };
 
         let kind = match impl_item.kind {
@@ -556,7 +562,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let (ast, mir) = if impl_item.kind == ty::AssociatedKind::Const {
             (true, true)
         } else if let hir::ImplItemKind::Method(ref sig, _) = ast_item.node {
-            let generics = self.tcx.lookup_generics(def_id);
+            let generics = self.tcx.item_generics(def_id);
             let types = generics.parent_types as usize + generics.types.len();
             let needs_inline = types > 0 || attr::requests_inline(&ast_item.attrs);
             let is_const_fn = sig.constness == hir::Constness::Const;
@@ -717,7 +723,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     paren_sugar: trait_def.paren_sugar,
                     has_default_impl: tcx.trait_has_default_impl(def_id),
                     trait_ref: self.lazy(&trait_def.trait_ref),
-                    super_predicates: self.lazy(&tcx.lookup_super_predicates(def_id)),
+                    super_predicates: self.lazy(&tcx.item_super_predicates(def_id)),
                 };
 
                 EntryKind::Trait(self.lazy(&data))
@@ -1056,10 +1062,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             stability: None,
             deprecation: None,
 
-            ty: None,
+            ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
             variances: LazySeq::empty(),
-            generics: None,
+            generics: Some(self.encode_generics(def_id)),
             predicates: None,
 
             ast: None,
@@ -1074,7 +1080,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                      EncodeContext::encode_info_for_mod,
                      FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &hir::Public)));
         let mut visitor = EncodeVisitor { index: index };
-        krate.visit_all_items(&mut visitor);
+        krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
         for macro_def in &krate.exported_macros {
             visitor.visit_macro_def(macro_def);
         }
@@ -1134,14 +1140,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
          self.lazy_seq_ref(&tcx.lang_items.missing))
     }
 
-    fn encode_native_libraries(&mut self) -> LazySeq<(NativeLibraryKind, String)> {
+    fn encode_native_libraries(&mut self) -> LazySeq<NativeLibrary> {
         let used_libraries = self.tcx.sess.cstore.used_libraries();
-        self.lazy_seq(used_libraries.into_iter().filter_map(|(lib, kind)| {
-            match kind {
-                cstore::NativeStatic => None, // these libraries are not propagated
-                cstore::NativeFramework | cstore::NativeUnknown => Some((kind, lib)),
-            }
-        }))
+        self.lazy_seq(used_libraries)
     }
 
     fn encode_codemap(&mut self) -> LazySeq<syntax_pos::FileMap> {
@@ -1164,7 +1165,7 @@ struct ImplVisitor<'a, 'tcx: 'a> {
     impls: FxHashMap<DefId, Vec<DefIndex>>,
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemImpl(..) = item.node {
             let impl_id = self.tcx.map.local_def_id(item.id);
@@ -1176,6 +1177,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
             }
         }
     }
+
+    fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem) {
+        // handled in `visit_item` above
+    }
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
@@ -1185,7 +1190,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             tcx: self.tcx,
             impls: FxHashMap(),
         };
-        self.tcx.map.krate().visit_all_items(&mut visitor);
+        self.tcx.map.krate().visit_all_item_likes(&mut visitor);
 
         let all_impls: Vec<_> = visitor.impls
             .into_iter()

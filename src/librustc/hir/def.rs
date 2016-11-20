@@ -106,7 +106,7 @@ pub type DefMap = NodeMap<PathResolution>;
 // within.
 pub type ExportMap = NodeMap<Vec<Export>>;
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Export {
     pub name: ast::Name, // The name of the target.
     pub def: Def, // The definition of the target.

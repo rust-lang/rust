@@ -17,6 +17,35 @@ use std::path::{PathBuf, Path};
 
 use build_helper::output;
 
+fn detect_llvm_link(llvm_config: &Path) -> (&'static str, Option<&'static str>) {
+    let mut version_cmd = Command::new(llvm_config);
+    version_cmd.arg("--version");
+    let version_output = output(&mut version_cmd);
+    let mut parts = version_output.split('.').take(2)
+        .filter_map(|s| s.parse::<u32>().ok());
+    if let (Some(major), Some(minor)) = (parts.next(), parts.next()) {
+        if major > 3 || (major == 3 && minor >= 9) {
+            // Force the link mode we want, preferring static by default, but
+            // possibly overridden by `configure --enable-llvm-link-shared`.
+            if env::var_os("LLVM_LINK_SHARED").is_some() {
+                return ("dylib", Some("--link-shared"));
+            } else {
+                return ("static", Some("--link-static"));
+            }
+        } else if major == 3 && minor == 8 {
+            // Find out LLVM's default linking mode.
+            let mut mode_cmd = Command::new(llvm_config);
+            mode_cmd.arg("--shared-mode");
+            if output(&mut mode_cmd).trim() == "shared" {
+                return ("dylib", None);
+            } else {
+                return ("static", None);
+            }
+        }
+    }
+    ("static", None)
+}
+
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
 
@@ -66,7 +95,7 @@ fn main() {
     let is_crossed = target != host;
 
     let optional_components =
-        ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl", "systemz", "jsbackend"];
+        ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl", "systemz", "jsbackend", "msp430"];
 
     // FIXME: surely we don't need all these components, right? Stuff like mcjit
     //        or interpreter the compiler itself never uses.
@@ -116,6 +145,9 @@ fn main() {
         cfg.flag("-DLLVM_RUSTLLVM");
     }
 
+    println!("cargo:rerun-if-changed=../rustllvm/PassWrapper.cpp");
+    println!("cargo:rerun-if-changed=../rustllvm/RustWrapper.cpp");
+    println!("cargo:rerun-if-changed=../rustllvm/ArchiveWrapper.cpp");
     cfg.file("../rustllvm/PassWrapper.cpp")
        .file("../rustllvm/RustWrapper.cpp")
        .file("../rustllvm/ArchiveWrapper.cpp")
@@ -123,22 +155,16 @@ fn main() {
        .cpp_link_stdlib(None) // we handle this below
        .compile("librustllvm.a");
 
+    let (llvm_kind, llvm_link_arg) = detect_llvm_link(&llvm_config);
+
     // Link in all LLVM libraries, if we're uwring the "wrong" llvm-config then
     // we don't pick up system libs because unfortunately they're for the host
     // of llvm-config, not the target that we're attempting to link.
     let mut cmd = Command::new(&llvm_config);
     cmd.arg("--libs");
 
-    // Force static linking with "--link-static" if available.
-    let mut version_cmd = Command::new(&llvm_config);
-    version_cmd.arg("--version");
-    let version_output = output(&mut version_cmd);
-    let mut parts = version_output.split('.');
-    if let (Some(major), Some(minor)) = (parts.next().and_then(|s| s.parse::<u32>().ok()),
-                                         parts.next().and_then(|s| s.parse::<u32>().ok())) {
-        if major > 3 || (major == 3 && minor >= 9) {
-            cmd.arg("--link-static");
-        }
+    if let Some(link_arg) = llvm_link_arg {
+        cmd.arg(link_arg);
     }
 
     if !is_crossed {
@@ -174,7 +200,7 @@ fn main() {
         }
 
         let kind = if name.starts_with("LLVM") {
-            "static"
+            llvm_kind
         } else {
             "dylib"
         };

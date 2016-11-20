@@ -32,7 +32,7 @@ pub struct Box<T>(*mut T);
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     let p = libc::malloc(size as libc::size_t) as *mut u8;
 
-    // malloc failed
+    // Check if `malloc` failed:
     if p as usize == 0 {
         abort();
     }
@@ -46,8 +46,8 @@ unsafe fn deallocate(ptr: *mut u8, _size: usize, _align: usize) {
 }
 
 #[lang = "box_free"]
-unsafe fn box_free<T>(ptr: *mut T) {
-    deallocate(ptr as *mut u8, ::core::mem::size_of::<T>(), ::core::mem::align_of::<T>());
+unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
+    deallocate(ptr as *mut u8, ::core::mem::size_of_val(&*ptr), ::core::mem::align_of_val(&*ptr));
 }
 
 #[start]

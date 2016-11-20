@@ -17,7 +17,7 @@ use rustc::infer::{self, InferOk};
 use middle::region;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
-use rustc::traits::{self, Reveal};
+use rustc::traits::{self, ObligationCause, Reveal};
 use util::nodemap::FxHashSet;
 
 use syntax::ast;
@@ -41,8 +41,8 @@ use syntax_pos::{self, Span};
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
 pub fn check_drop_impl(ccx: &CrateCtxt, drop_impl_did: DefId) -> Result<(), ()> {
-    let dtor_self_type = ccx.tcx.lookup_item_type(drop_impl_did).ty;
-    let dtor_predicates = ccx.tcx.lookup_predicates(drop_impl_did);
+    let dtor_self_type = ccx.tcx.item_type(drop_impl_did);
+    let dtor_predicates = ccx.tcx.item_predicates(drop_impl_did);
     match dtor_self_type.sty {
         ty::TyAdt(adt_def, self_to_impl_substs) => {
             ensure_drop_params_and_item_params_correspond(ccx,
@@ -85,7 +85,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         let tcx = infcx.tcx;
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
-        let named_type = tcx.lookup_item_type(self_type_did).ty;
+        let named_type = tcx.item_type(self_type_did);
         let named_type = named_type.subst(tcx, &infcx.parameter_environment.free_substs);
 
         let drop_impl_span = tcx.map.def_id_span(drop_impl_did, syntax_pos::DUMMY_SP);
@@ -93,8 +93,8 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
             infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did);
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
-        match infcx.eq_types(true, infer::TypeOrigin::Misc(drop_impl_span),
-                             named_type, fresh_impl_self_ty) {
+        let cause = &ObligationCause::misc(drop_impl_span, drop_impl_node_id);
+        match infcx.eq_types(true, cause, named_type, fresh_impl_self_ty) {
             Ok(InferOk { obligations, .. }) => {
                 // FIXME(#32730) propagate obligations
                 assert!(obligations.is_empty());
@@ -177,7 +177,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 
     // We can assume the predicates attached to struct/enum definition
     // hold.
-    let generic_assumptions = tcx.lookup_predicates(self_type_did);
+    let generic_assumptions = tcx.item_predicates(self_type_did);
 
     let assumptions_in_impl_context = generic_assumptions.instantiate(tcx, &self_to_impl_substs);
     let assumptions_in_impl_context = assumptions_in_impl_context.predicates;
@@ -482,8 +482,14 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
             Ok(())
         }
 
-        ty::TyTuple(tys) |
-        ty::TyClosure(_, ty::ClosureSubsts { upvar_tys: tys, .. }) => {
+        ty::TyClosure(def_id, substs) => {
+            for ty in substs.upvar_tys(def_id, tcx) {
+                iterate_over_potentially_unsafe_regions_in_type(cx, context, ty, depth+1)?
+            }
+            Ok(())
+        }
+
+        ty::TyTuple(tys) => {
             for ty in tys {
                 iterate_over_potentially_unsafe_regions_in_type(cx, context, ty, depth+1)?
             }
@@ -570,30 +576,30 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
 // Constructs new Ty just like the type defined by `adt_def` coupled
 // with `substs`, except each type and lifetime parameter marked as
-// `#[may_dangle]` in the Drop impl (identified by `impl_id`) is
+// `#[may_dangle]` in the Drop impl (identified by `impl_def_id`) is
 // respectively mapped to `()` or `'static`.
 //
 // For example: If the `adt_def` maps to:
 //
 //   enum Foo<'a, X, Y> { ... }
 //
-// and the `impl_id` maps to:
+// and the `impl_def_id` maps to:
 //
 //   impl<#[may_dangle] 'a, X, #[may_dangle] Y> Drop for Foo<'a, X, Y> { ... }
 //
 // then revises input: `Foo<'r,i64,&'r i64>` to: `Foo<'static,i64,()>`
 fn revise_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                   adt_def: ty::AdtDef<'tcx>,
-                                  impl_id: DefId,
+                                  impl_def_id: DefId,
                                   substs: &Substs<'tcx>)
                                   -> Ty<'tcx> {
     // Get generics for `impl Drop` to query for `#[may_dangle]` attr.
-    let impl_bindings = tcx.lookup_generics(impl_id);
+    let impl_bindings = tcx.item_generics(impl_def_id);
 
     // Get Substs attached to Self on `impl Drop`; process in parallel
     // with `substs`, replacing dangling entries as appropriate.
     let self_substs = {
-        let impl_self_ty: Ty<'tcx> = tcx.lookup_item_type(impl_id).ty;
+        let impl_self_ty: Ty<'tcx> = tcx.item_type(impl_def_id);
         if let ty::TyAdt(self_adt_def, self_substs) = impl_self_ty.sty {
             assert_eq!(adt_def, self_adt_def);
             self_substs
@@ -648,5 +654,5 @@ fn revise_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             t
         });
 
-    return tcx.mk_adt(adt_def, &substs);
+    tcx.mk_adt(adt_def, &substs)
 }

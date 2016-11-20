@@ -118,9 +118,10 @@ impl LateLintPass for BoxPointers {
             hir::ItemEnum(..) |
             hir::ItemStruct(..) |
             hir::ItemUnion(..) => {
-                self.check_heap_type(cx, it.span, cx.tcx.tables().node_id_to_type(it.id))
+                let def_id = cx.tcx.map.local_def_id(it.id);
+                self.check_heap_type(cx, it.span, cx.tcx.item_type(def_id))
             }
-            _ => (),
+            _ => ()
         }
 
         // If it's a struct, we also have to check the fields' types
@@ -128,9 +129,9 @@ impl LateLintPass for BoxPointers {
             hir::ItemStruct(ref struct_def, _) |
             hir::ItemUnion(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
-                    self.check_heap_type(cx,
-                                         struct_field.span,
-                                         cx.tcx.tables().node_id_to_type(struct_field.id));
+                    let def_id = cx.tcx.map.local_def_id(struct_field.id);
+                    self.check_heap_type(cx, struct_field.span,
+                                         cx.tcx.item_type(def_id));
                 }
             }
             _ => (),
@@ -386,7 +387,7 @@ impl LateLintPass for MissingDoc {
                 "a trait"
             }
             hir::ItemTy(..) => "a type alias",
-            hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_items) => {
+            hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_item_refs) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
                 let real_trait = cx.tcx.expect_def(trait_ref.ref_id).def_id();
@@ -394,8 +395,8 @@ impl LateLintPass for MissingDoc {
                     match cx.tcx.map.find(node_id) {
                         Some(hir_map::NodeItem(item)) => {
                             if item.vis == hir::Visibility::Inherited {
-                                for itm in impl_items {
-                                    self.private_traits.insert(itm.id);
+                                for impl_item_ref in impl_item_refs {
+                                    self.private_traits.insert(impl_item_ref.id.node_id);
                                 }
                             }
                         }
@@ -585,11 +586,9 @@ impl LateLintPass for MissingDebugImplementations {
             let debug_def = cx.tcx.lookup_trait_def(debug);
             let mut impls = NodeSet();
             debug_def.for_each_impl(cx.tcx, |d| {
-                if let Some(n) = cx.tcx.map.as_local_node_id(d) {
-                    if let Some(ty_def) = cx.tcx.tables().node_id_to_type(n).ty_to_def_id() {
-                        if let Some(node_id) = cx.tcx.map.as_local_node_id(ty_def) {
-                            impls.insert(node_id);
-                        }
+                if let Some(ty_def) = cx.tcx.item_type(d).ty_to_def_id() {
+                    if let Some(node_id) = cx.tcx.map.as_local_node_id(ty_def) {
+                        impls.insert(node_id);
                     }
                 }
             });
@@ -1225,7 +1224,7 @@ impl LateLintPass for MutableTransmutes {
         }
 
         fn def_id_is_transmute(cx: &LateContext, def_id: DefId) -> bool {
-            match cx.tcx.lookup_item_type(def_id).ty.sty {
+            match cx.tcx.item_type(def_id).sty {
                 ty::TyFnDef(.., ref bfty) if bfty.abi == RustIntrinsic => (),
                 _ => return false,
             }
@@ -1282,7 +1281,7 @@ impl LateLintPass for UnionsWithDropFields {
         if let hir::ItemUnion(ref vdata, _) = item.node {
             let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);
             for field in vdata.fields() {
-                let field_ty = ctx.tcx.tables().node_id_to_type(field.id);
+                let field_ty = ctx.tcx.item_type(ctx.tcx.map.local_def_id(field.id));
                 if ctx.tcx.type_needs_drop_given_env(field_ty, param_env) {
                     ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
                                   field.span,

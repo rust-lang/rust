@@ -105,7 +105,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
                 }
             }
         }
-        let mut generics = tcx.lookup_generics(item_def_id);
+        let mut generics = tcx.item_generics(item_def_id);
         let mut path_def_id = did;
         verbose = tcx.sess.verbose();
         has_self = generics.has_self;
@@ -115,7 +115,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
             // Methods.
             assert!(is_value_path);
             child_types = generics.types.len();
-            generics = tcx.lookup_generics(def_id);
+            generics = tcx.item_generics(def_id);
             num_regions = generics.regions.len();
             num_types = generics.types.len();
 
@@ -865,7 +865,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyAdt(def, substs) => {
                 ty::tls::with(|tcx| {
                     if def.did.is_local() &&
-                          !tcx.tcache.borrow().contains_key(&def.did) {
+                          !tcx.item_types.borrow().contains_key(&def.did) {
                         write!(f, "{}<..>", tcx.item_path_str(def.did))
                     } else {
                         parameterized(f, substs, def.did, &[])
@@ -878,7 +878,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 ty::tls::with(|tcx| {
                     // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                     // by looking up the projections associated with the def_id.
-                    let item_predicates = tcx.lookup_predicates(def_id);
+                    let item_predicates = tcx.item_predicates(def_id);
                     let substs = tcx.lift(&substs).unwrap_or_else(|| {
                         tcx.intern_substs(&[])
                     });
@@ -907,13 +907,14 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             }
             TyStr => write!(f, "str"),
             TyClosure(did, substs) => ty::tls::with(|tcx| {
+                let upvar_tys = substs.upvar_tys(did, tcx);
                 write!(f, "[closure")?;
 
                 if let Some(node_id) = tcx.map.as_local_node_id(did) {
                     write!(f, "@{:?}", tcx.map.span(node_id))?;
                     let mut sep = " ";
                     tcx.with_freevars(node_id, |freevars| {
-                        for (freevar, upvar_ty) in freevars.iter().zip(substs.upvar_tys) {
+                        for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
                             let def_id = freevar.def.def_id();
                             let node_id = tcx.map.as_local_node_id(def_id).unwrap();
                             write!(f,
@@ -930,7 +931,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     // visible in trans bug reports, I imagine.
                     write!(f, "@{:?}", did)?;
                     let mut sep = " ";
-                    for (index, upvar_ty) in substs.upvar_tys.iter().enumerate() {
+                    for (index, upvar_ty) in upvar_tys.enumerate() {
                         write!(f, "{}{}:{}", sep, index, upvar_ty)?;
                         sep = ", ";
                     }

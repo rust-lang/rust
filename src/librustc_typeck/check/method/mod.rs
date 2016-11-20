@@ -230,7 +230,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
         let method_item = self.associated_item(trait_def_id, m_name).unwrap();
         let def_id = method_item.def_id;
-        let generics = tcx.lookup_generics(def_id);
+        let generics = tcx.item_generics(def_id);
         assert_eq!(generics.types.len(), 0);
         assert_eq!(generics.regions.len(), 0);
 
@@ -242,7 +242,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // NB: Instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let original_method_ty = tcx.lookup_item_type(def_id).ty;
+        let original_method_ty = tcx.item_type(def_id);
         let fty = match original_method_ty.sty {
             ty::TyFnDef(_, _, f) => f,
             _ => bug!()

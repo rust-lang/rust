@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::combine::CombineFields;
 use super::SubregionOrigin;
+use super::combine::CombineFields;
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
 use ty::{self, Ty, TyCtxt};
@@ -111,11 +111,13 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                -> RelateResult<'tcx, &'tcx ty::Region> {
         debug!("{}.regions({:?}, {:?}) self.cause={:?}",
                self.tag(), a, b, self.fields.cause);
+
         // FIXME -- we have more fine-grained information available
         // from the "cause" field, we could perhaps give more tailored
         // error messages.
         let origin = SubregionOrigin::Subtype(self.fields.trace.clone());
         self.fields.infcx.region_vars.make_subregion(origin, a, b);
+
         Ok(a)
     }
 

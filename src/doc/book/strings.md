@@ -83,10 +83,10 @@ converted using `&*`.
 ```rust,no_run
 use std::net::TcpStream;
 
-TcpStream::connect("192.168.0.1:3000"); // &str parameter
+TcpStream::connect("192.168.0.1:3000"); // Parameter is of type &str.
 
 let addr_string = "192.168.0.1:3000".to_string();
-TcpStream::connect(&*addr_string); // convert addr_string to &str
+TcpStream::connect(&*addr_string); // Convert `addr_string` to &str.
 ```
 
 Viewing a `String` as a `&str` is cheap, but converting the `&str` to a
@@ -138,7 +138,7 @@ You can get something similar to an index like this:
 
 ```rust
 # let hachiko = "忠犬ハチ公";
-let dog = hachiko.chars().nth(1); // kinda like hachiko[1]
+let dog = hachiko.chars().nth(1); // Kinda like `hachiko[1]`.
 ```
 
 This emphasizes that we have to walk from the beginning of the list of `chars`.

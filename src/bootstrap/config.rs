@@ -50,8 +50,10 @@ pub struct Config {
     // llvm codegen options
     pub llvm_assertions: bool,
     pub llvm_optimize: bool,
+    pub llvm_release_debuginfo: bool,
     pub llvm_version_check: bool,
     pub llvm_static_stdcpp: bool,
+    pub llvm_link_shared: bool,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -89,6 +91,7 @@ pub struct Config {
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
+    pub python: Option<PathBuf>,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -128,6 +131,8 @@ struct Build {
     submodules: Option<bool>,
     gdb: Option<String>,
     vendor: Option<bool>,
+    nodejs: Option<String>,
+    python: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -137,6 +142,7 @@ struct Llvm {
     ninja: Option<bool>,
     assertions: Option<bool>,
     optimize: Option<bool>,
+    release_debuginfo: Option<bool>,
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
 }
@@ -232,7 +238,9 @@ impl Config {
         }
         config.rustc = build.rustc.map(PathBuf::from);
         config.cargo = build.cargo.map(PathBuf::from);
+        config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
+        config.python = build.python.map(PathBuf::from);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
@@ -243,6 +251,7 @@ impl Config {
             set(&mut config.ninja, llvm.ninja);
             set(&mut config.llvm_assertions, llvm.assertions);
             set(&mut config.llvm_optimize, llvm.optimize);
+            set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
         }
@@ -334,9 +343,11 @@ impl Config {
                 ("COMPILER_DOCS", self.compiler_docs),
                 ("DOCS", self.docs),
                 ("LLVM_ASSERTIONS", self.llvm_assertions),
+                ("LLVM_RELEASE_DEBUGINFO", self.llvm_release_debuginfo),
                 ("OPTIMIZE_LLVM", self.llvm_optimize),
                 ("LLVM_VERSION_CHECK", self.llvm_version_check),
                 ("LLVM_STATIC_STDCPP", self.llvm_static_stdcpp),
+                ("LLVM_LINK_SHARED", self.llvm_link_shared),
                 ("OPTIMIZE", self.rust_optimize),
                 ("DEBUG_ASSERTIONS", self.rust_debug_assertions),
                 ("DEBUGINFO", self.rust_debuginfo),
@@ -459,6 +470,10 @@ impl Config {
                     let path = parse_configure_path(value);
                     self.rustc = Some(push_exe_path(path.clone(), &["bin", "rustc"]));
                     self.cargo = Some(push_exe_path(path, &["bin", "cargo"]));
+                }
+                "CFG_PYTHON" if value.len() > 0 => {
+                    let path = parse_configure_path(value);
+                    self.python = Some(path);
                 }
                 _ => {}
             }

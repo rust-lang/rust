@@ -10,10 +10,10 @@ error: `young[..]` does not live long enough
    = note: values in a scope are dropped in the opposite order they are created
 
 error: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:24:14
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:24:18
    |
 24 |     v3.push(&'x');           // statement 6
-   |              ^^^ - temporary value only lives until here
+   |              --- ^ temporary value dropped here while still borrowed
    |              |
    |              temporary value created here
 ...
@@ -23,10 +23,10 @@ error: borrowed value does not live long enough
    = note: consider using a `let` binding to increase its lifetime
 
 error: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:34:18
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:34:22
    |
 34 |         v4.push(&'y');
-   |                  ^^^ - temporary value only lives until here
+   |                  --- ^ temporary value dropped here while still borrowed
    |                  |
    |                  temporary value created here
 ...
@@ -36,10 +36,10 @@ error: borrowed value does not live long enough
    = note: consider using a `let` binding to increase its lifetime
 
 error: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:45:14
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:45:18
    |
 45 |     v5.push(&'z');
-   |              ^^^ - temporary value only lives until here
+   |              --- ^ temporary value dropped here while still borrowed
    |              |
    |              temporary value created here
 ...

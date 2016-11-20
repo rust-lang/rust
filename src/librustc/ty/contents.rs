@@ -98,10 +98,11 @@ impl TypeContents {
         TC::OwnsOwned | (*self & TC::OwnsAll)
     }
 
-    pub fn union<T, F>(v: &[T], mut f: F) -> TypeContents where
-        F: FnMut(&T) -> TypeContents,
+    pub fn union<I, T, F>(v: I, mut f: F) -> TypeContents where
+        I: IntoIterator<Item=T>,
+        F: FnMut(T) -> TypeContents,
     {
-        v.iter().fold(TC::None, |tc, ty| tc | f(ty))
+        v.into_iter().fold(TC::None, |tc, ty| tc | f(ty))
     }
 
     pub fn has_dtor(&self) -> bool {
@@ -215,8 +216,10 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 }
                 ty::TyStr => TC::None,
 
-                ty::TyClosure(_, ref substs) => {
-                    TypeContents::union(&substs.upvar_tys, |ty| tc_ty(tcx, &ty, cache))
+                ty::TyClosure(def_id, ref substs) => {
+                    TypeContents::union(
+                        substs.upvar_tys(def_id, tcx),
+                        |ty| tc_ty(tcx, &ty, cache))
                 }
 
                 ty::TyTuple(ref tys) => {

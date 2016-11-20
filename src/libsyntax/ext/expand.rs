@@ -89,7 +89,7 @@ macro_rules! expansions {
                     Expansion::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
                     Expansion::OptExpr(None) => {}
                     $($( Expansion::$kind(ref ast) => visitor.$visit(ast), )*)*
-                    $($( Expansion::$kind(ref ast) => for ast in ast.as_slice() {
+                    $($( Expansion::$kind(ref ast) => for ast in &ast[..] {
                         visitor.$visit_elt(ast);
                     }, )*)*
                 }
@@ -222,6 +222,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.current_expansion.depth = 0;
 
         let (expansion, mut invocations) = self.collect_invocations(expansion);
+        self.resolve_imports();
         invocations.reverse();
 
         let mut expansions = Vec::new();
@@ -230,9 +231,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         loop {
             let invoc = if let Some(invoc) = invocations.pop() {
                 invoc
-            } else if undetermined_invocations.is_empty() {
-                break
             } else {
+                self.resolve_imports();
+                if undetermined_invocations.is_empty() { break }
                 invocations = mem::replace(&mut undetermined_invocations, Vec::new());
                 force = !mem::replace(&mut progress, false);
                 continue
@@ -290,6 +291,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         expansion.fold_with(&mut placeholder_expander)
+    }
+
+    fn resolve_imports(&mut self) {
+        if self.monotonic {
+            let err_count = self.cx.parse_sess.span_diagnostic.err_count();
+            self.cx.resolver.resolve_imports();
+            self.cx.resolve_err_count += self.cx.parse_sess.span_diagnostic.err_count() - err_count;
+        }
     }
 
     fn collect_invocations(&mut self, expansion: Expansion) -> (Expansion, Vec<Invocation>) {
@@ -511,29 +520,31 @@ impl<'a> Parser<'a> {
                            -> PResult<'a, Expansion> {
         Ok(match kind {
             ExpansionKind::Items => {
-                let mut items = SmallVector::zero();
+                let mut items = SmallVector::new();
                 while let Some(item) = self.parse_item()? {
                     items.push(item);
                 }
                 Expansion::Items(items)
             }
             ExpansionKind::TraitItems => {
-                let mut items = SmallVector::zero();
+                let mut items = SmallVector::new();
                 while self.token != token::Eof {
                     items.push(self.parse_trait_item()?);
                 }
                 Expansion::TraitItems(items)
             }
             ExpansionKind::ImplItems => {
-                let mut items = SmallVector::zero();
+                let mut items = SmallVector::new();
                 while self.token != token::Eof {
                     items.push(self.parse_impl_item()?);
                 }
                 Expansion::ImplItems(items)
             }
             ExpansionKind::Stmts => {
-                let mut stmts = SmallVector::zero();
-                while self.token != token::Eof {
+                let mut stmts = SmallVector::new();
+                while self.token != token::Eof &&
+                      // won't make progress on a `}`
+                      self.token != token::CloseDelim(token::Brace) {
                     if let Some(stmt) = self.parse_full_stmt(macro_legacy_warnings)? {
                         stmts.push(stmt);
                     }
@@ -571,7 +582,7 @@ macro_rules! fully_configure {
     ($this:ident, $node:ident, $noop_fold:ident) => {
         match $noop_fold($node, &mut $this.cfg).pop() {
             Some(node) => node,
-            None => return SmallVector::zero(),
+            None => return SmallVector::new(),
         }
     }
 }
@@ -687,7 +698,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
         let stmt = match self.cfg.configure_stmt(stmt) {
             Some(stmt) => stmt,
-            None => return SmallVector::zero(),
+            None => return SmallVector::new(),
         };
 
         let (mac, style, attrs) = if let StmtKind::Mac(mac) = stmt.node {

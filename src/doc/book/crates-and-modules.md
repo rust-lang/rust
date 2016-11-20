@@ -126,7 +126,7 @@ Instead of declaring a module like this:
 
 ```rust,ignore
 mod english {
-    // contents of our module go here
+    // Contents of our module go here.
 }
 ```
 

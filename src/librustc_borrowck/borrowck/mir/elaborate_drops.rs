@@ -709,9 +709,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             ty::TyAdt(def, substs) => {
                 self.open_drop_for_adt(c, def, substs)
             }
-            ty::TyTuple(tys) | ty::TyClosure(_, ty::ClosureSubsts {
-                upvar_tys: tys, ..
-            }) => {
+            ty::TyClosure(def_id, substs) => {
+                let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx).collect();
+                self.open_drop_for_tuple(c, &tys)
+            }
+            ty::TyTuple(tys) => {
                 self.open_drop_for_tuple(c, tys)
             }
             ty::TyBox(ty) => {
@@ -858,7 +860,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
             .unwrap_or_else(|e| tcx.sess.fatal(&e));
         let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
-        let fty = tcx.lookup_item_type(free_func).ty.subst(tcx, substs);
+        let fty = tcx.item_type(free_func).subst(tcx, substs);
 
         self.patch.new_block(BasicBlockData {
             statements: statements,

@@ -277,8 +277,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                             .and_then(|impl_node_id| self.tcx.map.find(impl_node_id))
                             .map(|node| {
                                 if let hir_map::NodeItem(item) = node {
-                                    if let hir::ItemImpl(_, _, _, _, _, ref methods) = item.node {
-                                        span = methods.first().map(|method| method.span);
+                                    if let hir::ItemImpl(.., ref impl_item_refs) = item.node {
+                                        span = impl_item_refs.first()
+                                                             .map(|iiref| {
+                                                                 self.tcx.map.impl_item(iiref.id)
+                                                                             .span
+                                                             });
                                     }
                                 }
                             });

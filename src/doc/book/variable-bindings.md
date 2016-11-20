@@ -194,7 +194,7 @@ fn main() {
         let y: i32 = 3;
         println!("The value of x is {} and value of y is {}", x, y);
     }
-    println!("The value of x is {} and value of y is {}", x, y); // This won't work
+    println!("The value of x is {} and value of y is {}", x, y); // This won't work.
 }
 ```
 
@@ -207,7 +207,7 @@ Instead we get this error:
 $ cargo build
    Compiling hello v0.1.0 (file:///home/you/projects/hello_world)
 main.rs:7:62: 7:63 error: unresolved name `y`. Did you mean `x`? [E0425]
-main.rs:7     println!("The value of x is {} and value of y is {}", x, y); // This won't work
+main.rs:7     println!("The value of x is {} and value of y is {}", x, y); // This won't work.
                                                                        ^
 note: in expansion of format_args!
 <std macros>:2:25: 2:56 note: expansion site
@@ -229,13 +229,13 @@ scope will override the previous binding.
 ```rust
 let x: i32 = 8;
 {
-    println!("{}", x); // Prints "8"
+    println!("{}", x); // Prints "8".
     let x = 12;
-    println!("{}", x); // Prints "12"
+    println!("{}", x); // Prints "12".
 }
-println!("{}", x); // Prints "8"
+println!("{}", x); // Prints "8".
 let x =  42;
-println!("{}", x); // Prints "42"
+println!("{}", x); // Prints "42".
 ```
 
 Shadowing and mutable bindings may appear as two sides of the same coin, but
@@ -249,8 +249,8 @@ by any means.
 ```rust
 let mut x: i32 = 1;
 x = 7;
-let x = x; // x is now immutable and is bound to 7
+let x = x; // `x` is now immutable and is bound to `7`.
 
 let y = 4;
-let y = "I can also be bound to text!"; // y is now of a different type
+let y = "I can also be bound to text!"; // `y` is now of a different type.
 ```

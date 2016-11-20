@@ -67,11 +67,12 @@ pub struct TcpListener(net_imp::TcpListener);
 
 /// An infinite iterator over the connections from a `TcpListener`.
 ///
-/// This iterator will infinitely yield `Some` of the accepted connections. It
+/// This iterator will infinitely yield [`Some`] of the accepted connections. It
 /// is equivalent to calling `accept` in a loop.
 ///
 /// This `struct` is created by the [`incoming`] method on [`TcpListener`].
 ///
+/// [`Some`]: ../../std/option/enum.Option.html#variant.Some
 /// [`incoming`]: struct.TcpListener.html#method.incoming
 /// [`TcpListener`]: struct.TcpListener.html
 #[stable(feature = "rust1", since = "1.0.0")]
