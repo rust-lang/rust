@@ -2437,7 +2437,6 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "}}")?;
     }
     write!(w, "</pre>")?;
-    render_stability_since_raw(w, it.stable_since(), None)?;
 
     document(w, cx, it)?;
     if !e.variants.is_empty() {
@@ -3053,7 +3052,6 @@ fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                                                      Some("macro"),
                                                      None,
                                                      None))?;
-    render_stability_since_raw(w, it.stable_since(), None)?;
     document(w, cx, it)
 }
 
