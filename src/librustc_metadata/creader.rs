@@ -366,6 +366,9 @@ impl<'a> CrateLoader<'a> {
         match result {
             LoadResult::Previous(cnum) => {
                 let data = self.cstore.get_crate_data(cnum);
+                if data.root.macro_derive_registrar.is_some() {
+                    dep_kind = DepKind::MacrosOnly;
+                }
                 data.dep_kind.set(cmp::max(data.dep_kind.get(), dep_kind));
                 (cnum, data)
             }
