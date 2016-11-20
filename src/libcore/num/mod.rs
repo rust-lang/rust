@@ -2614,6 +2614,27 @@ macro_rules! same_sign_try_from_int_impl {
     )*}
 }
 
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(u64, u8, u8, u16, u32, u64, usize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(i64, i8, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(u64, u16, u8, u16, u32, u64, usize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(i64, i16, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(u64, u32, u8, u16, u32, u64, usize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(i64, i32, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(u64, u64, u8, u16, u32, u64, usize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(i64, i64, i8, i16, i32, i64, isize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(u64, usize, u8, u16, u32, u64, usize);
+#[cfg(stage0)]
+same_sign_try_from_int_impl!(i64, isize, i8, i16, i32, i64, isize);
+
 #[cfg(not(stage0))]
 same_sign_try_from_int_impl!(u128, u8, u8, u16, u32, u64, u128, usize);
 #[cfg(not(stage0))]
