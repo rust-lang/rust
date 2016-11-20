@@ -525,10 +525,9 @@ pub struct Struct {
 }
 
 impl<'a, 'gcx, 'tcx> Struct {
-    pub fn new<I>(dl: &TargetDataLayout, fields: I,
+    pub fn new(dl: &TargetDataLayout, fields: &Vec<&'a Layout>,
                   repr: attr::ReprAttr, is_enum_variant: bool,
-                  scapegoat: Ty<'gcx>) -> Result<Struct, LayoutError<'gcx>>
-        where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>>{
+                  scapegoat: Ty<'gcx>) -> Result<Struct, LayoutError<'gcx>> {
         let packed = repr == attr::ReprPacked;
         let mut ret = Struct {
             align: if packed { dl.i8_align } else { dl.aggregate_align },
@@ -539,7 +538,6 @@ impl<'a, 'gcx, 'tcx> Struct {
             min_size: Size::from_bytes(0),
         };
 
-        let fields = fields.collect::<Result<Vec<_>, LayoutError<'gcx>>>()?;
         if is_enum_variant { assert!(fields.len() >= 1, "Enum variants must have at least a discriminant field.") }
         if fields.len() == 0 {return Ok(ret)};
 
@@ -978,7 +976,7 @@ impl<'a, 'gcx, 'tcx> Layout {
             ty::TyFnPtr(_) => Scalar { value: Pointer, non_zero: true },
 
             // The never type.
-            ty::TyNever => Univariant { variant: Struct::new(dl, iter::empty(), attr::ReprAny, false, ty)?, non_zero: false },
+            ty::TyNever => Univariant { variant: Struct::new(dl, &vec![], attr::ReprAny, false, ty)?, non_zero: false },
 
             // Potentially-fat pointers.
             ty::TyBox(pointee) |
@@ -1029,12 +1027,12 @@ impl<'a, 'gcx, 'tcx> Layout {
             // Odd unit types.
             ty::TyFnDef(..) => {
                 Univariant {
-                    variant: Struct::new(dl, iter::empty(), attr::ReprAny, false, ty)?,
+                    variant: Struct::new(dl, &vec![], attr::ReprAny, false, ty)?,
                     non_zero: false
                 }
             }
             ty::TyDynamic(_) => {
-                let mut unit = Struct::new(dl, iter::empty(), attr::ReprAny, false, ty)?;
+                let mut unit = Struct::new(dl, &vec![], attr::ReprAny, false, ty)?;
                 unit.sized = false;
                 Univariant { variant: unit, non_zero: false }
             }
@@ -1043,7 +1041,8 @@ impl<'a, 'gcx, 'tcx> Layout {
             ty::TyClosure(def_id, ref substs) => {
                 let tys = substs.upvar_tys(def_id, tcx);
                 let st = Struct::new(dl,
-                    tys.map(|ty| ty.layout(infcx)),
+                    &tys.map(|ty| ty.layout(infcx))
+                      .collect::<Result<Vec<_>, _>>()?,
                     attr::ReprAny,
                     false, ty)?;
                 Univariant { variant: st, non_zero: false }
@@ -1051,7 +1050,8 @@ impl<'a, 'gcx, 'tcx> Layout {
 
             ty::TyTuple(tys) => {
                 let st = Struct::new(dl,
-                    tys.iter().map(|ty| ty.layout(infcx)),
+                    &tys.iter().map(|ty| ty.layout(infcx))
+                      .collect::<Result<Vec<_>, _>>()?,
                     attr::ReprAny, false, ty)?;
                 Univariant { variant: st, non_zero: false }
             }
@@ -1085,7 +1085,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     assert_eq!(hint, attr::ReprAny);
 
                     return success(Univariant {
-                        variant: Struct::new(dl, iter::empty(), hint, false, ty)?,
+                        variant: Struct::new(dl, &vec![], hint, false, ty)?,
                         non_zero: false
                     });
                 }
@@ -1116,14 +1116,14 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                     let fields = def.variants[0].fields.iter().map(|field| {
                         field.ty(tcx, substs).layout(infcx)
-                    });
+                    }).collect::<Result<Vec<_>, _>>()?;
                     let packed = tcx.lookup_packed(def.did);
                     let layout = if def.is_union() {
                         let mut un = Union::new(dl, packed);
-                        un.extend(dl, fields, ty)?;
+                        un.extend(dl, fields.iter().map(|&f| Ok(f)), ty)?;
                         UntaggedUnion { variants: un }
                     } else {
-                        let st = Struct::new(dl, fields, hint, false, ty)?;
+                        let st = Struct::new(dl, &fields, hint, false, ty)?;
                         let non_zero = Some(def.did) == tcx.lang_items.non_zero();
                         Univariant { variant: st, non_zero: non_zero }
                     };
@@ -1175,7 +1175,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                         }
 
                         let st = Struct::new(dl,
-                            variants[discr].iter().map(|ty| ty.layout(infcx)),
+                            &variants[discr].iter().map(|ty| ty.layout(infcx))
+                              .collect::<Result<Vec<_>, _>>()?,
                             hint, false, ty)?;
 
                         // We have to fix the last element of path here as only we know the right value.
@@ -1210,16 +1211,16 @@ impl<'a, 'gcx, 'tcx> Layout {
                 let mut variants = variants.into_iter().map(|fields| {
                     let mut fields = fields.into_iter().map(|field| {
                         field.layout(infcx)
-                    }).collect::<Vec<_>>();
-                    fields.insert(0, Ok(&discr));
+                    }).collect::<Result<Vec<_>, _>>()?;
+                    fields.insert(0, &discr);
                     let st = Struct::new(dl,
-                        fields.iter().cloned(),
+                        &fields,
                         hint, false, ty)?;
                     // Find the first field we can't move later
                     // to make room for a larger discriminant.
                     // It is important to skip the first field.
                     for i in st.field_index_by_increasing_offset().skip(1) {
-                        let field = fields[i].unwrap();
+                        let field = fields[i];
                         let field_align = field.align(dl);
                         if field.size(dl).bytes() != 0 || field_align.abi() != 1 {
                             start_align = start_align.min(field_align);
