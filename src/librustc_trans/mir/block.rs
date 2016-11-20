@@ -116,6 +116,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 if let Some(cleanup_pad) = cleanup_pad {
                     bcx.cleanup_ret(cleanup_pad, None);
                 } else {
+                    let llpersonality = bcx.fcx().eh_personality();
+                    bcx.set_personality_fn(llpersonality);
+
                     let ps = self.get_personality_slot(&bcx);
                     let lp = bcx.load(ps);
                     bcx.with_block(|bcx| {
