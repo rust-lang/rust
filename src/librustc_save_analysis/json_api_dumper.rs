@@ -419,7 +419,7 @@ impl From<VariableData> for Option<Def> {
                 parent: data.parent.map(|id| From::from(id)),
                 decl_id: None,
                 docs: data.docs,
-                sig: None,
+                sig: data.sig,
             }),
             _ => None,
         }
