@@ -387,6 +387,7 @@ pub struct VariableData {
     pub type_value: String,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Option<Signature>,
 }
 
 #[derive(Debug, RustcEncodable)]

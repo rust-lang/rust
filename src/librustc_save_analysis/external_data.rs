@@ -658,6 +658,7 @@ pub struct VariableData {
     pub parent: Option<DefId>,
     pub visibility: Visibility,
     pub docs: String,
+    pub sig: Option<Signature>,
 }
 
 impl Lower for data::VariableData {
@@ -676,6 +677,7 @@ impl Lower for data::VariableData {
             parent: self.parent,
             visibility: self.visibility,
             docs: self.docs,
+            sig: self.sig.map(|s| s.lower(tcx)),
         }
     }
 }

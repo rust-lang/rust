@@ -372,6 +372,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         parent: None,
                         visibility: Visibility::Inherited,
                         docs: String::new(),
+                        sig: None,
                     }.lower(self.tcx));
                 }
             }
@@ -587,6 +588,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 parent: Some(parent_id),
                 visibility: vis,
                 docs: docs_for_attrs(attrs),
+                sig: None,
             }.lower(self.tcx));
         }
 
@@ -1072,6 +1074,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     parent: None,
                     visibility: Visibility::Inherited,
                     docs: String::new(),
+                    sig: None,
                 }.lower(self.tcx));
             }
         }
@@ -1521,6 +1524,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                             parent: None,
                             visibility: Visibility::Inherited,
                             docs: String::new(),
+                            sig: None,
                         }.lower(self.tcx));
                     }
                 }

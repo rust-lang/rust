@@ -379,7 +379,7 @@ impl From<MacroData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
-            sig: None,
+            sig: data.sig,
         }
     }
 }
