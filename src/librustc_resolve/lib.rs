@@ -1131,7 +1131,6 @@ pub struct Resolver<'a> {
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
-    new_import_semantics: bool, // true if `#![feature(item_like_imports)]`
     use_extern_macros: bool, // true if `#![feature(use_extern_macros)]`
 
     pub exported_macros: Vec<ast::MacroDef>,
@@ -1333,7 +1332,6 @@ impl<'a> Resolver<'a> {
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             }),
-            new_import_semantics: session.features.borrow().item_like_imports,
             use_extern_macros: session.features.borrow().use_extern_macros,
 
             exported_macros: Vec::new(),
@@ -1442,7 +1440,7 @@ impl<'a> Resolver<'a> {
                                      -> ResolveResult<Module<'a>> {
         fn search_parent_externals<'a>(this: &mut Resolver<'a>, needle: Name, module: Module<'a>)
                                        -> Option<Module<'a>> {
-            match this.resolve_name_in_module(module, needle, TypeNS, false, false, None) {
+            match this.resolve_name_in_module(module, needle, TypeNS, false, None) {
                 Success(binding) if binding.is_extern_crate() => Some(module),
                 _ => if let (&ModuleKind::Def(..), Some(parent)) = (&module.kind, module.parent) {
                     search_parent_externals(this, needle, parent)
@@ -1460,7 +1458,7 @@ impl<'a> Resolver<'a> {
         // modules as we go.
         while index < module_path_len {
             let name = module_path[index].name;
-            match self.resolve_name_in_module(search_module, name, TypeNS, false, false, span) {
+            match self.resolve_name_in_module(search_module, name, TypeNS, false, span) {
                 Failed(_) => {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
@@ -1617,7 +1615,7 @@ impl<'a> Resolver<'a> {
 
             if let ModuleRibKind(module) = self.ribs[ns][i].kind {
                 let name = ident.name;
-                let item = self.resolve_name_in_module(module, name, ns, true, false, record_used);
+                let item = self.resolve_name_in_module(module, name, ns, false, record_used);
                 if let Success(binding) = item {
                     // The ident resolves to an item.
                     return Some(LexicalScopeBinding::Item(binding));
@@ -1626,7 +1624,7 @@ impl<'a> Resolver<'a> {
                 if let ModuleKind::Block(..) = module.kind { // We can see through blocks
                 } else if !module.no_implicit_prelude {
                     return self.prelude.and_then(|prelude| {
-                        self.resolve_name_in_module(prelude, name, ns, false, false, None).success()
+                        self.resolve_name_in_module(prelude, name, ns, false, None).success()
                     }).map(LexicalScopeBinding::Item)
                 } else {
                     return None;
@@ -2772,7 +2770,7 @@ impl<'a> Resolver<'a> {
         };
 
         let name = segments.last().unwrap().identifier.name;
-        let result = self.resolve_name_in_module(module, name, namespace, false, false, Some(span));
+        let result = self.resolve_name_in_module(module, name, namespace, false, Some(span));
         result.success().ok_or(false)
     }
 
@@ -2800,7 +2798,7 @@ impl<'a> Resolver<'a> {
         };
 
         let name = segments.last().unwrap().ident().name;
-        let result = self.resolve_name_in_module(module, name, namespace, false, false, Some(span));
+        let result = self.resolve_name_in_module(module, name, namespace, false, Some(span));
         result.success().ok_or(false)
     }
 

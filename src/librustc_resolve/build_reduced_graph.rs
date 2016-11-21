@@ -582,7 +582,7 @@ impl<'b> Resolver<'b> {
             });
         } else {
             for (name, span) in legacy_imports.imports {
-                let result = self.resolve_name_in_module(module, name, MacroNS, false, false, None);
+                let result = self.resolve_name_in_module(module, name, MacroNS, false, None);
                 if let Success(binding) = result {
                     self.legacy_import_macro(name, binding, span, allow_shadowing);
                 } else {
@@ -592,7 +592,7 @@ impl<'b> Resolver<'b> {
         }
         for (name, span) in legacy_imports.reexports {
             self.used_crates.insert(module.def_id().unwrap().krate);
-            let result = self.resolve_name_in_module(module, name, MacroNS, false, false, None);
+            let result = self.resolve_name_in_module(module, name, MacroNS, false, None);
             if let Success(binding) = result {
                 self.macro_exports.push(Export { name: name, def: binding.def() });
             } else {

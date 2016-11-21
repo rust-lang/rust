@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rustc_attrs)]
+
 mod foo {
     pub use bar::*;
-    pub use main as f; //~ ERROR has already been imported
+    pub use main as f;
 }
 
 mod bar {
@@ -18,9 +20,10 @@ mod bar {
 }
 
 pub use foo::*;
-pub use baz::*; //~ ERROR has already been imported
+pub use baz::*;
 mod baz {
     pub use super::*;
 }
 
-pub fn main() {}
+#[rustc_error]
+pub fn main() {} //~ ERROR compilation successful

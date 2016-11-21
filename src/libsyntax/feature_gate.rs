@@ -284,9 +284,6 @@ declare_features! (
     // instead of just the platforms on which it is the C ABI
     (active, abi_sysv64, "1.13.0", Some(36167)),
 
-    // Use the import semantics from RFC 1560.
-    (active, item_like_imports, "1.13.0", Some(35120)),
-
     // Macros 1.1
     (active, proc_macro, "1.13.0", Some(35900)),
 
@@ -362,6 +359,7 @@ declare_features! (
     (accepted, question_mark, "1.13.0", Some(31436)),
     // Allows `..` in tuple (struct) patterns
     (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627)),
+    (accepted, item_like_imports, "1.14.0", Some(35120)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
