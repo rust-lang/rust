@@ -597,6 +597,17 @@ mod prim_i32 { }
 ///
 mod prim_i64 { }
 
+#[doc(primitive = "i128")]
+//
+/// The 128-bit signed integer type.
+///
+/// *[See also the `std::i128` module](i128/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `i8` in there.
+///
+mod prim_i128 { }
+
 #[doc(primitive = "u8")]
 //
 /// The 8-bit unsigned integer type.
@@ -640,6 +651,17 @@ mod prim_u32 { }
 /// types. So it's normal if you see usage of types like `u8` in there.
 ///
 mod prim_u64 { }
+
+#[doc(primitive = "u128")]
+//
+/// The 128-bit unsigned integer type.
+///
+/// *[See also the `std::u128` module](u128/index.html).*
+///
+/// However, please note that examples are shared between primitive integer
+/// types. So it's normal if you see usage of types like `u8` in there.
+///
+mod prim_u128 { }
 
 #[doc(primitive = "isize")]
 //
