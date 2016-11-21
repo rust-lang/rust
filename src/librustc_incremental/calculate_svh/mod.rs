@@ -153,7 +153,10 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
         self.calculate_def_hash(DepNode::HirBody(def_id), true, &mut walk_op);
     }
 
-    fn calculate_def_hash<W>(&mut self, dep_node: DepNode<DefId>, hash_bodies: bool, walk_op: &mut W)
+    fn calculate_def_hash<W>(&mut self,
+                             dep_node: DepNode<DefId>,
+                             hash_bodies: bool,
+                             walk_op: &mut W)
         where W: for<'v> FnMut(&mut StrictVersionHashVisitor<'v, 'a, 'tcx>)
     {
         let mut state = IchHasher::new();

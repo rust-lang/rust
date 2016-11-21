@@ -165,9 +165,13 @@ pub enum InlinedItemKindRef<'a> {
 }
 
 impl<'a> InlinedItemRef<'a> {
-    pub fn from_item<'ast: 'a>(def_id: DefId, item: &'a hir::Item, map: &hir_map::Map<'ast>) -> InlinedItemRef<'a> {
+    pub fn from_item<'ast: 'a>(def_id: DefId,
+                               item: &'a hir::Item,
+                               map: &hir_map::Map<'ast>)
+                               -> InlinedItemRef<'a> {
         let (body, kind) = match item.node {
-            hir::ItemFn(ref decl, _, _, _, _, body_id) => (map.expr(body_id), InlinedItemKindRef::Fn(&decl)),
+            hir::ItemFn(ref decl, _, _, _, _, body_id) =>
+                (map.expr(body_id), InlinedItemKindRef::Fn(&decl)),
             hir::ItemConst(ref ty, ref body) => (&**body, InlinedItemKindRef::Const(ty)),
             _ => bug!("InlinedItemRef::from_item wrong kind")
         };
@@ -178,10 +182,15 @@ impl<'a> InlinedItemRef<'a> {
         }
     }
 
-    pub fn from_trait_item(def_id: DefId, item: &'a hir::TraitItem, _map: &hir_map::Map) -> InlinedItemRef<'a> {
+    pub fn from_trait_item(def_id: DefId,
+                           item: &'a hir::TraitItem,
+                           _map: &hir_map::Map)
+                           -> InlinedItemRef<'a> {
         let (body, kind) = match item.node {
             hir::ConstTraitItem(ref ty, Some(ref body)) => (&**body, InlinedItemKindRef::Const(ty)),
-            hir::ConstTraitItem(_, None) => bug!("InlinedItemRef::from_trait_item called for const without body"),
+            hir::ConstTraitItem(_, None) => {
+                bug!("InlinedItemRef::from_trait_item called for const without body")
+            },
             _ => bug!("InlinedItemRef::from_trait_item wrong kind")
         };
         InlinedItemRef {
@@ -191,9 +200,13 @@ impl<'a> InlinedItemRef<'a> {
         }
     }
 
-    pub fn from_impl_item<'ast: 'a>(def_id: DefId, item: &'a hir::ImplItem, map: &hir_map::Map<'ast>) -> InlinedItemRef<'a> {
+    pub fn from_impl_item<'ast: 'a>(def_id: DefId,
+                                    item: &'a hir::ImplItem,
+                                    map: &hir_map::Map<'ast>)
+                                    -> InlinedItemRef<'a> {
         let (body, kind) = match item.node {
-            hir::ImplItemKind::Method(ref sig, body_id) => (map.expr(body_id), InlinedItemKindRef::Fn(&sig.decl)),
+            hir::ImplItemKind::Method(ref sig, body_id) =>
+                (map.expr(body_id), InlinedItemKindRef::Fn(&sig.decl)),
             hir::ImplItemKind::Const(ref ty, ref body) => (&**body, InlinedItemKindRef::Const(ty)),
             _ => bug!("InlinedItemRef::from_impl_item wrong kind")
         };

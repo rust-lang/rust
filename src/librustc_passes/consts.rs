@@ -181,7 +181,8 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     /// Returns true if the call is to a const fn or method.
     fn handle_const_fn_call(&mut self, _expr: &hir::Expr, def_id: DefId, ret_ty: Ty<'gcx>) -> bool {
         if let Some(fn_like) = lookup_const_fn_by_id(self.tcx, def_id) {
-            let qualif = match self.tcx.const_qualif_map.borrow_mut().entry(fn_like.body().node_id()) {
+            let node_id = fn_like.body().node_id();
+            let qualif = match self.tcx.const_qualif_map.borrow_mut().entry(node_id) {
                 Entry::Occupied(entry) => Some(*entry.get()),
                 _ => None
             };

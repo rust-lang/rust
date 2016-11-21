@@ -850,7 +850,8 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>, expr:
     visitor.cx = prev_cx;
 }
 
-fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>, local: &'tcx hir::Local) {
+fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
+                           local: &'tcx hir::Local) {
     debug!("resolve_local(local.id={:?},local.init={:?})",
            local.id,local.init.is_some());
 

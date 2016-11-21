@@ -143,7 +143,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        decl: &hir::FnDecl,
                        body_id: hir::ExprId) {
         debug!("regionck_fn(id={})", fn_id);
-        let mut rcx = RegionCtxt::new(self, RepeatingScope(body_id.node_id()), body_id.node_id(), Subject(fn_id));
+        let node_id = body_id.node_id();
+        let mut rcx = RegionCtxt::new(self, RepeatingScope(node_id), node_id, Subject(fn_id));
 
         if self.err_count_since_creation() == 0 {
             // regionck assumes typeck succeeded

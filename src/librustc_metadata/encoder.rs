@@ -520,7 +520,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // We only save the HIR for associated consts with bodies
                 // (InlinedItemRef::from_trait_item panics otherwise)
                 let trait_def_id = trait_item.container.id();
-                Some(self.encode_inlined_item(InlinedItemRef::from_trait_item(trait_def_id, ast_item, &tcx.map)))
+                Some(self.encode_inlined_item(
+                    InlinedItemRef::from_trait_item(trait_def_id, ast_item, &tcx.map)
+                ))
             } else {
                 None
             },
@@ -591,7 +593,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: if ast {
-                Some(self.encode_inlined_item(InlinedItemRef::from_impl_item(impl_def_id, ast_item, &tcx.map)))
+                Some(self.encode_inlined_item(
+                    InlinedItemRef::from_impl_item(impl_def_id, ast_item, &tcx.map)
+                ))
             } else {
                 None
             },
@@ -821,7 +825,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ast: match item.node {
                 hir::ItemConst(..) |
                 hir::ItemFn(_, _, hir::Constness::Const, ..) => {
-                    Some(self.encode_inlined_item(InlinedItemRef::from_item(def_id, item, &tcx.map)))
+                    Some(self.encode_inlined_item(
+                        InlinedItemRef::from_item(def_id, item, &tcx.map)
+                    ))
                 }
                 _ => None,
             },
