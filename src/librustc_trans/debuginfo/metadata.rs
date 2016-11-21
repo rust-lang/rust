@@ -891,15 +891,15 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         let layout = cx.layout_of(self.ty);
-        
-        // The following code is slightly convoluted as to allow us to avoid allocating in the Univariant case.
-        // tmp exists only so we can take a reference to it in the second match arm below.
+
         let tmp;
         let offsets = match *layout {
             layout::Univariant { ref variant, .. } => &variant.offsets,
             layout::Vector { element, count } => {
                 let element_size = element.size(&cx.tcx().data_layout).bytes();
-                tmp = (0..count).map(|i| layout::Size::from_bytes(i*element_size)).collect::<Vec<layout::Size>>();
+                tmp = (0..count).
+                  map(|i| layout::Size::from_bytes(i*element_size))
+                  .collect::<Vec<layout::Size>>();
                 &tmp
             }
             _ => bug!("{} is not a struct", self.ty)

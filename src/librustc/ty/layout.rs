@@ -538,7 +538,10 @@ impl<'a, 'gcx, 'tcx> Struct {
             min_size: Size::from_bytes(0),
         };
 
-        if is_enum_variant { assert!(fields.len() >= 1, "Enum variants must have at least a discriminant field.") }
+        if is_enum_variant {
+            assert!(fields.len() >= 1, "Enum variants must have at least a discriminant field.")
+        }
+
         if fields.len() == 0 {return Ok(ret)};
 
         ret.offsets = vec![Size::from_bytes(0); fields.len()];
@@ -546,7 +549,8 @@ impl<'a, 'gcx, 'tcx> Struct {
 
         if repr == attr::ReprAny {
             let start = if is_enum_variant {1} else {0};
-            // FIXME(camlorn): we can't reorder the last field because it is possible for structs to be coerced to unsized.
+            // FIXME(camlorn): we can't reorder the last field because
+            // it is possible for structs to be coerced to unsized.
             // Example: struct Foo<T: ?Sized> { x: i32, y: T }
             // We can coerce &Foo<u8> to &Foo<Trait>.
             let end = inverse_memory_index.len()-1;
@@ -554,12 +558,16 @@ impl<'a, 'gcx, 'tcx> Struct {
                 let optimizing  = &mut inverse_memory_index[start..end];
                 optimizing.sort_by_key(|&x| fields[x as usize].align(dl).abi());
             }
-            if is_enum_variant { assert_eq!(inverse_memory_index[0], 0, "Enums must have field 0 as the field with lowest offset.") }
+            if is_enum_variant {
+                assert_eq!(inverse_memory_index[0], 0,
+                  "Enums must have field 0 as the field with lowest offset.")
+            }
         }
-        
+
         // At this point, inverse_memory_index holds field indices by increasing offset.
         // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
-        // We now write field offsets to the corresponding offset slot; field 5 with offset 0 puts 0 in offsets[5].
+        // We now write field offsets to the corresponding offset slot;
+        // field 5 with offset 0 puts 0 in offsets[5].
         // At the bottom of this function, we use inverse_memory_index to produce memory_index.
 
         let mut offset = Size::from_bytes(0);
@@ -976,7 +984,10 @@ impl<'a, 'gcx, 'tcx> Layout {
             ty::TyFnPtr(_) => Scalar { value: Pointer, non_zero: true },
 
             // The never type.
-            ty::TyNever => Univariant { variant: Struct::new(dl, &vec![], attr::ReprAny, false, ty)?, non_zero: false },
+            ty::TyNever => Univariant {
+                variant: Struct::new(dl, &vec![], attr::ReprAny, false, ty)?,
+                non_zero: false
+            },
 
             // Potentially-fat pointers.
             ty::TyBox(pointee) |
@@ -1179,7 +1190,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                               .collect::<Result<Vec<_>, _>>()?,
                             hint, false, ty)?;
 
-                        // We have to fix the last element of path here as only we know the right value.
+                        // We have to fix the last element of path here.
                         let mut i = *path.last().unwrap();
                         i = st.memory_index[i as usize];
                         *path.last_mut().unwrap() = i;
