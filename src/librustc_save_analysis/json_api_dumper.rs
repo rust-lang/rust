@@ -14,7 +14,7 @@ use rustc::hir::def_id::DefId;
 use rustc_serialize::json::as_json;
 
 use external_data::*;
-use data::{VariableKind, Visibility};
+use data::{VariableKind, Visibility, SigElement};
 use dump::Dump;
 use super::Format;
 
@@ -179,7 +179,7 @@ struct Def {
     children: Vec<Id>,
     decl_id: Option<Id>,
     docs: String,
-    sig: Option<Signature>,
+    sig: Option<JsonSignature>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -277,7 +277,7 @@ impl From<StructData> for Option<Def> {
             children: data.fields.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
-            sig: Some(data.sig),
+            sig: Some(From::from(data.sig)),
         }),
             _ => None,
         }
@@ -400,6 +400,7 @@ impl From<TypeDefData> for Option<Def> {
         }
     }
 }
+
 impl From<VariableData> for Option<Def> {
     fn from(data: VariableData) -> Option<Def> {
         match data.visibility {
@@ -419,9 +420,49 @@ impl From<VariableData> for Option<Def> {
                 parent: data.parent.map(|id| From::from(id)),
                 decl_id: None,
                 docs: data.docs,
-                sig: data.sig,
+                sig: data.sig.map(|s| From::from(s)),
             }),
             _ => None,
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct JsonSignature {
+    span: SpanData,
+    text: String,
+    ident_start: usize,
+    ident_end: usize,
+    defs: Vec<JsonSigElement>,
+    refs: Vec<JsonSigElement>,
+}
+
+impl From<Signature> for JsonSignature {
+    fn from(data: Signature) -> JsonSignature {
+        JsonSignature {
+            span: data.span,
+            text: data.text,
+            ident_start: data.ident_start,
+            ident_end: data.ident_end,
+            defs: data.defs.into_iter().map(|s| From::from(s)).collect(),
+            refs: data.refs.into_iter().map(|s| From::from(s)).collect(),
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct JsonSigElement {
+    id: Id,
+    start: usize,
+    end: usize,
+}
+
+impl From<SigElement> for JsonSigElement {
+    fn from(data: SigElement) -> JsonSigElement {
+        JsonSigElement {
+            id: From::from(data.id),
+            start: data.start,
+            end: data.end,
         }
     }
 }
