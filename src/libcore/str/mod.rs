@@ -1217,6 +1217,11 @@ fn contains_nonascii(x: usize) -> bool {
 fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     let mut offset = 0;
     let len = v.len();
+
+    let usize_bytes = mem::size_of::<usize>();
+    let ascii_block_size = 2 * usize_bytes;
+    let blocks_end = if len >= ascii_block_size { len - ascii_block_size + 1 } else { 0 };
+
     while offset < len {
         let old_offset = offset;
         macro_rules! err { () => {{
@@ -1282,26 +1287,22 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
-            let usize_bytes = mem::size_of::<usize>();
-            let bytes_per_iteration = 2 * usize_bytes;
             let ptr = v.as_ptr();
             let align = (ptr as usize + offset) & (usize_bytes - 1);
             if align == 0 {
-                if len >= bytes_per_iteration {
-                    while offset <= len - bytes_per_iteration {
-                        unsafe {
-                            let u = *(ptr.offset(offset as isize) as *const usize);
-                            let v = *(ptr.offset((offset + usize_bytes) as isize) as *const usize);
+                while offset < blocks_end {
+                    unsafe {
+                        let u = *(ptr.offset(offset as isize) as *const usize);
+                        let v = *(ptr.offset((offset + usize_bytes) as isize) as *const usize);
 
-                            // break if there is a nonascii byte
-                            let zu = contains_nonascii(u);
-                            let zv = contains_nonascii(v);
-                            if zu || zv {
-                                break;
-                            }
+                        // break if there is a nonascii byte
+                        let zu = contains_nonascii(u);
+                        let zv = contains_nonascii(v);
+                        if zu || zv {
+                            break;
                         }
-                        offset += bytes_per_iteration;
                     }
+                    offset += ascii_block_size;
                 }
                 // step from the point where the wordwise loop stopped
                 while offset < len && v[offset] < 128 {
