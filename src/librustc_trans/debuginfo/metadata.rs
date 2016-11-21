@@ -881,25 +881,28 @@ impl<'tcx> MemberDescriptionFactory<'tcx> {
 
 // Creates MemberDescriptions for the fields of a struct
 struct StructMemberDescriptionFactory<'tcx> {
+    ty: Ty<'tcx>,
     variant: &'tcx ty::VariantDef,
     substs: &'tcx Substs<'tcx>,
-    is_simd: bool,
     span: Span,
 }
 
 impl<'tcx> StructMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
-        let field_size = if self.is_simd {
-            let fty = monomorphize::field_ty(cx.tcx(),
-                                             self.substs,
-                                             &self.variant.fields[0]);
-            Some(machine::llsize_of_alloc(
-                cx,
-                type_of::type_of(cx, fty)
-            ) as usize)
-        } else {
-            None
+        let layout = cx.layout_of(self.ty);
+        
+        // The following code is slightly convoluted as to allow us to avoid allocating in the Univariant case.
+        // tmp exists only so we can take a reference to it in the second match arm below.
+        let tmp;
+        let offsets = match *layout {
+            layout::Univariant { ref variant, .. } => &variant.offsets,
+            layout::Vector { element, count } => {
+                let element_size = element.size(&cx.tcx().data_layout).bytes();
+                tmp = (0..count).map(|i| layout::Size::from_bytes(i*element_size)).collect::<Vec<layout::Size>>();
+                &tmp
+            }
+            _ => bug!("{} is not a struct", self.ty)
         };
 
         self.variant.fields.iter().enumerate().map(|(i, f)| {
@@ -910,11 +913,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
             };
             let fty = monomorphize::field_ty(cx.tcx(), self.substs, f);
 
-            let offset = if self.is_simd {
-                FixedMemberOffset { bytes: i * field_size.unwrap() }
-            } else {
-                ComputedMemberOffset
-            };
+            let offset = FixedMemberOffset { bytes: offsets[i].bytes() as usize};
 
             MemberDescription {
                 name: name,
@@ -956,9 +955,9 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         struct_metadata_stub,
         struct_llvm_type,
         StructMDF(StructMemberDescriptionFactory {
+            ty: struct_type,
             variant: variant,
             substs: substs,
-            is_simd: struct_type.is_simd(),
             span: span,
         })
     )
@@ -970,6 +969,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 // Creates MemberDescriptions for the fields of a tuple
 struct TupleMemberDescriptionFactory<'tcx> {
+    ty: Ty<'tcx>,
     component_types: Vec<Ty<'tcx>>,
     span: Span,
 }
@@ -977,6 +977,13 @@ struct TupleMemberDescriptionFactory<'tcx> {
 impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
+        let layout = cx.layout_of(self.ty);
+        let offsets = if let layout::Univariant { ref variant, .. } = *layout {
+            &variant.offsets
+        } else {
+            bug!("{} is not a tuple", self.ty);
+        };
+
         self.component_types
             .iter()
             .enumerate()
@@ -985,7 +992,7 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
                 name: format!("__{}", i),
                 llvm_type: type_of::type_of(cx, component_type),
                 type_metadata: type_metadata(cx, component_type, self.span),
-                offset: ComputedMemberOffset,
+                offset: FixedMemberOffset { bytes: offsets[i].bytes() as usize },
                 flags: DIFlags::FlagZero,
             }
         }).collect()
@@ -1012,6 +1019,7 @@ fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                            NO_SCOPE_METADATA),
         tuple_llvm_type,
         TupleMDF(TupleMemberDescriptionFactory {
+            ty: tuple_type,
             component_types: component_types.to_vec(),
             span: span,
         })
@@ -1300,6 +1308,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
 
 // Creates MemberDescriptions for the fields of a single enum variant.
 struct VariantMemberDescriptionFactory<'tcx> {
+    // Cloned from the layout::Struct describing the variant.
+    offsets: Vec<layout::Size>,
     args: Vec<(String, Ty<'tcx>)>,
     discriminant_type_metadata: Option<DIType>,
     span: Span,
@@ -1316,7 +1326,7 @@ impl<'tcx> VariantMemberDescriptionFactory<'tcx> {
                     Some(metadata) if i == 0 => metadata,
                     _ => type_metadata(cx, ty, self.span)
                 },
-                offset: ComputedMemberOffset,
+                offset: FixedMemberOffset { bytes: self.offsets[i].bytes() as usize },
                 flags: DIFlags::FlagZero
             }
         }).collect()
@@ -1420,6 +1430,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let member_description_factory =
         VariantMDF(VariantMemberDescriptionFactory {
+            offsets: struct_def.offsets.clone(),
             args: args,
             discriminant_type_metadata: match discriminant_info {
                 RegularDiscriminant(discriminant_type_metadata) => {
