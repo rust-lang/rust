@@ -39,7 +39,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::*;
 
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
-use syntax::parse::token::{self, keywords};
+use syntax::parse::token;
+use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string, bounds_to_string, generics_to_string};
 use syntax::ptr::P;

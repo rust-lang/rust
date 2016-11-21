@@ -19,6 +19,7 @@ use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
+use symbol::Symbol;
 use tokenstream::{TokenTree};
 use util::small_vector::SmallVector;
 
@@ -141,7 +142,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
             ));
         }
     });
-    let sym = Ident::with_empty_ctxt(token::gensym(&format!(
+    let sym = Ident::with_empty_ctxt(Symbol::gensym(&format!(
         "__register_diagnostic_{}", code
     )));
     MacEager::items(SmallVector::many(vec![
@@ -194,11 +195,11 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
     let (count, expr) =
         with_registered_diagnostics(|diagnostics| {
             let descriptions: Vec<P<ast::Expr>> =
-                diagnostics.iter().filter_map(|(code, info)| {
+                diagnostics.iter().filter_map(|(&code, info)| {
                     info.description.map(|description| {
                         ecx.expr_tuple(span, vec![
-                            ecx.expr_str(span, code.as_str()),
-                            ecx.expr_str(span, description.as_str())
+                            ecx.expr_str(span, code),
+                            ecx.expr_str(span, description)
                         ])
                     })
                 }).collect();

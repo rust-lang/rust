@@ -27,7 +27,7 @@ use middle::region;
 use ty;
 use std::mem::replace;
 use syntax::ast;
-use syntax::parse::token::keywords;
+use syntax::symbol::keywords;
 use syntax_pos::Span;
 use util::nodemap::NodeMap;
 

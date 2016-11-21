@@ -20,9 +20,10 @@ use ext::tt::macro_parser::{parse, parse_failure_msg};
 use parse::ParseSess;
 use parse::lexer::new_tt_reader;
 use parse::parser::{Parser, Restrictions};
-use parse::token::{self, gensym_ident, NtTT, Token};
+use parse::token::{self, NtTT, Token};
 use parse::token::Token::*;
 use print;
+use symbol::Symbol;
 use tokenstream::{self, TokenTree};
 
 use std::collections::{HashMap};
@@ -187,16 +188,16 @@ impl IdentMacroExpander for MacroRulesExpander {
 
 /// Converts a `macro_rules!` invocation into a syntax extension.
 pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
-    let lhs_nm =  gensym_ident("lhs");
-    let rhs_nm =  gensym_ident("rhs");
+    let lhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("lhs"));
+    let rhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("rhs"));
 
     // The pattern that macro_rules matches.
     // The grammar for macro_rules! is:
     // $( $lhs:tt => $rhs:tt );+
     // ...quasiquoting this would be nice.
     // These spans won't matter, anyways
-    let match_lhs_tok = MatchNt(lhs_nm, token::str_to_ident("tt"));
-    let match_rhs_tok = MatchNt(rhs_nm, token::str_to_ident("tt"));
+    let match_lhs_tok = MatchNt(lhs_nm, ast::Ident::from_str("tt"));
+    let match_rhs_tok = MatchNt(rhs_nm, ast::Ident::from_str("tt"));
     let argument_gram = vec![
         TokenTree::Sequence(DUMMY_SP, Rc::new(tokenstream::SequenceRepetition {
             tts: vec![
@@ -790,8 +791,7 @@ fn is_in_follow(tok: &Token, frag: &str) -> Result<bool, (String, &'static str)>
             "pat" => {
                 match *tok {
                     FatArrow | Comma | Eq | BinOp(token::Or) => Ok(true),
-                    Ident(i) if (i.name.as_str() == "if" ||
-                                 i.name.as_str() == "in") => Ok(true),
+                    Ident(i) if i.name == "if" || i.name == "in" => Ok(true),
                     _ => Ok(false)
                 }
             },
@@ -799,8 +799,8 @@ fn is_in_follow(tok: &Token, frag: &str) -> Result<bool, (String, &'static str)>
                 match *tok {
                     OpenDelim(token::DelimToken::Brace) | OpenDelim(token::DelimToken::Bracket) |
                     Comma | FatArrow | Colon | Eq | Gt | Semi | BinOp(token::Or) => Ok(true),
-                    MatchNt(_, ref frag) if frag.name.as_str() == "block" => Ok(true),
-                    Ident(i) if i.name.as_str() == "as" || i.name.as_str() == "where" => Ok(true),
+                    MatchNt(_, ref frag) if frag.name == "block" => Ok(true),
+                    Ident(i) if i.name == "as" || i.name == "where" => Ok(true),
                     _ => Ok(false)
                 }
             },

@@ -14,71 +14,43 @@ pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
+pub use symbol::Symbol as Name;
 pub use util::ThinVec;
 
 use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
 use ext::hygiene::SyntaxContext;
-use parse::token::{self, keywords, InternedString};
 use print::pprust;
 use ptr::P;
+use symbol::{Symbol, keywords};
 use tokenstream::{TokenTree};
 
+use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 use std::u32;
 
 use serialize::{self, Encodable, Decodable, Encoder, Decoder};
 
-/// A name is a part of an identifier, representing a string or gensym. It's
-/// the result of interning.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Name(pub u32);
-
 /// An identifier contains a Name (index into the interner
 /// table) and a SyntaxContext to track renaming and
 /// macro expansion per Flatt et al., "Macros That Work Together"
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ident {
-    pub name: Name,
+    pub name: Symbol,
     pub ctxt: SyntaxContext
-}
-
-impl Name {
-    pub fn as_str(self) -> token::InternedString {
-        token::InternedString::new_from_name(self)
-    }
-}
-
-impl fmt::Debug for Name {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}({})", self, self.0)
-    }
-}
-
-impl fmt::Display for Name {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.as_str(), f)
-    }
-}
-
-impl Encodable for Name {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.as_str())
-    }
-}
-
-impl Decodable for Name {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Name, D::Error> {
-        Ok(token::intern(&d.read_str()?))
-    }
 }
 
 impl Ident {
     pub const fn with_empty_ctxt(name: Name) -> Ident {
         Ident { name: name, ctxt: SyntaxContext::empty() }
     }
+
+   /// Maps a string to an identifier with an empty syntax context.
+   pub fn from_str(s: &str) -> Ident {
+       Ident::with_empty_ctxt(Symbol::intern(s))
+   }
 }
 
 impl fmt::Debug for Ident {
@@ -401,7 +373,7 @@ impl Generics {
     }
     pub fn span_for_name(&self, name: &str) -> Option<Span> {
         for t in &self.ty_params {
-            if t.ident.name.as_str() == name {
+            if t.ident.name == name {
                 return Some(t.span);
             }
         }
@@ -479,7 +451,7 @@ pub struct WhereEqPredicate {
 
 /// The set of MetaItems that define the compilation environment of the crate,
 /// used to drive conditional compilation
-pub type CrateConfig = Vec<P<MetaItem>>;
+pub type CrateConfig = HashSet<(Name, Option<Symbol>)>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Crate {
@@ -498,7 +470,7 @@ pub type NestedMetaItem = Spanned<NestedMetaItemKind>;
 #[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Debug, PartialEq)]
 pub enum NestedMetaItemKind {
     /// A full MetaItem, for recursive meta items.
-    MetaItem(P<MetaItem>),
+    MetaItem(MetaItem),
     /// A literal.
     ///
     /// E.g. "foo", 64, true
@@ -508,53 +480,30 @@ pub enum NestedMetaItemKind {
 /// A spanned compile-time attribute item.
 ///
 /// E.g. `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`
-pub type MetaItem = Spanned<MetaItemKind>;
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct MetaItem {
+    pub name: Name,
+    pub node: MetaItemKind,
+    pub span: Span,
+}
 
 /// A compile-time attribute item.
 ///
 /// E.g. `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`
-#[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum MetaItemKind {
     /// Word meta item.
     ///
     /// E.g. `test` as in `#[test]`
-    Word(InternedString),
+    Word,
     /// List meta item.
     ///
     /// E.g. `derive(..)` as in `#[derive(..)]`
-    List(InternedString, Vec<NestedMetaItem>),
+    List(Vec<NestedMetaItem>),
     /// Name value meta item.
     ///
     /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
-    NameValue(InternedString, Lit),
-}
-
-// can't be derived because the MetaItemKind::List requires an unordered comparison
-impl PartialEq for MetaItemKind {
-    fn eq(&self, other: &MetaItemKind) -> bool {
-        use self::MetaItemKind::*;
-        match *self {
-            Word(ref ns) => match *other {
-                Word(ref no) => (*ns) == (*no),
-                _ => false
-            },
-            List(ref ns, ref miss) => match *other {
-                List(ref no, ref miso) => {
-                    ns == no &&
-                        miss.iter().all(|mi| {
-                            miso.iter().any(|x| x.node == mi.node)
-                        })
-                }
-                _ => false
-            },
-            NameValue(ref ns, ref vs) => match *other {
-                NameValue(ref no, ref vo) => {
-                    (*ns) == (*no) && vs.node == vo.node
-                }
-                _ => false
-            },
-        }
-    }
+    NameValue(Lit)
 }
 
 /// A Block (`{ .. }`).
@@ -1149,7 +1098,7 @@ pub enum LitIntType {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum LitKind {
     /// A string literal (`"foo"`)
-    Str(InternedString, StrStyle),
+    Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`)
     ByteStr(Rc<Vec<u8>>),
     /// A byte char (`b'f'`)
@@ -1159,9 +1108,9 @@ pub enum LitKind {
     /// An integer literal (`1`)
     Int(u64, LitIntType),
     /// A float literal (`1f64` or `1E10f64`)
-    Float(InternedString, FloatTy),
+    Float(Symbol, FloatTy),
     /// A float literal without a suffix (`1.0 or 1.0E10`)
-    FloatUnsuffixed(InternedString),
+    FloatUnsuffixed(Symbol),
     /// A boolean literal
     Bool(bool),
 }
@@ -1493,7 +1442,7 @@ pub enum AsmDialect {
 /// E.g. `"={eax}"(result)` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")``
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsmOutput {
-    pub constraint: InternedString,
+    pub constraint: Symbol,
     pub expr: P<Expr>,
     pub is_rw: bool,
     pub is_indirect: bool,
@@ -1504,11 +1453,11 @@ pub struct InlineAsmOutput {
 /// E.g. `asm!("NOP");`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsm {
-    pub asm: InternedString,
+    pub asm: Symbol,
     pub asm_str_style: StrStyle,
     pub outputs: Vec<InlineAsmOutput>,
-    pub inputs: Vec<(InternedString, P<Expr>)>,
-    pub clobbers: Vec<InternedString>,
+    pub inputs: Vec<(Symbol, P<Expr>)>,
+    pub clobbers: Vec<Symbol>,
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
@@ -1755,8 +1704,6 @@ impl ViewPath_ {
     }
 }
 
-/// Meta-data associated with an item
-pub type Attribute = Spanned<Attribute_>;
 
 /// Distinguishes between Attributes that decorate items and Attributes that
 /// are contained as statements within items. These two cases need to be
@@ -1770,13 +1717,15 @@ pub enum AttrStyle {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub struct AttrId(pub usize);
 
+/// Meta-data associated with an item
 /// Doc-comments are promoted to attributes that have is_sugared_doc = true
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct Attribute_ {
+pub struct Attribute {
     pub id: AttrId,
     pub style: AttrStyle,
-    pub value: P<MetaItem>,
+    pub value: MetaItem,
     pub is_sugared_doc: bool,
+    pub span: Span,
 }
 
 /// TraitRef's appear in impls.

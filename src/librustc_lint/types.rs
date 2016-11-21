@@ -219,9 +219,9 @@ impl LateLintPass for TypeLimits {
                     ty::TyFloat(t) => {
                         let (min, max) = float_ty_range(t);
                         let lit_val: f64 = match lit.node {
-                            ast::LitKind::Float(ref v, _) |
-                            ast::LitKind::FloatUnsuffixed(ref v) => {
-                                match v.parse() {
+                            ast::LitKind::Float(v, _) |
+                            ast::LitKind::FloatUnsuffixed(v) => {
+                                match v.as_str().parse() {
                                     Ok(f) => f,
                                     Err(_) => return,
                                 }

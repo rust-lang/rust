@@ -44,6 +44,7 @@ use std::str;
 use flate;
 use syntax::ast;
 use syntax::attr;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
@@ -93,8 +94,8 @@ pub fn find_crate_name(sess: Option<&Session>,
 
     if let Some(sess) = sess {
         if let Some(ref s) = sess.opts.crate_name {
-            if let Some((attr, ref name)) = attr_crate_name {
-                if *s != &name[..] {
+            if let Some((attr, name)) = attr_crate_name {
+                if name != &**s {
                     let msg = format!("--crate-name and #[crate_name] are \
                                        required to match, but `{}` != `{}`",
                                       s, name);
@@ -130,7 +131,7 @@ pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap,
                        name: &str)
                        -> LinkMeta {
     let r = LinkMeta {
-        crate_name: name.to_owned(),
+        crate_name: Symbol::intern(name),
         crate_hash: Svh::new(incremental_hashes_map[&DepNode::Krate].to_smaller_hash()),
     };
     info!("{:?}", r);
@@ -429,7 +430,7 @@ fn link_rlib<'a>(sess: &'a Session,
             NativeLibraryKind::NativeFramework |
             NativeLibraryKind::NativeUnknown => continue,
         }
-        ab.add_native_library(&lib.name);
+        ab.add_native_library(&lib.name.as_str());
     }
 
     // After adding all files to the archive, we need to update the
@@ -615,7 +616,7 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
         let skip_object_files = native_libs.iter().any(|lib| {
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
-        ab.add_rlib(path, &name, sess.lto(), skip_object_files).unwrap();
+        ab.add_rlib(path, &name.as_str(), sess.lto(), skip_object_files).unwrap();
 
         all_native_libs.extend(sess.cstore.native_libraries(cnum));
     });
@@ -934,15 +935,15 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         // don't otherwise explicitly reference them. This can occur for
         // libraries which are just providing bindings, libraries with generic
         // functions, etc.
-        cmd.link_whole_staticlib(&l.name, &search_path);
+        cmd.link_whole_staticlib(&l.name.as_str(), &search_path);
     }
 
     cmd.hint_dynamic();
 
     for lib in others {
         match lib.kind {
-            NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name),
-            NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name),
+            NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
+            NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
             NativeLibraryKind::NativeStatic => bug!(),
         }
     }
@@ -1185,8 +1186,8 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
                 continue
             }
             match lib.kind {
-                NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name),
-                NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name),
+                NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
+                NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
 
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library

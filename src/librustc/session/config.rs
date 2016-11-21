@@ -25,9 +25,8 @@ use lint;
 use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
-use syntax::attr;
 use syntax::parse;
-use syntax::parse::token::InternedString;
+use syntax::symbol::Symbol;
 use syntax::feature_gate::UnstableFeatures;
 
 use errors::{ColorConfig, FatalError, Handler};
@@ -41,6 +40,7 @@ use std::collections::btree_map::Values as BTreeMapValuesIter;
 use std::fmt;
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
@@ -927,8 +927,6 @@ pub fn default_lib_output() -> CrateType {
 }
 
 pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
-    use syntax::parse::token::intern_and_get_ident as intern;
-
     let end = &sess.target.target.target_endian;
     let arch = &sess.target.target.arch;
     let wordsz = &sess.target.target.target_pointer_width;
@@ -938,53 +936,44 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let max_atomic_width = sess.target.target.max_atomic_width();
 
     let fam = if let Some(ref fam) = sess.target.target.options.target_family {
-        intern(fam)
+        Symbol::intern(fam)
     } else if sess.target.target.options.is_like_windows {
-        InternedString::new("windows")
+        Symbol::intern("windows")
     } else {
-        InternedString::new("unix")
+        Symbol::intern("unix")
     };
 
-    let mk = attr::mk_name_value_item_str;
-    let mut ret = vec![ // Target bindings.
-        mk(InternedString::new("target_os"), intern(os)),
-        mk(InternedString::new("target_family"), fam.clone()),
-        mk(InternedString::new("target_arch"), intern(arch)),
-        mk(InternedString::new("target_endian"), intern(end)),
-        mk(InternedString::new("target_pointer_width"), intern(wordsz)),
-        mk(InternedString::new("target_env"), intern(env)),
-        mk(InternedString::new("target_vendor"), intern(vendor)),
-    ];
-    match &fam[..] {
-        "windows" | "unix" => ret.push(attr::mk_word_item(fam)),
-        _ => (),
+    let mut ret = HashSet::new();
+    // Target bindings.
+    ret.insert((Symbol::intern("target_os"), Some(Symbol::intern(os))));
+    ret.insert((Symbol::intern("target_family"), Some(fam)));
+    ret.insert((Symbol::intern("target_arch"), Some(Symbol::intern(arch))));
+    ret.insert((Symbol::intern("target_endian"), Some(Symbol::intern(end))));
+    ret.insert((Symbol::intern("target_pointer_width"), Some(Symbol::intern(wordsz))));
+    ret.insert((Symbol::intern("target_env"), Some(Symbol::intern(env))));
+    ret.insert((Symbol::intern("target_vendor"), Some(Symbol::intern(vendor))));
+    if fam == "windows" || fam == "unix" {
+        ret.insert((fam, None));
     }
     if sess.target.target.options.has_elf_tls {
-        ret.push(attr::mk_word_item(InternedString::new("target_thread_local")));
+        ret.insert((Symbol::intern("target_thread_local"), None));
     }
     for &i in &[8, 16, 32, 64, 128] {
         if i <= max_atomic_width {
             let s = i.to_string();
-            ret.push(mk(InternedString::new("target_has_atomic"), intern(&s)));
+            ret.insert((Symbol::intern("target_has_atomic"), Some(Symbol::intern(&s))));
             if &s == wordsz {
-                ret.push(mk(InternedString::new("target_has_atomic"), intern("ptr")));
+                ret.insert((Symbol::intern("target_has_atomic"), Some(Symbol::intern("ptr"))));
             }
         }
     }
     if sess.opts.debug_assertions {
-        ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));
+        ret.insert((Symbol::intern("debug_assertions"), None));
     }
     if sess.opts.crate_types.contains(&CrateTypeProcMacro) {
-        ret.push(attr::mk_word_item(InternedString::new("proc_macro")));
+        ret.insert((Symbol::intern("proc_macro"), None));
     }
     return ret;
-}
-
-pub fn append_configuration(cfg: &mut ast::CrateConfig,
-                            name: InternedString) {
-    if !cfg.iter().any(|mi| mi.name() == name) {
-        cfg.push(attr::mk_word_item(name))
-    }
 }
 
 pub fn build_configuration(sess: &Session,
@@ -995,11 +984,10 @@ pub fn build_configuration(sess: &Session,
     let default_cfg = default_configuration(sess);
     // If the user wants a test runner, then add the test cfg
     if sess.opts.test {
-        append_configuration(&mut user_cfg, InternedString::new("test"))
+        user_cfg.insert((Symbol::intern("test"), None));
     }
-    let mut v = user_cfg.into_iter().collect::<Vec<_>>();
-    v.extend_from_slice(&default_cfg[..]);
-    v
+    user_cfg.extend(default_cfg.iter().cloned());
+    user_cfg
 }
 
 pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
@@ -1245,11 +1233,14 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
         let meta_item = panictry!(parser.parse_meta_item());
 
         if !parser.reader.is_eof() {
-            early_error(ErrorOutputType::default(), &format!("invalid --cfg argument: {}",
-                                                             s))
+            early_error(ErrorOutputType::default(), &format!("invalid --cfg argument: {}", s))
+        } else if meta_item.is_meta_item_list() {
+            let msg =
+                format!("invalid predicate in --cfg command line argument: `{}`", meta_item.name());
+            early_error(ErrorOutputType::default(), &msg)
         }
 
-        meta_item
+        (meta_item.name(), meta_item.value_str())
     }).collect::<ast::CrateConfig>()
 }
 
@@ -1773,9 +1764,7 @@ mod tests {
     use std::rc::Rc;
     use super::{OutputType, OutputTypes, Externs};
     use rustc_back::PanicStrategy;
-    use syntax::{ast, attr};
-    use syntax::parse::token::InternedString;
-    use syntax::codemap::dummy_spanned;
+    use syntax::symbol::Symbol;
 
     fn optgroups() -> Vec<OptGroup> {
         super::rustc_optgroups().into_iter()
@@ -1804,9 +1793,7 @@ mod tests {
         let (sessopts, cfg) = build_session_options_and_crate_config(matches);
         let sess = build_session(sessopts, &dep_graph, None, registry, Rc::new(DummyCrateStore));
         let cfg = build_configuration(&sess, cfg);
-        assert!(attr::contains(&cfg, &dummy_spanned(ast::MetaItemKind::Word({
-            InternedString::new("test")
-        }))));
+        assert!(cfg.contains(&(Symbol::intern("test"), None)));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add
@@ -1827,7 +1814,7 @@ mod tests {
         let sess = build_session(sessopts, &dep_graph, None, registry,
                                  Rc::new(DummyCrateStore));
         let cfg = build_configuration(&sess, cfg);
-        let mut test_items = cfg.iter().filter(|m| m.name() == "test");
+        let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());
     }

@@ -13,7 +13,6 @@ use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::feature_gate;
 use syntax::parse::token;
-use syntax::parse::token::str_to_ident;
 use syntax::ptr::P;
 use syntax_pos::Span;
 use syntax::tokenstream::TokenTree;
@@ -51,7 +50,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
             }
         }
     }
-    let res = str_to_ident(&res_str);
+    let res = ast::Ident::from_str(&res_str);
 
     struct Result {
         ident: ast::Ident,

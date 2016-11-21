@@ -30,7 +30,7 @@ use middle::weak_lang_items;
 use util::nodemap::FxHashMap;
 
 use syntax::ast;
-use syntax::parse::token::InternedString;
+use syntax::symbol::Symbol;
 use hir::itemlikevisit::ItemLikeVisitor;
 use hir;
 
@@ -152,7 +152,7 @@ struct LanguageItemCollector<'a, 'tcx: 'a> {
 impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let Some(value) = extract(&item.attrs) {
-            let item_index = self.item_refs.get(&value[..]).cloned();
+            let item_index = self.item_refs.get(&*value.as_str()).cloned();
 
             if let Some(item_index) = item_index {
                 self.collect_item(item_index, self.ast_map.local_def_id(item.id))
@@ -160,7 +160,7 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
                 let span = self.ast_map.span(item.id);
                 span_err!(self.session, span, E0522,
                           "definition of an unknown language item: `{}`.",
-                          &value[..]);
+                          value);
             }
         }
     }
@@ -243,12 +243,10 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     }
 }
 
-pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
+pub fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
     for attribute in attrs {
         match attribute.value_str() {
-            Some(ref value) if attribute.check_name("lang") => {
-                return Some(value.clone());
-            }
+            Some(value) if attribute.check_name("lang") => return Some(value),
             _ => {}
         }
     }

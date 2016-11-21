@@ -57,7 +57,6 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 use syntax::ast;
-use syntax::parse::token::InternedString;
 use syntax_pos::Span;
 use {ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED};
 
@@ -97,7 +96,7 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 }
 
 type Sources = Vec<(Span, DefId, DepNode<DefId>)>;
-type Targets = Vec<(Span, InternedString, ast::NodeId, DepNode<DefId>)>;
+type Targets = Vec<(Span, ast::Name, ast::NodeId, DepNode<DefId>)>;
 
 struct IfThisChanged<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -106,7 +105,7 @@ struct IfThisChanged<'a, 'tcx:'a> {
 }
 
 impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
-    fn argument(&self, attr: &ast::Attribute) -> Option<InternedString> {
+    fn argument(&self, attr: &ast::Attribute) -> Option<ast::Name> {
         let mut value = None;
         for list_item in attr.meta_item_list().unwrap_or_default() {
             match list_item.word() {
@@ -127,8 +126,8 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
                     None => DepNode::Hir(def_id),
-                    Some(ref n) => {
-                        match DepNode::from_label_string(&n[..], def_id) {
+                    Some(n) => {
+                        match DepNode::from_label_string(&n.as_str(), def_id) {
                             Ok(n) => n,
                             Err(()) => {
                                 self.tcx.sess.span_fatal(
@@ -142,8 +141,8 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
             } else if attr.check_name(ATTR_THEN_THIS_WOULD_NEED) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
-                    Some(ref n) => {
-                        match DepNode::from_label_string(&n[..], def_id) {
+                    Some(n) => {
+                        match DepNode::from_label_string(&n.as_str(), def_id) {
                             Ok(n) => n,
                             Err(()) => {
                                 self.tcx.sess.span_fatal(
@@ -159,7 +158,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                     }
                 };
                 self.then_this_would_need.push((attr.span,
-                                                dep_node_interned.clone().unwrap(),
+                                                dep_node_interned.unwrap(),
                                                 node_id,
                                                 dep_node));
             }

@@ -23,7 +23,7 @@ use std::fmt;
 use std::ops;
 use syntax::abi;
 use syntax::ast::{self, Name};
-use syntax::parse::token::{keywords, InternedString};
+use syntax::symbol::{keywords, InternedString};
 
 use serialize;
 

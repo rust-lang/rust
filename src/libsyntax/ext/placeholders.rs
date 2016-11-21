@@ -13,8 +13,8 @@ use codemap::{DUMMY_SP, dummy_spanned};
 use ext::base::ExtCtxt;
 use ext::expand::{Expansion, ExpansionKind};
 use fold::*;
-use parse::token::{intern, keywords};
 use ptr::P;
+use symbol::{Symbol, keywords};
 use util::move_map::MoveMap;
 use util::small_vector::SmallVector;
 
@@ -227,7 +227,7 @@ pub fn reconstructed_macro_rules(def: &ast::MacroDef) -> Expansion {
                     span: DUMMY_SP,
                     global: false,
                     segments: vec![ast::PathSegment {
-                        identifier: ast::Ident::with_empty_ctxt(intern("macro_rules")),
+                        identifier: ast::Ident::with_empty_ctxt(Symbol::intern("macro_rules")),
                         parameters: ast::PathParameters::none(),
                     }],
                 },

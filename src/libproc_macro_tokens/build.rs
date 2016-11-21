@@ -13,7 +13,8 @@ extern crate syntax_pos;
 
 use syntax::ast::Ident;
 use syntax::codemap::DUMMY_SP;
-use syntax::parse::token::{self, Token, keywords, str_to_ident};
+use syntax::parse::token::{self, Token};
+use syntax::symbol::keywords;
 use syntax::tokenstream::{self, TokenTree, TokenStream};
 use std::rc::Rc;
 
@@ -43,13 +44,13 @@ pub fn ident_eq(tident: &TokenTree, id: Ident) -> bool {
 
 /// Convert a `&str` into a Token.
 pub fn str_to_token_ident(s: &str) -> Token {
-    Token::Ident(str_to_ident(s))
+    Token::Ident(Ident::from_str(s))
 }
 
 /// Converts a keyword (from `syntax::parse::token::keywords`) into a Token that
 /// corresponds to it.
 pub fn keyword_to_token_ident(kw: keywords::Keyword) -> Token {
-    Token::Ident(str_to_ident(&kw.name().as_str()[..]))
+    Token::Ident(Ident::from_str(&kw.name().as_str()[..]))
 }
 
 // ____________________________________________________________________________________________

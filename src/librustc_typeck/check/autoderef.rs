@@ -20,7 +20,7 @@ use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::hir;
 
 use syntax_pos::Span;
-use syntax::parse::token;
+use syntax::symbol::Symbol;
 
 #[derive(Copy, Clone, Debug)]
 enum AutoderefKind {
@@ -120,7 +120,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         let normalized = traits::normalize_projection_type(&mut selcx,
                                                            ty::ProjectionTy {
                                                                trait_ref: trait_ref,
-                                                               item_name: token::intern("Target"),
+                                                               item_name: Symbol::intern("Target"),
                                                            },
                                                            cause,
                                                            0);
@@ -198,7 +198,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (PreferMutLvalue, Some(trait_did)) => {
                 self.lookup_method_in_trait(span,
                                             base_expr,
-                                            token::intern("deref_mut"),
+                                            Symbol::intern("deref_mut"),
                                             trait_did,
                                             base_ty,
                                             None)
@@ -211,7 +211,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (None, Some(trait_did)) => {
                 self.lookup_method_in_trait(span,
                                             base_expr,
-                                            token::intern("deref"),
+                                            Symbol::intern("deref"),
                                             trait_did,
                                             base_ty,
                                             None)

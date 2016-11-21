@@ -44,7 +44,7 @@ use std::vec::IntoIter;
 use std::mem;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
-use syntax::parse::token::{self, InternedString};
+use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
 use rustc_const_math::ConstInt;
@@ -2344,7 +2344,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(id) = self.map.as_local_node_id(id) {
             self.map.name(id)
         } else if id.index == CRATE_DEF_INDEX {
-            token::intern(&self.sess.cstore.original_crate_name(id.krate))
+            self.sess.cstore.original_crate_name(id.krate)
         } else {
             let def_key = self.sess.cstore.def_key(id);
             // The name of a StructCtor is that of its struct parent.
@@ -2747,7 +2747,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`
     /// with the name of the crate containing the impl.
-    pub fn span_of_impl(self, impl_did: DefId) -> Result<Span, InternedString> {
+    pub fn span_of_impl(self, impl_did: DefId) -> Result<Span, Symbol> {
         if impl_did.is_local() {
             let node_id = self.map.as_local_node_id(impl_did).unwrap();
             Ok(self.map.span(node_id))

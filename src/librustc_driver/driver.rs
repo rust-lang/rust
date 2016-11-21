@@ -53,7 +53,8 @@ use std::path::{Path, PathBuf};
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
 use syntax::ext::base::ExtCtxt;
-use syntax::parse::{self, PResult, token};
+use syntax::parse::{self, PResult};
+use syntax::symbol::Symbol;
 use syntax::util::node_count::NodeCounter;
 use syntax;
 use syntax_ext;
@@ -209,9 +210,6 @@ pub fn compile_input(sess: &Session,
                 println!("Post-trans");
                 tcx.print_debug_stats();
             }
-
-            // Discard interned strings as they are no longer required.
-            token::clear_ident_interner();
 
             Ok((outputs, trans))
         })??
@@ -563,8 +561,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     *sess.features.borrow_mut() = features;
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
-    *sess.crate_disambiguator.borrow_mut() =
-        token::intern(&compute_crate_disambiguator(sess)).as_str();
+    *sess.crate_disambiguator.borrow_mut() = Symbol::intern(&compute_crate_disambiguator(sess));
 
     time(time_passes, "recursion limit", || {
         middle::recursion_limit::update_recursion_limit(sess, &krate);
@@ -1107,7 +1104,7 @@ pub fn phase_6_link_output(sess: &Session,
                            outputs: &OutputFilenames) {
     time(sess.time_passes(),
          "linking",
-         || link::link_binary(sess, trans, outputs, &trans.link.crate_name));
+         || link::link_binary(sess, trans, outputs, &trans.link.crate_name.as_str()));
 }
 
 fn escape_dep_filename(filename: &str) -> String {
@@ -1357,12 +1354,4 @@ pub fn build_output_filenames(input: &Input,
             }
         }
     }
-}
-
-// For use by the `rusti` project (https://github.com/murarth/rusti).
-pub fn reset_thread_local_state() {
-    // These may be left in an incoherent state after a previous compile.
-    syntax::ext::hygiene::reset_hygiene_data();
-    // `clear_ident_interner` can be used to free memory, but it does not restore the initial state.
-    token::reset_ident_interner();
 }

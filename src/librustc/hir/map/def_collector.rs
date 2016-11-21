@@ -19,7 +19,7 @@ use middle::cstore::InlinedItem;
 use syntax::ast::*;
 use syntax::ext::hygiene::Mark;
 use syntax::visit;
-use syntax::parse::token::{self, keywords};
+use syntax::symbol::{Symbol, keywords};
 
 /// Creates def ids for nodes in the HIR.
 pub struct DefCollector<'a> {
@@ -169,7 +169,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
                         this.with_parent(variant_def_index, |this| {
                             for (index, field) in v.node.data.fields().iter().enumerate() {
                                 let name = field.ident.map(|ident| ident.name)
-                                    .unwrap_or_else(|| token::intern(&index.to_string()));
+                                    .unwrap_or_else(|| Symbol::intern(&index.to_string()));
                                 this.create_def(field.id, DefPathData::Field(name.as_str()));
                             }
 
@@ -188,7 +188,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
 
                     for (index, field) in struct_def.fields().iter().enumerate() {
                         let name = field.ident.map(|ident| ident.name.as_str())
-                            .unwrap_or(token::intern(&index.to_string()).as_str());
+                            .unwrap_or(Symbol::intern(&index.to_string()).as_str());
                         this.create_def(field.id, DefPathData::Field(name));
                     }
                 }

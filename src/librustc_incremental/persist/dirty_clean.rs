@@ -48,7 +48,6 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use syntax::ast::{self, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use syntax::parse::token::InternedString;
 use syntax_pos::Span;
 use rustc::ty::TyCtxt;
 use ich::Fingerprint;
@@ -88,12 +87,11 @@ pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
 }
 
 impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
-
     fn dep_node(&self, attr: &Attribute, def_id: DefId) -> DepNode<DefId> {
         for item in attr.meta_item_list().unwrap_or(&[]) {
             if item.check_name(LABEL) {
                 let value = expect_associated_value(self.tcx, item);
-                match DepNode::from_label_string(&value[..], def_id) {
+                match DepNode::from_label_string(&value.as_str(), def_id) {
                     Ok(def_id) => return def_id,
                     Err(()) => {
                         self.tcx.sess.span_fatal(
@@ -276,13 +274,7 @@ fn check_config(tcx: TyCtxt, attr: &ast::Attribute) -> bool {
         if item.check_name(CFG) {
             let value = expect_associated_value(tcx, item);
             debug!("check_config: searching for cfg {:?}", value);
-            for cfg in &config[..] {
-                if cfg.check_name(&value[..]) {
-                    debug!("check_config: matched {:?}", cfg);
-                    return true;
-                }
-            }
-            return false;
+            return config.contains(&(value, None));
         }
     }
 
@@ -291,7 +283,7 @@ fn check_config(tcx: TyCtxt, attr: &ast::Attribute) -> bool {
         &format!("no cfg attribute"));
 }
 
-fn expect_associated_value(tcx: TyCtxt, item: &NestedMetaItem) -> InternedString {
+fn expect_associated_value(tcx: TyCtxt, item: &NestedMetaItem) -> ast::Name {
     if let Some(value) = item.value_str() {
         value
     } else {

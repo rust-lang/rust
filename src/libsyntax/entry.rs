@@ -28,7 +28,7 @@ pub fn entry_point_type(item: &Item, depth: usize) -> EntryPointType {
                 EntryPointType::Start
             } else if attr::contains_name(&item.attrs, "main") {
                 EntryPointType::MainAttr
-            } else if item.ident.name.as_str() == "main" {
+            } else if item.ident.name == "main" {
                 if depth == 1 {
                     // This is a top-level function so can be 'main'
                     EntryPointType::MainNamed

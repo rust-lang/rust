@@ -18,6 +18,7 @@ use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::parse::token;
+use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{Span, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
 use syntax::tokenstream;
 use rustc::hir;
@@ -169,8 +170,8 @@ enum SawAbiComponent<'a> {
 
     // FIXME (#14132): should we include (some function of)
     // ident.ctxt as well?
-    SawIdent(token::InternedString),
-    SawStructDef(token::InternedString),
+    SawIdent(InternedString),
+    SawStructDef(InternedString),
 
     SawLifetime,
     SawLifetimeDef(usize),
@@ -232,11 +233,11 @@ enum SawAbiComponent<'a> {
 #[derive(Hash)]
 enum SawExprComponent<'a> {
 
-    SawExprLoop(Option<token::InternedString>),
-    SawExprField(token::InternedString),
+    SawExprLoop(Option<InternedString>),
+    SawExprField(InternedString),
     SawExprTupField(usize),
-    SawExprBreak(Option<token::InternedString>),
-    SawExprAgain(Option<token::InternedString>),
+    SawExprBreak(Option<InternedString>),
+    SawExprAgain(Option<InternedString>),
 
     SawExprBox,
     SawExprArray,
@@ -246,6 +247,8 @@ enum SawExprComponent<'a> {
     SawExprBinary(hir::BinOp_),
     SawExprUnary(hir::UnOp),
     SawExprLit(ast::LitKind),
+    SawExprLitStr(InternedString, ast::StrStyle),
+    SawExprLitFloat(InternedString, Option<ast::FloatTy>),
     SawExprCast,
     SawExprType,
     SawExprIf,
@@ -314,7 +317,7 @@ fn saw_expr<'a>(node: &'a Expr_,
         ExprUnary(op, _)         => {
             (SawExprUnary(op), unop_can_panic_at_runtime(op))
         }
-        ExprLit(ref lit)         => (SawExprLit(lit.node.clone()), false),
+        ExprLit(ref lit)         => (saw_lit(lit), false),
         ExprCast(..)             => (SawExprCast, false),
         ExprType(..)             => (SawExprType, false),
         ExprIf(..)               => (SawExprIf, false),
@@ -338,6 +341,15 @@ fn saw_expr<'a>(node: &'a Expr_,
         ExprInlineAsm(ref a,..)  => (SawExprInlineAsm(a), false),
         ExprStruct(..)           => (SawExprStruct, false),
         ExprRepeat(..)           => (SawExprRepeat, false),
+    }
+}
+
+fn saw_lit(lit: &ast::Lit) -> SawExprComponent<'static> {
+    match lit.node {
+        ast::LitKind::Str(s, style) => SawExprLitStr(s.as_str(), style),
+        ast::LitKind::Float(s, ty) => SawExprLitFloat(s.as_str(), Some(ty)),
+        ast::LitKind::FloatUnsuffixed(s) => SawExprLitFloat(s.as_str(), None),
+        ref node @ _ => SawExprLit(node.clone()),
     }
 }
 
@@ -874,22 +886,16 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
 
         // ignoring span information, it doesn't matter here
         self.hash_discriminant(&meta_item.node);
+        meta_item.name.as_str().len().hash(self.st);
+        meta_item.name.as_str().hash(self.st);
+
         match meta_item.node {
-            ast::MetaItemKind::Word(ref s) => {
-                s.len().hash(self.st);
-                s.hash(self.st);
-            }
-            ast::MetaItemKind::NameValue(ref s, ref lit) => {
-                s.len().hash(self.st);
-                s.hash(self.st);
-                lit.node.hash(self.st);
-            }
-            ast::MetaItemKind::List(ref s, ref items) => {
-                s.len().hash(self.st);
-                s.hash(self.st);
+            ast::MetaItemKind::Word => {}
+            ast::MetaItemKind::NameValue(ref lit) => saw_lit(lit).hash(self.st),
+            ast::MetaItemKind::List(ref items) => {
                 // Sort subitems so the hash does not depend on their order
                 let indices = self.indices_sorted_by(&items, |p| {
-                    (p.name(), fnv::hash(&p.literal().map(|i| &i.node)))
+                    (p.name().map(Symbol::as_str), fnv::hash(&p.literal().map(saw_lit)))
                 });
                 items.len().hash(self.st);
                 for (index, &item_index) in indices.iter().enumerate() {
@@ -901,7 +907,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                             self.hash_meta_item(meta_item);
                         }
                         ast::NestedMetaItemKind::Literal(ref lit) => {
-                            lit.node.hash(self.st);
+                            saw_lit(lit).hash(self.st);
                         }
                     }
                 }
@@ -914,11 +920,11 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         let indices = self.indices_sorted_by(attributes, |attr| attr.name());
 
         for i in indices {
-            let attr = &attributes[i].node;
+            let attr = &attributes[i];
             if !attr.is_sugared_doc &&
-               !IGNORED_ATTRIBUTES.contains(&&*attr.value.name()) {
+               !IGNORED_ATTRIBUTES.contains(&&*attr.value.name().as_str()) {
                 SawAttribute(attr.style).hash(self.st);
-                self.hash_meta_item(&*attr.value);
+                self.hash_meta_item(&attr.value);
             }
         }
     }

@@ -16,7 +16,7 @@ use middle::lang_items;
 
 use rustc_back::PanicStrategy;
 use syntax::ast;
-use syntax::parse::token::InternedString;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use hir::intravisit::Visitor;
 use hir::intravisit;
@@ -55,10 +55,10 @@ pub fn check_crate(krate: &hir::Crate,
     verify(sess, items);
 }
 
-pub fn link_name(attrs: &[ast::Attribute]) -> Option<InternedString> {
+pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
     lang_items::extract(attrs).and_then(|name| {
-        $(if &name[..] == stringify!($name) {
-            Some(InternedString::new(stringify!($sym)))
+        $(if name == stringify!($name) {
+            Some(Symbol::intern(stringify!($sym)))
         } else)* {
             None
         }
@@ -126,7 +126,7 @@ impl<'a> Context<'a> {
 impl<'a, 'v> Visitor<'v> for Context<'a> {
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
         if let Some(lang_item) = lang_items::extract(&i.attrs) {
-            self.register(&lang_item, i.span);
+            self.register(&lang_item.as_str(), i.span);
         }
         intravisit::walk_foreign_item(self, i)
     }

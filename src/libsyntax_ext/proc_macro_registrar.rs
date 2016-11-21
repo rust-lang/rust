@@ -17,20 +17,20 @@ use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::parse::ParseSess;
-use syntax::parse::token::{self, InternedString};
 use syntax::feature_gate::Features;
 use syntax::fold::Folder;
 use syntax::ptr::P;
+use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::visit::{self, Visitor};
 
 use deriving;
 
 struct CustomDerive {
-    trait_name: InternedString,
+    trait_name: ast::Name,
     function_name: Ident,
     span: Span,
-    attrs: Vec<InternedString>,
+    attrs: Vec<ast::Name>,
 }
 
 struct CollectCustomDerives<'a> {
@@ -183,7 +183,7 @@ impl<'a> Visitor for CollectCustomDerives<'a> {
             self.handler.span_err(trait_attr.span(), "must only be one word");
         }
 
-        if deriving::is_builtin_trait(&trait_name) {
+        if deriving::is_builtin_trait(trait_name) {
             self.handler.span_err(trait_attr.span(),
                                   "cannot override a built-in #[derive] mode");
         }
@@ -271,29 +271,29 @@ fn mk_registrar(cx: &mut ExtCtxt,
     let eid = cx.codemap().record_expansion(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
-            format: MacroAttribute(token::intern("proc_macro")),
+            format: MacroAttribute(Symbol::intern("proc_macro")),
             span: None,
             allow_internal_unstable: true,
         }
     });
     let span = Span { expn_id: eid, ..DUMMY_SP };
 
-    let proc_macro = token::str_to_ident("proc_macro");
+    let proc_macro = Ident::from_str("proc_macro");
     let krate = cx.item(span,
                         proc_macro,
                         Vec::new(),
                         ast::ItemKind::ExternCrate(None));
 
-    let __internal = token::str_to_ident("__internal");
-    let registry = token::str_to_ident("Registry");
-    let registrar = token::str_to_ident("registrar");
-    let register_custom_derive = token::str_to_ident("register_custom_derive");
+    let __internal = Ident::from_str("__internal");
+    let registry = Ident::from_str("Registry");
+    let registrar = Ident::from_str("registrar");
+    let register_custom_derive = Ident::from_str("register_custom_derive");
     let stmts = custom_derives.iter().map(|cd| {
         let path = cx.path_global(cd.span, vec![cd.function_name]);
-        let trait_name = cx.expr_str(cd.span, cd.trait_name.clone());
+        let trait_name = cx.expr_str(cd.span, cd.trait_name);
         let attrs = cx.expr_vec_slice(
             span,
-            cd.attrs.iter().map(|s| cx.expr_str(cd.span, s.clone())).collect::<Vec<_>>()
+            cd.attrs.iter().map(|&s| cx.expr_str(cd.span, s)).collect::<Vec<_>>()
         );
         (path, trait_name, attrs)
     }).map(|(path, trait_name, attrs)| {
@@ -316,15 +316,14 @@ fn mk_registrar(cx: &mut ExtCtxt,
                           cx.ty(span, ast::TyKind::Tup(Vec::new())),
                           cx.block(span, stmts));
 
-    let derive_registrar = token::intern_and_get_ident("rustc_derive_registrar");
-    let derive_registrar = cx.meta_word(span, derive_registrar);
+    let derive_registrar = cx.meta_word(span, Symbol::intern("rustc_derive_registrar"));
     let derive_registrar = cx.attribute(span, derive_registrar);
     let func = func.map(|mut i| {
         i.attrs.push(derive_registrar);
         i.vis = ast::Visibility::Public;
         i
     });
-    let ident = ast::Ident::with_empty_ctxt(token::gensym("registrar"));
+    let ident = ast::Ident::with_empty_ctxt(Symbol::gensym("registrar"));
     let module = cx.item_mod(span, span, ident, Vec::new(), vec![krate, func]).map(|mut i| {
         i.vis = ast::Visibility::Public;
         i

@@ -23,7 +23,7 @@ extern crate rustc_plugin;
 use syntax::ast;
 use syntax::ext::base::{MultiDecorator, ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token;
+use syntax::symbol::Symbol;
 use syntax_ext::deriving::generic::{cs_fold, TraitDef, MethodDef, combine_substructure};
 use syntax_ext::deriving::generic::ty::{Literal, LifetimeBounds, Path, borrowed_explicit_self};
 use syntax_pos::Span;
@@ -32,7 +32,7 @@ use rustc_plugin::Registry;
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_syntax_extension(
-        token::intern("derive_TotalSum"),
+        Symbol::intern("derive_TotalSum"),
         MultiDecorator(box expand));
 }
 
@@ -66,7 +66,7 @@ fn expand(cx: &mut ExtCtxt,
                             |cx, span, subexpr, field, _| {
                                 cx.expr_binary(span, ast::BinOpKind::Add, subexpr,
                                     cx.expr_method_call(span, field,
-                                        token::str_to_ident("total_sum"), vec![]))
+                                        ast::Ident::from_str("total_sum"), vec![]))
                             },
                             zero,
                             box |cx, span, _, _| { cx.span_bug(span, "wtf??"); },

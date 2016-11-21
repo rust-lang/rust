@@ -27,7 +27,6 @@ use syntax::ext::expand::Expansion;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::fold::Folder;
-use syntax::parse::token::intern;
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::Visitor;
@@ -116,7 +115,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         impl<'a, 'b> Folder for EliminateCrateVar<'a, 'b> {
             fn fold_path(&mut self, mut path: ast::Path) -> ast::Path {
                 let ident = path.segments[0].identifier;
-                if &ident.name.as_str() == "$crate" {
+                if ident.name == "$crate" {
                     path.global = true;
                     let module = self.0.resolve_crate_var(ident.ctxt);
                     if module.is_local() {
@@ -152,7 +151,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef, export: bool) {
-        if &def.ident.name.as_str() == "macro_rules" {
+        if def.ident.name == "macro_rules" {
             self.session.span_err(def.span, "user-defined macros may not be named `macro_rules`");
         }
 
@@ -207,8 +206,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn find_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
-            let name = intern(&attrs[i].name());
-            match self.builtin_macros.get(&name).cloned() {
+            match self.builtin_macros.get(&attrs[i].name()).cloned() {
                 Some(binding) => match *self.get_macro(binding) {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))

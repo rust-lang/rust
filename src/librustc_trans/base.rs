@@ -1128,11 +1128,11 @@ pub fn set_link_section(ccx: &CrateContext,
                         llval: ValueRef,
                         attrs: &[ast::Attribute]) {
     if let Some(sect) = attr::first_attr_value_str_by_name(attrs, "link_section") {
-        if contains_null(&sect) {
+        if contains_null(&sect.as_str()) {
             ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`", &sect));
         }
         unsafe {
-            let buf = CString::new(sect.as_bytes()).unwrap();
+            let buf = CString::new(sect.as_str().as_bytes()).unwrap();
             llvm::LLVMSetSection(llval, buf.as_ptr());
         }
     }

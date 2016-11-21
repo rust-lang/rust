@@ -34,8 +34,9 @@ use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::proc_macro_shim::build_block_emitter;
-use syntax::parse::token::{self, Token, gensym_ident, str_to_ident};
+use syntax::parse::token::{self, Token};
 use syntax::print::pprust;
+use syntax::symbol::Symbol;
 use syntax::tokenstream::{TokenTree, TokenStream};
 
 // ____________________________________________________________________________________________
@@ -124,7 +125,7 @@ fn qquote_iter<'cx>(cx: &'cx mut ExtCtxt, depth: i64, ts: TokenStream) -> (Bindi
                     } // produce an error or something first
                     let exp = vec![exp.unwrap().to_owned()];
                     debug!("RHS: {:?}", exp.clone());
-                    let new_id = gensym_ident("tmp");
+                    let new_id = Ident::with_empty_ctxt(Symbol::gensym("tmp"));
                     debug!("RHS TS: {:?}", TokenStream::from_tts(exp.clone()));
                     debug!("RHS TS TT: {:?}", TokenStream::from_tts(exp.clone()).to_vec());
                     bindings.push((new_id, TokenStream::from_tts(exp)));
@@ -179,7 +180,7 @@ fn unravel_concats(tss: Vec<TokenStream>) -> TokenStream {
     };
 
     while let Some(ts) = pushes.pop() {
-        output = build_fn_call(str_to_ident("concat"),
+        output = build_fn_call(Ident::from_str("concat"),
                                concat(concat(ts,
                                              from_tokens(vec![Token::Comma])),
                                       output));
@@ -209,18 +210,19 @@ fn convert_complex_tts<'cx>(cx: &'cx mut ExtCtxt, tts: Vec<QTT>) -> (Bindings, T
             // FIXME handle sequence repetition tokens
             QTT::QDL(qdl) => {
                 debug!("  QDL: {:?} ", qdl.tts);
-                let new_id = gensym_ident("qdl_tmp");
+                let new_id = Ident::with_empty_ctxt(Symbol::gensym("qdl_tmp"));
                 let mut cct_rec = convert_complex_tts(cx, qdl.tts);
                 bindings.append(&mut cct_rec.0);
                 bindings.push((new_id, cct_rec.1));
 
                 let sep = build_delim_tok(qdl.delim);
 
-                pushes.push(build_mod_call(vec![str_to_ident("proc_macro_tokens"),
-                                               str_to_ident("build"),
-                                               str_to_ident("build_delimited")],
-                                          concat(from_tokens(vec![Token::Ident(new_id)]),
-                                                 concat(lex(","), sep))));
+                pushes.push(build_mod_call(
+                    vec![Ident::from_str("proc_macro_tokens"),
+                         Ident::from_str("build"),
+                         Ident::from_str("build_delimited")],
+                    concat(from_tokens(vec![Token::Ident(new_id)]), concat(lex(","), sep)),
+                ));
             }
             QTT::QIdent(t) => {
                 pushes.push(TokenStream::from_tts(vec![t]));
@@ -250,13 +252,13 @@ fn unravel(binds: Bindings) -> TokenStream {
 
 /// Checks if the Ident is `unquote`.
 fn is_unquote(id: Ident) -> bool {
-    let qq = str_to_ident("unquote");
+    let qq = Ident::from_str("unquote");
     id.name == qq.name  // We disregard context; unquote is _reserved_
 }
 
 /// Checks if the Ident is `quote`.
 fn is_qquote(id: Ident) -> bool {
-    let qq = str_to_ident("qquote");
+    let qq = Ident::from_str("qquote");
     id.name == qq.name  // We disregard context; qquote is _reserved_
 }
 
@@ -266,7 +268,8 @@ mod int_build {
 
     use syntax::ast::{self, Ident};
     use syntax::codemap::{DUMMY_SP};
-    use syntax::parse::token::{self, Token, keywords, str_to_ident};
+    use syntax::parse::token::{self, Token, Lit};
+    use syntax::symbol::keywords;
     use syntax::tokenstream::{TokenTree, TokenStream};
 
     // ____________________________________________________________________________________________
@@ -277,19 +280,19 @@ mod int_build {
                build_paren_delimited(build_vec(build_token_tt(t))))
     }
 
-    pub fn emit_lit(l: token::Lit, n: Option<ast::Name>) -> TokenStream {
+    pub fn emit_lit(l: Lit, n: Option<ast::Name>) -> TokenStream {
         let suf = match n {
-            Some(n) => format!("Some(ast::Name({}))", n.0),
+            Some(n) => format!("Some(ast::Name({}))", n.as_u32()),
             None => "None".to_string(),
         };
 
         let lit = match l {
-            token::Lit::Byte(n) => format!("Lit::Byte(token::intern(\"{}\"))", n.to_string()),
-            token::Lit::Char(n) => format!("Lit::Char(token::intern(\"{}\"))", n.to_string()),
-            token::Lit::Integer(n) => format!("Lit::Integer(token::intern(\"{}\"))", n.to_string()),
-            token::Lit::Float(n) => format!("Lit::Float(token::intern(\"{}\"))", n.to_string()),
-            token::Lit::Str_(n) => format!("Lit::Str_(token::intern(\"{}\"))", n.to_string()),
-            token::Lit::ByteStr(n) => format!("Lit::ByteStr(token::intern(\"{}\"))", n.to_string()),
+            Lit::Byte(n) => format!("Lit::Byte(Symbol::intern(\"{}\"))", n.to_string()),
+            Lit::Char(n) => format!("Lit::Char(Symbol::intern(\"{}\"))", n.to_string()),
+            Lit::Float(n) => format!("Lit::Float(Symbol::intern(\"{}\"))", n.to_string()),
+            Lit::Str_(n) => format!("Lit::Str_(Symbol::intern(\"{}\"))", n.to_string()),
+            Lit::Integer(n) => format!("Lit::Integer(Symbol::intern(\"{}\"))", n.to_string()),
+            Lit::ByteStr(n) => format!("Lit::ByteStr(Symbol::intern(\"{}\"))", n.to_string()),
             _ => panic!("Unsupported literal"),
         };
 
@@ -388,9 +391,10 @@ mod int_build {
             Token::Underscore => lex("_"),
             Token::Literal(lit, sfx) => emit_lit(lit, sfx),
             // fix ident expansion information... somehow
-            Token::Ident(ident) => lex(&format!("Token::Ident(str_to_ident(\"{}\"))", ident.name)),
-            Token::Lifetime(ident) => lex(&format!("Token::Ident(str_to_ident(\"{}\"))",
-                                                   ident.name)),
+            Token::Ident(ident) =>
+                lex(&format!("Token::Ident(Ident::from_str(\"{}\"))", ident.name)),
+            Token::Lifetime(ident) =>
+                lex(&format!("Token::Ident(Ident::from_str(\"{}\"))", ident.name)),
             _ => panic!("Unhandled case!"),
         }
     }
@@ -408,7 +412,7 @@ mod int_build {
 
     /// Takes `input` and returns `vec![input]`.
     pub fn build_vec(ts: TokenStream) -> TokenStream {
-        build_mac_call(str_to_ident("vec"), ts)
+        build_mac_call(Ident::from_str("vec"), ts)
         // tts.clone().to_owned()
     }
 

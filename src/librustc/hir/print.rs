@@ -13,13 +13,14 @@ pub use self::AnnNode::*;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{CodeMap, Spanned};
-use syntax::parse::token::{self, keywords, BinOpToken};
+use syntax::parse::token::{self, BinOpToken};
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, break_offset, word, space, hardbreak};
 use syntax::print::pp::{Breaks, eof};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
+use syntax::symbol::keywords;
 use syntax_pos::{self, BytePos};
 use errors;
 
@@ -1499,19 +1500,19 @@ impl<'a> State<'a> {
             hir::ExprInlineAsm(ref a, ref outputs, ref inputs) => {
                 word(&mut self.s, "asm!")?;
                 self.popen()?;
-                self.print_string(&a.asm, a.asm_str_style)?;
+                self.print_string(&a.asm.as_str(), a.asm_str_style)?;
                 self.word_space(":")?;
 
                 let mut out_idx = 0;
                 self.commasep(Inconsistent, &a.outputs, |s, out| {
-                    let mut ch = out.constraint.chars();
+                    let constraint = out.constraint.as_str();
+                    let mut ch = constraint.chars();
                     match ch.next() {
                         Some('=') if out.is_rw => {
                             s.print_string(&format!("+{}", ch.as_str()),
                                            ast::StrStyle::Cooked)?
                         }
-                        _ => s.print_string(&out.constraint,
-                                            ast::StrStyle::Cooked)?,
+                        _ => s.print_string(&constraint, ast::StrStyle::Cooked)?,
                     }
                     s.popen()?;
                     s.print_expr(&outputs[out_idx])?;
@@ -1524,7 +1525,7 @@ impl<'a> State<'a> {
 
                 let mut in_idx = 0;
                 self.commasep(Inconsistent, &a.inputs, |s, co| {
-                    s.print_string(&co, ast::StrStyle::Cooked)?;
+                    s.print_string(&co.as_str(), ast::StrStyle::Cooked)?;
                     s.popen()?;
                     s.print_expr(&inputs[in_idx])?;
                     s.pclose()?;
@@ -1535,7 +1536,7 @@ impl<'a> State<'a> {
                 self.word_space(":")?;
 
                 self.commasep(Inconsistent, &a.clobbers, |s, co| {
-                    s.print_string(&co, ast::StrStyle::Cooked)?;
+                    s.print_string(&co.as_str(), ast::StrStyle::Cooked)?;
                     Ok(())
                 })?;
 

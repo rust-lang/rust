@@ -31,7 +31,6 @@ use std::rc::Rc;
 
 use syntax::ast::Name;
 use syntax::attr;
-use syntax::parse::token;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
@@ -41,7 +40,7 @@ use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::expand::mark_tts;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::parse::token::keywords;
+use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -139,7 +138,7 @@ impl<'b> Resolver<'b> {
                 match view_path.node {
                     ViewPathSimple(binding, ref full_path) => {
                         let mut source = full_path.segments.last().unwrap().identifier;
-                        let source_name = source.name.as_str();
+                        let source_name = source.name;
                         if source_name == "mod" || source_name == "self" {
                             resolve_error(self,
                                           view_path.span,
@@ -607,7 +606,7 @@ impl<'b> Resolver<'b> {
             if attr.check_name("macro_escape") {
                 let msg = "macro_escape is a deprecated synonym for macro_use";
                 let mut err = self.session.struct_span_warn(attr.span, msg);
-                if let ast::AttrStyle::Inner = attr.node.style {
+                if let ast::AttrStyle::Inner = attr.style {
                     err.help("consider an outer attribute, #[macro_use] mod ...").emit();
                 } else {
                     err.emit();
@@ -632,7 +631,7 @@ impl<'b> Resolver<'b> {
                 match attr.meta_item_list() {
                     Some(names) => for attr in names {
                         if let Some(word) = attr.word() {
-                            imports.imports.push((token::intern(&word.name()), attr.span()));
+                            imports.imports.push((word.name(), attr.span()));
                         } else {
                             span_err!(self.session, attr.span(), E0466, "bad macro import");
                         }
@@ -646,7 +645,7 @@ impl<'b> Resolver<'b> {
                 if let Some(names) = attr.meta_item_list() {
                     for attr in names {
                         if let Some(word) = attr.word() {
-                            imports.reexports.push((token::intern(&word.name()), attr.span()));
+                            imports.reexports.push((word.name(), attr.span()));
                         } else {
                             bad_macro_reexport(self, attr.span());
                         }

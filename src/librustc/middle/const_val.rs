@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::parse::token::InternedString;
+use syntax::symbol::InternedString;
 use syntax::ast;
 use std::rc::Rc;
 use hir::def_id::DefId;

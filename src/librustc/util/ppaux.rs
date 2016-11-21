@@ -25,8 +25,8 @@ use std::fmt;
 use std::usize;
 
 use syntax::abi::Abi;
-use syntax::parse::token;
 use syntax::ast::CRATE_NODE_ID;
+use syntax::symbol::Symbol;
 use hir;
 
 pub fn verbose() -> bool {
@@ -284,7 +284,7 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
             ty::BrAnon(_) |
             ty::BrFresh(_) |
             ty::BrEnv => {
-                let name = token::intern("'r");
+                let name = Symbol::intern("'r");
                 let _ = write!(f, "{}", name);
                 ty::BrNamed(tcx.map.local_def_id(CRATE_NODE_ID),
                             name,

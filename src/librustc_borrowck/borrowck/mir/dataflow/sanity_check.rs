@@ -169,7 +169,7 @@ fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 {
                     let name = tcx.item_name(def_id);
                     if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
-                        if name.as_str() == "rustc_peek" {
+                        if name == "rustc_peek" {
                             return Some((args, source_info.span));
                         }
                     }

@@ -11,11 +11,10 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast;
+use syntax::ast::{self, Ident};
 use syntax::ast::{Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token;
 use syntax::ptr::P;
 use syntax_pos::{DUMMY_SP, Span};
 
@@ -69,9 +68,8 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<E
 
     // We want to make sure we have the expn_id set so that we can use unstable methods
     let span = Span { expn_id: cx.backtrace(), ..span };
-    let name = cx.expr_lit(span,
-                           ast::LitKind::Str(ident.name.as_str(), ast::StrStyle::Cooked));
-    let builder = token::str_to_ident("builder");
+    let name = cx.expr_lit(span, ast::LitKind::Str(ident.name, ast::StrStyle::Cooked));
+    let builder = Ident::from_str("builder");
     let builder_expr = cx.expr_ident(span, builder.clone());
 
     let fmt = substr.nonself_args[0].clone();
@@ -83,7 +81,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<E
             if !is_struct {
                 // tuple struct/"normal" variant
                 let expr =
-                    cx.expr_method_call(span, fmt, token::str_to_ident("debug_tuple"), vec![name]);
+                    cx.expr_method_call(span, fmt, Ident::from_str("debug_tuple"), vec![name]);
                 stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
 
                 for field in fields {
@@ -93,7 +91,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<E
 
                     let expr = cx.expr_method_call(span,
                                                    builder_expr.clone(),
-                                                   token::str_to_ident("field"),
+                                                   Ident::from_str("field"),
                                                    vec![field]);
 
                     // Use `let _ = expr;` to avoid triggering the
@@ -103,12 +101,12 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<E
             } else {
                 // normal struct/struct variant
                 let expr =
-                    cx.expr_method_call(span, fmt, token::str_to_ident("debug_struct"), vec![name]);
+                    cx.expr_method_call(span, fmt, Ident::from_str("debug_struct"), vec![name]);
                 stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
 
                 for field in fields {
                     let name = cx.expr_lit(field.span,
-                                           ast::LitKind::Str(field.name.unwrap().name.as_str(),
+                                           ast::LitKind::Str(field.name.unwrap().name,
                                                              ast::StrStyle::Cooked));
 
                     // Use double indirection to make sure this works for unsized types
@@ -116,7 +114,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<E
                     let field = cx.expr_addr_of(field.span, field);
                     let expr = cx.expr_method_call(span,
                                                    builder_expr.clone(),
-                                                   token::str_to_ident("field"),
+                                                   Ident::from_str("field"),
                                                    vec![name, field]);
                     stmts.push(stmt_let_undescore(cx, span, expr));
                 }
@@ -126,7 +124,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<E
         _ => unreachable!(),
     };
 
-    let expr = cx.expr_method_call(span, builder_expr, token::str_to_ident("finish"), vec![]);
+    let expr = cx.expr_method_call(span, builder_expr, Ident::from_str("finish"), vec![]);
 
     stmts.push(cx.stmt_expr(expr));
     let block = cx.block(span, stmts);
