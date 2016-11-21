@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:namespace-mix-new.rs
+// aux-build:namespace-mix.rs
 
-#![feature(item_like_imports)]
-
-extern crate namespace_mix_new;
-use namespace_mix_new::*;
+extern crate namespace_mix;
+use namespace_mix::*;
 
 mod c {
     pub struct S {}

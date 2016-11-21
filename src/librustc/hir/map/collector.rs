@@ -9,9 +9,7 @@
 // except according to those terms.
 
 use super::*;
-use super::MapEntry::*;
 
-use hir::*;
 use hir::intravisit::Visitor;
 use hir::def_id::DefId;
 use middle::cstore::InlinedItem;

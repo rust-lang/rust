@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(item_like_imports)]
 #![allow(unused)]
 
 // Like other items, private imports can be imported and used non-lexically in paths.

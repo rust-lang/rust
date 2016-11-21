@@ -16,7 +16,6 @@
  */
 
 use hair::*;
-use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 
 use rustc::middle::const_val::ConstVal;
