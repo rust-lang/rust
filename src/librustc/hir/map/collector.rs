@@ -10,7 +10,6 @@
 
 use super::*;
 
-use hir::*;
 use hir::intravisit::{Visitor, NestedVisitMode};
 use hir::def_id::DefId;
 use middle::cstore::InlinedItem;
