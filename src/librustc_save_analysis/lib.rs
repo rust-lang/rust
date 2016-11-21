@@ -497,7 +497,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Data> {
-        let def = self.tcx.expect_def(id);
+        let def = option_try!(self.tcx.expect_resolution(id).maybe_full_def());
         let sub_span = self.span_utils.span_for_last_ident(path.span);
         filter!(self.span_utils, sub_span, path.span, None);
         match def {

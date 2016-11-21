@@ -85,10 +85,15 @@ impl PathResolution {
 
     /// Get the definition, if fully resolved, otherwise panic.
     pub fn full_def(&self) -> Def {
-        if self.depth != 0 {
-            bug!("path not fully resolved: {:?}", self);
+        self.maybe_full_def().unwrap_or_else(|| bug!("path not fully resolved: {:?}", self))
+    }
+
+    pub fn maybe_full_def(&self) -> Option<Def> {
+        if self.depth == 0 {
+            Some(self.base_def)
+        } else {
+            None
         }
-        self.base_def
     }
 
     pub fn kind_name(&self) -> &'static str {
