@@ -2409,7 +2409,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    sp: Span,
                                    method_fn_ty: Ty<'tcx>,
                                    callee_expr: &'gcx hir::Expr,
-                                   args_no_rcvr: &'gcx [P<hir::Expr>],
+                                   args_no_rcvr: &'gcx [hir::Expr],
                                    tuple_arguments: TupleArgumentsFlag,
                                    expected: Expectation<'tcx>)
                                    -> Ty<'tcx> {
@@ -2448,7 +2448,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             sp: Span,
                             fn_inputs: &[Ty<'tcx>],
                             expected_arg_tys: &[Ty<'tcx>],
-                            args: &'gcx [P<hir::Expr>],
+                            args: &'gcx [hir::Expr],
                             variadic: bool,
                             tuple_arguments: TupleArgumentsFlag) {
         let tcx = self.tcx;
@@ -2822,7 +2822,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_method_call(&self,
                          expr: &'gcx hir::Expr,
                          method_name: Spanned<ast::Name>,
-                         args: &'gcx [P<hir::Expr>],
+                         args: &'gcx [hir::Expr],
                          tps: &[P<hir::Ty>],
                          expected: Expectation<'tcx>,
                          lvalue_pref: LvaluePreference) -> Ty<'tcx> {
@@ -3670,10 +3670,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.check_block_with_expected(&b, expected)
           }
           hir::ExprCall(ref callee, ref args) => {
-              self.check_call(expr, &callee, &args[..], expected)
+              self.check_call(expr, &callee, args, expected)
           }
           hir::ExprMethodCall(name, ref tps, ref args) => {
-              self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref)
+              self.check_method_call(expr, name, args, &tps[..], expected, lvalue_pref)
           }
           hir::ExprCast(ref e, ref t) => {
             if let hir::TyArray(_, ref count_expr) = t.node {
@@ -3728,7 +3728,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let result = if i == 0 {
                     self.try_coerce(e, e_ty, coerce_to)
                 } else {
-                    let prev_elems = || args[..i].iter().map(|e| &**e);
+                    let prev_elems = || args[..i].iter().map(|e| &*e);
                     self.try_find_coercion_lub(&cause, prev_elems, unified, e, e_ty)
                 };
 

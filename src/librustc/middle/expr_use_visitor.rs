@@ -327,7 +327,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         self.delegate.consume(consume_id, consume_span, cmt, mode);
     }
 
-    fn consume_exprs(&mut self, exprs: &[P<hir::Expr>]) {
+    fn consume_exprs(&mut self, exprs: &[hir::Expr]) {
         for expr in exprs {
             self.consume_expr(&expr);
         }

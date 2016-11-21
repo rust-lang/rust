@@ -867,12 +867,12 @@ pub enum Expr_ {
     /// A `box x` expression.
     ExprBox(P<Expr>),
     /// An array (`[a, b, c, d]`)
-    ExprArray(HirVec<P<Expr>>),
+    ExprArray(HirVec<Expr>),
     /// A function call
     ///
     /// The first field resolves to the function itself (usually an `ExprPath`),
     /// and the second field is the list of arguments
-    ExprCall(P<Expr>, HirVec<P<Expr>>),
+    ExprCall(P<Expr>, HirVec<Expr>),
     /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
     ///
     /// The `Spanned<Name>` is the identifier for the method name.
@@ -885,9 +885,9 @@ pub enum Expr_ {
     ///
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`.
-    ExprMethodCall(Spanned<Name>, HirVec<P<Ty>>, HirVec<P<Expr>>),
+    ExprMethodCall(Spanned<Name>, HirVec<P<Ty>>, HirVec<Expr>),
     /// A tuple (`(a, b, c ,d)`)
-    ExprTup(HirVec<P<Expr>>),
+    ExprTup(HirVec<Expr>),
     /// A binary operation (For example: `a + b`, `a * b`)
     ExprBinary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
@@ -951,7 +951,7 @@ pub enum Expr_ {
     ExprRet(Option<P<Expr>>),
 
     /// Inline assembly (from `asm!`), with its outputs and inputs.
-    ExprInlineAsm(P<InlineAsm>, HirVec<P<Expr>>, HirVec<P<Expr>>),
+    ExprInlineAsm(P<InlineAsm>, HirVec<Expr>, HirVec<Expr>),
 
     /// A struct or struct-like variant literal expression.
     ///

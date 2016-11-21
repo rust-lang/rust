@@ -123,7 +123,6 @@ use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
 use syntax::ast::{self, NodeId};
-use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
@@ -902,7 +901,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.define_bindings_in_pat(&local.pat, succ)
     }
 
-    fn propagate_through_exprs(&mut self, exprs: &[P<Expr>], succ: LiveNode)
+    fn propagate_through_exprs(&mut self, exprs: &[Expr], succ: LiveNode)
                                -> LiveNode {
         exprs.iter().rev().fold(succ, |succ, expr| {
             self.propagate_through_expr(&expr, succ)
@@ -1087,7 +1086,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           // Uninteresting cases: just propagate in rev exec order
 
           hir::ExprArray(ref exprs) => {
-            self.propagate_through_exprs(&exprs[..], succ)
+            self.propagate_through_exprs(exprs, succ)
           }
 
           hir::ExprRepeat(ref element, ref count) => {
@@ -1111,7 +1110,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             } else {
                 succ
             };
-            let succ = self.propagate_through_exprs(&args[..], succ);
+            let succ = self.propagate_through_exprs(args, succ);
             self.propagate_through_expr(&f, succ)
           }
 
@@ -1124,11 +1123,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             } else {
                 succ
             };
-            self.propagate_through_exprs(&args[..], succ)
+            self.propagate_through_exprs(args, succ)
           }
 
           hir::ExprTup(ref exprs) => {
-            self.propagate_through_exprs(&exprs[..], succ)
+            self.propagate_through_exprs(exprs, succ)
           }
 
           hir::ExprBinary(op, ref l, ref r) if op.node.is_lazy() => {
