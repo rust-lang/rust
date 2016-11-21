@@ -18,8 +18,8 @@ extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
 
-use syntax::parse::token::{str_to_ident, NtExpr, NtPat};
-use syntax::ast::{Pat};
+use syntax::parse::token::{NtExpr, NtPat};
+use syntax::ast::{Ident, Pat};
 use syntax::tokenstream::{TokenTree};
 use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
 use syntax::ext::build::AstBuilder;
@@ -44,12 +44,12 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
         }
     };
 
-    let matched_nt = match *map[&str_to_ident("matched")] {
+    let matched_nt = match *map[&Ident::from_str("matched")] {
         MatchedNonterminal(ref nt) => nt.clone(),
         _ => unreachable!(),
     };
 
-    let mac_expr = match (&*matched_nt, &*map[&str_to_ident("pat")]) {
+    let mac_expr = match (&*matched_nt, &*map[&Ident::from_str("pat")]) {
         (&NtExpr(ref matched_expr), &MatchedSeq(ref pats, seq_sp)) => {
             let pats: Vec<P<Pat>> = pats.iter().map(|pat_nt| {
                 match **pat_nt {

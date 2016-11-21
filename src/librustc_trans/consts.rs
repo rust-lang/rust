@@ -123,7 +123,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                     // extern "C" fn() from being non-null, so we can't just declare a
                     // static and call it a day. Some linkages (like weak) will make it such
                     // that the static actually has a null value.
-                    let linkage = match base::llvm_linkage_by_name(&name) {
+                    let linkage = match base::llvm_linkage_by_name(&name.as_str()) {
                         Some(linkage) => linkage,
                         None => {
                             ccx.sess().span_fatal(span, "invalid linkage specified");

@@ -14,7 +14,7 @@ use std::fmt::Write;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use syntax::ast;
-use syntax::parse::token::{self, InternedString};
+use syntax::symbol::{Symbol, InternedString};
 use ty::TyCtxt;
 use util::nodemap::NodeMap;
 
@@ -115,9 +115,9 @@ impl DefPath {
     pub fn to_string(&self, tcx: TyCtxt) -> String {
         let mut s = String::with_capacity(self.data.len() * 16);
 
-        s.push_str(&tcx.original_crate_name(self.krate));
+        s.push_str(&tcx.original_crate_name(self.krate).as_str());
         s.push_str("/");
-        s.push_str(&tcx.crate_disambiguator(self.krate));
+        s.push_str(&tcx.crate_disambiguator(self.krate).as_str());
 
         for component in &self.data {
             write!(s,
@@ -137,8 +137,8 @@ impl DefPath {
     }
 
     pub fn deterministic_hash_to<H: Hasher>(&self, tcx: TyCtxt, state: &mut H) {
-        tcx.original_crate_name(self.krate).hash(state);
-        tcx.crate_disambiguator(self.krate).hash(state);
+        tcx.original_crate_name(self.krate).as_str().hash(state);
+        tcx.crate_disambiguator(self.krate).as_str().hash(state);
         self.data.hash(state);
     }
 }
@@ -328,7 +328,7 @@ impl DefPathData {
             LifetimeDef(ref name) |
             EnumVariant(ref name) |
             Binding(ref name) |
-            Field(ref name) => Some(token::intern(name)),
+            Field(ref name) => Some(Symbol::intern(name)),
 
             Impl |
             CrateRoot |
@@ -343,7 +343,7 @@ impl DefPathData {
 
     pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
-        match *self {
+        let s = match *self {
             TypeNs(ref name) |
             ValueNs(ref name) |
             Module(ref name) |
@@ -353,43 +353,24 @@ impl DefPathData {
             EnumVariant(ref name) |
             Binding(ref name) |
             Field(ref name) => {
-                name.clone()
-            }
-
-            Impl => {
-                InternedString::new("{{impl}}")
+                return name.clone();
             }
 
             // note that this does not show up in user printouts
-            CrateRoot => {
-                InternedString::new("{{root}}")
-            }
+            CrateRoot => "{{root}}",
 
             // note that this does not show up in user printouts
-            InlinedRoot(_) => {
-                InternedString::new("{{inlined-root}}")
-            }
+            InlinedRoot(_) => "{{inlined-root}}",
 
-            Misc => {
-                InternedString::new("{{?}}")
-            }
+            Impl => "{{impl}}",
+            Misc => "{{?}}",
+            ClosureExpr => "{{closure}}",
+            StructCtor => "{{constructor}}",
+            Initializer => "{{initializer}}",
+            ImplTrait => "{{impl-Trait}}",
+        };
 
-            ClosureExpr => {
-                InternedString::new("{{closure}}")
-            }
-
-            StructCtor => {
-                InternedString::new("{{constructor}}")
-            }
-
-            Initializer => {
-                InternedString::new("{{initializer}}")
-            }
-
-            ImplTrait => {
-                InternedString::new("{{impl-Trait}}")
-            }
-        }
+        Symbol::intern(s).as_str()
     }
 
     pub fn to_string(&self) -> String {

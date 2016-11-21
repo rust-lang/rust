@@ -95,8 +95,8 @@ use deriving::generic::ty::*;
 use syntax::ast::{Expr, ExprKind, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token;
 use syntax::ptr::P;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
@@ -192,8 +192,8 @@ fn encodable_substructure(cx: &mut ExtCtxt,
             let mut stmts = Vec::new();
             for (i, &FieldInfo { name, ref self_, span, .. }) in fields.iter().enumerate() {
                 let name = match name {
-                    Some(id) => id.name.as_str(),
-                    None => token::intern_and_get_ident(&format!("_field{}", i)),
+                    Some(id) => id.name,
+                    None => Symbol::intern(&format!("_field{}", i)),
                 };
                 let self_ref = cx.expr_addr_of(span, self_.clone());
                 let enc = cx.expr_call(span, fn_path.clone(), vec![self_ref, blkencoder.clone()]);
@@ -226,7 +226,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
             cx.expr_method_call(trait_span,
                                 encoder,
                                 cx.ident_of("emit_struct"),
-                                vec![cx.expr_str(trait_span, substr.type_ident.name.as_str()),
+                                vec![cx.expr_str(trait_span, substr.type_ident.name),
                                      cx.expr_usize(trait_span, fields.len()),
                                      blk])
         }
@@ -265,7 +265,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
             }
 
             let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
-            let name = cx.expr_str(trait_span, variant.node.name.name.as_str());
+            let name = cx.expr_str(trait_span, variant.node.name.name);
             let call = cx.expr_method_call(trait_span,
                                            blkencoder,
                                            cx.ident_of("emit_enum_variant"),
@@ -277,8 +277,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
             let ret = cx.expr_method_call(trait_span,
                                           encoder,
                                           cx.ident_of("emit_enum"),
-                                          vec![cx.expr_str(trait_span,
-                                                           substr.type_ident.name.as_str()),
+                                          vec![cx.expr_str(trait_span ,substr.type_ident.name),
                                                blk]);
             cx.expr_block(cx.block(trait_span, vec![me, cx.stmt_expr(ret)]))
         }

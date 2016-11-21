@@ -25,7 +25,7 @@ pub fn update_recursion_limit(sess: &Session, krate: &ast::Crate) {
         }
 
         if let Some(s) = attr.value_str() {
-            if let Some(n) = s.parse().ok() {
+            if let Some(n) = s.as_str().parse().ok() {
                 sess.recursion_limit.set(n);
                 return;
             }

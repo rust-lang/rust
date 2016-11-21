@@ -23,10 +23,11 @@ use fold;
 use fold::*;
 use parse::{ParseSess, PResult, lexer};
 use parse::parser::Parser;
-use parse::token::{self, intern, keywords};
+use parse::token;
 use print::pprust;
 use ptr::P;
 use std_inject;
+use symbol::keywords;
 use tokenstream::{TokenTree, TokenStream};
 use util::small_vector::SmallVector;
 use visit::Visitor;
@@ -190,7 +191,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         self.cx.crate_root = std_inject::injected_crate_name(&krate);
         let mut module = ModuleData {
-            mod_path: vec![token::str_to_ident(&self.cx.ecfg.crate_name)],
+            mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
             directory: PathBuf::from(self.cx.codemap().span_to_filename(krate.span)),
         };
         module.directory.pop();
@@ -246,7 +247,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.cx.resolver.resolve_macro(scope, &mac.node.path, force)
                 }
                 InvocationKind::Attr { ref attr, .. } => {
-                    let ident = ast::Ident::with_empty_ctxt(intern(&*attr.name()));
+                    let ident = Ident::with_empty_ctxt(attr.name());
                     let path = ast::Path::from_ident(attr.span, ident);
                     self.cx.resolver.resolve_macro(scope, &path, force)
                 }
@@ -341,7 +342,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         attr::mark_used(&attr);
-        let name = intern(&attr.name());
+        let name = attr.name();
         self.cx.bt_push(ExpnInfo {
             call_site: attr.span,
             callee: NameAndSpan {
@@ -353,12 +354,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         match *ext {
             MultiModifier(ref mac) => {
-                let item = mac.expand(self.cx, attr.span, &attr.node.value, item);
+                let item = mac.expand(self.cx, attr.span, &attr.value, item);
                 kind.expect_from_annotatables(item)
             }
             MultiDecorator(ref mac) => {
                 let mut items = Vec::new();
-                mac.expand(self.cx, attr.span, &attr.node.value, &item,
+                mac.expand(self.cx, attr.span, &attr.value, &item,
                            &mut |item| items.push(item));
                 items.push(item);
                 kind.expect_from_annotatables(items)
@@ -779,7 +780,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 if inline_module {
                     if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, "path") {
                         self.cx.current_expansion.no_noninline_mod = false;
-                        module.directory.push(&*path);
+                        module.directory.push(&*path.as_str());
                     } else {
                         module.directory.push(&*item.ident.name.as_str());
                     }

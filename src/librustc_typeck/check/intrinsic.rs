@@ -21,7 +21,7 @@ use {CrateCtxt, require_same_types};
 
 use syntax::abi::Abi;
 use syntax::ast;
-use syntax::parse::token;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use rustc::hir;
@@ -75,7 +75,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 /// and in libcore/intrinsics.rs
 pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
     fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: u32) -> Ty<'tcx> {
-        let name = token::intern(&format!("P{}", n));
+        let name = Symbol::intern(&format!("P{}", n));
         ccx.tcx.mk_param(n, name)
     }
 
@@ -326,7 +326,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
 pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                                      it: &hir::ForeignItem) {
     let param = |n| {
-        let name = token::intern(&format!("P{}", n));
+        let name = Symbol::intern(&format!("P{}", n));
         ccx.tcx.mk_param(n, name)
     };
 

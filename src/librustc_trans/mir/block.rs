@@ -30,7 +30,7 @@ use glue;
 use type_::Type;
 
 use rustc_data_structures::fx::FxHashMap;
-use syntax::parse::token;
+use syntax::symbol::Symbol;
 
 use super::{MirContext, LocalRef};
 use super::analyze::CleanupKind;
@@ -324,7 +324,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 // Get the location information.
                 let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
-                let filename = token::intern_and_get_ident(&loc.file.name);
+                let filename = Symbol::intern(&loc.file.name).as_str();
                 let filename = C_str_slice(bcx.ccx(), filename);
                 let line = C_u32(bcx.ccx(), loc.line as u32);
 
@@ -354,7 +354,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                          const_err)
                     }
                     mir::AssertMessage::Math(ref err) => {
-                        let msg_str = token::intern_and_get_ident(err.description());
+                        let msg_str = Symbol::intern(err.description()).as_str();
                         let msg_str = C_str_slice(bcx.ccx(), msg_str);
                         let msg_file_line = C_struct(bcx.ccx(),
                                                      &[msg_str, filename, line],

@@ -11,7 +11,7 @@
 use syntax::ast;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token;
+use syntax::symbol::Symbol;
 use syntax_pos;
 use syntax::tokenstream;
 
@@ -33,7 +33,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                     ast::LitKind::Str(ref s, _) |
                     ast::LitKind::Float(ref s, _) |
                     ast::LitKind::FloatUnsuffixed(ref s) => {
-                        accumulator.push_str(&s);
+                        accumulator.push_str(&s.as_str());
                     }
                     ast::LitKind::Char(c) => {
                         accumulator.push(c);
@@ -57,5 +57,5 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
             }
         }
     }
-    base::MacEager::expr(cx.expr_str(sp, token::intern_and_get_ident(&accumulator[..])))
+    base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&accumulator)))
 }

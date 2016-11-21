@@ -95,12 +95,11 @@ use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use syntax::{ast, json};
+use syntax::ast;
 use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
-use syntax_pos::MultiSpan;
-use errors::emitter::Emitter;
+use syntax_pos::{DUMMY_SP, MultiSpan};
 
 #[cfg(test)]
 pub mod test;
@@ -374,37 +373,11 @@ fn handle_explain(code: &str,
     }
 }
 
-fn check_cfg(cfg: &ast::CrateConfig,
-             output: ErrorOutputType) {
-    let emitter: Box<Emitter> = match output {
-        config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(errors::emitter::EmitterWriter::stderr(color_config, None))
-        }
-        config::ErrorOutputType::Json => Box::new(json::JsonEmitter::basic()),
-    };
-    let handler = errors::Handler::with_emitter(true, false, emitter);
-
-    let mut saw_invalid_predicate = false;
-    for item in cfg.iter() {
-        if item.is_meta_item_list() {
-            saw_invalid_predicate = true;
-            handler.emit(&MultiSpan::new(),
-                         &format!("invalid predicate in --cfg command line argument: `{}`",
-                                  item.name()),
-                            errors::Level::Fatal);
-        }
-    }
-
-    if saw_invalid_predicate {
-        panic!(errors::FatalError);
-    }
-}
-
 impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
                       _: &config::Options,
-                      cfg: &ast::CrateConfig,
+                      _: &ast::CrateConfig,
                       descriptions: &errors::registry::Registry,
                       output: ErrorOutputType)
                       -> Compilation {
@@ -413,7 +386,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             return Compilation::Stop;
         }
 
-        check_cfg(cfg, output);
         Compilation::Continue
     }
 
@@ -640,24 +612,27 @@ impl RustcDefaultCalls {
                     let allow_unstable_cfg = UnstableFeatures::from_environment()
                         .is_nightly_build();
 
-                    for cfg in &sess.parse_sess.config {
-                        if !allow_unstable_cfg && GatedCfg::gate(cfg).is_some() {
+                    let mut cfgs = Vec::new();
+                    for &(name, ref value) in sess.parse_sess.config.iter() {
+                        let gated_cfg = GatedCfg::gate(&ast::MetaItem {
+                            name: name,
+                            node: ast::MetaItemKind::Word,
+                            span: DUMMY_SP,
+                        });
+                        if !allow_unstable_cfg && gated_cfg.is_some() {
                             continue;
                         }
 
-                        if cfg.is_word() {
-                            println!("{}", cfg.name());
-                        } else if let Some(s) = cfg.value_str() {
-                            println!("{}=\"{}\"", cfg.name(), s);
-                        } else if cfg.is_meta_item_list() {
-                            // Right now there are not and should not be any
-                            // MetaItemKind::List items in the configuration returned by
-                            // `build_configuration`.
-                            panic!("Found an unexpected list in cfg attribute '{}'!", cfg.name())
+                        cfgs.push(if let &Some(ref value) = value {
+                            format!("{}=\"{}\"", name, value)
                         } else {
-                            // There also shouldn't be literals.
-                            panic!("Found an unexpected literal in cfg attribute '{}'!", cfg.name())
-                        }
+                            format!("{}", name)
+                        });
+                    }
+
+                    cfgs.sort();
+                    for cfg in cfgs {
+                        println!("{}", cfg);
                     }
                 }
                 PrintRequest::TargetCPUs => {

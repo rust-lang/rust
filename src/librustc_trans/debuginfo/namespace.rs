@@ -35,7 +35,7 @@ pub fn mangled_name_of_item(ccx: &CrateContext, def_id: DefId, extra: &str) -> S
         }
 
         let name = match def_key.disambiguated_data.data {
-            DefPathData::CrateRoot => ccx.tcx().crate_name(def_id.krate),
+            DefPathData::CrateRoot => ccx.tcx().crate_name(def_id.krate).as_str(),
             data => data.as_interned_str()
         };
 
@@ -64,7 +64,7 @@ pub fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
     });
 
     let namespace_name = match def_key.disambiguated_data.data {
-        DefPathData::CrateRoot => ccx.tcx().crate_name(def_id.krate),
+        DefPathData::CrateRoot => ccx.tcx().crate_name(def_id.krate).as_str(),
         data => data.as_interned_str()
     };
 

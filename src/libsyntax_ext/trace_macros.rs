@@ -11,7 +11,7 @@
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::base;
 use syntax::feature_gate;
-use syntax::parse::token::keywords;
+use syntax::symbol::keywords;
 use syntax_pos::Span;
 use syntax::tokenstream::TokenTree;
 

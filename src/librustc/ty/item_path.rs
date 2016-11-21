@@ -12,7 +12,7 @@ use hir::map::DefPathData;
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
-use syntax::parse::token;
+use syntax::symbol::Symbol;
 
 use std::cell::Cell;
 
@@ -94,14 +94,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     if let Some(extern_crate_def_id) = opt_extern_crate {
                         self.push_item_path(buffer, extern_crate_def_id);
                     } else {
-                        buffer.push(&self.crate_name(cnum));
+                        buffer.push(&self.crate_name(cnum).as_str());
                     }
                 }
             }
             RootMode::Absolute => {
                 // In absolute mode, just write the crate name
                 // unconditionally.
-                buffer.push(&self.original_crate_name(cnum));
+                buffer.push(&self.original_crate_name(cnum).as_str());
             }
         }
     }
@@ -126,7 +126,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         return true;
                     }
                     None => {
-                        buffer.push(&self.crate_name(cur_def.krate));
+                        buffer.push(&self.crate_name(cur_def.krate).as_str());
                         cur_path.iter().rev().map(|segment| buffer.push(&segment.as_str())).count();
                         return true;
                     }
@@ -136,7 +136,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             cur_path.push(self.sess.cstore.def_key(cur_def)
                               .disambiguated_data.data.get_opt_name().unwrap_or_else(||
-                token::intern("<unnamed>")));
+                Symbol::intern("<unnamed>")));
             match visible_parent_map.get(&cur_def) {
                 Some(&def) => cur_def = def,
                 None => return false,

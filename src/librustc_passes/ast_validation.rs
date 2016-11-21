@@ -21,7 +21,8 @@ use rustc::session::Session;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Spanned;
-use syntax::parse::token::{self, keywords};
+use syntax::parse::token;
+use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
 use errors;
@@ -39,7 +40,7 @@ impl<'a> AstValidator<'a> {
         if label.name == keywords::StaticLifetime.name() {
             self.err_handler().span_err(span, &format!("invalid label name `{}`", label.name));
         }
-        if label.name.as_str() == "'_" {
+        if label.name == "'_" {
             self.session.add_lint(lint::builtin::LIFETIME_UNDERSCORE,
                                   id,
                                   span,
@@ -89,7 +90,7 @@ impl<'a> AstValidator<'a> {
 
 impl<'a> Visitor for AstValidator<'a> {
     fn visit_lifetime(&mut self, lt: &Lifetime) {
-        if lt.name.as_str() == "'_" {
+        if lt.name == "'_" {
             self.session.add_lint(lint::builtin::LIFETIME_UNDERSCORE,
                                   lt.id,
                                   lt.span,

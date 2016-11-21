@@ -39,7 +39,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::ptr::P;
-use syntax::parse::token::InternedString;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_back::target::Target;
 use hir;
@@ -52,7 +52,7 @@ pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};
 
 #[derive(Clone, Debug)]
 pub struct LinkMeta {
-    pub crate_name: String,
+    pub crate_name: Symbol,
     pub crate_hash: Svh,
 }
 
@@ -92,8 +92,8 @@ pub enum NativeLibraryKind {
 #[derive(Clone, Hash, RustcEncodable, RustcDecodable)]
 pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
-    pub name: String,
-    pub cfg: Option<P<ast::MetaItem>>,
+    pub name: Symbol,
+    pub cfg: Option<ast::MetaItem>,
 }
 
 /// The data we save and restore about an inlined item or method.  This is not
@@ -205,11 +205,11 @@ pub trait CrateStore<'tcx> {
     fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>;
     /// The name of the crate as it is referred to in source code of the current
     /// crate.
-    fn crate_name(&self, cnum: CrateNum) -> InternedString;
+    fn crate_name(&self, cnum: CrateNum) -> Symbol;
     /// The name of the crate as it is stored in the crate's metadata.
-    fn original_crate_name(&self, cnum: CrateNum) -> InternedString;
+    fn original_crate_name(&self, cnum: CrateNum) -> Symbol;
     fn crate_hash(&self, cnum: CrateNum) -> Svh;
-    fn crate_disambiguator(&self, cnum: CrateNum) -> InternedString;
+    fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol;
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>;
     fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId>;
@@ -375,13 +375,13 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         bug!("panic_strategy")
     }
     fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate> { bug!("extern_crate") }
-    fn crate_name(&self, cnum: CrateNum) -> InternedString { bug!("crate_name") }
-    fn original_crate_name(&self, cnum: CrateNum) -> InternedString {
+    fn crate_name(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
+    fn original_crate_name(&self, cnum: CrateNum) -> Symbol {
         bug!("original_crate_name")
     }
     fn crate_hash(&self, cnum: CrateNum) -> Svh { bug!("crate_hash") }
     fn crate_disambiguator(&self, cnum: CrateNum)
-                           -> InternedString { bug!("crate_disambiguator") }
+                           -> Symbol { bug!("crate_disambiguator") }
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
         { bug!("plugin_registrar_fn") }
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>

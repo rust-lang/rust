@@ -15,8 +15,8 @@ use syntax::ast::{self, Expr, Generics, ItemKind, MetaItem, VariantData};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token::{keywords, InternedString};
 use syntax::ptr::P;
+use syntax::symbol::{Symbol, keywords};
 use syntax_pos::Span;
 
 pub fn expand_deriving_clone(cx: &mut ExtCtxt,
@@ -74,7 +74,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
         _ => cx.span_bug(span, "#[derive(Clone)] on trait item or impl item"),
     }
 
-    let inline = cx.meta_word(span, InternedString::new("inline"));
+    let inline = cx.meta_word(span, Symbol::intern("inline"));
     let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {
         span: span,

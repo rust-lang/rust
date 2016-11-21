@@ -25,6 +25,7 @@ use rustc_driver::driver::{compile_input, CompileController, anon_src};
 use rustc_metadata::cstore::CStore;
 use rustc_errors::registry::Registry;
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -65,7 +66,7 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
 
 fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     let (sess, cstore) = basic_sess(sysroot);
-    let cfg = build_configuration(&sess, vec![]);
+    let cfg = build_configuration(&sess, HashSet::new());
     let control = CompileController::basic();
     let input = Input::Str { name: anon_src(), input: code };
     compile_input(&sess, &cstore, &input, &None, &Some(output), None, &control);

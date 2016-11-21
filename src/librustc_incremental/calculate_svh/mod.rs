@@ -172,8 +172,8 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
 
         let crate_disambiguator = self.tcx.sess.local_crate_disambiguator();
         "crate_disambiguator".hash(&mut crate_state);
-        crate_disambiguator.len().hash(&mut crate_state);
-        crate_disambiguator.hash(&mut crate_state);
+        crate_disambiguator.as_str().len().hash(&mut crate_state);
+        crate_disambiguator.as_str().hash(&mut crate_state);
 
         // add each item (in some deterministic order) to the overall
         // crate hash.

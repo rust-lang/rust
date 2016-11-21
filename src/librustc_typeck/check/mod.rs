@@ -115,8 +115,8 @@ use syntax::ast;
 use syntax::attr;
 use syntax::codemap::{self, original_sp, Spanned};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
+use syntax::symbol::{Symbol, InternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{self, BytePos, Span};
 
@@ -931,7 +931,8 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     if let Some(ref attr) = item.attrs.iter().find(|a| {
         a.check_name("rustc_on_unimplemented")
     }) {
-        if let Some(ref istring) = attr.value_str() {
+        if let Some(istring) = attr.value_str() {
+            let istring = istring.as_str();
             let parser = Parser::new(&istring);
             let types = &generics.types;
             for token in parser {
@@ -942,7 +943,7 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         Position::ArgumentNamed(s) if s == "Self" => (),
                         // So is `{A}` if A is a type parameter
                         Position::ArgumentNamed(s) => match types.iter().find(|t| {
-                            t.name.as_str() == s
+                            t.name == s
                         }) {
                             Some(_) => (),
                             None => {
@@ -2369,7 +2370,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (PreferMutLvalue, Some(trait_did)) => {
                 self.lookup_method_in_trait_adjusted(expr.span,
                                                      Some(&base_expr),
-                                                     token::intern("index_mut"),
+                                                     Symbol::intern("index_mut"),
                                                      trait_did,
                                                      autoderefs,
                                                      unsize,
@@ -2384,7 +2385,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (None, Some(trait_did)) => {
                 self.lookup_method_in_trait_adjusted(expr.span,
                                                      Some(&base_expr),
-                                                     token::intern("index"),
+                                                     Symbol::intern("index"),
                                                      trait_did,
                                                      autoderefs,
                                                      unsize,
@@ -3027,7 +3028,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn suggest_field_name(variant: ty::VariantDef<'tcx>,
                           field: &Spanned<ast::Name>,
                           skip : Vec<InternedString>)
-                          -> Option<InternedString> {
+                          -> Option<Symbol> {
         let name = field.node.as_str();
         let names = variant.fields.iter().filter_map(|field| {
             // ignore already set fields and private fields from non-local crates
@@ -3126,7 +3127,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
                     struct_span_err!(self.tcx.sess, field.name.span, E0559,
                                     "{} `{}::{}` has no field named `{}`",
-                                    kind_name, actual, variant.name.as_str(), field.name.node)
+                                    kind_name, actual, variant.name, field.name.node)
                 }
                 _ => {
                     struct_span_err!(self.tcx.sess, field.name.span, E0560,
@@ -3146,7 +3147,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
                     err.span_label(field.name.span, &format!("`{}::{}` does not have this field",
-                                                             ty, variant.name.as_str()));
+                                                             ty, variant.name));
                 }
                 _ => {
                     err.span_label(field.name.span, &format!("`{}` does not have this field", ty));

@@ -52,8 +52,7 @@ use std::ffi::CString;
 use std::cell::{Cell, RefCell, Ref};
 
 use syntax::ast;
-use syntax::parse::token::InternedString;
-use syntax::parse::token;
+use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
 pub use context::{CrateContext, SharedCrateContext};
@@ -225,7 +224,7 @@ impl<'a, 'tcx> VariantInfo<'tcx> {
                 VariantInfo {
                     discr: Disr(0),
                     fields: v.iter().enumerate().map(|(i, &t)| {
-                        Field(token::intern(&i.to_string()), t)
+                        Field(Symbol::intern(&i.to_string()), t)
                     }).collect()
                 }
             }

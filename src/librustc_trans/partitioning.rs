@@ -132,7 +132,7 @@ use std::sync::Arc;
 use std::collections::hash_map::DefaultHasher;
 use symbol_map::SymbolMap;
 use syntax::ast::NodeId;
-use syntax::parse::token::{self, InternedString};
+use syntax::symbol::{Symbol, InternedString};
 use trans_item::TransItem;
 use util::nodemap::{FxHashMap, FxHashSet};
 
@@ -272,7 +272,7 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
     if let PartitioningStrategy::FixedUnitCount(count) = strategy {
-        merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name[..]);
+        merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name.as_str());
 
         debug_dump(scx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
@@ -320,7 +320,7 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
 
             let codegen_unit_name = match characteristic_def_id {
                 Some(def_id) => compute_codegen_unit_name(tcx, def_id, is_volatile),
-                None => InternedString::new(FALLBACK_CODEGEN_UNIT),
+                None => Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str(),
             };
 
             let make_codegen_unit = || {
@@ -365,7 +365,7 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     // always ensure we have at least one CGU; otherwise, if we have a
     // crate with just types (for example), we could wind up with no CGU
     if codegen_units.is_empty() {
-        let codegen_unit_name = InternedString::new(FALLBACK_CODEGEN_UNIT);
+        let codegen_unit_name = Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str();
         codegen_units.entry(codegen_unit_name.clone())
                      .or_insert_with(|| CodegenUnit::empty(codegen_unit_name.clone()));
     }
@@ -523,7 +523,7 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut mod_path = String::with_capacity(64);
 
     let def_path = tcx.def_path(def_id);
-    mod_path.push_str(&tcx.crate_name(def_path.krate));
+    mod_path.push_str(&tcx.crate_name(def_path.krate).as_str());
 
     for part in tcx.def_path(def_id)
                    .data
@@ -542,14 +542,11 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         mod_path.push_str(".volatile");
     }
 
-    return token::intern_and_get_ident(&mod_path[..]);
+    return Symbol::intern(&mod_path[..]).as_str();
 }
 
 fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
-    token::intern_and_get_ident(&format!("{}{}{}",
-        crate_name,
-        NUMBERED_CODEGEN_UNIT_MARKER,
-        index)[..])
+    Symbol::intern(&format!("{}{}{}", crate_name, NUMBERED_CODEGEN_UNIT_MARKER, index)).as_str()
 }
 
 fn debug_dump<'a, 'b, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,

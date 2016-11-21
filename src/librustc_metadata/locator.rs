@@ -227,6 +227,7 @@ use rustc_llvm as llvm;
 use rustc_llvm::{False, ObjectFile, mk_section_iter};
 use rustc_llvm::archive_ro::ArchiveRO;
 use errors::DiagnosticBuilder;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_back::target::Target;
 
@@ -249,8 +250,8 @@ pub struct CrateMismatch {
 pub struct Context<'a> {
     pub sess: &'a Session,
     pub span: Span,
-    pub ident: &'a str,
-    pub crate_name: &'a str,
+    pub ident: Symbol,
+    pub crate_name: Symbol,
     pub hash: Option<&'a Svh>,
     // points to either self.sess.target.target or self.sess.host, must match triple
     pub target: &'a Target,
@@ -422,7 +423,7 @@ impl<'a> Context<'a> {
         // must be loaded via -L plus some filtering.
         if self.hash.is_none() {
             self.should_match_name = false;
-            if let Some(s) = self.sess.opts.externs.get(self.crate_name) {
+            if let Some(s) = self.sess.opts.externs.get(&self.crate_name.as_str()) {
                 return self.find_commandline_library(s.iter());
             }
             self.should_match_name = true;
@@ -533,7 +534,7 @@ impl<'a> Context<'a> {
                     if let Some((ref p, _)) = lib.rlib {
                         err.note(&format!("path: {}", p.display()));
                     }
-                    note_crate_name(&mut err, &lib.metadata.get_root().name);
+                    note_crate_name(&mut err, &lib.metadata.get_root().name.as_str());
                 }
                 err.emit();
                 None

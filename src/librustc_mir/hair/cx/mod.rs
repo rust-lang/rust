@@ -28,7 +28,7 @@ use rustc::hir::map::blocks::FnLikeNode;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
-use syntax::parse::token;
+use syntax::symbol::{Symbol, InternedString};
 use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
 
@@ -120,7 +120,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         self.tcx.mk_nil()
     }
 
-    pub fn str_literal(&mut self, value: token::InternedString) -> Literal<'tcx> {
+    pub fn str_literal(&mut self, value: InternedString) -> Literal<'tcx> {
         Literal::Value { value: ConstVal::Str(value) }
     }
 
@@ -144,7 +144,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                         self_ty: Ty<'tcx>,
                         params: &[Ty<'tcx>])
                         -> (Ty<'tcx>, Literal<'tcx>) {
-        let method_name = token::intern(method_name);
+        let method_name = Symbol::intern(method_name);
         let substs = self.tcx.mk_substs_trait(self_ty, params);
         for item in self.tcx.associated_items(trait_def_id) {
             if item.kind == ty::AssociatedKind::Method && item.name == method_name {

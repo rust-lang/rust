@@ -37,7 +37,7 @@ use syntax::abi::Abi;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::feature_gate::{self, GateIssue};
-use syntax::parse::token::{InternedString, intern};
+use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 use log;
 
@@ -52,7 +52,7 @@ pub struct CrateLoader<'a> {
     cstore: &'a CStore,
     next_crate_num: CrateNum,
     foreign_item_map: FxHashMap<String, Vec<ast::NodeId>>,
-    local_crate_name: String,
+    local_crate_name: Symbol,
 }
 
 fn dump_crates(cstore: &CStore) {
@@ -70,8 +70,8 @@ fn dump_crates(cstore: &CStore) {
 
 #[derive(Debug)]
 struct ExternCrateInfo {
-    ident: String,
-    name: String,
+    ident: Symbol,
+    name: Symbol,
     id: ast::NodeId,
     dep_kind: DepKind,
 }
@@ -80,7 +80,7 @@ fn register_native_lib(sess: &Session,
                        cstore: &CStore,
                        span: Option<Span>,
                        lib: NativeLibrary) {
-    if lib.name.is_empty() {
+    if lib.name.as_str().is_empty() {
         match span {
             Some(span) => {
                 struct_span_err!(sess, span, E0454,
@@ -147,7 +147,7 @@ impl<'a> CrateLoader<'a> {
             cstore: cstore,
             next_crate_num: cstore.next_crate_num(),
             foreign_item_map: FxHashMap(),
-            local_crate_name: local_crate_name.to_owned(),
+            local_crate_name: Symbol::intern(local_crate_name),
         }
     }
 
@@ -160,12 +160,12 @@ impl<'a> CrateLoader<'a> {
                     Some(name) => {
                         validate_crate_name(Some(self.sess), &name.as_str(),
                                             Some(i.span));
-                        name.to_string()
+                        name
                     }
-                    None => i.ident.to_string(),
+                    None => i.ident.name,
                 };
                 Some(ExternCrateInfo {
-                    ident: i.ident.to_string(),
+                    ident: i.ident.name,
                     name: name,
                     id: i.id,
                     dep_kind: if attr::contains_name(&i.attrs, "no_link") {
@@ -179,7 +179,7 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn existing_match(&self, name: &str, hash: Option<&Svh>, kind: PathKind)
+    fn existing_match(&self, name: Symbol, hash: Option<&Svh>, kind: PathKind)
                       -> Option<CrateNum> {
         let mut ret = None;
         self.cstore.iter_crate_data(|cnum, data| {
@@ -201,7 +201,7 @@ impl<'a> CrateLoader<'a> {
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
             let source = self.cstore.used_crate_source(cnum);
-            if let Some(locs) = self.sess.opts.externs.get(name) {
+            if let Some(locs) = self.sess.opts.externs.get(&*name.as_str()) {
                 let found = locs.iter().any(|l| {
                     let l = fs::canonicalize(l).ok();
                     source.dylib.as_ref().map(|p| &p.0) == l.as_ref() ||
@@ -233,7 +233,7 @@ impl<'a> CrateLoader<'a> {
                                   root: &CrateRoot) {
         // Check for (potential) conflicts with the local crate
         if self.local_crate_name == root.name &&
-           self.sess.local_crate_disambiguator() == &root.disambiguator[..] {
+           self.sess.local_crate_disambiguator() == root.disambiguator {
             span_fatal!(self.sess, span, E0519,
                         "the current crate is indistinguishable from one of its \
                          dependencies: it has the same crate-name `{}` and was \
@@ -258,8 +258,8 @@ impl<'a> CrateLoader<'a> {
 
     fn register_crate(&mut self,
                       root: &Option<CratePaths>,
-                      ident: &str,
-                      name: &str,
+                      ident: Symbol,
+                      name: Symbol,
                       span: Span,
                       lib: Library,
                       dep_kind: DepKind)
@@ -290,7 +290,7 @@ impl<'a> CrateLoader<'a> {
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
         let cmeta = Rc::new(cstore::CrateMetadata {
-            name: name.to_string(),
+            name: name,
             extern_crate: Cell::new(None),
             key_map: metadata.load_key_map(crate_root.index),
             proc_macros: crate_root.macro_derive_registrar.map(|_| {
@@ -314,8 +314,8 @@ impl<'a> CrateLoader<'a> {
 
     fn resolve_crate(&mut self,
                      root: &Option<CratePaths>,
-                     ident: &str,
-                     name: &str,
+                     ident: Symbol,
+                     name: Symbol,
                      hash: Option<&Svh>,
                      span: Span,
                      path_kind: PathKind,
@@ -459,13 +459,12 @@ impl<'a> CrateLoader<'a> {
         let deps = crate_root.crate_deps.decode(metadata);
         let map: FxHashMap<_, _> = deps.enumerate().map(|(crate_num, dep)| {
             debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
-            let dep_name = &dep.name.as_str();
             let dep_kind = match dep_kind {
                 DepKind::MacrosOnly => DepKind::MacrosOnly,
                 _ => dep.kind,
             };
             let (local_cnum, ..) = self.resolve_crate(
-                root, dep_name, dep_name, Some(&dep.hash), span, PathKind::Dependency, dep_kind,
+                root, dep.name, dep.name, Some(&dep.hash), span, PathKind::Dependency, dep_kind,
             );
             (CrateNum::new(crate_num + 1), local_cnum)
         }).collect();
@@ -485,13 +484,11 @@ impl<'a> CrateLoader<'a> {
         let target_triple = &self.sess.opts.target_triple[..];
         let is_cross = target_triple != config::host_triple();
         let mut target_only = false;
-        let ident = info.ident.clone();
-        let name = info.name.clone();
         let mut locate_ctxt = locator::Context {
             sess: self.sess,
             span: span,
-            ident: &ident[..],
-            crate_name: &name[..],
+            ident: info.ident,
+            crate_name: info.name,
             hash: None,
             filesearch: self.sess.host_filesearch(PathKind::Crate),
             target: &self.sess.host,
@@ -585,11 +582,11 @@ impl<'a> CrateLoader<'a> {
                                       trait_name: &str,
                                       expand: fn(TokenStream) -> TokenStream,
                                       attributes: &[&'static str]) {
-                let attrs = attributes.iter().map(|s| InternedString::new(s)).collect();
+                let attrs = attributes.iter().cloned().map(Symbol::intern).collect();
                 let derive = SyntaxExtension::CustomDerive(
                     Box::new(CustomDerive::new(expand, attrs))
                 );
-                self.0.push((intern(trait_name), Rc::new(derive)));
+                self.0.push((Symbol::intern(trait_name), Rc::new(derive)));
             }
         }
 
@@ -607,8 +604,8 @@ impl<'a> CrateLoader<'a> {
     pub fn find_plugin_registrar(&mut self, span: Span, name: &str)
                                  -> Option<(PathBuf, Svh, DefIndex)> {
         let ekrate = self.read_extension_crate(span, &ExternCrateInfo {
-             name: name.to_string(),
-             ident: name.to_string(),
+             name: Symbol::intern(name),
+             ident: Symbol::intern(name),
              id: ast::DUMMY_NODE_ID,
              dep_kind: DepKind::MacrosOnly,
         });
@@ -645,7 +642,7 @@ impl<'a> CrateLoader<'a> {
         let libs = self.cstore.get_used_libraries();
         for (foreign_lib, list) in self.foreign_item_map.iter() {
             let is_static = libs.borrow().iter().any(|lib| {
-                *foreign_lib == lib.name && lib.kind == cstore::NativeStatic
+                lib.name == &**foreign_lib && lib.kind == cstore::NativeStatic
             });
             if is_static {
                 for id in list {
@@ -708,8 +705,8 @@ impl<'a> CrateLoader<'a> {
         // in terms of everyone has a compatible panic runtime format, that's
         // performed later as part of the `dependency_format` module.
         let name = match desired_strategy {
-            PanicStrategy::Unwind => "panic_unwind",
-            PanicStrategy::Abort => "panic_abort",
+            PanicStrategy::Unwind => Symbol::intern("panic_unwind"),
+            PanicStrategy::Abort => Symbol::intern("panic_abort"),
         };
         info!("panic runtime not found -- loading {}", name);
 
@@ -791,9 +788,9 @@ impl<'a> CrateLoader<'a> {
         // * Staticlibs and Rust dylibs use system malloc
         // * Rust dylibs used as dependencies to rust use jemalloc
         let name = if need_lib_alloc && !self.sess.opts.cg.prefer_dynamic {
-            &self.sess.target.target.options.lib_allocation_crate
+            Symbol::intern(&self.sess.target.target.options.lib_allocation_crate)
         } else {
-            &self.sess.target.target.options.exe_allocation_crate
+            Symbol::intern(&self.sess.target.target.options.exe_allocation_crate)
         };
         let dep_kind = DepKind::Implicit;
         let (cnum, data) =
@@ -855,8 +852,8 @@ impl<'a> CrateLoader<'a> {
 impl<'a> CrateLoader<'a> {
     pub fn preprocess(&mut self, krate: &ast::Crate) {
         for attr in krate.attrs.iter().filter(|m| m.name() == "link_args") {
-            if let Some(ref linkarg) = attr.value_str() {
-                self.cstore.add_used_link_args(&linkarg);
+            if let Some(linkarg) = attr.value_str() {
+                self.cstore.add_used_link_args(&linkarg.as_str());
             }
         }
     }
@@ -869,7 +866,7 @@ impl<'a> CrateLoader<'a> {
         // First, add all of the custom #[link_args] attributes
         for m in i.attrs.iter().filter(|a| a.check_name("link_args")) {
             if let Some(linkarg) = m.value_str() {
-                self.cstore.add_used_link_args(&linkarg);
+                self.cstore.add_used_link_args(&linkarg.as_str());
             }
         }
 
@@ -881,7 +878,7 @@ impl<'a> CrateLoader<'a> {
             };
             let kind = items.iter().find(|k| {
                 k.check_name("kind")
-            }).and_then(|a| a.value_str());
+            }).and_then(|a| a.value_str()).map(Symbol::as_str);
             let kind = match kind.as_ref().map(|s| &s[..]) {
                 Some("static") => cstore::NativeStatic,
                 Some("dylib") => cstore::NativeUnknown,
@@ -903,7 +900,7 @@ impl<'a> CrateLoader<'a> {
                     struct_span_err!(self.sess, m.span, E0459,
                                      "#[link(...)] specified without `name = \"foo\"`")
                         .span_label(m.span, &format!("missing `name` argument")).emit();
-                    InternedString::new("foo")
+                    Symbol::intern("foo")
                 }
             };
             let cfg = items.iter().find(|k| {
@@ -913,7 +910,7 @@ impl<'a> CrateLoader<'a> {
                 list[0].meta_item().unwrap().clone()
             });
             let lib = NativeLibrary {
-                name: n.to_string(),
+                name: n,
                 kind: kind,
                 cfg: cfg,
             };
@@ -944,7 +941,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
 
         for &(ref name, kind) in &self.sess.opts.libs {
             let lib = NativeLibrary {
-                name: name.clone(),
+                name: Symbol::intern(name),
                 kind: kind,
                 cfg: None,
             };
@@ -962,7 +959,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
 
         let info = self.extract_crate_info(item).unwrap();
         let (cnum, ..) = self.resolve_crate(
-            &None, &info.ident, &info.name, None, item.span, PathKind::Crate, info.dep_kind,
+            &None, info.ident, info.name, None, item.span, PathKind::Crate, info.dep_kind,
         );
 
         let def_id = definitions.opt_local_def_id(item.id).unwrap();

@@ -16,12 +16,13 @@ use syntax_pos::{self, Span, FileMap};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
-use parse::token::InternedString;
 use ptr::P;
 use str::char_at;
+use symbol::Symbol;
 use tokenstream;
 
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -64,7 +65,7 @@ impl ParseSess {
         ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
-            config: Vec::new(),
+            config: HashSet::new(),
             included_mod_stack: RefCell::new(vec![]),
             code_map: code_map
         }
@@ -116,7 +117,7 @@ pub fn parse_item_from_source_str<'a>(name: String, source: String, sess: &'a Pa
 }
 
 pub fn parse_meta_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
-                                      -> PResult<'a, P<ast::MetaItem>> {
+                                      -> PResult<'a, ast::MetaItem> {
     new_parser_from_source_str(sess, name, source).parse_meta_item()
 }
 
@@ -371,13 +372,18 @@ fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
         s[1..].chars().all(|c| '0' <= c && c <= '9')
 }
 
-fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
-                      sd: &Handler, sp: Span) -> ast::LitKind {
+fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, sd: &Handler, sp: Span)
+                      -> ast::LitKind {
     debug!("filtered_float_lit: {}, {:?}", data, suffix);
-    match suffix.as_ref().map(|s| &**s) {
-        Some("f32") => ast::LitKind::Float(data, ast::FloatTy::F32),
-        Some("f64") => ast::LitKind::Float(data, ast::FloatTy::F64),
-        Some(suf) => {
+    let suffix = match suffix {
+        Some(suffix) => suffix,
+        None => return ast::LitKind::FloatUnsuffixed(data),
+    };
+
+    match &*suffix.as_str() {
+        "f32" => ast::LitKind::Float(data, ast::FloatTy::F32),
+        "f64" => ast::LitKind::Float(data, ast::FloatTy::F64),
+        suf => {
             if suf.len() >= 2 && looks_like_width_suffix(&['f'], suf) {
                 // if it looks like a width, lets try to be helpful.
                 sd.struct_span_err(sp, &format!("invalid width `{}` for float literal", &suf[1..]))
@@ -391,16 +397,13 @@ fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
 
             ast::LitKind::FloatUnsuffixed(data)
         }
-        None => ast::LitKind::FloatUnsuffixed(data)
     }
 }
-pub fn float_lit(s: &str, suffix: Option<InternedString>,
-                 sd: &Handler, sp: Span) -> ast::LitKind {
+pub fn float_lit(s: &str, suffix: Option<Symbol>, sd: &Handler, sp: Span) -> ast::LitKind {
     debug!("float_lit: {:?}, {:?}", s, suffix);
     // FIXME #2252: bounds checking float literals is deferred until trans
     let s = s.chars().filter(|&c| c != '_').collect::<String>();
-    let data = token::intern_and_get_ident(&s);
-    filtered_float_lit(data, suffix.as_ref().map(|s| &**s), sd, sp)
+    filtered_float_lit(Symbol::intern(&s), suffix, sd, sp)
 }
 
 /// Parse a string representing a byte literal into its final form. Similar to `char_lit`
@@ -495,11 +498,7 @@ pub fn byte_str_lit(lit: &str) -> Rc<Vec<u8>> {
     Rc::new(res)
 }
 
-pub fn integer_lit(s: &str,
-                   suffix: Option<InternedString>,
-                   sd: &Handler,
-                   sp: Span)
-                   -> ast::LitKind {
+pub fn integer_lit(s: &str, suffix: Option<Symbol>, sd: &Handler, sp: Span) -> ast::LitKind {
     // s can only be ascii, byte indexing is fine
 
     let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
@@ -521,16 +520,15 @@ pub fn integer_lit(s: &str,
     }
 
     // 1f64 and 2f32 etc. are valid float literals.
-    if let Some(ref suf) = suffix {
-        if looks_like_width_suffix(&['f'], suf) {
+    if let Some(suf) = suffix {
+        if looks_like_width_suffix(&['f'], &suf.as_str()) {
             match base {
                 16 => sd.span_err(sp, "hexadecimal float literal is not supported"),
                 8 => sd.span_err(sp, "octal float literal is not supported"),
                 2 => sd.span_err(sp, "binary float literal is not supported"),
                 _ => ()
             }
-            let ident = token::intern_and_get_ident(&s);
-            return filtered_float_lit(ident, Some(&suf), sd, sp)
+            return filtered_float_lit(Symbol::intern(&s), Some(suf), sd, sp)
         }
     }
 
@@ -538,9 +536,9 @@ pub fn integer_lit(s: &str,
         s = &s[2..];
     }
 
-    if let Some(ref suf) = suffix {
-        if suf.is_empty() { sd.span_bug(sp, "found empty literal suffix in Some")}
-        ty = match &**suf {
+    if let Some(suf) = suffix {
+        if suf.as_str().is_empty() { sd.span_bug(sp, "found empty literal suffix in Some")}
+        ty = match &*suf.as_str() {
             "isize" => ast::LitIntType::Signed(ast::IntTy::Is),
             "i8"  => ast::LitIntType::Signed(ast::IntTy::I8),
             "i16" => ast::LitIntType::Signed(ast::IntTy::I16),
@@ -551,7 +549,7 @@ pub fn integer_lit(s: &str,
             "u16" => ast::LitIntType::Unsigned(ast::UintTy::U16),
             "u32" => ast::LitIntType::Unsigned(ast::UintTy::U32),
             "u64" => ast::LitIntType::Unsigned(ast::UintTy::U64),
-            _ => {
+            suf => {
                 // i<digits> and u<digits> look like widths, so lets
                 // give an error message along those lines
                 if looks_like_width_suffix(&['i', 'u'], suf) {
@@ -599,12 +597,11 @@ mod tests {
     use std::rc::Rc;
     use syntax_pos::{self, Span, BytePos, Pos, NO_EXPANSION};
     use codemap::Spanned;
-    use ast::{self, PatKind};
+    use ast::{self, Ident, PatKind};
     use abi::Abi;
     use attr::first_attr_value_str_by_name;
     use parse;
     use parse::parser::Parser;
-    use parse::token::{str_to_ident};
     use print::pprust::item_to_string;
     use ptr::P;
     use tokenstream::{self, TokenTree};
@@ -626,7 +623,7 @@ mod tests {
                         global: false,
                         segments: vec![
                             ast::PathSegment {
-                                identifier: str_to_ident("a"),
+                                identifier: Ident::from_str("a"),
                                 parameters: ast::PathParameters::none(),
                             }
                         ],
@@ -645,11 +642,11 @@ mod tests {
                             global: true,
                             segments: vec![
                                 ast::PathSegment {
-                                    identifier: str_to_ident("a"),
+                                    identifier: Ident::from_str("a"),
                                     parameters: ast::PathParameters::none(),
                                 },
                                 ast::PathSegment {
-                                    identifier: str_to_ident("b"),
+                                    identifier: Ident::from_str("b"),
                                     parameters: ast::PathParameters::none(),
                                 }
                             ]
@@ -678,8 +675,8 @@ mod tests {
                 Some(&TokenTree::Token(_, token::Ident(name_zip))),
                 Some(&TokenTree::Delimited(_, ref macro_delimed)),
             )
-            if name_macro_rules.name.as_str() == "macro_rules"
-            && name_zip.name.as_str() == "zip" => {
+            if name_macro_rules.name == "macro_rules"
+            && name_zip.name == "zip" => {
                 let tts = &macro_delimed.tts[..];
                 match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
                     (
@@ -696,8 +693,7 @@ mod tests {
                                 Some(&TokenTree::Token(_, token::Dollar)),
                                 Some(&TokenTree::Token(_, token::Ident(ident))),
                             )
-                            if first_delimed.delim == token::Paren
-                            && ident.name.as_str() == "a" => {},
+                            if first_delimed.delim == token::Paren && ident.name == "a" => {},
                             _ => panic!("value 3: {:?}", **first_delimed),
                         }
                         let tts = &second_delimed.tts[..];
@@ -708,7 +704,7 @@ mod tests {
                                 Some(&TokenTree::Token(_, token::Ident(ident))),
                             )
                             if second_delimed.delim == token::Paren
-                            && ident.name.as_str() == "a" => {},
+                            && ident.name == "a" => {},
                             _ => panic!("value 4: {:?}", **second_delimed),
                         }
                     },
@@ -724,17 +720,17 @@ mod tests {
         let tts = string_to_tts("fn a (b : i32) { b; }".to_string());
 
         let expected = vec![
-            TokenTree::Token(sp(0, 2), token::Ident(str_to_ident("fn"))),
-            TokenTree::Token(sp(3, 4), token::Ident(str_to_ident("a"))),
+            TokenTree::Token(sp(0, 2), token::Ident(Ident::from_str("fn"))),
+            TokenTree::Token(sp(3, 4), token::Ident(Ident::from_str("a"))),
             TokenTree::Delimited(
                 sp(5, 14),
                 Rc::new(tokenstream::Delimited {
                     delim: token::DelimToken::Paren,
                     open_span: sp(5, 6),
                     tts: vec![
-                        TokenTree::Token(sp(6, 7), token::Ident(str_to_ident("b"))),
+                        TokenTree::Token(sp(6, 7), token::Ident(Ident::from_str("b"))),
                         TokenTree::Token(sp(8, 9), token::Colon),
-                        TokenTree::Token(sp(10, 13), token::Ident(str_to_ident("i32"))),
+                        TokenTree::Token(sp(10, 13), token::Ident(Ident::from_str("i32"))),
                     ],
                     close_span: sp(13, 14),
                 })),
@@ -744,7 +740,7 @@ mod tests {
                     delim: token::DelimToken::Brace,
                     open_span: sp(15, 16),
                     tts: vec![
-                        TokenTree::Token(sp(17, 18), token::Ident(str_to_ident("b"))),
+                        TokenTree::Token(sp(17, 18), token::Ident(Ident::from_str("b"))),
                         TokenTree::Token(sp(18, 19), token::Semi),
                     ],
                     close_span: sp(20, 21),
@@ -765,7 +761,7 @@ mod tests {
                             global: false,
                             segments: vec![
                                 ast::PathSegment {
-                                    identifier: str_to_ident("d"),
+                                    identifier: Ident::from_str("d"),
                                     parameters: ast::PathParameters::none(),
                                 }
                             ],
@@ -788,7 +784,7 @@ mod tests {
                                global:false,
                                segments: vec![
                                 ast::PathSegment {
-                                    identifier: str_to_ident("b"),
+                                    identifier: Ident::from_str("b"),
                                     parameters: ast::PathParameters::none(),
                                 }
                                ],
@@ -812,7 +808,7 @@ mod tests {
                 id: ast::DUMMY_NODE_ID,
                 node: PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Immutable),
                                     Spanned{ span:sp(0, 1),
-                                             node: str_to_ident("b")
+                                             node: Ident::from_str("b")
                     },
                                     None),
                 span: sp(0,1)}));
@@ -824,7 +820,7 @@ mod tests {
         // this test depends on the intern order of "fn" and "i32"
         assert_eq!(string_to_item("fn a (b : i32) { b; }".to_string()),
                   Some(
-                      P(ast::Item{ident:str_to_ident("a"),
+                      P(ast::Item{ident:Ident::from_str("a"),
                             attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
                             node: ast::ItemKind::Fn(P(ast::FnDecl {
@@ -835,8 +831,7 @@ mod tests {
                                         global:false,
                                         segments: vec![
                                             ast::PathSegment {
-                                                identifier:
-                                                    str_to_ident("i32"),
+                                                identifier: Ident::from_str("i32"),
                                                 parameters: ast::PathParameters::none(),
                                             }
                                         ],
@@ -849,7 +844,7 @@ mod tests {
                                             ast::BindingMode::ByValue(ast::Mutability::Immutable),
                                                 Spanned{
                                                     span: sp(6,7),
-                                                    node: str_to_ident("b")},
+                                                    node: Ident::from_str("b")},
                                                 None
                                                     ),
                                             span: sp(6,7)
@@ -884,9 +879,7 @@ mod tests {
                                                         global:false,
                                                         segments: vec![
                                                             ast::PathSegment {
-                                                                identifier:
-                                                                str_to_ident(
-                                                                    "b"),
+                                                                identifier: Ident::from_str("b"),
                                                                 parameters:
                                                                 ast::PathParameters::none(),
                                                             }
@@ -998,12 +991,12 @@ mod tests {
         let item = parse_item_from_source_str(name.clone(), source, &sess)
             .unwrap().unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-        assert_eq!(&doc[..], "/// doc comment");
+        assert_eq!(doc, "/// doc comment");
 
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name.clone(), source, &sess)
             .unwrap().unwrap();
-        let docs = item.attrs.iter().filter(|a| &*a.name() == "doc")
+        let docs = item.attrs.iter().filter(|a| a.name() == "doc")
                     .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
         let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
         assert_eq!(&docs[..], b);
@@ -1011,7 +1004,7 @@ mod tests {
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name, source, &sess).unwrap().unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-        assert_eq!(&doc[..], "/** doc comment\n *  with CRLF */");
+        assert_eq!(doc, "/** doc comment\n *  with CRLF */");
     }
 
     #[test]

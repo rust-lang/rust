@@ -21,7 +21,7 @@ use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, DefIndex, LOCAL_CRATE};
 use ty::{self, TyCtxt, AdtKind};
 use middle::privacy::AccessLevels;
-use syntax::parse::token::InternedString;
+use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
@@ -36,7 +36,6 @@ use hir::pat_util::EnumerateAndAdjustIterator;
 
 use std::mem::replace;
 use std::cmp::Ordering;
-use std::ops::Deref;
 
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Copy, Debug, Eq, Hash)]
 pub enum StabilityLevel {
@@ -151,10 +150,11 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
 
                 // Check if deprecated_since < stable_since. If it is,
                 // this is *almost surely* an accident.
-                if let (&Some(attr::RustcDeprecation {since: ref dep_since, ..}),
-                        &attr::Stable {since: ref stab_since}) = (&stab.rustc_depr, &stab.level) {
+                if let (&Some(attr::RustcDeprecation {since: dep_since, ..}),
+                        &attr::Stable {since: stab_since}) = (&stab.rustc_depr, &stab.level) {
                     // Explicit version of iter::order::lt to handle parse errors properly
-                    for (dep_v, stab_v) in dep_since.split(".").zip(stab_since.split(".")) {
+                    for (dep_v, stab_v) in
+                            dep_since.as_str().split(".").zip(stab_since.as_str().split(".")) {
                         if let (Ok(dep_v), Ok(stab_v)) = (dep_v.parse::<u64>(), stab_v.parse()) {
                             match dep_v.cmp(&stab_v) {
                                 Ordering::Less => {
@@ -356,7 +356,7 @@ impl<'a, 'tcx> Index<'tcx> {
 /// features and possibly prints errors. Returns a list of all
 /// features used.
 pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                          -> FxHashMap<InternedString, attr::StabilityLevel> {
+                                          -> FxHashMap<Symbol, attr::StabilityLevel> {
     let _task = tcx.dep_graph.in_task(DepNode::StabilityCheck);
     let ref active_lib_features = tcx.sess.features.borrow().declared_lib_features;
 
@@ -376,8 +376,8 @@ pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
 struct Checker<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    active_features: FxHashSet<InternedString>,
-    used_features: FxHashMap<InternedString, attr::StabilityLevel>,
+    active_features: FxHashSet<Symbol>,
+    used_features: FxHashMap<Symbol, attr::StabilityLevel>,
     // Within a block where feature gate checking can be skipped.
     in_skip_block: u32,
 }
@@ -407,10 +407,10 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 if !self.active_features.contains(feature) {
                     let msg = match *reason {
                         Some(ref r) => format!("use of unstable library feature '{}': {}",
-                                               &feature, &r),
+                                               &feature.as_str(), &r),
                         None => format!("use of unstable library feature '{}'", &feature)
                     };
-                    emit_feature_err(&self.tcx.sess.parse_sess, &feature, span,
+                    emit_feature_err(&self.tcx.sess.parse_sess, &feature.as_str(), span,
                                      GateIssue::Library(Some(issue)), &msg);
                 }
             }
@@ -455,7 +455,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         // When compiling with --test we don't enforce stability on the
         // compiler-generated test module, demarcated with `DUMMY_SP` plus the
         // name `__test`
-        if item.span == DUMMY_SP && item.name.as_str() == "__test" { return }
+        if item.span == DUMMY_SP && item.name == "__test" { return }
 
         check_item(self.tcx, item, true,
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
@@ -735,10 +735,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features(sess: &Session,
-                                       lib_features_used: &FxHashMap<InternedString,
+                                       lib_features_used: &FxHashMap<Symbol,
                                                                      attr::StabilityLevel>) {
     let ref declared_lib_features = sess.features.borrow().declared_lib_features;
-    let mut remaining_lib_features: FxHashMap<InternedString, Span>
+    let mut remaining_lib_features: FxHashMap<Symbol, Span>
         = declared_lib_features.clone().into_iter().collect();
 
     fn format_stable_since_msg(version: &str) -> String {
@@ -746,7 +746,7 @@ pub fn check_unused_or_stable_features(sess: &Session,
     }
 
     for &(ref stable_lang_feature, span) in &sess.features.borrow().declared_stable_lang_features {
-        let version = find_lang_feature_accepted_version(stable_lang_feature.deref())
+        let version = find_lang_feature_accepted_version(&stable_lang_feature.as_str())
             .expect("unexpectedly couldn't find version feature was stabilized");
         sess.add_lint(lint::builtin::STABLE_FEATURES,
                       ast::CRATE_NODE_ID,
@@ -761,7 +761,7 @@ pub fn check_unused_or_stable_features(sess: &Session,
                     sess.add_lint(lint::builtin::STABLE_FEATURES,
                                   ast::CRATE_NODE_ID,
                                   span,
-                                  format_stable_since_msg(version.deref()));
+                                  format_stable_since_msg(&version.as_str()));
                 }
             }
             None => ( /* used but undeclared, handled during the previous ast visit */ )

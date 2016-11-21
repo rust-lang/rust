@@ -285,7 +285,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         let attributes = tcx.get_attrs(def_id);
         if let Some(name) = attr::first_attr_value_str_by_name(&attributes, "linkage") {
-            if let Some(linkage) = base::llvm_linkage_by_name(&name) {
+            if let Some(linkage) = base::llvm_linkage_by_name(&name.as_str()) {
                 Some(linkage)
             } else {
                 let span = tcx.map.span_if_local(def_id);
@@ -531,7 +531,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
         // some_crate::
         if !(self.omit_local_crate_name && def_id.is_local()) {
-            output.push_str(&self.tcx.crate_name(def_path.krate));
+            output.push_str(&self.tcx.crate_name(def_path.krate).as_str());
             output.push_str("::");
         }
 
