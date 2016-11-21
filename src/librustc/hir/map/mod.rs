@@ -601,7 +601,7 @@ impl<'ast> Map<'ast> {
     pub fn get_parent_did(&self, id: NodeId) -> DefId {
         let parent = self.get_parent(id);
         match self.find_entry(parent) {
-            Some(RootInlinedParent(ii)) => ii.def_id, // TODO: is this wrong for items?
+            Some(RootInlinedParent(ii)) => ii.def_id,
             _ => self.local_def_id(parent)
         }
     }

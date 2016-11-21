@@ -184,7 +184,10 @@ impl<'a> FnLikeNode<'a> {
     }
 
     pub fn decl(self) -> &'a FnDecl {
-        if let map::NodeInlinedItem(&InlinedItem { kind: InlinedItemKind::Fn(ref decl), .. }) = self.node {
+        if let map::NodeInlinedItem(&InlinedItem {
+            kind: InlinedItemKind::Fn(ref decl),
+            ..
+        }) = self.node {
             return &decl;
         }
         self.handle(|i: ItemFnParts<'a>|  &*i.decl,

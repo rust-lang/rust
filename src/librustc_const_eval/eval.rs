@@ -109,7 +109,8 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         // or the default.
                         let trait_id = tcx.map.get_parent(node_id);
                         let trait_id = tcx.map.local_def_id(trait_id);
-                        let default_value = expr_option.as_ref().map(|expr| (&**expr, tcx.ast_ty_to_prim_ty(ty)));
+                        let default_value = expr_option.as_ref()
+                            .map(|expr| (&**expr, tcx.ast_ty_to_prim_ty(ty)));
                         resolve_trait_associated_const(tcx, def_id, default_value, trait_id, substs)
                     } else {
                         // Technically, without knowing anything about the
@@ -141,7 +142,8 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         let mut used_substs = false;
         let expr_ty = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-            Some((&InlinedItem { body: ref const_expr, kind: InlinedItemKind::Const(ref ty), .. }, _)) => {
+            Some((&InlinedItem { body: ref const_expr,
+                                 kind: InlinedItemKind::Const(ref ty), .. }, _)) => {
                 Some((&**const_expr, tcx.ast_ty_to_prim_ty(ty)))
             }
             _ => None
@@ -1057,12 +1059,13 @@ fn infer<'a, 'tcx>(i: ConstInt,
     }
 }
 
-fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                trait_item_id: DefId,
-                                                default_value: Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)>,
-                                                trait_id: DefId,
-                                                rcvr_substs: &'tcx Substs<'tcx>)
-                                                -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)>
+fn resolve_trait_associated_const<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    trait_item_id: DefId,
+    default_value: Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)>,
+    trait_id: DefId,
+    rcvr_substs: &'tcx Substs<'tcx>
+) -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)>
 {
     let trait_ref = ty::Binder(ty::TraitRef::new(trait_id, rcvr_substs));
     debug!("resolve_trait_associated_const: trait_ref={:?}",
