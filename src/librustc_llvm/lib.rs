@@ -176,20 +176,16 @@ pub fn set_thread_local(global: ValueRef, is_thread_local: bool) {
 }
 
 impl Attribute {
-    fn as_object(&self, value: ValueRef) -> AttributeRef {
-        unsafe { LLVMRustCreateAttribute(LLVMRustGetValueContext(value), *self, 0) }
-    }
-
     pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
-        unsafe { LLVMRustAddFunctionAttribute(llfn, idx.as_uint(), self.as_object(llfn)) }
+        unsafe { LLVMRustAddFunctionAttribute(llfn, idx.as_uint(), *self) }
     }
 
     pub fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
-        unsafe { LLVMRustAddCallSiteAttribute(callsite, idx.as_uint(), self.as_object(callsite)) }
+        unsafe { LLVMRustAddCallSiteAttribute(callsite, idx.as_uint(), *self) }
     }
 
     pub fn unapply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
-        unsafe { LLVMRustRemoveFunctionAttributes(llfn, idx.as_uint(), self.as_object(llfn)) }
+        unsafe { LLVMRustRemoveFunctionAttributes(llfn, idx.as_uint(), *self) }
     }
 
     pub fn toggle_llfn(&self, idx: AttributePlace, llfn: ValueRef, set: bool) {
