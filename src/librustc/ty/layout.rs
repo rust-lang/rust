@@ -524,9 +524,20 @@ pub struct Struct {
     pub min_size: Size,
 }
 
+// Info required to optimize struct layout.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
+enum StructKind {
+    // A tuple, closure, or univariant which cannot be coerced to unsized.
+    AlwaysSizedUnivariant,
+    // A univariant, the last field of which may be coerced to unsized.
+    MaybeUnsizedUnivariant,
+    // A univariant, but part of an enum.
+    EnumVariant,
+}
+
 impl<'a, 'gcx, 'tcx> Struct {
-    pub fn new(dl: &TargetDataLayout, fields: &Vec<&'a Layout>,
-                  repr: attr::ReprAttr, is_enum_variant: bool,
+    fn new(dl: &TargetDataLayout, fields: &Vec<&'a Layout>,
+                  repr: attr::ReprAttr, kind: StructKind,
                   scapegoat: Ty<'gcx>) -> Result<Struct, LayoutError<'gcx>> {
         let packed = repr == attr::ReprPacked;
         let mut ret = Struct {
@@ -538,37 +549,47 @@ impl<'a, 'gcx, 'tcx> Struct {
             min_size: Size::from_bytes(0),
         };
 
-        if is_enum_variant {
-            assert!(fields.len() >= 1, "Enum variants must have at least a discriminant field.")
-        }
+        let (optimize, sort_ascending) = match (repr, kind) {
+            (attr::ReprAny, StructKind::AlwaysSizedUnivariant) => (true, false),
+            (attr::ReprAny, StructKind::MaybeUnsizedUnivariant) => (true, true),
+            (attr::ReprAny, StructKind::EnumVariant) => {
+                assert!(fields.len() >= 1, "Enum variants must have discriminants.");
+                (true, fields[0].size(dl).bytes() == 1)
+            }
+            _ => (false, false)
+        };
 
         if fields.len() == 0 {return Ok(ret)};
 
         ret.offsets = vec![Size::from_bytes(0); fields.len()];
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
-        if repr == attr::ReprAny {
-            let start = if is_enum_variant {1} else {0};
-            // FIXME(camlorn): we can't reorder the last field because
-            // it is possible for structs to be coerced to unsized.
-            // Example: struct Foo<T: ?Sized> { x: i32, y: T }
-            // We can coerce &Foo<u8> to &Foo<Trait>.
-            let end = inverse_memory_index.len()-1;
+        if optimize {
+            let start = if let StructKind::EnumVariant = kind {1} else {0};
+            let end = if let StructKind::MaybeUnsizedUnivariant = kind { fields.len()-1 } else { 0 };
             if end > start {
                 let optimizing  = &mut inverse_memory_index[start..end];
-                optimizing.sort_by_key(|&x| fields[x as usize].align(dl).abi());
-            }
-            if is_enum_variant {
-                assert_eq!(inverse_memory_index[0], 0,
-                  "Enums must have field 0 as the field with lowest offset.")
+                if sort_ascending {
+                    optimizing.sort_by_key(|&x| fields[x as usize].align(dl).abi());
+                } else {
+                    optimizing.sort_by(| &a, &b | {
+                        let a = fields[a as usize].align(dl).abi();
+                        let b = fields[b as usize].align(dl).abi();
+                        b.cmp(&a)
+                    });
+                }
             }
         }
 
-        // At this point, inverse_memory_index holds field indices by increasing offset.
         // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
         // We now write field offsets to the corresponding offset slot;
         // field 5 with offset 0 puts 0 in offsets[5].
         // At the bottom of this function, we use inverse_memory_index to produce memory_index.
+
+        if let StructKind::EnumVariant = kind {
+            assert_eq!(inverse_memory_index[0], 0,
+              "Enum variant discriminants must have the lowest offset.");
+        }
 
         let mut offset = Size::from_bytes(0);
 
@@ -606,10 +627,16 @@ impl<'a, 'gcx, 'tcx> Struct {
         // To invert it, consider:
         // If field 5 has offset 0, offsets[0] is 5, and memory_index[5] should be 0.
         // Field 5 would be the first element, so memory_index is i:
-        ret.memory_index = vec![0; inverse_memory_index.len()];
+        // Note: if we didn't optimize, it's already right.
+        
+        if optimize {
+            ret.memory_index = vec![0; inverse_memory_index.len()];
 
-        for i in 0..inverse_memory_index.len() {
-            ret.memory_index[inverse_memory_index[i] as usize]  = i as u32;
+            for i in 0..inverse_memory_index.len() {
+                ret.memory_index[inverse_memory_index[i] as usize]  = i as u32;
+            }
+        } else {
+            ret.memory_index = inverse_memory_index;
         }
 
         Ok(ret)
@@ -985,7 +1012,8 @@ impl<'a, 'gcx, 'tcx> Layout {
 
             // The never type.
             ty::TyNever => Univariant {
-                variant: Struct::new(dl, &vec![], attr::ReprAny, false, ty)?,
+                variant: Struct::new(dl, &vec![], attr::ReprAny,
+                  StructKind::AlwaysSizedUnivariant, ty)?,
                 non_zero: false
             },
 
@@ -1038,12 +1066,13 @@ impl<'a, 'gcx, 'tcx> Layout {
             // Odd unit types.
             ty::TyFnDef(..) => {
                 Univariant {
-                    variant: Struct::new(dl, &vec![], attr::ReprAny, false, ty)?,
+                    variant: Struct::new(dl, &vec![], attr::ReprAny, StructKind::AlwaysSizedUnivariant, ty)?,
                     non_zero: false
                 }
             }
             ty::TyDynamic(_) => {
-                let mut unit = Struct::new(dl, &vec![], attr::ReprAny, false, ty)?;
+                let mut unit = Struct::new(dl, &vec![], attr::ReprAny,
+                  StructKind::AlwaysSizedUnivariant, ty)?;
                 unit.sized = false;
                 Univariant { variant: unit, non_zero: false }
             }
@@ -1055,15 +1084,16 @@ impl<'a, 'gcx, 'tcx> Layout {
                     &tys.map(|ty| ty.layout(infcx))
                       .collect::<Result<Vec<_>, _>>()?,
                     attr::ReprAny,
-                    false, ty)?;
+                    StructKind::AlwaysSizedUnivariant, ty)?;
                 Univariant { variant: st, non_zero: false }
             }
 
             ty::TyTuple(tys) => {
+                // FIXME(camlorn): if we ever allow unsized tuples, this needs to be checked in the same way it is for univariant.
                 let st = Struct::new(dl,
                     &tys.iter().map(|ty| ty.layout(infcx))
                       .collect::<Result<Vec<_>, _>>()?,
-                    attr::ReprAny, false, ty)?;
+                    attr::ReprAny, StructKind::AlwaysSizedUnivariant, ty)?;
                 Univariant { variant: st, non_zero: false }
             }
 
@@ -1096,7 +1126,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     assert_eq!(hint, attr::ReprAny);
 
                     return success(Univariant {
-                        variant: Struct::new(dl, &vec![], hint, false, ty)?,
+                        variant: Struct::new(dl, &vec![], hint, StructKind::AlwaysSizedUnivariant, ty)?,
                         non_zero: false
                     });
                 }
@@ -1134,7 +1164,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                         un.extend(dl, fields.iter().map(|&f| Ok(f)), ty)?;
                         UntaggedUnion { variants: un }
                     } else {
-                        let st = Struct::new(dl, &fields, hint, false, ty)?;
+                        let st = Struct::new(dl, &fields, hint,
+                          StructKind::MaybeUnsizedUnivariant, ty)?;
                         let non_zero = Some(def.did) == tcx.lang_items.non_zero();
                         Univariant { variant: st, non_zero: non_zero }
                     };
@@ -1188,7 +1219,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         let st = Struct::new(dl,
                             &variants[discr].iter().map(|ty| ty.layout(infcx))
                               .collect::<Result<Vec<_>, _>>()?,
-                            hint, false, ty)?;
+                            hint, StructKind::AlwaysSizedUnivariant, ty)?;
 
                         // We have to fix the last element of path here.
                         let mut i = *path.last().unwrap();
@@ -1226,7 +1257,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     fields.insert(0, &discr);
                     let st = Struct::new(dl,
                         &fields,
-                        hint, false, ty)?;
+                        hint, StructKind::EnumVariant, ty)?;
                     // Find the first field we can't move later
                     // to make room for a larger discriminant.
                     // It is important to skip the first field.
