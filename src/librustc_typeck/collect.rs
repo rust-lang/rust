@@ -128,13 +128,62 @@ struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
+impl<'a, 'tcx> CollectItemTypesVisitor<'a, 'tcx> {
+    /// Collect item types is structured into two tasks. The outer
+    /// task, `CollectItem`, walks the entire content of an item-like
+    /// thing, including its body. It also spawns an inner task,
+    /// `CollectItemSig`, which walks only the signature. This inner
+    /// task is the one that writes the item-type into the various
+    /// maps.  This setup ensures that the item body is never
+    /// accessible to the task that computes its signature, so that
+    /// changes to the body don't affect the signature.
+    ///
+    /// Consider an example function `foo` that also has a closure in its body:
+    ///
+    /// ```
+    /// fn foo(<sig>) {
+    ///     ...
+    ///     let bar = || ...; // we'll label this closure as "bar" below
+    /// }
+    /// ```
+    ///
+    /// This results in a dep-graph like so. I've labeled the edges to
+    /// document where they arise.
+    ///
+    /// ```
+    /// [HirBody(foo)] -2--> [CollectItem(foo)] -4-> [ItemSignature(bar)]
+    ///                       ^           ^
+    ///                       1           3
+    /// [Hir(foo)] -----------+-6-> [CollectItemSig(foo)] -5-> [ItemSignature(foo)]
+    /// ```
+    ///
+    /// 1. This is added by the `visit_all_item_likes_in_krate`.
+    /// 2. This is added when we fetch the item body.
+    /// 3. This is added because `CollectItem` launches `CollectItemSig`.
+    ///    - it is arguably false; if we refactor the `with_task` system;
+    ///      we could get probably rid of it, but it is also harmless enough.
+    /// 4. This is added by the code in `visit_expr` when we write to `item_types`.
+    /// 5. This is added by the code in `convert_item` when we write to `item_types`;
+    ///    note that this write occurs inside the `CollectItemSig` task.
+    /// 6. Added by explicit `read` below
+    fn with_collect_item_sig<OP>(&self, id: ast::NodeId, op: OP)
+        where OP: FnOnce()
+    {
+        let def_id = self.ccx.tcx.map.local_def_id(id);
+        self.ccx.tcx.dep_graph.with_task(DepNode::CollectItemSig(def_id), || {
+            self.ccx.tcx.map.read(id);
+            op();
+        });
+    }
+}
+
 impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
         Some((&self.ccx.tcx.map, NestedVisitMode::OnlyBodies))
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        convert_item(self.ccx, item);
+        self.with_collect_item_sig(item.id, || convert_item(self.ccx, item));
         intravisit::walk_item(self, item);
     }
 
@@ -156,7 +205,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        convert_impl_item(self.ccx, impl_item);
+        self.with_collect_item_sig(impl_item.id, || {
+            convert_impl_item(self.ccx, impl_item)
+        });
         intravisit::walk_impl_item(self, impl_item);
     }
 }
