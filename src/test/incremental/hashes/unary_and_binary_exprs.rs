@@ -34,7 +34,9 @@ pub fn const_negation() -> i32 {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfails2")]
 #[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfails2")]
+#[rustc_clean(label="HirBody", cfg="cfails3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn const_negation() -> i32 {
     -1
@@ -51,7 +53,9 @@ pub fn const_bitwise_not() -> i32 {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfails2")]
 #[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfails2")]
+#[rustc_clean(label="HirBody", cfg="cfails3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn const_bitwise_not() -> i32 {
     !99
@@ -68,7 +72,9 @@ pub fn var_negation(x: i32, y: i32) -> i32 {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfails2")]
 #[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfails2")]
+#[rustc_clean(label="HirBody", cfg="cfails3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn var_negation(x: i32, y: i32) -> i32 {
     -y
@@ -85,7 +91,9 @@ pub fn var_bitwise_not(x: i32, y: i32) -> i32 {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfails2")]
 #[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfails2")]
+#[rustc_clean(label="HirBody", cfg="cfails3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn var_bitwise_not(x: i32, y: i32) -> i32 {
     !y
