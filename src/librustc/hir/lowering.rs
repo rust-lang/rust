@@ -1346,7 +1346,7 @@ impl<'a> LoweringContext<'a> {
 
                 hir::ItemImpl(self.lower_unsafety(unsafety),
                               self.lower_impl_polarity(polarity),
-                              self.lower_defaultness(defaultness),
+                              self.lower_defaultness(defaultness, true /* [1] */),
                               self.lower_generics(generics),
                               ifce,
                               self.lower_ty(ty),

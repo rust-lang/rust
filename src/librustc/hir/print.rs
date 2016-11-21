@@ -823,8 +823,9 @@ impl<'a> State<'a> {
     }
 
     pub fn print_defaultness(&mut self, defaultness: hir::Defaultness) -> io::Result<()> {
-        if let hir::Defaultness::Default = defaultness {
-            self.word_nbsp("default")?;
+        match defaultness {
+            hir::Defaultness::Default { .. } => self.word_nbsp("default")?,
+            hir::Defaultness::Final => (),
         }
         Ok(())
     }
