@@ -452,7 +452,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    pub fn commasep_exprs(&mut self, b: Breaks, exprs: &[P<hir::Expr>]) -> io::Result<()> {
+    pub fn commasep_exprs(&mut self, b: Breaks, exprs: &[hir::Expr]) -> io::Result<()> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(&e), |e| e.span)
     }
 
@@ -1200,7 +1200,7 @@ impl<'a> State<'a> {
     }
 
 
-    fn print_call_post(&mut self, args: &[P<hir::Expr>]) -> io::Result<()> {
+    fn print_call_post(&mut self, args: &[hir::Expr]) -> io::Result<()> {
         self.popen()?;
         self.commasep_exprs(Inconsistent, args)?;
         self.pclose()
@@ -1218,10 +1218,10 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    fn print_expr_vec(&mut self, exprs: &[P<hir::Expr>]) -> io::Result<()> {
+    fn print_expr_vec(&mut self, exprs: &[hir::Expr]) -> io::Result<()> {
         self.ibox(indent_unit)?;
         word(&mut self.s, "[")?;
-        self.commasep_exprs(Inconsistent, &exprs[..])?;
+        self.commasep_exprs(Inconsistent, exprs)?;
         word(&mut self.s, "]")?;
         self.end()
     }
@@ -1274,16 +1274,16 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    fn print_expr_tup(&mut self, exprs: &[P<hir::Expr>]) -> io::Result<()> {
+    fn print_expr_tup(&mut self, exprs: &[hir::Expr]) -> io::Result<()> {
         self.popen()?;
-        self.commasep_exprs(Inconsistent, &exprs[..])?;
+        self.commasep_exprs(Inconsistent, exprs)?;
         if exprs.len() == 1 {
             word(&mut self.s, ",")?;
         }
         self.pclose()
     }
 
-    fn print_expr_call(&mut self, func: &hir::Expr, args: &[P<hir::Expr>]) -> io::Result<()> {
+    fn print_expr_call(&mut self, func: &hir::Expr, args: &[hir::Expr]) -> io::Result<()> {
         self.print_expr_maybe_paren(func)?;
         self.print_call_post(args)
     }
@@ -1291,7 +1291,7 @@ impl<'a> State<'a> {
     fn print_expr_method_call(&mut self,
                               name: Spanned<ast::Name>,
                               tys: &[P<hir::Ty>],
-                              args: &[P<hir::Expr>])
+                              args: &[hir::Expr])
                               -> io::Result<()> {
         let base_args = &args[1..];
         self.print_expr(&args[0])?;
@@ -1340,7 +1340,7 @@ impl<'a> State<'a> {
                 self.print_expr(expr)?;
             }
             hir::ExprArray(ref exprs) => {
-                self.print_expr_vec(&exprs[..])?;
+                self.print_expr_vec(exprs)?;
             }
             hir::ExprRepeat(ref element, ref count) => {
                 self.print_expr_repeat(&element, &count)?;
@@ -1349,13 +1349,13 @@ impl<'a> State<'a> {
                 self.print_expr_struct(path, &fields[..], wth)?;
             }
             hir::ExprTup(ref exprs) => {
-                self.print_expr_tup(&exprs[..])?;
+                self.print_expr_tup(exprs)?;
             }
             hir::ExprCall(ref func, ref args) => {
-                self.print_expr_call(&func, &args[..])?;
+                self.print_expr_call(&func, args)?;
             }
             hir::ExprMethodCall(name, ref tys, ref args) => {
-                self.print_expr_method_call(name, &tys[..], &args[..])?;
+                self.print_expr_method_call(name, &tys[..], args)?;
             }
             hir::ExprBinary(op, ref lhs, ref rhs) => {
                 self.print_expr_binary(op, &lhs, &rhs)?;
