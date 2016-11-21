@@ -266,7 +266,7 @@ impl<'ast> Map<'ast> {
 
                         if let Some(last_id) = last_expr {
                             // The body of the item may have a separate dep node
-                            // (Note that impl/trait items don't currently have
+                            // (Note that trait items don't currently have
                             // their own dep node, so there's also just one
                             // HirBody node for all the items)
                             if self.is_body(last_id, item) {
@@ -282,9 +282,6 @@ impl<'ast> Map<'ast> {
 
                         if let Some(last_id) = last_expr {
                             // The body of the item may have a separate dep node
-                            // (Note that impl/trait items don't currently have
-                            // their own dep node, so there's also just one
-                            // HirBody node for all the items)
                             if self.is_impl_item_body(last_id, item) {
                                 return DepNode::HirBody(def_id);
                             }
@@ -373,9 +370,9 @@ impl<'ast> Map<'ast> {
     fn is_body(&self, node_id: NodeId, item: &Item) -> bool {
         match item.node {
             ItemFn(_, _, _, _, _, body) => body.node_id() == node_id,
-            // Since trait/impl items currently don't get their own dep nodes,
+            // Since trait items currently don't get their own dep nodes,
             // we check here whether node_id is the body of any of the items.
-            // Once they get their own dep nodes, this can go away
+            // If they get their own dep nodes, this can go away
             ItemTrait(_, _, _, ref trait_items) => {
                 trait_items.iter().any(|trait_item| { match trait_item.node {
                     MethodTraitItem(_, Some(body)) => body.node_id() == node_id,
