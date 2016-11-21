@@ -393,10 +393,9 @@ impl<'a> Resolver<'a> {
         if let Some(suggestion) = find_best_match_for_name(self.macro_names.iter(), name, None) {
             if suggestion != name {
                 err.help(&format!("did you mean `{}!`?", suggestion));
-            } else {
-                err.help(&format!("have you added the `#[macro_use]` on the module/import?"));
             }
         }
+        err.help(&format!("have you added the `#[macro_use]` on the module/import?"));
     }
 
     fn collect_def_ids(&mut self, invocation: &'a InvocationData<'a>, expansion: &Expansion) {
