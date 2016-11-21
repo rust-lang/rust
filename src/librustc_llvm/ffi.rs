@@ -395,9 +395,6 @@ pub type RustArchiveMemberRef = *mut RustArchiveMember_opaque;
 #[allow(missing_copy_implementations)]
 pub enum OperandBundleDef_opaque {}
 pub type OperandBundleDefRef = *mut OperandBundleDef_opaque;
-#[allow(missing_copy_implementations)]
-pub enum Attribute_opaque {}
-pub type AttributeRef = *mut Attribute_opaque;
 
 pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
@@ -770,8 +767,6 @@ extern "C" {
                         Name: *const c_char)
                         -> ValueRef;
 
-    pub fn LLVMRustCreateAttribute(C: ContextRef, kind: Attribute, val: u64) -> AttributeRef;
-
     // Operations on functions
     pub fn LLVMAddFunction(M: ModuleRef, Name: *const c_char, FunctionTy: TypeRef) -> ValueRef;
     pub fn LLVMGetNamedFunction(M: ModuleRef, Name: *const c_char) -> ValueRef;
@@ -790,12 +785,12 @@ extern "C" {
     pub fn LLVMGetGC(Fn: ValueRef) -> *const c_char;
     pub fn LLVMSetGC(Fn: ValueRef, Name: *const c_char);
     pub fn LLVMRustAddDereferenceableAttr(Fn: ValueRef, index: c_uint, bytes: u64);
-    pub fn LLVMRustAddFunctionAttribute(Fn: ValueRef, index: c_uint, attr: AttributeRef);
+    pub fn LLVMRustAddFunctionAttribute(Fn: ValueRef, index: c_uint, attr: Attribute);
     pub fn LLVMRustAddFunctionAttrStringValue(Fn: ValueRef,
                                               index: c_uint,
                                               Name: *const c_char,
                                               Value: *const c_char);
-    pub fn LLVMRustRemoveFunctionAttributes(Fn: ValueRef, index: c_uint, attr: AttributeRef);
+    pub fn LLVMRustRemoveFunctionAttributes(Fn: ValueRef, index: c_uint, attr: Attribute);
 
     // Operations on parameters
     pub fn LLVMCountParams(Fn: ValueRef) -> c_uint;
@@ -806,8 +801,6 @@ extern "C" {
     pub fn LLVMGetLastParam(Fn: ValueRef) -> ValueRef;
     pub fn LLVMGetNextParam(Arg: ValueRef) -> ValueRef;
     pub fn LLVMGetPreviousParam(Arg: ValueRef) -> ValueRef;
-    pub fn LLVMAddAttribute(Arg: ValueRef, attr: AttributeRef);
-    pub fn LLVMRemoveAttribute(Arg: ValueRef, attr: AttributeRef);
     pub fn LLVMSetParamAlignment(Arg: ValueRef, align: c_uint);
 
     // Operations on basic blocks
@@ -851,7 +844,7 @@ extern "C" {
     pub fn LLVMAddInstrAttribute(Instr: ValueRef, index: c_uint, IA: c_uint);
     pub fn LLVMRemoveInstrAttribute(Instr: ValueRef, index: c_uint, IA: c_uint);
     pub fn LLVMSetInstrParamAlignment(Instr: ValueRef, index: c_uint, align: c_uint);
-    pub fn LLVMRustAddCallSiteAttribute(Instr: ValueRef, index: c_uint, attr: AttributeRef);
+    pub fn LLVMRustAddCallSiteAttribute(Instr: ValueRef, index: c_uint, attr: Attribute);
     pub fn LLVMRustAddDereferenceableCallSiteAttr(Instr: ValueRef, index: c_uint, bytes: u64);
 
     // Operations on call instructions (only)

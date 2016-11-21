@@ -155,13 +155,10 @@ from_rust(LLVMRustAttribute kind) {
   }
 }
 
-extern "C" LLVMAttributeRef LLVMRustCreateAttribute(LLVMContextRef C, LLVMRustAttribute Kind, uint64_t Val) {
-  return wrap(Attribute::get(*unwrap(C), from_rust(Kind), Val));
-}
-
-extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned index, LLVMAttributeRef attr) {
+extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned index, LLVMRustAttribute attr) {
   CallSite Call = CallSite(unwrap<Instruction>(Instr));
-  AttrBuilder B(unwrap(attr));
+  Attribute Attr = Attribute::get(Call->getContext(), from_rust(attr));
+  AttrBuilder B(Attr);
   Call.setAttributes(
     Call.getAttributes().addAttributes(Call->getContext(), index,
                                        AttributeSet::get(Call->getContext(),
@@ -183,10 +180,11 @@ extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
 
 extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn,
 					     unsigned index,
-					     LLVMAttributeRef attr)
+					     LLVMRustAttribute attr)
 {
   Function *A = unwrap<Function>(Fn);
-  AttrBuilder B(unwrap(attr));
+  Attribute Attr = Attribute::get(A->getContext(), from_rust(attr));
+  AttrBuilder B(Attr);
   A->addAttributes(index, AttributeSet::get(A->getContext(), index, B));
 }
 
@@ -212,11 +210,12 @@ extern "C" void LLVMRustAddFunctionAttrStringValue(LLVMValueRef Fn,
 
 extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
 						 unsigned index,
-						 LLVMAttributeRef attr)
+						 LLVMRustAttribute attr)
 {
   Function *F = unwrap<Function>(Fn);
   const AttributeSet PAL = F->getAttributes();
-  AttrBuilder B(unwrap(attr));
+  Attribute Attr = Attribute::get(F->getContext(), from_rust(attr));
+  AttrBuilder B(Attr);
   const AttributeSet PALnew =
     PAL.removeAttributes(F->getContext(), index,
                          AttributeSet::get(F->getContext(), index, B));
