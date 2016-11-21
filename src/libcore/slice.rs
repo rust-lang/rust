@@ -936,6 +936,22 @@ unsafe impl<'a, T: Sync> Sync for Iter<'a, T> {}
 unsafe impl<'a, T: Sync> Send for Iter<'a, T> {}
 
 impl<'a, T> Iter<'a, T> {
+    /// Create a slice iterator from a `begin`, `end` pair of pointers.
+    ///
+    /// # Safety
+    ///
+    /// `begin` and `end` must be non-null, not mutably aliased, and point in
+    /// bounds of or one past the end of the same object. This produces an
+    /// iterator of arbitrary lifetime, and must be used with care.
+    #[unstable(feature = "slice_iter_raw_parts", issue = "0")]
+    pub unsafe fn from_raw_parts(begin: *const T, end: *const T) -> Self {
+        Iter {
+            ptr: begin,
+            end: end,
+            _marker: marker::PhantomData,
+        }
+    }
+
     /// View the underlying data as a subslice of the original data.
     ///
     /// This has the same lifetime as the original slice, and so the
@@ -963,6 +979,18 @@ impl<'a, T> Iter<'a, T> {
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn as_slice(&self) -> &'a [T] {
         make_slice!(self.ptr, self.end)
+    }
+
+    /// Return start pointer of the iterator
+    #[unstable(feature = "slice_iter_raw_parts", issue = "0")]
+    pub fn start(&self) -> *const T {
+        self.ptr
+    }
+
+    /// Return end pointer of the iterator
+    #[unstable(feature = "slice_iter_raw_parts", issue = "0")]
+    pub fn end(&self) -> *const T {
+        self.end
     }
 
     // Helper function for Iter::nth
@@ -1049,6 +1077,22 @@ unsafe impl<'a, T: Sync> Sync for IterMut<'a, T> {}
 unsafe impl<'a, T: Send> Send for IterMut<'a, T> {}
 
 impl<'a, T> IterMut<'a, T> {
+    /// Create an iterator from a pair of `begin`, `end` pointers.
+    ///
+    /// # Safety
+    ///
+    /// `begin` and `end` must be non-null, not aliased, and point in bounds of
+    /// or one past the end of the same object. This produces an iterator of
+    /// arbitrary lifetime, and must be used with care.
+    #[unstable(feature = "slice_iter_raw_parts", issue = "0")]
+    pub unsafe fn from_raw_parts(begin: *mut T, end: *mut T) -> Self {
+        IterMut {
+            ptr: begin,
+            end: end,
+            _marker: marker::PhantomData,
+        }
+    }
+
     /// View the underlying data as a subslice of the original data.
     ///
     /// To avoid creating `&mut` references that alias, this is forced
@@ -1087,6 +1131,18 @@ impl<'a, T> IterMut<'a, T> {
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn into_slice(self) -> &'a mut [T] {
         make_mut_slice!(self.ptr, self.end)
+    }
+
+    /// Return start pointer of the iterator
+    #[unstable(feature = "slice_iter_raw_parts", issue = "0")]
+    pub fn start(&self) -> *mut T {
+        self.ptr
+    }
+
+    /// Return end pointer of the iterator
+    #[unstable(feature = "slice_iter_raw_parts", issue = "0")]
+    pub fn end(&self) -> *mut T {
+        self.end
     }
 
     // Helper function for IterMut::nth
