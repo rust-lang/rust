@@ -31,8 +31,7 @@ mod x {
 mod y {
     use x;
 
-    // FIXME: This should be clean
-    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
     pub fn yyyy() {
         x::xxxx();
     }
