@@ -1278,7 +1278,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let link_meta = self.link_meta;
         let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
         let root = self.lazy(&CrateRoot {
-            rustc_version: rustc_version(),
             name: link_meta.crate_name,
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
@@ -1368,7 +1367,8 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Will be filed with the root position after encoding everything.
     cursor.write_all(&[0, 0, 0, 0]).unwrap();
 
-    let root = EncodeContext {
+    let root = {
+        let mut ecx = EncodeContext {
             opaque: opaque::Encoder::new(&mut cursor),
             tcx: tcx,
             reexports: reexports,
@@ -1378,8 +1378,15 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             lazy_state: LazyState::NoNode,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),
-        }
-        .encode_crate_root();
+        };
+
+        // Encode the rustc version string in a predictable location.
+        rustc_version().encode(&mut ecx).unwrap();
+
+        // Encode all the entries and extra information in the crate,
+        // culminating in the `CrateRoot` which points to all of it.
+        ecx.encode_crate_root()
+    };
     let mut result = cursor.into_inner();
 
     // Encode the root position.
