@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// error-pattern: cannot declare a new module at this location
+// error-pattern: will become a hard error
+// error-pattern: compilation successful
 
-// ignore-test: this is an auxiliary file for circular-modules-main.rs
+#![feature(rustc_attrs)]
 
-#[path = "circular_modules_main.rs"]
-mod circular_modules_main;
+#[path="mod_file_not_owning_aux3.rs"]
+mod foo;
 
-pub fn say_hello() {
-    println!("{}", circular_modules_main::hi_str());
-}
+#[rustc_error]
+fn main() {}

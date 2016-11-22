@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// ignore-test this is not a test
 
-// error-pattern: cannot declare a new module at this location
-
-mod mod_file_not_owning_aux1;
-
-fn main() {}
+macro_rules! m {
+    () => { mod mod_file_not_owning_aux2; }
+}
+m!();

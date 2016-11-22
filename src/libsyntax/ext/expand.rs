@@ -21,7 +21,7 @@ use ext::base::*;
 use feature_gate::{self, Features};
 use fold;
 use fold::*;
-use parse::{ParseSess, PResult, lexer};
+use parse::{ParseSess, DirectoryOwnership, PResult, lexer};
 use parse::parser::Parser;
 use parse::token;
 use print::pprust;
@@ -727,9 +727,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {
-        let no_noninline_mod = mem::replace(&mut self.cx.current_expansion.no_noninline_mod, true);
+        let old_directory_ownership = self.cx.current_expansion.directory_ownership;
+        self.cx.current_expansion.directory_ownership = DirectoryOwnership::UnownedViaBlock;
         let result = noop_fold_block(block, self);
-        self.cx.current_expansion.no_noninline_mod = no_noninline_mod;
+        self.cx.current_expansion.directory_ownership = old_directory_ownership;
         result
     }
 
@@ -768,7 +769,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     return noop_fold_item(item, self);
                 }
 
-                let orig_no_noninline_mod = self.cx.current_expansion.no_noninline_mod;
+                let orig_directory_ownership = self.cx.current_expansion.directory_ownership;
                 let mut module = (*self.cx.current_expansion.module).clone();
                 module.mod_path.push(item.ident);
 
@@ -779,23 +780,28 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                 if inline_module {
                     if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, "path") {
-                        self.cx.current_expansion.no_noninline_mod = false;
+                        self.cx.current_expansion.directory_ownership = DirectoryOwnership::Owned;
                         module.directory.push(&*path.as_str());
                     } else {
                         module.directory.push(&*item.ident.name.as_str());
                     }
                 } else {
-                    self.cx.current_expansion.no_noninline_mod = false;
-                    module.directory =
+                    let mut path =
                         PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(inner));
-                    module.directory.pop();
+                    let directory_ownership = match path.file_name().unwrap().to_str() {
+                        Some("mod.rs") => DirectoryOwnership::Owned,
+                        _ => DirectoryOwnership::UnownedViaMod(false),
+                    };
+                    path.pop();
+                    module.directory = path;
+                    self.cx.current_expansion.directory_ownership = directory_ownership;
                 }
 
                 let orig_module =
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
                 let result = noop_fold_item(item, self);
                 self.cx.current_expansion.module = orig_module;
-                self.cx.current_expansion.no_noninline_mod = orig_no_noninline_mod;
+                self.cx.current_expansion.directory_ownership = orig_directory_ownership;
                 return result;
             }
             // Ensure that test functions are accessible from the test harness.
