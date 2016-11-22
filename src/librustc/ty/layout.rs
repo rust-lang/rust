@@ -549,9 +549,14 @@ impl<'a, 'gcx, 'tcx> Struct {
             min_size: Size::from_bytes(0),
         };
 
+        // 1-member and 2-member structs don't optimize.
+        // In addition, large bodies of code in trans assume that 2-element structs can become pairs.
+        // It's easier to just short-circuit here.
+        let can_optimize_struct = fields.len() > 2;
+
         let (optimize, sort_ascending) = match (repr, kind) {
-            (attr::ReprAny, StructKind::AlwaysSizedUnivariant) => (true, false),
-            (attr::ReprAny, StructKind::MaybeUnsizedUnivariant) => (true, true),
+            (attr::ReprAny, StructKind::AlwaysSizedUnivariant) => (can_optimize_struct, false),
+            (attr::ReprAny, StructKind::MaybeUnsizedUnivariant) => (can_optimize_struct, true),
             (attr::ReprAny, StructKind::EnumVariant) => {
                 assert!(fields.len() >= 1, "Enum variants must have discriminants.");
                 (true, fields[0].size(dl).bytes() == 1)
