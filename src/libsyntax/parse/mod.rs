@@ -76,6 +76,19 @@ impl ParseSess {
     }
 }
 
+#[derive(Clone)]
+pub struct Directory {
+    pub path: PathBuf,
+    pub ownership: DirectoryOwnership,
+}
+
+#[derive(Copy, Clone)]
+pub enum DirectoryOwnership {
+    Owned,
+    UnownedViaBlock,
+    UnownedViaMod(bool /* legacy warnings? */),
+}
+
 // a bunch of utility functions of the form parse_<thing>_from_<source>
 // where <thing> includes crate, expr, item, stmt, tts, and one that
 // uses a HOF to parse anything, and <source> includes file and
@@ -152,11 +165,11 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path) -> Parser<'a> 
 /// On an error, use the given span as the source of the problem.
 pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
                                     path: &Path,
-                                    owns_directory: bool,
+                                    directory_ownership: DirectoryOwnership,
                                     module_name: Option<String>,
                                     sp: Span) -> Parser<'a> {
     let mut p = filemap_to_parser(sess, file_to_filemap(sess, path, Some(sp)));
-    p.owns_directory = owns_directory;
+    p.directory.ownership = directory_ownership;
     p.root_module_name = module_name;
     p
 }

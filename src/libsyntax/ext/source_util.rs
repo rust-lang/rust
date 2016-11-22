@@ -13,7 +13,7 @@ use syntax_pos::{self, Pos, Span};
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
-use parse::token;
+use parse::{token, DirectoryOwnership};
 use parse;
 use print::pprust;
 use ptr::P;
@@ -90,7 +90,8 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::T
     };
     // The file will be added to the code map by the parser
     let path = res_rel_file(cx, sp, Path::new(&file));
-    let p = parse::new_sub_parser_from_file(cx.parse_sess(), &path, true, None, sp);
+    let directory_ownership = DirectoryOwnership::Owned;
+    let p = parse::new_sub_parser_from_file(cx.parse_sess(), &path, directory_ownership, None, sp);
 
     struct ExpandResult<'a> {
         p: parse::parser::Parser<'a>,
