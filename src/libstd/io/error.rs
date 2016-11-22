@@ -545,7 +545,7 @@ impl error::Error for Error {
 }
 
 fn _assert_error_is_sync_send() {
-    fn _is_sync_send<T: Sync+Send>() {}
+    fn _is_sync_send<_T: Sync+Send>() {}
     _is_sync_send::<Error>();
 }
 

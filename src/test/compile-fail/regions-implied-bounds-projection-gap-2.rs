@@ -14,6 +14,7 @@
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
+#![allow(unused_type_parameters)]
 #![allow(unused_variables)]
 
 trait Trait1<'x> {

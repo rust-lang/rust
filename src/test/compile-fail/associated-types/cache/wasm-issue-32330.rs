@@ -16,10 +16,6 @@
 
 use std::str::Chars;
 
-pub trait HasOutput<Ch, Str> {
-    type Output;
-}
-
 #[derive(Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Debug)]
 pub enum Token<'a> {
     Begin(&'a str)

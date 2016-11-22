@@ -158,6 +158,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     add_lint_group!(sess,
                     "unused",
                     UNUSED_IMPORTS,
+                    UNUSED_TYPE_PARAMETERS,
                     UNUSED_VARIABLES,
                     UNUSED_ASSIGNMENTS,
                     DEAD_CODE,

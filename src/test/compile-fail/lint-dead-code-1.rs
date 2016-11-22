@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![no_std]
+#![allow(unused_type_parameters)]
 #![allow(unused_variables)]
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]

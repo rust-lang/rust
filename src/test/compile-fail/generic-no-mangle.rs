@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_type_parameters)]
 #![deny(no_mangle_generic_items)]
 
 #[no_mangle]
