@@ -24,40 +24,28 @@ see the website][platform-support].
 
 [platform-support]: https://forge.rust-lang.org/platform-support.html
 
-## Installing on Linux or Mac
+## Installing Rust
 
-If we're on Linux or a Mac, all we need to do is open a terminal and type this:
+All we need to do is open a terminal and type this:
 
 ```bash
-$ curl -sSf https://static.rust-lang.org/rustup.sh | sh
+$ curl https://sh.rustup.rs -sSf | sh
 ```
 
 This will download a script, and start the installation. If it all goes well,
 you’ll see this appear:
 
 ```text
-Rust is ready to roll.
+Rust is installed now. Great! 
 ```
-
-From here, press `y` for ‘yes’, and then follow the rest of the prompts.
-
-## Installing on Windows
-
-If you're on Windows, please download the appropriate [installer][install-page].
-
-[install-page]: https://www.rust-lang.org/install.html
 
 ## Uninstalling
 
-Uninstalling Rust is as easy as installing it. On Linux or Mac, run
-the uninstall script:
+Uninstalling Rust is as easy as installing it:
 
 ```bash
-$ sudo /usr/local/lib/rustlib/uninstall.sh
+$ rustup self uninstall
 ```
-
-If we used the Windows installer, we can re-run the `.msi` and it will give us
-an uninstall option.
 
 ## Troubleshooting
 
@@ -106,9 +94,7 @@ resources include [the user’s forum][users] and [Stack Overflow][stackoverflow
 [stackoverflow]: http://stackoverflow.com/questions/tagged/rust
 
 This installer also installs a copy of the documentation locally, so we can
-read it offline. On UNIX systems, `/usr/local/share/doc/rust` is the location.
-On Windows, it's in a `share/doc` directory, inside the directory to which Rust
-was installed.
+read it offline. It's only a `rustup doc` away!
 
 # Hello, world!
 
