@@ -566,7 +566,7 @@ impl<'a, 'gcx, 'tcx> Struct {
 
         if optimize {
             let start = if let StructKind::EnumVariant = kind {1} else {0};
-            let end = if let StructKind::MaybeUnsizedUnivariant = kind { fields.len()-1 } else { 0 };
+            let end = if let StructKind::MaybeUnsizedUnivariant = kind { fields.len()-1 } else { fields.len() };
             if end > start {
                 let optimizing  = &mut inverse_memory_index[start..end];
                 if sort_ascending {
@@ -1155,6 +1155,18 @@ impl<'a, 'gcx, 'tcx> Layout {
                     // Struct, or union, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
 
+                    let kind = if def.is_enum() || def.variants[0].fields.len() == 0{
+                        StructKind::AlwaysSizedUnivariant
+                    } else {
+                        use middle::region::ROOT_CODE_EXTENT;
+                        let param_env = tcx.construct_parameter_environment(DUMMY_SP, def.did, ROOT_CODE_EXTENT);
+                        let fields = &def.variants[0].fields;
+                        let last_field = &fields[fields.len()-1];
+                        let always_sized = last_field.unsubst_ty().is_sized(tcx, &param_env, DUMMY_SP);
+                        if !always_sized { StructKind::MaybeUnsizedUnivariant }
+                        else { StructKind::AlwaysSizedUnivariant }
+                    };
+
                     let fields = def.variants[0].fields.iter().map(|field| {
                         field.ty(tcx, substs).layout(infcx)
                     }).collect::<Result<Vec<_>, _>>()?;
@@ -1165,7 +1177,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         UntaggedUnion { variants: un }
                     } else {
                         let st = Struct::new(dl, &fields, hint,
-                          StructKind::MaybeUnsizedUnivariant, ty)?;
+                          kind, ty)?;
                         let non_zero = Some(def.did) == tcx.lang_items.non_zero();
                         Univariant { variant: st, non_zero: non_zero }
                     };
