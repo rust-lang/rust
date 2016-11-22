@@ -161,7 +161,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                self_ty,
                return_type,
                scope_expr_id);
-        self.probe_for(span, mode, LookingFor::ReturnType(return_type), self_ty, scope_expr_id)
+        self.probe_op(span, mode, LookingFor::ReturnType(return_type), self_ty, scope_expr_id,
+                      |probe_cx| probe_cx.pick())
     }
 
     pub fn probe_for_name(&self,
@@ -175,17 +176,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                self_ty,
                item_name,
                scope_expr_id);
-        self.probe_for(span, mode, LookingFor::MethodName(item_name), self_ty, scope_expr_id)
+        self.probe_op(span,
+                      mode,
+                      LookingFor::MethodName(item_name),
+                      self_ty,
+                      scope_expr_id,
+                      |probe_cx| probe_cx.pick())
     }
 
-    fn probe_for(&self,
-                 span: Span,
-                 mode: Mode,
-                 looking_for: LookingFor<'tcx>,
-                 self_ty: Ty<'tcx>,
-                 scope_expr_id: ast::NodeId)
-                 -> PickResult<'tcx> {
-
+    fn probe_op<'a,OP,R>(&'a self,
+                         span: Span,
+                         mode: Mode,
+                         looking_for: LookingFor<'tcx>,
+                         self_ty: Ty<'tcx>,
+                         scope_expr_id: ast::NodeId,
+                         op: OP)
+                         -> R
+        where OP: FnOnce(&mut ProbeContext<'a, 'gcx, 'tcx>) -> R
+    {
         // FIXME(#18741) -- right now, creating the steps involves evaluating the
         // `*` operator, which registers obligations that then escape into
         // the global fulfillment context and thus has global
@@ -241,7 +249,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   steps, opt_simplified_steps);
             probe_cx.assemble_inherent_candidates();
             probe_cx.assemble_extension_candidates_for_traits_in_scope(scope_expr_id)?;
-            probe_cx.pick()
+            op(&mut probe_cx)
         })
     }
 
