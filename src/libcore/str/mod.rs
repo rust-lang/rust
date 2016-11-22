@@ -1292,13 +1292,11 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             if align == 0 {
                 while offset < blocks_end {
                     unsafe {
-                        let u = *(ptr.offset(offset as isize) as *const usize);
-                        let v = *(ptr.offset((offset + usize_bytes) as isize) as *const usize);
-
+                        let block = ptr.offset(offset as isize) as *const usize;
                         // break if there is a nonascii byte
-                        let zu = contains_nonascii(u);
-                        let zv = contains_nonascii(v);
-                        if zu || zv {
+                        let zu = contains_nonascii(*block);
+                        let zv = contains_nonascii(*block.offset(1));
+                        if zu | zv {
                             break;
                         }
                     }
