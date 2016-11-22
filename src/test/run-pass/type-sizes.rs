@@ -52,5 +52,5 @@ pub fn main() {
 
     assert_eq!(size_of::<e1>(), 8 as usize);
     assert_eq!(size_of::<e2>(), 8 as usize);
-    assert_eq!(size_of::<e3>(), 4 as usize);
+    assert_eq!(size_of::<e3>(), 2 as usize);
 }
