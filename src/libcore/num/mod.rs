@@ -829,7 +829,7 @@ macro_rules! int_impl {
         ///
         /// Note that this is *not* the same as a rotate-right; the
         /// RHS of a wrapping shift-right is restricted to the range
-        /// of the type, rather than the bits shifted out of the LHS
+        /// of the type, rather than the bits shifted out of the RHS
         /// being returned to the other end. The primitive integer
         /// types all implement a `rotate_right` function, which may
         /// be what you want instead.
@@ -1878,7 +1878,7 @@ macro_rules! uint_impl {
         ///
         /// Note that this is *not* the same as a rotate-right; the
         /// RHS of a wrapping shift-right is restricted to the range
-        /// of the type, rather than the bits shifted out of the LHS
+        /// of the type, rather than the bits shifted out of the RHS
         /// being returned to the other end. The primitive integer
         /// types all implement a `rotate_right` function, which may
         /// be what you want instead.
