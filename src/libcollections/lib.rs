@@ -36,6 +36,7 @@
 #![cfg_attr(not(test), feature(char_escape_debug))]
 #![feature(core_intrinsics)]
 #![feature(dropck_parametricity)]
+#![feature(exact_size_is_empty)]
 #![feature(fmt_internals)]
 #![feature(fused)]
 #![feature(heap_api)]

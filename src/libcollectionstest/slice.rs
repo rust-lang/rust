@@ -634,6 +634,16 @@ fn test_iter_clone() {
 }
 
 #[test]
+fn test_iter_is_empty() {
+    let xs = [1, 2, 5, 10, 11];
+    for i in 0..xs.len() {
+        for j in i..xs.len() {
+            assert_eq!(xs[i..j].iter().is_empty(), xs[i..j].is_empty());
+        }
+    }
+}
+
+#[test]
 fn test_mut_iterator() {
     let mut xs = [1, 2, 3, 4, 5];
     for x in &mut xs {
