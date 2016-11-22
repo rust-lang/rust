@@ -157,7 +157,7 @@ declare_lint! {
 
 declare_lint! {
     pub HR_LIFETIME_IN_ASSOC_TYPE,
-    Warn,
+    Deny,
     "binding for associated type references higher-ranked lifetime \
      that does not appear in the trait input types"
 }
