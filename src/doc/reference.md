@@ -1271,7 +1271,8 @@ guaranteed to refer to the same memory address.
 
 Constant values must not have destructors, and otherwise permit most forms of
 data. Constants may refer to the address of other constants, in which case the
-address will have the `static` lifetime. The compiler is, however, still at
+address will have the `static` lifetime. (See below on [static lifetime
+elision](#static-lifetime-elision).) The compiler is, however, still at 
 liberty to translate the constant many times, so the address referred to may not
 be stable.
 
@@ -1279,7 +1280,7 @@ Constants must be explicitly typed. The type may be `bool`, `char`, a number, or
 a type derived from those primitive types. The derived types are references with
 the `static` lifetime, fixed-size arrays, tuples, enum variants, and structs.
 
-```
+```rust
 const BIT1: u32 = 1 << 0;
 const BIT2: u32 = 1 << 1;
 
@@ -1331,7 +1332,7 @@ running in the same process.
 Mutable statics are still very useful, however. They can be used with C
 libraries and can also be bound from C libraries (in an `extern` block).
 
-```
+```rust
 # fn atomic_add(_: &mut u32, _: u32) -> u32 { 2 }
 
 static mut LEVELS: u32 = 0;
@@ -1354,6 +1355,31 @@ unsafe fn bump_levels_unsafe2() -> u32 {
 
 Mutable statics have the same restrictions as normal statics, except that the
 type of the value is not required to ascribe to `Sync`.
+
+#### `'static` lifetime elision
+
+Both constant and static declarations of reference types have *implicit*
+`'static` lifetimes unless an explicit lifetime is specified. As such, the
+constant declarations involving `'static` above may be written without the
+lifetimes. Returning to our previous example:
+
+```rust
+const BIT1: u32 = 1 << 0;
+const BIT2: u32 = 1 << 1;
+
+const BITS: [u32; 2] = [BIT1, BIT2];
+const STRING: &str = "bitstring";
+
+struct BitsNStrings<'a> {
+    mybits: [u32; 2],
+    mystring: &'a str,
+}
+
+const BITS_N_STRINGS: BitsNStrings = BitsNStrings {
+    mybits: BITS,
+    mystring: STRING,
+};
+```
 
 ### Traits
 
@@ -2457,9 +2483,6 @@ The currently implemented features of the reference compiler are:
 * `start` - Allows use of the `#[start]` attribute, which changes the entry point
             into a Rust program. This capability, especially the signature for the
             annotated function, is subject to change.
-
-* `static_in_const` - Enables lifetime elision with a `'static` default for
-                      `const` and `static` item declarations.
 
 * `thread_local` - The usage of the `#[thread_local]` attribute is experimental
                    and should be seen as unstable. This attribute is used to
