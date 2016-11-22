@@ -177,7 +177,7 @@ struct FreeData<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub struct LoopScope {
+pub struct LoopScope<'tcx> {
     /// Extent of the loop
     pub extent: CodeExtent,
     /// Where the body of the loop begins
@@ -185,8 +185,9 @@ pub struct LoopScope {
     /// Block to branch into when the loop terminates (either by being `break`-en out from, or by
     /// having its condition to become false)
     pub break_block: BasicBlock,
-    /// Indicates the reachability of the break_block for this loop
-    pub might_break: bool
+    /// The destination of the loop expression itself (i.e. where to put the result of a `break`
+    /// expression)
+    pub break_destination: Lvalue<'tcx>,
 }
 
 impl<'tcx> Scope<'tcx> {
@@ -246,10 +247,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// Returns the might_break attribute of the LoopScope used.
     pub fn in_loop_scope<F>(&mut self,
-                               loop_block: BasicBlock,
-                               break_block: BasicBlock,
-                               f: F)
-                               -> bool
+                            loop_block: BasicBlock,
+                            break_block: BasicBlock,
+                            break_destination: Lvalue<'tcx>,
+                            f: F)
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>)
     {
         let extent = self.extent_of_innermost_scope();
@@ -257,13 +258,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             extent: extent.clone(),
             continue_block: loop_block,
             break_block: break_block,
-            might_break: false
+            break_destination: break_destination,
         };
         self.loop_scopes.push(loop_scope);
         f(self);
         let loop_scope = self.loop_scopes.pop().unwrap();
         assert!(loop_scope.extent == extent);
-        loop_scope.might_break
     }
 
     /// Convenience wrapper that pushes a scope and then executes `f`
@@ -386,7 +386,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn find_loop_scope(&mut self,
                            span: Span,
                            label: Option<CodeExtent>)
-                           -> &mut LoopScope {
+                           -> &mut LoopScope<'tcx> {
         let loop_scopes = &mut self.loop_scopes;
         match label {
             None => {

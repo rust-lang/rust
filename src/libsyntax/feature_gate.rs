@@ -313,6 +313,9 @@ declare_features! (
     (active, link_cfg, "1.14.0", Some(37406)),
 
     (active, use_extern_macros, "1.15.0", Some(35896)),
+
+    // Allows `break {expr}` with a value inside `loop`s.
+    (active, loop_break_value, "1.14.0", Some(37339)),
 );
 
 declare_features! (
@@ -1188,6 +1191,10 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                                           "numeric fields in struct expressions are unstable");
                     }
                 }
+            }
+            ast::ExprKind::Break(_, Some(_)) => {
+                gate_feature_post!(&self, loop_break_value, e.span,
+                                   "`break` with a value is experimental");
             }
             _ => {}
         }

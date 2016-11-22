@@ -2256,15 +2256,25 @@ impl<'a> Parser<'a> {
                         ex = ExprKind::Ret(None);
                     }
                 } else if self.eat_keyword(keywords::Break) {
-                    if self.token.is_lifetime() {
-                        ex = ExprKind::Break(Some(Spanned {
+                    let lt = if self.token.is_lifetime() {
+                        let spanned_lt = Spanned {
                             node: self.get_lifetime(),
                             span: self.span
-                        }));
+                        };
                         self.bump();
+                        Some(spanned_lt)
                     } else {
-                        ex = ExprKind::Break(None);
-                    }
+                        None
+                    };
+                    let e = if self.token.can_begin_expr()
+                               && !(self.token == token::OpenDelim(token::Brace)
+                                    && self.restrictions.contains(
+                                           Restrictions::RESTRICTION_NO_STRUCT_LITERAL)) {
+                        Some(self.parse_expr()?)
+                    } else {
+                        None
+                    };
+                    ex = ExprKind::Break(lt, e);
                     hi = self.prev_span.hi;
                 } else if self.token.is_keyword(keywords::Let) {
                     // Catch this syntax error here, instead of in `check_strict_keywords`, so

@@ -11,9 +11,7 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::scope::LoopScope;
 use hair::*;
-use rustc::middle::region::CodeExtent;
 use rustc::mir::*;
-use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
@@ -79,14 +77,28 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.unit()
             }
             ExprKind::Continue { label } => {
-                this.break_or_continue(expr_span, label, block,
-                                       |loop_scope| loop_scope.continue_block)
+                let LoopScope { continue_block, extent, .. } =
+                    *this.find_loop_scope(expr_span, label);
+                this.exit_scope(expr_span, extent, block, continue_block);
+                this.cfg.start_new_block().unit()
             }
-            ExprKind::Break { label } => {
-                this.break_or_continue(expr_span, label, block, |loop_scope| {
-                    loop_scope.might_break = true;
-                    loop_scope.break_block
-                })
+            ExprKind::Break { label, value } => {
+                let (break_block, extent, destination) = {
+                    let LoopScope {
+                        break_block,
+                        extent,
+                        ref break_destination,
+                        ..
+                    } = *this.find_loop_scope(expr_span, label);
+                    (break_block, extent, break_destination.clone())
+                };
+                if let Some(value) = value {
+                    unpack!(block = this.into(&destination, block, value))
+                } else {
+                    this.cfg.push_assign_unit(block, source_info, &destination)
+                }
+                this.exit_scope(expr_span, extent, block, break_block);
+                this.cfg.start_new_block().unit()
             }
             ExprKind::Return { value } => {
                 block = match value {
@@ -113,22 +125,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.unit()
             }
         }
-    }
-
-    fn break_or_continue<F>(&mut self,
-                            span: Span,
-                            label: Option<CodeExtent>,
-                            block: BasicBlock,
-                            exit_selector: F)
-                            -> BlockAnd<()>
-        where F: FnOnce(&mut LoopScope) -> BasicBlock
-    {
-        let (exit_block, extent) = {
-            let loop_scope = self.find_loop_scope(span, label);
-            (exit_selector(loop_scope), loop_scope.extent)
-        };
-        self.exit_scope(span, extent, block, exit_block);
-        self.cfg.start_new_block().unit()
     }
 
 }

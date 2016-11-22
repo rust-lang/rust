@@ -169,41 +169,39 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.cfg.terminate(block, source_info,
                                    TerminatorKind::Goto { target: loop_block });
 
-                let might_break = this.in_loop_scope(loop_block, exit_block, move |this| {
-                    // conduct the test, if necessary
-                    let body_block;
-                    if let Some(cond_expr) = opt_cond_expr {
-                        // This loop has a condition, ergo its exit_block is reachable.
-                        this.find_loop_scope(expr_span, None).might_break = true;
+                this.in_loop_scope(
+                    loop_block, exit_block, destination.clone(),
+                    move |this| {
+                        // conduct the test, if necessary
+                        let body_block;
+                        if let Some(cond_expr) = opt_cond_expr {
+                            let loop_block_end;
+                            let cond = unpack!(
+                                loop_block_end = this.as_operand(loop_block, cond_expr));
+                            body_block = this.cfg.start_new_block();
+                            this.cfg.terminate(loop_block_end, source_info,
+                                               TerminatorKind::If {
+                                                   cond: cond,
+                                                   targets: (body_block, exit_block)
+                                               });
 
-                        let loop_block_end;
-                        let cond = unpack!(loop_block_end = this.as_operand(loop_block, cond_expr));
-                        body_block = this.cfg.start_new_block();
-                        this.cfg.terminate(loop_block_end, source_info,
-                                           TerminatorKind::If {
-                                               cond: cond,
-                                               targets: (body_block, exit_block)
-                                           });
-                    } else {
-                        body_block = loop_block;
+                            // if the test is false, there's no `break` to assign `destination`, so
+                            // we have to do it; this overwrites any `break`-assigned value but it's
+                            // always `()` anyway
+                            this.cfg.push_assign_unit(exit_block, source_info, destination);
+                        } else {
+                            body_block = loop_block;
+                        }
+
+                        // The “return” value of the loop body must always be an unit. We therefore
+                        // introduce a unit temporary as the destination for the loop body.
+                        let tmp = this.get_unit_temp();
+                        // Execute the body, branching back to the test.
+                        let body_block_end = unpack!(this.into(&tmp, body_block, body));
+                        this.cfg.terminate(body_block_end, source_info,
+                                           TerminatorKind::Goto { target: loop_block });
                     }
-
-                    // The “return” value of the loop body must always be an unit, but we cannot
-                    // reuse that as a “return” value of the whole loop expressions, because some
-                    // loops are diverging (e.g. `loop {}`). Thus, we introduce a unit temporary as
-                    // the destination for the loop body and assign the loop’s own “return” value
-                    // immediately after the iteration is finished.
-                    let tmp = this.get_unit_temp();
-                    // Execute the body, branching back to the test.
-                    let body_block_end = unpack!(this.into(&tmp, body_block, body));
-                    this.cfg.terminate(body_block_end, source_info,
-                                       TerminatorKind::Goto { target: loop_block });
-                });
-                // If the loop may reach its exit_block, we assign an empty tuple to the
-                // destination to keep the MIR well-formed.
-                if might_break {
-                    this.cfg.push_assign_unit(exit_block, source_info, destination);
-                }
+                );
                 exit_block.unit()
             }
             ExprKind::Call { ty, fun, args } => {

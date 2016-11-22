@@ -38,7 +38,7 @@ pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     /// the current set of loops; see the `scope` module for more
     /// details
-    loop_scopes: Vec<scope::LoopScope>,
+    loop_scopes: Vec<scope::LoopScope<'tcx>>,
 
     /// the vector of all scopes that we have created thus far;
     /// we track this for debuginfo later

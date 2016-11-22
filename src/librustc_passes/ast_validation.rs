@@ -106,7 +106,7 @@ impl<'a> Visitor for AstValidator<'a> {
             ExprKind::Loop(_, Some(ident)) |
             ExprKind::WhileLet(.., Some(ident)) |
             ExprKind::ForLoop(.., Some(ident)) |
-            ExprKind::Break(Some(ident)) |
+            ExprKind::Break(Some(ident), _) |
             ExprKind::Continue(Some(ident)) => {
                 self.check_label(ident.node, ident.span, expr.id);
             }

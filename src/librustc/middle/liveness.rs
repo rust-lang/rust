@@ -490,7 +490,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       hir::ExprIndex(..) | hir::ExprField(..) | hir::ExprTupField(..) |
       hir::ExprArray(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) |
       hir::ExprTup(..) | hir::ExprBinary(..) | hir::ExprAddrOf(..) |
-      hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprBreak(_) |
+      hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprBreak(..) |
       hir::ExprAgain(_) | hir::ExprLit(_) | hir::ExprRet(..) |
       hir::ExprBlock(..) | hir::ExprAssign(..) | hir::ExprAssignOp(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
@@ -990,7 +990,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           // Note that labels have been resolved, so we don't need to look
           // at the label ident
-          hir::ExprLoop(ref blk, _) => {
+          hir::ExprLoop(ref blk, _, _) => {
             self.propagate_through_loop(expr, LoopLoop, &blk, succ)
           }
 
@@ -1035,7 +1035,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
           }
 
-          hir::ExprBreak(opt_label) => {
+          hir::ExprBreak(opt_label, ref opt_expr) => {
               // Find which label this break jumps to
               let sc = self.find_loop_scope(opt_label.map(|l| l.node), expr.id, expr.span);
 
@@ -1043,7 +1043,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               // look it up in the break loop nodes table
 
               match self.break_ln.get(&sc) {
-                  Some(&b) => b,
+                  Some(&b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
                   None => span_bug!(expr.span, "break to unknown label")
               }
           }
@@ -1057,7 +1057,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
               match self.cont_ln.get(&sc) {
                   Some(&b) => b,
-                  None => span_bug!(expr.span, "loop to unknown label")
+                  None => span_bug!(expr.span, "continue to unknown label")
               }
           }
 

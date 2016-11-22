@@ -202,6 +202,7 @@ pub enum ExprKind<'tcx> {
     },
     Break {
         label: Option<CodeExtent>,
+        value: Option<ExprRef<'tcx>>,
     },
     Continue {
         label: Option<CodeExtent>,

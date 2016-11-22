@@ -742,7 +742,7 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
                 self.check_expr_fn_block(expr, &body);
             }
 
-            hir::ExprLoop(ref body, _) => {
+            hir::ExprLoop(ref body, _, _) => {
                 let repeating_scope = self.set_repeating_scope(body.id);
                 intravisit::walk_expr(self, expr);
                 self.set_repeating_scope(repeating_scope);

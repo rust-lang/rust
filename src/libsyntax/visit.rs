@@ -746,7 +746,11 @@ pub fn walk_expr<V: Visitor>(visitor: &mut V, expression: &Expr) {
             }
             visitor.visit_path(path, expression.id)
         }
-        ExprKind::Break(ref opt_sp_ident) | ExprKind::Continue(ref opt_sp_ident) => {
+        ExprKind::Break(ref opt_sp_ident, ref opt_expr) => {
+            walk_opt_sp_ident(visitor, opt_sp_ident);
+            walk_list!(visitor, visit_expr, opt_expr);
+        }
+        ExprKind::Continue(ref opt_sp_ident) => {
             walk_opt_sp_ident(visitor, opt_sp_ident);
         }
         ExprKind::Ret(ref optional_expression) => {
