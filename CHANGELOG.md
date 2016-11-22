@@ -248,6 +248,7 @@ All notable changes to this project will be documented in this file.
 [`crosspointer_transmute`]: https://github.com/Manishearth/rust-clippy/wiki#crosspointer_transmute
 [`cyclomatic_complexity`]: https://github.com/Manishearth/rust-clippy/wiki#cyclomatic_complexity
 [`deprecated_semver`]: https://github.com/Manishearth/rust-clippy/wiki#deprecated_semver
+[`deref_addrof`]: https://github.com/Manishearth/rust-clippy/wiki#deref_addrof
 [`derive_hash_xor_eq`]: https://github.com/Manishearth/rust-clippy/wiki#derive_hash_xor_eq
 [`diverging_sub_expression`]: https://github.com/Manishearth/rust-clippy/wiki#diverging_sub_expression
 [`doc_markdown`]: https://github.com/Manishearth/rust-clippy/wiki#doc_markdown
