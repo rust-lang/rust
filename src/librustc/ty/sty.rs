@@ -21,10 +21,10 @@ use util::common::ErrorReported;
 use collections::enum_set::{self, EnumSet, CLike};
 use std::fmt;
 use std::ops;
-use std::collections::HashMap;
 use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::symbol::{keywords, InternedString};
+use util::nodemap::FxHashSet;
 
 use serialize;
 
@@ -933,12 +933,12 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// Checks whether a type is uninhabited.
     /// If `block` is `Some(id)` it also checks that the uninhabited-ness is visible from `id`.
     pub fn is_uninhabited(&self, block: Option<NodeId>, cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        let mut visited = HashMap::new();
+        let mut visited = FxHashSet::default();
         self.is_uninhabited_recurse(&mut visited, block, cx)
     }
 
     pub fn is_uninhabited_recurse(&self,
-                                  visited: &mut HashMap<(DefId, &'tcx Substs<'tcx>), ()>,
+                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
                                   block: Option<NodeId>,
                                   cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         match self.sty {

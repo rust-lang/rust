@@ -16,7 +16,6 @@ pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
-use std::collections::{hash_map, HashMap};
 use dep_graph::{self, DepNode};
 use hir::map as ast_map;
 use middle;
@@ -31,7 +30,7 @@ use ty::subst::{Subst, Substs};
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
 use util::nodemap::NodeSet;
-use util::nodemap::FxHashMap;
+use util::nodemap::{FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
@@ -1393,13 +1392,12 @@ impl<'tcx> serialize::UseSpecializedDecodable for AdtDef<'tcx> {}
 impl<'a, 'gcx, 'tcx> AdtDefData<'tcx, 'static> {
     #[inline]
     pub fn is_uninhabited_recurse(&'tcx self,
-                                  visited: &mut HashMap<(DefId, &'tcx Substs<'tcx>), ()>,
+                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
                                   block: Option<NodeId>,
                                   cx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>) -> bool {
-        match visited.entry((self.did, substs)) {
-            hash_map::Entry::Occupied(_) => return false,
-            hash_map::Entry::Vacant(ve) => ve.insert(()),
+        if !visited.insert((self.did, substs)) {
+            return false;
         };
         self.variants.iter().all(|v| {
             v.is_uninhabited_recurse(visited, block, cx, substs, self.is_union())
@@ -1811,7 +1809,7 @@ impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
 impl<'a, 'gcx, 'tcx> VariantDefData<'tcx, 'static> {
     #[inline]
     pub fn is_uninhabited_recurse(&'tcx self,
-                                  visited: &mut HashMap<(DefId, &'tcx Substs<'tcx>), ()>,
+                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
                                   block: Option<NodeId>,
                                   cx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>,
@@ -1852,7 +1850,7 @@ impl<'a, 'gcx, 'tcx, 'container> FieldDefData<'tcx, 'container> {
 impl<'a, 'gcx, 'tcx> FieldDefData<'tcx, 'static> {
     #[inline]
     pub fn is_uninhabited_recurse(&'tcx self,
-                                  visited: &mut HashMap<(DefId, &'tcx Substs<'tcx>), ()>,
+                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
                                   block: Option<NodeId>,
                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>) -> bool {
