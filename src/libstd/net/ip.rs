@@ -792,10 +792,14 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4(), None);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4(),
     ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
+    /// // ::1 is localhost in IPv6, equivalent to 127.0.0.0/8 in IPv4:
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4(),
+    ///            Some(Ipv4Addr::new(127, 0, 0, 1)));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv4(&self) -> Option<Ipv4Addr> {
         match self.segments() {
+            [0, 0, 0, 0, 0, 0, 0, 1] => Some(Ipv4Addr::new(127, 0, 0, 1)),
             [0, 0, 0, 0, 0, f, g, h] if f == 0 || f == 0xffff => {
                 Some(Ipv4Addr::new((g >> 8) as u8, g as u8,
                                    (h >> 8) as u8, h as u8))
