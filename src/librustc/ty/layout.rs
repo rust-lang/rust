@@ -550,7 +550,7 @@ impl<'a, 'gcx, 'tcx> Struct {
         };
 
         // 1-member and 2-member structs don't optimize.
-        // In addition, large bodies of code in trans assume that 2-element structs can become pairs.
+        // In addition, code in trans assume that 2-element structs can become pairs.
         // It's easier to just short-circuit here.
         let can_optimize_struct = fields.len() > 2;
 
@@ -571,7 +571,11 @@ impl<'a, 'gcx, 'tcx> Struct {
 
         if optimize {
             let start = if let StructKind::EnumVariant = kind {1} else {0};
-            let end = if let StructKind::MaybeUnsizedUnivariant = kind { fields.len()-1 } else { fields.len() };
+            let end = if let StructKind::MaybeUnsizedUnivariant = kind {
+                fields.len()-1
+            } else {
+                fields.len()
+            };
             if end > start {
                 let optimizing  = &mut inverse_memory_index[start..end];
                 if sort_ascending {
@@ -633,7 +637,7 @@ impl<'a, 'gcx, 'tcx> Struct {
         // If field 5 has offset 0, offsets[0] is 5, and memory_index[5] should be 0.
         // Field 5 would be the first element, so memory_index is i:
         // Note: if we didn't optimize, it's already right.
-        
+
         if optimize {
             ret.memory_index = vec![0; inverse_memory_index.len()];
 
@@ -1071,7 +1075,8 @@ impl<'a, 'gcx, 'tcx> Layout {
             // Odd unit types.
             ty::TyFnDef(..) => {
                 Univariant {
-                    variant: Struct::new(dl, &vec![], attr::ReprAny, StructKind::AlwaysSizedUnivariant, ty)?,
+                    variant: Struct::new(dl, &vec![],
+                      attr::ReprAny, StructKind::AlwaysSizedUnivariant, ty)?,
                     non_zero: false
                 }
             }
@@ -1094,7 +1099,8 @@ impl<'a, 'gcx, 'tcx> Layout {
             }
 
             ty::TyTuple(tys) => {
-                // FIXME(camlorn): if we ever allow unsized tuples, this needs to be checked in the same way it is for univariant.
+                // FIXME(camlorn): if we ever allow unsized tuples, this needs to be checked.
+                // See the univariant case below to learn how.
                 let st = Struct::new(dl,
                     &tys.iter().map(|ty| ty.layout(infcx))
                       .collect::<Result<Vec<_>, _>>()?,
@@ -1131,7 +1137,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                     assert_eq!(hint, attr::ReprAny);
 
                     return success(Univariant {
-                        variant: Struct::new(dl, &vec![], hint, StructKind::AlwaysSizedUnivariant, ty)?,
+                        variant: Struct::new(dl, &vec![],
+                          hint, StructKind::AlwaysSizedUnivariant, ty)?,
                         non_zero: false
                     });
                 }
@@ -1164,10 +1171,12 @@ impl<'a, 'gcx, 'tcx> Layout {
                         StructKind::AlwaysSizedUnivariant
                     } else {
                         use middle::region::ROOT_CODE_EXTENT;
-                        let param_env = tcx.construct_parameter_environment(DUMMY_SP, def.did, ROOT_CODE_EXTENT);
+                        let param_env = tcx.construct_parameter_environment(DUMMY_SP,
+                          def.did, ROOT_CODE_EXTENT);
                         let fields = &def.variants[0].fields;
                         let last_field = &fields[fields.len()-1];
-                        let always_sized = last_field.ty(tcx, param_env.free_substs).is_sized(tcx, &param_env, DUMMY_SP);
+                        let always_sized = last_field.ty(tcx, param_env.free_substs)
+                          .is_sized(tcx, &param_env, DUMMY_SP);
                         if !always_sized { StructKind::MaybeUnsizedUnivariant }
                         else { StructKind::AlwaysSizedUnivariant }
                     };
