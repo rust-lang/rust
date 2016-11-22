@@ -150,19 +150,36 @@ pub enum Mode {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+    /// This is used to offer suggestions to users. It returns methods
+    /// that could have been called which have the desired return
+    /// type. Some effort is made to rule out methods that, if called,
+    /// would result in an error (basically, the same criteria we
+    /// would use to decide if a method is a plausible fit for
+    /// ambiguity purposes).
     pub fn probe_for_return_type(&self,
                                  span: Span,
                                  mode: Mode,
                                  return_type: Ty<'tcx>,
                                  self_ty: Ty<'tcx>,
                                  scope_expr_id: ast::NodeId)
-                                 -> PickResult<'tcx> {
+                                 -> Vec<ty::ImplOrTraitItem<'tcx>> {
         debug!("probe(self_ty={:?}, return_type={}, scope_expr_id={})",
                self_ty,
                return_type,
                scope_expr_id);
-        self.probe_op(span, mode, LookingFor::ReturnType(return_type), self_ty, scope_expr_id,
-                      |probe_cx| probe_cx.pick())
+        let method_names =
+            self.probe_op(span, mode, LookingFor::ReturnType(return_type), self_ty, scope_expr_id,
+                          |probe_cx| Ok(probe_cx.candidate_method_names()))
+                .unwrap_or(vec![]);
+        method_names
+            .iter()
+            .flat_map(|&method_name| {
+                match self.probe_for_name(span, mode, method_name, self_ty, scope_expr_id) {
+                    Ok(picks) => picks.into_iter().map(move |pick| pick.item).collect(),
+                    Err(_) => vec![],
+                }
+            })
+            .collect()
     }
 
     pub fn probe_for_name(&self,
@@ -184,15 +201,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       |probe_cx| probe_cx.pick())
     }
 
-    fn probe_op<'a,OP,R>(&'a self,
-                         span: Span,
-                         mode: Mode,
-                         looking_for: LookingFor<'tcx>,
-                         self_ty: Ty<'tcx>,
-                         scope_expr_id: ast::NodeId,
-                         op: OP)
-                         -> R
-        where OP: FnOnce(&mut ProbeContext<'a, 'gcx, 'tcx>) -> R
+    fn probe_op<OP,R>(&'a self,
+                      span: Span,
+                      mode: Mode,
+                      looking_for: LookingFor<'tcx>,
+                      self_ty: Ty<'tcx>,
+                      scope_expr_id: ast::NodeId,
+                      op: OP)
+                      -> Result<R, MethodError<'tcx>>
+        where OP: FnOnce(ProbeContext<'a, 'gcx, 'tcx>) -> Result<R, MethodError<'tcx>>
     {
         // FIXME(#18741) -- right now, creating the steps involves evaluating the
         // `*` operator, which registers obligations that then escape into
@@ -249,7 +266,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   steps, opt_simplified_steps);
             probe_cx.assemble_inherent_candidates();
             probe_cx.assemble_extension_candidates_for_traits_in_scope(scope_expr_id)?;
-            op(&mut probe_cx)
+            op(probe_cx)
         })
     }
 
@@ -894,10 +911,30 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn candidate_method_names(&self) -> Vec<ast::Name> {
+        let mut set = FnvHashSet();
+        let mut names: Vec<_> =
+            self.inherent_candidates
+                .iter()
+                .chain(&self.extension_candidates)
+                .map(|candidate| candidate.item.name())
+                .filter(|&name| set.insert(name))
+                .collect();
+
+        // sort them by the name so we have a stable result
+        names.sort_by_key(|n| n.as_str());
+        names
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // THE ACTUAL SEARCH
 
     fn pick(mut self) -> PickResult<'tcx> {
+        assert!(match self.looking_for {
+            LookingFor::MethodName(_) => true,
+            LookingFor::ReturnType(_) => false,
+        });
+
         if let Some(ret) = self.pick_core() {
             return ret;
         }
@@ -959,33 +996,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn pick_core(&mut self) -> Option<PickResult<'tcx>> {
         let steps = self.steps.clone();
 
-        match self.looking_for {
-            LookingFor::MethodName(_) => {
-                // find the first step that works
-                steps.iter()
-                     .filter_map(|step| self.pick_step(step))
-                     .next()
-            }
-            LookingFor::ReturnType(_) => {
-                // Normally, we stop at the first step where we find a positive match.
-                // But when we are scanning for methods with a suitable return type,
-                // these methods have distinct names and hence may not shadow one another
-                // (also, this is just for hints, so precision is less important).
-                let mut ret = Vec::new();
-
-                for step in steps.iter() {
-                    match self.pick_step(step) {
-                        Some(Ok(mut elems)) => ret.append(&mut elems),
-                        _ => {}
-                    }
-                }
-                if ret.len() < 1 {
-                    None
-                } else {
-                    Some(Ok(ret))
-                }
-            }
-        }
+        // find the first step that works
+        steps.iter()
+             .filter_map(|step| self.pick_step(step))
+             .next()
     }
 
     fn pick_step(&mut self, step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>> {

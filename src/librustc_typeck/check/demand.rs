@@ -19,8 +19,6 @@ use syntax_pos::{self, Span};
 use rustc::hir;
 use rustc::ty::{self, ImplOrTraitItem};
 
-use std::rc::Rc;
-
 use super::method::probe;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
@@ -138,17 +136,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mode = probe::Mode::MethodCall;
             let suggestions = if let Some(s) = self.check_ref(expr, checked_ty, expected) {
                 Some(s)
-            } else if let Ok(methods) = self.probe_for_return_type(syntax_pos::DUMMY_SP,
-                                                                   mode,
-                                                                   expected,
-                                                                   checked_ty,
-                                                                   ast::DUMMY_NODE_ID) {
-                let suggestions: Vec<_> =
-                    methods.iter()
-                           .map(|ref x| {
-                                Rc::new(x.item.clone())
-                            })
-                           .collect();
+            } else {
+                let suggestions = self.probe_for_return_type(syntax_pos::DUMMY_SP,
+                                                             mode,
+                                                             expected,
+                                                             checked_ty,
+                                                             ast::DUMMY_NODE_ID);
                 if suggestions.len() > 0 {
                     Some(format!("here are some functions which \
                                   might fulfill your needs:\n - {}",
@@ -156,8 +149,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     None
                 }
-            } else {
-                None
             };
             let mut err = self.report_mismatched_types(origin, expected, expr_ty, e);
             if let Some(suggestions) = suggestions {
@@ -181,7 +172,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 })
     }
 
-    fn display_suggested_methods(&self, methods: &[Rc<ImplOrTraitItem<'tcx>>]) -> String {
+    fn display_suggested_methods(&self, methods: &[ImplOrTraitItem<'tcx>]) -> String {
         methods.iter()
                .take(5)
                .map(|method| self.format_method_suggestion(&*method))
@@ -189,8 +180,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                .join("\n - ")
     }
 
-    fn get_best_match(&self, methods: &[Rc<ImplOrTraitItem<'tcx>>]) -> String {
-        let no_argument_methods: Vec<Rc<ImplOrTraitItem<'tcx>>> =
+    fn get_best_match(&self, methods: &[ImplOrTraitItem<'tcx>]) -> String {
+        let no_argument_methods: Vec<_> =
             methods.iter()
                    .filter(|ref x| self.has_not_input_arg(&*x))
                    .map(|x| x.clone())
