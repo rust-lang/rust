@@ -999,8 +999,8 @@ pub enum ExprKind {
 
     /// A referencing operation (`&a` or `&mut a`)
     AddrOf(Mutability, P<Expr>),
-    /// A `break`, with an optional label to break
-    Break(Option<SpannedIdent>),
+    /// A `break`, with an optional label to break, and an optional expression
+    Break(Option<SpannedIdent>, Option<P<Expr>>),
     /// A `continue`, with an optional label
     Continue(Option<SpannedIdent>),
     /// A `return`, with an optional value to be returned

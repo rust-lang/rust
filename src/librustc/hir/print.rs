@@ -1393,7 +1393,7 @@ impl<'a> State<'a> {
                 space(&mut self.s)?;
                 self.print_block(&blk)?;
             }
-            hir::ExprLoop(ref blk, opt_sp_name) => {
+            hir::ExprLoop(ref blk, opt_sp_name, _) => {
                 if let Some(sp_name) = opt_sp_name {
                     self.print_name(sp_name.node)?;
                     self.word_space(":")?;
@@ -1471,11 +1471,15 @@ impl<'a> State<'a> {
             hir::ExprPath(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, true)?
             }
-            hir::ExprBreak(opt_name) => {
+            hir::ExprBreak(opt_name, ref opt_expr) => {
                 word(&mut self.s, "break")?;
                 space(&mut self.s)?;
                 if let Some(name) = opt_name {
                     self.print_name(name.node)?;
+                    space(&mut self.s)?;
+                }
+                if let Some(ref expr) = *opt_expr {
+                    self.print_expr(expr)?;
                     space(&mut self.s)?;
                 }
             }

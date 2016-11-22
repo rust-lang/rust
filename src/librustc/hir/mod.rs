@@ -908,7 +908,7 @@ pub enum Expr_ {
     /// Conditionless loop (can be exited with break, continue, or return)
     ///
     /// `'label: loop { block }`
-    ExprLoop(P<Block>, Option<Spanned<Name>>),
+    ExprLoop(P<Block>, Option<Spanned<Name>>, LoopSource),
     /// A `match` block, with a source that indicates whether or not it is
     /// the result of a desugaring, and if so, which kind.
     ExprMatch(P<Expr>, HirVec<Arm>, MatchSource),
@@ -944,7 +944,7 @@ pub enum Expr_ {
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Option<Spanned<Name>>),
+    ExprBreak(Option<Spanned<Name>>, Option<P<Expr>>),
     /// A `continue`, with an optional label
     ExprAgain(Option<Spanned<Name>>),
     /// A `return`, with an optional value to be returned
@@ -1001,6 +1001,18 @@ pub enum MatchSource {
     /// A desugared `?` operator
     TryDesugar,
 }
+
+/// The loop type that yielded an ExprLoop
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum LoopSource {
+    /// A `loop { .. }` loop
+    Loop,
+    /// A `while let _ = _ { .. }` loop
+    WhileLet,
+    /// A `for _ in _ { .. }` loop
+    ForLoop,
+}
+
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum CaptureClause {
