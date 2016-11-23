@@ -546,17 +546,23 @@ pub fn current_exe() -> io::Result<PathBuf> {
     os_imp::current_exe()
 }
 
-/// An iterator over the arguments of a process, yielding a `String` value
+/// An iterator over the arguments of a process, yielding a [`String`] value
 /// for each argument.
 ///
-/// This structure is created through the `std::env::args` method.
+/// This structure is created through the [`std::env::args`] method.
+///
+/// [`String`]: ../string/struct.String.html
+/// [`std::env::args`]: ./fn.args.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Args { inner: ArgsOs }
 
-/// An iterator over the arguments of a process, yielding an `OsString` value
+/// An iterator over the arguments of a process, yielding an [`OsString`] value
 /// for each argument.
 ///
-/// This structure is created through the `std::env::args_os` method.
+/// This structure is created through the [`std::env::args_os`] method.
+///
+/// [`OsString`]: ../ffi/struct.OsString.html
+/// [`std::env::args_os`]: ./fn.args_os.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct ArgsOs { inner: sys::args::Args }
 
@@ -571,7 +577,7 @@ pub struct ArgsOs { inner: sys::args::Args }
 ///
 /// The returned iterator will panic during iteration if any argument to the
 /// process is not valid unicode. If this is not desired,
-/// use the `args_os` function instead.
+/// use the [`args_os`] function instead.
 ///
 /// # Examples
 ///
@@ -583,6 +589,8 @@ pub struct ArgsOs { inner: sys::args::Args }
 ///     println!("{}", argument);
 /// }
 /// ```
+///
+/// [`args_os`]: ./fn.args_os.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn args() -> Args {
     Args { inner: args_os() }
