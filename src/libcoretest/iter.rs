@@ -274,6 +274,74 @@ fn test_iterator_peekable_last() {
     let mut it = ys.iter().peekable();
     assert_eq!(it.peek(), Some(&&0));
     assert_eq!(it.last(), Some(&0));
+
+    let mut it = ys.iter().peekable();
+    assert_eq!(it.next(), Some(&0));
+    assert_eq!(it.peek(), None);
+    assert_eq!(it.last(), None);
+}
+
+/// This is an iterator that follows the Iterator contract,
+/// but it is not fused. After having returned None once, it will start
+/// producing elements if .next() is called again.
+pub struct CycleIter<'a, T: 'a> {
+    index: usize,
+    data: &'a [T],
+}
+
+pub fn cycle<T>(data: &[T]) -> CycleIter<T> {
+    CycleIter {
+        index: 0,
+        data: data,
+    }
+}
+
+impl<'a, T> Iterator for CycleIter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> {
+        let elt = self.data.get(self.index);
+        self.index += 1;
+        self.index %= 1 + self.data.len();
+        elt
+    }
+}
+
+#[test]
+fn test_iterator_peekable_remember_peek_none_1() {
+    // Check that the loop using .peek() terminates
+    let data = [1, 2, 3];
+    let mut iter = cycle(&data).peekable();
+
+    let mut n = 0;
+    while let Some(_) = iter.next() {
+        let is_the_last = iter.peek().is_none();
+        assert_eq!(is_the_last, n == data.len() - 1);
+        n += 1;
+        if n > data.len() { break; }
+    }
+    assert_eq!(n, data.len());
+}
+
+#[test]
+fn test_iterator_peekable_remember_peek_none_2() {
+    let data = [0];
+    let mut iter = cycle(&data).peekable();
+    iter.next();
+    assert_eq!(iter.peek(), None);
+    assert_eq!(iter.last(), None);
+}
+
+#[test]
+fn test_iterator_peekable_remember_peek_none_3() {
+    let data = [0];
+    let mut iter = cycle(&data).peekable();
+    iter.peek();
+    assert_eq!(iter.nth(0), Some(&0));
+
+    let mut iter = cycle(&data).peekable();
+    iter.next();
+    assert_eq!(iter.peek(), None);
+    assert_eq!(iter.nth(0), None);
 }
 
 #[test]

@@ -21,7 +21,6 @@ use rustc_const_eval as const_eval;
 use rustc::middle::region::CodeExtent;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::cast::CastKind as TyCastKind;
-use rustc::mir::*;
 use rustc::hir;
 use syntax::ptr::P;
 
@@ -559,8 +558,9 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         },
         hir::ExprRet(ref v) =>
             ExprKind::Return { value: v.to_ref() },
-        hir::ExprBreak(label) =>
-            ExprKind::Break { label: label.map(|_| loop_label(cx, expr)) },
+        hir::ExprBreak(label, ref value) =>
+            ExprKind::Break { label: label.map(|_| loop_label(cx, expr)),
+                              value: value.to_ref() },
         hir::ExprAgain(label) =>
             ExprKind::Continue { label: label.map(|_| loop_label(cx, expr)) },
         hir::ExprMatch(ref discr, ref arms, _) =>
@@ -573,7 +573,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprWhile(ref cond, ref body, _) =>
             ExprKind::Loop { condition: Some(cond.to_ref()),
                              body: block::to_expr_ref(cx, body) },
-        hir::ExprLoop(ref body, _) =>
+        hir::ExprLoop(ref body, _, _) =>
             ExprKind::Loop { condition: None,
                              body: block::to_expr_ref(cx, body) },
         hir::ExprField(ref source, name) => {

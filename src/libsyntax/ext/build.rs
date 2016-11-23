@@ -14,8 +14,8 @@ use attr;
 use syntax_pos::{Span, DUMMY_SP, Pos};
 use codemap::{dummy_spanned, respan, Spanned};
 use ext::base::ExtCtxt;
-use parse::token::{self, keywords, InternedString};
 use ptr::P;
+use symbol::{Symbol, keywords};
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
@@ -149,7 +149,7 @@ pub trait AstBuilder {
     fn expr_vec(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr>;
     fn expr_vec_ng(&self, sp: Span) -> P<ast::Expr>;
     fn expr_vec_slice(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr>;
-    fn expr_str(&self, sp: Span, s: InternedString) -> P<ast::Expr>;
+    fn expr_str(&self, sp: Span, s: Symbol) -> P<ast::Expr>;
 
     fn expr_some(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_none(&self, sp: Span) -> P<ast::Expr>;
@@ -158,7 +158,7 @@ pub trait AstBuilder {
 
     fn expr_tuple(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr>;
 
-    fn expr_fail(&self, span: Span, msg: InternedString) -> P<ast::Expr>;
+    fn expr_fail(&self, span: Span, msg: Symbol) -> P<ast::Expr>;
     fn expr_unreachable(&self, span: Span) -> P<ast::Expr>;
 
     fn expr_ok(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Expr>;
@@ -275,22 +275,22 @@ pub trait AstBuilder {
                     generics: Generics) -> P<ast::Item>;
     fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> P<ast::Item>;
 
-    fn attribute(&self, sp: Span, mi: P<ast::MetaItem>) -> ast::Attribute;
+    fn attribute(&self, sp: Span, mi: ast::MetaItem) -> ast::Attribute;
 
-    fn meta_word(&self, sp: Span, w: InternedString) -> P<ast::MetaItem>;
+    fn meta_word(&self, sp: Span, w: ast::Name) -> ast::MetaItem;
 
-    fn meta_list_item_word(&self, sp: Span, w: InternedString) -> ast::NestedMetaItem;
+    fn meta_list_item_word(&self, sp: Span, w: ast::Name) -> ast::NestedMetaItem;
 
     fn meta_list(&self,
                  sp: Span,
-                 name: InternedString,
+                 name: ast::Name,
                  mis: Vec<ast::NestedMetaItem> )
-                 -> P<ast::MetaItem>;
+                 -> ast::MetaItem;
     fn meta_name_value(&self,
                        sp: Span,
-                       name: InternedString,
+                       name: ast::Name,
                        value: ast::LitKind)
-                       -> P<ast::MetaItem>;
+                       -> ast::MetaItem;
 
     fn item_use(&self, sp: Span,
                 vis: ast::Visibility, vp: P<ast::ViewPath>) -> P<ast::Item>;
@@ -755,7 +755,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn expr_vec_slice(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
         self.expr_addr_of(sp, self.expr_vec(sp, exprs))
     }
-    fn expr_str(&self, sp: Span, s: InternedString) -> P<ast::Expr> {
+    fn expr_str(&self, sp: Span, s: Symbol) -> P<ast::Expr> {
         self.expr_lit(sp, ast::LitKind::Str(s, ast::StrStyle::Cooked))
     }
 
@@ -777,7 +777,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
 
     fn expr_break(&self, sp: Span) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprKind::Break(None))
+        self.expr(sp, ast::ExprKind::Break(None, None))
     }
 
 
@@ -785,10 +785,9 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::Tup(exprs))
     }
 
-    fn expr_fail(&self, span: Span, msg: InternedString) -> P<ast::Expr> {
+    fn expr_fail(&self, span: Span, msg: Symbol) -> P<ast::Expr> {
         let loc = self.codemap().lookup_char_pos(span.lo);
-        let expr_file = self.expr_str(span,
-                                      token::intern_and_get_ident(&loc.file.name));
+        let expr_file = self.expr_str(span, Symbol::intern(&loc.file.name));
         let expr_line = self.expr_u32(span, loc.line as u32);
         let expr_file_line_tuple = self.expr_tuple(span, vec![expr_file, expr_line]);
         let expr_file_line_ptr = self.expr_addr_of(span, expr_file_line_tuple);
@@ -801,9 +800,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_unreachable(&self, span: Span) -> P<ast::Expr> {
-        self.expr_fail(span,
-                       InternedString::new(
-                           "internal error: entered unreachable code"))
+        self.expr_fail(span, Symbol::intern("internal error: entered unreachable code"))
     }
 
     fn expr_ok(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
@@ -1146,25 +1143,25 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.item_ty_poly(span, name, ty, Generics::default())
     }
 
-    fn attribute(&self, sp: Span, mi: P<ast::MetaItem>) -> ast::Attribute {
+    fn attribute(&self, sp: Span, mi: ast::MetaItem) -> ast::Attribute {
         attr::mk_spanned_attr_outer(sp, attr::mk_attr_id(), mi)
     }
 
-    fn meta_word(&self, sp: Span, w: InternedString) -> P<ast::MetaItem> {
+    fn meta_word(&self, sp: Span, w: ast::Name) -> ast::MetaItem {
         attr::mk_spanned_word_item(sp, w)
     }
 
-    fn meta_list_item_word(&self, sp: Span, w: InternedString) -> ast::NestedMetaItem {
+    fn meta_list_item_word(&self, sp: Span, w: ast::Name) -> ast::NestedMetaItem {
         respan(sp, ast::NestedMetaItemKind::MetaItem(attr::mk_spanned_word_item(sp, w)))
     }
 
-    fn meta_list(&self, sp: Span, name: InternedString, mis: Vec<ast::NestedMetaItem>)
-                 -> P<ast::MetaItem> {
+    fn meta_list(&self, sp: Span, name: ast::Name, mis: Vec<ast::NestedMetaItem>)
+                 -> ast::MetaItem {
         attr::mk_spanned_list_item(sp, name, mis)
     }
 
-    fn meta_name_value(&self, sp: Span, name: InternedString, value: ast::LitKind)
-                       -> P<ast::MetaItem> {
+    fn meta_name_value(&self, sp: Span, name: ast::Name, value: ast::LitKind)
+                       -> ast::MetaItem {
         attr::mk_spanned_name_value_item(sp, name, respan(sp, value))
     }
 

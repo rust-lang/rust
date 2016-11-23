@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that import shadowing using globs causes errors
+// Test that using rlibs and rmeta dep crates work together. Specifically, that
+// there can be both an rmeta and an rlib file and rustc will prefer the rlib.
 
-#![no_implicit_prelude]
+// aux-build:rmeta_rmeta.rs
+// aux-build:rmeta_rlib.rs
 
-use foo::*;
-use foo::*; //~ERROR a type named `Baz` has already been imported in this module
+extern crate rmeta_aux;
+use rmeta_aux::Foo;
 
-mod foo {
-    pub type Baz = isize;
+pub fn main() {
+    let _ = Foo { field: 42 };
 }
-
-mod bar {
-    pub type Baz = isize;
-}
-
-mod qux {
-    pub use bar::Baz;
-}
-
-fn main() {}

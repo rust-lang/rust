@@ -11,8 +11,7 @@
 use bar::Foo; //~ ERROR unresolved import `bar::Foo` [E0432]
               //~^ no `Foo` in `bar`
 mod bar {
-    use Foo; //~ ERROR unresolved import `Foo` [E0432]
-             //~^ no `Foo` in the root
+    use Foo;
 }
 
 fn main() {}

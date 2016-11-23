@@ -88,8 +88,9 @@ pub trait Metadata<'a, 'tcx>: Copy {
 impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a MetadataBlob {
     fn raw_bytes(self) -> &'a [u8] {
         match *self {
-            MetadataBlob::Inflated(ref vec) => &vec[..],
+            MetadataBlob::Inflated(ref vec) => vec,
             MetadataBlob::Archive(ref ar) => ar.as_slice(),
+            MetadataBlob::Raw(ref vec) => vec,
         }
     }
 }
@@ -934,7 +935,7 @@ impl<'a, 'tcx> CrateMetadata {
             .decode(self)
             .map(|mut attr| {
                 // Need new unique IDs: old thread-local IDs won't map to new threads.
-                attr.node.id = attr::mk_attr_id();
+                attr.id = attr::mk_attr_id();
                 attr
             })
             .collect()

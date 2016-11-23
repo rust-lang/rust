@@ -55,7 +55,7 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
             ty::TyFnDef(.., ref bfty) => bfty.abi == RustIntrinsic,
             _ => return false
         };
-        intrinsic && self.infcx.tcx.item_name(def_id).as_str() == "transmute"
+        intrinsic && self.infcx.tcx.item_name(def_id) == "transmute"
     }
 
     fn check_transmute(&self, span: Span, from: Ty<'gcx>, to: Ty<'gcx>, id: ast::NodeId) {

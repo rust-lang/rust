@@ -13,13 +13,14 @@ pub use self::AnnNode::*;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{CodeMap, Spanned};
-use syntax::parse::token::{self, keywords, BinOpToken};
+use syntax::parse::token::{self, BinOpToken};
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, break_offset, word, space, hardbreak};
 use syntax::print::pp::{Breaks, eof};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
+use syntax::symbol::keywords;
 use syntax_pos::{self, BytePos};
 use errors;
 
@@ -451,7 +452,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    pub fn commasep_exprs(&mut self, b: Breaks, exprs: &[P<hir::Expr>]) -> io::Result<()> {
+    pub fn commasep_exprs(&mut self, b: Breaks, exprs: &[hir::Expr]) -> io::Result<()> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(&e), |e| e.span)
     }
 
@@ -1199,7 +1200,7 @@ impl<'a> State<'a> {
     }
 
 
-    fn print_call_post(&mut self, args: &[P<hir::Expr>]) -> io::Result<()> {
+    fn print_call_post(&mut self, args: &[hir::Expr]) -> io::Result<()> {
         self.popen()?;
         self.commasep_exprs(Inconsistent, args)?;
         self.pclose()
@@ -1217,10 +1218,10 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    fn print_expr_vec(&mut self, exprs: &[P<hir::Expr>]) -> io::Result<()> {
+    fn print_expr_vec(&mut self, exprs: &[hir::Expr]) -> io::Result<()> {
         self.ibox(indent_unit)?;
         word(&mut self.s, "[")?;
-        self.commasep_exprs(Inconsistent, &exprs[..])?;
+        self.commasep_exprs(Inconsistent, exprs)?;
         word(&mut self.s, "]")?;
         self.end()
     }
@@ -1273,16 +1274,16 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    fn print_expr_tup(&mut self, exprs: &[P<hir::Expr>]) -> io::Result<()> {
+    fn print_expr_tup(&mut self, exprs: &[hir::Expr]) -> io::Result<()> {
         self.popen()?;
-        self.commasep_exprs(Inconsistent, &exprs[..])?;
+        self.commasep_exprs(Inconsistent, exprs)?;
         if exprs.len() == 1 {
             word(&mut self.s, ",")?;
         }
         self.pclose()
     }
 
-    fn print_expr_call(&mut self, func: &hir::Expr, args: &[P<hir::Expr>]) -> io::Result<()> {
+    fn print_expr_call(&mut self, func: &hir::Expr, args: &[hir::Expr]) -> io::Result<()> {
         self.print_expr_maybe_paren(func)?;
         self.print_call_post(args)
     }
@@ -1290,7 +1291,7 @@ impl<'a> State<'a> {
     fn print_expr_method_call(&mut self,
                               name: Spanned<ast::Name>,
                               tys: &[P<hir::Ty>],
-                              args: &[P<hir::Expr>])
+                              args: &[hir::Expr])
                               -> io::Result<()> {
         let base_args = &args[1..];
         self.print_expr(&args[0])?;
@@ -1339,7 +1340,7 @@ impl<'a> State<'a> {
                 self.print_expr(expr)?;
             }
             hir::ExprArray(ref exprs) => {
-                self.print_expr_vec(&exprs[..])?;
+                self.print_expr_vec(exprs)?;
             }
             hir::ExprRepeat(ref element, ref count) => {
                 self.print_expr_repeat(&element, &count)?;
@@ -1348,13 +1349,13 @@ impl<'a> State<'a> {
                 self.print_expr_struct(path, &fields[..], wth)?;
             }
             hir::ExprTup(ref exprs) => {
-                self.print_expr_tup(&exprs[..])?;
+                self.print_expr_tup(exprs)?;
             }
             hir::ExprCall(ref func, ref args) => {
-                self.print_expr_call(&func, &args[..])?;
+                self.print_expr_call(&func, args)?;
             }
             hir::ExprMethodCall(name, ref tys, ref args) => {
-                self.print_expr_method_call(name, &tys[..], &args[..])?;
+                self.print_expr_method_call(name, &tys[..], args)?;
             }
             hir::ExprBinary(op, ref lhs, ref rhs) => {
                 self.print_expr_binary(op, &lhs, &rhs)?;
@@ -1392,7 +1393,7 @@ impl<'a> State<'a> {
                 space(&mut self.s)?;
                 self.print_block(&blk)?;
             }
-            hir::ExprLoop(ref blk, opt_sp_name) => {
+            hir::ExprLoop(ref blk, opt_sp_name, _) => {
                 if let Some(sp_name) = opt_sp_name {
                     self.print_name(sp_name.node)?;
                     self.word_space(":")?;
@@ -1470,11 +1471,15 @@ impl<'a> State<'a> {
             hir::ExprPath(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, true)?
             }
-            hir::ExprBreak(opt_name) => {
+            hir::ExprBreak(opt_name, ref opt_expr) => {
                 word(&mut self.s, "break")?;
                 space(&mut self.s)?;
                 if let Some(name) = opt_name {
                     self.print_name(name.node)?;
+                    space(&mut self.s)?;
+                }
+                if let Some(ref expr) = *opt_expr {
+                    self.print_expr(expr)?;
                     space(&mut self.s)?;
                 }
             }
@@ -1499,19 +1504,19 @@ impl<'a> State<'a> {
             hir::ExprInlineAsm(ref a, ref outputs, ref inputs) => {
                 word(&mut self.s, "asm!")?;
                 self.popen()?;
-                self.print_string(&a.asm, a.asm_str_style)?;
+                self.print_string(&a.asm.as_str(), a.asm_str_style)?;
                 self.word_space(":")?;
 
                 let mut out_idx = 0;
                 self.commasep(Inconsistent, &a.outputs, |s, out| {
-                    let mut ch = out.constraint.chars();
+                    let constraint = out.constraint.as_str();
+                    let mut ch = constraint.chars();
                     match ch.next() {
                         Some('=') if out.is_rw => {
                             s.print_string(&format!("+{}", ch.as_str()),
                                            ast::StrStyle::Cooked)?
                         }
-                        _ => s.print_string(&out.constraint,
-                                            ast::StrStyle::Cooked)?,
+                        _ => s.print_string(&constraint, ast::StrStyle::Cooked)?,
                     }
                     s.popen()?;
                     s.print_expr(&outputs[out_idx])?;
@@ -1524,7 +1529,7 @@ impl<'a> State<'a> {
 
                 let mut in_idx = 0;
                 self.commasep(Inconsistent, &a.inputs, |s, co| {
-                    s.print_string(&co, ast::StrStyle::Cooked)?;
+                    s.print_string(&co.as_str(), ast::StrStyle::Cooked)?;
                     s.popen()?;
                     s.print_expr(&inputs[in_idx])?;
                     s.pclose()?;
@@ -1535,7 +1540,7 @@ impl<'a> State<'a> {
                 self.word_space(":")?;
 
                 self.commasep(Inconsistent, &a.clobbers, |s, co| {
-                    s.print_string(&co, ast::StrStyle::Cooked)?;
+                    s.print_string(&co.as_str(), ast::StrStyle::Cooked)?;
                     Ok(())
                 })?;
 

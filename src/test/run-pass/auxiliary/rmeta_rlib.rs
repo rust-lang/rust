@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that import shadowing using globs causes errors
+// no-prefer-dynamic
 
-#![no_implicit_prelude]
+#![crate_type="rlib"]
+#![crate_name="rmeta_aux"]
 
-use foo::*;
-use bar::*; //~ERROR a type named `Baz` has already been imported in this module
-
-mod foo {
-    pub type Baz = isize;
+pub struct Foo {
+    pub field: i32,
 }
-
-mod bar {
-    pub type Baz = isize;
-}
-
-mod qux {
-    pub use bar::Baz;
-}
-
-fn main() {}

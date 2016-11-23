@@ -57,7 +57,7 @@ use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, Ident, SpannedIdent, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
-use syntax::parse::token::{self, keywords};
+use syntax::symbol::{Symbol, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
@@ -90,7 +90,7 @@ mod resolve_imports;
 
 enum SuggestionType {
     Macro(String),
-    Function(token::InternedString),
+    Function(Symbol),
     NotFound,
 }
 
@@ -1039,7 +1039,7 @@ impl PrimitiveTypeTable {
     }
 
     fn intern(&mut self, string: &str, primitive_type: PrimTy) {
-        self.primitive_types.insert(token::intern(string), primitive_type);
+        self.primitive_types.insert(Symbol::intern(string), primitive_type);
     }
 }
 
@@ -1131,7 +1131,6 @@ pub struct Resolver<'a> {
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
-    new_import_semantics: bool, // true if `#![feature(item_like_imports)]`
     use_extern_macros: bool, // true if `#![feature(use_extern_macros)]`
 
     pub exported_macros: Vec<ast::MacroDef>,
@@ -1333,7 +1332,6 @@ impl<'a> Resolver<'a> {
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             }),
-            new_import_semantics: session.features.borrow().item_like_imports,
             use_extern_macros: session.features.borrow().use_extern_macros,
 
             exported_macros: Vec::new(),
@@ -1442,7 +1440,7 @@ impl<'a> Resolver<'a> {
                                      -> ResolveResult<Module<'a>> {
         fn search_parent_externals<'a>(this: &mut Resolver<'a>, needle: Name, module: Module<'a>)
                                        -> Option<Module<'a>> {
-            match this.resolve_name_in_module(module, needle, TypeNS, false, false, None) {
+            match this.resolve_name_in_module(module, needle, TypeNS, false, None) {
                 Success(binding) if binding.is_extern_crate() => Some(module),
                 _ => if let (&ModuleKind::Def(..), Some(parent)) = (&module.kind, module.parent) {
                     search_parent_externals(this, needle, parent)
@@ -1460,9 +1458,8 @@ impl<'a> Resolver<'a> {
         // modules as we go.
         while index < module_path_len {
             let name = module_path[index].name;
-            match self.resolve_name_in_module(search_module, name, TypeNS, false, false, span) {
+            match self.resolve_name_in_module(search_module, name, TypeNS, false, span) {
                 Failed(_) => {
-                    let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
                     let msg = if "???" == &module_name {
                         let current_module = self.current_module;
@@ -1480,10 +1477,10 @@ impl<'a> Resolver<'a> {
 
                                 format!("Did you mean `{}{}`?", prefix, path_str)
                             }
-                            None => format!("Maybe a missing `extern crate {};`?", segment_name),
+                            None => format!("Maybe a missing `extern crate {};`?", name),
                         }
                     } else {
-                        format!("Could not find `{}` in `{}`", segment_name, module_name)
+                        format!("Could not find `{}` in `{}`", name, module_name)
                     };
 
                     return Failed(span.map(|span| (span, msg)));
@@ -1617,7 +1614,7 @@ impl<'a> Resolver<'a> {
 
             if let ModuleRibKind(module) = self.ribs[ns][i].kind {
                 let name = ident.name;
-                let item = self.resolve_name_in_module(module, name, ns, true, false, record_used);
+                let item = self.resolve_name_in_module(module, name, ns, false, record_used);
                 if let Success(binding) = item {
                     // The ident resolves to an item.
                     return Some(LexicalScopeBinding::Item(binding));
@@ -1626,7 +1623,7 @@ impl<'a> Resolver<'a> {
                 if let ModuleKind::Block(..) = module.kind { // We can see through blocks
                 } else if !module.no_implicit_prelude {
                     return self.prelude.and_then(|prelude| {
-                        self.resolve_name_in_module(prelude, name, ns, false, false, None).success()
+                        self.resolve_name_in_module(prelude, name, ns, false, None).success()
                     }).map(LexicalScopeBinding::Item)
                 } else {
                     return None;
@@ -1651,7 +1648,7 @@ impl<'a> Resolver<'a> {
     /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
     fn resolve_module_prefix(&mut self, module_path: &[Ident], span: Option<Span>)
                              -> ResolveResult<ModulePrefixResult<'a>> {
-        if &*module_path[0].name.as_str() == "$crate" {
+        if module_path[0].name == "$crate" {
             return Success(PrefixFound(self.resolve_crate_var(module_path[0].ctxt), 1));
         }
 
@@ -1667,7 +1664,7 @@ impl<'a> Resolver<'a> {
             self.module_map[&self.current_module.normal_ancestor_id.unwrap()];
 
         // Now loop through all the `super`s we find.
-        while i < module_path.len() && "super" == module_path[i].name.as_str() {
+        while i < module_path.len() && module_path[i].name == "super" {
             debug!("(resolving module prefix) resolving `super` at {}",
                    module_to_string(&containing_module));
             if let Some(parent) = containing_module.parent {
@@ -2635,7 +2632,7 @@ impl<'a> Resolver<'a> {
         let qualified_binding = self.resolve_module_relative_path(span, segments, namespace);
         match (qualified_binding, unqualified_def) {
             (Ok(binding), Some(ref ud)) if binding.def() == ud.def &&
-                                           segments[0].identifier.name.as_str() != "$crate" => {
+                                           segments[0].identifier.name != "$crate" => {
                 self.session
                     .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                               id,
@@ -2772,7 +2769,7 @@ impl<'a> Resolver<'a> {
         };
 
         let name = segments.last().unwrap().identifier.name;
-        let result = self.resolve_name_in_module(module, name, namespace, false, false, Some(span));
+        let result = self.resolve_name_in_module(module, name, namespace, false, Some(span));
         result.success().ok_or(false)
     }
 
@@ -2800,7 +2797,7 @@ impl<'a> Resolver<'a> {
         };
 
         let name = segments.last().unwrap().ident().name;
-        let result = self.resolve_name_in_module(module, name, namespace, false, false, Some(span));
+        let result = self.resolve_name_in_module(module, name, namespace, false, Some(span));
         result.success().ok_or(false)
     }
 
@@ -2881,7 +2878,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn find_best_match(&mut self, name: &str) -> SuggestionType {
-        if let Some(macro_name) = self.macro_names.iter().find(|n| n.as_str() == name) {
+        if let Some(macro_name) = self.macro_names.iter().find(|&n| n == &name) {
             return SuggestionType::Macro(format!("{}!", macro_name));
         }
 
@@ -2891,7 +2888,7 @@ impl<'a> Resolver<'a> {
                     .flat_map(|rib| rib.bindings.keys().map(|ident| &ident.name));
 
         if let Some(found) = find_best_match_for_name(names, name, None) {
-            if name != found {
+            if found != name {
                 return SuggestionType::Function(found);
             }
         } SuggestionType::NotFound
@@ -3000,8 +2997,7 @@ impl<'a> Resolver<'a> {
                                 false // Stop advancing
                             });
 
-                            if method_scope &&
-                                    &path_name[..] == keywords::SelfValue.name().as_str() {
+                            if method_scope && keywords::SelfValue.name() == &*path_name {
                                 resolve_error(self,
                                               expr.span,
                                               ResolutionError::SelfNotAvailableInStaticMethod);
@@ -3078,22 +3074,25 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprKind::Break(Some(label)) | ExprKind::Continue(Some(label)) => {
+            ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
                 match self.search_label(label.node) {
                     None => {
                         self.record_def(expr.id, err_path_resolution());
                         resolve_error(self,
                                       label.span,
-                                      ResolutionError::UndeclaredLabel(&label.node.name.as_str()))
+                                      ResolutionError::UndeclaredLabel(&label.node.name.as_str()));
                     }
                     Some(def @ Def::Label(_)) => {
                         // Since this def is a label, it is never read.
-                        self.record_def(expr.id, PathResolution::new(def))
+                        self.record_def(expr.id, PathResolution::new(def));
                     }
                     Some(_) => {
-                        span_bug!(expr.span, "label wasn't mapped to a label def!")
+                        span_bug!(expr.span, "label wasn't mapped to a label def!");
                     }
                 }
+
+                // visit `break` argument if any
+                visit::walk_expr(self, expr);
             }
 
             ExprKind::IfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {
@@ -3606,7 +3605,7 @@ fn module_to_string(module: Module) -> String {
             }
         } else {
             // danger, shouldn't be ident?
-            names.push(token::str_to_ident("<opaque>"));
+            names.push(Ident::from_str("<opaque>"));
             collect_mod(names, module.parent.unwrap());
         }
     }

@@ -103,7 +103,7 @@ use session::{Session, CompileResult};
 use CrateCtxt;
 use TypeAndSubsts;
 use lint;
-use util::common::{block_query, ErrorReported, indenter, loop_query};
+use util::common::{ErrorReported, indenter};
 use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{Cell, Ref, RefCell};
@@ -115,8 +115,8 @@ use syntax::ast;
 use syntax::attr;
 use syntax::codemap::{self, original_sp, Spanned};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
+use syntax::symbol::{Symbol, InternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{self, BytePos, Span};
 
@@ -408,6 +408,34 @@ impl Diverges {
 }
 
 #[derive(Clone)]
+pub struct LoopCtxt<'gcx, 'tcx> {
+    unified: Ty<'tcx>,
+    coerce_to: Ty<'tcx>,
+    break_exprs: Vec<&'gcx hir::Expr>,
+    may_break: bool,
+}
+
+#[derive(Clone)]
+pub struct EnclosingLoops<'gcx, 'tcx> {
+    stack: Vec<LoopCtxt<'gcx, 'tcx>>,
+    by_id: NodeMap<usize>,
+}
+
+impl<'gcx, 'tcx> EnclosingLoops<'gcx, 'tcx> {
+    fn find_loop(&mut self, id: Option<ast::NodeId>) -> Option<&mut LoopCtxt<'gcx, 'tcx>> {
+        if let Some(id) = id {
+            if let Some(ix) = self.by_id.get(&id).cloned() {
+                Some(&mut self.stack[ix])
+            } else {
+                None
+            }
+        } else {
+            self.stack.last_mut()
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
 
@@ -432,6 +460,8 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     /// Whether any child nodes have any type errors.
     has_errors: Cell<bool>,
+
+    enclosing_loops: RefCell<EnclosingLoops<'gcx, 'tcx>>,
 
     inh: &'a Inherited<'a, 'gcx, 'tcx>,
 }
@@ -931,7 +961,8 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     if let Some(ref attr) = item.attrs.iter().find(|a| {
         a.check_name("rustc_on_unimplemented")
     }) {
-        if let Some(ref istring) = attr.value_str() {
+        if let Some(istring) = attr.value_str() {
+            let istring = istring.as_str();
             let parser = Parser::new(&istring);
             let types = &generics.types;
             for token in parser {
@@ -942,7 +973,7 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         Position::ArgumentNamed(s) if s == "Self" => (),
                         // So is `{A}` if A is a type parameter
                         Position::ArgumentNamed(s) => match types.iter().find(|t| {
-                            t.name.as_str() == s
+                            t.name == s
                         }) {
                             Some(_) => (),
                             None => {
@@ -1502,6 +1533,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                      ast::CRATE_NODE_ID)),
             diverges: Cell::new(Diverges::Maybe),
             has_errors: Cell::new(false),
+            enclosing_loops: RefCell::new(EnclosingLoops {
+                stack: Vec::new(),
+                by_id: NodeMap(),
+            }),
             inh: inh,
         }
     }
@@ -2369,7 +2404,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (PreferMutLvalue, Some(trait_did)) => {
                 self.lookup_method_in_trait_adjusted(expr.span,
                                                      Some(&base_expr),
-                                                     token::intern("index_mut"),
+                                                     Symbol::intern("index_mut"),
                                                      trait_did,
                                                      autoderefs,
                                                      unsize,
@@ -2384,7 +2419,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (None, Some(trait_did)) => {
                 self.lookup_method_in_trait_adjusted(expr.span,
                                                      Some(&base_expr),
-                                                     token::intern("index"),
+                                                     Symbol::intern("index"),
                                                      trait_did,
                                                      autoderefs,
                                                      unsize,
@@ -2408,7 +2443,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    sp: Span,
                                    method_fn_ty: Ty<'tcx>,
                                    callee_expr: &'gcx hir::Expr,
-                                   args_no_rcvr: &'gcx [P<hir::Expr>],
+                                   args_no_rcvr: &'gcx [hir::Expr],
                                    tuple_arguments: TupleArgumentsFlag,
                                    expected: Expectation<'tcx>)
                                    -> Ty<'tcx> {
@@ -2447,7 +2482,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             sp: Span,
                             fn_inputs: &[Ty<'tcx>],
                             expected_arg_tys: &[Ty<'tcx>],
-                            args: &'gcx [P<hir::Expr>],
+                            args: &'gcx [hir::Expr],
                             variadic: bool,
                             tuple_arguments: TupleArgumentsFlag) {
         let tcx = self.tcx;
@@ -2821,7 +2856,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_method_call(&self,
                          expr: &'gcx hir::Expr,
                          method_name: Spanned<ast::Name>,
-                         args: &'gcx [P<hir::Expr>],
+                         args: &'gcx [hir::Expr],
                          tps: &[P<hir::Ty>],
                          expected: Expectation<'tcx>,
                          lvalue_pref: LvaluePreference) -> Ty<'tcx> {
@@ -3027,7 +3062,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn suggest_field_name(variant: ty::VariantDef<'tcx>,
                           field: &Spanned<ast::Name>,
                           skip : Vec<InternedString>)
-                          -> Option<InternedString> {
+                          -> Option<Symbol> {
         let name = field.node.as_str();
         let names = variant.fields.iter().filter_map(|field| {
             // ignore already set fields and private fields from non-local crates
@@ -3126,7 +3161,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
                     struct_span_err!(self.tcx.sess, field.name.span, E0559,
                                     "{} `{}::{}` has no field named `{}`",
-                                    kind_name, actual, variant.name.as_str(), field.name.node)
+                                    kind_name, actual, variant.name, field.name.node)
                 }
                 _ => {
                     struct_span_err!(self.tcx.sess, field.name.span, E0560,
@@ -3146,7 +3181,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
                     err.span_label(field.name.span, &format!("`{}::{}` does not have this field",
-                                                             ty, variant.name.as_str()));
+                                                             ty, variant.name));
                 }
                 _ => {
                     err.span_label(field.name.span, &format!("`{}` does not have this field", ty));
@@ -3583,7 +3618,74 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               }
               tcx.mk_nil()
           }
-          hir::ExprBreak(_) => { tcx.types.never }
+          hir::ExprBreak(ref label_opt, ref expr_opt) => {
+            let loop_id = if label_opt.is_some() {
+                let loop_def = tcx.expect_def(expr.id);
+                if let Def::Label(loop_id) = loop_def {
+                    Some(Some(loop_id))
+                } else if loop_def == Def::Err {
+                    // an error was already printed, so just ignore it
+                    None
+                } else {
+                    span_bug!(expr.span, "break label resolved to a non-label");
+                }
+            } else {
+                Some(None)
+            };
+            if let Some(loop_id) = loop_id {
+                let coerce_to = {
+                    let mut enclosing_loops = self.enclosing_loops.borrow_mut();
+                    enclosing_loops.find_loop(loop_id).map(|ctxt| ctxt.coerce_to)
+                };
+                if let Some(coerce_to) = coerce_to {
+                    let e_ty;
+                    let cause;
+                    if let Some(ref e) = *expr_opt {
+                        // Recurse without `enclosing_loops` borrowed.
+                        e_ty = self.check_expr_with_hint(e, coerce_to);
+                        cause = self.misc(e.span);
+                        // Notably, the recursive call may alter coerce_to - must not keep using it!
+                    } else {
+                        // `break` without argument acts like `break ()`.
+                        e_ty = tcx.mk_nil();
+                        cause = self.misc(expr.span);
+                    }
+                    let mut enclosing_loops = self.enclosing_loops.borrow_mut();
+                    let ctxt = enclosing_loops.find_loop(loop_id).unwrap();
+
+                    let result = if let Some(ref e) = *expr_opt {
+                        // Special-case the first element, as it has no "previous expressions".
+                        let result = if !ctxt.may_break {
+                            self.try_coerce(e, e_ty, ctxt.coerce_to)
+                        } else {
+                            self.try_find_coercion_lub(&cause, || ctxt.break_exprs.iter().cloned(),
+                                                       ctxt.unified, e, e_ty)
+                        };
+
+                        ctxt.break_exprs.push(e);
+                        result
+                    } else {
+                        self.eq_types(true, &cause, e_ty, ctxt.unified)
+                            .map(|InferOk { obligations, .. }| {
+                                // FIXME(#32730) propagate obligations
+                                assert!(obligations.is_empty());
+                                e_ty
+                            })
+                    };
+                    match result {
+                        Ok(ty) => ctxt.unified = ty,
+                        Err(err) => {
+                            self.report_mismatched_types(&cause, ctxt.unified, e_ty, err);
+                        }
+                    }
+
+                    ctxt.may_break = true;
+                }
+                // Otherwise, we failed to find the enclosing loop; this can only happen if the
+                // `break` was not inside a loop at all, which is caught by the loop-checking pass.
+            }
+            tcx.types.never
+          }
           hir::ExprAgain(_) => { tcx.types.never }
           hir::ExprRet(ref expr_opt) => {
             if let Some(ref e) = *expr_opt {
@@ -3634,12 +3736,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  expr.span, expected)
           }
           hir::ExprWhile(ref cond, ref body, _) => {
-            self.check_expr_has_type(&cond, tcx.types.bool);
-            let cond_diverging = self.diverges.get();
-            self.check_block_no_value(&body);
+            let unified = self.tcx.mk_nil();
+            let coerce_to = unified;
+            let ctxt = LoopCtxt {
+                unified: unified,
+                coerce_to: coerce_to,
+                break_exprs: vec![],
+                may_break: true,
+            };
+            self.with_loop_ctxt(expr.id, ctxt, || {
+                self.check_expr_has_type(&cond, tcx.types.bool);
+                let cond_diverging = self.diverges.get();
+                self.check_block_no_value(&body);
 
-            // We may never reach the body so it diverging means nothing.
-            self.diverges.set(cond_diverging);
+                // We may never reach the body so it diverging means nothing.
+                self.diverges.set(cond_diverging);
+            });
 
             if self.has_errors.get() {
                 tcx.types.err
@@ -3647,14 +3759,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tcx.mk_nil()
             }
           }
-          hir::ExprLoop(ref body, _) => {
-            self.check_block_no_value(&body);
-            if may_break(tcx, expr.id, &body) {
+          hir::ExprLoop(ref body, _, _) => {
+            let unified = self.next_ty_var();
+            let coerce_to = expected.only_has_type(self).unwrap_or(unified);
+            let ctxt = LoopCtxt {
+                unified: unified,
+                coerce_to: coerce_to,
+                break_exprs: vec![],
+                may_break: false,
+            };
+
+            let ctxt = self.with_loop_ctxt(expr.id, ctxt, || {
+                self.check_block_no_value(&body);
+            });
+            if ctxt.may_break {
                 // No way to know whether it's diverging because
                 // of a `break` or an outer `break` or `return.
                 self.diverges.set(Diverges::Maybe);
 
-                tcx.mk_nil()
+                ctxt.unified
             } else {
                 tcx.types.never
             }
@@ -3669,10 +3792,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.check_block_with_expected(&b, expected)
           }
           hir::ExprCall(ref callee, ref args) => {
-              self.check_call(expr, &callee, &args[..], expected)
+              self.check_call(expr, &callee, args, expected)
           }
           hir::ExprMethodCall(name, ref tps, ref args) => {
-              self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref)
+              self.check_method_call(expr, name, args, &tps[..], expected, lvalue_pref)
           }
           hir::ExprCast(ref e, ref t) => {
             if let hir::TyArray(_, ref count_expr) = t.node {
@@ -3727,7 +3850,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let result = if i == 0 {
                     self.try_coerce(e, e_ty, coerce_to)
                 } else {
-                    let prev_elems = || args[..i].iter().map(|e| &**e);
+                    let prev_elems = || args[..i].iter().map(|e| &*e);
                     self.try_find_coercion_lub(&cause, prev_elems, unified, e, e_ty)
                 };
 
@@ -4436,18 +4559,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
         if lifetimes.len() > lifetime_defs.len() {
             let span = lifetimes[lifetime_defs.len()].span;
-            span_err!(self.tcx.sess, span, E0088,
-                      "too many lifetime parameters provided: \
-                       expected {}, found {}",
-                      count(lifetime_defs.len()),
-                      count(lifetimes.len()));
-        } else if lifetimes.len() > 0 && lifetimes.len() < lifetime_defs.len() {
-            span_err!(self.tcx.sess, span, E0090,
-                      "too few lifetime parameters provided: \
-                       expected {}, found {}",
-                      count(lifetime_defs.len()),
-                      count(lifetimes.len()));
+            struct_span_err!(self.tcx.sess, span, E0088,
+                             "too many lifetime parameters provided: \
+                              expected {}, found {}",
+                              count(lifetime_defs.len()),
+                              count(lifetimes.len()))
+                .span_label(span, &format!("unexpected lifetime parameter{}",
+                                           match lifetimes.len() { 1 => "", _ => "s" }))
+                .emit();
         }
+
+        // The case where there is not enough lifetime parameters is not checked,
+        // because this is not possible - a function never takes lifetime parameters.
+        // See discussion for Pull Request 36208.
 
         // Check provided type parameters.
         let type_defs = segment.map_or(&[][..], |(_, generics)| {
@@ -4529,27 +4653,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tcx.types.err
         })
     }
-}
 
-// Returns true if b contains a break that can exit from b
-pub fn may_break(tcx: TyCtxt, id: ast::NodeId, b: &hir::Block) -> bool {
-    // First: is there an unlabeled break immediately
-    // inside the loop?
-    (loop_query(&b, |e| {
-        match *e {
-            hir::ExprBreak(None) => true,
-            _ => false
+    fn with_loop_ctxt<F: FnOnce()>(&self, id: ast::NodeId, ctxt: LoopCtxt<'gcx, 'tcx>, f: F)
+                                   -> LoopCtxt<'gcx, 'tcx> {
+        let index;
+        {
+            let mut enclosing_loops = self.enclosing_loops.borrow_mut();
+            index = enclosing_loops.stack.len();
+            enclosing_loops.by_id.insert(id, index);
+            enclosing_loops.stack.push(ctxt);
         }
-    })) ||
-    // Second: is there a labeled break with label
-    // <id> nested anywhere inside the loop?
-    (block_query(b, |e| {
-        if let hir::ExprBreak(Some(_)) = e.node {
-            tcx.expect_def(e.id) == Def::Label(id)
-        } else {
-            false
+        f();
+        {
+            let mut enclosing_loops = self.enclosing_loops.borrow_mut();
+            debug_assert!(enclosing_loops.stack.len() == index + 1);
+            enclosing_loops.by_id.remove(&id).expect("missing loop context");
+            (enclosing_loops.stack.pop().expect("missing loop context"))
         }
-    }))
+    }
 }
 
 pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,

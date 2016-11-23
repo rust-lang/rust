@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue_12612_1.rs
-
-extern crate issue_12612_1 as foo;
-
-use foo::bar;
-
-mod test {
-    use bar::foo; //~ ERROR unresolved import `bar::foo` [E0432]
-                  //~^ Maybe a missing `extern crate bar;`?
-}
-
-fn main() {}
+#![feature(proc_macro)]
+#![allow(unused)]
+#![crate_type = "proc-macro"]

@@ -39,7 +39,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::ptr::P;
-use syntax::parse::token::InternedString;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_back::target::Target;
 use hir;
@@ -52,16 +52,17 @@ pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};
 
 #[derive(Clone, Debug)]
 pub struct LinkMeta {
-    pub crate_name: String,
+    pub crate_name: Symbol,
     pub crate_hash: Svh,
 }
 
-// Where a crate came from on the local filesystem. One of these two options
+// Where a crate came from on the local filesystem. One of these three options
 // must be non-None.
 #[derive(PartialEq, Clone, Debug)]
 pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
+    pub rmeta: Option<(PathBuf, PathKind)>,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
@@ -74,6 +75,30 @@ pub enum DepKind {
     /// A dependency that is required by an rlib version of this crate.
     /// Ordinary `extern crate`s result in `Explicit` dependencies.
     Explicit,
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub enum LibSource {
+    Some(PathBuf),
+    MetadataOnly,
+    None,
+}
+
+impl LibSource {
+    pub fn is_some(&self) -> bool {
+        if let LibSource::Some(_) = *self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn option(&self) -> Option<PathBuf> {
+        match *self {
+            LibSource::Some(ref p) => Some(p.clone()),
+            LibSource::MetadataOnly | LibSource::None => None,
+        }
+    }
 }
 
 #[derive(Copy, Debug, PartialEq, Clone, RustcEncodable, RustcDecodable)]
@@ -92,8 +117,8 @@ pub enum NativeLibraryKind {
 #[derive(Clone, Hash, RustcEncodable, RustcDecodable)]
 pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
-    pub name: String,
-    pub cfg: Option<P<ast::MetaItem>>,
+    pub name: Symbol,
+    pub cfg: Option<ast::MetaItem>,
 }
 
 /// The data we save and restore about an inlined item or method.  This is not
@@ -205,11 +230,11 @@ pub trait CrateStore<'tcx> {
     fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>;
     /// The name of the crate as it is referred to in source code of the current
     /// crate.
-    fn crate_name(&self, cnum: CrateNum) -> InternedString;
+    fn crate_name(&self, cnum: CrateNum) -> Symbol;
     /// The name of the crate as it is stored in the crate's metadata.
-    fn original_crate_name(&self, cnum: CrateNum) -> InternedString;
+    fn original_crate_name(&self, cnum: CrateNum) -> Symbol;
     fn crate_hash(&self, cnum: CrateNum) -> Svh;
-    fn crate_disambiguator(&self, cnum: CrateNum) -> InternedString;
+    fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol;
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>;
     fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId>;
@@ -244,7 +269,7 @@ pub trait CrateStore<'tcx> {
     // utility functions
     fn metadata_filename(&self) -> &str;
     fn metadata_section_name(&self, target: &Target) -> &str;
-    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, Option<PathBuf>)>;
+    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>;
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource;
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
     fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -375,13 +400,13 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         bug!("panic_strategy")
     }
     fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate> { bug!("extern_crate") }
-    fn crate_name(&self, cnum: CrateNum) -> InternedString { bug!("crate_name") }
-    fn original_crate_name(&self, cnum: CrateNum) -> InternedString {
+    fn crate_name(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
+    fn original_crate_name(&self, cnum: CrateNum) -> Symbol {
         bug!("original_crate_name")
     }
     fn crate_hash(&self, cnum: CrateNum) -> Svh { bug!("crate_hash") }
     fn crate_disambiguator(&self, cnum: CrateNum)
-                           -> InternedString { bug!("crate_disambiguator") }
+                           -> Symbol { bug!("crate_disambiguator") }
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
         { bug!("plugin_registrar_fn") }
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
@@ -427,7 +452,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // utility functions
     fn metadata_filename(&self) -> &str { bug!("metadata_filename") }
     fn metadata_section_name(&self, target: &Target) -> &str { bug!("metadata_section_name") }
-    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, Option<PathBuf>)>
+    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>
         { vec![] }
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource { bug!("used_crate_source") }
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }

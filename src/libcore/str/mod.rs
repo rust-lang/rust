@@ -425,12 +425,29 @@ impl<'a> Iterator for Chars<'a> {
     }
 
     #[inline]
+    fn count(self) -> usize {
+        // length in `char` is equal to the number of non-continuation bytes
+        let bytes_len = self.iter.len();
+        let mut cont_bytes = 0;
+        for &byte in self.iter {
+            cont_bytes += utf8_is_cont_byte(byte) as usize;
+        }
+        bytes_len - cont_bytes
+    }
+
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.iter.len();
         // `(len + 3)` can't overflow, because we know that the `slice::Iter`
         // belongs to a slice in memory which has a maximum length of
         // `isize::MAX` (that's well below `usize::MAX`).
         ((len + 3) / 4, Some(len))
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<char> {
+        // No need to go through the entire string.
+        self.next_back()
     }
 }
 
@@ -502,8 +519,19 @@ impl<'a> Iterator for CharIndices<'a> {
     }
 
     #[inline]
+    fn count(self) -> usize {
+        self.iter.count()
+    }
+
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<(usize, char)> {
+        // No need to go through the entire string.
+        self.next_back()
     }
 }
 

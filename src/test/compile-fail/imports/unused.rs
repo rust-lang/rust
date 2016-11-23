@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(pub_restricted, item_like_imports)]
+#![feature(pub_restricted)]
 #![deny(unused)]
 
 mod foo {

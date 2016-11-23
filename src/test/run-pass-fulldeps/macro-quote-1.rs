@@ -18,9 +18,6 @@ extern crate proc_macro_tokens;
 use proc_macro_tokens::prelude::*;
 
 extern crate syntax;
-use syntax::ast::Ident;
-use syntax::codemap::DUMMY_SP;
-use syntax::parse::token::{self, Token, keywords, str_to_ident};
 
 fn main() {
     let lex_true = lex("true");

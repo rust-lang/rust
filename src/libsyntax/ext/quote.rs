@@ -33,6 +33,7 @@ pub mod rt {
     use parse::{self, token, classify};
     use ptr::P;
     use std::rc::Rc;
+    use symbol::Symbol;
 
     use tokenstream::{self, TokenTree};
 
@@ -211,7 +212,7 @@ pub mod rt {
     impl_to_tokens_slice! { P<ast::Item>, [] }
     impl_to_tokens_slice! { ast::Arg, [TokenTree::Token(DUMMY_SP, token::Comma)] }
 
-    impl ToTokens for P<ast::MetaItem> {
+    impl ToTokens for ast::MetaItem {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtMeta(self.clone());
             vec![TokenTree::Token(DUMMY_SP, token::Interpolated(Rc::new(nt)))]
@@ -223,13 +224,13 @@ pub mod rt {
             let mut r = vec![];
             // FIXME: The spans could be better
             r.push(TokenTree::Token(self.span, token::Pound));
-            if self.node.style == ast::AttrStyle::Inner {
+            if self.style == ast::AttrStyle::Inner {
                 r.push(TokenTree::Token(self.span, token::Not));
             }
             r.push(TokenTree::Delimited(self.span, Rc::new(tokenstream::Delimited {
                 delim: token::Bracket,
                 open_span: self.span,
-                tts: self.node.value.to_tokens(cx),
+                tts: self.value.to_tokens(cx),
                 close_span: self.span,
             })));
             r
@@ -238,8 +239,7 @@ pub mod rt {
 
     impl ToTokens for str {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-            let lit = ast::LitKind::Str(
-                token::intern_and_get_ident(self), ast::StrStyle::Cooked);
+            let lit = ast::LitKind::Str(Symbol::intern(self), ast::StrStyle::Cooked);
             dummy_spanned(lit).to_tokens(cx)
         }
     }
@@ -405,7 +405,7 @@ pub fn parse_block_panic(parser: &mut Parser) -> P<Block> {
     panictry!(parser.parse_block())
 }
 
-pub fn parse_meta_item_panic(parser: &mut Parser) -> P<ast::MetaItem> {
+pub fn parse_meta_item_panic(parser: &mut Parser) -> ast::MetaItem {
     panictry!(parser.parse_meta_item())
 }
 
@@ -527,17 +527,17 @@ pub fn expand_quote_matcher(cx: &mut ExtCtxt,
     base::MacEager::expr(expanded)
 }
 
-fn ids_ext(strs: Vec<String> ) -> Vec<ast::Ident> {
-    strs.iter().map(|str| str_to_ident(&(*str))).collect()
+fn ids_ext(strs: Vec<String>) -> Vec<ast::Ident> {
+    strs.iter().map(|s| ast::Ident::from_str(s)).collect()
 }
 
-fn id_ext(str: &str) -> ast::Ident {
-    str_to_ident(str)
+fn id_ext(s: &str) -> ast::Ident {
+    ast::Ident::from_str(s)
 }
 
 // Lift an ident to the expr that evaluates to that ident.
 fn mk_ident(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> P<ast::Expr> {
-    let e_str = cx.expr_str(sp, ident.name.as_str());
+    let e_str = cx.expr_str(sp, ident.name);
     cx.expr_method_call(sp,
                         cx.expr_ident(sp, id_ext("ext_cx")),
                         id_ext("ident_of"),
@@ -546,7 +546,7 @@ fn mk_ident(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> P<ast::Expr> {
 
 // Lift a name to the expr that evaluates to that name
 fn mk_name(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> P<ast::Expr> {
-    let e_str = cx.expr_str(sp, ident.name.as_str());
+    let e_str = cx.expr_str(sp, ident.name);
     cx.expr_method_call(sp,
                         cx.expr_ident(sp, id_ext("ext_cx")),
                         id_ext("name_of"),

@@ -157,7 +157,7 @@ declare_lint! {
 
 declare_lint! {
     pub HR_LIFETIME_IN_ASSOC_TYPE,
-    Warn,
+    Deny,
     "binding for associated type references higher-ranked lifetime \
      that does not appear in the trait input types"
 }
@@ -204,6 +204,13 @@ declare_lint! {
     "detects extra requirements in impls that were erroneously allowed"
 }
 
+declare_lint! {
+    pub LEGACY_DIRECTORY_OWNERSHIP,
+    Warn,
+    "non-inline, non-`#[path]` modules (e.g. `mod foo;`) were erroneously allowed in some files \
+     not named `mod.rs`"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -242,7 +249,8 @@ impl LintPass for HardwiredLints {
             LIFETIME_UNDERSCORE,
             SAFE_EXTERN_STATICS,
             PATTERNS_IN_FNS_WITHOUT_BODY,
-            EXTRA_REQUIREMENT_IN_IMPL
+            EXTRA_REQUIREMENT_IN_IMPL,
+            LEGACY_DIRECTORY_OWNERSHIP
         )
     }
 }

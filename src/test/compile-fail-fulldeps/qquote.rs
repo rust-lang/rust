@@ -16,8 +16,8 @@ extern crate syntax;
 extern crate syntax_pos;
 
 use syntax::ast;
-use syntax::parse;
 use syntax::print::pprust;
+use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
     cx.bt_push(syntax::codemap::ExpnInfo {
         call_site: DUMMY_SP,
         callee: syntax::codemap::NameAndSpan {
-            format: syntax::codemap::MacroBang(parse::token::intern("")),
+            format: syntax::codemap::MacroBang(Symbol::intern("")),
             allow_internal_unstable: false,
             span: None,
         }

@@ -7,7 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use parse::token::{Token, BinOpToken, keywords};
+use parse::token::{Token, BinOpToken};
+use symbol::keywords;
 use ast::BinOpKind;
 
 /// Associative operator with precedence.

@@ -10,10 +10,10 @@
 
 use ast;
 use attr;
+use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
 use codemap::{self, ExpnInfo, NameAndSpan, MacroAttribute};
-use parse::token::{intern, InternedString, keywords};
-use parse::{token, ParseSess};
+use parse::ParseSess;
 use ptr::P;
 
 /// Craft a span that will be ignored by the stability lint's
@@ -23,7 +23,7 @@ fn ignored_span(sess: &ParseSess, sp: Span) -> Span {
     let info = ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
-            format: MacroAttribute(intern("std_inject")),
+            format: MacroAttribute(Symbol::intern("std_inject")),
             span: None,
             allow_internal_unstable: true,
         }
@@ -53,14 +53,14 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
         None => return krate,
     };
 
-    let crate_name = token::intern(&alt_std_name.unwrap_or(name.to_string()));
+    let crate_name = Symbol::intern(&alt_std_name.unwrap_or(name.to_string()));
 
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![attr::mk_attr_outer(attr::mk_attr_id(),
-                                        attr::mk_word_item(InternedString::new("macro_use")))],
+                                        attr::mk_word_item(Symbol::intern("macro_use")))],
         vis: ast::Visibility::Inherited,
         node: ast::ItemKind::ExternCrate(Some(crate_name)),
-        ident: token::str_to_ident(name),
+        ident: ast::Ident::from_str(name),
         id: ast::DUMMY_NODE_ID,
         span: DUMMY_SP,
     }));
@@ -68,22 +68,21 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
     let span = ignored_span(sess, DUMMY_SP);
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![ast::Attribute {
-            node: ast::Attribute_ {
-                style: ast::AttrStyle::Outer,
-                value: P(ast::MetaItem {
-                    node: ast::MetaItemKind::Word(token::intern_and_get_ident("prelude_import")),
-                    span: span,
-                }),
-                id: attr::mk_attr_id(),
-                is_sugared_doc: false,
+            style: ast::AttrStyle::Outer,
+            value: ast::MetaItem {
+                name: Symbol::intern("prelude_import"),
+                node: ast::MetaItemKind::Word,
+                span: span,
             },
+            id: attr::mk_attr_id(),
+            is_sugared_doc: false,
             span: span,
         }],
         vis: ast::Visibility::Inherited,
         node: ast::ItemKind::Use(P(codemap::dummy_spanned(ast::ViewPathGlob(ast::Path {
             global: false,
             segments: vec![name, "prelude", "v1"].into_iter().map(|name| ast::PathSegment {
-                identifier: token::str_to_ident(name),
+                identifier: ast::Ident::from_str(name),
                 parameters: ast::PathParameters::none(),
             }).collect(),
             span: span,

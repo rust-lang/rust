@@ -10,7 +10,7 @@
 
 // compile-flags: -Z parse-only
 
-// error-pattern:expected `]`
+// error-pattern:expected one of `=` or `]`
 
 // asterisk is bogus
 #[attr*]

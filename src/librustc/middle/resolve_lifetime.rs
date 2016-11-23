@@ -27,7 +27,7 @@ use middle::region;
 use ty;
 use std::mem::replace;
 use syntax::ast;
-use syntax::parse::token::keywords;
+use syntax::symbol::keywords;
 use syntax_pos::Span;
 use util::nodemap::NodeMap;
 
@@ -462,7 +462,7 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Expr) {
     fn expression_label(ex: &hir::Expr) -> Option<(ast::Name, Span)> {
         match ex.node {
             hir::ExprWhile(.., Some(label)) |
-            hir::ExprLoop(_, Some(label)) => Some((label.node, label.span)),
+            hir::ExprLoop(_, Some(label), _) => Some((label.node, label.span)),
             _ => None,
         }
     }

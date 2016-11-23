@@ -604,7 +604,7 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
 }
 
 fn crate_path_tcx(tcx: TyCtxt, cnum: CrateNum) -> PathBuf {
-    crate_path(tcx.sess, &tcx.crate_name(cnum), &tcx.crate_disambiguator(cnum))
+    crate_path(tcx.sess, &tcx.crate_name(cnum).as_str(), &tcx.crate_disambiguator(cnum).as_str())
 }
 
 /// Finds the session directory containing the correct metadata hashes file for

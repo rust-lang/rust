@@ -882,7 +882,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_block(block);
             walk_opt_sp_name(visitor, opt_sp_name);
         }
-        ExprLoop(ref block, ref opt_sp_name) => {
+        ExprLoop(ref block, ref opt_sp_name, _) => {
             visitor.visit_block(block);
             walk_opt_sp_name(visitor, opt_sp_name);
         }
@@ -923,7 +923,11 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             }
             visitor.visit_path(path, expression.id)
         }
-        ExprBreak(ref opt_sp_name) | ExprAgain(ref opt_sp_name) => {
+        ExprBreak(ref opt_sp_name, ref opt_expr) => {
+            walk_opt_sp_name(visitor, opt_sp_name);
+            walk_list!(visitor, visit_expr, opt_expr);
+        }
+        ExprAgain(ref opt_sp_name) => {
             walk_opt_sp_name(visitor, opt_sp_name);
         }
         ExprRet(ref optional_expression) => {
