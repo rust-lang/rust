@@ -795,7 +795,7 @@ impl Child {
             }
             (Some(out), Some(err)) => {
                 let res = read2(out.inner, &mut stdout, err.inner, &mut stderr);
-                res.update();
+                res.unwrap();
             }
         }
 
