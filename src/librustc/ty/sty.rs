@@ -22,8 +22,9 @@ use collections::enum_set::{self, EnumSet, CLike};
 use std::fmt;
 use std::ops;
 use syntax::abi;
-use syntax::ast::{self, Name};
+use syntax::ast::{self, Name, NodeId};
 use syntax::symbol::{keywords, InternedString};
+use util::nodemap::FxHashSet;
 
 use serialize;
 
@@ -929,19 +930,27 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_uninhabited(&self, _cx: TyCtxt) -> bool {
-        // FIXME(#24885): be smarter here, the AdtDefData::is_empty method could easily be made
-        // more complete.
+    /// Checks whether a type is uninhabited.
+    /// If `block` is `Some(id)` it also checks that the uninhabited-ness is visible from `id`.
+    pub fn is_uninhabited(&self, block: Option<NodeId>, cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+        let mut visited = FxHashSet::default();
+        self.is_uninhabited_recurse(&mut visited, block, cx)
+    }
+
+    pub fn is_uninhabited_recurse(&self,
+                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
+                                  block: Option<NodeId>,
+                                  cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         match self.sty {
-            TyAdt(def, _) => def.is_empty(),
+            TyAdt(def, substs) => {
+                def.is_uninhabited_recurse(visited, block, cx, substs)
+            },
 
-            // FIXME(canndrew): There's no reason why these can't be uncommented, they're tested
-            // and they don't break anything. But I'm keeping my changes small for now.
-            //TyNever => true,
-            //TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited(cx)),
+            TyNever => true,
+            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited_recurse(visited, block, cx)),
+            TyArray(ty, len) => len > 0 && ty.is_uninhabited_recurse(visited, block, cx),
+            TyRef(_, ref tm) => tm.ty.is_uninhabited_recurse(visited, block, cx),
 
-            // FIXME(canndrew): this line breaks core::fmt
-            //TyRef(_, ref tm) => tm.ty.is_uninhabited(cx),
             _ => false,
         }
     }
