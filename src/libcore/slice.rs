@@ -161,21 +161,35 @@ macro_rules! slice_offset {
     ($ptr:expr, $by:expr) => {{
         let ptr = $ptr;
         if size_from_ptr(ptr) == 0 {
-            ::intrinsics::arith_offset(ptr as *mut i8, $by) as *mut _
+            (ptr as *mut i8).wrapping_offset($by) as _
         } else {
             ptr.offset($by)
         }
     }};
 }
 
-macro_rules! slice_ref {
+// make a &T from a *const T
+macro_rules! make_ref {
+    ($ptr:expr) => {{
+        let ptr = $ptr;
+        if size_from_ptr(ptr) == 0 {
+            // Use a non-null pointer value
+            &*(1 as *mut _)
+        } else {
+            &*ptr
+        }
+    }};
+}
+
+// make a &mut T from a *mut T
+macro_rules! make_ref_mut {
     ($ptr:expr) => {{
         let ptr = $ptr;
         if size_from_ptr(ptr) == 0 {
             // Use a non-null pointer value
             &mut *(1 as *mut _)
         } else {
-            mem::transmute(ptr)
+            &mut *ptr
         }
     }};
 }
@@ -796,7 +810,7 @@ fn size_from_ptr<T>(_: *const T) -> usize {
 
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
-    (struct $name:ident -> $ptr:ty, $elem:ty) => {
+    (struct $name:ident -> $ptr:ty, $elem:ty, $mkref:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, T> Iterator for $name<'a, T> {
             type Item = $elem;
@@ -812,9 +826,7 @@ macro_rules! iterator {
                     if self.ptr == self.end {
                         None
                     } else {
-                        let old = self.ptr;
-                        self.ptr = slice_offset!(self.ptr, 1);
-                        Some(slice_ref!(old))
+                        Some($mkref!(self.ptr.post_inc()))
                     }
                 }
             }
@@ -857,8 +869,7 @@ macro_rules! iterator {
                     if self.end == self.ptr {
                         None
                     } else {
-                        self.end = slice_offset!(self.end, -1);
-                        Some(slice_ref!(self.end))
+                        Some($mkref!(self.end.pre_dec()))
                     }
                 }
             }
@@ -980,7 +991,7 @@ impl<'a, T> Iter<'a, T> {
     }
 }
 
-iterator!{struct Iter -> *const T, &'a T}
+iterator!{struct Iter -> *const T, &'a T, make_ref}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
@@ -1104,7 +1115,7 @@ impl<'a, T> IterMut<'a, T> {
     }
 }
 
-iterator!{struct IterMut -> *mut T, &'a mut T}
+iterator!{struct IterMut -> *mut T, &'a mut T, make_ref_mut}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
@@ -1114,6 +1125,41 @@ impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, T> TrustedLen for IterMut<'a, T> {}
+
+
+// Extension methods for raw pointers, used by the iterators
+trait PointerExt : Copy {
+    unsafe fn slice_offset(self, i: isize) -> Self;
+
+    /// Increment self by 1, but return the old value
+    #[inline(always)]
+    unsafe fn post_inc(&mut self) -> Self {
+        let current = *self;
+        *self = self.slice_offset(1);
+        current
+    }
+
+    /// Decrement self by 1, and return the new value
+    #[inline(always)]
+    unsafe fn pre_dec(&mut self) -> Self {
+        *self = self.slice_offset(-1);
+        *self
+    }
+}
+
+impl<T> PointerExt for *const T {
+    #[inline(always)]
+    unsafe fn slice_offset(self, i: isize) -> Self {
+        slice_offset!(self, i)
+    }
+}
+
+impl<T> PointerExt for *mut T {
+    #[inline(always)]
+    unsafe fn slice_offset(self, i: isize) -> Self {
+        slice_offset!(self, i)
+    }
+}
 
 /// An internal abstraction over the splitting iterators, so that
 /// splitn, splitn_mut etc can be implemented once.
