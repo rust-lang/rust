@@ -276,7 +276,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     fn lookup_def_id(&self, ref_id: NodeId) -> Option<DefId> {
         self.tcx.expect_def_or_none(ref_id).and_then(|def| {
             match def {
-                Def::PrimTy(..) | Def::SelfTy(..) => None,
+                Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => None,
                 def => Some(def.def_id()),
             }
         })
@@ -358,7 +358,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             collector.visit_pat(&arg.pat);
             let span_utils = self.span.clone();
             for &(id, ref p, ..) in &collector.collected_paths {
-                let typ = self.tcx.tables().node_types.get(&id).unwrap().to_string();
+                let typ = match self.tcx.tables().node_types.get(&id) {
+                    Some(s) => s.to_string(),
+                    None => continue,
+                };
                 // get the span only for the name of the variable (I hope the path is only ever a
                 // variable name, but who knows?)
                 let sub_span = span_utils.span_for_last_ident(p.span);
@@ -988,7 +991,13 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         match p.node {
             PatKind::Struct(ref path, ref fields, _) => {
                 visit::walk_path(self, path);
-                let adt = self.tcx.tables().node_id_to_type(p.id).ty_adt_def().unwrap();
+                let adt = match self.tcx.tables().node_id_to_type_opt(p.id) {
+                    Some(ty) => ty.ty_adt_def().unwrap(),
+                    None => {
+                        visit::walk_pat(self, p);
+                        return;
+                    }
+                };
                 let variant = adt.variant_of_def(self.tcx.expect_def(p.id));
 
                 for &Spanned { node: ref field, span } in fields {
@@ -1354,7 +1363,13 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
             }
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
                 let hir_expr = self.save_ctxt.tcx.map.expect_expr(ex.id);
-                let adt = self.tcx.tables().expr_ty(&hir_expr).ty_adt_def().unwrap();
+                let adt = match self.tcx.tables().expr_ty_opt(&hir_expr) {
+                    Some(ty) => ty.ty_adt_def().unwrap(),
+                    None => {
+                        visit::walk_expr(self, ex);
+                        return;
+                    }
+                };
                 let def = self.tcx.expect_def(hir_expr.id);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_def(def), base)
             }
@@ -1380,7 +1395,13 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                         return;
                     }
                 };
-                let ty = &self.tcx.tables().expr_ty_adjusted(&hir_node).sty;
+                let ty = match self.tcx.tables().expr_ty_adjusted_opt(&hir_node) {
+                    Some(ty) => &ty.sty,
+                    None => {
+                        visit::walk_expr(self, ex);
+                        return;
+                    }
+                };
                 match *ty {
                     ty::TyAdt(def, _) => {
                         let sub_span = self.span.sub_span_after_token(ex.span, token::Dot);
