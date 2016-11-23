@@ -194,6 +194,14 @@ impl SocketAddr {
 
 impl SocketAddrV4 {
     /// Creates a new socket address from the (ip, port) pair.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV4, Ipv4Addr};
+    ///
+    /// let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(ip: Ipv4Addr, port: u16) -> SocketAddrV4 {
         SocketAddrV4 {
@@ -207,6 +215,15 @@ impl SocketAddrV4 {
     }
 
     /// Returns the IP address associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV4, Ipv4Addr};
+    ///
+    /// let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    /// assert_eq!(socket.ip(), &Ipv4Addr::new(127, 0, 0, 1));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ip(&self) -> &Ipv4Addr {
         unsafe {
@@ -215,18 +232,47 @@ impl SocketAddrV4 {
     }
 
     /// Change the IP address associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV4, Ipv4Addr};
+    ///
+    /// let mut socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    /// socket.set_ip(Ipv4Addr::new(192, 168, 0, 1));
+    /// assert_eq!(socket.ip(), &Ipv4Addr::new(192, 168, 0, 1));
+    /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_ip(&mut self, new_ip: Ipv4Addr) {
         self.inner.sin_addr = *new_ip.as_inner()
     }
 
     /// Returns the port number associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV4, Ipv4Addr};
+    ///
+    /// let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    /// assert_eq!(socket.port(), 8080);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 {
         ntoh(self.inner.sin_port)
     }
 
     /// Change the port number associated with this socket address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{SocketAddrV4, Ipv4Addr};
+    ///
+    /// let mut socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    /// socket.set_port(4242);
+    /// assert_eq!(socket.port(), 4242);
+    /// ```
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_port(&mut self, new_port: u16) {
         self.inner.sin_port = hton(new_port);
