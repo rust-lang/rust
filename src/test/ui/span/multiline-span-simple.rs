@@ -20,7 +20,7 @@ fn main() {
     let x = 1;
     let y = 2;
     let z = 3;
-    foo(1 +
+    foo(1 as u32 +
 
         bar(x,
 
