@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef};
 use rustc_const_eval::{ErrKind, ConstEvalErr, note_const_eval_err};
 use rustc::middle::lang_items;
-use rustc::ty;
+use rustc::ty::{self, layout};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
 use adt;
@@ -722,8 +722,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             }
             Immediate(llval) => {
+                let l = bcx.ccx().layout_of(tuple.ty);
+                let v = if let layout::Univariant { ref variant, .. } = *l {
+                    variant
+                } else {
+                    bug!("Not a tuple.");
+                };
                 for (n, &ty) in arg_types.iter().enumerate() {
-                    let mut elem = bcx.extract_value(llval, n);
+                    let mut elem = bcx.extract_value(llval, v.memory_index[n] as usize);
                     // Truncate bools to i1, if needed
                     if ty.is_bool() && common::val_ty(elem) != Type::i1(bcx.ccx()) {
                         elem = bcx.trunc(elem, Type::i1(bcx.ccx()));
