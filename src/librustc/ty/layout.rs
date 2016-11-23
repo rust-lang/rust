@@ -416,7 +416,7 @@ impl Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u64 values above i64::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    pub fn repr_discr(tcx: TyCtxt, ty: Ty, hint: attr::ReprAttr, min: i64, max: i64)
+    fn repr_discr(tcx: TyCtxt, ty: Ty, hints: &[attr::ReprAttr], min: i64, max: i64)
                       -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
@@ -425,33 +425,44 @@ impl Integer {
         let unsigned_fit = Integer::fit_unsigned(cmp::max(min as u64, max as u64));
         let signed_fit = cmp::max(Integer::fit_signed(min), Integer::fit_signed(max));
 
-        let at_least = match hint {
-            attr::ReprInt(ity) => {
-                let discr = Integer::from_attr(&tcx.data_layout, ity);
-                let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
-                if discr < fit {
-                    bug!("Integer::repr_discr: `#[repr]` hint too small for \
-                          discriminant range of enum `{}", ty)
+        let mut min_from_extern = None;
+        let min_default = I8;
+
+        for &r in hints.iter() {
+            match r {
+                attr::ReprInt(ity) => {
+                    let discr = Integer::from_attr(&tcx.data_layout, ity);
+                    let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
+                    if discr < fit {
+                        bug!("Integer::repr_discr: `#[repr]` hint too small for \
+                              discriminant range of enum `{}", ty)
+                    }
+                    return (discr, ity.is_signed());
                 }
-                return (discr, ity.is_signed());
-            }
-            attr::ReprExtern => {
-                match &tcx.sess.target.target.arch[..] {
-                    // WARNING: the ARM EABI has two variants; the one corresponding
-                    // to `at_least == I32` appears to be used on Linux and NetBSD,
-                    // but some systems may use the variant corresponding to no
-                    // lower bound.  However, we don't run on those yet...?
-                    "arm" => I32,
-                    _ => I32,
+                attr::ReprExtern => {
+                    match &tcx.sess.target.target.arch[..] {
+                        // WARNING: the ARM EABI has two variants; the one corresponding
+                        // to `at_least == I32` appears to be used on Linux and NetBSD,
+                        // but some systems may use the variant corresponding to no
+                        // lower bound.  However, we don't run on those yet...?
+                        "arm" => min_from_extern = Some(I32),
+                        _ => min_from_extern = Some(I32),
+                    }
+                }
+                attr::ReprAny => {},
+                attr::ReprPacked => {
+                    bug!("Integer::repr_discr: found #[repr(packed)] on enum `{}", ty);
+                }
+                attr::ReprSimd => {
+                    bug!("Integer::repr_discr: found #[repr(simd)] on enum `{}", ty);
                 }
             }
-            attr::ReprAny => I8,
-            attr::ReprPacked => {
-                bug!("Integer::repr_discr: found #[repr(packed)] on enum `{}", ty);
-            }
-            attr::ReprSimd => {
-                bug!("Integer::repr_discr: found #[repr(simd)] on enum `{}", ty);
-            }
+        }
+
+        let at_least = if let Some(i) = min_from_extern {
+            i
+        } else {
+            min_default
         };
 
         // If there are no negative values, we can use the unsigned fit.
@@ -536,10 +547,11 @@ enum StructKind {
 }
 
 impl<'a, 'gcx, 'tcx> Struct {
+    // FIXME(camlorn): reprs need a better representation to deal with multiple reprs on one type.
     fn new(dl: &TargetDataLayout, fields: &Vec<&'a Layout>,
-                  repr: attr::ReprAttr, kind: StructKind,
+                  reprs: &[attr::ReprAttr], kind: StructKind,
                   scapegoat: Ty<'gcx>) -> Result<Struct, LayoutError<'gcx>> {
-        let packed = repr == attr::ReprPacked;
+        let packed = reprs.contains(&attr::ReprPacked);
         let mut ret = Struct {
             align: if packed { dl.i8_align } else { dl.aggregate_align },
             packed: packed,
@@ -549,22 +561,36 @@ impl<'a, 'gcx, 'tcx> Struct {
             min_size: Size::from_bytes(0),
         };
 
-        // 1-member and 2-member structs don't optimize.
+        if fields.len() == 0 {return Ok(ret)};
+
+        // Anything with ReprExtern or ReprPacked doesn't optimize.
+        // Neither do  1-member and 2-member structs.
         // In addition, code in trans assume that 2-element structs can become pairs.
         // It's easier to just short-circuit here.
-        let can_optimize_struct = fields.len() > 2;
+        let mut can_optimize = fields.len() > 2 || StructKind::EnumVariant == kind;
+        if can_optimize {
+            // This exhaustive match makes new reprs force the adder to modify this function.
+            // Otherwise, things can silently break.
+            // Note the inversion, return true to stop matching.
+            can_optimize = !reprs.iter().any(|r| {
+                match *r {
+                    attr::ReprAny => false,
+                    attr::ReprInt(_) => false,
+                    attr::ReprExtern => true,
+                    attr::ReprPacked => true,
+                    attr::ReprSimd => bug!("Simd  vectors should be represented as a layout::Vector")
+                }
+            });
+        }
 
-        let (optimize, sort_ascending) = match (repr, kind) {
-            (attr::ReprAny, StructKind::AlwaysSizedUnivariant) => (can_optimize_struct, false),
-            (attr::ReprAny, StructKind::MaybeUnsizedUnivariant) => (can_optimize_struct, true),
-            (attr::ReprAny, StructKind::EnumVariant) => {
+        let (optimize, sort_ascending) = match kind {
+            StructKind::AlwaysSizedUnivariant => (can_optimize, false),
+            StructKind::MaybeUnsizedUnivariant => (can_optimize, true),
+            StructKind::EnumVariant => {
                 assert!(fields.len() >= 1, "Enum variants must have discriminants.");
-                (true, fields[0].size(dl).bytes() == 1)
+                (can_optimize, fields[0].size(dl).bytes() == 1)
             }
-            _ => (false, false)
         };
-
-        if fields.len() == 0 {return Ok(ret)};
 
         ret.offsets = vec![Size::from_bytes(0); fields.len()];
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
@@ -590,6 +616,7 @@ impl<'a, 'gcx, 'tcx> Struct {
             }
         }
 
+        // inverse_memory_index holds field indices by increasing memory offset.
         // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
         // We now write field offsets to the corresponding offset slot;
         // field 5 with offset 0 puts 0 in offsets[5].
@@ -1021,7 +1048,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
             // The never type.
             ty::TyNever => Univariant {
-                variant: Struct::new(dl, &vec![], attr::ReprAny,
+                variant: Struct::new(dl, &vec![], &[],
                   StructKind::AlwaysSizedUnivariant, ty)?,
                 non_zero: false
             },
@@ -1076,12 +1103,12 @@ impl<'a, 'gcx, 'tcx> Layout {
             ty::TyFnDef(..) => {
                 Univariant {
                     variant: Struct::new(dl, &vec![],
-                      attr::ReprAny, StructKind::AlwaysSizedUnivariant, ty)?,
+                      &[], StructKind::AlwaysSizedUnivariant, ty)?,
                     non_zero: false
                 }
             }
             ty::TyDynamic(_) => {
-                let mut unit = Struct::new(dl, &vec![], attr::ReprAny,
+                let mut unit = Struct::new(dl, &vec![], &[],
                   StructKind::AlwaysSizedUnivariant, ty)?;
                 unit.sized = false;
                 Univariant { variant: unit, non_zero: false }
@@ -1093,7 +1120,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 let st = Struct::new(dl,
                     &tys.map(|ty| ty.layout(infcx))
                       .collect::<Result<Vec<_>, _>>()?,
-                    attr::ReprAny,
+                    &[],
                     StructKind::AlwaysSizedUnivariant, ty)?;
                 Univariant { variant: st, non_zero: false }
             }
@@ -1104,7 +1131,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 let st = Struct::new(dl,
                     &tys.iter().map(|ty| ty.layout(infcx))
                       .collect::<Result<Vec<_>, _>>()?,
-                    attr::ReprAny, StructKind::AlwaysSizedUnivariant, ty)?;
+                    &[], StructKind::AlwaysSizedUnivariant, ty)?;
                 Univariant { variant: st, non_zero: false }
             }
 
@@ -1128,17 +1155,16 @@ impl<'a, 'gcx, 'tcx> Layout {
 
             // ADTs.
             ty::TyAdt(def, substs) => {
-                let hint = *tcx.lookup_repr_hints(def.did).get(0)
-                    .unwrap_or(&attr::ReprAny);
+                let hints = &tcx.lookup_repr_hints(def.did)[..];
 
                 if def.variants.is_empty() {
                     // Uninhabitable; represent as unit
                     // (Typechecking will reject discriminant-sizing attrs.)
-                    assert_eq!(hint, attr::ReprAny);
+                    assert_eq!(hints.len(), 0);
 
                     return success(Univariant {
                         variant: Struct::new(dl, &vec![],
-                          hint, StructKind::AlwaysSizedUnivariant, ty)?,
+                          &hints[..], StructKind::AlwaysSizedUnivariant, ty)?,
                         non_zero: false
                     });
                 }
@@ -1153,7 +1179,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         if x > max { max = x; }
                     }
 
-                    let (discr, signed) = Integer::repr_discr(tcx, ty, hint, min, max);
+                    let (discr, signed) = Integer::repr_discr(tcx, ty, &hints[..], min, max);
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
@@ -1163,7 +1189,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                 }
 
-                if !def.is_enum() || def.variants.len() == 1 && hint == attr::ReprAny {
+                if !def.is_enum() || def.variants.len() == 1 && hints.len() == 0 {
                     // Struct, or union, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
 
@@ -1190,7 +1216,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         un.extend(dl, fields.iter().map(|&f| Ok(f)), ty)?;
                         UntaggedUnion { variants: un }
                     } else {
-                        let st = Struct::new(dl, &fields, hint,
+                        let st = Struct::new(dl, &fields, &hints[..],
                           kind, ty)?;
                         let non_zero = Some(def.did) == tcx.lang_items.non_zero();
                         Univariant { variant: st, non_zero: non_zero }
@@ -1213,7 +1239,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     v.fields.iter().map(|field| field.ty(tcx, substs)).collect::<Vec<_>>()
                 }).collect::<Vec<_>>();
 
-                if variants.len() == 2 && hint == attr::ReprAny {
+                if variants.len() == 2 && hints.len() == 0 {
                     // Nullable pointer optimization
                     for discr in 0..2 {
                         let other_fields = variants[1 - discr].iter().map(|ty| {
@@ -1245,7 +1271,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         let st = Struct::new(dl,
                             &variants[discr].iter().map(|ty| ty.layout(infcx))
                               .collect::<Result<Vec<_>, _>>()?,
-                            hint, StructKind::AlwaysSizedUnivariant, ty)?;
+                            &hints[..], StructKind::AlwaysSizedUnivariant, ty)?;
 
                         // We have to fix the last element of path here.
                         let mut i = *path.last().unwrap();
@@ -1265,7 +1291,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // The general case.
                 let discr_max = (variants.len() - 1) as i64;
                 assert!(discr_max >= 0);
-                let (min_ity, _) = Integer::repr_discr(tcx, ty, hint, 0, discr_max);
+                let (min_ity, _) = Integer::repr_discr(tcx, ty, &hints[..], 0, discr_max);
 
                 let mut align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
@@ -1283,7 +1309,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     fields.insert(0, &discr);
                     let st = Struct::new(dl,
                         &fields,
-                        hint, StructKind::EnumVariant, ty)?;
+                        &hints[..], StructKind::EnumVariant, ty)?;
                     // Find the first field we can't move later
                     // to make room for a larger discriminant.
                     // It is important to skip the first field.
