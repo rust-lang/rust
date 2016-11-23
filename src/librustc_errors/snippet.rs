@@ -41,6 +41,57 @@ pub struct Line {
     pub annotations: Vec<Annotation>,
 }
 
+
+#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub struct MultilineAnnotation {
+    pub depth: usize,
+    pub line_start: usize,
+    pub line_end: usize,
+    pub start_col: usize,
+    pub end_col: usize,
+    pub is_primary: bool,
+    pub label: Option<String>,
+}
+
+impl MultilineAnnotation {
+    pub fn increase_depth(&mut self) {
+        self.depth += 1;
+    }
+
+    pub fn as_start(&self) -> Annotation {
+        Annotation {
+            start_col: self.start_col,
+            end_col: self.start_col + 1,
+            is_primary: self.is_primary,
+            label: Some("starting here...".to_owned()),
+            annotation_type: AnnotationType::MultilineStart(self.depth)
+        }
+    }
+
+    pub fn as_end(&self) -> Annotation {
+        Annotation {
+            start_col: self.end_col - 1,
+            end_col: self.end_col,
+            is_primary: self.is_primary,
+            label: match self.label {
+                Some(ref label) => Some(format!("...ending here: {}", label)),
+                None => Some("...ending here".to_owned()),
+            },
+            annotation_type: AnnotationType::MultilineEnd(self.depth)
+        }
+    }
+
+    pub fn as_line(&self) -> Annotation {
+        Annotation {
+            start_col: 0,
+            end_col: 0,
+            is_primary: self.is_primary,
+            label: None,
+            annotation_type: AnnotationType::MultilineLine(self.depth)
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub enum AnnotationType {
     /// Annotation under a single line of code
@@ -50,11 +101,7 @@ pub enum AnnotationType {
     Minimized,
 
     /// Annotation enclosing the first and last character of a multiline span
-    Multiline {
-        depth: usize,
-        line_start: usize,
-        line_end: usize,
-    },
+    Multiline(MultilineAnnotation),
 
     // The Multiline type above is replaced with the following three in order
     // to reuse the current label drawing code.
@@ -72,24 +119,6 @@ pub enum AnnotationType {
     MultilineEnd(usize),
     /// Line at the left enclosing the lines of a fully shown multiline span
     MultilineLine(usize),
-}
-
-impl AnnotationType {
-    pub fn depth(&self) -> usize {
-        match self {
-            &AnnotationType::Multiline {depth, ..} |
-                &AnnotationType::MultilineStart(depth) |
-                &AnnotationType::MultilineLine(depth) |
-                &AnnotationType::MultilineEnd(depth) => depth,
-            _ => 0,
-        }
-    }
-
-    pub fn increase_depth(&mut self) {
-        if let AnnotationType::Multiline {ref mut depth, ..} = *self {
-            *depth += 1;
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -124,39 +153,14 @@ impl Annotation {
 
     pub fn is_multiline(&self) -> bool {
         match self.annotation_type {
-            AnnotationType::Multiline {..} |
-                AnnotationType::MultilineStart(_) |
-                AnnotationType::MultilineLine(_) |
-                AnnotationType::MultilineEnd(_) => true,
+            AnnotationType::Multiline(_) |
+            AnnotationType::MultilineStart(_) |
+            AnnotationType::MultilineLine(_) |
+            AnnotationType::MultilineEnd(_) => true,
             _ => false,
         }
     }
 
-    pub fn as_start(&self) -> Annotation {
-        let mut a = self.clone();
-        a.annotation_type = AnnotationType::MultilineStart(self.annotation_type.depth());
-        a.end_col = a.start_col + 1;
-        a.label = Some("starting here...".to_owned());
-        a
-    }
-
-    pub fn as_end(&self) -> Annotation {
-        let mut a = self.clone();
-        a.annotation_type = AnnotationType::MultilineEnd(self.annotation_type.depth());
-        a.start_col = a.end_col - 1;
-        a.label = match a.label {
-            Some(l) => Some(format!("...ending here: {}", l)),
-            None => Some("..ending here".to_owned()),
-        };
-        a
-    }
-
-    pub fn as_line(&self) -> Annotation {
-        let mut a = self.clone();
-        a.annotation_type = AnnotationType::MultilineLine(self.annotation_type.depth());
-        a.label = None;
-        a
-    }
 }
 
 #[derive(Debug)]

@@ -444,3 +444,103 @@ error: foo
 
 "#);
 }
+
+#[test]
+fn non_overlaping() {
+    test_harness(r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "Y0",
+                count: 1,
+            },
+            end: Position {
+                string: "X1",
+                count: 1,
+            },
+            label: "`X` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "Y2",
+                count: 1,
+            },
+            end: Position {
+                string: "Z3",
+                count: 1,
+            },
+            label: "`Y` is a good letter too",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |     X0 Y0 Z0
+  |  ______^ starting here...
+4 | |   X1 Y1 Z1
+  | |____^ ...ending here: `X` is a good letter
+5 |     X2 Y2 Z2
+  |  ______- starting here...
+6 | |   X3 Y3 Z3
+  | |__________- ...ending here: `Y` is a good letter too
+
+"#);
+}
+#[test]
+fn overlaping_start_and_end() {
+    test_harness(r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "Y0",
+                count: 1,
+            },
+            end: Position {
+                string: "X1",
+                count: 1,
+            },
+            label: "`X` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "Z1",
+                count: 1,
+            },
+            end: Position {
+                string: "Z3",
+                count: 1,
+            },
+            label: "`Y` is a good letter too",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |      X0 Y0 Z0
+  |   ______^ starting here...
+4 |  |   X1 Y1 Z1
+  |  |____^____- starting here...
+  | ||____|
+  | |     ...ending here: `X` is a good letter
+5 | |    X2 Y2 Z2
+6 | |    X3 Y3 Z3
+  | |___________- ...ending here: `Y` is a good letter too
+
+"#);
+}

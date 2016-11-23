@@ -19,7 +19,7 @@ help: consider using an explicit lifetime parameter as shown: fn from_str(path: 
    |  _____^ starting here...
 26 | |         Ok(Foo { field: path })
 27 | |     }
-   | |_____^ ..ending here
+   | |_____^ ...ending here
 
 error: aborting due to 2 previous errors
 

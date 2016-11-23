@@ -14,7 +14,7 @@ use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
 
 use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper};
 use RenderSpan::*;
-use snippet::{Annotation, AnnotationType, Line, StyledString, Style};
+use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
 
 use std::io::prelude::*;
@@ -181,12 +181,17 @@ impl EmitterWriter {
                 if is_minimized {
                     ann.annotation_type = AnnotationType::Minimized;
                 } else if lo.line != hi.line {
-                    ann.annotation_type = AnnotationType::Multiline {
+                    let ml = MultilineAnnotation {
                         depth: 1,
                         line_start: lo.line,
                         line_end: hi.line,
+                        start_col: lo.col.0,
+                        end_col: hi.col.0,
+                        is_primary: span_label.is_primary,
+                        label: span_label.label.clone(),
                     };
-                    multiline_annotations.push((lo.file.clone(), ann.clone()));
+                    ann.annotation_type = AnnotationType::Multiline(ml.clone());
+                    multiline_annotations.push((lo.file.clone(), ml));
                 };
 
                 if !ann.is_multiline() {
@@ -200,65 +205,34 @@ impl EmitterWriter {
 
         // Find overlapping multiline annotations, put them at different depths
         multiline_annotations.sort_by(|a, b| {
-            if let AnnotationType::Multiline {
-                line_start: a_start,
-                line_end: a_end,
-                ..
-            } = a.1.annotation_type {
-                if let AnnotationType::Multiline {
-                    line_start: b_start,
-                    line_end: b_end,
-                    ..
-                } = b.1.annotation_type {
-                    (a_start, a_end).cmp(&(b_start, b_end))
-                } else {
-                    panic!("tried to sort multiline annotations, but found `{:?}`", b)
-                }
-            } else {
-                panic!("tried to sort multiline annotations, but found `{:?}`", a)
-            }
+            (a.1.line_start, a.1.line_end).cmp(&(b.1.line_start, b.1.line_end))
         });
         for item in multiline_annotations.clone() {
             let ann = item.1;
-            if let AnnotationType::Multiline {line_start, line_end, ..} = ann.annotation_type {
-                for item in multiline_annotations.iter_mut() {
-                    let ref mut a = item.1;
-                    if let AnnotationType::Multiline {
-                        line_start: start,
-                        line_end: end,
-                        ..
-                    } = a.annotation_type {
-                        // Move all other multiline annotations overlapping with this one
-                        // one level to the right.
-                        if &ann != a && num_overlap(line_start, line_end, start, end, true) {
-                            a.annotation_type.increase_depth();
-                        } else {
-                            break;
-                        }
-                    } else {
-                        panic!("tried to find depth for multiline annotation, but found `{:?}`",
-                               ann)
-                    };
+            for item in multiline_annotations.iter_mut() {
+                let ref mut a = item.1;
+                // Move all other multiline annotations overlapping with this one
+                // one level to the right.
+                if &ann != a &&
+                    num_overlap(ann.line_start, ann.line_end, a.line_start, a.line_end, true)
+                {
+                    a.increase_depth();
+                } else {
+                    break;
                 }
-            } else {
-                panic!("tried to find depth for multiline annotation, but found `{:?}`", ann)
-            };
+            }
         }
 
         let mut max_depth = 0;  // max overlapping multiline spans
         for (file, ann) in multiline_annotations {
-            if let AnnotationType::Multiline {line_start, line_end, depth} = ann.annotation_type {
-                if depth > max_depth {
-                    max_depth = depth;
-                }
-                add_annotation_to_file(&mut output, file.clone(), line_start, ann.as_start());
-                for line in line_start + 1..line_end {
-                    add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
-                }
-                add_annotation_to_file(&mut output, file, line_end, ann.as_end());
-            } else {
-                panic!("non-multiline annotation `{:?}` in `multiline_annotations`!", ann);
+            if ann.depth > max_depth {
+                max_depth = ann.depth;
             }
+            add_annotation_to_file(&mut output, file.clone(), ann.line_start, ann.as_start());
+            for line in ann.line_start + 1..ann.line_end {
+                add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
+            }
+            add_annotation_to_file(&mut output, file, ann.line_end, ann.as_end());
         }
         for file_vec in output.iter_mut() {
             file_vec.multiline_depth = max_depth;
@@ -572,7 +546,7 @@ impl EmitterWriter {
         //   | |  something about `foo`
         //   | something about `fn foo()`
         annotations_position.sort_by(|a, b| {
-            fn len(a: Annotation) -> usize {
+            fn len(a: &Annotation) -> usize {
                 // Account for usize underflows
                 if a.end_col > a.start_col {
                     a.end_col - a.start_col
