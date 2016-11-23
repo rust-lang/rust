@@ -238,7 +238,7 @@ impl fmt::Display for CharTryFromError {
 /// A 'radix' here is sometimes also called a 'base'. A radix of two
 /// indicates a binary number, a radix of ten, decimal, and a radix of
 /// sixteen, hexadecimal, to give some common values. Arbitrary
-/// radicum are supported.
+/// radices are supported.
 ///
 /// `from_digit()` will return `None` if the input is not a digit in
 /// the given radix.
