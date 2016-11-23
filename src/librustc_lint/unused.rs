@@ -20,7 +20,7 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
-use syntax::parse::token::keywords;
+use syntax::symbol::keywords;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
@@ -48,7 +48,7 @@ impl UnusedMut {
                 let name = path1.node;
                 if let hir::BindByValue(hir::MutMutable) = mode {
                     if !name.as_str().starts_with("_") {
-                        match mutables.entry(name.0 as usize) {
+                        match mutables.entry(name) {
                             Vacant(entry) => {
                                 entry.insert(vec![id]);
                             }
@@ -162,7 +162,7 @@ impl LateLintPass for UnusedResults {
                     // check for #[must_use="..."]
                     if let Some(s) = attr.value_str() {
                         msg.push_str(": ");
-                        msg.push_str(&s);
+                        msg.push_str(&s.as_str());
                     }
                     cx.span_lint(UNUSED_MUST_USE, sp, &msg);
                     return true;
@@ -274,10 +274,10 @@ impl LateLintPass for UnusedAttributes {
             // Has a plugin registered this attribute as one which must be used at
             // the crate level?
             let plugin_crate = plugin_attributes.iter()
-                .find(|&&(ref x, t)| &*attr.name() == x && AttributeType::CrateLevel == t)
+                .find(|&&(ref x, t)| attr.name() == &**x && AttributeType::CrateLevel == t)
                 .is_some();
             if known_crate || plugin_crate {
-                let msg = match attr.node.style {
+                let msg = match attr.style {
                     ast::AttrStyle::Outer => {
                         "crate-level attribute should be an inner attribute: add an exclamation \
                          mark: #![foo]"

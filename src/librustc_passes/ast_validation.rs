@@ -21,7 +21,8 @@ use rustc::session::Session;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Spanned;
-use syntax::parse::token::{self, keywords};
+use syntax::parse::token;
+use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
 use errors;
@@ -39,7 +40,7 @@ impl<'a> AstValidator<'a> {
         if label.name == keywords::StaticLifetime.name() {
             self.err_handler().span_err(span, &format!("invalid label name `{}`", label.name));
         }
-        if label.name.as_str() == "'_" {
+        if label.name == "'_" {
             self.session.add_lint(lint::builtin::LIFETIME_UNDERSCORE,
                                   id,
                                   span,
@@ -89,7 +90,7 @@ impl<'a> AstValidator<'a> {
 
 impl<'a> Visitor for AstValidator<'a> {
     fn visit_lifetime(&mut self, lt: &Lifetime) {
-        if lt.name.as_str() == "'_" {
+        if lt.name == "'_" {
             self.session.add_lint(lint::builtin::LIFETIME_UNDERSCORE,
                                   lt.id,
                                   lt.span,
@@ -105,7 +106,7 @@ impl<'a> Visitor for AstValidator<'a> {
             ExprKind::Loop(_, Some(ident)) |
             ExprKind::WhileLet(.., Some(ident)) |
             ExprKind::ForLoop(.., Some(ident)) |
-            ExprKind::Break(Some(ident)) |
+            ExprKind::Break(Some(ident), _) |
             ExprKind::Continue(Some(ident)) => {
                 self.check_label(ident.node, ident.span, expr.id);
             }
@@ -206,6 +207,13 @@ impl<'a> Visitor for AstValidator<'a> {
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (c.f. #35584).
                 attr::first_attr_value_str_by_name(&item.attrs, "path");
+                if let Some(attr) =
+                        item.attrs.iter().find(|attr| attr.name() == "warn_directory_ownership") {
+                    let lint = lint::builtin::LEGACY_DIRECTORY_OWNERSHIP;
+                    let msg = "cannot declare a new module at this location";
+                    self.session.add_lint(lint, item.id, item.span, msg.to_string());
+                    attr::mark_used(attr);
+                }
             }
             ItemKind::Union(ref vdata, _) => {
                 if !vdata.is_struct() {

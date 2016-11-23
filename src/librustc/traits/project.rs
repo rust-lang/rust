@@ -26,8 +26,8 @@ use super::util;
 use hir::def_id::DefId;
 use infer::InferOk;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
-use syntax::parse::token;
 use syntax::ast;
+use syntax::symbol::Symbol;
 use ty::subst::Subst;
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
@@ -1245,7 +1245,7 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
     let predicate = ty::Binder(ty::ProjectionPredicate { // (1) recreate binder here
         projection_ty: ty::ProjectionTy {
             trait_ref: trait_ref,
-            item_name: token::intern(FN_OUTPUT_NAME),
+            item_name: Symbol::intern(FN_OUTPUT_NAME),
         },
         ty: ret_type
     });

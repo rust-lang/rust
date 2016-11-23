@@ -16,8 +16,8 @@ use deriving::generic::ty::*;
 use syntax::ast::{self, BinOpKind, Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token::InternedString;
 use syntax::ptr::P;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
@@ -27,7 +27,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
                                    push: &mut FnMut(Annotatable)) {
     macro_rules! md {
         ($name:expr, $op:expr, $equal:expr) => { {
-            let inline = cx.meta_word(span, InternedString::new("inline"));
+            let inline = cx.meta_word(span, Symbol::intern("inline"));
             let attrs = vec![cx.attribute(span, inline)];
             MethodDef {
                 name: $name,
@@ -51,7 +51,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
                                     vec![Box::new(ordering_ty)],
                                     true));
 
-    let inline = cx.meta_word(span, InternedString::new("inline"));
+    let inline = cx.meta_word(span, Symbol::intern("inline"));
     let attrs = vec![cx.attribute(span, inline)];
 
     let partial_cmp_def = MethodDef {

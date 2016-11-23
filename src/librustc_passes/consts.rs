@@ -610,7 +610,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         hir::ExprLoop(..) |
 
         // More control flow (also not very meaningful).
-        hir::ExprBreak(_) |
+        hir::ExprBreak(..) |
         hir::ExprAgain(_) |
         hir::ExprRet(_) |
 

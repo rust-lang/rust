@@ -12,7 +12,7 @@ use attr::HasAttrs;
 use feature_gate::{feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
 use {fold, attr};
 use ast;
-use codemap::{Spanned, respan};
+use codemap::Spanned;
 use parse::ParseSess;
 use ptr::P;
 
@@ -106,12 +106,13 @@ impl<'a> StripUnconfigured<'a> {
         match (cfg.meta_item(), mi.meta_item()) {
             (Some(cfg), Some(mi)) =>
                 if cfg_matches(&cfg, self.sess, self.features) {
-                    self.process_cfg_attr(respan(mi.span, ast::Attribute_ {
+                    self.process_cfg_attr(ast::Attribute {
                         id: attr::mk_attr_id(),
-                        style: attr.node.style,
+                        style: attr.style,
                         value: mi.clone(),
                         is_sugared_doc: false,
-                    }))
+                        span: mi.span,
+                    })
                 } else {
                     None
                 },
@@ -131,8 +132,8 @@ impl<'a> StripUnconfigured<'a> {
                 return false;
             }
 
-            let mis = match attr.node.value.node {
-                ast::MetaItemKind::List(_, ref mis) if is_cfg(&attr) => mis,
+            let mis = match attr.value.node {
+                ast::MetaItemKind::List(ref mis) if is_cfg(&attr) => mis,
                 _ => return true
             };
 
@@ -160,7 +161,7 @@ impl<'a> StripUnconfigured<'a> {
                                           attr.span,
                                           GateIssue::Language,
                                           EXPLAIN_STMT_ATTR_SYNTAX);
-                if attr.node.is_sugared_doc {
+                if attr.is_sugared_doc {
                     err.help("`///` is for documentation comments. For a plain comment, use `//`.");
                 }
                 err.emit();

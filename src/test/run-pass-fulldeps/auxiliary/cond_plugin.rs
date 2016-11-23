@@ -26,7 +26,7 @@ use syntax::ast::Ident;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::ext::proc_macro_shim::build_block_emitter;
 use syntax::ext::base::{ExtCtxt, MacResult};
-use syntax::parse::token::{self, Token, DelimToken, keywords, str_to_ident};
+use syntax::parse::token::{self, Token, DelimToken};
 use syntax::tokenstream::{TokenTree, TokenStream};
 
 #[plugin_registrar]
@@ -58,7 +58,7 @@ fn cond_rec(input: TokenStream) -> TokenStream {
   let test: TokenStream = clause.slice(0..1);
   let rhs: TokenStream = clause.slice_from(1..);
 
-  if ident_eq(&test[0], str_to_ident("else")) || rest.is_empty() {
+  if ident_eq(&test[0], Ident::from_str("else")) || rest.is_empty() {
     qquote!({unquote(rhs)})
   } else {
     qquote!({if unquote(test) { unquote(rhs) } else { cond!(unquote(rest)) } })

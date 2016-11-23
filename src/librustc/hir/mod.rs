@@ -40,8 +40,8 @@ use syntax::codemap::{self, respan, Spanned};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
-use syntax::parse::token::{keywords, InternedString};
 use syntax::ptr::P;
+use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenTree;
 use syntax::util::ThinVec;
 
@@ -867,12 +867,12 @@ pub enum Expr_ {
     /// A `box x` expression.
     ExprBox(P<Expr>),
     /// An array (`[a, b, c, d]`)
-    ExprArray(HirVec<P<Expr>>),
+    ExprArray(HirVec<Expr>),
     /// A function call
     ///
     /// The first field resolves to the function itself (usually an `ExprPath`),
     /// and the second field is the list of arguments
-    ExprCall(P<Expr>, HirVec<P<Expr>>),
+    ExprCall(P<Expr>, HirVec<Expr>),
     /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
     ///
     /// The `Spanned<Name>` is the identifier for the method name.
@@ -885,9 +885,9 @@ pub enum Expr_ {
     ///
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`.
-    ExprMethodCall(Spanned<Name>, HirVec<P<Ty>>, HirVec<P<Expr>>),
+    ExprMethodCall(Spanned<Name>, HirVec<P<Ty>>, HirVec<Expr>),
     /// A tuple (`(a, b, c ,d)`)
-    ExprTup(HirVec<P<Expr>>),
+    ExprTup(HirVec<Expr>),
     /// A binary operation (For example: `a + b`, `a * b`)
     ExprBinary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
@@ -908,7 +908,7 @@ pub enum Expr_ {
     /// Conditionless loop (can be exited with break, continue, or return)
     ///
     /// `'label: loop { block }`
-    ExprLoop(P<Block>, Option<Spanned<Name>>),
+    ExprLoop(P<Block>, Option<Spanned<Name>>, LoopSource),
     /// A `match` block, with a source that indicates whether or not it is
     /// the result of a desugaring, and if so, which kind.
     ExprMatch(P<Expr>, HirVec<Arm>, MatchSource),
@@ -944,14 +944,14 @@ pub enum Expr_ {
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Option<Spanned<Name>>),
+    ExprBreak(Option<Spanned<Name>>, Option<P<Expr>>),
     /// A `continue`, with an optional label
     ExprAgain(Option<Spanned<Name>>),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
     /// Inline assembly (from `asm!`), with its outputs and inputs.
-    ExprInlineAsm(P<InlineAsm>, HirVec<P<Expr>>, HirVec<P<Expr>>),
+    ExprInlineAsm(P<InlineAsm>, HirVec<Expr>, HirVec<Expr>),
 
     /// A struct or struct-like variant literal expression.
     ///
@@ -1001,6 +1001,18 @@ pub enum MatchSource {
     /// A desugared `?` operator
     TryDesugar,
 }
+
+/// The loop type that yielded an ExprLoop
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum LoopSource {
+    /// A `loop { .. }` loop
+    Loop,
+    /// A `while let _ = _ { .. }` loop
+    WhileLet,
+    /// A `for _ in _ { .. }` loop
+    ForLoop,
+}
+
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum CaptureClause {
@@ -1163,18 +1175,18 @@ pub enum Ty_ {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsmOutput {
-    pub constraint: InternedString,
+    pub constraint: Symbol,
     pub is_rw: bool,
     pub is_indirect: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsm {
-    pub asm: InternedString,
+    pub asm: Symbol,
     pub asm_str_style: StrStyle,
     pub outputs: HirVec<InlineAsmOutput>,
-    pub inputs: HirVec<InternedString>,
-    pub clobbers: HirVec<InternedString>,
+    pub inputs: HirVec<Symbol>,
+    pub clobbers: HirVec<Symbol>,
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,

@@ -14,7 +14,7 @@ use super::FnCtxt;
 use hir::def_id::DefId;
 use rustc::ty::{Ty, TypeFoldable, PreferMutLvalue};
 use syntax::ast;
-use syntax::parse::token;
+use syntax::symbol::Symbol;
 use rustc::hir;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
@@ -182,7 +182,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let rhs_ty_var = self.next_ty_var();
 
         let return_ty = match self.lookup_op_method(expr, lhs_ty, vec![rhs_ty_var],
-                                                    token::intern(name), trait_def_id,
+                                                    Symbol::intern(name), trait_def_id,
                                                     lhs_expr) {
             Ok(return_ty) => return_ty,
             Err(()) => {
@@ -248,9 +248,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                            -> Ty<'tcx>
     {
         assert!(op.is_by_value());
-        match self.lookup_op_method(ex, operand_ty, vec![],
-                                    token::intern(mname), trait_did,
-                                    operand_expr) {
+        let mname = Symbol::intern(mname);
+        match self.lookup_op_method(ex, operand_ty, vec![], mname, trait_did, operand_expr) {
             Ok(t) => t,
             Err(()) => {
                 self.type_error_message(ex.span, |actual| {

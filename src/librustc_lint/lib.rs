@@ -232,6 +232,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(EXTRA_REQUIREMENT_IN_IMPL),
             reference: "issue #37166 <https://github.com/rust-lang/rust/issues/37166>",
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(LEGACY_DIRECTORY_OWNERSHIP),
+            reference: "issue #37872 <https://github.com/rust-lang/rust/issues/37872>",
+        },
         ]);
 
     // Register renamed and removed lints

@@ -59,7 +59,7 @@ items under a new local name.
 
 An example of this error:
 
-```compile_fail
+```ignore
 use foo::baz;
 use bar::*; // error, do `use foo::baz as quux` instead on the previous line
 

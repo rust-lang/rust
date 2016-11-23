@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that import shadowing using globs causes errors
+// aux-build:rmeta_meta.rs
+// no-prefer-dynamic
 
-#![no_implicit_prelude]
+// Check that building a metadata crate finds an error with a dependent,
+// metadata-only crate.
 
-use foo::*;
-use qux::*; //~ERROR a type named `Baz` has already been imported in this module
+#![crate_type="metadata"]
 
-mod foo {
-    pub type Baz = isize;
+extern crate rmeta_meta;
+use rmeta_meta::Foo;
+
+fn main() {
+    let _ = Foo { field2: 42 }; //~ ERROR struct `rmeta_meta::Foo` has no field named `field2`
 }
-
-mod bar {
-    pub type Baz = isize;
-}
-
-mod qux {
-    pub use bar::Baz;
-}
-
-fn main() {}

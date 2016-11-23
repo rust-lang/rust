@@ -34,6 +34,7 @@ use parse::lexer;
 use parse;
 use parse::token::{self, Token, Lit, Nonterminal};
 use print::pprust;
+use symbol::Symbol;
 
 use std::fmt;
 use std::iter::*;
@@ -173,10 +174,10 @@ impl TokenTree {
                 TokenTree::Delimited(sp, Rc::new(Delimited {
                     delim: token::Bracket,
                     open_span: sp,
-                    tts: vec![TokenTree::Token(sp, token::Ident(token::str_to_ident("doc"))),
+                    tts: vec![TokenTree::Token(sp, token::Ident(ast::Ident::from_str("doc"))),
                               TokenTree::Token(sp, token::Eq),
                               TokenTree::Token(sp, token::Literal(
-                                  token::StrRaw(token::intern(&stripped), num_of_hashes), None))],
+                                  token::StrRaw(Symbol::intern(&stripped), num_of_hashes), None))],
                     close_span: sp,
                 }))
             }
@@ -295,7 +296,7 @@ impl TokenTree {
     pub fn maybe_str(&self) -> Option<ast::Lit> {
         match *self {
             TokenTree::Token(sp, Token::Literal(Lit::Str_(s), _)) => {
-                let l = LitKind::Str(token::intern_and_get_ident(&parse::str_lit(&s.as_str())),
+                let l = LitKind::Str(Symbol::intern(&parse::str_lit(&s.as_str())),
                                      ast::StrStyle::Cooked);
                 Some(Spanned {
                     node: l,
@@ -303,7 +304,7 @@ impl TokenTree {
                 })
             }
             TokenTree::Token(sp, Token::Literal(Lit::StrRaw(s, n), _)) => {
-                let l = LitKind::Str(token::intern_and_get_ident(&parse::raw_str_lit(&s.as_str())),
+                let l = LitKind::Str(Symbol::intern(&parse::raw_str_lit(&s.as_str())),
                                      ast::StrStyle::Raw(n));
                 Some(Spanned {
                     node: l,
@@ -871,8 +872,9 @@ impl Index<usize> for InternalTS {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use syntax::ast::Ident;
     use syntax_pos::{Span, BytePos, NO_EXPANSION, DUMMY_SP};
-    use parse::token::{self, str_to_ident, Token};
+    use parse::token::{self, Token};
     use util::parser_testing::string_to_tts;
     use std::rc::Rc;
 
@@ -967,15 +969,17 @@ mod tests {
         let test_res = TokenStream::from_tts(string_to_tts("foo::bar::baz".to_string()))
             .slice(2..3);
         let test_eqs = TokenStream::from_tts(vec![TokenTree::Token(sp(5,8),
-                                                    token::Ident(str_to_ident("bar")))]);
+                                                    token::Ident(Ident::from_str("bar")))]);
         assert_eq!(test_res, test_eqs)
     }
 
     #[test]
     fn test_is_empty() {
         let test0 = TokenStream::from_tts(Vec::new());
-        let test1 = TokenStream::from_tts(vec![TokenTree::Token(sp(0, 1),
-                                                                Token::Ident(str_to_ident("a")))]);
+        let test1 = TokenStream::from_tts(
+            vec![TokenTree::Token(sp(0, 1), Token::Ident(Ident::from_str("a")))]
+        );
+
         let test2 = TokenStream::from_tts(string_to_tts("foo(bar::baz)".to_string()));
 
         assert_eq!(test0.is_empty(), true);
@@ -1035,20 +1039,20 @@ mod tests {
         assert_eq!(test0, None);
 
         let test1_expected = TokenStream::from_tts(vec![TokenTree::Token(sp(1, 4),
-                                                        token::Ident(str_to_ident("bar"))),
+                                                        token::Ident(Ident::from_str("bar"))),
                                        TokenTree::Token(sp(4, 6), token::ModSep),
                                        TokenTree::Token(sp(6, 9),
-                                                        token::Ident(str_to_ident("baz")))]);
+                                                        token::Ident(Ident::from_str("baz")))]);
         assert_eq!(test1, Some(test1_expected));
 
         let test2_expected = TokenStream::from_tts(vec![TokenTree::Token(sp(1, 4),
-                                                        token::Ident(str_to_ident("foo"))),
+                                                        token::Ident(Ident::from_str("foo"))),
                                        TokenTree::Token(sp(4, 5), token::Comma),
                                        TokenTree::Token(sp(5, 8),
-                                                        token::Ident(str_to_ident("bar"))),
+                                                        token::Ident(Ident::from_str("bar"))),
                                        TokenTree::Token(sp(8, 9), token::Comma),
                                        TokenTree::Token(sp(9, 12),
-                                                        token::Ident(str_to_ident("baz")))]);
+                                                        token::Ident(Ident::from_str("baz")))]);
         assert_eq!(test2, Some(test2_expected));
 
         assert_eq!(test3, None);
@@ -1069,7 +1073,7 @@ mod tests {
 
         assert_eq!(test0, None);
         assert_eq!(test1, None);
-        assert_eq!(test2, Some(str_to_ident("foo")));
+        assert_eq!(test2, Some(Ident::from_str("foo")));
         assert_eq!(test3, None);
         assert_eq!(test4, None);
     }
@@ -1079,9 +1083,9 @@ mod tests {
         let test0 = as_paren_delimited_stream(string_to_tts("foo,bar,".to_string()));
         let test1 = as_paren_delimited_stream(string_to_tts("baz(foo,bar)".to_string()));
 
-        let test0_tts = vec![TokenTree::Token(sp(0, 3), token::Ident(str_to_ident("foo"))),
+        let test0_tts = vec![TokenTree::Token(sp(0, 3), token::Ident(Ident::from_str("foo"))),
                              TokenTree::Token(sp(3, 4), token::Comma),
-                             TokenTree::Token(sp(4, 7), token::Ident(str_to_ident("bar"))),
+                             TokenTree::Token(sp(4, 7), token::Ident(Ident::from_str("bar"))),
                              TokenTree::Token(sp(7, 8), token::Comma)];
         let test0_stream = TokenStream::from_tts(vec![TokenTree::Delimited(sp(0, 8),
                                                                Rc::new(Delimited {
@@ -1094,11 +1098,11 @@ mod tests {
         assert_eq!(test0, test0_stream);
 
 
-        let test1_tts = vec![TokenTree::Token(sp(4, 7), token::Ident(str_to_ident("foo"))),
+        let test1_tts = vec![TokenTree::Token(sp(4, 7), token::Ident(Ident::from_str("foo"))),
                              TokenTree::Token(sp(7, 8), token::Comma),
-                             TokenTree::Token(sp(8, 11), token::Ident(str_to_ident("bar")))];
+                             TokenTree::Token(sp(8, 11), token::Ident(Ident::from_str("bar")))];
 
-        let test1_parse = vec![TokenTree::Token(sp(0, 3), token::Ident(str_to_ident("baz"))),
+        let test1_parse = vec![TokenTree::Token(sp(0, 3), token::Ident(Ident::from_str("baz"))),
                                TokenTree::Delimited(sp(3, 12),
                                                     Rc::new(Delimited {
                                                         delim: token::DelimToken::Paren,

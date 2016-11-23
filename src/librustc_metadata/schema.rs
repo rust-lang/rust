@@ -22,6 +22,7 @@ use rustc_back::PanicStrategy;
 
 use rustc_serialize as serialize;
 use syntax::{ast, attr};
+use syntax::symbol::Symbol;
 use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
@@ -163,10 +164,10 @@ pub enum LazyState {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct CrateRoot {
     pub rustc_version: String,
-    pub name: String,
+    pub name: Symbol,
     pub triple: String,
     pub hash: hir::svh::Svh,
-    pub disambiguator: String,
+    pub disambiguator: Symbol,
     pub panic_strategy: PanicStrategy,
     pub plugin_registrar_fn: Option<DefIndex>,
     pub macro_derive_registrar: Option<DefIndex>,

@@ -856,7 +856,7 @@ probe_need CFG_CMAKE cmake
 if [ -n "$CFG_ANTLR4" ]
 then
    CFG_ANTLR4_JAR="\"$(find /usr/ -name antlr-complete.jar 2>/dev/null | head -n 1)\""
-   if [ "x" -eq "x$CFG_ANTLR4_JAR" ]
+   if [ "x" = "x$CFG_ANTLR4_JAR" ]
    then
      CFG_ANTLR4_JAR="\"$(find ~ -name antlr-complete.jar 2>/dev/null | head -n 1)\""
    fi

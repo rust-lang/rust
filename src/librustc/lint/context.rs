@@ -40,7 +40,6 @@ use std::default::Default as StdDefault;
 use std::mem;
 use std::fmt;
 use syntax::attr;
-use syntax::parse::token::InternedString;
 use syntax::ast;
 use syntax_pos::{MultiSpan, Span};
 use errors::{self, Diagnostic, DiagnosticBuilder};
@@ -384,8 +383,7 @@ macro_rules! run_lints { ($cx:expr, $f:ident, $ps:ident, $($args:expr),*) => ({
 /// Parse the lint attributes into a vector, with `Err`s for malformed lint
 /// attributes. Writing this as an iterator is an enormous mess.
 // See also the hir version just below.
-pub fn gather_attrs(attrs: &[ast::Attribute])
-                    -> Vec<Result<(InternedString, Level, Span), Span>> {
+pub fn gather_attrs(attrs: &[ast::Attribute]) -> Vec<Result<(ast::Name, Level, Span), Span>> {
     let mut out = vec![];
     for attr in attrs {
         let r = gather_attr(attr);
@@ -394,18 +392,17 @@ pub fn gather_attrs(attrs: &[ast::Attribute])
     out
 }
 
-pub fn gather_attr(attr: &ast::Attribute)
-                   -> Vec<Result<(InternedString, Level, Span), Span>> {
+pub fn gather_attr(attr: &ast::Attribute) -> Vec<Result<(ast::Name, Level, Span), Span>> {
     let mut out = vec![];
 
-    let level = match Level::from_str(&attr.name()) {
+    let level = match Level::from_str(&attr.name().as_str()) {
         None => return out,
         Some(lvl) => lvl,
     };
 
     attr::mark_used(attr);
 
-    let meta = &attr.node.value;
+    let meta = &attr.value;
     let metas = if let Some(metas) = meta.meta_item_list() {
         metas
     } else {
@@ -414,9 +411,7 @@ pub fn gather_attr(attr: &ast::Attribute)
     };
 
     for li in metas {
-        out.push(li.word().map_or(Err(li.span), |word| {
-            Ok((word.name().clone(), level, word.span))
-        }));
+        out.push(li.word().map_or(Err(li.span), |word| Ok((word.name(), level, word.span))));
     }
 
     out
@@ -629,10 +624,10 @@ pub trait LintContext: Sized {
                     continue;
                 }
                 Ok((lint_name, level, span)) => {
-                    match self.lints().find_lint(&lint_name, &self.sess(), Some(span)) {
+                    match self.lints().find_lint(&lint_name.as_str(), &self.sess(), Some(span)) {
                         Ok(lint_id) => vec![(lint_id, level, span)],
                         Err(FindLintError::NotFound) => {
-                            match self.lints().lint_groups.get(&lint_name[..]) {
+                            match self.lints().lint_groups.get(&*lint_name.as_str()) {
                                 Some(&(ref v, _)) => v.iter()
                                                       .map(|lint_id: &LintId|
                                                            (*lint_id, level, span))
@@ -1193,8 +1188,7 @@ fn check_lint_name_attribute(cx: &LateContext, attr: &ast::Attribute) {
                 continue;
             }
             Ok((lint_name, _, span)) => {
-                match check_lint_name(&cx.lints,
-                                      &lint_name[..]) {
+                match check_lint_name(&cx.lints, &lint_name.as_str()) {
                     CheckLintNameResult::Ok => (),
                     CheckLintNameResult::Warning(ref msg) => {
                         cx.span_lint(builtin::RENAMED_AND_REMOVED_LINTS,

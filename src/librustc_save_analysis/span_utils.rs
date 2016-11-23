@@ -18,7 +18,8 @@ use std::path::Path;
 
 use syntax::ast;
 use syntax::parse::lexer::{self, Reader, StringReader};
-use syntax::parse::token::{self, keywords, Token};
+use syntax::parse::token::{self, Token};
+use syntax::symbol::keywords;
 use syntax_pos::*;
 
 #[derive(Clone)]

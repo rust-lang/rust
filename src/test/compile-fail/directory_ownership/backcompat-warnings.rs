@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that import shadowing using globs causes errors
+// error-pattern: cannot declare a new module at this location
+// error-pattern: will become a hard error
+// error-pattern: compilation successful
 
-#![no_implicit_prelude]
+#![feature(rustc_attrs)]
 
-use qux::*;
-use foo::*; //~ERROR a type named `Baz` has already been imported in this module
+#[path="mod_file_not_owning_aux3.rs"]
+mod foo;
 
-mod foo {
-    pub type Baz = isize;
-}
-
-mod bar {
-    pub type Baz = isize;
-}
-
-mod qux {
-    pub use bar::Baz;
-}
-
+#[rustc_error]
 fn main() {}

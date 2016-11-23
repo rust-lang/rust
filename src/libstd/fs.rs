@@ -349,12 +349,47 @@ impl File {
         })
     }
 
+    /// Changes the permissions on the underlying file.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `fchmod` function on Unix and
+    /// the `SetFileInformationByHandle` function on Windows. Note that, this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: ../io/index.html#platform-specific-behavior
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the user lacks permission change
+    /// attributes on the underlying file. It may also return an error in other
+    /// os-specific unspecified cases.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(set_permissions_atomic)]
+    /// # fn foo() -> std::io::Result<()> {
+    /// use std::fs::File;
+    ///
+    /// let file = File::open("foo.txt")?;
+    /// let mut perms = file.metadata()?.permissions();
+    /// perms.set_readonly(true);
+    /// file.set_permissions(perms)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "set_permissions_atomic", issue="37916")]
+    pub fn set_permissions(&self, perm: Permissions) -> io::Result<()> {
+        self.inner.set_permissions(perm.0)
+    }
+
     /// Get the path that this file points to.
     ///
     /// This function is only implemented on Redox, but could be
     /// implemented on other operating systems using readlink
     #[cfg(target_os = "redox")]
-    #[stable(feature = "rust1", since = "1.14.0")]
+    #[unstable(feature = "file_path", issue="0")]
     pub fn path(&self) -> io::Result<PathBuf> {
         self.inner.path()
     }
@@ -2477,6 +2512,24 @@ mod tests {
 
         p.set_readonly(false);
         check!(fs::set_permissions(&file, p));
+    }
+
+    #[test]
+    fn fchmod_works() {
+        let tmpdir = tmpdir();
+        let path = tmpdir.join("in.txt");
+
+        let file = check!(File::create(&path));
+        let attr = check!(fs::metadata(&path));
+        assert!(!attr.permissions().readonly());
+        let mut p = attr.permissions();
+        p.set_readonly(true);
+        check!(file.set_permissions(p.clone()));
+        let attr = check!(fs::metadata(&path));
+        assert!(attr.permissions().readonly());
+
+        p.set_readonly(false);
+        check!(file.set_permissions(p));
     }
 
     #[test]

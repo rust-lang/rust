@@ -198,8 +198,8 @@ use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::{self, dummy_spanned, respan};
 use syntax::util::move_map::MoveMap;
-use syntax::parse::token::{InternedString, keywords};
 use syntax::ptr::P;
+use syntax::symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
 use errors::Handler;
 
@@ -442,7 +442,7 @@ impl<'a> TraitDef<'a> {
                 attrs.extend(item.attrs
                     .iter()
                     .filter(|a| {
-                        match &a.name()[..] {
+                        match &*a.name().as_str() {
                             "allow" | "warn" | "deny" | "forbid" | "stable" | "unstable" => true,
                             _ => false,
                         }
@@ -639,15 +639,15 @@ impl<'a> TraitDef<'a> {
 
         let attr = cx.attribute(self.span,
                                 cx.meta_word(self.span,
-                                             InternedString::new("automatically_derived")));
+                                             Symbol::intern("automatically_derived")));
         // Just mark it now since we know that it'll end up used downstream
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
-        let unused_qual = cx.attribute(self.span,
-                                       cx.meta_list(self.span,
-                                                    InternedString::new("allow"),
-                                                    vec![cx.meta_list_item_word(self.span,
-                                           InternedString::new("unused_qualifications"))]));
+        let unused_qual = {
+            let word = cx.meta_list_item_word(self.span, Symbol::intern("unused_qualifications"));
+            cx.attribute(self.span, cx.meta_list(self.span, Symbol::intern("allow"), vec![word]))
+        };
+
         let mut a = vec![attr, unused_qual];
         a.extend(self.attributes.iter().cloned());
 

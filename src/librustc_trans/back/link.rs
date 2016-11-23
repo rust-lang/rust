@@ -19,7 +19,7 @@ use session::config::{OutputFilenames, Input, OutputType};
 use session::filesearch;
 use session::search_paths::PathKind;
 use session::Session;
-use middle::cstore::{self, LinkMeta, NativeLibrary};
+use middle::cstore::{self, LinkMeta, NativeLibrary, LibSource};
 use middle::cstore::{LinkagePreference, NativeLibraryKind};
 use middle::dependency_format::Linkage;
 use CrateTranslation;
@@ -44,6 +44,7 @@ use std::str;
 use flate;
 use syntax::ast;
 use syntax::attr;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
@@ -93,8 +94,8 @@ pub fn find_crate_name(sess: Option<&Session>,
 
     if let Some(sess) = sess {
         if let Some(ref s) = sess.opts.crate_name {
-            if let Some((attr, ref name)) = attr_crate_name {
-                if *s != &name[..] {
+            if let Some((attr, name)) = attr_crate_name {
+                if name != &**s {
                     let msg = format!("--crate-name and #[crate_name] are \
                                        required to match, but `{}` != `{}`",
                                       s, name);
@@ -123,14 +124,13 @@ pub fn find_crate_name(sess: Option<&Session>,
     }
 
     "rust_out".to_string()
-
 }
 
 pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap,
                        name: &str)
                        -> LinkMeta {
     let r = LinkMeta {
-        crate_name: name.to_owned(),
+        crate_name: Symbol::intern(name),
         crate_hash: Svh::new(incremental_hashes_map[&DepNode::Krate].to_smaller_hash()),
     };
     info!("{:?}", r);
@@ -263,6 +263,9 @@ pub fn filename_for_input(sess: &Session,
         config::CrateTypeRlib => {
             outputs.out_directory.join(&format!("lib{}.rlib", libname))
         }
+        config::CrateTypeMetadata => {
+            outputs.out_directory.join(&format!("lib{}.rmeta", libname))
+        }
         config::CrateTypeCdylib |
         config::CrateTypeProcMacro |
         config::CrateTypeDylib => {
@@ -298,7 +301,7 @@ pub fn each_linked_rlib(sess: &Session,
                    .or_else(|| fmts.get(&config::CrateTypeCdylib))
                    .or_else(|| fmts.get(&config::CrateTypeProcMacro));
     let fmts = fmts.unwrap_or_else(|| {
-        bug!("could not find formats for rlibs")
+        bug!("could not find formats for rlibs");
     });
     for (cnum, path) in crates {
         match fmts[cnum.as_usize() - 1] {
@@ -307,8 +310,12 @@ pub fn each_linked_rlib(sess: &Session,
         }
         let name = sess.cstore.crate_name(cnum).clone();
         let path = match path {
-            Some(p) => p,
-            None => {
+            LibSource::Some(p) => p,
+            LibSource::MetadataOnly => {
+                sess.fatal(&format!("could not find rlib for: `{}`, found rmeta (metadata) file",
+                                    name));
+            }
+            LibSource::None => {
                 sess.fatal(&format!("could not find rlib for: `{}`", name));
             }
         };
@@ -352,6 +359,9 @@ fn link_binary_output(sess: &Session,
         config::CrateTypeStaticlib => {
             link_staticlib(sess, &objects, &out_filename, tmpdir.path());
         }
+        config::CrateTypeMetadata => {
+            emit_metadata(sess, trans, &out_filename);
+        }
         _ => {
             link_natively(sess, crate_type, &objects, &out_filename, trans,
                           outputs, tmpdir.path());
@@ -390,6 +400,13 @@ fn archive_config<'a>(sess: &'a Session,
     }
 }
 
+fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, out_filename: &Path) {
+    let result = fs::File::create(out_filename).and_then(|mut f| f.write_all(&trans.metadata));
+    if let Err(e) = result {
+        sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+    }
+}
+
 // Create an 'rlib'
 //
 // An rlib in its current incarnation is essentially a renamed .a file. The
@@ -403,6 +420,7 @@ fn link_rlib<'a>(sess: &'a Session,
                  tmpdir: &Path) -> ArchiveBuilder<'a> {
     info!("preparing rlib from {:?} to {:?}", objects, out_filename);
     let mut ab = ArchiveBuilder::new(archive_config(sess, out_filename, None));
+
     for obj in objects {
         ab.add_file(obj);
     }
@@ -429,7 +447,7 @@ fn link_rlib<'a>(sess: &'a Session,
             NativeLibraryKind::NativeFramework |
             NativeLibraryKind::NativeUnknown => continue,
         }
-        ab.add_native_library(&lib.name);
+        ab.add_native_library(&lib.name.as_str());
     }
 
     // After adding all files to the archive, we need to update the
@@ -464,15 +482,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // here so concurrent builds in the same directory don't try to use
             // the same filename for metadata (stomping over one another)
             let metadata = tmpdir.join(sess.cstore.metadata_filename());
-            match fs::File::create(&metadata).and_then(|mut f| {
-                f.write_all(&trans.metadata)
-            }) {
-                Ok(..) => {}
-                Err(e) => {
-                    sess.fatal(&format!("failed to write {}: {}",
-                                        metadata.display(), e));
-                }
-            }
+            emit_metadata(sess, trans, &metadata);
             ab.add_file(&metadata);
 
             // For LTO purposes, the bytecode of this library is also inserted
@@ -615,7 +625,7 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
         let skip_object_files = native_libs.iter().any(|lib| {
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
-        ab.add_rlib(path, &name, sess.lto(), skip_object_files).unwrap();
+        ab.add_rlib(path, &name.as_str(), sess.lto(), skip_object_files).unwrap();
 
         all_native_libs.extend(sess.cstore.native_libraries(cnum));
     });
@@ -934,15 +944,15 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         // don't otherwise explicitly reference them. This can occur for
         // libraries which are just providing bindings, libraries with generic
         // functions, etc.
-        cmd.link_whole_staticlib(&l.name, &search_path);
+        cmd.link_whole_staticlib(&l.name.as_str(), &search_path);
     }
 
     cmd.hint_dynamic();
 
     for lib in others {
         match lib.kind {
-            NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name),
-            NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name),
+            NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
+            NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
             NativeLibraryKind::NativeStatic => bug!(),
         }
     }
@@ -1185,8 +1195,8 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
                 continue
             }
             match lib.kind {
-                NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name),
-                NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name),
+                NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
+                NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
 
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library

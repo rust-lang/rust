@@ -352,7 +352,7 @@ to it.
 Rust supports powerful local type inference in the bodies of functions but not in their item signatures. 
 It's forbidden to allow reasoning about types based on the item signature alone. 
 However, for ergonomic reasons, a very restricted secondary inference algorithm called 
-“lifetime elision” does apply when judging lifetimes. Lifetime elision is concerned solely to infer 
+“lifetime elision” does apply when judging lifetimes. Lifetime elision is concerned solely with inferring 
 lifetime parameters using three easily memorizable and unambiguous rules. This means lifetime elision 
 acts as a shorthand for writing an item signature, while not hiding
 away the actual types involved as full local inference would if applied to it.

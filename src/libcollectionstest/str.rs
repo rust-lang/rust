@@ -767,6 +767,7 @@ fn test_iterator() {
         pos += 1;
     }
     assert_eq!(pos, v.len());
+    assert_eq!(s.chars().count(), v.len());
 }
 
 #[test]
@@ -812,6 +813,14 @@ fn test_iterator_clone() {
     let mut it = s.chars();
     it.next();
     assert!(it.clone().zip(it).all(|(x,y)| x == y));
+}
+
+#[test]
+fn test_iterator_last() {
+    let s = "ศไทย中华Việt Nam";
+    let mut it = s.chars();
+    it.next();
+    assert_eq!(it.last(), Some('m'));
 }
 
 #[test]
@@ -909,6 +918,14 @@ fn test_char_indices_revator() {
     }
     assert_eq!(pos, v.len());
     assert_eq!(pos, p.len());
+}
+
+#[test]
+fn test_char_indices_last() {
+    let s = "ศไทย中华Việt Nam";
+    let mut it = s.char_indices();
+    it.next();
+    assert_eq!(it.last(), Some((27, 'm')));
 }
 
 #[test]

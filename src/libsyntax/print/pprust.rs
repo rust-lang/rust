@@ -19,7 +19,7 @@ use attr;
 use codemap::{self, CodeMap};
 use syntax_pos::{self, BytePos};
 use errors;
-use parse::token::{self, keywords, BinOpToken, Token, InternedString};
+use parse::token::{self, BinOpToken, Token};
 use parse::lexer::comments;
 use parse;
 use print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
@@ -27,6 +27,7 @@ use print::pp::{Breaks, eof};
 use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 use std_inject;
+use symbol::{Symbol, keywords};
 use tokenstream::{self, TokenTree};
 
 use std::ascii;
@@ -119,14 +120,13 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
         // of the feature gate, so we fake them up here.
 
         // #![feature(prelude_import)]
-        let prelude_import_meta = attr::mk_list_word_item(InternedString::new("prelude_import"));
-        let list = attr::mk_list_item(InternedString::new("feature"),
-                                      vec![prelude_import_meta]);
+        let prelude_import_meta = attr::mk_list_word_item(Symbol::intern("prelude_import"));
+        let list = attr::mk_list_item(Symbol::intern("feature"), vec![prelude_import_meta]);
         let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(), list);
         try!(s.print_attribute(&fake_attr));
 
         // #![no_std]
-        let no_std_meta = attr::mk_word_item(InternedString::new("no_std"));
+        let no_std_meta = attr::mk_word_item(Symbol::intern("no_std"));
         let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(), no_std_meta);
         try!(s.print_attribute(&fake_attr));
     }
@@ -630,7 +630,7 @@ pub trait PrintState<'a> {
             _ => ()
         }
         match lit.node {
-            ast::LitKind::Str(ref st, style) => self.print_string(&st, style),
+            ast::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
             ast::LitKind::Byte(byte) => {
                 let mut res = String::from("b'");
                 res.extend(ascii::escape_default(byte).map(|c| c as char));
@@ -664,7 +664,7 @@ pub trait PrintState<'a> {
                          &f,
                          t.ty_to_string()))
             }
-            ast::LitKind::FloatUnsuffixed(ref f) => word(self.writer(), &f[..]),
+            ast::LitKind::FloatUnsuffixed(ref f) => word(self.writer(), &f.as_str()),
             ast::LitKind::Bool(val) => {
                 if val { word(self.writer(), "true") } else { word(self.writer(), "false") }
             }
@@ -727,7 +727,7 @@ pub trait PrintState<'a> {
                               trailing_hardbreak: bool) -> io::Result<()> {
         let mut count = 0;
         for attr in attrs {
-            if attr.node.style == kind {
+            if attr.style == kind {
                 try!(self.print_attribute_inline(attr, is_inline));
                 if is_inline {
                     try!(self.nbsp());
@@ -751,11 +751,11 @@ pub trait PrintState<'a> {
             try!(self.hardbreak_if_not_bol());
         }
         try!(self.maybe_print_comment(attr.span.lo));
-        if attr.node.is_sugared_doc {
-            try!(word(self.writer(), &attr.value_str().unwrap()));
+        if attr.is_sugared_doc {
+            try!(word(self.writer(), &attr.value_str().unwrap().as_str()));
             hardbreak(self.writer())
         } else {
-            match attr.node.style {
+            match attr.style {
                 ast::AttrStyle::Inner => try!(word(self.writer(), "#![")),
                 ast::AttrStyle::Outer => try!(word(self.writer(), "#[")),
             }
@@ -778,16 +778,16 @@ pub trait PrintState<'a> {
     fn print_meta_item(&mut self, item: &ast::MetaItem) -> io::Result<()> {
         try!(self.ibox(INDENT_UNIT));
         match item.node {
-            ast::MetaItemKind::Word(ref name) => {
-                try!(word(self.writer(), &name));
+            ast::MetaItemKind::Word => {
+                try!(word(self.writer(), &item.name.as_str()));
             }
-            ast::MetaItemKind::NameValue(ref name, ref value) => {
-                try!(self.word_space(&name[..]));
+            ast::MetaItemKind::NameValue(ref value) => {
+                try!(self.word_space(&item.name.as_str()));
                 try!(self.word_space("="));
                 try!(self.print_literal(value));
             }
-            ast::MetaItemKind::List(ref name, ref items) => {
-                try!(word(self.writer(), &name));
+            ast::MetaItemKind::List(ref items) => {
+                try!(word(self.writer(), &item.name.as_str()));
                 try!(self.popen());
                 try!(self.commasep(Consistent,
                               &items[..],
@@ -2191,11 +2191,15 @@ impl<'a> State<'a> {
             ast::ExprKind::Path(Some(ref qself), ref path) => {
                 try!(self.print_qpath(path, qself, true))
             }
-            ast::ExprKind::Break(opt_ident) => {
+            ast::ExprKind::Break(opt_ident, ref opt_expr) => {
                 try!(word(&mut self.s, "break"));
                 try!(space(&mut self.s));
                 if let Some(ident) = opt_ident {
                     try!(self.print_ident(ident.node));
+                    try!(space(&mut self.s));
+                }
+                if let Some(ref expr) = *opt_expr {
+                    try!(self.print_expr(expr));
                     try!(space(&mut self.s));
                 }
             }
@@ -2220,19 +2224,18 @@ impl<'a> State<'a> {
             ast::ExprKind::InlineAsm(ref a) => {
                 try!(word(&mut self.s, "asm!"));
                 try!(self.popen());
-                try!(self.print_string(&a.asm, a.asm_str_style));
+                try!(self.print_string(&a.asm.as_str(), a.asm_str_style));
                 try!(self.word_space(":"));
 
-                try!(self.commasep(Inconsistent, &a.outputs,
-                                   |s, out| {
-                    let mut ch = out.constraint.chars();
+                try!(self.commasep(Inconsistent, &a.outputs, |s, out| {
+                    let constraint = out.constraint.as_str();
+                    let mut ch = constraint.chars();
                     match ch.next() {
                         Some('=') if out.is_rw => {
                             try!(s.print_string(&format!("+{}", ch.as_str()),
                                            ast::StrStyle::Cooked))
                         }
-                        _ => try!(s.print_string(&out.constraint,
-                                            ast::StrStyle::Cooked))
+                        _ => try!(s.print_string(&constraint, ast::StrStyle::Cooked))
                     }
                     try!(s.popen());
                     try!(s.print_expr(&out.expr));
@@ -2242,9 +2245,8 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.word_space(":"));
 
-                try!(self.commasep(Inconsistent, &a.inputs,
-                                   |s, &(ref co, ref o)| {
-                    try!(s.print_string(&co, ast::StrStyle::Cooked));
+                try!(self.commasep(Inconsistent, &a.inputs, |s, &(co, ref o)| {
+                    try!(s.print_string(&co.as_str(), ast::StrStyle::Cooked));
                     try!(s.popen());
                     try!(s.print_expr(&o));
                     try!(s.pclose());
@@ -2255,7 +2257,7 @@ impl<'a> State<'a> {
 
                 try!(self.commasep(Inconsistent, &a.clobbers,
                                    |s, co| {
-                    try!(s.print_string(&co, ast::StrStyle::Cooked));
+                    try!(s.print_string(&co.as_str(), ast::StrStyle::Cooked));
                     Ok(())
                 }));
 
@@ -3082,12 +3084,11 @@ mod tests {
 
     use ast;
     use codemap;
-    use parse::token;
     use syntax_pos;
 
     #[test]
     fn test_fun_to_string() {
-        let abba_ident = token::str_to_ident("abba");
+        let abba_ident = ast::Ident::from_str("abba");
 
         let decl = ast::FnDecl {
             inputs: Vec::new(),
@@ -3103,7 +3104,7 @@ mod tests {
 
     #[test]
     fn test_variant_to_string() {
-        let ident = token::str_to_ident("principal_skinner");
+        let ident = ast::Ident::from_str("principal_skinner");
 
         let var = codemap::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
             name: ident,

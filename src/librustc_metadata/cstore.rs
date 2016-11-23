@@ -25,15 +25,15 @@ use rustc::util::nodemap::{FxHashMap, NodeMap, NodeSet, DefIdMap};
 
 use std::cell::{RefCell, Cell};
 use std::rc::Rc;
-use std::path::PathBuf;
 use flate::Bytes;
 use syntax::{ast, attr};
 use syntax::ext::base::SyntaxExtension;
+use syntax::symbol::Symbol;
 use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibrary, LinkagePreference};
 pub use rustc::middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
-pub use rustc::middle::cstore::{CrateSource, LinkMeta};
+pub use rustc::middle::cstore::{CrateSource, LinkMeta, LibSource};
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -44,6 +44,7 @@ pub type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 pub enum MetadataBlob {
     Inflated(Bytes),
     Archive(locator::ArchiveMetadata),
+    Raw(Vec<u8>),
 }
 
 /// Holds information about a syntax_pos::FileMap imported from another crate.
@@ -58,7 +59,7 @@ pub struct ImportedFileMap {
 }
 
 pub struct CrateMetadata {
-    pub name: String,
+    pub name: Symbol,
 
     /// Information about the extern crate that caused this crate to
     /// be loaded. If this is `None`, then the crate was injected
@@ -185,7 +186,7 @@ impl CStore {
     // positions.
     pub fn do_get_used_crates(&self,
                               prefer: LinkagePreference)
-                              -> Vec<(CrateNum, Option<PathBuf>)> {
+                              -> Vec<(CrateNum, LibSource)> {
         let mut ordering = Vec::new();
         for (&num, _) in self.metas.borrow().iter() {
             self.push_dependencies_in_postorder(&mut ordering, num);
@@ -201,6 +202,16 @@ impl CStore {
                     LinkagePreference::RequireDynamic => data.source.dylib.clone().map(|p| p.0),
                     LinkagePreference::RequireStatic => data.source.rlib.clone().map(|p| p.0),
                 };
+                let path = match path {
+                    Some(p) => LibSource::Some(p),
+                    None => {
+                        if data.source.rmeta.is_some() {
+                            LibSource::MetadataOnly
+                        } else {
+                            LibSource::None
+                        }
+                    }
+                };
                 Some((cnum, path))
             })
             .collect::<Vec<_>>();
@@ -213,7 +224,7 @@ impl CStore {
     }
 
     pub fn add_used_library(&self, lib: NativeLibrary) {
-        assert!(!lib.name.is_empty());
+        assert!(!lib.name.as_str().is_empty());
         self.used_libraries.borrow_mut().push(lib);
     }
 
@@ -249,14 +260,14 @@ impl CStore {
 }
 
 impl CrateMetadata {
-    pub fn name(&self) -> &str {
-        &self.root.name
+    pub fn name(&self) -> Symbol {
+        self.root.name
     }
     pub fn hash(&self) -> Svh {
         self.root.hash
     }
-    pub fn disambiguator(&self) -> &str {
-        &self.root.disambiguator
+    pub fn disambiguator(&self) -> Symbol {
+        self.root.disambiguator
     }
 
     pub fn is_staged_api(&self) -> bool {

@@ -14,8 +14,8 @@ use deriving::generic::ty::*;
 use syntax::ast::{BinOpKind, Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token::InternedString;
 use syntax::ptr::P;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
@@ -64,7 +64,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
 
     macro_rules! md {
         ($name:expr, $f:ident) => { {
-            let inline = cx.meta_word(span, InternedString::new("inline"));
+            let inline = cx.meta_word(span, Symbol::intern("inline"));
             let attrs = vec![cx.attribute(span, inline)];
             MethodDef {
                 name: $name,

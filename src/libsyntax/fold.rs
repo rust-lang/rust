@@ -22,8 +22,9 @@ use ast::*;
 use ast;
 use syntax_pos::Span;
 use codemap::{Spanned, respan};
-use parse::token::{self, keywords};
+use parse::token;
 use ptr::P;
+use symbol::keywords;
 use tokenstream::*;
 use util::small_vector::SmallVector;
 use util::move_map::MoveMap;
@@ -43,7 +44,7 @@ pub trait Folder : Sized {
         noop_fold_crate(c, self)
     }
 
-    fn fold_meta_items(&mut self, meta_items: Vec<P<MetaItem>>) -> Vec<P<MetaItem>> {
+    fn fold_meta_items(&mut self, meta_items: Vec<MetaItem>) -> Vec<MetaItem> {
         noop_fold_meta_items(meta_items, self)
     }
 
@@ -51,7 +52,7 @@ pub trait Folder : Sized {
         noop_fold_meta_list_item(list_item, self)
     }
 
-    fn fold_meta_item(&mut self, meta_item: P<MetaItem>) -> P<MetaItem> {
+    fn fold_meta_item(&mut self, meta_item: MetaItem) -> MetaItem {
         noop_fold_meta_item(meta_item, self)
     }
 
@@ -293,8 +294,7 @@ pub trait Folder : Sized {
     }
 }
 
-pub fn noop_fold_meta_items<T: Folder>(meta_items: Vec<P<MetaItem>>, fld: &mut T)
-                                       -> Vec<P<MetaItem>> {
+pub fn noop_fold_meta_items<T: Folder>(meta_items: Vec<MetaItem>, fld: &mut T) -> Vec<MetaItem> {
     meta_items.move_map(|x| fld.fold_meta_item(x))
 }
 
@@ -486,16 +486,13 @@ pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
     })
 }
 
-pub fn noop_fold_attribute<T: Folder>(at: Attribute, fld: &mut T) -> Option<Attribute> {
-    let Spanned {node: Attribute_ {id, style, value, is_sugared_doc}, span} = at;
-    Some(Spanned {
-        node: Attribute_ {
-            id: id,
-            style: style,
-            value: fld.fold_meta_item(value),
-            is_sugared_doc: is_sugared_doc
-        },
-        span: fld.new_span(span)
+pub fn noop_fold_attribute<T: Folder>(attr: Attribute, fld: &mut T) -> Option<Attribute> {
+    Some(Attribute {
+        id: attr.id,
+        style: attr.style,
+        value: fld.fold_meta_item(attr.value),
+        is_sugared_doc: attr.is_sugared_doc,
+        span: fld.new_span(attr.span),
     })
 }
 
@@ -522,17 +519,18 @@ pub fn noop_fold_meta_list_item<T: Folder>(li: NestedMetaItem, fld: &mut T)
     }
 }
 
-pub fn noop_fold_meta_item<T: Folder>(mi: P<MetaItem>, fld: &mut T) -> P<MetaItem> {
-    mi.map(|Spanned {node, span}| Spanned {
-        node: match node {
-            MetaItemKind::Word(id) => MetaItemKind::Word(id),
-            MetaItemKind::List(id, mis) => {
-                MetaItemKind::List(id, mis.move_map(|e| fld.fold_meta_list_item(e)))
-            }
-            MetaItemKind::NameValue(id, s) => MetaItemKind::NameValue(id, s)
+pub fn noop_fold_meta_item<T: Folder>(mi: MetaItem, fld: &mut T) -> MetaItem {
+    MetaItem {
+        name: mi.name,
+        node: match mi.node {
+            MetaItemKind::Word => MetaItemKind::Word,
+            MetaItemKind::List(mis) => {
+                MetaItemKind::List(mis.move_map(|e| fld.fold_meta_list_item(e)))
+            },
+            MetaItemKind::NameValue(s) => MetaItemKind::NameValue(s),
         },
-        span: fld.new_span(span)
-    })
+        span: fld.new_span(mi.span)
+    }
 }
 
 pub fn noop_fold_arg<T: Folder>(Arg {id, pat, ty}: Arg, fld: &mut T) -> Arg {
@@ -1240,10 +1238,11 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 });
                 ExprKind::Path(qself, folder.fold_path(path))
             }
-            ExprKind::Break(opt_ident) => ExprKind::Break(opt_ident.map(|label|
-                respan(folder.new_span(label.span),
-                       folder.fold_ident(label.node)))
-            ),
+            ExprKind::Break(opt_ident, opt_expr) => {
+                ExprKind::Break(opt_ident.map(|label| respan(folder.new_span(label.span),
+                                                             folder.fold_ident(label.node))),
+                                opt_expr.map(|e| folder.fold_expr(e)))
+            }
             ExprKind::Continue(opt_ident) => ExprKind::Continue(opt_ident.map(|label|
                 respan(folder.new_span(label.span),
                        folder.fold_ident(label.node)))
@@ -1334,9 +1333,8 @@ pub fn noop_fold_vis<T: Folder>(vis: Visibility, folder: &mut T) -> Visibility {
 #[cfg(test)]
 mod tests {
     use std::io;
-    use ast;
+    use ast::{self, Ident};
     use util::parser_testing::{string_to_crate, matches_codepattern};
-    use parse::token;
     use print::pprust;
     use fold;
     use super::*;
@@ -1352,7 +1350,7 @@ mod tests {
 
     impl Folder for ToZzIdentFolder {
         fn fold_ident(&mut self, _: ast::Ident) -> ast::Ident {
-            token::str_to_ident("zz")
+            Ident::from_str("zz")
         }
         fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
             fold::noop_fold_mac(mac, self)

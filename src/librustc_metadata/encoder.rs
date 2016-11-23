@@ -34,7 +34,7 @@ use std::rc::Rc;
 use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::attr;
-use syntax;
+use syntax::symbol::Symbol;
 use syntax_pos;
 
 use rustc::hir::{self, PatKind};
@@ -600,7 +600,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let PatKind::Binding(_, ref path1, _) = arg.pat.node {
                 path1.node
             } else {
-                syntax::parse::token::intern("")
+                Symbol::intern("")
             }
         }))
     }
@@ -1119,7 +1119,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let deps = get_ordered_deps(self.cstore);
         self.lazy_seq(deps.iter().map(|&(_, ref dep)| {
             CrateDep {
-                name: syntax::parse::token::intern(dep.name()),
+                name: dep.name(),
                 hash: dep.hash(),
                 kind: dep.dep_kind.get(),
             }
@@ -1279,10 +1279,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
         let root = self.lazy(&CrateRoot {
             rustc_version: rustc_version(),
-            name: link_meta.crate_name.clone(),
+            name: link_meta.crate_name,
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
-            disambiguator: tcx.sess.local_crate_disambiguator().to_string(),
+            disambiguator: tcx.sess.local_crate_disambiguator(),
             panic_strategy: tcx.sess.panic_strategy(),
             plugin_registrar_fn: tcx.sess
                 .plugin_registrar_fn

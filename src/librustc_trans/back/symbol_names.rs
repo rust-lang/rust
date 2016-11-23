@@ -113,7 +113,7 @@ use rustc::hir::map::definitions::{DefPath, DefPathData};
 use rustc::util::common::record_time;
 
 use syntax::attr;
-use syntax::parse::token::{self, InternedString};
+use syntax::symbol::{Symbol, InternedString};
 
 fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
@@ -275,7 +275,7 @@ impl ItemPathBuffer for SymbolPathBuffer {
     }
 
     fn push(&mut self, text: &str) {
-        self.names.push(token::intern(text).as_str());
+        self.names.push(Symbol::intern(text).as_str());
     }
 }
 
@@ -288,7 +288,7 @@ pub fn exported_name_from_type_and_prefix<'a, 'tcx>(scx: &SharedCrateContext<'a,
         krate: LOCAL_CRATE,
     };
     let hash = get_symbol_hash(scx, &empty_def_path, t, None);
-    let path = [token::intern_and_get_ident(prefix)];
+    let path = [Symbol::intern(prefix).as_str()];
     mangle(path.iter().cloned(), &hash)
 }
 

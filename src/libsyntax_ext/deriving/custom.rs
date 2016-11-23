@@ -17,10 +17,9 @@ use syntax::attr::{mark_used, mark_known};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::fold::Folder;
-use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
 
-struct MarkAttrs<'a>(&'a [InternedString]);
+struct MarkAttrs<'a>(&'a [ast::Name]);
 
 impl<'a> Visitor for MarkAttrs<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
@@ -33,13 +32,11 @@ impl<'a> Visitor for MarkAttrs<'a> {
 
 pub struct CustomDerive {
     inner: fn(TokenStream) -> TokenStream,
-    attrs: Vec<InternedString>,
+    attrs: Vec<ast::Name>,
 }
 
 impl CustomDerive {
-    pub fn new(inner: fn(TokenStream) -> TokenStream,
-               attrs: Vec<InternedString>)
-               -> CustomDerive {
+    pub fn new(inner: fn(TokenStream) -> TokenStream, attrs: Vec<ast::Name>) -> CustomDerive {
         CustomDerive { inner: inner, attrs: attrs }
     }
 }

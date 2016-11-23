@@ -19,10 +19,6 @@ use std::iter::repeat;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use hir;
-use hir::intravisit;
-use hir::intravisit::Visitor;
-
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &'static str = "Output";
 
@@ -184,57 +180,6 @@ impl Drop for Indenter {
 pub fn indenter() -> Indenter {
     debug!(">>");
     Indenter { _cannot_construct_outside_of_this_module: () }
-}
-
-struct LoopQueryVisitor<P> where P: FnMut(&hir::Expr_) -> bool {
-    p: P,
-    flag: bool,
-}
-
-impl<'v, P> Visitor<'v> for LoopQueryVisitor<P> where P: FnMut(&hir::Expr_) -> bool {
-    fn visit_expr(&mut self, e: &hir::Expr) {
-        self.flag |= (self.p)(&e.node);
-        match e.node {
-          // Skip inner loops, since a break in the inner loop isn't a
-          // break inside the outer loop
-          hir::ExprLoop(..) | hir::ExprWhile(..) => {}
-          _ => intravisit::walk_expr(self, e)
-        }
-    }
-}
-
-// Takes a predicate p, returns true iff p is true for any subexpressions
-// of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query<P>(b: &hir::Block, p: P) -> bool where P: FnMut(&hir::Expr_) -> bool {
-    let mut v = LoopQueryVisitor {
-        p: p,
-        flag: false,
-    };
-    intravisit::walk_block(&mut v, b);
-    return v.flag;
-}
-
-struct BlockQueryVisitor<P> where P: FnMut(&hir::Expr) -> bool {
-    p: P,
-    flag: bool,
-}
-
-impl<'v, P> Visitor<'v> for BlockQueryVisitor<P> where P: FnMut(&hir::Expr) -> bool {
-    fn visit_expr(&mut self, e: &hir::Expr) {
-        self.flag |= (self.p)(e);
-        intravisit::walk_expr(self, e)
-    }
-}
-
-// Takes a predicate p, returns true iff p is true for any subexpressions
-// of b -- skipping any inner loops (loop, while, loop_body)
-pub fn block_query<P>(b: &hir::Block, p: P) -> bool where P: FnMut(&hir::Expr) -> bool {
-    let mut v = BlockQueryVisitor {
-        p: p,
-        flag: false,
-    };
-    intravisit::walk_block(&mut v, &b);
-    return v.flag;
 }
 
 pub trait MemoizationMap {

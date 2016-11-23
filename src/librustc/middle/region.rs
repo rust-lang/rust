@@ -805,7 +805,7 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &hir::Expr) {
                 terminating(then.id);
             }
 
-            hir::ExprLoop(ref body, _) => {
+            hir::ExprLoop(ref body, _, _) => {
                 terminating(body.id);
             }
 

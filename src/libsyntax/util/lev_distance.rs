@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::Name;
 use std::cmp;
-use parse::token::InternedString;
+use symbol::Symbol;
 
 /// To find the Levenshtein distance between two strings
 pub fn lev_distance(a: &str, b: &str) -> usize {
@@ -48,14 +47,14 @@ pub fn lev_distance(a: &str, b: &str) -> usize {
 /// to one-third of the given word
 pub fn find_best_match_for_name<'a, T>(iter_names: T,
                                        lookup: &str,
-                                       dist: Option<usize>) -> Option<InternedString>
-    where T: Iterator<Item = &'a Name> {
+                                       dist: Option<usize>) -> Option<Symbol>
+    where T: Iterator<Item = &'a Symbol> {
     let max_dist = dist.map_or_else(|| cmp::max(lookup.len(), 3) / 3, |d| d);
     iter_names
-    .filter_map(|name| {
+    .filter_map(|&name| {
         let dist = lev_distance(lookup, &name.as_str());
         match dist <= max_dist {    // filter the unwanted cases
-            true => Some((name.as_str(), dist)),
+            true => Some((name, dist)),
             false => None,
         }
     })

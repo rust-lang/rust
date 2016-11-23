@@ -17,9 +17,9 @@ use syntax::codemap;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
-use syntax::parse::token::intern;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
+use syntax::symbol::Symbol;
 use syntax::ast::AsmDialect;
 use syntax_pos::Span;
 use syntax::tokenstream;
@@ -73,7 +73,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
         })
         .unwrap_or(tts.len());
     let mut p = cx.new_parser_from_tts(&tts[first_colon..]);
-    let mut asm = token::InternedString::new("");
+    let mut asm = Symbol::intern("");
     let mut asm_str_style = None;
     let mut outputs = Vec::new();
     let mut inputs = Vec::new();
@@ -135,11 +135,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     // It's the opposite of '=&' which means that the memory
                     // cannot be shared with any other operand (usually when
                     // a register is clobbered early.)
-                    let mut ch = constraint.chars();
+                    let constraint_str = constraint.as_str();
+                    let mut ch = constraint_str.chars();
                     let output = match ch.next() {
                         Some('=') => None,
                         Some('+') => {
-                            Some(token::intern_and_get_ident(&format!("={}", ch.as_str())))
+                            Some(Symbol::intern(&format!("={}", ch.as_str())))
                         }
                         _ => {
                             cx.span_err(span, "output operand constraint lacks '=' or '+'");
@@ -148,9 +149,9 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     };
 
                     let is_rw = output.is_some();
-                    let is_indirect = constraint.contains("*");
+                    let is_indirect = constraint_str.contains("*");
                     outputs.push(ast::InlineAsmOutput {
-                        constraint: output.unwrap_or(constraint.clone()),
+                        constraint: output.unwrap_or(constraint),
                         expr: out,
                         is_rw: is_rw,
                         is_indirect: is_indirect,
@@ -166,9 +167,9 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
 
                     let (constraint, _str_style) = panictry!(p.parse_str());
 
-                    if constraint.starts_with("=") {
+                    if constraint.as_str().starts_with("=") {
                         cx.span_err(p.prev_span, "input operand constraint contains '='");
-                    } else if constraint.starts_with("+") {
+                    } else if constraint.as_str().starts_with("+") {
                         cx.span_err(p.prev_span, "input operand constraint contains '+'");
                     }
 
@@ -190,7 +191,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
 
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.prev_span, "expected a clobber, found an option");
-                    } else if s.starts_with("{") || s.ends_with("}") {
+                    } else if s.as_str().starts_with("{") || s.as_str().ends_with("}") {
                         cx.span_err(p.prev_span, "clobber should not be surrounded by braces");
                     }
 
@@ -242,7 +243,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
     let expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
         call_site: sp,
         callee: codemap::NameAndSpan {
-            format: codemap::MacroBang(intern("asm")),
+            format: codemap::MacroBang(Symbol::intern("asm")),
             span: None,
             allow_internal_unstable: false,
         },
@@ -251,7 +252,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
     MacEager::expr(P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprKind::InlineAsm(P(ast::InlineAsm {
-            asm: token::intern_and_get_ident(&asm),
+            asm: asm,
             asm_str_style: asm_str_style.unwrap(),
             outputs: outputs,
             inputs: inputs,

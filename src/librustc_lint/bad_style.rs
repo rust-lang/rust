@@ -81,19 +81,12 @@ impl NonCamelCaseTypes {
                 .concat()
         }
 
-        let s = name.as_str();
-
         if !is_camel_case(name) {
-            let c = to_camel_case(&s);
+            let c = to_camel_case(&name.as_str());
             let m = if c.is_empty() {
-                format!("{} `{}` should have a camel case name such as `CamelCase`",
-                        sort,
-                        s)
+                format!("{} `{}` should have a camel case name such as `CamelCase`", sort, name)
             } else {
-                format!("{} `{}` should have a camel case name such as `{}`",
-                        sort,
-                        s,
-                        c)
+                format!("{} `{}` should have a camel case name such as `{}`", sort, name, c)
             };
             cx.span_lint(NON_CAMEL_CASE_TYPES, span, &m[..]);
         }
@@ -241,8 +234,8 @@ impl LateLintPass for NonSnakeCase {
             .and_then(|at| at.value_str().map(|s| (at, s)));
         if let Some(ref name) = cx.tcx.sess.opts.crate_name {
             self.check_snake_case(cx, "crate", name, None);
-        } else if let Some((attr, ref name)) = attr_crate_name {
-            self.check_snake_case(cx, "crate", name, Some(attr.span));
+        } else if let Some((attr, name)) = attr_crate_name {
+            self.check_snake_case(cx, "crate", &name.as_str(), Some(attr.span));
         }
     }
 
@@ -326,21 +319,19 @@ pub struct NonUpperCaseGlobals;
 
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext, sort: &str, name: ast::Name, span: Span) {
-        let s = name.as_str();
-
-        if s.chars().any(|c| c.is_lowercase()) {
-            let uc = NonSnakeCase::to_snake_case(&s).to_uppercase();
-            if uc != &s[..] {
+        if name.as_str().chars().any(|c| c.is_lowercase()) {
+            let uc = NonSnakeCase::to_snake_case(&name.as_str()).to_uppercase();
+            if name != &*uc {
                 cx.span_lint(NON_UPPER_CASE_GLOBALS,
                              span,
                              &format!("{} `{}` should have an upper case name such as `{}`",
                                       sort,
-                                      s,
+                                      name,
                                       uc));
             } else {
                 cx.span_lint(NON_UPPER_CASE_GLOBALS,
                              span,
-                             &format!("{} `{}` should have an upper case name", sort, s));
+                             &format!("{} `{}` should have an upper case name", sort, name));
             }
         }
     }

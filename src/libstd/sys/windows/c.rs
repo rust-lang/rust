@@ -182,6 +182,7 @@ pub const ERROR_INVALID_HANDLE: DWORD = 6;
 pub const ERROR_NO_MORE_FILES: DWORD = 18;
 pub const ERROR_HANDLE_EOF: DWORD = 38;
 pub const ERROR_FILE_EXISTS: DWORD = 80;
+pub const ERROR_INVALID_PARAMETER: DWORD = 87;
 pub const ERROR_BROKEN_PIPE: DWORD = 109;
 pub const ERROR_CALL_NOT_IMPLEMENTED: DWORD = 120;
 pub const ERROR_INSUFFICIENT_BUFFER: DWORD = 122;
@@ -386,6 +387,15 @@ pub enum FILE_INFO_BY_HANDLE_CLASS {
     FileIdExtdDirectoryInfo         = 19, // 0x13
     FileIdExtdDirectoryRestartInfo  = 20, // 0x14
     MaximumFileInfoByHandlesClass
+}
+
+#[repr(C)]
+pub struct FILE_BASIC_INFO {
+    pub CreationTime: LARGE_INTEGER,
+    pub LastAccessTime: LARGE_INTEGER,
+    pub LastWriteTime: LARGE_INTEGER,
+    pub ChangeTime: LARGE_INTEGER,
+    pub FileAttributes: DWORD,
 }
 
 #[repr(C)]
