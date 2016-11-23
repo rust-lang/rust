@@ -639,23 +639,24 @@ impl<'a> Context<'a> {
     }
 
     fn crate_matches(&mut self, metadata: &MetadataBlob, libpath: &Path) -> Option<Svh> {
+        let rustc_version = rustc_version();
+        let found_version = metadata.get_rustc_version();
+        if found_version != rustc_version {
+            info!("Rejecting via version: expected {} got {}",
+                  rustc_version,
+                  found_version);
+            self.rejected_via_version.push(CrateMismatch {
+                path: libpath.to_path_buf(),
+                got: found_version,
+            });
+            return None;
+        }
+
         let root = metadata.get_root();
         if let Some(is_proc_macro) = self.is_proc_macro {
             if root.macro_derive_registrar.is_some() != is_proc_macro {
                 return None;
             }
-        }
-
-        let rustc_version = rustc_version();
-        if root.rustc_version != rustc_version {
-            info!("Rejecting via version: expected {} got {}",
-                  rustc_version,
-                  root.rustc_version);
-            self.rejected_via_version.push(CrateMismatch {
-                path: libpath.to_path_buf(),
-                got: root.rustc_version,
-            });
-            return None;
         }
 
         if self.should_match_name {

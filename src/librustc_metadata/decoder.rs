@@ -421,6 +421,10 @@ impl<'a, 'tcx> MetadataBlob {
         self.raw_bytes().starts_with(METADATA_HEADER)
     }
 
+    pub fn get_rustc_version(&self) -> String {
+        Lazy::with_position(METADATA_HEADER.len() + 4).decode(self)
+    }
+
     pub fn get_root(&self) -> CrateRoot {
         let slice = self.raw_bytes();
         let offset = METADATA_HEADER.len();
