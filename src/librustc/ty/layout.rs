@@ -578,7 +578,7 @@ impl<'a, 'gcx, 'tcx> Struct {
                     attr::ReprInt(_) => false,
                     attr::ReprExtern => true,
                     attr::ReprPacked => true,
-                    attr::ReprSimd => bug!("Simd  vectors should be represented as a layout::Vector")
+                    attr::ReprSimd => bug!("Simd  vectors should be represented as layout::Vector")
                 }
             });
         }
