@@ -129,10 +129,10 @@ pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
 ///
 /// See also the `paths` module.
 pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
-    use syntax::parse::token;
+    use syntax::symbol;
 
     struct AbsolutePathBuffer {
-        names: Vec<token::InternedString>,
+        names: Vec<symbol::InternedString>,
     }
 
     impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
@@ -142,7 +142,7 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
         }
 
         fn push(&mut self, text: &str) {
-            self.names.push(token::intern(text).as_str());
+            self.names.push(symbol::Symbol::intern(text).as_str());
         }
     }
 
@@ -150,7 +150,8 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
 
     cx.tcx.push_item_path(&mut apb, def_id);
 
-    apb.names == path
+    apb.names.len() == path.len() &&
+    apb.names.iter().zip(path.iter()).all(|(a, &b)| &**a == b)
 }
 
 /// Check if type is struct, enum or union type with given def path.
@@ -202,7 +203,7 @@ pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool 
 /// match_path(path, &["std", "rt", "begin_unwind"])
 /// ```
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
-    path.segments.iter().rev().zip(segments.iter().rev()).all(|(a, b)| a.name.as_str() == *b)
+    path.segments.iter().rev().zip(segments.iter().rev()).all(|(a, b)| a.name == *b)
 }
 
 /// Match a `Path` against a slice of segment string literals, e.g.
@@ -212,7 +213,7 @@ pub fn match_path(path: &Path, segments: &[&str]) -> bool {
 /// match_path(path, &["std", "rt", "begin_unwind"])
 /// ```
 pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
-    path.segments.iter().rev().zip(segments.iter().rev()).all(|(a, b)| a.identifier.name.as_str() == *b)
+    path.segments.iter().rev().zip(segments.iter().rev()).all(|(a, b)| a.identifier.name == *b)
 }
 
 /// Get the definition associated to a path.
@@ -234,7 +235,7 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
             };
 
             for item in &mem::replace(&mut items, vec![]) {
-                if item.name.as_str() == *segment {
+                if item.name == *segment {
                     if path_it.peek().is_none() {
                         return Some(item.def);
                     }
@@ -297,7 +298,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
     for method_name in methods.iter().rev() {
         // method chains are stored last -> first
         if let ExprMethodCall(ref name, _, ref args) = current.node {
-            if name.node.as_str() == *method_name {
+            if name.node == *method_name {
                 matched.push(args); // build up `matched` backwards
                 current = &args[0] // go to parent expression
             } else {
@@ -580,13 +581,13 @@ impl LimitStack {
 
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {
     for attr in attrs {
-        if attr.node.is_sugared_doc {
+        if attr.is_sugared_doc {
             continue;
         }
-        if let ast::MetaItemKind::NameValue(ref key, ref value) = attr.node.value.node {
-            if *key == name {
+        if let ast::MetaItemKind::NameValue(ref value) = attr.value.node {
+            if attr.name() == name {
                 if let LitKind::Str(ref s, _) = value.node {
-                    if let Ok(value) = FromStr::from_str(s) {
+                    if let Ok(value) = FromStr::from_str(&*s.as_str()) {
                         attr::mark_used(attr);
                         f(value)
                     } else {
@@ -610,7 +611,7 @@ pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> 
                                .with_expn_info(span.expn_id, |expn| expn.map(|ei| (ei.callee.name(), ei.call_site)));
 
         match span_name_span {
-            Some((mac_name, new_span)) if mac_name.as_str() == name => return Some(new_span),
+            Some((mac_name, new_span)) if mac_name == name => return Some(new_span),
             None => return None,
             Some((_, new_span)) => span = new_span,
         }
@@ -631,7 +632,7 @@ pub fn is_direct_expn_of(cx: &LateContext, span: Span, name: &str) -> Option<Spa
                            .with_expn_info(span.expn_id, |expn| expn.map(|ei| (ei.callee.name(), ei.call_site)));
 
     match span_name_span {
-        Some((mac_name, new_span)) if mac_name.as_str() == name => Some(new_span),
+        Some((mac_name, new_span)) if mac_name == name => Some(new_span),
         _ => None,
     }
 }

@@ -61,7 +61,7 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
     /// Find the field named `name` in the field. Always return `Some` for convenience.
     fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
         let expr = &fields.iter()
-                          .find(|field| field.name.node.as_str() == name)
+                          .find(|field| field.name.node == name)
                           .unwrap_or_else(|| panic!("missing {} field for range", name))
                           .expr;
 

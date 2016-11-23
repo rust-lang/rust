@@ -49,27 +49,29 @@ impl LintPass for StepByZero {
 impl LateLintPass for StepByZero {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprMethodCall(Spanned { node: ref name, .. }, _, ref args) = expr.node {
+            let name = &*name.as_str();
+
             // Range with step_by(0).
-            if name.as_str() == "step_by" && args.len() == 2 && has_step_by(cx, &args[0]) &&
+            if name == "step_by" && args.len() == 2 && has_step_by(cx, &args[0]) &&
                is_integer_literal(&args[1], 0) {
                 span_lint(cx,
                           RANGE_STEP_BY_ZERO,
                           expr.span,
                           "Range::step_by(0) produces an infinite iterator. Consider using `std::iter::repeat()` \
                            instead");
-            } else if name.as_str() == "zip" && args.len() == 2 {
+            } else if name == "zip" && args.len() == 2 {
                 let iter = &args[0].node;
                 let zip_arg = &args[1];
                 if_let_chain! {[
                     // .iter() call
                     let ExprMethodCall( Spanned { node: ref iter_name, .. }, _, ref iter_args ) = *iter,
-                    iter_name.as_str() == "iter",
+                    &*iter_name.as_str() == "iter",
                     // range expression in .zip() call: 0..x.len()
                     let Some(higher::Range { start: Some(ref start), end: Some(ref end), .. }) = higher::range(zip_arg),
                     is_integer_literal(start, 0),
                     // .len() call
                     let ExprMethodCall(Spanned { node: ref len_name, .. }, _, ref len_args) = end.node,
-                    len_name.as_str() == "len" && len_args.len() == 1,
+                    &*len_name.as_str() == "len" && len_args.len() == 1,
                     // .iter() and .len() called on same Path
                     let ExprPath(_, Path { segments: ref iter_path, .. }) = iter_args[0].node,
                     let ExprPath(_, Path { segments: ref len_path, .. }) = len_args[0].node,

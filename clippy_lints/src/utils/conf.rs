@@ -10,22 +10,20 @@ use toml;
 /// Get the configuration file from arguments.
 pub fn file_from_args(args: &[codemap::Spanned<ast::NestedMetaItemKind>]) -> Result<Option<path::PathBuf>, (&'static str, codemap::Span)> {
     for arg in args.iter().filter_map(|a| a.meta_item()) {
-        match arg.node {
-            ast::MetaItemKind::Word(ref name) |
-            ast::MetaItemKind::List(ref name, _) => {
-                if name == &"conf_file" {
-                    return Err(("`conf_file` must be a named value", arg.span));
+        if arg.name() == "conf_file" {
+            return match arg.node {
+                ast::MetaItemKind::Word |
+                ast::MetaItemKind::List(_) => {
+                    Err(("`conf_file` must be a named value", arg.span))
                 }
-            }
-            ast::MetaItemKind::NameValue(ref name, ref value) => {
-                if name == &"conf_file" {
-                    return if let ast::LitKind::Str(ref file, _) = value.node {
+                ast::MetaItemKind::NameValue(ref value) => {
+                    if let ast::LitKind::Str(ref file, _) = value.node {
                         Ok(Some(file.to_string().into()))
                     } else {
                         Err(("`conf_file` value must be a string", value.span))
-                    };
+                    }
                 }
-            }
+            };
         }
     }
 

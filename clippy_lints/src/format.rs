@@ -3,6 +3,7 @@ use rustc::hir::map::Node::NodeItem;
 use rustc::lint::*;
 use rustc::ty::TypeVariants;
 use syntax::ast::LitKind;
+use syntax::symbol::InternedString;
 use utils::paths;
 use utils::{is_expn_of, match_def_path, match_type, resolve_node, span_lint, walk_ptrs_ty};
 
@@ -73,14 +74,14 @@ impl LateLintPass for Pass {
 /// Returns the slice of format string parts in an `Arguments::new_v1` call.
 /// Public because it's shared with a lint in print.rs.
 pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Expr)
-                                         -> Option<Vec<&'a str>> {
+                                         -> Option<Vec<InternedString>> {
     if_let_chain! {[
         let ExprBlock(ref block) = expr.node,
         block.stmts.len() == 1,
         let StmtDecl(ref decl, _) = block.stmts[0].node,
         let DeclItem(ref decl) = decl.node,
         let Some(NodeItem(decl)) = cx.tcx.map.find(decl.id),
-        decl.name.as_str() == "__STATIC_FMTSTR",
+        &*decl.name.as_str() == "__STATIC_FMTSTR",
         let ItemStatic(_, _, ref expr) = decl.node,
         let ExprAddrOf(_, ref expr) = expr.node, // &["…", "…", …]
         let ExprArray(ref exprs) = expr.node,
@@ -89,7 +90,7 @@ pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Exp
         for expr in exprs {
             if let ExprLit(ref lit) = expr.node {
                 if let LitKind::Str(ref lit, _) = lit.node {
-                    result.push(&**lit);
+                    result.push(lit.as_str());
                 }
             }
         }

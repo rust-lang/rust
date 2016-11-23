@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use syntax::codemap::Span;
-use syntax::parse::token::InternedString;
+use syntax::symbol::InternedString;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::visit::{Visitor, walk_block, walk_pat, walk_expr};

@@ -3,7 +3,7 @@ use rustc::ty;
 use rustc::hir::*;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use syntax::parse::token::InternedString;
+use syntax::symbol::InternedString;
 use syntax::util::small_vector::SmallVector;
 use utils::{SpanlessEq, SpanlessHash};
 use utils::{get_parent_expr, in_macro, span_lint_and_then, span_note_and_lint, snippet};

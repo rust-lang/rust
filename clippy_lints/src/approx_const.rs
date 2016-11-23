@@ -2,6 +2,7 @@ use rustc::lint::*;
 use rustc::hir::*;
 use std::f64::consts as f64;
 use syntax::ast::{Lit, LitKind, FloatTy};
+use syntax::symbol;
 use utils::span_lint;
 
 /// **What it does:** Checks for floating point literals that approximate
@@ -75,7 +76,8 @@ fn check_lit(cx: &LateContext, lit: &Lit, e: &Expr) {
     }
 }
 
-fn check_known_consts(cx: &LateContext, e: &Expr, s: &str, module: &str) {
+fn check_known_consts(cx: &LateContext, e: &Expr, s: &symbol::Symbol, module: &str) {
+    let s = &*s.as_str();
     if s.parse::<f64>().is_ok() {
         for &(constant, name, min_digits) in KNOWN_CONSTS {
             if is_approx_const(constant, s, min_digits) {

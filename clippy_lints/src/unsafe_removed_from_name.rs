@@ -2,7 +2,7 @@ use rustc::hir::*;
 use rustc::lint::*;
 use syntax::ast::Name;
 use syntax::codemap::Span;
-use syntax::parse::token::InternedString;
+use syntax::symbol::InternedString;
 use utils::span_lint;
 
 /// **What it does:** Checks for imports that remove "unsafe" from an item's

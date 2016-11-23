@@ -235,7 +235,7 @@ impl LateLintPass for Pass {
                     return;
                 }
                 if let Some(name) = get_item_name(cx, expr) {
-                    let name = name.as_str();
+                    let name = &*name.as_str();
                     if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") ||
                         name.ends_with("_eq") {
                         return;
@@ -271,7 +271,7 @@ impl LateLintPass for Pass {
                     .as_str();
                 if binding.starts_with('_') &&
                     !binding.starts_with("__") &&
-                    binding != "_result" && // FIXME: #944
+                    &*binding != "_result" && // FIXME: #944
                     is_used(cx, expr) &&
                     // don't lint if the declaration is in a macro
                     non_macro_local(cx, &cx.tcx.expect_def(expr.id)) {
@@ -315,7 +315,7 @@ impl LateLintPass for Pass {
 
 fn check_nan(cx: &LateContext, path: &Path, span: Span) {
     path.segments.last().map(|seg| {
-        if seg.name.as_str() == "NAN" {
+        if &*seg.name.as_str() == "NAN" {
             span_lint(cx,
                       CMP_NAN,
                       span,
@@ -359,7 +359,8 @@ fn is_float(cx: &LateContext, expr: &Expr) -> bool {
 fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: Span) {
     let (arg_ty, snip) = match expr.node {
         ExprMethodCall(Spanned { node: ref name, .. }, _, ref args) if args.len() == 1 => {
-            if name.as_str() == "to_string" || name.as_str() == "to_owned" && is_str_arg(cx, args) {
+            let name = &*name.as_str();
+            if name == "to_string" || name == "to_owned" && is_str_arg(cx, args) {
                 (cx.tcx.tables().expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
             } else {
                 return;

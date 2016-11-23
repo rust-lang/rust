@@ -45,8 +45,8 @@ impl LateLintPass for Pass {
             let ExprLit(ref lit) = params[0].node,
             is_direct_expn_of(cx, params[0].span, "panic").is_some(),
             let LitKind::Str(ref string, _) = lit.node,
-            let Some(par) = string.find('{'),
-            string[par..].contains('}')
+            let Some(par) = string.as_str().find('{'),
+            string.as_str()[par..].contains('}')
         ], {
             span_lint(cx, PANIC_PARAMS, params[0].span,
                       "you probably are missing some parameter in your format string");

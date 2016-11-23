@@ -1,11 +1,16 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.101 — 2016-11-23
+* Update to *rustc 1.15.0-nightly (7b3eeea22 2016-11-21)*
+* New lint: [`string_extend_chars`]
+
 ## 0.0.100 — 2016-11-20
 * Update to *rustc 1.15.0-nightly (ac635aa95 2016-11-18)*
 
 ## 0.0.99 — 2016-11-18
 * Update to rustc 1.15.0-nightly (0ed951993 2016-11-14)
+* New lint: [`get_unwrap`]
 
 ## 0.0.98 — 2016-11-08
 * Fixes a an issue due to a change in how cargo handles `--sysroot`, which broke `cargo clippy`
@@ -16,6 +21,7 @@ All notable changes to this project will be documented in this file.
   compatibility.
 * `cargo clippy --help` is more helping (and less helpful :smile:)
 * Rustup to *rustc 1.14.0-nightly (5665bdf3e 2016-11-02)*
+* New lints: [`if_let_redundant_pattern_matching`], [`partialeq_ne_impl`]
 
 ## 0.0.96 — 2016-10-22
 * Rustup to *rustc 1.14.0-nightly (f09420685 2016-10-20)*

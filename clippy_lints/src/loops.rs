@@ -370,9 +370,9 @@ impl LateLintPass for Pass {
                     &ExprMethodCall(method_name, _, ref method_args)) = (pat, &match_expr.node) {
                 let iter_expr = &method_args[0];
                 if let Some(lhs_constructor) = path.segments.last() {
-                    if method_name.node.as_str() == "next" &&
+                    if &*method_name.node.as_str() == "next" &&
                        match_trait_method(cx, match_expr, &paths::ITERATOR) &&
-                       lhs_constructor.name.as_str() == "Some" &&
+                       &*lhs_constructor.name.as_str() == "Some" &&
                        !is_refutable(cx, &pat_args[0]) &&
                        !is_iterator_used_after_while_let(cx, iter_expr) {
                         let iterator = snippet(cx, method_args[0].span, "_");
@@ -395,7 +395,7 @@ impl LateLintPass for Pass {
     fn check_stmt(&mut self, cx: &LateContext, stmt: &Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
-                if args.len() == 1 && method.node.as_str() == "collect" &&
+                if args.len() == 1 && &*method.node.as_str() == "collect" &&
                    match_trait_method(cx, expr, &paths::ITERATOR) {
                     span_lint(cx,
                               UNUSED_COLLECT,
@@ -509,7 +509,7 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
     if_let_chain! {[
         let ExprMethodCall(method, _, ref len_args) = expr.node,
         len_args.len() == 1,
-        method.node.as_str() == "len",
+        &*method.node.as_str() == "len",
         let ExprPath(_, ref path) = len_args[0].node,
         path.segments.len() == 1,
         &path.segments[0].name == var
@@ -580,14 +580,14 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
         if args.len() == 1 {
             let method_name = method.node;
             // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
-            if method_name.as_str() == "iter" || method_name.as_str() == "iter_mut" {
+            if &*method_name.as_str() == "iter" || &*method_name.as_str() == "iter_mut" {
                 if is_ref_iterable_type(cx, &args[0]) {
                     let object = snippet(cx, args[0].span, "_");
                     span_lint(cx,
                               EXPLICIT_ITER_LOOP,
                               expr.span,
                               &format!("it is more idiomatic to loop over `&{}{}` instead of `{}.{}()`",
-                                       if method_name.as_str() == "iter_mut" {
+                                       if &*method_name.as_str() == "iter_mut" {
                                            "mut "
                                        } else {
                                            ""
@@ -596,7 +596,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                                        object,
                                        method_name));
                 }
-            } else if method_name.as_str() == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
+            } else if &*method_name.as_str() == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
                     let object = snippet(cx, args[0].span, "_");
                     span_lint(cx,
                               EXPLICIT_INTO_ITER_LOOP,
@@ -606,7 +606,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                                        object,
                                        method_name));
 
-            } else if method_name.as_str() == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
+            } else if &*method_name.as_str() == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
                 span_lint(cx,
                           ITER_NEXT_LOOP,
                           expr.span,

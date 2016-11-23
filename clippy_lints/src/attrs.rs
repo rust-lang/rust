@@ -83,15 +83,15 @@ impl LintPass for AttrPass {
 
 impl LateLintPass for AttrPass {
     fn check_attribute(&mut self, cx: &LateContext, attr: &Attribute) {
-        if let MetaItemKind::List(ref name, ref items) = attr.node.value.node {
-            if items.is_empty() || name != &"deprecated" {
+        if let MetaItemKind::List(ref items) = attr.value.node {
+            if items.is_empty() || attr.name() != "deprecated" {
                 return;
             }
             for item in items {
                 if_let_chain! {[
                     let NestedMetaItemKind::MetaItem(ref mi) = item.node,
-                    let MetaItemKind::NameValue(ref name, ref lit) = mi.node,
-                    name == &"since",
+                    let MetaItemKind::NameValue(ref lit) = mi.node,
+                    mi.name() == "since",
                 ], {
                     check_semver(cx, item.span, lit);
                 }}
@@ -107,8 +107,8 @@ impl LateLintPass for AttrPass {
             ItemExternCrate(_) |
             ItemUse(_) => {
                 for attr in &item.attrs {
-                    if let MetaItemKind::List(ref name, ref lint_list) = attr.node.value.node {
-                        match &**name {
+                    if let MetaItemKind::List(ref lint_list) = attr.value.node {
+                        match &*attr.name().as_str() {
                             "allow" | "warn" | "deny" | "forbid" => {
                                 // whitelist `unused_imports`
                                 for lint in lint_list {
@@ -210,8 +210,8 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
     }
 
     for attr in attrs {
-        if let MetaItemKind::List(ref inline, ref values) = attr.node.value.node {
-            if values.len() != 1 || inline != &"inline" {
+        if let MetaItemKind::List(ref values) = attr.value.node {
+            if values.len() != 1 || attr.name() != "inline" {
                 continue;
             }
             if is_word(&values[0], "always") {
@@ -227,7 +227,7 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
 
 fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
     if let LitKind::Str(ref is, _) = lit.node {
-        if Version::parse(&*is).is_ok() {
+        if Version::parse(&*is.as_str()).is_ok() {
             return;
         }
     }
@@ -239,10 +239,8 @@ fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
 
 fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
     if let NestedMetaItemKind::MetaItem(ref mi) = nmi.node {
-        if let MetaItemKind::Word(ref word) = mi.node {
-            return word == expected;
-        }
+        mi.is_word() && mi.name() == expected
+    } else {
+        false
     }
-
-    false
 }

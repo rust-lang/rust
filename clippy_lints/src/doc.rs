@@ -59,13 +59,13 @@ impl EarlyLintPass for Doc {
 /// `syntax::parse::lexer::comments::strip_doc_comment_decoration` because we need to keep track of
 /// the span but this function is inspired from the later.
 #[allow(cast_possible_truncation)]
-pub fn strip_doc_comment_decoration((comment, span): (&str, Span)) -> Vec<(&str, Span)> {
+pub fn strip_doc_comment_decoration((comment, span): (String, Span)) -> Vec<(String, Span)> {
     // one-line comments lose their prefix
     const ONELINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
     for prefix in ONELINERS {
         if comment.starts_with(*prefix) {
             return vec![(
-                &comment[prefix.len()..],
+                comment[prefix.len()..].to_owned(),
                 Span { lo: span.lo + BytePos(prefix.len() as u32), ..span }
             )];
         }
@@ -77,7 +77,7 @@ pub fn strip_doc_comment_decoration((comment, span): (&str, Span)) -> Vec<(&str,
             debug_assert_eq!(offset as u32 as usize, offset);
 
             (
-                line,
+                line.to_owned(),
                 Span {
                     lo: span.lo + BytePos(offset as u32),
                     ..span
@@ -93,9 +93,10 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
     let mut docs = vec![];
 
     for attr in attrs {
-        if attr.node.is_sugared_doc {
-            if let ast::MetaItemKind::NameValue(_, ref doc) = attr.node.value.node {
+        if attr.is_sugared_doc {
+            if let ast::MetaItemKind::NameValue(ref doc) = attr.value.node {
                 if let ast::LitKind::Str(ref doc, _) = doc.node {
+                    let doc = (*doc.as_str()).to_owned();
                     docs.extend_from_slice(&strip_doc_comment_decoration((doc, attr.span)));
                 }
             }
@@ -108,7 +109,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
 }
 
 #[allow(while_let_loop)] // #362
-fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span)]) -> Result<(), ()> {
+fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(String, Span)]) -> Result<(), ()> {
     // In markdown, `_` can be used to emphasize something, or, is a raw `_` depending on context.
     // There really is no markdown specification that would disambiguate this properly. This is
     // what GitHub and Rustdoc do:
@@ -136,7 +137,7 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span)]) 
         /// First byte of the current potential match
         current_word_begin: usize,
         /// List of lines and their associated span
-        docs: &'a [(&'a str, Span)],
+        docs: &'a [(String, Span)],
         /// Index of the current line we are parsing
         line: usize,
         /// Whether we are in a link
@@ -155,7 +156,8 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span)]) 
         }
 
         fn line(&self) -> (&'a str, Span) {
-            self.docs[self.line]
+            let (ref doc, span) = self.docs[self.line];
+            (doc, span)
         }
 
         fn peek(&self) -> Option<char> {
