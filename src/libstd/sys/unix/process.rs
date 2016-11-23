@@ -309,18 +309,9 @@ impl Command {
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
-        let (maybe_process, err) = unsafe { self.do_exec(&theirs) };
-        // We don't want FileDesc::drop to be called on any stdio. It would close their handles.
-        let ChildPipes { stdin: their_stdin, stdout: their_stdout, stderr: their_stderr } = theirs;
-        their_stdin.fd();
-        their_stdout.fd();
-        their_stderr.fd();
+        let (launchpad, process_handle) = unsafe { self.do_exec(theirs)? };
 
-        if let Some((launchpad, process_handle)) = maybe_process {
-            Ok((Process { launchpad: launchpad, handle: process_handle, status: None }, ours))
-        } else {
-            Err(err)
-        }
+        Ok((Process { launchpad: launchpad, handle: process_handle, status: None }, ours))
     }
 
     #[cfg(not(target_os = "fuchsia"))]
@@ -453,23 +444,16 @@ impl Command {
     }
 
     #[cfg(target_os = "fuchsia")]
-    unsafe fn do_exec(&mut self, stdio: &ChildPipes)
-                      -> (Option<(*mut launchpad_t, mx_handle_t)>, io::Error) {
+    unsafe fn do_exec(&mut self, stdio: ChildPipes)
+                      -> io::Result<(*mut launchpad_t, mx_handle_t)> {
         use sys::magenta::*;
-
-        macro_rules! t {
-            ($e:expr) => (match $e {
-                Ok(e) => e,
-                Err(e) => return (None, e),
-            })
-        }
 
         macro_rules! tlp {
             ($lp:expr, $e:expr) => (match $e {
                 Ok(e) => e,
                 Err(e) => {
                     launchpad_destroy($lp);
-                    return (None, e);
+                    return Err(e);
                 },
             })
         }
@@ -484,46 +468,23 @@ impl Command {
         let mut job_copy: mx_handle_t = MX_HANDLE_INVALID;
 
         // Duplicate the job handle
-        t!(mx_cvt(mx_handle_duplicate(job_handle, MX_RIGHT_SAME_RIGHTS,
-                                   &mut job_copy as *mut mx_handle_t)));
+        mx_cvt(mx_handle_duplicate(job_handle, MX_RIGHT_SAME_RIGHTS,
+                                   &mut job_copy as *mut mx_handle_t))?;
         // Create a launchpad
-        t!(mx_cvt(launchpad_create(job_copy, self.argv[0],
-                                &mut launchpad as *mut *mut launchpad_t)));
+        mx_cvt(launchpad_create(job_copy, self.argv[0],
+                                &mut launchpad as *mut *mut launchpad_t))?;
         // Set the process argv
         tlp!(launchpad, mx_cvt(launchpad_arguments(launchpad, self.argv.len() as i32 - 1,
-                                                self.argv.as_ptr())));
+                                                   self.argv.as_ptr())));
         // Setup the environment vars
-        let status = launchpad_environ(launchpad, envp);
-        if status != NO_ERROR {
-            launchpad_destroy(launchpad);
-            return (None, io::Error::last_os_error());
-        }
-        let status = launchpad_add_vdso_vmo(launchpad);
-        if status != NO_ERROR {
-            launchpad_destroy(launchpad);
-            return (None, io::Error::last_os_error());
-        }
-        let status = launchpad_clone_mxio_root(launchpad);
-        if status != NO_ERROR {
-            launchpad_destroy(launchpad);
-            return (None, io::Error::last_os_error());
-        }
+        tlp!(launchpad, mx_cvt(launchpad_environ(launchpad, envp)));
+        tlp!(launchpad, mx_cvt(launchpad_add_vdso_vmo(launchpad)));
+        tlp!(launchpad, mx_cvt(launchpad_clone_mxio_root(launchpad)));
         // Load the executable
-        let status = launchpad_elf_load(launchpad, launchpad_vmo_from_file(self.argv[0]));
-        if status != NO_ERROR {
-            launchpad_destroy(launchpad);
-            return (None, io::Error::last_os_error());
-        }
-        let status = launchpad_load_vdso(launchpad, MX_HANDLE_INVALID);
-        if status != NO_ERROR {
-            launchpad_destroy(launchpad);
-            return (None, io::Error::last_os_error());
-        }
-        let status = launchpad_clone_mxio_cwd(launchpad);
-        if status != NO_ERROR {
-            launchpad_destroy(launchpad);
-            return (None, io::Error::last_os_error());
-        }
+        tlp!(launchpad,
+             mx_cvt(launchpad_elf_load(launchpad, launchpad_vmo_from_file(self.argv[0]))));
+        tlp!(launchpad, mx_cvt(launchpad_load_vdso(launchpad, MX_HANDLE_INVALID)));
+        tlp!(launchpad, mx_cvt(launchpad_clone_mxio_cwd(launchpad)));
 
         // Clone stdin, stdout, and stderr
         if let Some(fd) = stdio.stdin.fd() {
@@ -542,17 +503,20 @@ impl Command {
             launchpad_clone_fd(launchpad, 2, 2);
         }
 
+        // We don't want FileDesc::drop to be called on any stdio. It would close their fds. The
+        // fds will be closed once the child process finishes.
+        let ChildPipes { stdin: child_stdin, stdout: child_stdout, stderr: child_stderr } = stdio;
+        if let ChildStdio::Owned(fd) = child_stdin { fd.into_raw(); }
+        if let ChildStdio::Owned(fd) = child_stdout { fd.into_raw(); }
+        if let ChildStdio::Owned(fd) = child_stderr { fd.into_raw(); }
+
         for callback in self.closures.iter_mut() {
-            t!(callback());
+            callback()?;
         }
 
-        let process_handle = launchpad_start(launchpad);
-        if process_handle < 0 {
-            launchpad_destroy(launchpad);
-            return (None, io::Error::last_os_error());
-        }
+        let process_handle = tlp!(launchpad, mx_cvt(launchpad_start(launchpad)));
 
-        (Some((launchpad, process_handle)), io::Error::last_os_error())
+        Ok((launchpad, process_handle))
     }
 
     fn setup_io(&self, default: Stdio, needs_stdin: bool)

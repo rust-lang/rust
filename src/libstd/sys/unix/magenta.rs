@@ -28,8 +28,6 @@ pub const MX_HANDLE_INVALID: mx_handle_t = 0;
 pub type mx_time_t = u64;
 pub const MX_TIME_INFINITE : mx_time_t = u64::MAX;
 
-pub const NO_ERROR              : mx_status_t = 0;
-
 pub type mx_signals_t = u32;
 
 pub const MX_OBJECT_SIGNAL_3         : mx_signals_t = 1 << 3;
