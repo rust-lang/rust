@@ -1,7 +1,7 @@
-- Feature Name: unaligned_access
+- Feature Name: `unaligned_access`
 - Start Date: 2016-08-22
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1725](https://github.com/rust-lang/rfcs/pull/1725)
+- Rust Issue: [rust-lang/rust#37955](https://github.com/rust-lang/rust/issues/37955)
 
 # Summary
 [summary]: #summary
