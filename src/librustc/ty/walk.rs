@@ -12,17 +12,22 @@
 //! WARNING: this does not keep track of the region depth.
 
 use ty::{self, Ty};
-use std::iter::Iterator;
-use std::vec::IntoIter;
+use rustc_data_structures::small_vec::SmallVec;
+use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
+
+// The TypeWalker's stack is hot enough that it's worth going to some effort to
+// avoid heap allocations.
+pub type TypeWalkerArray<'tcx> = [Ty<'tcx>; 8];
+pub type TypeWalkerStack<'tcx> = SmallVec<TypeWalkerArray<'tcx>>;
 
 pub struct TypeWalker<'tcx> {
-    stack: Vec<Ty<'tcx>>,
+    stack: TypeWalkerStack<'tcx>,
     last_subtree: usize,
 }
 
 impl<'tcx> TypeWalker<'tcx> {
     pub fn new(ty: Ty<'tcx>) -> TypeWalker<'tcx> {
-        TypeWalker { stack: vec![ty], last_subtree: 1, }
+        TypeWalker { stack: SmallVec::one(ty), last_subtree: 1, }
     }
 
     /// Skips the subtree of types corresponding to the last type
@@ -61,8 +66,8 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
     }
 }
 
-pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> IntoIter<Ty<'tcx>> {
-    let mut stack = vec![];
+pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> AccIntoIter<TypeWalkerArray<'tcx>> {
+    let mut stack = SmallVec::new();
     push_subtypes(&mut stack, ty);
     stack.into_iter()
 }
@@ -73,7 +78,7 @@ pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> IntoIter<Ty<'tcx>> {
 // known to be significant to any code, but it seems like the
 // natural order one would expect (basically, the order of the
 // types as they are written).
-fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
+fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
     match parent_ty.sty {
         ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
         ty::TyStr | ty::TyInfer(_) | ty::TyParam(_) | ty::TyNever | ty::TyError => {
@@ -112,7 +117,7 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
     }
 }
 
-fn push_sig_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, sig: &ty::PolyFnSig<'tcx>) {
+fn push_sig_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, sig: &ty::PolyFnSig<'tcx>) {
     stack.push(sig.0.output);
     stack.extend(sig.0.inputs.iter().cloned().rev());
 }
