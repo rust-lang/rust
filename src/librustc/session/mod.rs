@@ -23,7 +23,7 @@ use mir::transform as mir_pass;
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder};
-use errors::emitter::{Emitter, EmitterWriter};
+use errors::emitter::{Emitter, EmitterConfig, EmitterWriter};
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::parse;
@@ -529,13 +529,14 @@ pub fn build_session_with_codemap(sopts: config::Options,
     let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
 
     let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
-        (config::ErrorOutputType::HumanReadable(color_config), None) => {
-            Box::new(EmitterWriter::stderr(color_config,
+        (config::ErrorOutputType::HumanReadable(config), None) => {
+            Box::new(EmitterWriter::stderr(config,
                                            Some(codemap.clone())))
         }
         (config::ErrorOutputType::HumanReadable(_), Some(dst)) => {
             Box::new(EmitterWriter::new(dst,
-                                        Some(codemap.clone())))
+                                        Some(codemap.clone()),
+                                        EmitterConfig::default()))
         }
         (config::ErrorOutputType::Json, None) => {
             Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))
@@ -708,8 +709,8 @@ unsafe fn configure_llvm(sess: &Session) {
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     let emitter: Box<Emitter> = match output {
-        config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config,
+        config::ErrorOutputType::HumanReadable(config) => {
+            Box::new(EmitterWriter::stderr(config,
                                            None))
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
@@ -721,8 +722,8 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<Emitter> = match output {
-        config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config,
+        config::ErrorOutputType::HumanReadable(config) => {
+            Box::new(EmitterWriter::stderr(config,
                                            None))
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),

@@ -41,6 +41,105 @@ impl Emitter for EmitterWriter {
 pub const MAX_HIGHLIGHT_LINES: usize = 6;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LineStyle {
+    pub start: Option<char>,
+    /// The middle char must always be set to Some(char)
+    pub middle: Option<char>,
+    pub end: Option<char>,
+    pub single: Option<char>,
+}
+
+impl LineStyle {
+    pub fn homogeneous(c: char) -> LineStyle {
+        LineStyle {
+            start: Some(c),
+            middle: Some(c),
+            end: Some(c),
+            single: Some(c),
+        }
+    }
+
+    pub fn homogeneous_with_start(c: char, start: Option<char>) -> LineStyle {
+        LineStyle {
+            start: start,
+            middle: Some(c),
+            end: Some(c),
+            single: Some(c),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Drawing {
+    pub primary_underline: LineStyle ,
+    pub secondary_underline: LineStyle,
+    pub vertical_line: LineStyle,
+}
+
+impl Drawing {
+    pub fn ascii() -> Drawing {
+        Drawing {
+            primary_underline: LineStyle::homogeneous('^'),
+            secondary_underline: LineStyle::homogeneous('-'),
+            vertical_line: LineStyle::homogeneous_with_start('|', None),
+        }
+    }
+
+    pub fn unicode() -> Drawing {
+        Drawing {
+            primary_underline: LineStyle {
+                start:  Some('\u{2594}'), // UPPER ONE EIGHTH BLOCK ▔
+                middle: Some('\u{2594}'), // UPPER ONE EIGHTH BLOCK ▔
+                end:    None,
+                single: Some('⌅'), // '\u{2580}', // UPPER HALF BLOCK ▀
+            },
+            secondary_underline: LineStyle::homogeneous('‾'),
+            vertical_line: LineStyle::homogeneous_with_start('⎸', None),
+        }
+    }
+
+    pub fn unicode_2() -> Drawing {
+        Drawing {
+            primary_underline: LineStyle::homogeneous('\u{25B2}'), // BLACK UP-POINTING TRIANGLE
+            secondary_underline: LineStyle {
+                start:  Some('\u{2517}'), // BOX DRAWINGS HEAVY UP AND RIGHT ┗
+                middle: Some('\u{2501}'), // BOX DRAWINGS HEAVY HORIZONTAL ━
+                end:    Some('\u{251B}'), // BOX DRAWINGS HEAVY UP AND LEFT ┛
+                single: Some('⎵'), // BOX DRAWINGS HEAVY HORIZONTAL ━
+            },
+            vertical_line: LineStyle {
+                start:  Some('\u{2523}'), // BOX DRAWINGS HEAVY VERTICAL AND RIGHT ┣
+                middle: Some('\u{2503}'), // BOX DRAWINGS HEAVY VERTICAL ┃
+                end:    Some('\u{2503}'), // BOX DRAWINGS HEAVY VERTICAL ┃
+                single: None,
+            },
+        }
+    }
+}
+
+impl Default for Drawing {
+    fn default() -> Drawing {
+        //Drawing::ascii()
+        Drawing::unicode()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EmitterConfig {
+    pub color: ColorConfig,
+    pub drawing: Drawing,
+}
+
+impl Default for EmitterConfig {
+    fn default() -> EmitterConfig {
+        EmitterConfig {
+            color: ColorConfig::Auto,
+            drawing: Drawing::default(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColorConfig {
     Auto,
     Always,
@@ -60,6 +159,7 @@ impl ColorConfig {
 pub struct EmitterWriter {
     dst: Destination,
     cm: Option<Rc<CodeMapper>>,
+    cfg: EmitterConfig,
 }
 
 struct FileWithAnnotatedLines {
@@ -83,25 +183,32 @@ macro_rules! println_maybe_styled {
 }
 
 impl EmitterWriter {
-    pub fn stderr(color_config: ColorConfig, code_map: Option<Rc<CodeMapper>>) -> EmitterWriter {
-        if color_config.use_color() {
+    pub fn stderr(config: EmitterConfig, code_map: Option<Rc<CodeMapper>>) -> EmitterWriter {
+        if config.color.use_color() {
             let dst = Destination::from_stderr();
             EmitterWriter {
                 dst: dst,
                 cm: code_map,
+                cfg: config,
             }
         } else {
             EmitterWriter {
                 dst: Raw(Box::new(io::stderr())),
                 cm: code_map,
+                cfg: config,
             }
         }
     }
 
-    pub fn new(dst: Box<Write + Send>, code_map: Option<Rc<CodeMapper>>) -> EmitterWriter {
+    pub fn new(dst: Box<Write + Send>,
+               code_map: Option<Rc<CodeMapper>>,
+               config: EmitterConfig)
+               -> EmitterWriter
+    {
         EmitterWriter {
             dst: Raw(dst),
             cm: code_map,
+            cfg: config,
         }
     }
 
@@ -230,23 +337,28 @@ impl EmitterWriter {
 
         // Next, create the highlight line.
         for annotation in &annotations {
-            for p in annotation.start_col..annotation.end_col {
-                if annotation.is_primary {
-                    buffer.putc(line_offset + 1,
-                                width_offset + p,
-                                '^',
-                                Style::UnderlinePrimary);
-                    if !annotation.is_minimized {
-                        buffer.set_style(line_offset, width_offset + p, Style::UnderlinePrimary);
-                    }
+            let l = annotation.end_col - annotation.start_col;
+            for (i, p) in (annotation.start_col..annotation.end_col).enumerate() {
+                let (underline, color) = if annotation.is_primary {
+                    (self.cfg.drawing.primary_underline, Style::UnderlinePrimary)
                 } else {
-                    buffer.putc(line_offset + 1,
-                                width_offset + p,
-                                '-',
-                                Style::UnderlineSecondary);
-                    if !annotation.is_minimized {
-                        buffer.set_style(line_offset, width_offset + p, Style::UnderlineSecondary);
-                    }
+                    (self.cfg.drawing.secondary_underline, Style::UnderlineSecondary)
+                };
+                let middle = underline.middle.unwrap();
+                buffer.putc(line_offset + 1,
+                            width_offset + p,
+                            if l == 1 {
+                                underline.single.unwrap_or(middle)
+                            } else if i == 0 {
+                                underline.start.unwrap_or(middle)
+                            } else if i == l - 1 {
+                                underline.end.unwrap_or(middle)
+                            } else {
+                                middle
+                            },
+                            color);
+                if !annotation.is_minimized {
+                    buffer.set_style(line_offset, width_offset + p, color);
                 }
             }
         }
@@ -329,18 +441,22 @@ impl EmitterWriter {
 
             // For each blank line, draw a `|` at our column. The
             // text ought to be long enough for this.
+            let color =  if annotation.is_primary {
+                Style::UnderlinePrimary
+            } else {
+                Style::UnderlineSecondary
+            };
+            if let Some(line) = self.cfg.drawing.vertical_line.start {
+                buffer.putc(line_offset + 1,
+                            width_offset + annotation.start_col,
+                            line,
+                            color);
+            }
             for index in 2..blank_lines {
-                if annotation.is_primary {
-                    buffer.putc(line_offset + index,
-                                width_offset + annotation.start_col,
-                                '|',
-                                Style::UnderlinePrimary);
-                } else {
-                    buffer.putc(line_offset + index,
-                                width_offset + annotation.start_col,
-                                '|',
-                                Style::UnderlineSecondary);
-                }
+                buffer.putc(line_offset + index,
+                            width_offset + annotation.start_col,
+                            self.cfg.drawing.vertical_line.middle.unwrap(),
+                            color);
                 draw_col_separator(buffer, line_offset + index, width_offset - 2);
             }
 

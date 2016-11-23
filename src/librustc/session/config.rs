@@ -29,7 +29,7 @@ use syntax::parse;
 use syntax::symbol::Symbol;
 use syntax::feature_gate::UnstableFeatures;
 
-use errors::{ColorConfig, FatalError, Handler};
+use errors::{ColorConfig, Drawing, EmitterConfig, FatalError, Handler};
 
 use getopts;
 use std::collections::{BTreeMap, BTreeSet};
@@ -80,13 +80,13 @@ pub enum OutputType {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorOutputType {
-    HumanReadable(ColorConfig),
+    HumanReadable(EmitterConfig),
     Json,
 }
 
 impl Default for ErrorOutputType {
     fn default() -> ErrorOutputType {
-        ErrorOutputType::HumanReadable(ColorConfig::Auto)
+        ErrorOutputType::HumanReadable(EmitterConfig::default())
     }
 }
 
@@ -1192,11 +1192,18 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
         opt::opt_s("", "error-format",
                       "How errors and other messages are produced",
                       "human|json"),
-        opt::opt_s("", "color", "Configure coloring of output:
-                                 auto   = colorize, if output goes to a tty (default);
-                                 always = always colorize output;
-                                 never  = never colorize output", "auto|always|never"),
-
+        opt::opt_s("", "color",
+                   "Configure coloring of output:
+                    auto   = colorize, if output goes to a tty (default);
+                    always = always colorize output;
+                    never  = never colorize output",
+                   "auto|always|never"),
+        opt::opt_s("", "unicode",
+                   "Configure characters used on output:
+                    ascii  = ascii safe characters (default)
+                    style1 = unicode
+                    style2 = unicode box drawing characters",
+                   "ascii|style1|style2"),
         opt::flagopt_ubnr("", "pretty",
                           "Pretty-print the input instead of compiling;
                            valid types are: `normal` (un-annotated source),
@@ -1260,26 +1267,43 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         }
     };
 
+    let drawing = match matches.opt_str("unicode").as_ref().map(|s| &s[..]) {
+        Some("style1") => Drawing::unicode(),
+        Some("style2") => Drawing::unicode_2(),
+        Some("ascii")  => Drawing::ascii(),
+        None           => Drawing::ascii(),
+        Some(arg) => {
+            early_error(ErrorOutputType::default(), &format!("argument for --unicode must be style1, \
+                                                              style2 or ascii (instead was `{}`)",
+                                                            arg))
+        }
+    };
+
+    let config = EmitterConfig {
+        color: color,
+        drawing: drawing,
+    };
+
     // We need the opts_present check because the driver will send us Matches
     // with only stable options if no unstable options are used. Since error-format
     // is unstable, it will not be present. We have to use opts_present not
     // opt_present because the latter will panic.
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
         match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
-            Some("human")   => ErrorOutputType::HumanReadable(color),
+            Some("human")   => ErrorOutputType::HumanReadable(config),
             Some("json") => ErrorOutputType::Json,
 
-            None => ErrorOutputType::HumanReadable(color),
+            None => ErrorOutputType::HumanReadable(config),
 
             Some(arg) => {
-                early_error(ErrorOutputType::HumanReadable(color),
+                early_error(ErrorOutputType::HumanReadable(config),
                             &format!("argument for --error-format must be human or json (instead \
                                       was `{}`)",
                                      arg))
             }
         }
     } else {
-        ErrorOutputType::HumanReadable(color)
+        ErrorOutputType::HumanReadable(config)
     };
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
