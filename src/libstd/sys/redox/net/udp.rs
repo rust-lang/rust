@@ -90,7 +90,7 @@ impl UdpSocket {
     }
 
     pub fn nonblocking(&self) -> Result<bool> {
-        Err(Error::new(ErrorKind::Other, "UdpSocket::nonblocking not implemented"))
+        self.0.fd().nonblocking()
     }
 
     pub fn only_v6(&self) -> Result<bool> {
@@ -125,8 +125,8 @@ impl UdpSocket {
         Err(Error::new(ErrorKind::Other, "UdpSocket::set_multicast_ttl_v4 not implemented"))
     }
 
-    pub fn set_nonblocking(&self, _nonblocking: bool) -> Result<()> {
-        Err(Error::new(ErrorKind::Other, "UdpSocket::set_nonblocking not implemented"))
+    pub fn set_nonblocking(&self, nonblocking: bool) -> Result<()> {
+        self.0.fd().set_nonblocking(nonblocking)
     }
 
     pub fn set_only_v6(&self, _only_v6: bool) -> Result<()> {

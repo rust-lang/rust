@@ -58,7 +58,7 @@ impl TcpStream {
     }
 
     pub fn nonblocking(&self) -> Result<bool> {
-        Err(Error::new(ErrorKind::Other, "TcpStream::nonblocking not implemented"))
+        self.0.fd().nonblocking()
     }
 
     pub fn only_v6(&self) -> Result<bool> {
@@ -81,8 +81,8 @@ impl TcpStream {
         Err(Error::new(ErrorKind::Other, "TcpStream::set_nodelay not implemented"))
     }
 
-    pub fn set_nonblocking(&self, _nonblocking: bool) -> Result<()> {
-        Err(Error::new(ErrorKind::Other, "TcpStream::set_nonblocking not implemented"))
+    pub fn set_nonblocking(&self, nonblocking: bool) -> Result<()> {
+        self.0.fd().set_nonblocking(nonblocking)
     }
 
     pub fn set_only_v6(&self, _only_v6: bool) -> Result<()> {
