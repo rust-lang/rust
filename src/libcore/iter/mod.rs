@@ -225,12 +225,12 @@
 //! often called 'iterator adapters', as they're a form of the 'adapter
 //! pattern'.
 //!
-//! Common iterator adapters include [`map()`], [`take()`], and [`collect()`].
+//! Common iterator adapters include [`map()`], [`take()`], and [`filter()`].
 //! For more, see their documentation.
 //!
 //! [`map()`]: trait.Iterator.html#method.map
 //! [`take()`]: trait.Iterator.html#method.take
-//! [`collect()`]: trait.Iterator.html#method.collect
+//! [`filter()`]: trait.Iterator.html#method.filter
 //!
 //! # Laziness
 //!
@@ -268,7 +268,7 @@
 //! [`map()`]: trait.Iterator.html#method.map
 //!
 //! The two most common ways to evaluate an iterator are to use a `for` loop
-//! like this, or using the [`collect()`] adapter to produce a new collection.
+//! like this, or using the [`collect()`] method to produce a new collection.
 //!
 //! [`collect()`]: trait.Iterator.html#method.collect
 //!
