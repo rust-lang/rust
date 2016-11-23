@@ -14,11 +14,8 @@
 fn main() {
     1
     //~^ ERROR mismatched types
-    //~| ERROR mismatched types
-    //~| NOTE: possibly missing `;` here?
+    //~| NOTE: consider adding a semicolon here
     //~| NOTE: expected (), found integral variable
     //~| NOTE: expected type `()`
-    //~| NOTE: expected type `()`
-    //~| NOTE:    found type `{integer}`
     //~| NOTE:    found type `{integer}`
 }

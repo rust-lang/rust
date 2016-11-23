@@ -124,6 +124,7 @@ use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
+use rustc::hir::map::Node;
 use rustc_back::slice;
 use rustc_const_eval::eval_length;
 
@@ -3666,7 +3667,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               self.check_expr_closure(expr, capture, &decl, &body, expected)
           }
           hir::ExprBlock(ref b) => {
-            self.check_block_with_expected(&b, expected)
+              self.check_block_with_expected(&b, expected)
           }
           hir::ExprCall(ref callee, ref args) => {
               self.check_call(expr, &callee, &args[..], expected)
@@ -4085,7 +4086,57 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else if let ExpectHasType(ety) = expected {
             if let Some(ref e) = blk.expr {
                 // Coerce the tail expression to the right type.
-                self.demand_coerce(e, ty, ety);
+                if let Some(mut err) = self.demand_coerce_diag(e, ty, ety) {
+                    // Be helpful when the user wrote `{... expr}` and
+                    // adding a `;` is enough to fix the error.
+                    if ety.is_nil() {
+                        let span = Span {
+                            lo: e.span.hi,
+                            hi: e.span.hi + BytePos(1),
+                            expn_id: e.span.expn_id
+                        };
+                        err.span_label(span, &"consider adding a semicolon here");
+                    }
+
+                    // Is the block part of a fn?
+                    let parent = self.tcx.map.get(self.tcx.map.get_parent(blk.id));
+                    let fn_decl = if let Node::NodeItem(&hir::Item {
+                        name, node: hir::ItemFn(ref decl, ..), ..
+                    }) = parent {
+                        // `fn main` must return `()`
+                        if name.as_str() != "main" {
+                            decl.clone().and_then(|decl| {
+                                Some(decl)
+                            })
+                        } else {
+                            None
+                        }
+                    } else if let Node::NodeTraitItem(&hir::TraitItem {
+                        node: hir::TraitItem_::MethodTraitItem(hir::MethodSig {
+                            ref decl, ..
+                        }, ..), ..
+                    }) = parent {
+                        decl.clone().and_then(|decl| {
+                            Some(decl)
+                        })
+                    } else {
+                        // Do not recomend changing return type of `ImplItemKind::Method`
+                        None
+                    };
+
+                    // Only recommend changing the return type for methods that
+                    // haven't set a return type at all.
+                    if let Some(hir::FnDecl {
+                        output: hir::FunctionRetTy::DefaultReturn(span),
+                        ..
+                    }) = fn_decl {
+                        err.span_label(span,
+                                       &format!("possibly return type `{}` \
+                                                missing here",
+                                                ty));
+                    }
+                    err.emit();
+                }
             } else {
                 // We're not diverging and there's an expected type, which,
                 // in case it's not `()`, could result in an error higher-up.
@@ -4118,9 +4169,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 hi: original_span.hi,
                                 expn_id: original_span.expn_id
                             };
-                            err.span_help(span_semi, "consider removing this semicolon:");
+                            err.span_label(span_semi, &"consider removing this semicolon");
                         }
-
                         err.emit();
                     }
                 }

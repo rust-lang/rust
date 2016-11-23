@@ -9,17 +9,14 @@
 // except according to those terms.
 
 trait A {
-    fn a(&self) {
+    fn a(&self) { //~ possibly return type
         || self.b()
         //~^ ERROR no method named `b` found for type `&Self` in the current scope
         //~| ERROR mismatched types
-        //~| ERROR mismatched types
-        //~| NOTE: possibly missing `;` here?
-        //~| NOTE: expected (), found closure
-        //~| NOTE: expected type `()`
-        //~| NOTE: expected type `()`
-        //~| NOTE:    found type
-        //~| NOTE:    found type
+        //~| NOTE consider adding a semicolon here
+        //~| NOTE expected (), found closure
+        //~| NOTE expected type `()`
+        //~| NOTE    found type
     }
 }
 fn main() {}

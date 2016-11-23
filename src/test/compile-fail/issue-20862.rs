@@ -9,20 +9,17 @@
 // except according to those terms.
 
 fn foo(x: i32) {
-    //~^ NOTE: possibly return type
+    //~^ NOTE possibly return type
     |y| x + y
-    //~^ ERROR: mismatched types
-    //~| ERROR: mismatched types
-    //~| NOTE: possibly missing `;` here?
-    //~| NOTE: expected (), found closure
-    //~| NOTE: expected type `()`
-    //~| NOTE: expected type `()`
-    //~| NOTE:    found type
-    //~| NOTE:    found type
+    //~^ ERROR mismatched types
+    //~| NOTE consider adding a semicolon here
+    //~| NOTE expected (), found closure
+    //~| NOTE expected type `()`
+    //~| NOTE    found type
 }
 
 
 fn main() {
     let x = foo(5)(2);
-    //~^ ERROR: expected function, found `()`
+    //~^ ERROR expected function, found `()`
 }

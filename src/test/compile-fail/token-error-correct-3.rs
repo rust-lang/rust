@@ -24,12 +24,9 @@ pub mod raw {
                      //~^ ERROR: expected one of
             fs::create_dir_all(path.as_ref()).map(|()| true)
             //~^ ERROR mismatched types
-            //~| ERROR mismatched types
-            //~| NOTE: possibly missing `;` here?
+            //~| NOTE: consider adding a semicolon here
             //~| NOTE: expected (), found enum `std::result::Result`
             //~| NOTE: expected type `()`
-            //~| NOTE: expected type `()`
-            //~| NOTE:    found type `std::result::Result<bool, std::io::Error>`
             //~| NOTE:    found type `std::result::Result<bool, std::io::Error>`
         } else { //~ ERROR: incorrect close delimiter: `}`
             //~^ ERROR: expected one of

@@ -41,12 +41,9 @@ fn monomorphic() -> () {
 
     generic::<()>()
     //~^ ERROR mismatched types
-    //~| ERROR mismatched types
-    //~| NOTE: possibly missing `;` here?
+    //~| NOTE: consider adding a semicolon here
     //~| NOTE: expected (), found associated type
     //~| NOTE: expected type `()`
-    //~| NOTE: expected type `()`
-    //~| NOTE:    found type
     //~| NOTE:    found type
 }
 

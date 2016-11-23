@@ -10,11 +10,10 @@
 
 
 use check::FnCtxt;
-use hir::map::Node;
 use rustc::infer::{InferOk, TypeTrace};
 use rustc::traits::ObligationCause;
 use rustc::ty::Ty;
-use rustc::ty::error::TypeError;
+use errors;
 
 use syntax_pos::Span;
 use rustc::hir;
@@ -53,53 +52,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Checks that the type of `expr` can be coerced to `expected`.
-    pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
+    pub fn demand_coerce_diag(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>)
+        -> Option<errors::DiagnosticBuilder<'tcx>>
+    {
         let expected = self.resolve_type_vars_with_obligations(expected);
         if let Err(e) = self.try_coerce(expr, checked_ty, expected) {
             let cause = self.misc(expr.span);
             let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
             let trace = TypeTrace::types(&cause, true, expected, expr_ty);
-            let mut diag = self.report_and_explain_type_error(trace, &e);
 
-            if let Node::NodeBlock(block) = self.tcx.map
-                .get(self.tcx.map.get_parent_node(expr.id))
-            {
-                if let TypeError::Sorts(ref values) = e {
-                    if values.expected.is_nil() {
-                        // An implicit return to a method with return type `()`
-                        diag.span_label(expr.span,
-                                        &"possibly missing `;` here?");
-                        // Get the current node's method definition
-                        if let Node::NodeExpr(item) = self.tcx.map
-                            .get(self.tcx.map.get_parent_node(block.id))
-                        {
-                            // The fn has a default return type of ()
-                            if let Node::NodeItem(&hir::Item {
-                                name,
-                                node: hir::ItemFn(ref decl, ..),
-                                ..
-                            }) = self.tcx.map.get(self.tcx.map.get_parent_node(item.id)) {
-                                // `main` *must* have return type ()
-                                if name.as_str() != "main" {
-                                    decl.clone().and_then(|decl| {
-                                        if let hir::FnDecl {
-                                            output: hir::FunctionRetTy::DefaultReturn(span),
-                                            ..
-                                        } = decl {
-                                            diag.span_label(span,
-                                                            &format!("possibly return type `{}` \
-                                                                      missing in this fn?",
-                                                                     values.found));
-                                        }
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-            diag.emit();
+            Some(self.report_and_explain_type_error(trace, &e))
+        } else {
+            None
+        }
+    }
+
+    // Checks that the type of `expr` can be coerced to `expected`.
+    pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
+        if let Some(mut err) = self.demand_coerce_diag(expr, checked_ty, expected) {
+            err.emit();
         }
     }
 }
