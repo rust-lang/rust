@@ -852,6 +852,64 @@ macro_rules! iterator {
             fn last(mut self) -> Option<$elem> {
                 self.next_back()
             }
+
+            fn all<F>(&mut self, mut predicate: F) -> bool
+                where F: FnMut(Self::Item) -> bool,
+            {
+                self.search_while(true, move |elt| {
+                    if predicate(elt) {
+                        SearchWhile::Continue
+                    } else {
+                        SearchWhile::Done(false)
+                    }
+                })
+            }
+
+            fn any<F>(&mut self, mut predicate: F) -> bool
+                where F: FnMut(Self::Item) -> bool,
+            {
+                !self.all(move |elt| !predicate(elt))
+            }
+
+            fn find<F>(&mut self, mut predicate: F) -> Option<Self::Item>
+                where F: FnMut(&Self::Item) -> bool,
+            {
+                self.search_while(None, move |elt| {
+                    if predicate(&elt) {
+                        SearchWhile::Done(Some(elt))
+                    } else {
+                        SearchWhile::Continue
+                    }
+                })
+            }
+
+            fn position<F>(&mut self, mut predicate: F) -> Option<usize>
+                where F: FnMut(Self::Item) -> bool,
+            {
+                let mut index = 0;
+                self.search_while(None, move |elt| {
+                    if predicate(elt) {
+                        SearchWhile::Done(Some(index))
+                    } else {
+                        index += 1;
+                        SearchWhile::Continue
+                    }
+                })
+            }
+
+            fn rposition<F>(&mut self, mut predicate: F) -> Option<usize>
+                where F: FnMut(Self::Item) -> bool,
+            {
+                let mut index = self.len();
+                self.rsearch_while(None, move |elt| {
+                    index -= 1;
+                    if predicate(elt) {
+                        SearchWhile::Done(Some(index))
+                    } else {
+                        SearchWhile::Continue
+                    }
+                })
+            }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -870,6 +928,48 @@ macro_rules! iterator {
                         Some($mkref!(self.end.pre_dec()))
                     }
                 }
+            }
+        }
+
+        // search_while is a generalization of the internal iteration methods.
+        impl<'a, T> $name<'a, T> {
+            // search through the iterator's element using the closure `g`.
+            // if no element was found, return `default`.
+            fn search_while<Acc, G>(&mut self, default: Acc, mut g: G) -> Acc
+                where Self: Sized,
+                      G: FnMut($elem) -> SearchWhile<Acc>
+            {
+                // manual unrolling is needed when there are conditional exits from the loop
+                unsafe {
+                    while ptrdistance(self.ptr, self.end) >= 4 {
+                        search_while!(g($mkref!(self.ptr.post_inc())));
+                        search_while!(g($mkref!(self.ptr.post_inc())));
+                        search_while!(g($mkref!(self.ptr.post_inc())));
+                        search_while!(g($mkref!(self.ptr.post_inc())));
+                    }
+                    while self.ptr != self.end {
+                        search_while!(g($mkref!(self.ptr.post_inc())));
+                    }
+                }
+                default
+            }
+
+            fn rsearch_while<Acc, G>(&mut self, default: Acc, mut g: G) -> Acc
+                where Self: Sized,
+                      G: FnMut($elem) -> SearchWhile<Acc>
+            {
+                unsafe {
+                    while ptrdistance(self.ptr, self.end) >= 4 {
+                        search_while!(g($mkref!(self.end.pre_dec())));
+                        search_while!(g($mkref!(self.end.pre_dec())));
+                        search_while!(g($mkref!(self.end.pre_dec())));
+                        search_while!(g($mkref!(self.end.pre_dec())));
+                    }
+                    while self.ptr != self.end {
+                        search_while!(g($mkref!(self.end.pre_dec())));
+                    }
+                }
+                default
             }
         }
     }
@@ -901,6 +1001,24 @@ macro_rules! make_mut_slice {
             unsafe { from_raw_parts_mut(start, len) }
         }
     }}
+}
+
+// An enum used for controlling the execution of `.search_while()`.
+enum SearchWhile<T> {
+    // Continue searching
+    Continue,
+    // Fold is complete and will return this value
+    Done(T),
+}
+
+// helper macro for search while's control flow
+macro_rules! search_while {
+    ($e:expr) => {
+        match $e {
+            SearchWhile::Continue => { }
+            SearchWhile::Done(done) => return done,
+        }
+    }
 }
 
 /// Immutable slice iterator
