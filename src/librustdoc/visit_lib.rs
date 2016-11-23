@@ -16,7 +16,7 @@ use rustc::ty::Visibility;
 
 use std::cell::RefMut;
 
-use clean::{Attributes, Clean};
+use clean::{AttributesExt, NestedAttributesExt};
 
 // FIXME: this may not be exhaustive, but is sufficient for rustdocs current uses
 
@@ -49,10 +49,7 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
 
     // Updates node level and returns the updated level
     fn update(&mut self, did: DefId, level: Option<AccessLevel>) -> Option<AccessLevel> {
-        let attrs: Vec<_> = self.cx.tcx().get_attrs(did).iter()
-                                                        .map(|a| a.clean(self.cx))
-                                                        .collect();
-        let is_hidden = attrs.list("doc").has_word("hidden");
+        let is_hidden = self.cx.tcx().get_attrs(did).lists("doc").has_word("hidden");
 
         let old_level = self.access_levels.map.get(&did).cloned();
         // Accessibility levels can only grow

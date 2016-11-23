@@ -28,7 +28,7 @@ use rustc::util::nodemap::FxHashSet;
 use rustc::hir;
 
 use core;
-use clean::{self, Clean, Attributes};
+use clean::{self, AttributesExt, NestedAttributesExt};
 use doctree::*;
 
 // looks to me like the first two of these are actually
@@ -281,8 +281,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         fn inherits_doc_hidden(cx: &core::DocContext, mut node: ast::NodeId) -> bool {
             while let Some(id) = cx.map.get_enclosing_scope(node) {
                 node = id;
-                let attrs = cx.map.attrs(node).clean(cx);
-                if attrs.list("doc").has_word("hidden") {
+                if cx.map.attrs(node).lists("doc").has_word("hidden") {
                     return true;
                 }
                 if node == ast::CRATE_NODE_ID {
@@ -299,10 +298,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let def = tcx.expect_def(id);
         let def_did = def.def_id();
 
-        let use_attrs = tcx.map.attrs(id).clean(self.cx);
+        let use_attrs = tcx.map.attrs(id);
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-        let is_no_inline = use_attrs.list("doc").has_word("no_inline") ||
-                           use_attrs.list("doc").has_word("hidden");
+        let is_no_inline = use_attrs.lists("doc").has_word("no_inline") ||
+                           use_attrs.lists("doc").has_word("hidden");
 
         // For cross-crate impl inlining we need to know whether items are
         // reachable in documentation - a previously nonreachable item can be
@@ -310,7 +309,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // (this is done here because we need to know this upfront)
         if !def_did.is_local() && !is_no_inline {
             let attrs = clean::inline::load_attrs(self.cx, tcx, def_did);
-            let self_is_hidden = attrs.list("doc").has_word("hidden");
+            let self_is_hidden = attrs.lists("doc").has_word("hidden");
             match def {
                 Def::Trait(did) |
                 Def::Struct(did) |
