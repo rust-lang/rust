@@ -833,9 +833,7 @@ macro_rules! iterator {
 
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                let diff = (self.end as usize).wrapping_sub(self.ptr as usize);
-                let size = mem::size_of::<T>();
-                let exact = diff / (if size == 0 {1} else {size});
+                let exact = ptrdistance(self.ptr, self.end);
                 (exact, Some(exact))
             }
 
@@ -1126,6 +1124,15 @@ impl<'a, T> FusedIterator for IterMut<'a, T> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, T> TrustedLen for IterMut<'a, T> {}
 
+
+// Return the number of elements of `T` from `start` to `end`.
+// Return the arithmetic difference if `T` is zero size.
+#[inline(always)]
+fn ptrdistance<T>(start: *const T, end: *const T) -> usize {
+    let diff = (end as usize).wrapping_sub(start as usize);
+    let size = mem::size_of::<T>();
+    diff / (if size == 0 { 1 } else { size })
+}
 
 // Extension methods for raw pointers, used by the iterators
 trait PointerExt : Copy {
