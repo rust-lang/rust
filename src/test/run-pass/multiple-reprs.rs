@@ -28,7 +28,6 @@ enum E2 {
 }
 
 // From pr 37429
-pub const SIZEOF_QUERY:      usize = 21;
 
 #[repr(C,packed)]
 pub struct p0f_api_query {

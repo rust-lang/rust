@@ -459,11 +459,7 @@ impl Integer {
             }
         }
 
-        let at_least = if let Some(i) = min_from_extern {
-            i
-        } else {
-            min_default
-        };
+        let at_least = min_from_extern.unwrap_or(min_default);
 
         // If there are no negative values, we can use the unsigned fit.
         if min >= 0 {
@@ -571,13 +567,11 @@ impl<'a, 'gcx, 'tcx> Struct {
         if can_optimize {
             // This exhaustive match makes new reprs force the adder to modify this function.
             // Otherwise, things can silently break.
-            // Note the inversion, return true to stop matching.
+            // Note the inversion, return true to stop optimizing.
             can_optimize = !reprs.iter().any(|r| {
                 match *r {
-                    attr::ReprAny => false,
-                    attr::ReprInt(_) => false,
-                    attr::ReprExtern => true,
-                    attr::ReprPacked => true,
+                    attr::ReprAny | attr::ReprInt(_) => false,
+                    attr::ReprExtern | attr::ReprPacked => true,
                     attr::ReprSimd => bug!("Simd  vectors should be represented as layout::Vector")
                 }
             });
@@ -588,7 +582,7 @@ impl<'a, 'gcx, 'tcx> Struct {
             StructKind::MaybeUnsizedUnivariant => (can_optimize, false),
             StructKind::EnumVariant => {
                 assert!(fields.len() >= 1, "Enum variants must have discriminants.");
-                (can_optimize || fields[0].size(dl).bytes() == 1, true)
+                (can_optimize && fields[0].size(dl).bytes() == 1, true)
             }
         };
 
@@ -1189,7 +1183,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                 }
 
-                if !def.is_enum() || def.variants.len() == 1 && hints.len() == 0 {
+                if !def.is_enum() || def.variants.len() == 1 && hints.is_empty() {
                     // Struct, or union, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
 
@@ -1239,7 +1233,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     v.fields.iter().map(|field| field.ty(tcx, substs)).collect::<Vec<_>>()
                 }).collect::<Vec<_>>();
 
-                if variants.len() == 2 && hints.len() == 0 {
+                if variants.len() == 2 && hints.is_empty() {
                     // Nullable pointer optimization
                     for discr in 0..2 {
                         let other_fields = variants[1 - discr].iter().map(|ty| {
