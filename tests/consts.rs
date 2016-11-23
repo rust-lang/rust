@@ -11,7 +11,7 @@ use rustc_const_math::ConstInt;
 use rustc::hir::*;
 use syntax::ast::{LitIntType, LitKind, NodeId, StrStyle};
 use syntax::codemap::{Spanned, COMMAND_LINE_SP};
-use syntax::parse::token::InternedString;
+use syntax::symbol::Symbol;
 use syntax::ptr::P;
 use syntax::util::ThinVec;
 
@@ -55,7 +55,7 @@ fn test_lit() {
     check(FALSE, &lit(LitKind::Bool(false)));
     check(ZERO, &lit(LitKind::Int(0, LitIntType::Unsuffixed)));
     check(Constant::Str("cool!".into(), StrStyle::Cooked),
-          &lit(LitKind::Str(InternedString::new("cool!"), StrStyle::Cooked)));
+          &lit(LitKind::Str(Symbol::intern("cool!"), StrStyle::Cooked)));
 }
 
 #[test]

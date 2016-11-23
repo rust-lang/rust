@@ -143,10 +143,10 @@ impl LateLintPass for StringLitAsBytes {
         use utils::{snippet, in_macro};
 
         if let ExprMethodCall(ref name, _, ref args) = e.node {
-            if name.node.as_str() == "as_bytes" {
+            if &*name.node.as_str() == "as_bytes" {
                 if let ExprLit(ref lit) = args[0].node {
                     if let LitKind::Str(ref lit_content, _) = lit.node {
-                        if lit_content.chars().all(|c| c.is_ascii()) && !in_macro(cx, args[0].span) {
+                        if lit_content.as_str().chars().all(|c| c.is_ascii()) && !in_macro(cx, args[0].span) {
                             span_lint_and_then(cx,
                                                STRING_LIT_AS_BYTES,
                                                e.span,

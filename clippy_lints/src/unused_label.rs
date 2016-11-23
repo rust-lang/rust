@@ -4,7 +4,7 @@ use rustc::hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
 use std::collections::HashMap;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::parse::token::InternedString;
+use syntax::symbol::InternedString;
 use utils::{in_macro, span_lint};
 
 /// **What it does:** Checks for unused labels.

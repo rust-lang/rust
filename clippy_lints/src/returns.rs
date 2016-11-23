@@ -146,8 +146,8 @@ impl EarlyLintPass for ReturnPass {
 }
 
 fn attr_is_cfg(attr: &ast::Attribute) -> bool {
-    if let ast::MetaItemKind::List(ref key, _) = attr.node.value.node {
-        *key == "cfg"
+    if let ast::MetaItemKind::List(_) = attr.value.node {
+        attr.name() == "cfg"
     } else {
         false
     }
