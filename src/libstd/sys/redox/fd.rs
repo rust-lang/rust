@@ -48,6 +48,16 @@ impl FileDesc {
         cvt(libc::write(self.fd, buf))
     }
 
+    pub fn duplicate(&self) -> io::Result<FileDesc> {
+        let new_fd = cvt(libc::dup(self.fd, &[]))?;
+        Ok(FileDesc::new(new_fd))
+    }
+
+    pub fn nonblocking(&self) -> io::Result<bool> {
+        let flags = cvt(libc::fcntl(self.fd, libc::F_GETFL, 0))?;
+        Ok(flags & libc::O_NONBLOCK == libc::O_NONBLOCK)
+    }
+
     pub fn set_cloexec(&self) -> io::Result<()> {
         let mut flags = cvt(libc::fcntl(self.fd, libc::F_GETFL, 0))?;
         flags |= libc::O_CLOEXEC;
@@ -62,11 +72,6 @@ impl FileDesc {
             flags &= !libc::O_NONBLOCK;
         }
         cvt(libc::fcntl(self.fd, libc::F_SETFL, flags)).and(Ok(()))
-    }
-
-    pub fn duplicate(&self) -> io::Result<FileDesc> {
-        let new_fd = cvt(libc::dup(self.fd, &[]))?;
-        Ok(FileDesc::new(new_fd))
     }
 }
 
