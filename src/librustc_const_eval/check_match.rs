@@ -204,7 +204,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Check for empty enum, because is_useful only works on inhabited types.
             let pat_ty = self.tcx.tables().node_id_to_type(scrut.id);
             if inlined_arms.is_empty() {
-                if !pat_ty.is_uninhabited(self.tcx) {
+                if !pat_ty.is_uninhabited(Some(scrut.id), self.tcx) {
                     // We know the type is inhabited, so this must be wrong
                     let mut err = create_e0004(self.tcx.sess, span,
                                                format!("non-exhaustive patterns: type {} \

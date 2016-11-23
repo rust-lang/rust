@@ -30,7 +30,7 @@ use ty::subst::{Subst, Substs};
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
 use util::nodemap::NodeSet;
-use util::nodemap::FxHashMap;
+use util::nodemap::{FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
@@ -1390,6 +1390,22 @@ impl<'tcx> serialize::UseSpecializedEncodable for AdtDef<'tcx> {
 
 impl<'tcx> serialize::UseSpecializedDecodable for AdtDef<'tcx> {}
 
+impl<'a, 'gcx, 'tcx> AdtDefData<'tcx, 'static> {
+    #[inline]
+    pub fn is_uninhabited_recurse(&'tcx self,
+                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
+                                  block: Option<NodeId>,
+                                  cx: TyCtxt<'a, 'gcx, 'tcx>,
+                                  substs: &'tcx Substs<'tcx>) -> bool {
+        if !visited.insert((self.did, substs)) {
+            return false;
+        };
+        self.variants.iter().all(|v| {
+            v.is_uninhabited_recurse(visited, block, cx, substs, self.is_union())
+        })
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum AdtKind { Struct, Union, Enum }
 
@@ -1530,11 +1546,6 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
                     -> slice::Iter<'s, FieldDefData<'gcx, 'container>>
             > {
         self.variants.iter().flat_map(VariantDefData::fields_iter)
-    }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.variants.is_empty()
     }
 
     #[inline]
@@ -1796,6 +1807,22 @@ impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
     }
 }
 
+impl<'a, 'gcx, 'tcx> VariantDefData<'tcx, 'static> {
+    #[inline]
+    pub fn is_uninhabited_recurse(&'tcx self,
+                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
+                                  block: Option<NodeId>,
+                                  cx: TyCtxt<'a, 'gcx, 'tcx>,
+                                  substs: &'tcx Substs<'tcx>,
+                                  is_union: bool) -> bool {
+        if is_union {
+            self.fields.iter().all(|f| f.is_uninhabited_recurse(visited, block, cx, substs))
+        } else {
+            self.fields.iter().any(|f| f.is_uninhabited_recurse(visited, block, cx, substs))
+        }
+    }
+}
+
 impl<'a, 'gcx, 'tcx, 'container> FieldDefData<'tcx, 'container> {
     pub fn new(did: DefId,
                name: Name,
@@ -1818,6 +1845,18 @@ impl<'a, 'gcx, 'tcx, 'container> FieldDefData<'tcx, 'container> {
 
     pub fn fulfill_ty(&self, ty: Ty<'container>) {
         self.ty.fulfill(DepNode::FieldTy(self.did), ty);
+    }
+}
+
+impl<'a, 'gcx, 'tcx> FieldDefData<'tcx, 'static> {
+    #[inline]
+    pub fn is_uninhabited_recurse(&'tcx self,
+                                  visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
+                                  block: Option<NodeId>,
+                                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                  substs: &'tcx Substs<'tcx>) -> bool {
+        block.map_or(true, |b| self.vis.is_accessible_from(b, &tcx.map)) &&
+        self.ty(tcx, substs).is_uninhabited_recurse(visited, block, tcx)
     }
 }
 
