@@ -585,10 +585,10 @@ impl<'a, 'gcx, 'tcx> Struct {
 
         let (optimize, sort_ascending) = match kind {
             StructKind::AlwaysSizedUnivariant => (can_optimize, false),
-            StructKind::MaybeUnsizedUnivariant => (can_optimize, true),
+            StructKind::MaybeUnsizedUnivariant => (can_optimize, false),
             StructKind::EnumVariant => {
                 assert!(fields.len() >= 1, "Enum variants must have discriminants.");
-                (can_optimize, fields[0].size(dl).bytes() == 1)
+                (can_optimize || fields[0].size(dl).bytes() == 1, true)
             }
         };
 
