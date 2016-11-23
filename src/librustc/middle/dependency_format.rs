@@ -114,7 +114,7 @@ fn calculate_type(sess: &session::Session,
 
         // No linkage happens with rlibs, we just needed the metadata (which we
         // got long ago), so don't bother with anything.
-        config::CrateTypeRlib => return Vec::new(),
+        config::CrateTypeRlib | config::CrateTypeMetadata => return Vec::new(),
 
         // Staticlibs and cdylibs must have all static dependencies. If any fail
         // to be found, we generate some nice pretty errors.
@@ -192,7 +192,7 @@ fn calculate_type(sess: &session::Session,
         if src.dylib.is_none() &&
            !formats.contains_key(&cnum) &&
            sess.cstore.dep_kind(cnum) == DepKind::Explicit {
-            assert!(src.rlib.is_some());
+            assert!(src.rlib.is_some() || src.rmeta.is_some());
             info!("adding staticlib: {}", sess.cstore.crate_name(cnum));
             add_library(sess, cnum, RequireStatic, &mut formats);
             ret[cnum.as_usize() - 1] = Linkage::Static;

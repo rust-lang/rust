@@ -19,7 +19,7 @@ use session::config::{OutputFilenames, Input, OutputType};
 use session::filesearch;
 use session::search_paths::PathKind;
 use session::Session;
-use middle::cstore::{self, LinkMeta, NativeLibrary};
+use middle::cstore::{self, LinkMeta, NativeLibrary, LibSource};
 use middle::cstore::{LinkagePreference, NativeLibraryKind};
 use middle::dependency_format::Linkage;
 use CrateTranslation;
@@ -124,7 +124,6 @@ pub fn find_crate_name(sess: Option<&Session>,
     }
 
     "rust_out".to_string()
-
 }
 
 pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap,
@@ -264,6 +263,9 @@ pub fn filename_for_input(sess: &Session,
         config::CrateTypeRlib => {
             outputs.out_directory.join(&format!("lib{}.rlib", libname))
         }
+        config::CrateTypeMetadata => {
+            outputs.out_directory.join(&format!("lib{}.rmeta", libname))
+        }
         config::CrateTypeCdylib |
         config::CrateTypeProcMacro |
         config::CrateTypeDylib => {
@@ -299,7 +301,7 @@ pub fn each_linked_rlib(sess: &Session,
                    .or_else(|| fmts.get(&config::CrateTypeCdylib))
                    .or_else(|| fmts.get(&config::CrateTypeProcMacro));
     let fmts = fmts.unwrap_or_else(|| {
-        bug!("could not find formats for rlibs")
+        bug!("could not find formats for rlibs");
     });
     for (cnum, path) in crates {
         match fmts[cnum.as_usize() - 1] {
@@ -308,8 +310,12 @@ pub fn each_linked_rlib(sess: &Session,
         }
         let name = sess.cstore.crate_name(cnum).clone();
         let path = match path {
-            Some(p) => p,
-            None => {
+            LibSource::Some(p) => p,
+            LibSource::MetadataOnly => {
+                sess.fatal(&format!("could not find rlib for: `{}`, found rmeta (metadata) file",
+                                    name));
+            }
+            LibSource::None => {
                 sess.fatal(&format!("could not find rlib for: `{}`", name));
             }
         };
@@ -353,6 +359,9 @@ fn link_binary_output(sess: &Session,
         config::CrateTypeStaticlib => {
             link_staticlib(sess, &objects, &out_filename, tmpdir.path());
         }
+        config::CrateTypeMetadata => {
+            emit_metadata(sess, trans, &out_filename);
+        }
         _ => {
             link_natively(sess, crate_type, &objects, &out_filename, trans,
                           outputs, tmpdir.path());
@@ -391,6 +400,13 @@ fn archive_config<'a>(sess: &'a Session,
     }
 }
 
+fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, out_filename: &Path) {
+    let result = fs::File::create(out_filename).and_then(|mut f| f.write_all(&trans.metadata));
+    if let Err(e) = result {
+        sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+    }
+}
+
 // Create an 'rlib'
 //
 // An rlib in its current incarnation is essentially a renamed .a file. The
@@ -404,6 +420,7 @@ fn link_rlib<'a>(sess: &'a Session,
                  tmpdir: &Path) -> ArchiveBuilder<'a> {
     info!("preparing rlib from {:?} to {:?}", objects, out_filename);
     let mut ab = ArchiveBuilder::new(archive_config(sess, out_filename, None));
+
     for obj in objects {
         ab.add_file(obj);
     }
@@ -465,15 +482,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // here so concurrent builds in the same directory don't try to use
             // the same filename for metadata (stomping over one another)
             let metadata = tmpdir.join(sess.cstore.metadata_filename());
-            match fs::File::create(&metadata).and_then(|mut f| {
-                f.write_all(&trans.metadata)
-            }) {
-                Ok(..) => {}
-                Err(e) => {
-                    sess.fatal(&format!("failed to write {}: {}",
-                                        metadata.display(), e));
-                }
-            }
+            emit_metadata(sess, trans, &metadata);
             ab.add_file(&metadata);
 
             // For LTO purposes, the bytecode of this library is also inserted

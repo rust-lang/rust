@@ -13,7 +13,7 @@ use encoder;
 use locator;
 use schema;
 
-use rustc::middle::cstore::{InlinedItem, CrateStore, CrateSource, DepKind, ExternCrate};
+use rustc::middle::cstore::{InlinedItem, CrateStore, CrateSource, LibSource, DepKind, ExternCrate};
 use rustc::middle::cstore::{NativeLibrary, LinkMeta, LinkagePreference, LoadedMacro};
 use rustc::hir::def::{self, Def};
 use rustc::middle::lang_items;
@@ -28,7 +28,6 @@ use rustc::mir::Mir;
 use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc_back::PanicStrategy;
 
-use std::path::PathBuf;
 use syntax::ast;
 use syntax::attr;
 use syntax::parse::new_parser_from_source_str;
@@ -545,7 +544,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         locator::meta_section_name(target)
     }
 
-    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, Option<PathBuf>)>
+    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>
     {
         self.do_get_used_crates(prefer)
     }
