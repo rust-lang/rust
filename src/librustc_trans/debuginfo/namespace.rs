@@ -69,7 +69,7 @@ pub fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
     };
 
     let namespace_name = CString::new(namespace_name.as_bytes()).unwrap();
-    let span = ccx.tcx().map.def_id_span(def_id, DUMMY_SP);
+    let span = ccx.tcx().def_span(def_id);
     let (file, line) = if span != DUMMY_SP {
         let loc = span_start(ccx, span);
         (file_metadata(ccx, &loc.file.name, &loc.file.abs_path), loc.line as c_uint)
