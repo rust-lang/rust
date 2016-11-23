@@ -920,7 +920,7 @@ unsafe impl<A, B> TrustedLen for Zip<A, B>
 /// you can also [`map()`] backwards:
 ///
 /// ```rust
-/// let v: Vec<i32> = vec![1, 2, 3].into_iter().rev().map(|x| x + 1).collect();
+/// let v: Vec<i32> = vec![1, 2, 3].into_iter().map(|x| x + 1).rev().collect();
 ///
 /// assert_eq!(v, [4, 3, 2]);
 /// ```
