@@ -316,6 +316,10 @@ impl File {
         Ok(File(FileDesc::new(fd)))
     }
 
+    pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
+        set_perm(&self.path()?, perm)
+    }
+
     pub fn path(&self) -> io::Result<PathBuf> {
         let mut buf: [u8; 4096] = [0; 4096];
         match libc::fpath(*self.fd().as_inner() as usize, &mut buf) {
