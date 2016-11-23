@@ -32,7 +32,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::parse::new_parser_from_source_str;
 use syntax::symbol::Symbol;
-use syntax_pos::mk_sp;
+use syntax_pos::{mk_sp, Span};
 use rustc::hir::svh::Svh;
 use rustc_back::target::Target;
 use rustc::hir;
@@ -41,6 +41,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn describe_def(&self, def: DefId) -> Option<Def> {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).get_def(def.index)
+    }
+
+    fn def_span(&self, sess: &Session, def: DefId) -> Span {
+        self.dep_graph.read(DepNode::MetaData(def));
+        self.get_crate_data(def.krate).get_span(def.index, sess)
     }
 
     fn stability(&self, def: DefId) -> Option<attr::Stability> {
@@ -383,20 +388,23 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         let local_span = mk_sp(lo, parser.prev_span.hi);
 
         // Mark the attrs as used
-        for attr in &def.attrs {
+        let attrs = data.get_item_attrs(id.index);
+        for attr in &attrs {
             attr::mark_used(attr);
         }
 
+        let name = data.def_key(id.index).disambiguated_data.data
+            .get_opt_name().expect("no name in load_macro");
         sess.imported_macro_spans.borrow_mut()
-            .insert(local_span, (def.name.as_str().to_string(), def.span));
+            .insert(local_span, (name.to_string(), data.get_span(id.index, sess)));
 
         LoadedMacro::MacroRules(ast::MacroDef {
-            ident: ast::Ident::with_empty_ctxt(def.name),
+            ident: ast::Ident::with_empty_ctxt(name),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
             imported_from: None, // FIXME
-            allow_internal_unstable: attr::contains_name(&def.attrs, "allow_internal_unstable"),
-            attrs: def.attrs,
+            allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
+            attrs: attrs,
             body: body,
         })
     }

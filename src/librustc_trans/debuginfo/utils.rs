@@ -79,7 +79,7 @@ pub fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: DefId)
     });
 
     // Try to get some span information, if we have an inlined item.
-    let definition_span = cx.tcx().map.def_id_span(def_id, syntax_pos::DUMMY_SP);
+    let definition_span = cx.tcx().def_span(def_id);
 
     (containing_scope, definition_span)
 }
