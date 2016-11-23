@@ -102,6 +102,7 @@ enum CastError {
     /// Cast of thin to fat raw ptr (eg. `*const () as *const [u8]`)
     SizedUnsizedCast,
     IllegalCast,
+    NeedDeref,
     NeedViaPtr,
     NeedViaThinPtr,
     NeedViaInt,
@@ -138,6 +139,25 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 
     fn report_cast_error(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, e: CastError) {
         match e {
+            CastError::NeedDeref => {
+                let cast_ty = fcx.ty_to_string(self.cast_ty);
+                let mut err = fcx.type_error_struct(self.cast_span,
+                                       |actual| {
+                                           format!("casting `{}` as `{}` is invalid",
+                                                   actual,
+                                                   cast_ty)
+                                       },
+                                       self.expr_ty);
+                err.span_label(self.expr.span,
+                               &format!("cannot cast `{}` as `{}`",
+                                        fcx.ty_to_string(self.expr_ty),
+                                        cast_ty));
+                if let Ok(snippet) = fcx.sess().codemap().span_to_snippet(self.expr.span) {
+                    err.span_label(self.expr.span,
+                                   &format!("did you mean `*{}`?", snippet));
+                }
+                err.emit();
+            }
             CastError::NeedViaThinPtr |
             CastError::NeedViaPtr => {
                 let mut err = fcx.type_error_struct(self.span,
@@ -390,8 +410,28 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             (Ptr(m_e), Ptr(m_c)) => self.check_ptr_ptr_cast(fcx, m_e, m_c), // ptr-ptr-cast
             (Ptr(m_expr), Int(_)) => self.check_ptr_addr_cast(fcx, m_expr), // ptr-addr-cast
             (FnPtr, Int(_)) => Ok(CastKind::FnPtrAddrCast),
-            (RPtr(_), Int(_)) |
-            (RPtr(_), Float) => Err(CastError::NeedViaPtr),
+            (RPtr(p), Int(_)) |
+            (RPtr(p), Float) => {
+                match p.ty.sty {
+                    ty::TypeVariants::TyInt(_) |
+                    ty::TypeVariants::TyUint(_) |
+                    ty::TypeVariants::TyFloat(_) => {
+                        Err(CastError::NeedDeref)
+                    }
+                    ty::TypeVariants::TyInfer(t) => {
+                        match t {
+                            ty::InferTy::IntVar(_) |
+                            ty::InferTy::FloatVar(_) |
+                            ty::InferTy::FreshIntTy(_) |
+                            ty::InferTy::FreshFloatTy(_) => {
+                                Err(CastError::NeedDeref)
+                            }
+                            _ => Err(CastError::NeedViaPtr),
+                        }
+                    }
+                    _ => Err(CastError::NeedViaPtr),
+                }
+            }
             // * -> ptr
             (Int(_), Ptr(mt)) => self.check_addr_ptr_cast(fcx, mt), // addr-ptr-cast
             (FnPtr, Ptr(mt)) => self.check_fptr_ptr_cast(fcx, mt),
