@@ -67,7 +67,6 @@ pub struct mx_info_process_t {
     pub rec: mx_record_process_t,
 }
 
-#[link(name = "magenta")]
 extern {
     pub fn mx_handle_close(handle: mx_handle_t) -> mx_status_t;
 
@@ -89,7 +88,6 @@ pub fn mx_hnd_info(hnd_type: u32, arg: u32) -> u32 {
     (hnd_type & 0xFFFF) | ((arg & 0xFFFF) << 16)
 }
 
-#[link(name="mxio")]
 extern {
     pub fn mxio_get_startup_handle(id: u32) -> mx_handle_t;
 }
@@ -123,7 +121,6 @@ pub struct launchpad_t {
     loader_message: bool,
 }
 
-#[link(name="launchpad")]
 extern {
     pub fn launchpad_create(job: mx_handle_t, name: *const c_char,
                             lp: *mut *mut launchpad_t) -> mx_status_t;
