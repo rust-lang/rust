@@ -133,7 +133,7 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         Expr_::ExprIndex(ref a, ref b) |
         Expr_::ExprBinary(_, ref a, ref b) => Some(vec![&**a, &**b]),
         Expr_::ExprArray(ref v) |
-        Expr_::ExprTup(ref v) => Some(v.iter().map(Deref::deref).collect()),
+        Expr_::ExprTup(ref v) => Some(v.iter().collect()),
         Expr_::ExprRepeat(ref inner, _) |
         Expr_::ExprCast(ref inner, _) |
         Expr_::ExprType(ref inner, _) |
@@ -150,7 +150,7 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
                 Some(Def::Struct(..)) |
                 Some(Def::Variant(..)) |
                 Some(Def::StructCtor(..)) |
-                Some(Def::VariantCtor(..)) => Some(args.iter().map(Deref::deref).collect()),
+                Some(Def::VariantCtor(..)) => Some(args.iter().collect()),
                 _ => None,
             }
         }

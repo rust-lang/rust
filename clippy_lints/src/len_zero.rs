@@ -4,7 +4,6 @@ use rustc::ty;
 use rustc::hir::*;
 use syntax::ast::{Lit, LitKind, Name};
 use syntax::codemap::{Span, Spanned};
-use syntax::ptr::P;
 use utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** Checks for getting the length of something via `.len()`
@@ -170,7 +169,7 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
     }
 }
 
-fn check_len_zero(cx: &LateContext, span: Span, name: &Name, args: &[P<Expr>], lit: &Lit, op: &str) {
+fn check_len_zero(cx: &LateContext, span: Span, name: &Name, args: &[Expr], lit: &Lit, op: &str) {
     if let Spanned { node: LitKind::Int(0, _), .. } = *lit {
         if &*name.as_str() == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
             span_lint_and_then(cx, LEN_ZERO, span, "length comparison to zero", |db| {

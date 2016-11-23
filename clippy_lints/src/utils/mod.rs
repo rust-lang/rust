@@ -292,14 +292,14 @@ pub fn resolve_node(cx: &LateContext, id: NodeId) -> Option<def::Def> {
 /// For example, if `expr` represents the `.baz()` in `foo.bar().baz()`,
 /// `matched_method_chain(expr, &["bar", "baz"])` will return a `Vec` containing the `Expr`s for
 /// `.bar()` and `.baz()`
-pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a MethodArgs>> {
+pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a [Expr]>> {
     let mut current = expr;
     let mut matched = Vec::with_capacity(methods.len());
     for method_name in methods.iter().rev() {
         // method chains are stored last -> first
         if let ExprMethodCall(ref name, _, ref args) = current.node {
             if name.node == *method_name {
-                matched.push(args); // build up `matched` backwards
+                matched.push(&**args); // build up `matched` backwards
                 current = &args[0] // go to parent expression
             } else {
                 return None;

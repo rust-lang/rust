@@ -8,7 +8,6 @@ use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_math::ConstFloat;
 use syntax::codemap::{Span, Spanned, ExpnFormat};
-use syntax::ptr::P;
 use utils::{
     get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path,
     snippet, span_lint, span_lint_and_then, walk_ptrs_ty
@@ -412,7 +411,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
 
 }
 
-fn is_str_arg(cx: &LateContext, args: &[P<Expr>]) -> bool {
+fn is_str_arg(cx: &LateContext, args: &[Expr]) -> bool {
     args.len() == 1 &&
         matches!(walk_ptrs_ty(cx.tcx.tables().expr_ty(&args[0])).sty, ty::TyStr)
 }
