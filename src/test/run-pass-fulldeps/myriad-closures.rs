@@ -13,6 +13,9 @@
 // toolchain.
 // See https://github.com/rust-lang/rust/issues/34793 for more information.
 
+// Make sure we don't optimize anything away:
+// compile-flags: -C no-prepopulate-passes
+
 // Expand something exponentially
 macro_rules! go_bacterial {
     ($mac:ident) => ($mac!());
@@ -23,10 +26,7 @@ macro_rules! go_bacterial {
 }
 
 macro_rules! mk_closure {
-    () => ({
-        let c = |a: u32| a + 4;
-        let _ = c(2);
-    })
+    () => ((move || {})())
 }
 
 macro_rules! mk_fn {
