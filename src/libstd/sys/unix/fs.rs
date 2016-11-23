@@ -526,6 +526,11 @@ impl File {
     pub fn fd(&self) -> &FileDesc { &self.0 }
 
     pub fn into_fd(self) -> FileDesc { self.0 }
+
+    pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
+        cvt_r(|| unsafe { libc::fchmod(self.0.raw(), perm.mode) })?;
+        Ok(())
+    }
 }
 
 impl DirBuilder {
