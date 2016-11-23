@@ -140,7 +140,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ReachableContext<'a, 'tcx> {
         let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
             *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib ||
-            *ty == config::CrateTypeProcMacro
+            *ty == config::CrateTypeProcMacro || *ty == config::CrateTypeMetadata
         });
         ReachableContext {
             tcx: tcx,

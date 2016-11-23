@@ -44,6 +44,7 @@ use log;
 pub struct Library {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
+    pub rmeta: Option<(PathBuf, PathKind)>,
     pub metadata: MetadataBlob,
 }
 
@@ -62,10 +63,11 @@ fn dump_crates(cstore: &CStore) {
         info!("  cnum: {}", data.cnum);
         info!("  hash: {}", data.hash());
         info!("  reqd: {:?}", data.dep_kind.get());
-        let CrateSource { dylib, rlib } = data.source.clone();
+        let CrateSource { dylib, rlib, rmeta } = data.source.clone();
         dylib.map(|dl| info!("  dylib: {}", dl.0.display()));
         rlib.map(|rl|  info!("   rlib: {}", rl.0.display()));
-    })
+        rmeta.map(|rl| info!("   rmeta: {}", rl.0.display()));
+    });
 }
 
 #[derive(Debug)]
@@ -278,6 +280,7 @@ impl<'a> CrateLoader<'a> {
                 ident: ident.to_string(),
                 dylib: lib.dylib.clone().map(|p| p.0),
                 rlib:  lib.rlib.clone().map(|p| p.0),
+                rmeta: lib.rmeta.clone().map(|p| p.0),
             })
         } else {
             None
@@ -285,7 +288,7 @@ impl<'a> CrateLoader<'a> {
         // Maintain a reference to the top most crate.
         let root = if root.is_some() { root } else { &crate_paths };
 
-        let Library { dylib, rlib, metadata } = lib;
+        let Library { dylib, rlib, rmeta, metadata } = lib;
 
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
@@ -305,6 +308,7 @@ impl<'a> CrateLoader<'a> {
             source: cstore::CrateSource {
                 dylib: dylib,
                 rlib: rlib,
+                rmeta: rmeta,
             },
         });
 
@@ -767,7 +771,8 @@ impl<'a> CrateLoader<'a> {
                 config::CrateTypeProcMacro |
                 config::CrateTypeCdylib |
                 config::CrateTypeStaticlib => need_lib_alloc = true,
-                config::CrateTypeRlib => {}
+                config::CrateTypeRlib |
+                config::CrateTypeMetadata => {}
             }
         }
         if !need_lib_alloc && !need_exe_alloc { return }

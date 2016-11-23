@@ -53,6 +53,13 @@
 //! is a platform-defined dynamic library. Each library has a metadata somewhere
 //! inside of it.
 //!
+//! A third kind of dependency is an rmeta file. These are metadata files and do
+//! not contain any code, etc. To a first approximation, these are treated in the
+//! same way as rlibs. Where there is both an rlib and an rmeta file, the rlib
+//! gets priority (even if the rmeta file is newer). An rmeta file is only
+//! useful for checking a downstream crate, attempting to link one will cause an
+//! error.
+//!
 //! When translating a crate name to a crate on the filesystem, we all of a
 //! sudden need to take into account both rlibs and dylibs! Linkage later on may
 //! use either one of these files, as each has their pros/cons. The job of crate
@@ -233,8 +240,8 @@ use rustc_back::target::Target;
 
 use std::cmp;
 use std::fmt;
-use std::fs;
-use std::io;
+use std::fs::{self, File};
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::ptr;
 use std::slice;
@@ -276,6 +283,7 @@ pub struct CratePaths {
     pub ident: String,
     pub dylib: Option<PathBuf>,
     pub rlib: Option<PathBuf>,
+    pub rmeta: Option<PathBuf>,
 }
 
 pub const METADATA_FILENAME: &'static str = "rust.metadata.bin";
@@ -283,6 +291,7 @@ pub const METADATA_FILENAME: &'static str = "rust.metadata.bin";
 #[derive(Copy, Clone, PartialEq)]
 enum CrateFlavor {
     Rlib,
+    Rmeta,
     Dylib,
 }
 
@@ -290,6 +299,7 @@ impl fmt::Display for CrateFlavor {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match *self {
             CrateFlavor::Rlib => "rlib",
+            CrateFlavor::Rmeta => "rmeta",
             CrateFlavor::Dylib => "dylib",
         })
     }
@@ -297,12 +307,7 @@ impl fmt::Display for CrateFlavor {
 
 impl CratePaths {
     fn paths(&self) -> Vec<PathBuf> {
-        match (&self.dylib, &self.rlib) {
-            (&None, &None) => vec![],
-            (&Some(ref p), &None) |
-            (&None, &Some(ref p)) => vec![p.clone()],
-            (&Some(ref p1), &Some(ref p2)) => vec![p1.clone(), p2.clone()],
-        }
+        self.dylib.iter().chain(self.rlib.iter()).chain(self.rmeta.iter()).cloned().collect()
     }
 }
 
@@ -458,32 +463,35 @@ impl<'a> Context<'a> {
                 None => return FileDoesntMatch,
                 Some(file) => file,
             };
-            let (hash, rlib) = if file.starts_with(&rlib_prefix[..]) && file.ends_with(".rlib") {
-                (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], true)
-            } else if file.starts_with(&dylib_prefix) &&
-                                         file.ends_with(&dypair.1) {
-                (&file[(dylib_prefix.len())..(file.len() - dypair.1.len())], false)
-            } else {
-                if file.starts_with(&staticlib_prefix[..]) && file.ends_with(&staticpair.1) {
-                    staticlibs.push(CrateMismatch {
-                        path: path.to_path_buf(),
-                        got: "static".to_string(),
-                    });
-                }
-                return FileDoesntMatch;
-            };
+            let (hash, found_kind) =
+                if file.starts_with(&rlib_prefix[..]) && file.ends_with(".rlib") {
+                    (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], CrateFlavor::Rlib)
+                } else if file.starts_with(&rlib_prefix[..]) && file.ends_with(".rmeta") {
+                    (&file[(rlib_prefix.len())..(file.len() - ".rmeta".len())], CrateFlavor::Rmeta)
+                } else if file.starts_with(&dylib_prefix) &&
+                                             file.ends_with(&dypair.1) {
+                    (&file[(dylib_prefix.len())..(file.len() - dypair.1.len())], CrateFlavor::Dylib)
+                } else {
+                    if file.starts_with(&staticlib_prefix[..]) && file.ends_with(&staticpair.1) {
+                        staticlibs.push(CrateMismatch {
+                            path: path.to_path_buf(),
+                            got: "static".to_string(),
+                        });
+                    }
+                    return FileDoesntMatch;
+                };
             info!("lib candidate: {}", path.display());
 
             let hash_str = hash.to_string();
             let slot = candidates.entry(hash_str)
-                .or_insert_with(|| (FxHashMap(), FxHashMap()));
-            let (ref mut rlibs, ref mut dylibs) = *slot;
+                .or_insert_with(|| (FxHashMap(), FxHashMap(), FxHashMap()));
+            let (ref mut rlibs, ref mut rmetas, ref mut dylibs) = *slot;
             fs::canonicalize(path)
                 .map(|p| {
-                    if rlib {
-                        rlibs.insert(p, kind);
-                    } else {
-                        dylibs.insert(p, kind);
+                    match found_kind {
+                        CrateFlavor::Rlib => { rlibs.insert(p, kind); }
+                        CrateFlavor::Rmeta => { rmetas.insert(p, kind); }
+                        CrateFlavor::Dylib => { dylibs.insert(p, kind); }
                     }
                     FileMatches
                 })
@@ -500,15 +508,17 @@ impl<'a> Context<'a> {
         // libraries corresponds to the crate id and hash criteria that this
         // search is being performed for.
         let mut libraries = FxHashMap();
-        for (_hash, (rlibs, dylibs)) in candidates {
+        for (_hash, (rlibs, rmetas, dylibs)) in candidates {
             let mut slot = None;
             let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot);
+            let rmeta = self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot);
             let dylib = self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot);
             if let Some((h, m)) = slot {
                 libraries.insert(h,
                                  Library {
                                      dylib: dylib,
                                      rlib: rlib,
+                                     rmeta: rmeta,
                                      metadata: m,
                                  });
             }
@@ -704,6 +714,7 @@ impl<'a> Context<'a> {
         let sess = self.sess;
         let dylibname = self.dylibname();
         let mut rlibs = FxHashMap();
+        let mut rmetas = FxHashMap();
         let mut dylibs = FxHashMap();
         {
             let locs = locs.map(|l| PathBuf::from(l)).filter(|loc| {
@@ -722,7 +733,8 @@ impl<'a> Context<'a> {
                         return false;
                     }
                 };
-                if file.starts_with("lib") && file.ends_with(".rlib") {
+                if file.starts_with("lib") &&
+                   (file.ends_with(".rlib") || file.ends_with(".rmeta")) {
                     return true;
                 } else {
                     let (ref prefix, ref suffix) = dylibname;
@@ -745,6 +757,8 @@ impl<'a> Context<'a> {
             for loc in locs {
                 if loc.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
                     rlibs.insert(fs::canonicalize(&loc).unwrap(), PathKind::ExternFlag);
+                } else if loc.file_name().unwrap().to_str().unwrap().ends_with(".rmeta") {
+                    rmetas.insert(fs::canonicalize(&loc).unwrap(), PathKind::ExternFlag);
                 } else {
                     dylibs.insert(fs::canonicalize(&loc).unwrap(), PathKind::ExternFlag);
                 }
@@ -754,9 +768,10 @@ impl<'a> Context<'a> {
         // Extract the rlib/dylib pair.
         let mut slot = None;
         let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot);
+        let rmeta = self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot);
         let dylib = self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot);
 
-        if rlib.is_none() && dylib.is_none() {
+        if rlib.is_none() && rmeta.is_none() && dylib.is_none() {
             return None;
         }
         match slot {
@@ -764,6 +779,7 @@ impl<'a> Context<'a> {
                 Some(Library {
                     dylib: dylib,
                     rlib: rlib,
+                    rmeta: rmeta,
                     metadata: metadata,
                 })
             }
@@ -851,6 +867,15 @@ fn get_metadata_section_imp(target: &Target,
                 Ok(blob)
             }
         };
+    } else if flavor == CrateFlavor::Rmeta {
+        let mut file = File::open(filename).map_err(|_|
+            format!("could not open file: '{}'", filename.display()))?;
+        let mut buf = vec![];
+        file.read_to_end(&mut buf).map_err(|_|
+            format!("failed to read rlib metadata: '{}'", filename.display()))?;
+        let blob = MetadataBlob::Raw(buf);
+        verify_decompressed_encoding_version(&blob, filename)?;
+        return Ok(blob);
     }
     unsafe {
         let buf = common::path2cstr(filename);
@@ -934,6 +959,8 @@ pub fn list_file_metadata(target: &Target, path: &Path, out: &mut io::Write) -> 
     let filename = path.file_name().unwrap().to_str().unwrap();
     let flavor = if filename.ends_with(".rlib") {
         CrateFlavor::Rlib
+    } else if filename.ends_with(".rmeta") {
+        CrateFlavor::Rmeta
     } else {
         CrateFlavor::Dylib
     };

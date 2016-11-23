@@ -25,7 +25,6 @@ use rustc::util::nodemap::{FxHashMap, NodeMap, NodeSet, DefIdMap};
 
 use std::cell::{RefCell, Cell};
 use std::rc::Rc;
-use std::path::PathBuf;
 use flate::Bytes;
 use syntax::{ast, attr};
 use syntax::ext::base::SyntaxExtension;
@@ -34,7 +33,7 @@ use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibrary, LinkagePreference};
 pub use rustc::middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
-pub use rustc::middle::cstore::{CrateSource, LinkMeta};
+pub use rustc::middle::cstore::{CrateSource, LinkMeta, LibSource};
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -45,6 +44,7 @@ pub type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 pub enum MetadataBlob {
     Inflated(Bytes),
     Archive(locator::ArchiveMetadata),
+    Raw(Vec<u8>),
 }
 
 /// Holds information about a syntax_pos::FileMap imported from another crate.
@@ -186,7 +186,7 @@ impl CStore {
     // positions.
     pub fn do_get_used_crates(&self,
                               prefer: LinkagePreference)
-                              -> Vec<(CrateNum, Option<PathBuf>)> {
+                              -> Vec<(CrateNum, LibSource)> {
         let mut ordering = Vec::new();
         for (&num, _) in self.metas.borrow().iter() {
             self.push_dependencies_in_postorder(&mut ordering, num);
@@ -201,6 +201,16 @@ impl CStore {
                 let path = match prefer {
                     LinkagePreference::RequireDynamic => data.source.dylib.clone().map(|p| p.0),
                     LinkagePreference::RequireStatic => data.source.rlib.clone().map(|p| p.0),
+                };
+                let path = match path {
+                    Some(p) => LibSource::Some(p),
+                    None => {
+                        if data.source.rmeta.is_some() {
+                            LibSource::MetadataOnly
+                        } else {
+                            LibSource::None
+                        }
+                    }
                 };
                 Some((cnum, path))
             })
