@@ -14,7 +14,6 @@
 pub use self::Type::*;
 pub use self::Mutability::*;
 pub use self::ItemEnum::*;
-pub use self::Attribute::*;
 pub use self::TyParamBound::*;
 pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
@@ -25,7 +24,6 @@ use syntax::ast;
 use syntax::attr;
 use syntax::codemap::Spanned;
 use syntax::ptr::P;
-use syntax::print::pprust as syntax_pprust;
 use syntax::symbol::keywords;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
@@ -44,6 +42,7 @@ use rustc::hir;
 
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::slice;
 use std::sync::Arc;
 use std::u32;
 use std::env::current_dir;
@@ -227,7 +226,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ExternalCrate {
     pub name: String,
-    pub attrs: Vec<Attribute>,
+    pub attrs: Attributes,
     pub primitives: Vec<PrimitiveType>,
 }
 
@@ -258,7 +257,7 @@ pub struct Item {
     pub source: Span,
     /// Not everything has a name. E.g., impls
     pub name: Option<String>,
-    pub attrs: Vec<Attribute>,
+    pub attrs: Attributes,
     pub inner: ItemEnum,
     pub visibility: Option<Visibility>,
     pub def_id: DefId,
@@ -270,7 +269,7 @@ impl Item {
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
-        self.attrs.value("doc")
+        self.attrs.doc_value()
     }
     pub fn is_crate(&self) -> bool {
         match self.inner {
@@ -459,86 +458,104 @@ impl Clean<Item> for doctree::Module {
     }
 }
 
-pub trait Attributes {
-    fn has_word(&self, &str) -> bool;
-    fn value<'a>(&'a self, &str) -> Option<&'a str>;
-    fn list<'a>(&'a self, &str) -> &'a [Attribute];
+pub struct ListAttributesIter<'a> {
+    attrs: slice::Iter<'a, ast::Attribute>,
+    current_list: slice::Iter<'a, ast::NestedMetaItem>,
+    name: &'a str
 }
 
-impl Attributes for [Attribute] {
-    /// Returns whether the attribute list contains a specific `Word`
-    fn has_word(&self, word: &str) -> bool {
-        for attr in self {
-            if let Word(ref w) = *attr {
-                if word == *w {
-                    return true;
-                }
-            }
-        }
-        false
-    }
+impl<'a> Iterator for ListAttributesIter<'a> {
+    type Item = &'a ast::NestedMetaItem;
 
-    /// Finds an attribute as NameValue and returns the corresponding value found.
-    fn value<'a>(&'a self, name: &str) -> Option<&'a str> {
-        for attr in self {
-            if let NameValue(ref x, ref v) = *attr {
-                if name == *x {
-                    return Some(v);
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(nested) = self.current_list.next() {
+            return Some(nested);
+        }
+
+        for attr in &mut self.attrs {
+            if let Some(ref list) = attr.meta_item_list() {
+                if attr.check_name(self.name) {
+                    self.current_list = list.iter();
+                    if let Some(nested) = self.current_list.next() {
+                        return Some(nested);
+                    }
                 }
             }
         }
+
         None
     }
+}
 
+pub trait AttributesExt {
     /// Finds an attribute as List and returns the list of attributes nested inside.
-    fn list<'a>(&'a self, name: &str) -> &'a [Attribute] {
-        for attr in self {
-            if let List(ref x, ref list) = *attr {
-                if name == *x {
-                    return &list[..];
+    fn lists<'a>(&'a self, &'a str) -> ListAttributesIter<'a>;
+}
+
+impl AttributesExt for [ast::Attribute] {
+    fn lists<'a>(&'a self, name: &'a str) -> ListAttributesIter<'a> {
+        ListAttributesIter {
+            attrs: self.iter(),
+            current_list: [].iter(),
+            name: name
+        }
+    }
+}
+
+pub trait NestedAttributesExt {
+    /// Returns whether the attribute list contains a specific `Word`
+    fn has_word(self, &str) -> bool;
+}
+
+impl<'a, I: IntoIterator<Item=&'a ast::NestedMetaItem>> NestedAttributesExt for I {
+    fn has_word(self, word: &str) -> bool {
+        self.into_iter().any(|attr| attr.is_word() && attr.check_name(word))
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug, Default)]
+pub struct Attributes {
+    pub doc_strings: Vec<String>,
+    pub other_attrs: Vec<ast::Attribute>
+}
+
+impl Attributes {
+    pub fn from_ast(attrs: &[ast::Attribute]) -> Attributes {
+        let mut doc_strings = vec![];
+        let other_attrs = attrs.iter().filter_map(|attr| {
+            attr.with_desugared_doc(|attr| {
+                if let Some(value) = attr.value_str() {
+                    if attr.check_name("doc") {
+                        doc_strings.push(value.to_string());
+                        return None;
+                    }
                 }
-            }
-        }
-        &[]
-    }
-}
 
-/// This is a flattened version of the AST's Attribute + MetaItem.
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
-pub enum Attribute {
-    Word(String),
-    List(String, Vec<Attribute>),
-    NameValue(String, String),
-    Literal(String),
-}
-
-impl Clean<Attribute> for ast::NestedMetaItem {
-    fn clean(&self, cx: &DocContext) -> Attribute {
-        if let Some(mi) = self.meta_item() {
-            mi.clean(cx)
-        } else { // must be a literal
-            let lit = self.literal().unwrap();
-            Literal(syntax_pprust::lit_to_string(lit))
+                Some(attr.clone())
+            })
+        }).collect();
+        Attributes {
+            doc_strings: doc_strings,
+            other_attrs: other_attrs
         }
     }
-}
 
-impl Clean<Attribute> for ast::MetaItem {
-    fn clean(&self, cx: &DocContext) -> Attribute {
-        if self.is_word() {
-            Word(self.name().to_string())
-        } else if let Some(v) = self.value_str() {
-            NameValue(self.name().to_string(), v.to_string())
-        } else { // must be a list
-            let l = self.meta_item_list().unwrap();
-            List(self.name().to_string(), l.clean(cx))
-       }
+    /// Finds the `doc` attribute as a NameValue and returns the corresponding
+    /// value found.
+    pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
+        self.doc_strings.first().map(|s| &s[..])
     }
 }
 
-impl Clean<Attribute> for ast::Attribute {
-    fn clean(&self, cx: &DocContext) -> Attribute {
-        self.with_desugared_doc(|a| a.meta().clean(cx))
+impl AttributesExt for Attributes {
+    fn lists<'a>(&'a self, name: &'a str) -> ListAttributesIter<'a> {
+        self.other_attrs.lists(name)
+    }
+}
+
+impl Clean<Attributes> for [ast::Attribute] {
+    fn clean(&self, _cx: &DocContext) -> Attributes {
+        Attributes::from_ast(self)
     }
 }
 
@@ -1048,7 +1065,7 @@ impl Clean<Method> for hir::MethodSig {
             },
             output: self.decl.output.clean(cx),
             variadic: false,
-            attrs: Vec::new()
+            attrs: Attributes::default()
         };
         Method {
             generics: self.generics.clean(cx),
@@ -1076,7 +1093,7 @@ impl Clean<TyMethod> for hir::MethodSig {
             },
             output: self.decl.output.clean(cx),
             variadic: false,
-            attrs: Vec::new()
+            attrs: Attributes::default()
         };
         TyMethod {
             unsafety: self.unsafety.clone(),
@@ -1122,7 +1139,7 @@ pub struct FnDecl {
     pub inputs: Arguments,
     pub output: FunctionRetTy,
     pub variadic: bool,
-    pub attrs: Vec<Attribute>,
+    pub attrs: Attributes,
 }
 
 impl FnDecl {
@@ -1148,7 +1165,7 @@ impl Clean<FnDecl> for hir::FnDecl {
             },
             output: self.output.clean(cx),
             variadic: self.variadic,
-            attrs: Vec::new()
+            attrs: Attributes::default()
         }
     }
 }
@@ -1163,7 +1180,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
         }.peekable();
         FnDecl {
             output: Return(sig.0.output.clean(cx)),
-            attrs: Vec::new(),
+            attrs: Attributes::default(),
             variadic: sig.0.variadic,
             inputs: Arguments {
                 values: sig.0.inputs.iter().map(|t| {
@@ -1616,11 +1633,11 @@ impl PrimitiveType {
         }
     }
 
-    fn find(attrs: &[Attribute]) -> Option<PrimitiveType> {
-        for attr in attrs.list("doc") {
-            if let NameValue(ref k, ref v) = *attr {
-                if "primitive" == *k {
-                    if let ret@Some(..) = PrimitiveType::from_str(v) {
+    fn find(attrs: &Attributes) -> Option<PrimitiveType> {
+        for attr in attrs.lists("doc") {
+            if let Some(v) = attr.value_str() {
+                if attr.check_name("primitive") {
+                    if let ret@Some(..) = PrimitiveType::from_str(&v.as_str()) {
                         return ret;
                     }
                 }

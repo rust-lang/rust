@@ -135,8 +135,8 @@ fn try_inline_def<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn load_attrs<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            did: DefId) -> Vec<clean::Attribute> {
-    tcx.get_attrs(did).iter().map(|a| a.clean(cx)).collect()
+                            did: DefId) -> clean::Attributes {
+    tcx.get_attrs(did).clean(cx)
 }
 
 /// Record an external fully qualified name in the external_paths cache.
@@ -377,7 +377,7 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                         default,
                     ),
                     source: clean::Span::empty(),
-                    attrs: vec![],
+                    attrs: clean::Attributes::default(),
                     visibility: None,
                     stability: tcx.lookup_stability(item.def_id).clean(cx),
                     deprecation: tcx.lookup_deprecation(item.def_id).clean(cx),
@@ -424,7 +424,7 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                     name: Some(item.name.clean(cx)),
                     inner: clean::TypedefItem(typedef, true),
                     source: clean::Span::empty(),
-                    attrs: vec![],
+                    attrs: clean::Attributes::default(),
                     visibility: None,
                     stability: tcx.lookup_stability(item.def_id).clean(cx),
                     deprecation: tcx.lookup_deprecation(item.def_id).clean(cx),
