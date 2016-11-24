@@ -44,7 +44,7 @@ impl LateLintPass for Pass {
                     if args.len() != 1 {
                         return;
                     }
-                    check_drop_arg(cx, expr.span, &*args[0]);
+                    check_drop_arg(cx, expr.span, &args[0]);
                 }
             }
         }

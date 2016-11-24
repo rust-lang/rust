@@ -1,7 +1,6 @@
 use rustc::lint::*;
 use rustc::ty::{TypeAndMut, TypeVariants, MethodCall, TyS};
 use rustc::hir::*;
-use syntax::ptr::P;
 use utils::span_lint;
 
 /// **What it does:** Detects giving a mutable reference to a function that only
@@ -57,7 +56,7 @@ impl LateLintPass for UnnecessaryMutPassed {
     }
 }
 
-fn check_arguments(cx: &LateContext, arguments: &[P<Expr>], type_definition: &TyS, name: &str) {
+fn check_arguments(cx: &LateContext, arguments: &[Expr], type_definition: &TyS, name: &str) {
     match type_definition.sty {
         TypeVariants::TyFnDef(_, _, fn_type) |
         TypeVariants::TyFnPtr(fn_type) => {

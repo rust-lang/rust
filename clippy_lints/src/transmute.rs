@@ -107,7 +107,7 @@ impl LateLintPass for Transmute {
                             e.span,
                             "transmute from a reference to a pointer",
                             |db| {
-                                if let Some(arg) = sugg::Sugg::hir_opt(cx, &*args[0]) {
+                                if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                                     let sugg = if ptr_ty == rty {
                                         arg.as_ty(to_ty)
                                     } else {
@@ -125,7 +125,7 @@ impl LateLintPass for Transmute {
                             e.span,
                             "transmute from an integer to a pointer",
                             |db| {
-                                if let Some(arg) = sugg::Sugg::hir_opt(cx, &*args[0]) {
+                                if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                                     db.span_suggestion(e.span, "try", arg.as_ty(&to_ty.to_string()).to_string());
                                 }
                             },

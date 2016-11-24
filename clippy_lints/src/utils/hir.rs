@@ -134,7 +134,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_exprs(&self, left: &[P<Expr>], right: &[P<Expr>]) -> bool {
+    fn eq_exprs(&self, left: &P<[Expr]>, right: &P<[Expr]>) -> bool {
         over(left, right, |l, r| self.eq_expr(l, r))
     }
 
@@ -510,7 +510,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_exprs(&mut self, e: &[P<Expr>]) {
+    pub fn hash_exprs(&mut self, e: &P<[Expr]>) {
         for e in e {
             self.hash_expr(e);
         }

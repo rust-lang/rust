@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.102 — date
+* Update to *rustc 1.15.0-nightly (3bf2be9ce 2016-11-22)*
+
 ## 0.0.101 — 2016-11-23
 * Update to *rustc 1.15.0-nightly (7b3eeea22 2016-11-21)*
 * New lint: [`string_extend_chars`]

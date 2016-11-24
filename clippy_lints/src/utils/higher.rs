@@ -5,7 +5,6 @@
 use rustc::hir;
 use rustc::lint::LateContext;
 use syntax::ast;
-use syntax::ptr::P;
 use utils::{is_expn_of, match_path, match_def_path, resolve_node, paths};
 
 /// Convert a hir binary operator to the corresponding `ast` type.
@@ -160,9 +159,9 @@ pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)>
 /// Represent the pre-expansion arguments of a `vec!` invocation.
 pub enum VecArgs<'a> {
     /// `vec![elem; len]`
-    Repeat(&'a P<hir::Expr>, &'a P<hir::Expr>),
+    Repeat(&'a hir::Expr, &'a hir::Expr),
     /// `vec![a, b, c]`
-    Vec(&'a [P<hir::Expr>]),
+    Vec(&'a [hir::Expr]),
 }
 
 /// Returns the arguments of the `vec!` macro if this expression was expanded from `vec!`.

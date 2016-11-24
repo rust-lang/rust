@@ -9,7 +9,6 @@ use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::hash::{Hash, Hasher};
 use std::mem;
-use std::ops::Deref;
 use std::rc::Rc;
 use syntax::ast::{FloatTy, LitIntType, LitKind, StrStyle, UintTy, IntTy};
 use syntax::ptr::P;
@@ -279,7 +278,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 
     /// create `Some(Vec![..])` of all constants, unless there is any
     /// non-constant part
-    fn multi<E: Deref<Target = Expr> + Sized>(&mut self, vec: &[E]) -> Option<Vec<Constant>> {
+    fn multi(&mut self, vec: &[Expr]) -> Option<Vec<Constant>> {
         vec.iter()
            .map(|elem| self.expr(elem))
            .collect::<Option<_>>()

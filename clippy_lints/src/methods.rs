@@ -8,11 +8,9 @@ use rustc_const_eval::eval_const_expr_partial;
 use std::borrow::Cow;
 use std::fmt;
 use syntax::codemap::Span;
-use syntax::ptr::P;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_path,
             match_trait_method, match_type, method_chain_args, return_ty, same_tys, snippet,
             span_lint, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
-use utils::MethodArgs;
 use utils::paths;
 use utils::sugg;
 
@@ -693,7 +691,7 @@ impl LateLintPass for Pass {
 }
 
 /// Checks for the `OR_FUN_CALL` lint.
-fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[P<hir::Expr>]) {
+fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir::Expr]) {
     /// Check for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
     fn check_unwrap_or_default(cx: &LateContext, name: &str, fun: &hir::Expr, self_expr: &hir::Expr, arg: &hir::Expr,
                                or_has_args: bool, span: Span)
@@ -825,7 +823,7 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
     }
 }
 
-fn lint_vec_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
+fn lint_vec_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
     let arg_ty = cx.tcx.tables().expr_ty(&args[1]);
     if let Some(slice) = derefs_to_slice(cx, &args[1], arg_ty) {
         span_lint_and_then(cx, EXTEND_FROM_SLICE, expr.span, "use of `extend` to extend a Vec by a slice", |db| {
@@ -838,7 +836,7 @@ fn lint_vec_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
     }
 }
 
-fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
+fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
     let arg = &args[1];
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
@@ -866,7 +864,7 @@ fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
     }
 }
 
-fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
+fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.tables().expr_ty(&args[0]));
     if match_type(cx, obj_ty, &paths::VEC) {
         lint_vec_extend(cx, expr, args);
@@ -891,9 +889,7 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
     }}
 }
 
-#[allow(ptr_arg)]
-// Type of MethodArgs is potentially a Vec
-fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs, is_mut: bool){
+fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir::Expr], is_mut: bool){
     let mut_str = if is_mut { "_mut" } else {""};
     let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.tcx.tables().expr_ty(&iter_args[0])).is_some() {
         "slice"
@@ -917,7 +913,7 @@ fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs, is_
     );
 }
 
-fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &MethodArgs, is_mut: bool) {
+fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &[hir::Expr], is_mut: bool) {
     // Note: we don't want to lint `get_mut().unwrap` for HashMap or BTreeMap,
     // because they do not implement `IndexMut`
     let expr_ty = cx.tcx.tables().expr_ty(&get_args[0]);
@@ -980,7 +976,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: ty::Ty) -> Option<sug
 
     if let hir::ExprMethodCall(name, _, ref args) = expr.node {
         if &*name.node.as_str() == "iter" && may_slice(cx, cx.tcx.tables().expr_ty(&args[0])) {
-            sugg::Sugg::hir_opt(cx, &*args[0]).map(|sugg| {
+            sugg::Sugg::hir_opt(cx, &args[0]).map(|sugg| {
                 sugg.addr()
             })
         } else {
@@ -1002,10 +998,8 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: ty::Ty) -> Option<sug
     }
 }
 
-#[allow(ptr_arg)]
-// Type of MethodArgs is potentially a Vec
 /// lint use of `unwrap()` for `Option`s and `Result`s
-fn lint_unwrap(cx: &LateContext, expr: &hir::Expr, unwrap_args: &MethodArgs) {
+fn lint_unwrap(cx: &LateContext, expr: &hir::Expr, unwrap_args: &[hir::Expr]) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.tables().expr_ty(&unwrap_args[0]));
 
     let mess = if match_type(cx, obj_ty, &paths::OPTION) {
@@ -1028,10 +1022,8 @@ fn lint_unwrap(cx: &LateContext, expr: &hir::Expr, unwrap_args: &MethodArgs) {
     }
 }
 
-#[allow(ptr_arg)]
-// Type of MethodArgs is potentially a Vec
 /// lint use of `ok().expect()` for `Result`s
-fn lint_ok_expect(cx: &LateContext, expr: &hir::Expr, ok_args: &MethodArgs) {
+fn lint_ok_expect(cx: &LateContext, expr: &hir::Expr, ok_args: &[hir::Expr]) {
     // lint if the caller of `ok()` is a `Result`
     if match_type(cx, cx.tcx.tables().expr_ty(&ok_args[0]), &paths::RESULT) {
         let result_type = cx.tcx.tables().expr_ty(&ok_args[0]);
@@ -1046,10 +1038,8 @@ fn lint_ok_expect(cx: &LateContext, expr: &hir::Expr, ok_args: &MethodArgs) {
     }
 }
 
-#[allow(ptr_arg)]
-// Type of MethodArgs is potentially a Vec
 /// lint use of `map().unwrap_or()` for `Option`s
-fn lint_map_unwrap_or(cx: &LateContext, expr: &hir::Expr, map_args: &MethodArgs, unwrap_args: &MethodArgs) {
+fn lint_map_unwrap_or(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::Expr], unwrap_args: &[hir::Expr]) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tcx.tables().expr_ty(&map_args[0]), &paths::OPTION) {
         // lint message
@@ -1077,10 +1067,8 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &hir::Expr, map_args: &MethodArgs,
     }
 }
 
-#[allow(ptr_arg)]
-// Type of MethodArgs is potentially a Vec
 /// lint use of `map().unwrap_or_else()` for `Option`s
-fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &MethodArgs, unwrap_args: &MethodArgs) {
+fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::Expr], unwrap_args: &[hir::Expr]) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tcx.tables().expr_ty(&map_args[0]), &paths::OPTION) {
         // lint message
@@ -1108,10 +1096,8 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &Method
     }
 }
 
-#[allow(ptr_arg)]
-// Type of MethodArgs is potentially a Vec
 /// lint use of `filter().next()` for `Iterators`
-fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &MethodArgs) {
+fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &[hir::Expr]) {
     // lint if caller of `.filter().next()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` \
@@ -1131,9 +1117,8 @@ fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &MethodArgs
     }
 }
 
-// Type of MethodArgs is potentially a Vec
 /// lint use of `filter().map()` for `Iterators`
-fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
+fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[hir::Expr], _map_args: &[hir::Expr]) {
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).map(q)` on an `Iterator`. \
@@ -1142,9 +1127,8 @@ fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs
     }
 }
 
-// Type of MethodArgs is potentially a Vec
 /// lint use of `filter().map()` for `Iterators`
-fn lint_filter_map_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
+fn lint_filter_map_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[hir::Expr], _map_args: &[hir::Expr]) {
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).map(q)` on an `Iterator`. \
@@ -1153,9 +1137,8 @@ fn lint_filter_map_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &Method
     }
 }
 
-// Type of MethodArgs is potentially a Vec
 /// lint use of `filter().flat_map()` for `Iterators`
-fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
+fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[hir::Expr], _map_args: &[hir::Expr]) {
     // lint if caller of `.filter().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).flat_map(q)` on an `Iterator`. \
@@ -1165,9 +1148,8 @@ fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &Metho
     }
 }
 
-// Type of MethodArgs is potentially a Vec
 /// lint use of `filter_map().flat_map()` for `Iterators`
-fn lint_filter_map_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
+fn lint_filter_map_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[hir::Expr], _map_args: &[hir::Expr]) {
     // lint if caller of `.filter_map().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).flat_map(q)` on an `Iterator`. \
@@ -1177,13 +1159,11 @@ fn lint_filter_map_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &M
     }
 }
 
-#[allow(ptr_arg)]
-// Type of MethodArgs is potentially a Vec
 /// lint searching an Iterator followed by `is_some()`
-fn lint_search_is_some(cx: &LateContext, expr: &hir::Expr, search_method: &str, search_args: &MethodArgs,
-                       is_some_args: &MethodArgs) {
+fn lint_search_is_some(cx: &LateContext, expr: &hir::Expr, search_method: &str, search_args: &[hir::Expr],
+                       is_some_args: &[hir::Expr]) {
     // lint if caller of search is an Iterator
-    if match_trait_method(cx, &*is_some_args[0], &paths::ITERATOR) {
+    if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
         let msg = format!("called `is_some()` after searching an `Iterator` with {}. This is more succinctly expressed \
                            by calling `any()`.",
                           search_method);

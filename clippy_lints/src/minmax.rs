@@ -2,7 +2,6 @@ use consts::{Constant, constant_simple};
 use rustc::lint::*;
 use rustc::hir::*;
 use std::cmp::{PartialOrd, Ordering};
-use syntax::ptr::P;
 use utils::{match_def_path, paths, span_lint};
 
 /// **What it does:** Checks for expressions where `std::cmp::min` and `max` are
@@ -80,7 +79,7 @@ fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'
     }
 }
 
-fn fetch_const(args: &[P<Expr>], m: MinMax) -> Option<(MinMax, Constant, &Expr)> {
+fn fetch_const(args: &[Expr], m: MinMax) -> Option<(MinMax, Constant, &Expr)> {
     if args.len() != 2 {
         return None;
     }

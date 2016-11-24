@@ -117,7 +117,7 @@ impl<'a, 'tcx, 'v, 'b> Visitor<'v> for InsertVisitor<'a, 'tcx, 'b> {
             let ExprMethodCall(ref name, _, ref params) = expr.node,
             params.len() == 3,
             &*name.node.as_str() == "insert",
-            get_item_name(self.cx, self.map) == get_item_name(self.cx, &*params[0]),
+            get_item_name(self.cx, self.map) == get_item_name(self.cx, &params[0]),
             SpanlessEq::new(self.cx).eq_expr(self.key, &params[1])
         ], {
             span_lint_and_then(self.cx, MAP_ENTRY, self.span,
