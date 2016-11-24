@@ -66,21 +66,8 @@ pub enum LegacyScope<'a> {
     Binding(&'a LegacyBinding<'a>),
 }
 
-impl<'a> LegacyScope<'a> {
-    fn simplify_expansion(mut invoc: &'a InvocationData<'a>) -> Self {
-        while let LegacyScope::Invocation(_) = invoc.expansion.get() {
-            match invoc.legacy_scope.get() {
-                LegacyScope::Expansion(new_invoc) => invoc = new_invoc,
-                LegacyScope::Binding(_) => break,
-                scope @ _ => return scope,
-            }
-        }
-        LegacyScope::Expansion(invoc)
-    }
-}
-
 pub struct LegacyBinding<'a> {
-    pub parent: LegacyScope<'a>,
+    pub parent: Cell<LegacyScope<'a>>,
     pub name: ast::Name,
     ext: Rc<SyntaxExtension>,
     pub span: Span,
@@ -157,7 +144,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         let invocation = self.invocations[&scope];
         let binding = self.arenas.alloc_legacy_binding(LegacyBinding {
-            parent: invocation.legacy_scope.get(),
+            parent: Cell::new(invocation.legacy_scope.get()),
             name: def.ident.name,
             ext: Rc::new(macro_rules::compile(&self.session.parse_sess, &def)),
             span: def.span,
@@ -228,12 +215,8 @@ impl<'a> base::Resolver for Resolver<'a> {
         let name = path.segments[0].identifier.name;
 
         let invocation = self.invocations[&scope];
-        if let LegacyScope::Expansion(parent) = invocation.legacy_scope.get() {
-            invocation.legacy_scope.set(LegacyScope::simplify_expansion(parent));
-        }
-
         self.current_module = invocation.module.get();
-        let result = match self.resolve_legacy_scope(invocation.legacy_scope.get(), name, false) {
+        let result = match self.resolve_legacy_scope(&invocation.legacy_scope, name, false) {
             Some(MacroBinding::Legacy(binding)) => Ok(binding.ext.clone()),
             Some(MacroBinding::Modern(binding)) => Ok(self.get_macro(binding)),
             None => match self.resolve_in_item_lexical_scope(name, MacroNS, None) {
@@ -299,7 +282,7 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn resolve_legacy_scope(&mut self,
-                                mut scope: LegacyScope<'a>,
+                                mut scope: &'a Cell<LegacyScope<'a>>,
                                 name: Name,
                                 record_used: bool)
                                 -> Option<MacroBinding<'a>> {
@@ -307,22 +290,26 @@ impl<'a> Resolver<'a> {
         let mut relative_depth: u32 = 0;
         let mut binding = None;
         loop {
-            scope = match scope {
+            match scope.get() {
                 LegacyScope::Empty => break,
                 LegacyScope::Expansion(invocation) => {
-                    if let LegacyScope::Empty = invocation.expansion.get() {
-                        if possible_time_travel.is_none() {
-                            possible_time_travel = Some(scope);
+                    match invocation.expansion.get() {
+                        LegacyScope::Invocation(_) => scope.set(invocation.legacy_scope.get()),
+                        LegacyScope::Empty => {
+                            if possible_time_travel.is_none() {
+                                possible_time_travel = Some(scope);
+                            }
+                            scope = &invocation.legacy_scope;
                         }
-                        invocation.legacy_scope.get()
-                    } else {
-                        relative_depth += 1;
-                        invocation.expansion.get()
+                        _ => {
+                            relative_depth += 1;
+                            scope = &invocation.expansion;
+                        }
                     }
                 }
                 LegacyScope::Invocation(invocation) => {
                     relative_depth = relative_depth.saturating_sub(1);
-                    invocation.legacy_scope.get()
+                    scope = &invocation.legacy_scope;
                 }
                 LegacyScope::Binding(potential_binding) => {
                     if potential_binding.name == name {
@@ -332,7 +319,7 @@ impl<'a> Resolver<'a> {
                         binding = Some(potential_binding);
                         break
                     }
-                    potential_binding.parent
+                    scope = &potential_binding.parent;
                 }
             };
         }
@@ -358,7 +345,7 @@ impl<'a> Resolver<'a> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
         for &(mark, name, span) in module.legacy_macro_resolutions.borrow().iter() {
-            let legacy_scope = self.invocations[&mark].legacy_scope.get();
+            let legacy_scope = &self.invocations[&mark].legacy_scope;
             let legacy_resolution = self.resolve_legacy_scope(legacy_scope, name, true);
             let resolution = self.resolve_in_item_lexical_scope(name, MacroNS, Some(span));
             let (legacy_resolution, resolution) = match (legacy_resolution, resolution) {
