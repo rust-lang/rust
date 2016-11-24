@@ -489,7 +489,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           hir::ExprPath(ref qpath) => {
-            let def = self.tcx().tables().qpath_def(qpath, expr.id);
+            let def = self.infcx.tables.borrow().qpath_def(qpath, expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
@@ -1087,7 +1087,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         match pat.node {
           PatKind::TupleStruct(ref qpath, ref subpats, ddpos) => {
-            let def = self.tcx().tables().qpath_def(qpath, pat.id);
+            let def = self.infcx.tables.borrow().qpath_def(qpath, pat.id);
             let expected_len = match def {
                 Def::VariantCtor(def_id, CtorKind::Fn) => {
                     let enum_def = self.tcx().parent_def_id(def_id).unwrap();

@@ -4028,7 +4028,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                    ty, def, segment);
 
                 // Write back the new resolution.
-                self.tcx.tables.borrow_mut().type_relative_path_defs.insert(node_id, def);
+                self.tables.borrow_mut().type_relative_path_defs.insert(node_id, def);
 
                 (def, ty)
             }
@@ -4069,7 +4069,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Write back the new resolution.
-        self.tcx.tables.borrow_mut().type_relative_path_defs.insert(node_id, def);
+        self.tables.borrow_mut().type_relative_path_defs.insert(node_id, def);
         (def, Some(ty), slice::ref_slice(&**item_segment))
     }
 
