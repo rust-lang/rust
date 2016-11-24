@@ -474,12 +474,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         intravisit::walk_path(self, path)
     }
 
-    fn visit_path_list_item(&mut self, prefix: &'tcx hir::Path, item: &'tcx hir::PathListItem) {
-        check_path_list_item(self.tcx, item,
-                   &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
-        intravisit::walk_path_list_item(self, prefix, item)
-    }
-
     fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
         check_pat(self.tcx, pat,
                   &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
@@ -626,14 +620,6 @@ pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         None | Some(Def::PrimTy(..)) | Some(Def::SelfTy(..)) => {}
         Some(def) => maybe_do_stability_check(tcx, def.def_id(), path.span, cb)
     }
-}
-
-pub fn check_path_list_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                      item: &hir::PathListItem,
-                                      cb: &mut FnMut(DefId, Span,
-                                                     &Option<&Stability>,
-                                                     &Option<DeprecationEntry>)) {
-    maybe_do_stability_check(tcx, tcx.expect_def(item.node.id).def_id(), item.span, cb);
 }
 
 pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,

@@ -948,11 +948,6 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         hir_visit::walk_path(self, p);
     }
 
-    fn visit_path_list_item(&mut self, prefix: &'tcx hir::Path, item: &'tcx hir::PathListItem) {
-        run_lints!(self, check_path_list_item, late_passes, item);
-        hir_visit::walk_path_list_item(self, prefix, item);
-    }
-
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         check_lint_name_attribute(self, attr);
         run_lints!(self, check_attribute, late_passes, attr);

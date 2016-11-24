@@ -696,7 +696,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
     debug!("convert: item {} with id {}", it.name, it.id);
     match it.node {
         // These don't define types.
-        hir::ItemExternCrate(_) | hir::ItemUse(_) | hir::ItemMod(_) => {
+        hir::ItemExternCrate(_) | hir::ItemUse(..) | hir::ItemMod(_) => {
         }
         hir::ItemForeignMod(ref foreign_mod) => {
             for item in &foreign_mod.items {

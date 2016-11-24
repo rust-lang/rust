@@ -151,7 +151,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     intravisit::walk_item(this, item);
                 }
                 hir::ItemExternCrate(_) |
-                hir::ItemUse(_) |
+                hir::ItemUse(..) |
                 hir::ItemMod(..) |
                 hir::ItemDefaultImpl(..) |
                 hir::ItemForeignMod(..) |

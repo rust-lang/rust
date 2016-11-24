@@ -55,6 +55,7 @@ use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned};
 use syntax::std_inject;
 use syntax::symbol::{Symbol, keywords};
+use syntax::util::small_vector::SmallVector;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
 
@@ -67,6 +68,11 @@ pub struct LoweringContext<'a> {
     // a definition, then we can properly create the def id.
     parent_def: Option<DefIndex>,
     resolver: &'a mut Resolver,
+
+    /// The items being lowered are collected here.
+    items: BTreeMap<NodeId, hir::Item>,
+
+    impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
 }
 
 pub trait Resolver {
@@ -98,6 +104,8 @@ pub fn lower_crate(sess: &Session,
         sess: sess,
         parent_def: None,
         resolver: resolver,
+        items: BTreeMap::new(),
+        impl_items: BTreeMap::new(),
     }.lower_crate(krate)
 }
 
@@ -110,41 +118,35 @@ enum ParamMode {
 }
 
 impl<'a> LoweringContext<'a> {
-    fn lower_crate(&mut self, c: &Crate) -> hir::Crate {
+    fn lower_crate(mut self, c: &Crate) -> hir::Crate {
         struct ItemLowerer<'lcx, 'interner: 'lcx> {
-            items: BTreeMap<NodeId, hir::Item>,
-            impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
             lctx: &'lcx mut LoweringContext<'interner>,
         }
 
         impl<'lcx, 'interner> Visitor for ItemLowerer<'lcx, 'interner> {
             fn visit_item(&mut self, item: &Item) {
-                self.items.insert(item.id, self.lctx.lower_item(item));
+                let hir_item = self.lctx.lower_item(item);
+                self.lctx.items.insert(item.id, hir_item);
                 visit::walk_item(self, item);
             }
 
             fn visit_impl_item(&mut self, item: &ImplItem) {
                 let id = self.lctx.lower_impl_item_ref(item).id;
-                self.impl_items.insert(id, self.lctx.lower_impl_item(item));
+                let hir_item = self.lctx.lower_impl_item(item);
+                self.lctx.impl_items.insert(id, hir_item);
                 visit::walk_impl_item(self, item);
             }
         }
 
-        let (items, impl_items) = {
-            let mut item_lowerer = ItemLowerer { items: BTreeMap::new(),
-                                                 impl_items: BTreeMap::new(),
-                                                 lctx: self };
-            visit::walk_crate(&mut item_lowerer, c);
-            (item_lowerer.items, item_lowerer.impl_items)
-        };
+        visit::walk_crate(&mut ItemLowerer { lctx: &mut self }, c);
 
         hir::Crate {
             module: self.lower_mod(&c.module),
             attrs: self.lower_attrs(&c.attrs),
             span: c.span,
             exported_macros: c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect(),
-            items: items,
-            impl_items: impl_items,
+            items: self.items,
+            impl_items: self.impl_items,
         }
     }
 
@@ -181,38 +183,6 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_attrs(&mut self, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
         attrs.clone().into()
-    }
-
-    fn lower_view_path(&mut self, view_path: &ViewPath) -> P<hir::ViewPath> {
-        P(Spanned {
-            node: match view_path.node {
-                ViewPathSimple(ident, ref path) => {
-                    hir::ViewPathSimple(ident.name,
-                                        self.lower_path(path, ParamMode::Explicit))
-                }
-                ViewPathGlob(ref path) => {
-                    hir::ViewPathGlob(self.lower_path(path, ParamMode::Explicit))
-                }
-                ViewPathList(ref path, ref path_list_idents) => {
-                    hir::ViewPathList(self.lower_path(path, ParamMode::Explicit),
-                                      path_list_idents.iter()
-                                                      .map(|item| self.lower_path_list_item(item))
-                                                      .collect())
-                }
-            },
-            span: view_path.span,
-        })
-    }
-
-    fn lower_path_list_item(&mut self, path_list_ident: &PathListItem) -> hir::PathListItem {
-        Spanned {
-            node: hir::PathListItem_ {
-                id: path_list_ident.node.id,
-                name: path_list_ident.node.name.name,
-                rename: path_list_ident.node.rename.map(|rename| rename.name),
-            },
-            span: path_list_ident.span,
-        }
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm {
@@ -382,17 +352,30 @@ impl<'a> LoweringContext<'a> {
                   proj_start, p.segments.len())
     }
 
-    fn lower_path(&mut self,
-                  p: &Path,
-                  param_mode: ParamMode)
-                  -> hir::Path {
+    fn lower_path_extra(&mut self,
+                        p: &Path,
+                        name: Option<Name>,
+                        param_mode: ParamMode)
+                        -> hir::Path {
         hir::Path {
             global: p.global,
             segments: p.segments.iter().map(|segment| {
                 self.lower_path_segment(segment, param_mode)
-            }).collect(),
+            }).chain(name.map(|name| {
+                hir::PathSegment {
+                    name: name,
+                    parameters: hir::PathParameters::none()
+                }
+            })).collect(),
             span: p.span,
         }
+    }
+
+    fn lower_path(&mut self,
+                  p: &Path,
+                  param_mode: ParamMode)
+                  -> hir::Path {
+        self.lower_path_extra(p, None, param_mode)
     }
 
     fn lower_path_segment(&mut self,
@@ -661,12 +644,10 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_block(&mut self, b: &Block) -> P<hir::Block> {
-        let mut stmts = Vec::new();
         let mut expr = None;
 
-        if let Some((last, rest)) = b.stmts.split_last() {
-            stmts = rest.iter().map(|s| self.lower_stmt(s)).collect::<Vec<_>>();
-            let last = self.lower_stmt(last);
+        let mut stmts = b.stmts.iter().flat_map(|s| self.lower_stmt(s)).collect::<Vec<_>>();
+        if let Some(last) = stmts.pop() {
             if let hir::StmtExpr(e, _) = last.node {
                 expr = Some(e);
             } else {
@@ -683,11 +664,65 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn lower_item_kind(&mut self, i: &ItemKind) -> hir::Item_ {
+    fn lower_item_kind(&mut self,
+                       name: &mut Name,
+                       attrs: &hir::HirVec<Attribute>,
+                       vis: &mut hir::Visibility,
+                       i: &ItemKind)
+                       -> hir::Item_ {
         match *i {
             ItemKind::ExternCrate(string) => hir::ItemExternCrate(string),
             ItemKind::Use(ref view_path) => {
-                hir::ItemUse(self.lower_view_path(view_path))
+                let path = match view_path.node {
+                    ViewPathSimple(_, ref path) => path,
+                    ViewPathGlob(ref path) => path,
+                    ViewPathList(ref path, ref path_list_idents) => {
+                        for &Spanned { node: ref import, span } in path_list_idents {
+                            // `use a::{self as x, b as y};` lowers to
+                            // `use a as x; use a::b as y;`
+                            let mut ident = import.name;
+                            let suffix = if ident.name == keywords::SelfValue.name() {
+                                if let Some(last) = path.segments.last() {
+                                    ident = last.identifier;
+                                }
+                                None
+                            } else {
+                                Some(ident.name)
+                            };
+
+                            let mut path = self.lower_path_extra(path, suffix,
+                                                                 ParamMode::Explicit);
+                            path.span = span;
+                            self.items.insert(import.id, hir::Item {
+                                id: import.id,
+                                name: import.rename.unwrap_or(ident).name,
+                                attrs: attrs.clone(),
+                                node: hir::ItemUse(P(path), hir::UseKind::Single),
+                                vis: vis.clone(),
+                                span: span,
+                            });
+                        }
+                        path
+                    }
+                };
+                let path = P(self.lower_path(path, ParamMode::Explicit));
+                let kind = match view_path.node {
+                    ViewPathSimple(ident, _) => {
+                        *name = ident.name;
+                        hir::UseKind::Single
+                    }
+                    ViewPathGlob(_) => {
+                        hir::UseKind::Glob
+                    }
+                    ViewPathList(..) => {
+                        // Privatize the degenerate import base, used only to check
+                        // the stability of `use a::{};`, to avoid it showing up as
+                        // a reexport by accident when `pub`, e.g. in documentation.
+                        *vis = hir::Inherited;
+                        hir::UseKind::ListStem
+                    }
+                };
+                hir::ItemUse(path, kind)
             }
             ItemKind::Static(ref t, m, ref e) => {
                 hir::ItemStatic(self.lower_ty(t),
@@ -835,7 +870,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_mod(&mut self, m: &Mod) -> hir::Mod {
         hir::Mod {
             inner: m.inner,
-            item_ids: m.items.iter().map(|x| self.lower_item_id(x)).collect(),
+            item_ids: m.items.iter().flat_map(|x| self.lower_item_id(x)).collect(),
         }
     }
 
@@ -851,21 +886,30 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_item_id(&mut self, i: &Item) -> hir::ItemId {
-        hir::ItemId { id: i.id }
+    fn lower_item_id(&mut self, i: &Item) -> SmallVector<hir::ItemId> {
+        if let ItemKind::Use(ref view_path) = i.node {
+            if let ViewPathList(_, ref imports) = view_path.node {
+                return iter::once(i.id).chain(imports.iter().map(|import| import.node.id))
+                    .map(|id| hir::ItemId { id: id }).collect();
+            }
+        }
+        SmallVector::one(hir::ItemId { id: i.id })
     }
 
     pub fn lower_item(&mut self, i: &Item) -> hir::Item {
+        let mut name = i.ident.name;
+        let attrs = self.lower_attrs(&i.attrs);
+        let mut vis = self.lower_visibility(&i.vis);
         let node = self.with_parent_def(i.id, |this| {
-            this.lower_item_kind(&i.node)
+            this.lower_item_kind(&mut name, &attrs, &mut vis, &i.node)
         });
 
         hir::Item {
             id: i.id,
-            name: i.ident.name,
-            attrs: self.lower_attrs(&i.attrs),
+            name: name,
+            attrs: attrs,
             node: node,
-            vis: self.lower_visibility(&i.vis),
+            vis: vis,
             span: i.span,
         }
     }
@@ -1701,8 +1745,8 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_stmt(&mut self, s: &Stmt) -> hir::Stmt {
-        match s.node {
+    fn lower_stmt(&mut self, s: &Stmt) -> SmallVector<hir::Stmt> {
+        SmallVector::one(match s.node {
             StmtKind::Local(ref l) => Spanned {
                 node: hir::StmtDecl(P(Spanned {
                     node: hir::DeclLocal(self.lower_local(l)),
@@ -1710,13 +1754,17 @@ impl<'a> LoweringContext<'a> {
                 }), s.id),
                 span: s.span,
             },
-            StmtKind::Item(ref it) => Spanned {
-                node: hir::StmtDecl(P(Spanned {
-                    node: hir::DeclItem(self.lower_item_id(it)),
+            StmtKind::Item(ref it) => {
+                // Can only use the ID once.
+                let mut id = Some(s.id);
+                return self.lower_item_id(it).into_iter().map(|item_id| Spanned {
+                    node: hir::StmtDecl(P(Spanned {
+                        node: hir::DeclItem(item_id),
+                        span: s.span,
+                    }), id.take().unwrap_or_else(|| self.next_id())),
                     span: s.span,
-                }), s.id),
-                span: s.span,
-            },
+                }).collect();
+            }
             StmtKind::Expr(ref e) => {
                 Spanned {
                     node: hir::StmtExpr(P(self.lower_expr(e)), s.id),
@@ -1730,7 +1778,7 @@ impl<'a> LoweringContext<'a> {
                 }
             }
             StmtKind::Mac(..) => panic!("Shouldn't exist here"),
-        }
+        })
     }
 
     fn lower_capture_clause(&mut self, c: CaptureBy) -> hir::CaptureClause {

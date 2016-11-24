@@ -406,11 +406,11 @@ impl LintPass for UnusedImportBraces {
     }
 }
 
-impl LateLintPass for UnusedImportBraces {
-    fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        if let hir::ItemUse(ref view_path) = item.node {
-            if let hir::ViewPathList(_, ref items) = view_path.node {
-                if items.len() == 1 && items[0].node.name != keywords::SelfValue.name() {
+impl EarlyLintPass for UnusedImportBraces {
+    fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
+        if let ast::ItemKind::Use(ref view_path) = item.node {
+            if let ast::ViewPathList(_, ref items) = view_path.node {
+                if items.len() == 1 && items[0].node.name.name != keywords::SelfValue.name() {
                     let msg = format!("braces around {} is unnecessary", items[0].node.name);
                     cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
                 }

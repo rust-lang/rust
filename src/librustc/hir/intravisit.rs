@@ -250,9 +250,6 @@ pub trait Visitor<'v> : Sized {
     fn visit_path(&mut self, path: &'v Path, _id: NodeId) {
         walk_path(self, path)
     }
-    fn visit_path_list_item(&mut self, prefix: &'v Path, item: &'v PathListItem) {
-        walk_path_list_item(self, prefix, item)
-    }
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v PathSegment) {
         walk_path_segment(self, path_span, path_segment)
     }
@@ -352,23 +349,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             walk_opt_name(visitor, item.span, opt_name)
         }
-        ItemUse(ref vp) => {
+        ItemUse(ref path, _) => {
             visitor.visit_id(item.id);
-            match vp.node {
-                ViewPathSimple(name, ref path) => {
-                    visitor.visit_name(vp.span, name);
-                    visitor.visit_path(path, item.id);
-                }
-                ViewPathGlob(ref path) => {
-                    visitor.visit_path(path, item.id);
-                }
-                ViewPathList(ref prefix, ref list) => {
-                    visitor.visit_path(prefix, item.id);
-                    for item in list {
-                        visitor.visit_path_list_item(prefix, item)
-                    }
-                }
-            }
+            visitor.visit_path(path, item.id);
         }
         ItemStatic(ref typ, _, ref expr) |
         ItemConst(ref typ, ref expr) => {
@@ -527,14 +510,6 @@ pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
     for segment in &path.segments {
         visitor.visit_path_segment(path.span, segment);
     }
-}
-
-pub fn walk_path_list_item<'v, V>(visitor: &mut V, _prefix: &'v Path, item: &'v PathListItem)
-    where V: Visitor<'v>,
-{
-    visitor.visit_id(item.node.id);
-    visitor.visit_name(item.span, item.node.name);
-    walk_opt_name(visitor, item.span, item.node.rename);
 }
 
 pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,

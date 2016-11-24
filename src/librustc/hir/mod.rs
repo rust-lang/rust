@@ -27,7 +27,6 @@ pub use self::Ty_::*;
 pub use self::TyParamBound::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
-pub use self::ViewPath_::*;
 pub use self::Visibility::{Public, Inherited};
 pub use self::PathParameters::*;
 
@@ -1385,32 +1384,20 @@ pub struct Variant_ {
 
 pub type Variant = Spanned<Variant_>;
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub struct PathListItem_ {
-    pub name: Name,
-    /// renamed in list, eg `use foo::{bar as baz};`
-    pub rename: Option<Name>,
-    pub id: NodeId,
-}
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum UseKind {
+    /// One import, e.g. `use foo::bar` or `use foo::bar as baz`.
+    /// Also produced for each element of a list `use`, e.g.
+    // `use foo::{a, b}` lowers to `use foo::a; use foo::b;`.
+    Single,
 
-pub type PathListItem = Spanned<PathListItem_>;
+    /// Glob import, e.g. `use foo::*`.
+    Glob,
 
-pub type ViewPath = Spanned<ViewPath_>;
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum ViewPath_ {
-    /// `foo::bar::baz as quux`
-    ///
-    /// or just
-    ///
-    /// `foo::bar::baz` (with `as baz` implicitly on the right)
-    ViewPathSimple(Name, Path),
-
-    /// `foo::bar::*`
-    ViewPathGlob(Path),
-
-    /// `foo::bar::{a,b,c}`
-    ViewPathList(Path, HirVec<PathListItem>),
+    /// Degenerate list import, e.g. `use foo::{a, b}` produces
+    /// an additional `use foo::{}` for performing checks such as
+    /// unstable feature gating. May be removed in the future.
+    ListStem,
 }
 
 /// TraitRef's appear in impls.
@@ -1544,8 +1531,13 @@ pub enum Item_ {
     ///
     /// e.g. `extern crate foo` or `extern crate foo_bar as foo`
     ItemExternCrate(Option<Name>),
-    /// A `use` or `pub use` item
-    ItemUse(P<ViewPath>),
+
+    /// `use foo::bar::*;` or `use foo::bar::baz as quux;`
+    ///
+    /// or just
+    ///
+    /// `use foo::bar::baz;` (with `as baz` implicitly on the right)
+    ItemUse(P<Path>, UseKind),
 
     /// A `static` item
     ItemStatic(P<Ty>, Mutability, P<Expr>),
