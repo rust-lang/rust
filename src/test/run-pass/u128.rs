@@ -23,6 +23,7 @@ fn main() {
                y &
                0xFAFF_0000_FF8F_0000__FFFF_0000_FFFF_FFFF);
     let z: u128 = 0xABCD_EF;
+    assert_eq!(z * z, 0x734C_C2F2_A521);
     assert_eq!(z * z * z * z, 0x33EE_0E2A_54E2_59DA_A0E7_8E41);
     assert_eq!(z + z + z + z, 0x2AF3_7BC);
     let k: u128 = 0x1234_5678_9ABC_DEFF_EDCB_A987_6543_210;
@@ -34,6 +35,7 @@ fn main() {
     assert_eq!(0x6EF5_DE4C_D3BC_2AAA_3BB4_CC5D_D6EE_8, k / 42);
     assert_eq!(0, k % 42);
     assert_eq!(15, z % 42);
+    assert_eq!(0x169D_A8020_CEC18, k % 0x3ACB_FE49_FF24_AC);
     assert_eq!(0x91A2_B3C4_D5E6_F7, k >> 65);
     assert_eq!(0xFDB9_7530_ECA8_6420_0000_0000_0000_0000, k << 65);
     assert!(k > z);
@@ -43,6 +45,13 @@ fn main() {
     assert_eq!(z as u64, 0xABCD_EF);
     assert_eq!(k as u64, 0xFEDC_BA98_7654_3210);
     assert_eq!(k as i128, 0x1234_5678_9ABC_DEFF_EDCB_A987_6543_210);
+    assert_eq!((z as f64) as u128, z);
+    assert_eq!((z as f32) as u128, z);
+    assert_eq!((z as f64 * 16.0) as u128, z * 16);
+    assert_eq!((z as f32 * 16.0) as u128, z * 16);
+    let l :u128 = 432 << 100;
+    assert_eq!((l as f32) as u128, l);
+    assert_eq!((l as f64) as u128, l);
     // formatting
     let j: u128 = 1 << 67;
     assert_eq!("147573952589676412928", format!("{}", j));
