@@ -250,16 +250,8 @@ impl<'ast> Map<'ast> {
             loop {
                 match map[id.as_usize()] {
                     EntryItem(_, item) => {
-                        let def_id = self.local_def_id(item.id);
-                        // NB                          ^~~~~~~
-                        //
-                        // You would expect that `item.id == id`, but this
-                        // is not always the case. In particular, for a
-                        // ViewPath item like `use self::{mem, foo}`, we
-                        // map the ids for `mem` and `foo` to the
-                        // enclosing view path item. This seems mega super
-                        // ultra wrong, but then who am I to judge?
-                        // -nmatsakis
+                        assert_eq!(id, item.id);
+                        let def_id = self.local_def_id(id);
                         assert!(!self.is_inlined_def_id(def_id));
                         return DepNode::Hir(def_id);
                     }

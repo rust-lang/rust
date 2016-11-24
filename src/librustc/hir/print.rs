@@ -669,10 +669,22 @@ impl<'a> State<'a> {
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
-            hir::ItemUse(ref vp) => {
+            hir::ItemUse(ref path, kind) => {
                 self.head(&visibility_qualified(&item.vis, "use"))?;
-                self.print_view_path(&vp)?;
-                word(&mut self.s, ";")?;
+                self.print_path(path, false)?;
+
+                match kind {
+                    hir::UseKind::Single => {
+                        if path.segments.last().unwrap().name != item.name {
+                            space(&mut self.s)?;
+                            self.word_space("as")?;
+                            self.print_name(item.name)?;
+                        }
+                        word(&mut self.s, ";")?;
+                    }
+                    hir::UseKind::Glob => word(&mut self.s, "::*;")?,
+                    hir::UseKind::ListStem => word(&mut self.s, "::{};")?
+                }
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
@@ -2151,38 +2163,6 @@ impl<'a> State<'a> {
         }
 
         Ok(())
-    }
-
-    pub fn print_view_path(&mut self, vp: &hir::ViewPath) -> io::Result<()> {
-        match vp.node {
-            hir::ViewPathSimple(name, ref path) => {
-                self.print_path(path, false)?;
-
-                if path.segments.last().unwrap().name != name {
-                    space(&mut self.s)?;
-                    self.word_space("as")?;
-                    self.print_name(name)?;
-                }
-
-                Ok(())
-            }
-
-            hir::ViewPathGlob(ref path) => {
-                self.print_path(path, false)?;
-                word(&mut self.s, "::*")
-            }
-
-            hir::ViewPathList(ref path, ref segments) => {
-                if path.segments.is_empty() {
-                    word(&mut self.s, "{")?;
-                } else {
-                    self.print_path(path, false)?;
-                    word(&mut self.s, "::{")?;
-                }
-                self.commasep(Inconsistent, &segments[..], |s, w| s.print_name(w.node.name))?;
-                word(&mut self.s, "}")
-            }
-        }
     }
 
     pub fn print_mutability(&mut self, mutbl: hir::Mutability) -> io::Result<()> {

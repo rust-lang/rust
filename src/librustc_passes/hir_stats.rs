@@ -226,12 +226,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.record("Path", Id::None, path);
         hir_visit::walk_path(self, path)
     }
-    fn visit_path_list_item(&mut self,
-                            prefix: &'v hir::Path,
-                            item: &'v hir::PathListItem) {
-        self.record("PathListItem", Id::Node(item.node.id), item);
-        hir_visit::walk_path_list_item(self, prefix, item)
-    }
     fn visit_path_segment(&mut self,
                           path_span: Span,
                           path_segment: &'v hir::PathSegment) {

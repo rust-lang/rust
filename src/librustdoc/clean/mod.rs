@@ -2589,47 +2589,19 @@ impl Clean<Vec<Item>> for doctree::Import {
                 None => false,
             }
         });
-        let (mut ret, inner) = match self.node {
-            hir::ViewPathGlob(ref p) => {
-                (vec![], Import::Glob(resolve_use_source(cx, p.clean(cx), self.id)))
-            }
-            hir::ViewPathList(ref p, ref list) => {
-                // Attempt to inline all reexported items, but be sure
-                // to keep any non-inlineable reexports so they can be
-                // listed in the documentation.
-                let mut ret = vec![];
-                let remaining = if !denied {
-                    let mut remaining = vec![];
-                    for path in list {
-                        match inline::try_inline(cx, path.node.id, path.node.rename) {
-                            Some(items) => {
-                                ret.extend(items);
-                            }
-                            None => {
-                                remaining.push(path.clean(cx));
-                            }
-                        }
-                    }
-                    remaining
-                } else {
-                    list.clean(cx)
-                };
-                if remaining.is_empty() {
-                    return ret;
+        let path = self.path.clean(cx);
+        let inner = if self.glob {
+            Import::Glob(resolve_use_source(cx, path, self.id))
+        } else {
+            let name = self.name;
+            if !denied {
+                if let Some(items) = inline::try_inline(cx, self.id, Some(name)) {
+                    return items;
                 }
-                (ret, Import::List(resolve_use_source(cx, p.clean(cx), self.id), remaining))
             }
-            hir::ViewPathSimple(name, ref p) => {
-                if !denied {
-                    if let Some(items) = inline::try_inline(cx, self.id, Some(name)) {
-                        return items;
-                    }
-                }
-                (vec![], Import::Simple(name.clean(cx),
-                                        resolve_use_source(cx, p.clean(cx), self.id)))
-            }
+            Import::Simple(name.clean(cx), resolve_use_source(cx, path, self.id))
         };
-        ret.push(Item {
+        vec![Item {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
@@ -2638,8 +2610,7 @@ impl Clean<Vec<Item>> for doctree::Import {
             stability: None,
             deprecation: None,
             inner: ImportItem(inner)
-        });
-        ret
+        }]
     }
 }
 
@@ -2648,32 +2619,13 @@ pub enum Import {
     // use source as str;
     Simple(String, ImportSource),
     // use source::*;
-    Glob(ImportSource),
-    // use source::{a, b, c};
-    List(ImportSource, Vec<ViewListIdent>),
+    Glob(ImportSource)
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ImportSource {
     pub path: Path,
     pub did: Option<DefId>,
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct ViewListIdent {
-    pub name: String,
-    pub rename: Option<String>,
-    pub source: Option<DefId>,
-}
-
-impl Clean<ViewListIdent> for hir::PathListItem {
-    fn clean(&self, cx: &DocContext) -> ViewListIdent {
-        ViewListIdent {
-            name: self.node.name.clean(cx),
-            rename: self.node.rename.map(|r| r.clean(cx)),
-            source: resolve_def(cx, self.node.id)
-        }
-    }
 }
 
 impl Clean<Vec<Item>> for hir::ForeignMod {

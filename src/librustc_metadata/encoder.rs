@@ -729,7 +729,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 EntryKind::Trait(self.lazy(&data))
             }
             hir::ItemExternCrate(_) |
-            hir::ItemUse(_) => bug!("cannot encode info for item {:?}", item),
+            hir::ItemUse(..) => bug!("cannot encode info for item {:?}", item),
         };
 
         Entry {
@@ -982,7 +982,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
         let def_id = self.index.tcx.map.local_def_id(item.id);
         match item.node {
             hir::ItemExternCrate(_) |
-            hir::ItemUse(_) => (), // ignore these
+            hir::ItemUse(..) => (), // ignore these
             _ => self.index.record(def_id, EncodeContext::encode_info_for_item, (def_id, item)),
         }
         self.index.encode_addl_info_for_item(item);

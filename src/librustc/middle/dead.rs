@@ -297,11 +297,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         self.lookup_and_handle_definition(id);
         intravisit::walk_path(self, path);
     }
-
-    fn visit_path_list_item(&mut self, path: &hir::Path, item: &hir::PathListItem) {
-        self.lookup_and_handle_definition(item.node.id);
-        intravisit::walk_path_list_item(self, path, item);
-    }
 }
 
 fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {

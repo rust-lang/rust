@@ -704,14 +704,6 @@ impl LateLintPass for Deprecated {
                               &mut |id, sp, stab, depr| self.lint(cx, id, sp, &stab, &depr));
     }
 
-    fn check_path_list_item(&mut self, cx: &LateContext, item: &hir::PathListItem) {
-        stability::check_path_list_item(cx.tcx,
-                                        item,
-                                        &mut |id, sp, stab, depr| {
-                                            self.lint(cx, id, sp, &stab, &depr)
-                                        });
-    }
-
     fn check_pat(&mut self, cx: &LateContext, pat: &hir::Pat) {
         stability::check_pat(cx.tcx,
                              pat,

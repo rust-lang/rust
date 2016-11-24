@@ -168,7 +168,6 @@ pub trait LateLintPass: LintPass {
     fn check_lifetime(&mut self, _: &LateContext, _: &hir::Lifetime) { }
     fn check_lifetime_def(&mut self, _: &LateContext, _: &hir::LifetimeDef) { }
     fn check_path(&mut self, _: &LateContext, _: &hir::Path, _: ast::NodeId) { }
-    fn check_path_list_item(&mut self, _: &LateContext, _: &hir::PathListItem) { }
     fn check_attribute(&mut self, _: &LateContext, _: &ast::Attribute) { }
 
     /// Called when entering a syntax node that can have lint attributes such

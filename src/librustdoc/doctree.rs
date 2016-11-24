@@ -254,10 +254,12 @@ pub struct ExternCrate {
 }
 
 pub struct Import {
+    pub name: Name,
     pub id: NodeId,
     pub vis: hir::Visibility,
     pub attrs: hir::HirVec<ast::Attribute>,
-    pub node: hir::ViewPath_,
+    pub path: hir::Path,
+    pub glob: bool,
     pub whence: Span,
 }
 

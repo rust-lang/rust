@@ -189,7 +189,6 @@ enum SawAbiComponent<'a> {
     SawPath(bool),
     SawPathSegment,
     SawPathParameters,
-    SawPathListItem,
     SawBlock,
     SawPat(SawPatComponent),
     SawLocal,
@@ -357,7 +356,7 @@ fn saw_lit(lit: &ast::Lit) -> SawExprComponent<'static> {
 #[derive(Hash)]
 enum SawItemComponent {
     SawItemExternCrate,
-    SawItemUse,
+    SawItemUse(UseKind),
     SawItemStatic(Mutability),
     SawItemConst,
     SawItemFn(Unsafety, Constness, Abi),
@@ -375,7 +374,7 @@ enum SawItemComponent {
 fn saw_item(node: &Item_) -> SawItemComponent {
     match *node {
         ItemExternCrate(..) => SawItemExternCrate,
-        ItemUse(..) => SawItemUse,
+        ItemUse(_, kind) => SawItemUse(kind),
         ItemStatic(_, mutability, _) => SawItemStatic(mutability),
         ItemConst(..) =>SawItemConst,
         ItemFn(_, unsafety, constness, abi, _, _) => SawItemFn(unsafety, constness, abi),
@@ -745,14 +744,6 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         SawPolyTraitRef.hash(self.st);
         m.hash(self.st);
         visit::walk_poly_trait_ref(self, t, m)
-    }
-
-    fn visit_path_list_item(&mut self, prefix: &'tcx Path, item: &'tcx PathListItem) {
-        debug!("visit_path_list_item: st={:?}", self.st);
-        SawPathListItem.hash(self.st);
-        self.hash_discriminant(&item.node);
-        hash_span!(self, item.span);
-        visit::walk_path_list_item(self, prefix, item)
     }
 
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'tcx PathSegment) {

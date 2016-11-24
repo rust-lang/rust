@@ -969,16 +969,6 @@ impl fmt::Display for clean::Import {
             clean::Import::Glob(ref src) => {
                 write!(f, "use {}::*;", *src)
             }
-            clean::Import::List(ref src, ref names) => {
-                write!(f, "use {}::{{", *src)?;
-                for (i, n) in names.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{}", *n)?;
-                }
-                write!(f, "}};")
-            }
         }
     }
 }
@@ -997,23 +987,6 @@ impl fmt::Display for clean::ImportSource {
                 Ok(())
             }
         }
-    }
-}
-
-impl fmt::Display for clean::ViewListIdent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.source {
-            Some(did) => {
-                let path = clean::Path::singleton(self.name.clone());
-                resolved_path(f, did, &path, false)?;
-            }
-            _ => write!(f, "{}", self.name)?,
-        }
-
-        if let Some(ref name) = self.rename {
-            write!(f, " as {}", name)?;
-        }
-        Ok(())
     }
 }
 
