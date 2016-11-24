@@ -559,10 +559,13 @@ impl<'a, 'gcx, 'tcx> Struct {
 
             self.offsets.push(offset);
 
+            debug!("Struct::extend offset: {:?} field: {:?} {:?}", offset, field, field.size(dl));
 
             offset = offset.checked_add(field.size(dl), dl)
                            .map_or(Err(LayoutError::SizeOverflow(scapegoat)), Ok)?;
         }
+
+        debug!("Struct::extend min_size: {:?}", offset);
 
         self.min_size = offset;
 
@@ -707,11 +710,15 @@ impl<'a, 'gcx, 'tcx> Union {
                      index, scapegoat);
             }
 
+            debug!("Union::extend field: {:?} {:?}", field, field.size(dl));
+
             if !self.packed {
                 self.align = self.align.max(field.align(dl));
             }
             self.min_size = cmp::max(self.min_size, field.size(dl));
         }
+
+        debug!("Union::extend min-size: {:?}", self.min_size);
 
         Ok(())
     }
