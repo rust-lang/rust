@@ -89,7 +89,7 @@ pub mod visit_ast;
 pub mod visit_lib;
 pub mod test;
 
-use clean::Attributes;
+use clean::AttributesExt;
 
 struct Output {
     krate: clean::Crate,
@@ -280,43 +280,45 @@ pub fn main_args(args: &[String]) -> isize {
                                                  !matches.opt_present("markdown-no-toc")),
         (false, false) => {}
     }
-    let out = match acquire_input(input, externs, &matches) {
-        Ok(out) => out,
-        Err(s) => {
-            println!("input error: {}", s);
-            return 1;
+
+    let output_format = matches.opt_str("w");
+    let res = acquire_input(input, externs, &matches, move |out| {
+        let Output { krate, passes, renderinfo } = out;
+        info!("going to format");
+        match output_format.as_ref().map(|s| &**s) {
+            Some("html") | None => {
+                html::render::run(krate, &external_html,
+                                  output.unwrap_or(PathBuf::from("doc")),
+                                  passes.into_iter().collect(),
+                                  css_file_extension,
+                                  renderinfo)
+                    .expect("failed to generate documentation");
+                0
+            }
+            Some(s) => {
+                println!("unknown output format: {}", s);
+                1
+            }
         }
-    };
-    let Output { krate, passes, renderinfo } = out;
-    info!("going to format");
-    match matches.opt_str("w").as_ref().map(|s| &**s) {
-        Some("html") | None => {
-            html::render::run(krate, &external_html,
-                              output.unwrap_or(PathBuf::from("doc")),
-                              passes.into_iter().collect(),
-                              css_file_extension,
-                              renderinfo)
-                .expect("failed to generate documentation");
-            0
-        }
-        Some(s) => {
-            println!("unknown output format: {}", s);
-            1
-        }
-    }
+    });
+    res.unwrap_or_else(|s| {
+        println!("input error: {}", s);
+        1
+    })
 }
 
 /// Looks inside the command line arguments to extract the relevant input format
 /// and files and then generates the necessary rustdoc output for formatting.
-fn acquire_input(input: &str,
-                 externs: Externs,
-                 matches: &getopts::Matches) -> Result<Output, String> {
+fn acquire_input<R, F>(input: &str,
+                       externs: Externs,
+                       matches: &getopts::Matches,
+                       f: F)
+                       -> Result<R, String>
+where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     match matches.opt_str("r").as_ref().map(|s| &**s) {
-        Some("rust") => Ok(rust_input(input, externs, matches)),
+        Some("rust") => Ok(rust_input(input, externs, matches, f)),
         Some(s) => Err(format!("unknown input format: {}", s)),
-        None => {
-            Ok(rust_input(input, externs, matches))
-        }
+        None => Ok(rust_input(input, externs, matches, f))
     }
 }
 
@@ -342,7 +344,8 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
 /// generated from the cleaned AST of the crate.
 ///
 /// This form of input will run all of the plug/cleaning passes
-fn rust_input(cratefile: &str, externs: Externs, matches: &getopts::Matches) -> Output {
+fn rust_input<R, F>(cratefile: &str, externs: Externs, matches: &getopts::Matches, f: F) -> R
+where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");
     let mut plugins = matches.opt_strs("plugins");
@@ -355,6 +358,8 @@ fn rust_input(cratefile: &str, externs: Externs, matches: &getopts::Matches) -> 
     let cfgs = matches.opt_strs("cfg");
     let triple = matches.opt_str("target");
     let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
+    let crate_name = matches.opt_str("crate-name");
+    let plugin_path = matches.opt_str("plugin-path");
 
     let cr = PathBuf::from(cratefile);
     info!("starting to run rustc");
@@ -363,67 +368,68 @@ fn rust_input(cratefile: &str, externs: Externs, matches: &getopts::Matches) -> 
     rustc_driver::monitor(move || {
         use rustc::session::config::Input;
 
-        tx.send(core::run_core(paths, cfgs, externs, Input::File(cr),
-                               triple, maybe_sysroot)).unwrap();
-    });
-    let (mut krate, renderinfo) = rx.recv().unwrap();
-    info!("finished with rustc");
+        let (mut krate, renderinfo) =
+            core::run_core(paths, cfgs, externs, Input::File(cr), triple, maybe_sysroot);
 
-    if let Some(name) = matches.opt_str("crate-name") {
-        krate.name = name
-    }
+        info!("finished with rustc");
 
-    // Process all of the crate attributes, extracting plugin metadata along
-    // with the passes which we are supposed to run.
-    for attr in krate.module.as_ref().unwrap().attrs.list("doc") {
-        match *attr {
-            clean::Word(ref w) if "no_default_passes" == *w => {
-                default_passes = false;
-            },
-            clean::NameValue(ref name, ref value) => {
-                let sink = match &name[..] {
-                    "passes" => &mut passes,
-                    "plugins" => &mut plugins,
+        if let Some(name) = crate_name {
+            krate.name = name
+        }
+
+        // Process all of the crate attributes, extracting plugin metadata along
+        // with the passes which we are supposed to run.
+        for attr in krate.module.as_ref().unwrap().attrs.lists("doc") {
+            let name = attr.name().map(|s| s.as_str());
+            let name = name.as_ref().map(|s| &s[..]);
+            if attr.is_word() {
+                if name == Some("no_default_passes") {
+                    default_passes = false;
+                }
+            } else if let Some(value) = attr.value_str() {
+                let sink = match name {
+                    Some("passes") => &mut passes,
+                    Some("plugins") => &mut plugins,
                     _ => continue,
                 };
-                for p in value.split_whitespace() {
+                for p in value.as_str().split_whitespace() {
                     sink.push(p.to_string());
                 }
             }
-            _ => (),
         }
-    }
 
-    if default_passes {
-        for name in passes::DEFAULT_PASSES.iter().rev() {
-            passes.insert(0, name.to_string());
+        if default_passes {
+            for name in passes::DEFAULT_PASSES.iter().rev() {
+                passes.insert(0, name.to_string());
+            }
         }
-    }
 
-    // Load all plugins/passes into a PluginManager
-    let path = matches.opt_str("plugin-path")
-                      .unwrap_or("/tmp/rustdoc/plugins".to_string());
-    let mut pm = plugins::PluginManager::new(PathBuf::from(path));
-    for pass in &passes {
-        let plugin = match passes::PASSES.iter()
-                                         .position(|&(p, ..)| {
-                                             p == *pass
-                                         }) {
-            Some(i) => passes::PASSES[i].1,
-            None => {
-                error!("unknown pass {}, skipping", *pass);
-                continue
-            },
-        };
-        pm.add_plugin(plugin);
-    }
-    info!("loading plugins...");
-    for pname in plugins {
-        pm.load_plugin(pname);
-    }
+        // Load all plugins/passes into a PluginManager
+        let path = plugin_path.unwrap_or("/tmp/rustdoc/plugins".to_string());
+        let mut pm = plugins::PluginManager::new(PathBuf::from(path));
+        for pass in &passes {
+            let plugin = match passes::PASSES.iter()
+                                             .position(|&(p, ..)| {
+                                                 p == *pass
+                                             }) {
+                Some(i) => passes::PASSES[i].1,
+                None => {
+                    error!("unknown pass {}, skipping", *pass);
+                    continue
+                },
+            };
+            pm.add_plugin(plugin);
+        }
+        info!("loading plugins...");
+        for pname in plugins {
+            pm.load_plugin(pname);
+        }
 
-    // Run everything!
-    info!("Executing passes/plugins");
-    let krate = pm.run_plugins(krate);
-    Output { krate: krate, renderinfo: renderinfo, passes: passes }
+        // Run everything!
+        info!("Executing passes/plugins");
+        let krate = pm.run_plugins(krate);
+
+        tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes })).unwrap();
+    });
+    rx.recv().unwrap()
 }

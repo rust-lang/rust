@@ -53,7 +53,7 @@ use std::sync::Arc;
 use externalfiles::ExternalHtml;
 
 use serialize::json::{ToJson, Json, as_json};
-use syntax::abi;
+use syntax::{abi, ast};
 use syntax::feature_gate::UnstableFeatures;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use rustc::middle::privacy::AccessLevels;
@@ -62,7 +62,7 @@ use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
 
-use clean::{self, Attributes, GetDefId, SelfTy, Mutability};
+use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
@@ -453,30 +453,26 @@ pub fn run(mut krate: clean::Crate,
 
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
-    if let Some(attrs) = krate.module.as_ref().map(|m| m.attrs.list("doc")) {
-        for attr in attrs {
-            match *attr {
-                clean::NameValue(ref x, ref s)
-                        if "html_favicon_url" == *x => {
+    if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
+        for attr in attrs.lists("doc") {
+            let name = attr.name().map(|s| s.as_str());
+            match (name.as_ref().map(|s| &s[..]), attr.value_str()) {
+                (Some("html_favicon_url"), Some(s)) => {
                     scx.layout.favicon = s.to_string();
                 }
-                clean::NameValue(ref x, ref s)
-                        if "html_logo_url" == *x => {
+                (Some("html_logo_url"), Some(s)) => {
                     scx.layout.logo = s.to_string();
                 }
-                clean::NameValue(ref x, ref s)
-                        if "html_playground_url" == *x => {
+                (Some("html_playground_url"), Some(s)) => {
                     markdown::PLAYGROUND.with(|slot| {
                         let name = krate.name.clone();
-                        *slot.borrow_mut() = Some((Some(name), s.clone()));
+                        *slot.borrow_mut() = Some((Some(name), s.to_string()));
                     });
                 }
-                clean::NameValue(ref x, ref s)
-                        if "issue_tracker_base_url" == *x => {
+                (Some("issue_tracker_base_url"), Some(s)) => {
                     scx.issue_tracker_base_url = Some(s.to_string());
                 }
-                clean::Word(ref x)
-                        if "html_no_source" == *x => {
+                (Some("html_no_source"), None) if attr.is_word() => {
                     scx.include_sources = false;
                 }
                 _ => {}
@@ -860,13 +856,16 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
 
     // Failing that, see if there's an attribute specifying where to find this
     // external crate
-    e.attrs.list("doc").value("html_root_url").map(|url| {
-        let mut url = url.to_owned();
+    e.attrs.lists("doc")
+     .filter(|a| a.check_name("html_root_url"))
+     .filter_map(|a| a.value_str())
+     .map(|url| {
+        let mut url = url.to_string();
         if !url.ends_with("/") {
             url.push('/')
         }
         Remote(url)
-    }).unwrap_or(Unknown) // Well, at least we tried.
+    }).next().unwrap_or(Unknown) // Well, at least we tried.
 }
 
 impl<'a> DocFolder for SourceCollector<'a> {
@@ -2511,49 +2510,47 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     Ok(())
 }
 
-fn attribute_without_value(s: &str) -> bool {
-    ["must_use", "no_mangle", "unsafe_destructor_blind_to_params"].iter().any(|x| x == &s)
-}
+fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
+    let name = attr.name();
 
-fn attribute_with_value(s: &str) -> bool {
-    ["export_name", "lang", "link_section", "must_use"].iter().any(|x| x == &s)
-}
+    if attr.is_word() {
+        Some(format!("{}", name))
+    } else if let Some(v) = attr.value_str() {
+        Some(format!("{} = {:?}", name, &v.as_str()[..]))
+    } else if let Some(values) = attr.meta_item_list() {
+        let display: Vec<_> = values.iter().filter_map(|attr| {
+            attr.meta_item().and_then(|mi| render_attribute(mi))
+        }).collect();
 
-fn attribute_with_values(s: &str) -> bool {
-    ["repr"].iter().any(|x| x == &s)
-}
-
-fn render_attribute(attr: &clean::Attribute, recurse: bool) -> Option<String> {
-    match *attr {
-        clean::Word(ref s) if attribute_without_value(&*s) || recurse => {
-            Some(format!("{}", s))
-        }
-        clean::NameValue(ref k, ref v) if attribute_with_value(&*k) => {
-            Some(format!("{} = \"{}\"", k, v))
-        }
-        clean::List(ref k, ref values) if attribute_with_values(&*k) => {
-            let display: Vec<_> = values.iter()
-                                        .filter_map(|value| render_attribute(value, true))
-                                        .map(|entry| format!("{}", entry))
-                                        .collect();
-
-            if display.len() > 0 {
-                Some(format!("{}({})", k, display.join(", ")))
-            } else {
-                None
-            }
-        }
-        _ => {
+        if display.len() > 0 {
+            Some(format!("{}({})", name, display.join(", ")))
+        } else {
             None
         }
+    } else {
+        None
     }
 }
+
+const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
+    "export_name",
+    "lang",
+    "link_section",
+    "must_use",
+    "no_mangle",
+    "repr",
+    "unsafe_destructor_blind_to_params"
+];
 
 fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
     let mut attrs = String::new();
 
-    for attr in &it.attrs {
-        if let Some(s) = render_attribute(attr, false) {
+    for attr in &it.attrs.other_attrs {
+        let name = attr.name();
+        if !ATTRIBUTE_WHITELIST.contains(&&name.as_str()[..]) {
+            continue;
+        }
+        if let Some(s) = render_attribute(attr.meta()) {
             attrs.push_str(&format!("#[{}]\n", s));
         }
     }
@@ -2810,7 +2807,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         }
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
-        if let Some(ref dox) = i.impl_item.attrs.value("doc") {
+        if let Some(ref dox) = i.impl_item.doc_value() {
             write!(w, "<div class='docblock'>{}</div>", Markdown(dox))?;
         }
     }
