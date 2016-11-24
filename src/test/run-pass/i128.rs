@@ -18,6 +18,9 @@ fn main() {
     let y: i128 = -2;
     assert_eq!(!1, y);
     let z: i128 = 0xABCD_EF;
+    assert_eq!(z * z, 0x734C_C2F2_A521);
+    assert_eq!(z * z * z * z, 0x33EE_0E2A_54E2_59DA_A0E7_8E41);
+    assert_eq!(-z * -z, 0x734C_C2F2_A521);
     assert_eq!(-z * -z * -z * -z, 0x33EE_0E2A_54E2_59DA_A0E7_8E41);
     assert_eq!(-z + -z + -z + -z, -0x2AF3_7BC);
     let k: i128 = -0x1234_5678_9ABC_DEFF_EDCB_A987_6543_210;
@@ -38,6 +41,10 @@ fn main() {
     assert_eq!(k as i64, -0xFEDC_BA98_7654_3210);
     assert_eq!(k as u128, 0xFEDC_BA98_7654_3210_0123_4567_89AB_CDF0);
     assert_eq!(-k as u128, 0x1234_5678_9ABC_DEFF_EDCB_A987_6543_210);
+    assert_eq!((-z as f64) as i128, -z);
+    assert_eq!((-z as f32) as i128, -z);
+    assert_eq!((-z as f64 * 16.0) as i128, -z * 16);
+    assert_eq!((-z as f32 * 16.0) as i128, -z * 16);
     // formatting
     let j: i128 = -(1 << 67);
     assert_eq!("-147573952589676412928", format!("{}", j));
