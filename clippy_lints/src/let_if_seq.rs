@@ -31,13 +31,13 @@ use utils::{snippet, span_lint_and_then};
 ///
 /// ```rust,ignore
 /// let foo = if bar() {
-///     42;
+///     42
 /// } else {
-///     0;
+///     0
 /// };
 ///
 /// let baz = if bar() {
-///     Some(42);
+///     Some(42)
 /// } else {
 ///     None
 /// };
