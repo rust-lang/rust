@@ -870,6 +870,12 @@ pub struct Expr {
     pub attrs: ThinVec<Attribute>,
 }
 
+impl Expr {
+    pub fn expr_id(&self) -> ExprId {
+        ExprId(self.id)
+    }
+}
+
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "expr({}: {})", self.id, print::expr_to_string(self))

@@ -17,7 +17,7 @@ use self::EvalHint::*;
 
 use rustc::hir::map as ast_map;
 use rustc::hir::map::blocks::FnLikeNode;
-use rustc::middle::cstore::{InlinedItem, InlinedItemKind};
+use rustc::middle::cstore::InlinedItem;
 use rustc::traits;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -142,9 +142,8 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         let mut used_substs = false;
         let expr_ty = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-            Some((&InlinedItem { body: ref const_expr,
-                                 kind: InlinedItemKind::Const(ref ty), .. }, _)) => {
-                Some((&**const_expr, tcx.ast_ty_to_prim_ty(ty)))
+            Some((&InlinedItem { body: ref const_expr, .. }, _)) => {
+                Some((&**const_expr, Some(tcx.sess.cstore.item_type(tcx, def_id))))
             }
             _ => None
         };
@@ -166,8 +165,9 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 } else {
                     expr_ty
                 }
-            }
-            _ => expr_ty
+            },
+            Some(Def::Const(..)) => expr_ty,
+            _ => None
         };
         // If we used the substitutions, particularly to choose an impl
         // of a trait-associated const, don't cache that, because the next
@@ -195,23 +195,29 @@ fn inline_const_fn_from_external_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return None;
     }
 
-    let fn_id = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-        Some((&InlinedItem { kind: InlinedItemKind::Fn(_), .. }, node_id)) => Some(node_id),
-        _ => None
-    };
+    let fn_id = tcx.sess.cstore.maybe_get_item_ast(tcx, def_id).map(|t| t.1);
     tcx.extern_const_fns.borrow_mut().insert(def_id,
                                              fn_id.unwrap_or(ast::DUMMY_NODE_ID));
     fn_id
 }
 
+pub enum ConstFnNode<'tcx> {
+    Local(FnLikeNode<'tcx>),
+    Inlined(&'tcx InlinedItem)
+}
+
 pub fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                                       -> Option<FnLikeNode<'tcx>>
+                                       -> Option<ConstFnNode<'tcx>>
 {
     let fn_id = if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         node_id
     } else {
         if let Some(fn_id) = inline_const_fn_from_external_crate(tcx, def_id) {
-            fn_id
+            if let ast_map::NodeInlinedItem(ii) = tcx.map.get(fn_id) {
+                return Some(ConstFnNode::Inlined(ii));
+            } else {
+                bug!("Got const fn from external crate, but it's not inlined")
+            }
         } else {
             return None;
         }
@@ -223,7 +229,7 @@ pub fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
     };
 
     if fn_like.constness() == hir::Constness::Const {
-        Some(fn_like)
+        Some(ConstFnNode::Local(fn_like))
     } else {
         None
     }
@@ -858,16 +864,19 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               Struct(_) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
               callee => signal!(e, CallOn(callee)),
           };
-          let (decl, body_id) = if let Some(fn_like) = lookup_const_fn_by_id(tcx, did) {
-              (fn_like.decl(), fn_like.body())
-          } else {
-              signal!(e, NonConstPath)
+          let (arg_defs, body_id) = match lookup_const_fn_by_id(tcx, did) {
+              Some(ConstFnNode::Inlined(ii)) => (ii.const_fn_args.clone(), ii.body.expr_id()),
+              Some(ConstFnNode::Local(fn_like)) =>
+                  (fn_like.decl().inputs.iter()
+                   .map(|arg| tcx.expect_def(arg.pat.id).def_id()).collect(),
+                   fn_like.body()),
+              None => signal!(e, NonConstPath),
           };
           let result = tcx.map.expr(body_id);
-          assert_eq!(decl.inputs.len(), args.len());
+          assert_eq!(arg_defs.len(), args.len());
 
           let mut call_args = DefIdMap();
-          for (arg, arg_expr) in decl.inputs.iter().zip(args.iter()) {
+          for (arg, arg_expr) in arg_defs.iter().zip(args.iter()) {
               let arg_hint = ty_hint.erase_hint();
               let arg_val = eval_const_expr_partial(
                   tcx,
