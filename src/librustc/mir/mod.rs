@@ -462,7 +462,7 @@ pub enum TerminatorKind<'tcx> {
     /// lvalue evaluates to some enum; jump depending on the branch
     Switch {
         discr: Lvalue<'tcx>,
-        adt_def: AdtDef<'tcx>,
+        adt_def: &'tcx AdtDef,
         targets: Vec<BasicBlock>,
     },
 
@@ -866,7 +866,7 @@ pub enum ProjectionElem<'tcx, V> {
     /// "Downcast" to a variant of an ADT. Currently, we only introduce
     /// this for ADTs with more than one variant. It may be better to
     /// just introduce it always, or always for enums.
-    Downcast(AdtDef<'tcx>, usize),
+    Downcast(&'tcx AdtDef, usize),
 }
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
@@ -1035,7 +1035,7 @@ pub enum AggregateKind<'tcx> {
     /// The second field is variant number (discriminant), it's equal to 0
     /// for struct and union expressions. The fourth field is active field
     /// number and is present only for union expressions.
-    Adt(AdtDef<'tcx>, usize, &'tcx Substs<'tcx>, Option<usize>),
+    Adt(&'tcx AdtDef, usize, &'tcx Substs<'tcx>, Option<usize>),
     Closure(DefId, ClosureSubsts<'tcx>),
 }
 

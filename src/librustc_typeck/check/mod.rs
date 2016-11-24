@@ -1985,7 +1985,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Indifferent to privacy flags
     pub fn field_ty(&self,
                     span: Span,
-                    field: ty::FieldDef<'tcx>,
+                    field: &'tcx ty::FieldDef,
                     substs: &Substs<'tcx>)
                     -> Ty<'tcx>
     {
@@ -3071,7 +3071,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Return an hint about the closest match in field names
-    fn suggest_field_name(variant: ty::VariantDef<'tcx>,
+    fn suggest_field_name(variant: &'tcx ty::VariantDef,
                           field: &Spanned<ast::Name>,
                           skip : Vec<InternedString>)
                           -> Option<Symbol> {
@@ -3164,7 +3164,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn report_unknown_field(&self,
                             ty: Ty<'tcx>,
-                            variant: ty::VariantDef<'tcx>,
+                            variant: &'tcx ty::VariantDef,
                             field: &hir::Field,
                             skip_fields: &[hir::Field],
                             kind_name: &str) {
@@ -3208,7 +3208,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 adt_ty: Ty<'tcx>,
                                 expr_id: ast::NodeId,
                                 span: Span,
-                                variant: ty::VariantDef<'tcx>,
+                                variant: &'tcx ty::VariantDef,
                                 ast_fields: &'gcx [hir::Field],
                                 check_completeness: bool) {
         let tcx = self.tcx;
@@ -3324,7 +3324,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_struct_path(&self,
                              qpath: &hir::QPath,
                              node_id: ast::NodeId)
-                             -> Option<(ty::VariantDef<'tcx>,  Ty<'tcx>)> {
+                             -> Option<(&'tcx ty::VariantDef,  Ty<'tcx>)> {
         let path_span = match *qpath {
             hir::QPath::Resolved(_, ref path) => path.span,
             hir::QPath::TypeRelative(ref qself, _) => qself.span

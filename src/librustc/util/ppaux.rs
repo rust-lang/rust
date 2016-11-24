@@ -440,7 +440,7 @@ impl fmt::Debug for ty::TraitDef {
     }
 }
 
-impl<'tcx, 'container> fmt::Debug for ty::AdtDefData<'tcx, 'container> {
+impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         ty::tls::with(|tcx| {
             write!(f, "{}", tcx.item_path_str(self.did))
