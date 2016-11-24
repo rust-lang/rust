@@ -24,7 +24,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::codemap::Spanned;
 use syntax::ptr::P;
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, InternedString};
 use syntax_pos::{self, DUMMY_SP, Pos};
 
 use rustc::middle::const_val::ConstVal;
@@ -121,6 +121,7 @@ pub struct Crate {
     // Only here so that they can be filtered through the rustdoc passes.
     pub external_traits: FxHashMap<DefId, Trait>,
     pub masked_crates: FxHashSet<CrateNum>,
+    pub cfg_feature_map: ConfigFeatureMap,
 }
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
@@ -190,6 +191,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             access_levels: Arc::new(mem::replace(&mut access_levels, Default::default())),
             external_traits: mem::replace(&mut external_traits, Default::default()),
             masked_crates,
+            cfg_feature_map: Default::default(),
         }
     }
 }
@@ -3052,5 +3054,48 @@ impl Clean<TypeBinding> for hir::TypeBinding {
             name: self.name.clean(cx),
             ty: self.ty.clean(cx)
         }
+    }
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct ConfigFeatureMap {
+    /// A map from item ids the set of features directly or inherited from
+    /// parent items that are required for a given item to be included in the
+    /// output crate.
+    all: FxHashMap<DefId, FxHashSet<InternedString>>,
+
+    /// A map from item ids to the set of features directly required for the
+    /// item to be included in the output crate.
+    introduced: FxHashMap<DefId, FxHashSet<InternedString>>,
+
+    /// A helper for returning empty results.
+    empty: FxHashSet<InternedString>,
+}
+
+impl ConfigFeatureMap {
+    pub fn set_all(&mut self, id: DefId, all: FxHashSet<InternedString>) {
+        if !all.is_empty() {
+            self.all.insert(id, all);
+        }
+    }
+
+    pub fn set_introduced(&mut self, id: DefId, introduced: FxHashSet<InternedString>) {
+        if !introduced.is_empty() {
+            self.introduced.insert(id, introduced);
+        }
+    }
+
+    pub fn all<'a>(&'a self, id: DefId) -> impl ExactSizeIterator<Item=&'a str> + 'a {
+        self.all.get(&id)
+            .unwrap_or(&self.empty)
+            .iter()
+            .map(|s| s.as_ref())
+    }
+
+    pub fn introduced<'a>(&'a self, id: DefId) -> impl ExactSizeIterator<Item=&'a str> + 'a {
+        self.introduced.get(&id)
+            .unwrap_or(&self.empty)
+            .iter()
+            .map(|s| s.as_ref())
     }
 }
