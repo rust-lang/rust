@@ -32,10 +32,10 @@ pub fn const_negation() -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_dirty(label="HirBody", cfg="cfails2")]
-#[rustc_clean(label="HirBody", cfg="cfails3")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn const_negation() -> i32 {
@@ -51,10 +51,10 @@ pub fn const_bitwise_not() -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_dirty(label="HirBody", cfg="cfails2")]
-#[rustc_clean(label="HirBody", cfg="cfails3")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn const_bitwise_not() -> i32 {
@@ -70,10 +70,10 @@ pub fn var_negation(x: i32, y: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_dirty(label="HirBody", cfg="cfails2")]
-#[rustc_clean(label="HirBody", cfg="cfails3")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn var_negation(x: i32, y: i32) -> i32 {
@@ -89,10 +89,10 @@ pub fn var_bitwise_not(x: i32, y: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_dirty(label="HirBody", cfg="cfails2")]
-#[rustc_clean(label="HirBody", cfg="cfails3")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn var_bitwise_not(x: i32, y: i32) -> i32 {
@@ -108,9 +108,11 @@ pub fn var_deref(x: &i32, y: &i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn var_deref(x: &i32, y: &i32) -> i32 {
     *y
@@ -125,9 +127,11 @@ pub fn first_const_add() -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn first_const_add() -> i32 {
     2 + 3
@@ -142,9 +146,11 @@ pub fn second_const_add() -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn second_const_add() -> i32 {
     1 + 3
@@ -159,9 +165,11 @@ pub fn first_var_add(a: i32, b: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn first_var_add(a: i32, b: i32) -> i32 {
     b + 2
@@ -176,9 +184,11 @@ pub fn second_var_add(a: i32, b: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn second_var_add(a: i32, b: i32) -> i32 {
     1 + b
@@ -193,9 +203,11 @@ pub fn plus_to_minus(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn plus_to_minus(a: i32) -> i32 {
     1 - a
@@ -210,9 +222,11 @@ pub fn plus_to_mult(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn plus_to_mult(a: i32) -> i32 {
     1 * a
@@ -227,9 +241,11 @@ pub fn plus_to_div(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn plus_to_div(a: i32) -> i32 {
     1 / a
@@ -244,9 +260,11 @@ pub fn plus_to_mod(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn plus_to_mod(a: i32) -> i32 {
     1 % a
@@ -261,9 +279,11 @@ pub fn and_to_or(a: bool, b: bool) -> bool {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn and_to_or(a: bool, b: bool) -> bool {
     a || b
@@ -278,9 +298,11 @@ pub fn bitwise_and_to_bitwise_or(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn bitwise_and_to_bitwise_or(a: i32) -> i32 {
     1 | a
@@ -295,9 +317,11 @@ pub fn bitwise_and_to_bitwise_xor(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn bitwise_and_to_bitwise_xor(a: i32) -> i32 {
     1 ^ a
@@ -312,9 +336,11 @@ pub fn bitwise_and_to_lshift(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn bitwise_and_to_lshift(a: i32) -> i32 {
     a << 1
@@ -329,9 +355,11 @@ pub fn bitwise_and_to_rshift(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn bitwise_and_to_rshift(a: i32) -> i32 {
     a >> 1
@@ -346,9 +374,11 @@ pub fn eq_to_uneq(a: i32) -> bool {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn eq_to_uneq(a: i32) -> bool {
     a != 1
@@ -363,9 +393,11 @@ pub fn eq_to_lt(a: i32) -> bool {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn eq_to_lt(a: i32) -> bool {
     a < 1
@@ -380,9 +412,11 @@ pub fn eq_to_gt(a: i32) -> bool {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn eq_to_gt(a: i32) -> bool {
     a > 1
@@ -397,9 +431,11 @@ pub fn eq_to_le(a: i32) -> bool {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn eq_to_le(a: i32) -> bool {
     a <= 1
@@ -414,9 +450,11 @@ pub fn eq_to_ge(a: i32) -> bool {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn eq_to_ge(a: i32) -> bool {
     a >= 1
@@ -433,9 +471,11 @@ pub fn type_cast(a: u8) -> u64 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn type_cast(a: u8) -> u64 {
     let b = a as u32;
@@ -452,9 +492,11 @@ pub fn value_cast(a: u32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn value_cast(a: u32) -> i32 {
     2 as i32
@@ -472,9 +514,11 @@ pub fn lvalue() -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn lvalue() -> i32 {
     let mut x = 10;
@@ -494,9 +538,11 @@ pub fn rvalue() -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn rvalue() -> i32 {
     let mut x = 10;
@@ -513,9 +559,11 @@ pub fn index_to_slice(s: &[u8], i: usize, j: usize) -> u8 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfails2")]
-#[rustc_clean(label="Hir", cfg="cfails3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn index_to_slice(s: &[u8], i: usize, j: usize) -> u8 {
     s[j]
