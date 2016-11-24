@@ -13,7 +13,7 @@ pub struct TwoU8s {
     one: u8, two: u8
 }
 
-#[link(name = "rust_test_helpers")]
+#[link(name = "rust_test_helpers", kind = "static")]
 extern {
     pub fn rust_dbg_extern_return_TwoU8s() -> TwoU8s;
 }
