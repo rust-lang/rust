@@ -319,7 +319,6 @@ COMPRT_OBJS_$(1) += \
   arm/clzsi2.o \
   arm/comparesf2.o \
   arm/divmodsi4.o \
-  arm/divsi3.o \
   arm/modsi3.o \
   arm/switch16.o \
   arm/switch32.o \
@@ -400,13 +399,9 @@ endif
 
 $(foreach intrinsic,absvdi2.o \
   absvsi2.o \
-  adddf3.o \
-  addsf3.o \
   addvdi3.o \
   addvsi3.o \
   apple_versioning.o \
-  ashldi3.o \
-  ashrdi3.o \
   clear_cache.o \
   clzdi2.o \
   clzsi2.o \
@@ -417,12 +412,8 @@ $(foreach intrinsic,absvdi2.o \
   ctzsi2.o \
   divdc3.o \
   divdf3.o \
-  divdi3.o \
-  divmoddi4.o \
-  divmodsi4.o \
   divsc3.o \
   divsf3.o \
-  divsi3.o \
   divxc3.o \
   extendsfdf2.o \
   extendhfsf2.o \
@@ -449,14 +440,8 @@ $(foreach intrinsic,absvdi2.o \
   floatunsidf.o \
   floatunsisf.o \
   int_util.o \
-  lshrdi3.o \
-  moddi3.o \
-  modsi3.o \
   muldc3.o \
   muldf3.o \
-  muldi3.o \
-  mulodi4.o \
-  mulosi4.o \
   muloti4.o \
   mulsc3.o \
   mulsf3.o \
@@ -472,8 +457,6 @@ $(foreach intrinsic,absvdi2.o \
   paritysi2.o \
   popcountdi2.o \
   popcountsi2.o \
-  powidf2.o \
-  powisf2.o \
   powixf2.o \
   subdf3.o \
   subsf3.o \
@@ -482,13 +465,7 @@ $(foreach intrinsic,absvdi2.o \
   truncdfhf2.o \
   truncdfsf2.o \
   truncsfhf2.o \
-  ucmpdi2.o \
-  udivdi3.o \
-  udivmoddi4.o \
-  udivmodsi4.o \
-  udivsi3.o \
-  umoddi3.o \
-  umodsi3.o,
+  ucmpdi2.o,
   $(call ADD_INTRINSIC,$(1),$(intrinsic)))
 
 ifeq ($$(findstring ios,$(1)),)
@@ -585,12 +562,12 @@ endif
 
 COMPRT_OBJS_$(1) := $$(COMPRT_OBJS_$(1):%=$$(COMPRT_BUILD_DIR_$(1))/%)
 
-$$(COMPRT_BUILD_DIR_$(1))/%.o: $(S)src/compiler-rt/lib/builtins/%.c
+$$(COMPRT_BUILD_DIR_$(1))/%.o: $(S)src/libcompiler_builtins/compiler-rt/compiler-rt-cdylib/compiler-rt/lib/builtins/%.c
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1),$$@,$$<)
 
-$$(COMPRT_BUILD_DIR_$(1))/%.o: $(S)src/compiler-rt/lib/builtins/%.S \
+$$(COMPRT_BUILD_DIR_$(1))/%.o: $(S)src/libcompiler_builtins/compiler-rt/compiler-rt-cdylib/compiler-rt/lib/builtins/%.S \
 	    $$(LLVM_CONFIG_$$(CFG_BUILD))
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)

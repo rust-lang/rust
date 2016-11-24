@@ -352,8 +352,8 @@ impl Build {
                                   .args(&["clean", "-fdx"]));
                 },
                 State::NotInitialized => {
-                    self.run(git_submodule().arg("init").arg(submodule.path));
-                    self.run(git_submodule().arg("update").arg(submodule.path));
+                    self.run(git_submodule().arg("update").arg("--recursive").arg("--init")
+                             .arg(submodule.path));
                 },
                 State::OutOfSync => {
                     // drops submodule commits that weren't reported to the (outer) git repository
