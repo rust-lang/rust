@@ -1,0 +1,14 @@
+print-type-size type: `Pair<FiftyBytes>`: 100 bytes, alignment: 1 bytes
+print-type-size     field `._car`: 50 bytes
+print-type-size     field `._cdr`: 50 bytes
+print-type-size type: `FiftyBytes`: 50 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 50 bytes
+print-type-size type: `Pair<SevenBytes>`: 14 bytes, alignment: 1 bytes
+print-type-size     field `._car`: 7 bytes
+print-type-size     field `._cdr`: 7 bytes
+print-type-size type: `SevenBytes`: 7 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 7 bytes
+print-type-size type: `Pair<u8>`: 2 bytes, alignment: 1 bytes
+print-type-size     field `._car`: 1 bytes
+print-type-size     field `._cdr`: 1 bytes
+print-type-size type: `ZeroSized`: 0 bytes, alignment: 1 bytes
