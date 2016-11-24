@@ -31,7 +31,7 @@ use syntax::ast::{self, NodeId};
 use syntax_pos::Span;
 
 use hir;
-use hir::intravisit::{self, Visitor, FnKind, NestedVisitMode};
+use hir::intravisit::{self, Visitor, FnKind};
 use hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
@@ -1170,8 +1170,8 @@ impl<'ast, 'a> RegionResolutionVisitor<'ast, 'a> {
 }
 
 impl<'ast, 'a> Visitor<'ast> for RegionResolutionVisitor<'ast, 'a> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'ast>, NestedVisitMode)> {
-        Some((&self.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'ast>> {
+        Some(&self.map)
     }
 
     fn visit_block(&mut self, b: &'ast Block) {

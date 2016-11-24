@@ -39,7 +39,7 @@ use syntax_pos;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::intravisit::{Visitor, NestedVisitMode};
+use rustc::hir::intravisit::{Visitor};
 use rustc::hir::intravisit;
 
 use super::index_builder::{FromId, IndexBuilder, Untracked};
@@ -983,8 +983,8 @@ struct EncodeVisitor<'a, 'b: 'a, 'tcx: 'b> {
 }
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.index.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.index.tcx.map)
     }
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         intravisit::walk_expr(self, ex);

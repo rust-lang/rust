@@ -224,6 +224,8 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
 
 
 impl<'a, 'tcx> Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> { None }
+
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.calculate_node_id(item.id, |v| v.visit_item(item));
         visit::walk_item(self, item);

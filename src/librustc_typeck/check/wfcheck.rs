@@ -609,6 +609,8 @@ fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, def_id: DefId) {
 }
 
 impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> { None }
+
     fn visit_item(&mut self, i: &hir::Item) {
         debug!("visit_item: {:?}", i);
         self.check_item_well_formed(i);

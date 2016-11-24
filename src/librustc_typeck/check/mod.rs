@@ -119,7 +119,7 @@ use syntax::symbol::{Symbol, InternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{self, BytePos, Span};
 
-use rustc::hir::intravisit::{self, Visitor, NestedVisitMode};
+use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
@@ -538,8 +538,8 @@ struct CheckItemTypesVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
 struct CheckItemBodiesVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
 
 impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.ccx.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.ccx.tcx.map)
     }
 
     fn visit_item(&mut self, i: &'tcx hir::Item) {
@@ -700,6 +700,8 @@ impl<'a, 'gcx, 'tcx> GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'gcx>> { None }
+
     // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &'gcx hir::Local) {
         let o_ty = match local.ty {

@@ -48,7 +48,7 @@ use rustc::lint::builtin::CONST_ERR;
 use rustc::hir::{self, PatKind};
 use syntax::ast;
 use syntax_pos::Span;
-use rustc::hir::intravisit::{self, FnKind, Visitor, NestedVisitMode};
+use rustc::hir::intravisit::{self, FnKind, Visitor};
 
 use std::collections::hash_map::Entry;
 use std::cmp::Ordering;
@@ -233,8 +233,8 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
 
     fn visit_item(&mut self, i: &'tcx hir::Item) {

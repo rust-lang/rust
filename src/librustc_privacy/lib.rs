@@ -120,9 +120,11 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::All))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
+
+    fn nested_visit_mode(&mut self) -> NestedVisitMode { NestedVisitMode::All }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let inherited_item_level = match item.node {
@@ -432,9 +434,11 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for PrivacyVisitor<'a, 'tcx> {
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::All))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
+
+    fn nested_visit_mode(&mut self) -> NestedVisitMode { NestedVisitMode::All }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let orig_curitem = replace(&mut self.curitem, item.id);
@@ -615,6 +619,8 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> { None }
+
     fn visit_ty(&mut self, ty: &hir::Ty) {
         if let hir::TyPath(hir::QPath::Resolved(_, ref path)) = ty.node {
             if self.inner.path_is_private_type(path) {
@@ -640,9 +646,11 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a
 impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::All))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
+
+    fn nested_visit_mode(&mut self) -> NestedVisitMode { NestedVisitMode::All }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {

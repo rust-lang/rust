@@ -47,7 +47,7 @@ use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitMode};
+use rustc::hir::intravisit::{self, Visitor, FnKind};
 
 pub mod check_loans;
 
@@ -63,8 +63,8 @@ pub struct LoanDataFlowOperator;
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
 impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,

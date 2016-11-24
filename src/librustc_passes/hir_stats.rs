@@ -106,7 +106,7 @@ impl<'k> StatCollector<'k> {
 }
 
 impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'v>, hir_visit::NestedVisitMode)> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> {
         panic!("visit_nested_xxx must be manually implemented in this visitor")
     }
 

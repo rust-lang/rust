@@ -11,7 +11,7 @@
 use rustc::hir;
 use rustc::hir::map as ast_map;
 
-use rustc::hir::intravisit::{Visitor, IdRangeComputingVisitor, IdRange, NestedVisitMode};
+use rustc::hir::intravisit::{Visitor, IdRangeComputingVisitor, IdRange};
 
 use cstore::CrateMetadata;
 use encoder::EncodeContext;
@@ -75,8 +75,8 @@ struct SideTableEncodingIdVisitor<'a, 'b: 'a, 'tcx: 'b> {
 }
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.ecx.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.ecx.tcx.map)
     }
 
     fn visit_id(&mut self, id: ast::NodeId) {

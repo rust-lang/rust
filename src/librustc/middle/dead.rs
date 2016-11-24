@@ -221,8 +221,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
 
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData, _: ast::Name,
@@ -510,9 +510,11 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     /// on inner functions when the outer function is already getting
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::All))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
+
+    fn nested_visit_mode(&mut self) -> NestedVisitMode { NestedVisitMode::All }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         if self.should_warn_about_item(item) {

@@ -50,7 +50,7 @@ use rustc::infer::UpvarRegion;
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor, NestedVisitMode};
+use rustc::hir::intravisit::{self, Visitor};
 use rustc::util::nodemap::NodeMap;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -78,8 +78,8 @@ struct SeedBorrowKind<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for SeedBorrowKind<'a, 'gcx, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'gcx>, NestedVisitMode)> {
-        Some((&self.fcx.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'gcx>> {
+        Some(&self.fcx.tcx.map)
     }
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
@@ -490,8 +490,8 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for AdjustBorrowKind<'a, 'gcx, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'gcx>, NestedVisitMode)> {
-        Some((&self.fcx.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'gcx>> {
+        Some(&self.fcx.tcx.map)
     }
 
     fn visit_fn(&mut self,

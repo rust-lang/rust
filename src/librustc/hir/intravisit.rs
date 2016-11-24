@@ -95,14 +95,13 @@ pub trait Visitor<'v> : Sized {
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
-    /// The default versions of the `visit_nested_XXX` routines invoke
-    /// this method to get a map to use; if they get back `None`, they
-    /// just skip nested things. Otherwise, they will lookup the
-    /// nested item-like things in the map and visit it. So the best
-    /// way to implement a nested visitor is to override this method
-    /// to return a `Map`; one advantage of this is that if we add
-    /// more types of nested things in the future, they will
-    /// automatically work.
+    /// The default versions of the `visit_nested_XXX` routines invoke this
+    /// method to get a map to use; if they get back `None`, they just skip
+    /// nested things. Otherwise, they will lookup the nested thing in the map
+    /// and visit it depending on what `nested_visit_mode` returns. So the best
+    /// way to implement a nested visitor is to override this method to return a
+    /// `Map`; one advantage of this is that if we add more types of nested
+    /// things in the future, they will automatically work.
     ///
     /// **If for some reason you want the nested behavior, but don't
     /// have a `Map` are your disposal:** then you should override the
@@ -110,8 +109,12 @@ pub trait Visitor<'v> : Sized {
     /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
     /// added in the future, we will see the panic in your code and
     /// fix it appropriately.
-    fn nested_visit_map(&mut self) -> Option<(&Map<'v>, NestedVisitMode)> {
-        None
+    fn nested_visit_map(&mut self) -> Option<&Map<'v>>;
+
+    /// Specifies what things nested things this visitor wants to visit. By
+    /// default, bodies will be visited, but not nested items.
+    fn nested_visit_mode(&mut self) -> NestedVisitMode {
+        NestedVisitMode::OnlyBodies
     }
 
     /// Invoked when a nested item is encountered. By default does
@@ -300,16 +303,15 @@ pub trait Visitor<'v> : Sized {
 }
 
 fn map_for_body<'v, V: Visitor<'v>>(visitor: &mut V) -> Option<&Map<'v>> {
-    visitor.nested_visit_map().map(|(map, _mode)| map)
+    visitor.nested_visit_map()
 }
 
 fn map_for_item<'v, V: Visitor<'v>>(visitor: &mut V) -> Option<&Map<'v>> {
-    visitor.nested_visit_map().and_then(|(map, mode)| {
-        match mode {
-            NestedVisitMode::OnlyBodies => None,
-            NestedVisitMode::All => Some(map)
-        }
-    })
+    match visitor.nested_visit_mode() {
+        NestedVisitMode::OnlyBodies => None,
+        NestedVisitMode::All => Some(visitor.nested_visit_map()
+                                     .expect("NestedVisitMode::All without nested_visit_map"))
+    }
 }
 
 pub fn walk_opt_name<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, opt_name: Option<Name>) {
@@ -1059,8 +1061,8 @@ impl<'a, 'ast> IdRangeComputingVisitor<'a, 'ast> {
 }
 
 impl<'a, 'ast> Visitor<'ast> for IdRangeComputingVisitor<'a, 'ast> {
-    fn nested_visit_map(&mut self) -> Option<(&Map<'ast>, NestedVisitMode)> {
-        Some((&self.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&Map<'ast>> {
+        Some(&self.map)
     }
 
     fn visit_id(&mut self, id: NodeId) {

@@ -234,9 +234,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     /// Because stability levels are scoped lexically, we want to walk
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::All))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
+
+    fn nested_visit_mode(&mut self) -> NestedVisitMode { NestedVisitMode::All }
 
     fn visit_item(&mut self, i: &'tcx Item) {
         let orig_in_trait_impl = self.in_trait_impl;
@@ -534,9 +536,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
+
+    fn nested_visit_mode(&mut self) -> NestedVisitMode { NestedVisitMode::OnlyBodies }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {

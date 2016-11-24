@@ -83,7 +83,7 @@ use syntax::symbol::{Symbol, keywords};
 use syntax_pos::Span;
 
 use rustc::hir::{self, map as hir_map, print as pprust};
-use rustc::hir::intravisit::{self, Visitor, NestedVisitMode};
+use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 
@@ -178,8 +178,8 @@ impl<'a, 'tcx> CollectItemTypesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.ccx.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.ccx.tcx.map)
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {

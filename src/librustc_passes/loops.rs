@@ -13,7 +13,7 @@ use rustc::session::Session;
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::map::Map;
-use rustc::hir::intravisit::{self, Visitor, NestedVisitMode};
+use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir;
 use syntax::ast;
 use syntax_pos::Span;
@@ -60,8 +60,8 @@ pub fn check_crate(sess: &Session, map: &Map) {
 }
 
 impl<'a, 'ast> Visitor<'ast> for CheckLoopVisitor<'a, 'ast> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'ast>, NestedVisitMode)> {
-        Some((&self.hir_map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'ast>> {
+        Some(&self.map)
     }
 
     fn visit_item(&mut self, i: &'ast hir::Item) {

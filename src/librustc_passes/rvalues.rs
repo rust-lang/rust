@@ -18,7 +18,7 @@ use rustc::ty::{self, TyCtxt, ParameterEnvironment};
 use rustc::traits::Reveal;
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor, NestedVisitMode};
+use rustc::hir::intravisit::{self, Visitor};
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -32,8 +32,8 @@ struct RvalueContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for RvalueContext<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
 
     fn visit_fn(&mut self,

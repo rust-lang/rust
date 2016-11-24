@@ -791,8 +791,12 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, hir_visit::NestedVisitMode)> {
-        Some((&self.tcx.map, hir_visit::NestedVisitMode::All))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
+    }
+
+    fn nested_visit_mode(&mut self) -> hir_visit::NestedVisitMode {
+        hir_visit::NestedVisitMode::All
     }
 
     fn visit_item(&mut self, it: &'tcx hir::Item) {
@@ -1109,8 +1113,8 @@ struct IdVisitor<'a, 'b: 'a, 'tcx: 'a+'b> {
 
 // Output any lints that were previously added to the session.
 impl<'a, 'b, 'tcx> hir_visit::Visitor<'tcx> for IdVisitor<'a, 'b, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, hir_visit::NestedVisitMode)> {
-        Some((&self.cx.tcx.map, hir_visit::NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.cx.tcx.map)
     }
 
     fn visit_id(&mut self, id: ast::NodeId) {
