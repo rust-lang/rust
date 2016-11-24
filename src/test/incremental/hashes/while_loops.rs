@@ -40,7 +40,7 @@ fn change_loop_body() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn change_loop_body() {
     let mut _x = 0;
@@ -67,7 +67,7 @@ fn change_loop_condition() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn change_loop_condition() {
     let mut _x = 0;
@@ -93,7 +93,7 @@ fn add_break() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn add_break() {
     let mut _x = 0;
@@ -120,7 +120,7 @@ fn add_loop_label() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn add_loop_label() {
     let mut _x = 0;
@@ -147,7 +147,7 @@ fn add_loop_label_to_break() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn add_loop_label_to_break() {
     let mut _x = 0;
@@ -176,7 +176,7 @@ fn change_break_label() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn change_break_label() {
     let mut _x = 0;
@@ -205,7 +205,7 @@ fn add_loop_label_to_continue() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn add_loop_label_to_continue() {
     let mut _x = 0;
@@ -234,7 +234,7 @@ fn change_continue_label() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn change_continue_label() {
     let mut _x = 0;
@@ -263,7 +263,7 @@ fn change_continue_to_break() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn change_continue_to_break() {
     let mut _x = 0;
