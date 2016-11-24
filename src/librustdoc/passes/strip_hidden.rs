@@ -11,7 +11,7 @@
 use rustc::util::nodemap::DefIdSet;
 use std::mem;
 
-use clean::{self, Attributes};
+use clean::{self, AttributesExt, NestedAttributesExt};
 use clean::Item;
 use plugins;
 use fold;
@@ -41,7 +41,7 @@ struct Stripper<'a> {
 
 impl<'a> fold::DocFolder for Stripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        if i.attrs.list("doc").has_word("hidden") {
+        if i.attrs.lists("doc").has_word("hidden") {
             debug!("found one in strip_hidden; removing");
             // use a dedicated hidden item for given item type if any
             match i.inner {

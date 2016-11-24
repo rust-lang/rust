@@ -8,40 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::string::String;
-
 use clean::{self, Item};
 use plugins;
 use fold;
 use fold::DocFolder;
 
 pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
-    let mut collapser = Collapser;
-    let krate = collapser.fold_crate(krate);
-    krate
+    Collapser.fold_crate(krate)
 }
 
 struct Collapser;
 
 impl fold::DocFolder for Collapser {
     fn fold_item(&mut self, mut i: Item) -> Option<Item> {
-        let mut docstr = String::new();
-        for attr in &i.attrs {
-            if let clean::NameValue(ref x, ref s) = *attr {
-                if "doc" == *x {
-                    docstr.push_str(s);
-                    docstr.push('\n');
-                }
-            }
-        }
-        let mut a: Vec<clean::Attribute> = i.attrs.iter().filter(|&a| match a {
-            &clean::NameValue(ref x, _) if "doc" == *x => false,
-            _ => true
-        }).cloned().collect();
-        if !docstr.is_empty() {
-            a.push(clean::NameValue("doc".to_string(), docstr));
-        }
-        i.attrs = a;
+        i.attrs.collapse_doc_comments();
         self.fold_item_recur(i)
+    }
+}
+
+impl clean::Attributes {
+    pub fn collapse_doc_comments(&mut self) {
+        let mut doc_string = self.doc_strings.join("\n");
+        if doc_string.is_empty() {
+            self.doc_strings = vec![];
+        } else {
+            // FIXME(eddyb) Is this still needed?
+            doc_string.push('\n');
+            self.doc_strings = vec![doc_string];
+        }
     }
 }
