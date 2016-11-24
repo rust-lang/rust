@@ -14,7 +14,7 @@ use utils::{is_expn_of, match_def_path, match_type, resolve_node, span_lint, wal
 /// be replaced by `"foo".to_owned()` if you really need a `String`. The even
 /// worse `&format!("foo")` is often encountered in the wild. `format!("{}",
 /// foo)` can be replaced by `foo.clone()` if `foo: String` or `foo.to_owned()`
-/// is `foo: &str`.
+/// if `foo: &str`.
 ///
 /// **Known problems:** None.
 ///
