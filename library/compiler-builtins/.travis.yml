@@ -34,10 +34,13 @@ before_install:
   - test "$TRAVIS_OS_NAME" = "osx" || docker run --rm --privileged multiarch/qemu-user-static:register
 
 install:
-  - if case $TARGET in thumb*) false;; *) true;; esac; then
-      curl https://static.rust-lang.org/rustup.sh |
-      sh -s -- --add-target=$TARGET --disable-sudo -y --prefix=`rustc --print sysroot`;
-    fi
+  - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $TRAVIS_RUST_VERSION
+  - source ~/.cargo/env
+  - case $TARGET in
+      x86_64-apple-darwin | x86_64-unknown-linux-gnu) ;;
+      thumbv*-none-eabi*) rustup component add rust-src ;;
+      *) rustup target add $TARGET;;
+    esac
 
 script:
   - cargo generate-lockfile
