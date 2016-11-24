@@ -1137,7 +1137,7 @@ pub struct Resolver<'a> {
     crate_loader: &'a mut CrateLoader,
     macro_names: FxHashSet<Name>,
     builtin_macros: FxHashMap<Name, &'a NameBinding<'a>>,
-    lexical_macro_resolutions: Vec<(Name, LegacyScope<'a>)>,
+    lexical_macro_resolutions: Vec<(Name, &'a Cell<LegacyScope<'a>>)>,
     macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
     macro_exports: Vec<Export>,
 
@@ -3419,7 +3419,7 @@ impl<'a> Resolver<'a> {
 
         let mut reported_errors = FxHashSet();
         for binding in replace(&mut self.disallowed_shadowing, Vec::new()) {
-            if self.resolve_legacy_scope(binding.parent, binding.name, false).is_some() &&
+            if self.resolve_legacy_scope(&binding.parent, binding.name, false).is_some() &&
                reported_errors.insert((binding.name, binding.span)) {
                 let msg = format!("`{}` is already in scope", binding.name);
                 self.session.struct_span_err(binding.span, &msg)
