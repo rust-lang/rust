@@ -42,7 +42,8 @@ pub enum DepNode<D: Clone + Debug> {
     // Represents the HIR node with the given node-id
     Hir(D),
 
-    // Represents the body of a function or method
+    // Represents the body of a function or method. The def-id is that of the
+    // function/method.
     HirBody(D),
 
     // Represents the metadata for a given HIR node, typically found
