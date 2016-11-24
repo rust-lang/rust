@@ -966,14 +966,20 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
             dump_crates(&self.cstore);
         }
 
-        for &(ref name, kind) in &self.sess.opts.libs {
-            let lib = NativeLibrary {
-                name: Symbol::intern(name),
-                kind: kind,
-                cfg: None,
-                foreign_items: Vec::new(),
-            };
-            register_native_lib(self.sess, self.cstore, None, lib);
+        // Process libs passed on the command line
+        for &(ref name, ref new_name, kind) in &self.sess.opts.libs {
+            // First, try to update existing lib(s) added via #[link(...)]
+            let new_name = new_name.as_ref().map(|s| &**s); // &Option<String> -> Option<&str>
+            if !self.cstore.update_used_library(name, new_name, kind) {
+                // Add if not found
+                let lib = NativeLibrary {
+                    name: Symbol::intern(name),
+                    kind: kind,
+                    cfg: None,
+                    foreign_items: Vec::new(),
+                };
+                register_native_lib(self.sess, self.cstore, None, lib);
+             }
         }
         self.register_statically_included_foreign_items();
         self.register_dllimport_foreign_items();
