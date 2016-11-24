@@ -36,7 +36,7 @@ fn change_loop_body() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
@@ -63,7 +63,7 @@ fn change_iteration_variable_name() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
@@ -90,7 +90,7 @@ fn change_iteration_variable_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
@@ -117,7 +117,7 @@ fn change_iterable() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
@@ -143,7 +143,7 @@ fn add_break() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
@@ -170,8 +170,10 @@ fn add_loop_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn add_loop_label() {
@@ -195,8 +197,10 @@ fn add_loop_label_to_break() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn add_loop_label_to_break() {
@@ -222,8 +226,10 @@ fn change_break_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn change_break_label() {
@@ -249,8 +255,10 @@ fn add_loop_label_to_continue() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn add_loop_label_to_continue() {
@@ -276,8 +284,10 @@ fn change_continue_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn change_continue_label() {
@@ -303,8 +313,10 @@ fn change_continue_to_break() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn change_continue_to_break() {
