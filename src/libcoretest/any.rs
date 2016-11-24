@@ -121,7 +121,7 @@ fn any_fixed_vec() {
 
 #[test]
 fn any_unsized() {
-    fn is_any<T: Any + ?Sized>() {}
+    fn is_any<_T: Any + ?Sized>() {}
     is_any::<[i32]>();
 }
 

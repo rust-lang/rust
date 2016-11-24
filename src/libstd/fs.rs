@@ -2684,7 +2684,7 @@ mod tests {
 
     #[test]
     fn _assert_send_sync() {
-        fn _assert_send_sync<T: Send + Sync>() {}
+        fn _assert_send_sync<_T: Send + Sync>() {}
         _assert_send_sync::<OpenOptions>();
     }
 

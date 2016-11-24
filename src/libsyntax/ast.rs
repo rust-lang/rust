@@ -1981,7 +1981,7 @@ mod tests {
     // are ASTs encodable?
     #[test]
     fn check_asts_encodable() {
-        fn assert_encodable<T: serialize::Encodable>() {}
+        fn assert_encodable<_T: serialize::Encodable>() {}
         assert_encodable::<Crate>();
     }
 }

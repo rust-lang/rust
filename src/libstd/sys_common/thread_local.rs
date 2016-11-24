@@ -235,8 +235,8 @@ impl Drop for Key {
 mod tests {
     use super::{Key, StaticKey};
 
-    fn assert_sync<T: Sync>() {}
-    fn assert_send<T: Send>() {}
+    fn assert_sync<_T: Sync>() {}
+    fn assert_send<_T: Send>() {}
 
     #[test]
     fn smoke() {
