@@ -983,7 +983,11 @@ impl<'a, T> Iter<'a, T> {
 iterator!{struct Iter -> *const T, &'a T}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
+impl<'a, T> ExactSizeIterator for Iter<'a, T> {
+    fn is_empty(&self) -> bool {
+        self.ptr == self.end
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
@@ -1107,7 +1111,11 @@ impl<'a, T> IterMut<'a, T> {
 iterator!{struct IterMut -> *mut T, &'a mut T}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
+impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
+    fn is_empty(&self) -> bool {
+        self.ptr == self.end
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}

@@ -18,6 +18,7 @@
 #![feature(const_fn)]
 #![feature(dedup_by)]
 #![feature(enumset)]
+#![feature(exact_size_is_empty)]
 #![feature(pattern)]
 #![feature(rand)]
 #![feature(repeat_str)]
