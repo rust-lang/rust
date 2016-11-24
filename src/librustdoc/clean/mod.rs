@@ -1942,7 +1942,7 @@ impl Clean<Item> for hir::StructField {
     }
 }
 
-impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
+impl<'tcx> Clean<Item> for ty::FieldDef {
     fn clean(&self, cx: &DocContext) -> Item {
         Item {
             name: Some(self.name).clean(cx),
@@ -1952,7 +1952,7 @@ impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
             stability: get_stability(cx, self.did),
             deprecation: get_deprecation(cx, self.did),
             def_id: self.did,
-            inner: StructFieldItem(self.unsubst_ty().clean(cx)),
+            inner: StructFieldItem(cx.tcx.item_type(self.did).clean(cx)),
         }
     }
 }
@@ -2099,13 +2099,13 @@ impl Clean<Item> for doctree::Variant {
     }
 }
 
-impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
+impl<'tcx> Clean<Item> for ty::VariantDef {
     fn clean(&self, cx: &DocContext) -> Item {
         let kind = match self.ctor_kind {
             CtorKind::Const => VariantKind::CLike,
             CtorKind::Fn => {
                 VariantKind::Tuple(
-                    self.fields.iter().map(|f| f.unsubst_ty().clean(cx)).collect()
+                    self.fields.iter().map(|f| cx.tcx.item_type(f.did).clean(cx)).collect()
                 )
             }
             CtorKind::Fictive => {
@@ -2121,7 +2121,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
                             def_id: field.did,
                             stability: get_stability(cx, field.did),
                             deprecation: get_deprecation(cx, field.did),
-                            inner: StructFieldItem(field.unsubst_ty().clean(cx))
+                            inner: StructFieldItem(cx.tcx.item_type(field.did).clean(cx))
                         }
                     }).collect()
                 })

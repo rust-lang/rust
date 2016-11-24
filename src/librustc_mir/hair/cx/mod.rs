@@ -155,11 +155,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         bug!("found no method `{}` in `{:?}`", method_name, trait_def_id);
     }
 
-    pub fn num_variants(&mut self, adt_def: ty::AdtDef) -> usize {
+    pub fn num_variants(&mut self, adt_def: &ty::AdtDef) -> usize {
         adt_def.variants.len()
     }
 
-    pub fn all_fields(&mut self, adt_def: ty::AdtDef, variant_index: usize) -> Vec<Field> {
+    pub fn all_fields(&mut self, adt_def: &ty::AdtDef, variant_index: usize) -> Vec<Field> {
         (0..adt_def.variants[variant_index].fields.len())
             .map(Field::new)
             .collect()

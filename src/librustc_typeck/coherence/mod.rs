@@ -395,7 +395,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                             .filter_map(|(i, f)| {
                                 let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
 
-                                if f.unsubst_ty().is_phantom_data() {
+                                if tcx.item_type(f.did).is_phantom_data() {
                                     // Ignore PhantomData fields
                                     return None;
                                 }

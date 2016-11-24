@@ -301,7 +301,7 @@ pub struct MatchPair<'pat, 'tcx:'pat> {
 enum TestKind<'tcx> {
     // test the branches of enum
     Switch {
-        adt_def: AdtDef<'tcx>,
+        adt_def: &'tcx AdtDef,
         variants: BitVector,
     },
 

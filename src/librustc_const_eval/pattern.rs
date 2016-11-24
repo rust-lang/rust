@@ -66,7 +66,7 @@ pub enum PatternKind<'tcx> {
 
     /// Foo(...) or Foo{...} or Foo, where `Foo` is a variant name from an adt with >1 variants
     Variant {
-        adt_def: AdtDef<'tcx>,
+        adt_def: &'tcx AdtDef,
         variant_index: usize,
         subpatterns: Vec<FieldPattern<'tcx>>,
     },
@@ -487,32 +487,22 @@ impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Option<T> {
     }
 }
 
-macro_rules! CopyImpls {
-    ($($ty:ty),+) => {
+macro_rules! CloneImpls {
+    (<$lt_tcx:tt> $($ty:ty),+) => {
         $(
-            impl<'tcx> PatternFoldable<'tcx> for $ty {
-                fn super_fold_with<F: PatternFolder<'tcx>>(&self, _: &mut F) -> Self {
-                    self.clone()
-                }
-            }
-            )+
-    }
-}
-
-macro_rules! TcxCopyImpls {
-    ($($ty:ident),+) => {
-        $(
-            impl<'tcx> PatternFoldable<'tcx> for $ty<'tcx> {
-                fn super_fold_with<F: PatternFolder<'tcx>>(&self, _: &mut F) -> Self {
-                    *self
+            impl<$lt_tcx> PatternFoldable<$lt_tcx> for $ty {
+                fn super_fold_with<F: PatternFolder<$lt_tcx>>(&self, _: &mut F) -> Self {
+                    Clone::clone(self)
                 }
             }
         )+
     }
 }
 
-CopyImpls!{ Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal }
-TcxCopyImpls!{ Ty, BindingMode, AdtDef }
+CloneImpls!{ <'tcx>
+    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal,
+    Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef
+}
 
 impl<'tcx> PatternFoldable<'tcx> for FieldPattern<'tcx> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {

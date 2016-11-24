@@ -589,7 +589,7 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 //
 // then revises input: `Foo<'r,i64,&'r i64>` to: `Foo<'static,i64,()>`
 fn revise_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  adt_def: ty::AdtDef<'tcx>,
+                                  adt_def: &'tcx ty::AdtDef,
                                   impl_def_id: DefId,
                                   substs: &Substs<'tcx>)
                                   -> Ty<'tcx> {

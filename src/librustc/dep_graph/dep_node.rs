@@ -110,7 +110,6 @@ pub enum DepNode<D: Clone + Debug> {
     // predicates for an item wind up in `ItemSignature`).
     AssociatedItems(D),
     ItemSignature(D),
-    FieldTy(D),
     SizedConstraint(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
@@ -161,7 +160,6 @@ impl<D: Clone + Debug> DepNode<D> {
             TypeckItemBody,
             AssociatedItems,
             ItemSignature,
-            FieldTy,
             AssociatedItemDefIds,
             InherentImpls,
             TraitImpls,
@@ -229,7 +227,6 @@ impl<D: Clone + Debug> DepNode<D> {
             TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
             AssociatedItems(ref d) => op(d).map(AssociatedItems),
             ItemSignature(ref d) => op(d).map(ItemSignature),
-            FieldTy(ref d) => op(d).map(FieldTy),
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
             AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),

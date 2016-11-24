@@ -25,7 +25,7 @@ pub enum LvalueTy<'tcx> {
     Ty { ty: Ty<'tcx> },
 
     /// Downcast to a particular variant of an enum.
-    Downcast { adt_def: AdtDef<'tcx>,
+    Downcast { adt_def: &'tcx AdtDef,
                substs: &'tcx Substs<'tcx>,
                variant_index: usize },
 }

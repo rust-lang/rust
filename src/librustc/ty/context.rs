@@ -67,7 +67,7 @@ pub struct CtxtArenas<'tcx> {
     // references
     generics: TypedArena<ty::Generics<'tcx>>,
     trait_def: TypedArena<ty::TraitDef>,
-    adt_def: TypedArena<ty::AdtDefData<'tcx, 'tcx>>,
+    adt_def: TypedArena<ty::AdtDef>,
     mir: TypedArena<RefCell<Mir<'tcx>>>,
 }
 
@@ -420,6 +420,7 @@ pub struct GlobalCtxt<'tcx> {
     pub impl_trait_refs: RefCell<DepTrackingMap<maps::ImplTraitRefs<'tcx>>>,
     pub trait_defs: RefCell<DepTrackingMap<maps::TraitDefs<'tcx>>>,
     pub adt_defs: RefCell<DepTrackingMap<maps::AdtDefs<'tcx>>>,
+    pub adt_sized_constraint: RefCell<DepTrackingMap<maps::AdtSizedConstraint<'tcx>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated generics and predicates.
@@ -687,22 +688,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_interners.arenas.trait_def.alloc(def)
     }
 
-    pub fn insert_adt_def(self, did: DefId, adt_def: ty::AdtDefMaster<'gcx>) {
-        // this will need a transmute when reverse-variance is removed
-        if let Some(prev) = self.adt_defs.borrow_mut().insert(did, adt_def) {
-            bug!("Tried to overwrite interned AdtDef: {:?}", prev)
-        }
-    }
-
-    pub fn intern_adt_def(self,
-                          did: DefId,
-                          kind: AdtKind,
-                          variants: Vec<ty::VariantDefData<'gcx, 'gcx>>)
-                          -> ty::AdtDefMaster<'gcx> {
-        let def = ty::AdtDefData::new(self, did, kind, variants);
-        let interned = self.global_interners.arenas.adt_def.alloc(def);
-        self.insert_adt_def(did, interned);
-        interned
+    pub fn alloc_adt_def(self,
+                         did: DefId,
+                         kind: AdtKind,
+                         variants: Vec<ty::VariantDef>)
+                         -> &'gcx ty::AdtDef {
+        let def = ty::AdtDef::new(self, did, kind, variants);
+        self.global_interners.arenas.adt_def.alloc(def)
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'gcx attr::Stability {
@@ -798,6 +790,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             impl_trait_refs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             adt_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            adt_sized_constraint: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             generics: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             super_predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
@@ -1346,7 +1339,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_imm_ref(self.mk_region(ty::ReStatic), self.mk_str())
     }
 
-    pub fn mk_adt(self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn mk_adt(self, def: &'tcx AdtDef, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         // take a copy of substs so that we own the vectors inside
         self.mk_ty(TyAdt(def, substs))
     }

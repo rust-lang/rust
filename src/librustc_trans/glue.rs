@@ -504,7 +504,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     fn iter_variant<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                 t: Ty<'tcx>,
                                 av: adt::MaybeSizedValue,
-                                variant: ty::VariantDef<'tcx>,
+                                variant: &'tcx ty::VariantDef,
                                 substs: &Substs<'tcx>)
                                 -> Block<'blk, 'tcx> {
         let _icx = push_ctxt("iter_variant");

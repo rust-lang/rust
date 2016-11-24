@@ -626,7 +626,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                adt_ty: Ty<'tcx>,
                                pat_id: ast::NodeId,
                                span: Span,
-                               variant: ty::VariantDef<'tcx>,
+                               variant: &'tcx ty::VariantDef,
                                fields: &'gcx [Spanned<hir::FieldPat>],
                                etc: bool) {
         let tcx = self.tcx;

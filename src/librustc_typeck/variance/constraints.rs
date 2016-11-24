@@ -92,7 +92,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
 
                 for field in tcx.lookup_adt_def(did).all_fields() {
                     self.add_constraints_from_ty(generics,
-                                                 field.unsubst_ty(),
+                                                 tcx.item_type(field.did),
                                                  self.covariant);
                 }
             }

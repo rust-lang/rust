@@ -223,10 +223,8 @@ pub enum Constructor {
     Slice(usize),
 }
 
-impl Constructor {
-    fn variant_for_adt<'tcx, 'container, 'a>(&self,
-                                             adt: &'a ty::AdtDefData<'tcx, 'container>)
-                                             -> &'a ty::VariantDefData<'tcx, 'container> {
+impl<'tcx> Constructor {
+    fn variant_for_adt(&self, adt: &'tcx ty::AdtDef) -> &'tcx ty::VariantDef {
         match self {
             &Variant(vid) => adt.variant_with_id(vid),
             &Single => {
