@@ -232,6 +232,23 @@ impl CStore {
         self.used_libraries.borrow_mut().push(lib);
     }
 
+    // Update kind and, optionally, the name of all native libaries (there may be more than one)
+    // with the specified name.
+    pub fn update_used_library(&self, name: &str, new_name: Option<&str>,
+                               new_kind: NativeLibraryKind) -> bool {
+        let mut found = false;
+        for item in self.used_libraries.borrow_mut().iter_mut() {
+            if item.name == name {
+                item.kind = new_kind;
+                if let Some(new_name) = new_name {
+                    item.name = Symbol::intern(new_name);
+                }
+                found = true;
+            }
+        }
+        found
+    }
+
     pub fn get_used_libraries(&self) -> &RefCell<Vec<NativeLibrary>> {
         &self.used_libraries
     }
