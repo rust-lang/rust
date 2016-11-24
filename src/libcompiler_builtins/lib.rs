@@ -24,10 +24,15 @@
 
 #![allow(non_camel_case_types, unused_variables)]
 
-
 #[cfg(any(target_pointer_width="32", target_pointer_width="16"))]
 pub mod reimpls {
+
     #![allow(unused_comparisons)]
+
+    use core::intrinsics::unchecked_div;
+    use core::intrinsics::unchecked_rem;
+    use core::ptr;
+
     // C API is expected to tolerate some amount of size mismatch in ABI. Hopefully the amount of
     // handling is sufficient for bootstrapping.
     #[cfg(stage0)]
@@ -112,26 +117,27 @@ pub mod reimpls {
     pub extern fn u128_div_mod(n: u128_, d: u128_, rem: *mut u128_) -> u128_ {
         unsafe {
         if !rem.is_null() {
-            *rem = n % d;
+            *rem = unchecked_rem(n, d);
         }
-        n / d
+        unchecked_div(n, d)
         }
     }
 
     #[cfg(not(stage0))]
     #[export_name="__udivmodti4"]
     pub extern fn u128_div_mod(n: u128_, d: u128_, rem: *mut u128_) -> u128_ {
+        // Translated from Figure 3-40 of The PowerPC Compiler Writer's Guide
         unsafe {
-        // NOTE X is unknown, K != 0
+        // special cases, X is unknown, K != 0
         if n.high() == 0 {
             if d.high() == 0 {
                 // 0 X
                 // ---
                 // 0 X
                 if !rem.is_null() {
-                    *rem = u128::from(n.low() % d.low());
+                    *rem = u128::from(unchecked_rem(n.low(), d.low()));
                 }
-                return u128::from(n.low() / d.low());
+                return u128::from(unchecked_div(n.low(), d.low()));
             } else {
                 // 0 X
                 // ---
@@ -152,7 +158,10 @@ pub mod reimpls {
                 // K X
                 // ---
                 // 0 0
-                unimplemented()
+                if !rem.is_null() {
+                    *rem = u128::from(unchecked_rem(n.high(), d.low()));
+                }
+                return u128::from(unchecked_div(n.high(), d.low()));
             }
 
             if n.low() == 0 {
@@ -160,9 +169,9 @@ pub mod reimpls {
                 // ---
                 // K 0
                 if !rem.is_null() {
-                    *rem = u128::from_parts(0, n.high() % d.high());
+                    *rem = u128::from_parts(0, unchecked_rem(n.high(), d.high()));
                 }
-                return u128::from(n.high() / d.high());
+                return u128::from(unchecked_div(n.high(), d.high()));
             }
 
             // K K
@@ -176,6 +185,9 @@ pub mod reimpls {
                 return u128::from(n.high() >> d.high().trailing_zeros());
             }
 
+            // K K
+            // ---
+            // K 0
             sr = d.high().leading_zeros().wrapping_sub(n.high().leading_zeros());
 
             // D > N
@@ -188,8 +200,8 @@ pub mod reimpls {
 
             sr += 1;
 
-            // 1 <= sr <= u32::bits() - 1
-            q = n << (128 - sr);
+            // 1 <= sr <= u64::bits() - 1
+            q = n << (64 - sr);
             r = n >> sr;
         } else {
             if d.high() == 0 {
@@ -214,6 +226,10 @@ pub mod reimpls {
                 // 2 <= sr <= u64::bits() - 1
                 q = n << (128 - sr);
                 r = n >> sr;
+                // FIXME the C compiler-rt implementation has something here
+                // that looks like a speed optimisation.
+                // It would be worth a try to port it to Rust too and
+                // compare the speed.
             } else {
                 // K X
                 // ---
@@ -292,23 +308,17 @@ pub mod reimpls {
         let sb = b.signum();
         let a = a.abs();
         let b = b.abs();
-        let sr = sa ^ sb;
-        unsafe {
-            let mut r = ::core::mem::zeroed();
-            if sa == -1 {
-                -(u128_div_mod(a as u128_, b as u128_, &mut r) as i128_)
-            } else {
-                u128_div_mod(a as u128_, b as u128_, &mut r) as i128_
-            }
+        let sr = sa * sb; // sign of quotient
+        if sr == -1 {
+            -(u128_div_mod(a as u128_, b as u128_, ptr::null_mut()) as i128_)
+        } else {
+            u128_div_mod(a as u128_, b as u128_, ptr::null_mut()) as i128_
         }
     }
 
     #[export_name="__udivti3"]
     pub extern fn u128_div(a: u128_, b: u128_) -> u128_ {
-        unsafe {
-            let mut r = ::core::mem::zeroed();
-            u128_div_mod(a, b, &mut r)
-        }
+        u128_div_mod(a, b, ptr::null_mut())
     }
 
     macro_rules! mulo {
@@ -329,22 +339,23 @@ pub mod reimpls {
                 return result;
             }
 
-            let bits = ::core::mem::size_of::<$ty>() * 8;
-            let sa = a >> (bits - 1);
-            let abs_a = (a ^ sa) - sa;
-            let sb = b >> (bits - 1);
-            let abs_b = (b ^ sb) - sb;
+            let sa = a.signum();
+            let abs_a = a.abs();
+            let sb = b.signum();
+            let abs_b = b.abs();
             if abs_a < 2 || abs_b < 2 {
                 return result;
             }
+            unsafe {
             if sa == sb {
-                if abs_a > <$ty>::max_value() / abs_b {
+                if abs_a > unchecked_div(<$ty>::max_value(), abs_b) {
                     *overflow = 1;
                 }
             } else {
-                if abs_a > <$ty>::min_value() / -abs_b {
+                if abs_a > unchecked_div(<$ty>::min_value(), -abs_b) {
                     *overflow = 1;
                 }
+            }
             }
             result
         }}
@@ -353,13 +364,7 @@ pub mod reimpls {
     // FIXME: i32 here should be c_int.
     #[export_name="__muloti4"]
     pub extern fn i128_mul_oflow(a: i128_, b: i128_, o: &mut i32) -> i128_ {
-        if let Some(v) = (a as i64).checked_mul(b as i64) {
-            *o = 0;
-            v as i128_
-        } else {
-            *o = 1;
-            0
-        }
+        mulo!(a, b, o, i128_)
     }
 
     pub trait LargeInt {
@@ -407,7 +412,7 @@ pub mod reimpls {
             self as u64
         }
         fn high(self) -> u64 {
-            unsafe { *(&self as *const u128 as *const u64) }
+            unsafe { *(&self as *const u128 as *const u64).offset(1) }
         }
         fn from_parts(low: u64, high: u64) -> u128 {
             #[repr(C, packed)] struct Parts(u64, u64);
@@ -423,7 +428,7 @@ pub mod reimpls {
             self as u64
         }
         fn high(self) -> i64 {
-            unsafe { *(&self as *const i128 as *const i64) }
+            unsafe { *(&self as *const i128 as *const i64).offset(1) }
         }
         fn from_parts(low: u64, high: i64) -> i128 {
             u128::from_parts(low, high as u64) as i128
@@ -431,37 +436,41 @@ pub mod reimpls {
     }
 
     macro_rules! mul {
-        ($a:expr, $b:expr, $ty: ty) => {{
+        ($a:expr, $b:expr, $ty: ty, $tyh: ty) => {{
             let (a, b) = ($a, $b);
-            let bits = ::core::mem::size_of::<$ty>() * 8;
-            let half_bits = bits / 4;
+            let half_bits = (::core::mem::size_of::<$tyh>() * 8) / 2;
             let lower_mask = !0 >> half_bits;
             let mut low = (a.low() & lower_mask) * (b.low() & lower_mask);
             let mut t = low >> half_bits;
             low &= lower_mask;
             t += (a.low() >> half_bits) * (b.low() & lower_mask);
             low += (t & lower_mask) << half_bits;
-            let mut high = t >> half_bits;
+            let mut high = (t >> half_bits) as $tyh;
             t = low >> half_bits;
             low &= lower_mask;
             t += (b.low() >> half_bits) * (a.low() & lower_mask);
             low += (t & lower_mask) << half_bits;
-            high += t >> half_bits;
-            high += (a.low() >> half_bits) * (b.low() >> half_bits);
+            high += (t >> half_bits) as $tyh;
+            high += ((a.low() >> half_bits) * (b.low() >> half_bits)) as $tyh;
             high = high
                 .wrapping_add(a.high()
-                .wrapping_mul(b.low())
-                .wrapping_add(a.low()
-                .wrapping_mul(b.high())));
+                .wrapping_mul(b.low() as $tyh))
+                .wrapping_add((a.low() as $tyh)
+                .wrapping_mul(b.high()));
             <$ty>::from_parts(low, high)
         }}
     }
 
-
+    #[cfg(stage0)]
     #[export_name="__multi3"]
-    pub extern fn u128_mul(a: u128_, b: u128_) -> u128_ {
-        (a as u64 * b as u64) as u128_
-        // mul!(a, b, u128_)
+    pub extern fn u128_mul(a: i128_, b: i128_) -> i128_ {
+        (a as i64 * b as i64) as i128_
+    }
+
+    #[cfg(not(stage0))]
+    #[export_name="__multi3"]
+    pub extern fn u128_mul(a: i128_, b: i128_) -> i128_ {
+        mul!(a, b, i128_, i64)
     }
 
     trait FloatStuff: Sized {
@@ -471,6 +480,7 @@ pub mod reimpls {
         const MAX_EXP: i32;
         const EXP_MASK: Self::ToBytes;
         const MANTISSA_MASK: Self::ToBytes;
+        const MANTISSA_LEAD_BIT: Self::ToBytes;
 
         fn to_bytes(self) -> Self::ToBytes;
         fn get_exponent(self) -> i32;
@@ -480,8 +490,9 @@ pub mod reimpls {
         type ToBytes = u32;
         const MANTISSA_BITS: u32 = 23;
         const MAX_EXP: i32 = 127;
-        const MANTISSA_MASK: u32 = 0x007F_FFFF;
         const EXP_MASK: u32 = 0x7F80_0000;
+        const MANTISSA_MASK: u32 = 0x007F_FFFF;
+        const MANTISSA_LEAD_BIT: u32 = 0x0080_0000;
 
         fn to_bytes(self) -> u32 { unsafe { ::core::mem::transmute(self) } }
         fn get_exponent(self) -> i32 {
@@ -495,6 +506,7 @@ pub mod reimpls {
         const MAX_EXP: i32 = 1023;
         const EXP_MASK: u64 = 0x7FF0_0000_0000_0000;
         const MANTISSA_MASK: u64 = 0x000F_FFFF_FFFF_FFFF;
+        const MANTISSA_LEAD_BIT: u64 = 0x0010_0000_0000_0000;
 
         fn to_bytes(self) -> u64 { unsafe { ::core::mem::transmute(self) } }
         fn get_exponent(self) -> i32 {
@@ -508,7 +520,8 @@ pub mod reimpls {
             let repr = $from.to_bytes();
             let sign = $from.signum();
             let exponent = $from.get_exponent();
-            let mantissa = repr & <$fromty as FloatStuff>::MANTISSA_MASK;
+            let mantissa_fraction = repr & <$fromty as FloatStuff>::MANTISSA_MASK;
+            let mantissa = mantissa_fraction | <$fromty as FloatStuff>::MANTISSA_LEAD_BIT;
             if sign == -1.0 || exponent < 0 { return 0; }
             if exponent > ::core::mem::size_of::<$outty>() as i32 * 8 {
                 return !0;
@@ -537,7 +550,8 @@ pub mod reimpls {
             let repr = $from.to_bytes();
             let sign = $from.signum();
             let exponent = $from.get_exponent();
-            let mantissa = repr & <$fromty as FloatStuff>::MANTISSA_MASK;
+            let mantissa_fraction = repr & <$fromty as FloatStuff>::MANTISSA_MASK;
+            let mantissa = mantissa_fraction | <$fromty as FloatStuff>::MANTISSA_LEAD_BIT;
 
             if exponent < 0 { return 0; }
             if exponent > ::core::mem::size_of::<$outty>() as i32 * 8 {
