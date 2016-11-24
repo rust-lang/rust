@@ -1662,13 +1662,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 } else {
                     Def::Err
                 };
-                let (ty, def) = self.associated_path_def_to_ty(ast_ty.id, ast_ty.span,
-                                                               ty, def, segment);
-
-                // Write back the new resolution.
-                tcx.tables.borrow_mut().type_relative_path_defs.insert(ast_ty.id, def);
-
-                ty
+                self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
             }
             hir::TyArray(ref ty, ref e) => {
                 if let Ok(length) = eval_length(tcx.global_tcx(), &e, "array length") {

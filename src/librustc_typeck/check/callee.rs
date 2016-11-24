@@ -219,7 +219,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 if let hir::ExprCall(ref expr, _) = call_expr.node {
                     let def = if let hir::ExprPath(ref qpath) = expr.node {
-                        self.tcx.tables().qpath_def(qpath, expr.id)
+                        self.tables.borrow().qpath_def(qpath, expr.id)
                     } else {
                         Def::Err
                     };

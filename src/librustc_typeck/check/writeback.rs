@@ -358,6 +358,11 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_node_id(&self, reason: ResolveReason, id: ast::NodeId) {
+        // Export associated path extensions.
+        if let Some(def) = self.fcx.tables.borrow_mut().type_relative_path_defs.remove(&id) {
+            self.tcx().tables.borrow_mut().type_relative_path_defs.insert(id, def);
+        }
+
         // Resolve any borrowings for the node with id `id`
         self.visit_adjustments(reason, id);
 
