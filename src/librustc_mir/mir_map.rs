@@ -30,7 +30,7 @@ use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::hir;
-use rustc::hir::intravisit::{self, FnKind, Visitor, NestedVisitMode};
+use rustc::hir::intravisit::{self, FnKind, Visitor};
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax_pos::Span;
@@ -144,8 +144,8 @@ impl<'a, 'gcx> BuildMir<'a, 'gcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
 
     // Const and static items.

@@ -132,9 +132,11 @@ pub fn krate(sess: &Session,
 impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     // Override the nested functions -- lifetimes follow lexical scope,
     // so it's convenient to walk the tree in lexical order.
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.hir_map, NestedVisitMode::All))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.hir_map)
     }
+
+    fn nested_visit_mode(&mut self) -> NestedVisitMode { NestedVisitMode::All }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         // Save labels for nested items.
@@ -423,6 +425,8 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: hir::ExprId) {
     return;
 
     impl<'v, 'a> Visitor<'v> for GatherLabels<'a> {
+        fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> { None }
+
         fn visit_expr(&mut self, ex: &'v hir::Expr) {
             // do not recurse into closures defined in the block
             // since they are treated as separate fns from the POV of
@@ -938,6 +942,8 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     }
 
     impl<'v> Visitor<'v> for ConstrainedCollector {
+        fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> { None }
+
         fn visit_ty(&mut self, ty: &'v hir::Ty) {
             match ty.node {
                 hir::TyPath(hir::QPath::Resolved(Some(_), _)) |
@@ -975,6 +981,8 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     }
 
     impl<'v> Visitor<'v> for AllCollector {
+        fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> { None }
+
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
             self.regions.insert(lifetime_ref.name);
         }

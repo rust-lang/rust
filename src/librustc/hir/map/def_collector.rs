@@ -327,6 +327,10 @@ impl<'a> visit::Visitor for DefCollector<'a> {
 
 // We walk the HIR rather than the AST when reading items from metadata.
 impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'ast>> {
+        None
+    }
+
     fn visit_body(&mut self, id: hir::ExprId) {
         if let Some(krate) = self.hir_crate {
             self.visit_expr(krate.expr(id));

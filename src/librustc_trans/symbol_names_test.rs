@@ -67,6 +67,8 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for SymbolNamesTest<'a, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> { None }
+
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.process_attrs(item.id);
         intravisit::walk_item(self, item);

@@ -29,7 +29,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc_errors::DiagnosticBuilder;
 
 use rustc::hir::def::*;
-use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitMode};
+use rustc::hir::intravisit::{self, Visitor, FnKind};
 use rustc::hir::print::pat_to_string;
 use rustc::hir::{self, Pat, PatKind};
 
@@ -42,6 +42,8 @@ use syntax_pos::Span;
 struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
 impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> { None }
+
     fn visit_expr(&mut self, _expr: &'tcx hir::Expr) {
         return // const, static and N in [T; N] - shouldn't contain anything
     }
@@ -91,8 +93,8 @@ struct MatchVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<(&hir::map::Map<'tcx>, NestedVisitMode)> {
-        Some((&self.tcx.map, NestedVisitMode::OnlyBodies))
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
@@ -561,6 +563,8 @@ struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
 }
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> { None }
+
     fn visit_pat(&mut self, pat: &Pat) {
         match pat.node {
             PatKind::Binding(.., ref subpat) => {
