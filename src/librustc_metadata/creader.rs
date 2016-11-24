@@ -52,7 +52,7 @@ pub struct CrateLoader<'a> {
     pub sess: &'a Session,
     cstore: &'a CStore,
     next_crate_num: CrateNum,
-    foreign_item_map: FxHashMap<String, Vec<ast::NodeId>>,
+    foreign_item_map: FxHashMap<String, Vec<DefIndex>>,
     local_crate_name: Symbol,
 }
 
@@ -310,6 +310,7 @@ impl<'a> CrateLoader<'a> {
                 rlib: rlib,
                 rmeta: rmeta,
             },
+            dllimport_foreign_items: RefCell::new(None),
         });
 
         self.cstore.set_crate_data(cnum, cmeta.clone());
@@ -640,17 +641,35 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn register_statically_included_foreign_items(&mut self) {
+    fn get_foreign_items_of_kind(&self, kind: cstore::NativeLibraryKind) -> Vec<DefIndex> {
+        let mut items = vec![];
         let libs = self.cstore.get_used_libraries();
-        for (foreign_lib, list) in self.foreign_item_map.iter() {
-            let is_static = libs.borrow().iter().any(|lib| {
-                lib.name == &**foreign_lib && lib.kind == cstore::NativeStatic
-            });
-            if is_static {
-                for id in list {
-                    self.cstore.add_statically_included_foreign_item(*id);
-                }
+        for lib in libs.borrow().iter() {
+            if lib.kind == kind {
+                items.extend(&lib.foreign_items);
             }
+        }
+        for (foreign_lib, list) in self.foreign_item_map.iter() {
+            let kind_matches = libs.borrow().iter().any(|lib| {
+                lib.name == &**foreign_lib && lib.kind == kind
+            });
+            if kind_matches {
+                items.extend(list)
+            }
+        }
+        items
+    }
+
+    fn register_statically_included_foreign_items(&mut self) {
+        for id in self.get_foreign_items_of_kind(cstore::NativeStatic) {
+            self.cstore.add_statically_included_foreign_item(id);
+        }
+    }
+
+    fn register_dllimport_foreign_items(&mut self) {
+        let mut dllimports = self.cstore.dllimport_foreign_items.borrow_mut();
+        for id in self.get_foreign_items_of_kind(cstore::NativeUnknown) {
+            dllimports.insert(id);
         }
     }
 
@@ -861,7 +880,8 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn process_foreign_mod(&mut self, i: &ast::Item, fm: &ast::ForeignMod) {
+    fn process_foreign_mod(&mut self, i: &ast::Item, fm: &ast::ForeignMod,
+                           definitions: &Definitions) {
         if fm.abi == Abi::Rust || fm.abi == Abi::RustIntrinsic || fm.abi == Abi::PlatformIntrinsic {
             return;
         }
@@ -912,10 +932,14 @@ impl<'a> CrateLoader<'a> {
             let cfg = cfg.map(|list| {
                 list[0].meta_item().unwrap().clone()
             });
+            let foreign_items = fm.items.iter()
+                .map(|it| definitions.opt_def_index(it.id).unwrap())
+                .collect();
             let lib = NativeLibrary {
                 name: n,
                 kind: kind,
                 cfg: cfg,
+                foreign_items: foreign_items,
             };
             register_native_lib(self.sess, self.cstore, Some(m.span), lib);
         }
@@ -928,7 +952,7 @@ impl<'a> CrateLoader<'a> {
             };
             let list = self.foreign_item_map.entry(lib_name.to_string())
                                                     .or_insert(Vec::new());
-            list.extend(fm.items.iter().map(|it| it.id));
+            list.extend(fm.items.iter().map(|it| definitions.opt_def_index(it.id).unwrap()));
         }
     }
 }
@@ -947,30 +971,34 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
                 name: Symbol::intern(name),
                 kind: kind,
                 cfg: None,
+                foreign_items: Vec::new(),
             };
             register_native_lib(self.sess, self.cstore, None, lib);
         }
         self.register_statically_included_foreign_items();
+        self.register_dllimport_foreign_items();
     }
 
     fn process_item(&mut self, item: &ast::Item, definitions: &Definitions) {
         match item.node {
-            ast::ItemKind::ExternCrate(_) => {}
-            ast::ItemKind::ForeignMod(ref fm) => return self.process_foreign_mod(item, fm),
-            _ => return,
+            ast::ItemKind::ForeignMod(ref fm) => {
+                self.process_foreign_mod(item, fm, definitions)
+            },
+            ast::ItemKind::ExternCrate(_) => {
+                let info = self.extract_crate_info(item).unwrap();
+                let (cnum, ..) = self.resolve_crate(
+                    &None, info.ident, info.name, None, item.span, PathKind::Crate, info.dep_kind,
+                );
+
+                let def_id = definitions.opt_local_def_id(item.id).unwrap();
+                let len = definitions.def_path(def_id.index).data.len();
+
+                let extern_crate =
+                    ExternCrate { def_id: def_id, span: item.span, direct: true, path_len: len };
+                self.update_extern_crate(cnum, extern_crate, &mut FxHashSet());
+                self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
+            }
+            _ => {}
         }
-
-        let info = self.extract_crate_info(item).unwrap();
-        let (cnum, ..) = self.resolve_crate(
-            &None, info.ident, info.name, None, item.span, PathKind::Crate, info.dep_kind,
-        );
-
-        let def_id = definitions.opt_local_def_id(item.id).unwrap();
-        let len = definitions.def_path(def_id.index).data.len();
-
-        let extern_crate =
-            ExternCrate { def_id: def_id, span: item.span, direct: true, path_len: len };
-        self.update_extern_crate(cnum, extern_crate, &mut FxHashSet());
-        self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
     }
 }
