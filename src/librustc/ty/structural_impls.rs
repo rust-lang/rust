@@ -481,7 +481,12 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyError | ty::TyInfer(_) |
             ty::TyParam(..) | ty::TyNever => return self
         };
-        folder.tcx().mk_ty(sty)
+
+        if self.sty == sty {
+            self
+        } else {
+            folder.tcx().mk_ty(sty)
+        }
     }
 
     fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
