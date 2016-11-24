@@ -521,7 +521,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // (InlinedItemRef::from_trait_item panics otherwise)
                 let trait_def_id = trait_item.container.id();
                 Some(self.encode_inlined_item(
-                    InlinedItemRef::from_trait_item(trait_def_id, ast_item, &tcx.map)
+                    InlinedItemRef::from_trait_item(trait_def_id, ast_item, tcx)
                 ))
             } else {
                 None
@@ -594,7 +594,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             ast: if ast {
                 Some(self.encode_inlined_item(
-                    InlinedItemRef::from_impl_item(impl_def_id, ast_item, &tcx.map)
+                    InlinedItemRef::from_impl_item(impl_def_id, ast_item, tcx)
                 ))
             } else {
                 None
@@ -826,7 +826,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 hir::ItemConst(..) |
                 hir::ItemFn(_, _, hir::Constness::Const, ..) => {
                     Some(self.encode_inlined_item(
-                        InlinedItemRef::from_item(def_id, item, &tcx.map)
+                        InlinedItemRef::from_item(def_id, item, tcx)
                     ))
                 }
                 _ => None,
