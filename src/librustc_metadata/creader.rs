@@ -344,6 +344,7 @@ impl<'a> CrateLoader<'a> {
                 rejected_via_triple: vec![],
                 rejected_via_kind: vec![],
                 rejected_via_version: vec![],
+                rejected_via_filename: vec![],
                 should_match_name: true,
                 is_proc_macro: Some(false),
             };
@@ -359,6 +360,7 @@ impl<'a> CrateLoader<'a> {
                     rejected_via_triple: vec![],
                     rejected_via_kind: vec![],
                     rejected_via_version: vec![],
+                    rejected_via_filename: vec![],
                     is_proc_macro: Some(true),
                     ..locate_ctxt
                 };
@@ -502,6 +504,7 @@ impl<'a> CrateLoader<'a> {
             rejected_via_triple: vec![],
             rejected_via_kind: vec![],
             rejected_via_version: vec![],
+            rejected_via_filename: vec![],
             should_match_name: true,
             is_proc_macro: None,
         };
