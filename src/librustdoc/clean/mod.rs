@@ -1407,9 +1407,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     // are actually located on the trait/impl itself, so we need to load
                     // all of the generics from there and then look for bounds that are
                     // applied to this associated type in question.
-                    let def = cx.tcx.lookup_trait_def(did);
                     let predicates = cx.tcx.item_predicates(did);
-                    let generics = (def.generics, &predicates).clean(cx);
+                    let generics = (cx.tcx.item_generics(did), &predicates).clean(cx);
                     generics.where_predicates.iter().filter_map(|pred| {
                         let (name, self_type, trait_, bounds) = match *pred {
                             WherePredicate::BoundPredicate {

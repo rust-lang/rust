@@ -1040,7 +1040,7 @@ fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                           trait_def: &ty::TraitDef<'tcx>,
+                                           trait_def: &ty::TraitDef,
                                            impl_id: DefId,
                                            impl_item: &hir::ImplItem)
 {
@@ -1400,7 +1400,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn get_trait_def(&self, _: Span, id: DefId)
-                     -> Result<&'tcx ty::TraitDef<'tcx>, ErrorReported>
+                     -> Result<&'tcx ty::TraitDef, ErrorReported>
     {
         Ok(self.tcx().lookup_trait_def(id))
     }

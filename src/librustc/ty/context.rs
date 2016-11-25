@@ -66,7 +66,7 @@ pub struct CtxtArenas<'tcx> {
 
     // references
     generics: TypedArena<ty::Generics<'tcx>>,
-    trait_def: TypedArena<ty::TraitDef<'tcx>>,
+    trait_def: TypedArena<ty::TraitDef>,
     adt_def: TypedArena<ty::AdtDefData<'tcx, 'tcx>>,
     mir: TypedArena<RefCell<Mir<'tcx>>>,
 }
@@ -683,19 +683,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_interners.arenas.mir.alloc(RefCell::new(mir))
     }
 
-    pub fn intern_trait_def(self, def: ty::TraitDef<'gcx>)
-                            -> &'gcx ty::TraitDef<'gcx> {
-        let did = def.trait_ref.def_id;
-        let interned = self.alloc_trait_def(def);
-        if let Some(prev) = self.trait_defs.borrow_mut().insert(did, interned) {
-            bug!("Tried to overwrite interned TraitDef: {:?}", prev)
-        }
-        self.generics.borrow_mut().insert(did, interned.generics);
-        interned
-    }
-
-    pub fn alloc_trait_def(self, def: ty::TraitDef<'gcx>)
-                           -> &'gcx ty::TraitDef<'gcx> {
+    pub fn alloc_trait_def(self, def: ty::TraitDef) -> &'gcx ty::TraitDef {
         self.global_interners.arenas.trait_def.alloc(def)
     }
 

@@ -297,18 +297,18 @@ impl<'a, 'gcx, 'tcx> Node {
     }
 }
 
-pub struct Ancestors<'a, 'tcx: 'a> {
-    trait_def: &'a TraitDef<'tcx>,
+pub struct Ancestors<'a> {
+    trait_def: &'a TraitDef,
     current_source: Option<Node>,
 }
 
-impl<'a, 'tcx> Iterator for Ancestors<'a, 'tcx> {
+impl<'a> Iterator for Ancestors<'a> {
     type Item = Node;
     fn next(&mut self) -> Option<Node> {
         let cur = self.current_source.take();
         if let Some(Node::Impl(cur_impl)) = cur {
             let parent = self.trait_def.specialization_graph.borrow().parent(cur_impl);
-            if parent == self.trait_def.def_id() {
+            if parent == self.trait_def.def_id {
                 self.current_source = Some(Node::Trait(parent));
             } else {
                 self.current_source = Some(Node::Impl(parent));
@@ -332,7 +332,7 @@ impl<T> NodeItem<T> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> Ancestors<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> Ancestors<'a> {
     /// Search the items from the given ancestors, returning each definition
     /// with the given name and the given kind.
     #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
@@ -347,9 +347,7 @@ impl<'a, 'gcx, 'tcx> Ancestors<'a, 'tcx> {
 
 /// Walk up the specialization ancestors of a given impl, starting with that
 /// impl itself.
-pub fn ancestors<'a, 'tcx>(trait_def: &'a TraitDef<'tcx>,
-                           start_from_impl: DefId)
-                           -> Ancestors<'a, 'tcx> {
+pub fn ancestors<'a>(trait_def: &'a TraitDef, start_from_impl: DefId) -> Ancestors<'a> {
     Ancestors {
         trait_def: trait_def,
         current_source: Some(Node::Impl(start_from_impl)),
