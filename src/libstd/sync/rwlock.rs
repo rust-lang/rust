@@ -77,6 +77,13 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 
 /// RAII structure used to release the shared read access of a lock when
 /// dropped.
+///
+/// This structure is created by the [`read()`] and [`try_read()`] methods on
+/// [`RwLock`].
+///
+/// [`read()`]: struct.RwLock.html#method.read
+/// [`try_read()`]: struct.RwLock.html#method.try_read
+/// [`RwLock`]: struct.RwLock.html
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
