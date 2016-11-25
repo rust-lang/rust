@@ -7,6 +7,7 @@ version = "0.0.0"
 name = "rustc_unicode"
 path = "lib.rs"
 test = false
+bench = false
 
 [dependencies]
 core = { path = "../libcore" }

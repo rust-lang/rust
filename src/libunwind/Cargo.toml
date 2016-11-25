@@ -8,6 +8,7 @@ build = "build.rs"
 name = "unwind"
 path = "lib.rs"
 test = false
+bench = false
 
 [dependencies]
 core = { path = "../libcore" }
