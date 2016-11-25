@@ -1823,7 +1823,7 @@ extern "C" {
                                                 pass_name_out: *mut *const c_char,
                                                 function_out: *mut ValueRef,
                                                 debugloc_out: *mut DebugLocRef,
-                                                message_out: *mut TwineRef);
+                                                message_out: RustStringRef);
     pub fn LLVMRustUnpackInlineAsmDiagnostic(DI: DiagnosticInfoRef,
                                              cookie_out: *mut c_uint,
                                              message_out: *mut TwineRef,

@@ -871,16 +871,21 @@ LLVMRustUnpackOptimizationDiagnostic(
     const char **pass_name_out,
     LLVMValueRef *function_out,
     LLVMDebugLocRef *debugloc_out,
-    LLVMTwineRef *message_out)
+    RustStringRef message_out)
 {
     // Undefined to call this not on an optimization diagnostic!
     llvm::DiagnosticInfoOptimizationBase *opt
         = static_cast<llvm::DiagnosticInfoOptimizationBase*>(unwrap(di));
 
+#if LLVM_VERSION_GE(4, 0)
+    *pass_name_out = opt->getPassName().data();
+#else
     *pass_name_out = opt->getPassName();
+#endif
     *function_out = wrap(&opt->getFunction());
     *debugloc_out = wrap(&opt->getDebugLoc());
-    *message_out = wrap(&opt->getMsg());
+    raw_rust_string_ostream os(message_out);
+    os << opt->getMsg();
 }
 
 extern "C" void
