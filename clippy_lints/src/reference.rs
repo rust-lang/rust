@@ -1,4 +1,4 @@
-use rustc::hir::*;
+use syntax::ast::{Expr,ExprKind,UnOp};
 use rustc::lint::*;
 use utils::{span_lint_and_then, snippet};
 
@@ -29,10 +29,17 @@ impl LintPass for Pass {
     }
 }
 
-impl LateLintPass for Pass {
-    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
-        if let ExprUnary(UnDeref, ref deref_target) = e.node {
-            if let ExprAddrOf(_, ref addrof_target) = deref_target.node {
+fn without_parens(mut e: &Expr) -> &Expr {
+    while let ExprKind::Paren(ref child_e) = e.node {
+        e = child_e;
+    }
+    e
+}
+
+impl EarlyLintPass for Pass {
+    fn check_expr(&mut self, cx: &EarlyContext, e: &Expr) {
+        if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.node {
+            if let ExprKind::AddrOf(_, ref addrof_target) = without_parens(deref_target).node {
                 span_lint_and_then(
                     cx,
                     DEREF_ADDROF,

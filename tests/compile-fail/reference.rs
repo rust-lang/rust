@@ -34,10 +34,22 @@ fn main() {
     //~|HELP try this
     //~|SUGGESTION let b = bytes[1..2][0];
 
+    //This produces a suggestion of 'let b = (a);' which
+    //will trigger the 'unused_parens' lint
+    let b = *&(a);
+    //~^ERROR immediately dereferencing a reference
+    //~|HELP try this
+    //~|SUGGESTION let b = (a)
+
     let b = *(&a);
     //~^ERROR immediately dereferencing a reference
     //~|HELP try this
     //~|SUGGESTION let b = a;
+
+    let b = *((&a));
+    //~^ERROR immediately dereferencing a reference
+    //~|HELP try this
+    //~|SUGGESTION let b = a
 
     let b = *&&a;
     //~^ERROR immediately dereferencing a reference

@@ -267,7 +267,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box ok_if_let::Pass);
     reg.register_late_lint_pass(box if_let_redundant_pattern_matching::Pass);
     reg.register_late_lint_pass(box partialeq_ne_impl::Pass);
-    reg.register_late_lint_pass(box reference::Pass);
+    reg.register_early_lint_pass(box reference::Pass);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
