@@ -269,6 +269,7 @@ pub struct Context<'a> {
     pub rejected_via_triple: Vec<CrateMismatch>,
     pub rejected_via_kind: Vec<CrateMismatch>,
     pub rejected_via_version: Vec<CrateMismatch>,
+    pub rejected_via_filename: Vec<CrateMismatch>,
     pub should_match_name: bool,
     pub is_proc_macro: Option<bool>,
 }
@@ -415,6 +416,18 @@ impl<'a> Context<'a> {
                                   i + 1,
                                   path.display(),
                                   got));
+            }
+        }
+        if !self.rejected_via_filename.is_empty() {
+            let dylibname = self.dylibname();
+            let mismatches = self.rejected_via_filename.iter();
+            for &CrateMismatch { ref path, .. } in mismatches {
+                err.note(&format!("extern location for {} is of an unknown type: {}",
+                                  self.crate_name,
+                                  path.display()))
+                   .help(&format!("file name should be lib*.rlib or {}*.{}",
+                                  dylibname.0,
+                                  dylibname.1));
             }
         }
 
@@ -743,13 +756,12 @@ impl<'a> Context<'a> {
                         return true;
                     }
                 }
-                sess.struct_err(&format!("extern location for {} is of an unknown type: {}",
-                                         self.crate_name,
-                                         loc.display()))
-                    .help(&format!("file name should be lib*.rlib or {}*.{}",
-                                   dylibname.0,
-                                   dylibname.1))
-                    .emit();
+
+                self.rejected_via_filename.push(CrateMismatch {
+                    path: loc.clone(),
+                    got: String::new(),
+                });
+
                 false
             });
 
