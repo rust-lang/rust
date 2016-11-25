@@ -48,29 +48,32 @@ pub struct OptimizationDiagnostic {
     pub pass_name: *const c_char,
     pub function: ValueRef,
     pub debug_loc: DebugLocRef,
-    pub message: TwineRef,
+    pub message: String,
 }
 
 impl OptimizationDiagnostic {
     unsafe fn unpack(kind: OptimizationDiagnosticKind,
                      di: DiagnosticInfoRef)
                      -> OptimizationDiagnostic {
+        let mut pass_name = ptr::null();
+        let mut function = ptr::null_mut();
+        let mut debug_loc = ptr::null_mut();
 
-        let mut opt = OptimizationDiagnostic {
+        let message = super::build_string(|message|
+            super::LLVMRustUnpackOptimizationDiagnostic(di,
+                                                        &mut pass_name,
+                                                        &mut function,
+                                                        &mut debug_loc,
+                                                        message)
+        );
+
+        OptimizationDiagnostic {
             kind: kind,
-            pass_name: ptr::null(),
-            function: ptr::null_mut(),
-            debug_loc: ptr::null_mut(),
-            message: ptr::null_mut(),
-        };
-
-        super::LLVMRustUnpackOptimizationDiagnostic(di,
-                                                    &mut opt.pass_name,
-                                                    &mut opt.function,
-                                                    &mut opt.debug_loc,
-                                                    &mut opt.message);
-
-        opt
+            pass_name: pass_name,
+            function: function,
+            debug_loc: debug_loc,
+            message: message.expect("got a non-UTF8 OptimizationDiagnostic message from LLVM")
+        }
     }
 }
 

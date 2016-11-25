@@ -417,7 +417,7 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
                                                 opt.kind.describe(),
                                                 pass_name,
                                                 if loc.is_empty() { "[unknown]" } else { &*loc },
-                                                llvm::twine_to_string(opt.message)));
+                                                opt.message));
             }
         }
 
