@@ -191,7 +191,7 @@ fn is_relevant_expr(cx: &LateContext, expr: &Expr) -> bool {
     match expr.node {
         ExprBlock(ref block) => is_relevant_block(cx, block),
         ExprRet(Some(ref e)) => is_relevant_expr(cx, e),
-        ExprRet(None) | ExprBreak(_) => false,
+        ExprRet(None) | ExprBreak(_, None) => false,
         ExprCall(ref path_expr, _) => {
             if let ExprPath(..) = path_expr.node {
                 let fun_id = resolve_node(cx, path_expr.id).expect("function should be resolved").def_id();

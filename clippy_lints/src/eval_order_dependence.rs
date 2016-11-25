@@ -124,7 +124,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DivergenceVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'v Expr) {
         match e.node {
             ExprAgain(_) |
-            ExprBreak(_) |
+            ExprBreak(_, _) |
             ExprRet(_) => self.report_diverging_sub_expr(e),
             ExprCall(ref func, _) => match self.0.tcx.tables().expr_ty(func).sty {
                 ty::TyFnDef(_, _, fn_ty) |

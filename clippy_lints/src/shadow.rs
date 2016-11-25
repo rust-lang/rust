@@ -278,7 +278,7 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
         ExprAddrOf(_, ref e) |
         ExprBox(ref e) => check_expr(cx, e, bindings),
         ExprBlock(ref block) |
-        ExprLoop(ref block, _) => check_block(cx, block, bindings),
+        ExprLoop(ref block, _, _) => check_block(cx, block, bindings),
         // ExprCall
         // ExprMethodCall
         ExprArray(ref v) | ExprTup(ref v) => {
