@@ -306,6 +306,7 @@ impl<T> !Sync for Receiver<T> { }
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct Iter<'a, T: 'a> {
     rx: &'a Receiver<T>
 }
@@ -317,6 +318,7 @@ pub struct Iter<'a, T: 'a> {
 /// This Iterator will never block the caller in order to wait for data to
 /// become available. Instead, it will return `None`.
 #[stable(feature = "receiver_try_iter", since = "1.15.0")]
+#[derive(Debug)]
 pub struct TryIter<'a, T: 'a> {
     rx: &'a Receiver<T>
 }
@@ -325,6 +327,7 @@ pub struct TryIter<'a, T: 'a> {
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
 #[stable(feature = "receiver_into_iter", since = "1.1.0")]
+#[derive(Debug)]
 pub struct IntoIter<T> {
     rx: Receiver<T>
 }

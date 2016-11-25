@@ -948,6 +948,15 @@ impl<'a, K> ExactSizeIterator for Iter<'a, K> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K> FusedIterator for Iter<'a, K> {}
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, K: fmt::Debug> fmt::Debug for Iter<'a, K> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.clone())
+            .finish()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K> Iterator for IntoIter<K> {
     type Item = K;
@@ -968,6 +977,16 @@ impl<K> ExactSizeIterator for IntoIter<K> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<K> FusedIterator for IntoIter<K> {}
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<K: fmt::Debug> fmt::Debug for IntoIter<K> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let entries_iter = self.iter.inner.iter().map(|(k, _)| k);
+        f.debug_list()
+            .entries(entries_iter)
+            .finish()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K> Iterator for Drain<'a, K> {
     type Item = K;
@@ -987,6 +1006,16 @@ impl<'a, K> ExactSizeIterator for Drain<'a, K> {
 }
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K> FusedIterator for Drain<'a, K> {}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, K: fmt::Debug> fmt::Debug for Drain<'a, K> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let entries_iter = self.iter.inner.iter().map(|(k, _)| k);
+        f.debug_list()
+            .entries(entries_iter)
+            .finish()
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> Clone for Intersection<'a, T, S> {
@@ -1018,6 +1047,18 @@ impl<'a, T, S> Iterator for Intersection<'a, T, S>
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper)
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, T, S> fmt::Debug for Intersection<'a, T, S>
+    where T: fmt::Debug + Eq + Hash,
+          S: BuildHasher,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.clone())
+            .finish()
     }
 }
 
@@ -1068,6 +1109,18 @@ impl<'a, T, S> FusedIterator for Difference<'a, T, S>
 {
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, T, S> fmt::Debug for Difference<'a, T, S>
+    where T: fmt::Debug + Eq + Hash,
+          S: BuildHasher,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.clone())
+            .finish()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> Clone for SymmetricDifference<'a, T, S> {
     fn clone(&self) -> SymmetricDifference<'a, T, S> {
@@ -1097,6 +1150,18 @@ impl<'a, T, S> FusedIterator for SymmetricDifference<'a, T, S>
 {
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, T, S> fmt::Debug for SymmetricDifference<'a, T, S>
+    where T: fmt::Debug + Eq + Hash,
+          S: BuildHasher,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.clone())
+            .finish()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> Clone for Union<'a, T, S> {
     fn clone(&self) -> Union<'a, T, S> {
@@ -1109,6 +1174,18 @@ impl<'a, T, S> FusedIterator for Union<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
 {
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<'a, T, S> fmt::Debug for Union<'a, T, S>
+    where T: fmt::Debug + Eq + Hash,
+          S: BuildHasher,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.clone())
+            .finish()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

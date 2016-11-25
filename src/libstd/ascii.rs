@@ -12,6 +12,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use fmt;
 use mem;
 use ops::Range;
 use iter::FusedIterator;
@@ -369,6 +370,13 @@ impl DoubleEndedIterator for EscapeDefault {
 impl ExactSizeIterator for EscapeDefault {}
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeDefault {}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for EscapeDefault {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("EscapeDefault { .. }")
+    }
+}
 
 
 static ASCII_LOWERCASE_MAP: [u8; 256] = [
