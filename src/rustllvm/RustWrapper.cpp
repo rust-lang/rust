@@ -747,7 +747,11 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateNameSpace(
         unwrapDI<DIDescriptor>(Scope),
         Name,
         unwrapDI<DIFile>(File),
-        LineNo));
+        LineNo
+#if LLVM_VERSION_GE(4, 0)
+        , false // ExportSymbols (only relevant for C++ anonymous namespaces)
+#endif
+    ));
 }
 
 extern "C" void LLVMRustDICompositeTypeSetTypeArray(
