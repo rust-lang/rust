@@ -493,6 +493,10 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
         Some(self.map)
     }
 
+    fn nested_visit_mode(&mut self) -> intravisit::NestedVisitMode {
+        intravisit::NestedVisitMode::All
+    }
+
     fn visit_item(&mut self, item: &'hir hir::Item) {
         let name = if let hir::ItemImpl(.., ref ty, _) = item.node {
             hir::print::ty_to_string(ty)
