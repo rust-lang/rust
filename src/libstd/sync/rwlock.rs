@@ -95,6 +95,13 @@ impl<'a, T: ?Sized> !marker::Send for RwLockReadGuard<'a, T> {}
 
 /// RAII structure used to release the exclusive write access of a lock when
 /// dropped.
+///
+/// This structure is created by the [`write()`] and [`try_write()`] methods
+/// on [`RwLock`].
+///
+/// [`write()`]: struct.RwLock.html#method.write
+/// [`try_write()`]: struct.RwLock.html#method.try_write
+/// [`RwLock`]: struct.RwLock.html
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
