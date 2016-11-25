@@ -71,7 +71,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// to it.
     pub fn ast_ty_to_prim_ty(self, ast_ty: &hir::Ty) -> Option<Ty<'tcx>> {
         if let hir::TyPath(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
-            if let Def::PrimTy(nty) = self.expect_def(ast_ty.id) {
+            if let Def::PrimTy(nty) = path.def {
                 Some(self.prim_ty_to_ty(&path.segments, nty))
             } else {
                 None

@@ -234,8 +234,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     /// and follows different rules.
     ///
     /// Returns true if the target has been inlined.
-    fn maybe_inline_local(&mut self, id: ast::NodeId, renamed: Option<ast::Name>,
-                  glob: bool, om: &mut Module, please_inline: bool) -> bool {
+    fn maybe_inline_local(&mut self,
+                          id: ast::NodeId,
+                          def: Def,
+                          renamed: Option<ast::Name>,
+                          glob: bool,
+                          om: &mut Module,
+                          please_inline: bool) -> bool {
 
         fn inherits_doc_hidden(cx: &core::DocContext, mut node: ast::NodeId) -> bool {
             while let Some(id) = cx.tcx.map.get_enclosing_scope(node) {
@@ -251,7 +256,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
 
         let tcx = self.cx.tcx;
-        let def = tcx.expect_def(id);
+        if def == Def::Err {
+            return false;
+        }
         let def_did = def.def_id();
 
         let use_attrs = tcx.map.attrs(id);
@@ -368,13 +375,18 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         }
                     });
                     let name = if is_glob { None } else { Some(name) };
-                    if self.maybe_inline_local(item.id, name, is_glob, om, please_inline) {
+                    if self.maybe_inline_local(item.id,
+                                               path.def,
+                                               name,
+                                               is_glob,
+                                               om,
+                                               please_inline) {
                         return;
                     }
                 }
 
                 om.imports.push(Import {
-                    name: item.name,
+                    name: name,
                     id: item.id,
                     vis: item.vis.clone(),
                     attrs: item.attrs.clone(),

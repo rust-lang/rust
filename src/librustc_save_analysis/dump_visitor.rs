@@ -274,12 +274,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 
     fn lookup_def_id(&self, ref_id: NodeId) -> Option<DefId> {
-        self.tcx.expect_def_or_none(ref_id).and_then(|def| {
-            match def {
-                Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => None,
-                def => Some(def.def_id()),
-            }
-        })
+        match self.save_ctxt.get_path_def(ref_id) {
+            Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => None,
+            def => Some(def.def_id()),
+        }
     }
 
     fn process_def_kind(&mut self,
@@ -292,7 +290,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             return;
         }
 
-        let def = self.tcx.expect_def(ref_id);
+        let def = self.save_ctxt.get_path_def(ref_id);
         match def {
             Def::Mod(_) => {
                 self.dumper.mod_ref(ModRefData {
@@ -919,7 +917,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
 
         // Modules or types in the path prefix.
-        match self.tcx.expect_def(id) {
+        match self.save_ctxt.get_path_def(id) {
             Def::Method(did) => {
                 let ti = self.tcx.associated_item(did);
                 if ti.kind == ty::AssociatedKind::Method && ti.method_has_self_argument {
@@ -998,7 +996,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         return;
                     }
                 };
-                let variant = adt.variant_of_def(self.tcx.expect_def(p.id));
+                let variant = adt.variant_of_def(self.save_ctxt.get_path_def(p.id));
 
                 for &Spanned { node: ref field, span } in fields {
                     let sub_span = self.span.span_for_first_ident(span);
@@ -1370,7 +1368,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                         return;
                     }
                 };
-                let def = self.tcx.expect_def(hir_expr.id);
+                let def = self.save_ctxt.get_path_def(hir_expr.id);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_def(def), base)
             }
             ast::ExprKind::MethodCall(.., ref args) => self.process_method_call(ex, args),
@@ -1480,7 +1478,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
 
         // process collected paths
         for &(id, ref p, immut, ref_kind) in &collector.collected_paths {
-            match self.tcx.expect_def(id) {
+            match self.save_ctxt.get_path_def(id) {
                 Def::Local(def_id) => {
                     let id = self.tcx.map.as_local_node_id(def_id).unwrap();
                     let mut value = if immut == ast::Mutability::Immutable {

@@ -667,6 +667,7 @@ fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>, has_self
                  bindings: Vec<TypeBinding>, substs: &Substs) -> Path {
     Path {
         global: false,
+        def: Def::Err,
         segments: vec![PathSegment {
             name: name.to_string(),
             params: external_path_params(cx, trait_did, has_self, bindings, substs)
@@ -1728,13 +1729,12 @@ impl Clean<Type> for hir::Ty {
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(hir::QPath::Resolved(None, ref path)) => {
-                let def = cx.tcx.expect_def(self.id);
-                if let Some(new_ty) = cx.ty_substs.borrow().get(&def).cloned() {
+                if let Some(new_ty) = cx.ty_substs.borrow().get(&path.def).cloned() {
                     return new_ty;
                 }
 
                 let mut alias = None;
-                if let Def::TyAlias(def_id) = def {
+                if let Def::TyAlias(def_id) = path.def {
                     // Substitute private type aliases
                     if let Some(node_id) = cx.tcx.map.as_local_node_id(def_id) {
                         if !cx.access_levels.borrow().is_exported(def_id) {
@@ -1748,7 +1748,7 @@ impl Clean<Type> for hir::Ty {
                     let mut ty_substs = FxHashMap();
                     let mut lt_substs = FxHashMap();
                     for (i, ty_param) in generics.ty_params.iter().enumerate() {
-                        let ty_param_def = cx.tcx.expect_def(ty_param.id);
+                        let ty_param_def = Def::TyParam(cx.tcx.map.local_def_id(ty_param.id));
                         if let Some(ty) = provided_params.types().get(i).cloned()
                                                                         .cloned() {
                             ty_substs.insert(ty_param_def, ty.unwrap().clean(cx));
@@ -1772,6 +1772,7 @@ impl Clean<Type> for hir::Ty {
                 let trait_path = hir::Path {
                     span: p.span,
                     global: p.global,
+                    def: Def::Trait(cx.tcx.associated_item(p.def.def_id()).container.id()),
                     segments: segments.into(),
                 };
                 Type::QPath {
@@ -1784,6 +1785,10 @@ impl Clean<Type> for hir::Ty {
                 let trait_path = hir::Path {
                     span: self.span,
                     global: false,
+                    def: cx.tcx_opt().map_or(Def::Err, |tcx| {
+                        let def_id = tcx.tables().type_relative_path_defs[&self.id].def_id();
+                        Def::Trait(tcx.associated_item(def_id).container.id())
+                    }),
                     segments: vec![].into(),
                 };
                 Type::QPath {
@@ -2194,6 +2199,7 @@ impl Clean<Span> for syntax_pos::Span {
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub struct Path {
     pub global: bool,
+    pub def: Def,
     pub segments: Vec<PathSegment>,
 }
 
@@ -2201,6 +2207,7 @@ impl Path {
     pub fn singleton(name: String) -> Path {
         Path {
             global: false,
+            def: Def::Err,
             segments: vec![PathSegment {
                 name: name,
                 params: PathParameters::AngleBracketed {
@@ -2221,6 +2228,7 @@ impl Clean<Path> for hir::Path {
     fn clean(&self, cx: &DocContext) -> Path {
         Path {
             global: self.global,
+            def: self.def,
             segments: self.segments.clean(cx),
         }
     }
@@ -2591,15 +2599,15 @@ impl Clean<Vec<Item>> for doctree::Import {
         });
         let path = self.path.clean(cx);
         let inner = if self.glob {
-            Import::Glob(resolve_use_source(cx, path, self.id))
+            Import::Glob(resolve_use_source(cx, path))
         } else {
             let name = self.name;
             if !denied {
-                if let Some(items) = inline::try_inline(cx, self.id, Some(name)) {
+                if let Some(items) = inline::try_inline(cx, path.def, Some(name)) {
                     return items;
                 }
             }
-            Import::Simple(name.clean(cx), resolve_use_source(cx, path, self.id))
+            Import::Simple(name.clean(cx), resolve_use_source(cx, path))
         };
         vec![Item {
             name: None,
@@ -2697,7 +2705,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
 
     match p.node {
         PatKind::Wild => "_".to_string(),
-        PatKind::Binding(_, ref p, _) => p.node.to_string(),
+        PatKind::Binding(_, _, ref p, _) => p.node.to_string(),
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
         PatKind::Struct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", qpath_to_string(name),
@@ -2727,15 +2735,13 @@ fn name_from_pat(p: &hir::Pat) -> String {
     }
 }
 
-/// Given a Type, resolve it using the def_map
+/// Given a type Path, resolve it to a Type using the TyCtxt
 fn resolve_type(cx: &DocContext,
                 path: Path,
                 id: ast::NodeId) -> Type {
     debug!("resolve_type({:?},{:?})", path, id);
-    let def = cx.tcx.expect_def(id);
-    debug!("resolve_type: def={:?}", def);
 
-    let is_generic = match def {
+    let is_generic = match path.def {
         Def::PrimTy(p) => match p {
             hir::TyStr => return Primitive(PrimitiveType::Str),
             hir::TyBool => return Primitive(PrimitiveType::Bool),
@@ -2750,7 +2756,7 @@ fn resolve_type(cx: &DocContext,
         Def::SelfTy(..) | Def::TyParam(..) | Def::AssociatedTy(..) => true,
         _ => false,
     };
-    let did = register_def(&*cx, def);
+    let did = register_def(&*cx, path.def);
     ResolvedPath { path: path, typarams: None, did: did, is_generic: is_generic }
 }
 
@@ -2782,15 +2788,15 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
     did
 }
 
-fn resolve_use_source(cx: &DocContext, path: Path, id: ast::NodeId) -> ImportSource {
+fn resolve_use_source(cx: &DocContext, path: Path) -> ImportSource {
     ImportSource {
+        did: if path.def == Def::Err {
+            None
+        } else {
+            Some(register_def(cx, path.def))
+        },
         path: path,
-        did: resolve_def(cx, id),
     }
-}
-
-fn resolve_def(cx: &DocContext, id: ast::NodeId) -> Option<DefId> {
-    cx.tcx.expect_def_or_none(id).map(|def| register_def(cx, def))
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -2896,6 +2902,7 @@ fn lang_struct(cx: &DocContext, did: Option<DefId>,
         did: did,
         path: Path {
             global: false,
+            def: Def::Err,
             segments: vec![PathSegment {
                 name: name.to_string(),
                 params: PathParameters::AngleBracketed {

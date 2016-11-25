@@ -42,8 +42,8 @@ pub mod external_data;
 pub mod span_utils;
 
 use rustc::hir;
-use rustc::hir::map::{Node, NodeItem};
 use rustc::hir::def::Def;
+use rustc::hir::map::Node;
 use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::ty::{self, TyCtxt};
@@ -318,7 +318,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let (qualname, parent_scope, decl_id, vis, docs) =
           match self.tcx.impl_of_method(self.tcx.map.local_def_id(id)) {
             Some(impl_id) => match self.tcx.map.get_if_local(impl_id) {
-                Some(NodeItem(item)) => {
+                Some(Node::NodeItem(item)) => {
                     match item.node {
                         hir::ItemImpl(.., ref ty, _) => {
                             let mut result = String::from("<");
@@ -358,7 +358,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             None => match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
                 Some(def_id) => {
                     match self.tcx.map.get_if_local(def_id) {
-                        Some(NodeItem(item)) => {
+                        Some(Node::NodeItem(item)) => {
                             (format!("::{}", self.tcx.item_path_str(def_id)),
                              Some(def_id), None,
                              From::from(&item.vis),
@@ -497,13 +497,41 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Data> {
-        let resolution = self.tcx.expect_resolution(id);
-        if resolution.depth != 0 {
-            return None;
-        }
-        let def = resolution.base_def;
+    pub fn get_path_def(&self, id: NodeId) -> Def {
+        match self.tcx.map.get(id) {
+            Node::NodeTraitRef(tr) => tr.path.def,
 
+            Node::NodeItem(&hir::Item { node: hir::ItemUse(ref path, _), .. }) |
+            Node::NodeVisibility(&hir::Visibility::Restricted { ref path, .. }) => path.def,
+
+            Node::NodeExpr(&hir::Expr { node: hir::ExprPath(ref qpath), .. }) |
+            Node::NodeExpr(&hir::Expr { node: hir::ExprStruct(ref qpath, ..), .. }) |
+            Node::NodePat(&hir::Pat { node: hir::PatKind::Path(ref qpath), .. }) |
+            Node::NodePat(&hir::Pat { node: hir::PatKind::Struct(ref qpath, ..), .. }) |
+            Node::NodePat(&hir::Pat { node: hir::PatKind::TupleStruct(ref qpath, ..), .. }) => {
+                self.tcx.tables().qpath_def(qpath, id)
+            }
+
+            Node::NodeLocal(&hir::Pat { node: hir::PatKind::Binding(_, def_id, ..), .. }) => {
+                Def::Local(def_id)
+            }
+
+            Node::NodeTy(&hir::Ty { node: hir::TyPath(ref qpath), .. }) => {
+                match *qpath {
+                    hir::QPath::Resolved(_, ref path) => path.def,
+                    hir::QPath::TypeRelative(..) => {
+                        // FIXME(eddyb) Avoid keeping associated type resolutions.
+                        self.tcx.tables().type_relative_path_defs[&id]
+                    }
+                }
+            }
+
+            _ => Def::Err
+        }
+    }
+
+    pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Data> {
+        let def = self.get_path_def(id);
         let sub_span = self.span_utils.span_for_last_ident(path.span);
         filter!(self.span_utils, sub_span, path.span, None);
         match def {
@@ -647,8 +675,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
-        match self.tcx.expect_def(ref_id) {
-            Def::PrimTy(_) | Def::SelfTy(..) => None,
+        match self.get_path_def(ref_id) {
+            Def::PrimTy(_) | Def::SelfTy(..) | Def::Err => None,
             def => Some(def.def_id()),
         }
     }

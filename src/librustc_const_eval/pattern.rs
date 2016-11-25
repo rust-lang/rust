@@ -163,8 +163,9 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatKind::Path(..) => {
-                match self.tcx.expect_def(pat.id) {
+            PatKind::Path(ref qpath) => {
+                let def = self.tcx.tables().qpath_def(qpath, pat.id);
+                match def {
                     Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                         let tcx = self.tcx.global_tcx();
                         let substs = tcx.tables().node_id_item_substs(pat.id)
@@ -188,7 +189,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                             }
                         }
                     }
-                    _ => self.lower_variant_or_leaf(pat, vec![])
+                    _ => self.lower_variant_or_leaf(def, vec![])
                 }
             }
 
@@ -242,8 +243,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatKind::Binding(bm, ref ident, ref sub) => {
-                let def_id = self.tcx.expect_def(pat.id).def_id();
+            PatKind::Binding(bm, def_id, ref ident, ref sub) => {
                 let id = self.tcx.map.as_local_node_id(def_id).unwrap();
                 let var_ty = self.tcx.tables().node_id_to_type(pat.id);
                 let region = match var_ty.sty {
@@ -281,13 +281,14 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatKind::TupleStruct(_, ref subpatterns, ddpos) => {
+            PatKind::TupleStruct(ref qpath, ref subpatterns, ddpos) => {
+                let def = self.tcx.tables().qpath_def(qpath, pat.id);
                 let pat_ty = self.tcx.tables().node_id_to_type(pat.id);
                 let adt_def = match pat_ty.sty {
                     ty::TyAdt(adt_def, _) => adt_def,
                     _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT"),
                 };
-                let variant_def = adt_def.variant_of_def(self.tcx.expect_def(pat.id));
+                let variant_def = adt_def.variant_of_def(def);
 
                 let subpatterns =
                         subpatterns.iter()
@@ -297,10 +298,11 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                                        pattern: self.lower_pattern(field),
                                    })
                                    .collect();
-                self.lower_variant_or_leaf(pat, subpatterns)
+                self.lower_variant_or_leaf(def, subpatterns)
             }
 
-            PatKind::Struct(_, ref fields, _) => {
+            PatKind::Struct(ref qpath, ref fields, _) => {
+                let def = self.tcx.tables().qpath_def(qpath, pat.id);
                 let pat_ty = self.tcx.tables().node_id_to_type(pat.id);
                 let adt_def = match pat_ty.sty {
                     ty::TyAdt(adt_def, _) => adt_def,
@@ -310,7 +312,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                             "struct pattern not applied to an ADT");
                     }
                 };
-                let variant_def = adt_def.variant_of_def(self.tcx.expect_def(pat.id));
+                let variant_def = adt_def.variant_of_def(def);
 
                 let subpatterns =
                     fields.iter()
@@ -329,7 +331,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                           })
                           .collect();
 
-                self.lower_variant_or_leaf(pat, subpatterns)
+                self.lower_variant_or_leaf(def, subpatterns)
             }
         };
 
@@ -418,11 +420,11 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
 
     fn lower_variant_or_leaf(
         &mut self,
-        pat: &hir::Pat,
+        def: Def,
         subpatterns: Vec<FieldPattern<'tcx>>)
         -> PatternKind<'tcx>
     {
-        match self.tcx.expect_def(pat.id) {
+        match def {
             Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
                 let enum_id = self.tcx.parent_def_id(variant_id).unwrap();
                 let adt_def = self.tcx.lookup_adt_def(enum_id);
@@ -442,9 +444,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 PatternKind::Leaf { subpatterns: subpatterns }
             }
 
-            def => {
-                span_bug!(pat.span, "inappropriate def for pattern: {:?}", def);
-            }
+            _ => bug!()
         }
     }
 }

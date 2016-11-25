@@ -83,14 +83,6 @@ impl PathResolution {
         PathResolution { base_def: def, depth: 0 }
     }
 
-    /// Get the definition, if fully resolved, otherwise panic.
-    pub fn full_def(&self) -> Def {
-        if self.depth != 0 {
-            bug!("path not fully resolved: {:?}", self);
-        }
-        self.base_def
-    }
-
     pub fn kind_name(&self) -> &'static str {
         if self.depth != 0 {
             "associated item"

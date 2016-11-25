@@ -468,8 +468,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         intravisit::walk_expr(self, ex);
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path, id: ast::NodeId) {
-        check_path(self.tcx, path, id,
+    fn visit_path(&mut self, path: &'tcx hir::Path, _: ast::NodeId) {
+        check_path(self.tcx, path,
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_path(self, path)
     }
@@ -526,7 +526,7 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // individually as it's possible to have a stable trait with unstable
         // items.
         hir::ItemImpl(.., Some(ref t), _, ref impl_item_refs) => {
-            let trait_did = tcx.expect_def(t.ref_id).def_id();
+            let trait_did = t.path.def.def_id();
             for impl_item_ref in impl_item_refs {
                 let impl_item = tcx.map.impl_item(impl_item_ref.id);
                 let item = tcx.associated_items(trait_did)
@@ -553,9 +553,9 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
             let method_call = ty::MethodCall::expr(e.id);
             tcx.tables().method_map[&method_call].def_id
         }
-        hir::ExprPath(hir::QPath::TypeRelative(..)) => {
+        hir::ExprPath(ref qpath @ hir::QPath::TypeRelative(..)) => {
             span = e.span;
-            tcx.expect_def(e.id).def_id()
+            tcx.tables().qpath_def(qpath, e.id).def_id()
         }
         hir::ExprField(ref base_e, ref field) => {
             span = field.span;
@@ -611,14 +611,13 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
 }
 
 pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            path: &hir::Path, id: ast::NodeId,
+                            path: &hir::Path,
                             cb: &mut FnMut(DefId, Span,
                                            &Option<&Stability>,
                                            &Option<DeprecationEntry>)) {
-    // Paths in import prefixes may have no resolution.
-    match tcx.expect_def_or_none(id) {
-        None | Some(Def::PrimTy(..)) | Some(Def::SelfTy(..)) => {}
-        Some(def) => maybe_do_stability_check(tcx, def.def_id(), path.span, cb)
+    match path.def {
+        Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => {}
+        _ => maybe_do_stability_check(tcx, path.def.def_id(), path.span, cb)
     }
 }
 
@@ -629,8 +628,8 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
-    if let PatKind::Path(hir::QPath::TypeRelative(..)) = pat.node {
-        let def_id = tcx.expect_def(pat.id).def_id();
+    if let PatKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) = pat.node {
+        let def_id = tcx.tables().qpath_def(qpath, pat.id).def_id();
         maybe_do_stability_check(tcx, def_id, pat.span, cb)
     }
 
@@ -665,7 +664,7 @@ pub fn check_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: &hir::Ty,
     if is_internal(tcx, ty.span) { return; }
 
     if let hir::TyPath(hir::QPath::TypeRelative(..)) = ty.node {
-        let def_id = tcx.expect_def(ty.id).def_id();
+        let def_id = tcx.tables().type_relative_path_defs[&ty.id].def_id();
         maybe_do_stability_check(tcx, def_id, ty.span, cb);
     }
 }

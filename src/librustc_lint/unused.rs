@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir::pat_util;
 use rustc::ty;
 use rustc::ty::adjustment;
 use util::nodemap::FxHashMap;
@@ -44,7 +43,7 @@ impl UnusedMut {
 
         let mut mutables = FxHashMap();
         for p in pats {
-            pat_util::pat_bindings(p, |mode, id, _, path1| {
+            p.each_binding(|mode, id, _, path1| {
                 let name = path1.node;
                 if let hir::BindByValue(hir::MutMutable) = mode {
                     if !name.as_str().starts_with("_") {

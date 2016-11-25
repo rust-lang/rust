@@ -597,7 +597,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_fn_arg_names(&mut self, decl: &hir::FnDecl) -> LazySeq<ast::Name> {
         self.lazy_seq(decl.inputs.iter().map(|arg| {
-            if let PatKind::Binding(_, ref path1, _) = arg.pat.node {
+            if let PatKind::Binding(_, _, ref path1, _) = arg.pat.node {
                 path1.node
             } else {
                 Symbol::intern("")

@@ -160,11 +160,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
 
 impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for ExprVisitor<'a, 'gcx, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
-        let def = match expr.node {
-            hir::ExprPath(_) => {
-                self.infcx.tcx.expect_def(expr.id)
-            }
-            _ => Def::Err
+        let def = if let hir::ExprPath(ref qpath) = expr.node {
+            self.infcx.tcx.tables().qpath_def(qpath, expr.id)
+        } else {
+            Def::Err
         };
         match def {
             Def::Fn(did) if self.def_id_is_transmute(did) => {

@@ -92,7 +92,6 @@ use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, MethodCall, TypeFoldable};
 use rustc::infer::{self, GenericKind, SubregionOrigin, VerifyBound};
-use hir::pat_util;
 use rustc::ty::adjustment;
 use rustc::ty::wf::ImpliedBound;
 
@@ -434,7 +433,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat) {
         let tcx = self.tcx;
         debug!("regionck::visit_pat(pat={:?})", pat);
-        pat_util::pat_bindings(pat, |_, id, span, _| {
+        pat.each_binding(|_, id, span, _| {
             // If we have a variable that contains region'd data, that
             // data will be accessible from anywhere that the variable is
             // accessed. We must be wary of loops like this:

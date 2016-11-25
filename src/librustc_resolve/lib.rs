@@ -1201,11 +1201,11 @@ impl<'a> ty::NodeIdTree for Resolver<'a> {
 }
 
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
-    fn resolve_generated_global_path(&mut self, path: &hir::Path, is_value: bool) -> Def {
+    fn resolve_generated_global_path(&mut self, path: &mut hir::Path, is_value: bool) {
         let namespace = if is_value { ValueNS } else { TypeNS };
         match self.resolve_crate_relative_path(path.span, &path.segments, namespace) {
-            Ok(binding) => binding.def(),
-            Err(true) => Def::Err,
+            Ok(binding) => path.def = binding.def(),
+            Err(true) => {}
             Err(false) => {
                 let path_name = &format!("{}", path);
                 let error =
@@ -1218,7 +1218,6 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
                         def: Def::Err,
                     };
                 resolve_error(self, path.span, error);
-                Def::Err
             }
         }
     }

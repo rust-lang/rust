@@ -50,7 +50,7 @@
 
 use rustc_const_eval::eval_length;
 use hir::{self, SelfKind};
-use hir::def::{Def, PathResolution};
+use hir::def::Def;
 use hir::def_id::DefId;
 use hir::print as pprust;
 use middle::resolve_lifetime as rl;
@@ -678,7 +678,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     fn trait_def_id(&self, trait_ref: &hir::TraitRef) -> DefId {
         let path = &trait_ref.path;
-        match self.tcx().expect_def(trait_ref.ref_id) {
+        match path.def {
             Def::Trait(trait_def_id) => trait_def_id,
             Def::Err => {
                 self.tcx().sess.fatal("cannot continue compilation due to previous error");
@@ -953,24 +953,20 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
         match ty.node {
             hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
-                let resolution = tcx.expect_resolution(ty.id);
-                match resolution.base_def {
-                    Def::Trait(trait_def_id) if resolution.depth == 0 => {
-                        self.trait_path_to_object_type(rscope,
-                                                       path.span,
-                                                       trait_def_id,
-                                                       ty.id,
-                                                       path.segments.last().unwrap(),
-                                                       span,
-                                                       partition_bounds(tcx, span, bounds))
-                    }
-                    _ => {
-                        struct_span_err!(tcx.sess, ty.span, E0172,
-                                  "expected a reference to a trait")
-                            .span_label(ty.span, &format!("expected a trait"))
-                            .emit();
-                        tcx.types.err
-                    }
+                if let Def::Trait(trait_def_id) = path.def {
+                    self.trait_path_to_object_type(rscope,
+                                                   path.span,
+                                                   trait_def_id,
+                                                   ty.id,
+                                                   path.segments.last().unwrap(),
+                                                   span,
+                                                   partition_bounds(tcx, span, bounds))
+                } else {
+                    struct_span_err!(tcx.sess, ty.span, E0172,
+                                     "expected a reference to a trait")
+                        .span_label(ty.span, &format!("expected a trait"))
+                        .emit();
+                    tcx.types.err
                 }
             }
             _ => {
@@ -1412,55 +1408,54 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    // Check a type Def and convert it to a Ty.
+    // Check a type Path and convert it to a Ty.
     pub fn def_to_ty(&self,
                      rscope: &RegionScope,
-                     span: Span,
-                     def: Def,
                      opt_self_ty: Option<Ty<'tcx>>,
+                     path: &hir::Path,
                      path_id: ast::NodeId,
-                     path_segments: &[hir::PathSegment],
                      permit_variants: bool)
                      -> Ty<'tcx> {
         let tcx = self.tcx();
 
         debug!("base_def_to_ty(def={:?}, opt_self_ty={:?}, path_segments={:?})",
-               def, opt_self_ty, path_segments);
+               path.def, opt_self_ty, path.segments);
 
-        match def {
+        let span = path.span;
+        match path.def {
             Def::Trait(trait_def_id) => {
                 // N.B. this case overlaps somewhat with
                 // TyObjectSum, see that fn for details
 
                 assert_eq!(opt_self_ty, None);
-                tcx.prohibit_type_params(path_segments.split_last().unwrap().1);
+                tcx.prohibit_type_params(path.segments.split_last().unwrap().1);
 
                 self.trait_path_to_object_type(rscope,
                                                span,
                                                trait_def_id,
                                                path_id,
-                                               path_segments.last().unwrap(),
+                                               path.segments.last().unwrap(),
                                                span,
                                                partition_bounds(tcx, span, &[]))
             }
             Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) | Def::Union(did) => {
                 assert_eq!(opt_self_ty, None);
-                tcx.prohibit_type_params(path_segments.split_last().unwrap().1);
-                self.ast_path_to_ty(rscope, span, did, path_segments.last().unwrap())
+                tcx.prohibit_type_params(path.segments.split_last().unwrap().1);
+                self.ast_path_to_ty(rscope, span, did, path.segments.last().unwrap())
             }
             Def::Variant(did) if permit_variants => {
                 // Convert "variant type" as if it were a real type.
                 // The resulting `Ty` is type of the variant's enum for now.
                 assert_eq!(opt_self_ty, None);
-                tcx.prohibit_type_params(path_segments.split_last().unwrap().1);
+                tcx.prohibit_type_params(path.segments.split_last().unwrap().1);
                 self.ast_path_to_ty(rscope,
                                     span,
                                     tcx.parent_def_id(did).unwrap(),
-                                    path_segments.last().unwrap())
+                                    path.segments.last().unwrap())
             }
             Def::TyParam(did) => {
                 assert_eq!(opt_self_ty, None);
-                tcx.prohibit_type_params(path_segments);
+                tcx.prohibit_type_params(&path.segments);
 
                 let node_id = tcx.map.as_local_node_id(did).unwrap();
                 let param = tcx.ty_param_defs.borrow().get(&node_id)
@@ -1483,7 +1478,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // Self in impl (we know the concrete type).
 
                 assert_eq!(opt_self_ty, None);
-                tcx.prohibit_type_params(path_segments);
+                tcx.prohibit_type_params(&path.segments);
                 let ty = tcx.item_type(def_id);
                 if let Some(free_substs) = self.get_free_substs() {
                     ty.subst(tcx, free_substs)
@@ -1494,22 +1489,22 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Def::SelfTy(Some(_), None) => {
                 // Self in trait.
                 assert_eq!(opt_self_ty, None);
-                tcx.prohibit_type_params(path_segments);
+                tcx.prohibit_type_params(&path.segments);
                 tcx.mk_self_type()
             }
             Def::AssociatedTy(def_id) => {
-                tcx.prohibit_type_params(&path_segments[..path_segments.len()-2]);
+                tcx.prohibit_type_params(&path.segments[..path.segments.len()-2]);
                 let trait_did = tcx.parent_def_id(def_id).unwrap();
                 self.qpath_to_ty(rscope,
                                  span,
                                  opt_self_ty,
                                  trait_did,
-                                 &path_segments[path_segments.len()-2],
-                                 path_segments.last().unwrap())
+                                 &path.segments[path.segments.len()-2],
+                                 path.segments.last().unwrap())
             }
             Def::PrimTy(prim_ty) => {
                 assert_eq!(opt_self_ty, None);
-                tcx.prim_ty_to_ty(path_segments, prim_ty)
+                tcx.prim_ty_to_ty(&path.segments, prim_ty)
             }
             Def::Err => {
                 self.set_tainted_by_errors();
@@ -1518,7 +1513,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             _ => {
                 struct_span_err!(tcx.sess, span, E0248,
                            "found value `{}` used as a type",
-                            tcx.item_path_str(def.def_id()))
+                            tcx.item_path_str(path.def.def_id()))
                            .span_label(span, &format!("value used as a type"))
                            .emit();
                 return self.tcx().types.err;
@@ -1653,23 +1648,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| {
                     self.ast_ty_to_ty(rscope, qself)
                 });
-                self.def_to_ty(rscope,
-                               ast_ty.span,
-                               tcx.expect_def(ast_ty.id),
-                               opt_self_ty,
-                               ast_ty.id,
-                               &path.segments,
-                               false)
+                self.def_to_ty(rscope, opt_self_ty, path, ast_ty.id, false)
             }
             hir::TyPath(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 debug!("ast_ty_to_ty: qself={:?} segment={:?}", qself, segment);
                 let ty = self.ast_ty_to_ty(rscope, qself);
 
-                let def = tcx.expect_def_or_none(qself.id).unwrap_or(Def::Err);
+                let def = if let hir::TyPath(hir::QPath::Resolved(_, ref path)) = qself.node {
+                    path.def
+                } else {
+                    Def::Err
+                };
                 let (ty, def) = self.associated_path_def_to_ty(ast_ty.span, ty, def, segment);
 
                 // Write back the new resolution.
-                tcx.def_map.borrow_mut().insert(ast_ty.id, PathResolution::new(def));
+                tcx.tables.borrow_mut().type_relative_path_defs.insert(ast_ty.id, def);
 
                 ty
             }
@@ -2007,7 +2000,7 @@ pub fn partition_bounds<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     for ast_bound in ast_bounds {
         match *ast_bound {
             hir::TraitTyParamBound(ref b, hir::TraitBoundModifier::None) => {
-                match tcx.expect_def(b.trait_ref.ref_id) {
+                match b.trait_ref.path.def {
                     Def::Trait(trait_did) => {
                         if tcx.try_add_builtin_trait(trait_did,
                                                      &mut builtin_bounds) {
