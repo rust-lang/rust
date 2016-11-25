@@ -12,11 +12,10 @@ use self::ImportDirectiveSubclass::*;
 
 use {Module, PerNS};
 use Namespace::{self, TypeNS, MacroNS};
-use {NameBinding, NameBindingKind, PrivacyError, ToNameBinding};
+use {NameBinding, NameBindingKind, PathResult, PathScope, PrivacyError, ToNameBinding};
 use ResolveResult;
 use ResolveResult::*;
 use Resolver;
-use UseLexicalScopeFlag::DontUseLexicalScope;
 use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
 
@@ -27,6 +26,7 @@ use rustc::hir::def::*;
 use syntax::ast::{Ident, NodeId, Name};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
+use syntax::symbol::keywords;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 
@@ -482,14 +482,13 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             // For better failure detection, pretend that the import will not define any names
             // while resolving its module path.
             directive.vis.set(ty::Visibility::PrivateExternal);
-            let result =
-                self.resolve_module_path(&directive.module_path, DontUseLexicalScope, None);
+            let result = self.resolve_path(&directive.module_path, PathScope::Import, None, None);
             directive.vis.set(vis);
 
             match result {
-                Success(module) => module,
-                Indeterminate => return Indeterminate,
-                Failed(err) => return Failed(err),
+                PathResult::Module(module) => module,
+                PathResult::Indeterminate => return Indeterminate,
+                _ => return Failed(None),
             }
         };
 
@@ -551,21 +550,20 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.current_module = directive.parent;
 
         let ImportDirective { ref module_path, span, .. } = *directive;
-        let module_result = self.resolve_module_path(&module_path, DontUseLexicalScope, Some(span));
+        let module_result = self.resolve_path(&module_path, PathScope::Import, None, Some(span));
         let module = match module_result {
-            Success(module) => module,
-            Indeterminate => return Indeterminate,
-            Failed(err) => {
-                let self_module = self.module_map[&self.current_module.normal_ancestor_id.unwrap()];
-
-                let resolve_from_self_result = self.resolve_module_path_from_root(
-                    &self_module, &module_path, 0, Some(span));
-
-                return if let Success(_) = resolve_from_self_result {
+            PathResult::Module(module) => module,
+            PathResult::NonModule(..) => return Success(()),
+            PathResult::Indeterminate => return Indeterminate,
+            PathResult::Failed(msg, _) => {
+                let mut path = vec![keywords::SelfValue.ident()];
+                path.extend(module_path);
+                let result = self.resolve_path(&path, PathScope::Import, None, None);
+                return if let PathResult::Module(..) = result {
                     let msg = format!("Did you mean `self::{}`?", &names_to_string(module_path));
                     Failed(Some((span, msg)))
                 } else {
-                    Failed(err)
+                    Failed(Some((span, msg)))
                 };
             },
         };
