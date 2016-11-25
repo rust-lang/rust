@@ -49,6 +49,10 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
         test_args: Vec<String>,
     },
+    Bench {
+        paths: Vec<PathBuf>,
+        test_args: Vec<String>,
+    },
     Clean,
     Dist {
         install: bool,
@@ -141,6 +145,7 @@ Arguments:
                    command == "dist" ||
                    command == "doc" ||
                    command == "test" ||
+                   command == "bench" ||
                    command == "clean"  {
                     println!("Available invocations:");
                     if args.iter().any(|a| a == "-v") {
@@ -163,6 +168,7 @@ println!("\
 Subcommands:
     build       Compile either the compiler or libraries
     test        Build and run some test suites
+    bench       Build and run some benchmarks
     doc         Build documentation
     clean       Clean out build directories
     dist        Build and/or install distribution artifacts
@@ -206,6 +212,14 @@ To learn more about a subcommand, run `./x.py <command> -h`
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
                 m = parse(&opts);
                 Subcommand::Test {
+                    paths: remaining_as_path(&m),
+                    test_args: m.opt_strs("test-args"),
+                }
+            }
+            "bench" => {
+                opts.optmulti("", "test-args", "extra arguments", "ARGS");
+                m = parse(&opts);
+                Subcommand::Bench {
                     paths: remaining_as_path(&m),
                     test_args: m.opt_strs("test-args"),
                 }
@@ -259,7 +273,8 @@ To learn more about a subcommand, run `./x.py <command> -h`
 impl Subcommand {
     pub fn test_args(&self) -> Vec<&str> {
         match *self {
-            Subcommand::Test { ref test_args, .. } => {
+            Subcommand::Test { ref test_args, .. } |
+            Subcommand::Bench { ref test_args, .. } => {
                 test_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
             _ => Vec::new(),
