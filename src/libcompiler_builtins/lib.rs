@@ -292,12 +292,12 @@ pub mod reimpls {
 
     #[export_name="__modti3"]
     pub extern fn i128_mod(a: i128_, b: i128_) -> i128_ {
-        let b = b.abs();
+        let b = b.uabs();
         let sa = a.signum();
-        let a = a.abs();
+        let a = a.uabs();
         unsafe {
             let mut r = ::core::mem::zeroed();
-            u128_div_mod(a as u128_, b as u128_, &mut r);
+            u128_div_mod(a, b, &mut r);
             if sa == -1 { -(r as i128_) } else { r as i128_ }
         }
     }
@@ -306,13 +306,13 @@ pub mod reimpls {
     pub extern fn i128_div(a: i128_, b: i128_) -> i128_ {
         let sa = a.signum();
         let sb = b.signum();
-        let a = a.abs();
-        let b = b.abs();
+        let a = a.uabs();
+        let b = b.uabs();
         let sr = sa * sb; // sign of quotient
         if sr == -1 {
-            -(u128_div_mod(a as u128_, b as u128_, ptr::null_mut()) as i128_)
+            -(u128_div_mod(a, b, ptr::null_mut()) as i128_)
         } else {
-            u128_div_mod(a as u128_, b as u128_, ptr::null_mut()) as i128_
+            u128_div_mod(a, b, ptr::null_mut()) as i128_
         }
     }
 
@@ -340,9 +340,9 @@ pub mod reimpls {
             }
 
             let sa = a.signum();
-            let abs_a = a.abs();
+            let abs_a = a.iabs();
             let sb = b.signum();
-            let abs_b = b.abs();
+            let abs_b = b.iabs();
             if abs_a < 2 || abs_b < 2 {
                 return result;
             }
@@ -473,6 +473,19 @@ pub mod reimpls {
         mul!(a, b, i128_, i64)
     }
 
+    trait AbsExt: Sized {
+        fn uabs(self) -> u128_ {
+            self.iabs() as u128_
+        }
+        fn iabs(self) -> i128_;
+    }
+
+    impl AbsExt for i128_ {
+        fn iabs(self) -> i128_ {
+            ((self ^ self).wrapping_sub(self))
+        }
+    }
+
     trait FloatStuff: Sized {
         type ToBytes;
 
@@ -579,9 +592,9 @@ pub mod reimpls {
     #[export_name="__floattidf"]
     pub extern fn i128_as_f64(a: i128_) -> f64 {
         match a.signum() {
-            1 => u128_as_f64(a.abs() as u128_),
+            1 => u128_as_f64(a.uabs()),
             0 => 0.0,
-            -1 => -u128_as_f64(a.abs() as u128_),
+            -1 => -u128_as_f64(a.uabs()),
             _ => unimplemented()
         }
     }
@@ -589,9 +602,9 @@ pub mod reimpls {
     #[export_name="__floattisf"]
     pub extern fn i128_as_f32(a: i128_) -> f32 {
         match a.signum() {
-            1 => u128_as_f32(a.abs() as u128_),
+            1 => u128_as_f32(a.uabs()),
             0 => 0.0,
-            -1 => -u128_as_f32(a.abs() as u128_),
+            -1 => -u128_as_f32(a.uabs()),
             _ => unimplemented()
         }
     }
