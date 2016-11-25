@@ -629,10 +629,6 @@ pub struct RegionParameterDef<'tcx> {
 }
 
 impl<'tcx> RegionParameterDef<'tcx> {
-    pub fn to_early_bound_region(&self) -> ty::Region {
-        ty::ReEarlyBound(self.to_early_bound_region_data())
-    }
-
     pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
         ty::EarlyBoundRegion {
             index: self.index,
@@ -2400,7 +2396,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Given the did of a trait, returns its canonical trait ref.
-    pub fn lookup_trait_def(self, did: DefId) -> &'gcx TraitDef<'gcx> {
+    pub fn lookup_trait_def(self, did: DefId) -> &'gcx TraitDef {
         lookup_locally_or_in_crate_store(
             "trait_defs", did, &self.trait_defs,
             || self.alloc_trait_def(self.sess.cstore.trait_def(self.global_tcx(), did))

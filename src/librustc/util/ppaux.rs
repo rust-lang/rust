@@ -432,10 +432,11 @@ impl<'tcx> fmt::Debug for ty::ExistentialTraitRef<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::TraitDef<'tcx> {
+impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TraitDef(generics={:?}, trait_ref={:?})",
-               self.generics, self.trait_ref)
+        ty::tls::with(|tcx| {
+            write!(f, "{}", tcx.item_path_str(self.def_id))
+        })
     }
 }
 

@@ -244,11 +244,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         for item in self.tcx.get_attrs(def_id).iter() {
             if item.check_name("rustc_on_unimplemented") {
                 let err_sp = item.meta().span.substitute_dummy(span);
-                let def = self.tcx.lookup_trait_def(trait_ref.def_id);
-                let trait_str = def.trait_ref.to_string();
+                let trait_str = self.tcx.item_path_str(trait_ref.def_id);
                 if let Some(istring) = item.value_str() {
                     let istring = &*istring.as_str();
-                    let generic_map = def.generics.types.iter().map(|param| {
+                    let generics = self.tcx.item_generics(trait_ref.def_id);
+                    let generic_map = generics.types.iter().map(|param| {
                         (param.name.as_str().to_string(),
                          trait_ref.substs.type_for_def(param).to_string())
                     }).collect::<FxHashMap<String, String>>();

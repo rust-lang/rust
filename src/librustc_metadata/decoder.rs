@@ -531,16 +531,15 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn get_trait_def(&self,
                          item_id: DefIndex,
                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                         -> ty::TraitDef<'tcx> {
+                         -> ty::TraitDef {
         let data = match self.entry(item_id).kind {
             EntryKind::Trait(data) => data.decode(self),
             _ => bug!(),
         };
 
-        ty::TraitDef::new(data.unsafety,
+        ty::TraitDef::new(self.local_def_id(item_id),
+                          data.unsafety,
                           data.paren_sugar,
-                          tcx.item_generics(self.local_def_id(item_id)),
-                          data.trait_ref.decode((self, tcx)),
                           self.def_path(item_id).unwrap().deterministic_hash(tcx))
     }
 
