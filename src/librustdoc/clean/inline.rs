@@ -29,24 +29,21 @@ use clean::{self, GetDefId};
 
 use super::Clean;
 
-/// Attempt to inline the definition of a local node id into this AST.
+/// Attempt to inline a definition into this AST.
 ///
-/// This function will fetch the definition of the id specified, and if it is
-/// from another crate it will attempt to inline the documentation from the
-/// other crate into this crate.
+/// This function will fetch the definition specified, and if it is
+/// from another crate it will attempt to inline the documentation
+/// from the other crate into this crate.
 ///
 /// This is primarily used for `pub use` statements which are, in general,
 /// implementation details. Inlining the documentation should help provide a
 /// better experience when reading the documentation in this use case.
 ///
-/// The returned value is `None` if the `id` could not be inlined, and `Some`
-/// of a vector of items if it was successfully expanded.
-pub fn try_inline(cx: &DocContext, id: ast::NodeId, into: Option<ast::Name>)
+/// The returned value is `None` if the definition could not be inlined,
+/// and `Some` of a vector of items if it was successfully expanded.
+pub fn try_inline(cx: &DocContext, def: Def, into: Option<ast::Name>)
                   -> Option<Vec<clean::Item>> {
-    let def = match cx.tcx.expect_def_or_none(id) {
-        Some(def) => def,
-        None => return None,
-    };
+    if def == Def::Err { return None }
     let did = def.def_id();
     if did.is_local() { return None }
     try_inline_def(cx, def).map(|vec| {

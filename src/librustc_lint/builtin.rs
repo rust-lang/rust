@@ -167,7 +167,7 @@ impl LateLintPass for NonShorthandFieldPatterns {
                 if fieldpat.node.is_shorthand {
                     continue;
                 }
-                if let PatKind::Binding(_, ident, None) = fieldpat.node.pat.node {
+                if let PatKind::Binding(_, _, ident, None) = fieldpat.node.pat.node {
                     if ident.node == fieldpat.node.name {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
@@ -391,7 +391,7 @@ impl LateLintPass for MissingDoc {
             hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_item_refs) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
-                let real_trait = cx.tcx.expect_def(trait_ref.ref_id).def_id();
+                let real_trait = trait_ref.path.def.def_id();
                 if let Some(node_id) = cx.tcx.map.as_local_node_id(real_trait) {
                     match cx.tcx.map.find(node_id) {
                         Some(hir_map::NodeItem(item)) => {
@@ -697,10 +697,9 @@ impl LateLintPass for Deprecated {
                               &mut |id, sp, stab, depr| self.lint(cx, id, sp, &stab, &depr));
     }
 
-    fn check_path(&mut self, cx: &LateContext, path: &hir::Path, id: ast::NodeId) {
+    fn check_path(&mut self, cx: &LateContext, path: &hir::Path, _: ast::NodeId) {
         stability::check_path(cx.tcx,
                               path,
-                              id,
                               &mut |id, sp, stab, depr| self.lint(cx, id, sp, &stab, &depr));
     }
 
@@ -926,8 +925,12 @@ impl LateLintPass for UnconditionalRecursion {
         fn expr_refers_to_this_fn(tcx: TyCtxt, fn_id: ast::NodeId, id: ast::NodeId) -> bool {
             match tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
-                    tcx.expect_def_or_none(callee.id)
-                        .map_or(false, |def| def.def_id() == tcx.map.local_def_id(fn_id))
+                    let def = if let hir::ExprPath(ref qpath) = callee.node {
+                        tcx.tables().qpath_def(qpath, callee.id)
+                    } else {
+                        return false;
+                    };
+                    def.def_id() == tcx.map.local_def_id(fn_id)
                 }
                 _ => false,
             }
@@ -965,10 +968,13 @@ impl LateLintPass for UnconditionalRecursion {
             // Check for calls to methods via explicit paths (e.g. `T::method()`).
             match tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
-                    // The callee is an arbitrary expression,
-                    // it doesn't necessarily have a definition.
-                    match tcx.expect_def_or_none(callee.id) {
-                        Some(Def::Method(def_id)) => {
+                    let def = if let hir::ExprPath(ref qpath) = callee.node {
+                        tcx.tables().qpath_def(qpath, callee.id)
+                    } else {
+                        return false;
+                    };
+                    match def {
+                        Def::Method(def_id) => {
                             let substs = tcx.tables().node_id_item_substs(callee.id)
                                 .unwrap_or_else(|| tcx.intern_substs(&[]));
                             method_call_refers_to_method(
@@ -1201,11 +1207,12 @@ impl LateLintPass for MutableTransmutes {
             (cx: &LateContext<'a, 'tcx>,
              expr: &hir::Expr)
              -> Option<(&'tcx ty::TypeVariants<'tcx>, &'tcx ty::TypeVariants<'tcx>)> {
-            match expr.node {
-                hir::ExprPath(_) => (),
-                _ => return None,
-            }
-            if let Def::Fn(did) = cx.tcx.expect_def(expr.id) {
+            let def = if let hir::ExprPath(ref qpath) = expr.node {
+                cx.tcx.tables().qpath_def(qpath, expr.id)
+            } else {
+                return None;
+            };
+            if let Def::Fn(did) = def {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }

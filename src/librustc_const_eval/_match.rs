@@ -23,8 +23,8 @@ use rustc_data_structures::indexed_vec::Idx;
 use pattern::{FieldPattern, Pattern, PatternKind};
 use pattern::{PatternFoldable, PatternFolder};
 
-use rustc::hir::def_id::{DefId};
-use rustc::hir::pat_util::def_to_path;
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use rustc::hir;
@@ -324,7 +324,12 @@ impl Witness {
 
                 ty::TyAdt(adt, _) => {
                     let v = ctor.variant_for_adt(adt);
-                    let qpath = hir::QPath::Resolved(None, P(def_to_path(cx.tcx, v.did)));
+                    let qpath = hir::QPath::Resolved(None, P(hir::Path {
+                        span: DUMMY_SP,
+                        global: false,
+                        def: Def::Err,
+                        segments: vec![hir::PathSegment::from_name(v.name)].into(),
+                    }));
                     match v.ctor_kind {
                         CtorKind::Fictive => {
                             let field_pats: hir::HirVec<_> = v.fields.iter()

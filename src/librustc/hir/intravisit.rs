@@ -38,6 +38,7 @@ use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
 use syntax::codemap::Spanned;
 use syntax_pos::Span;
 use hir::*;
+use hir::def::Def;
 use hir::map::Map;
 use super::itemlikevisit::DeepVisitor;
 
@@ -153,6 +154,9 @@ pub trait Visitor<'v> : Sized {
     ///////////////////////////////////////////////////////////////////////////
 
     fn visit_id(&mut self, _node_id: NodeId) {
+        // Nothing to do.
+    }
+    fn visit_def_mention(&mut self, _def: Def) {
         // Nothing to do.
     }
     fn visit_name(&mut self, _span: Span, _name: Name) {
@@ -507,6 +511,7 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath, id: Nod
 }
 
 pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
+    visitor.visit_def_mention(path.def);
     for segment in &path.segments {
         visitor.visit_path_segment(path.span, segment);
     }
@@ -566,7 +571,8 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
         PatKind::Ref(ref subpattern, _) => {
             visitor.visit_pat(subpattern)
         }
-        PatKind::Binding(_, ref pth1, ref optional_subpattern) => {
+        PatKind::Binding(_, def_id, ref pth1, ref optional_subpattern) => {
+            visitor.visit_def_mention(Def::Local(def_id));
             visitor.visit_name(pth1.span, pth1.node);
             walk_list!(visitor, visit_pat, optional_subpattern);
         }
@@ -907,12 +913,18 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprPath(ref qpath) => {
             visitor.visit_qpath(qpath, expression.id, expression.span);
         }
-        ExprBreak(ref opt_sp_name, ref opt_expr) => {
-            walk_opt_sp_name(visitor, opt_sp_name);
+        ExprBreak(None, ref opt_expr) => {
             walk_list!(visitor, visit_expr, opt_expr);
         }
-        ExprAgain(ref opt_sp_name) => {
-            walk_opt_sp_name(visitor, opt_sp_name);
+        ExprBreak(Some(label), ref opt_expr) => {
+            visitor.visit_def_mention(Def::Label(label.loop_id));
+            visitor.visit_name(label.span, label.name);
+            walk_list!(visitor, visit_expr, opt_expr);
+        }
+        ExprAgain(None) => {}
+        ExprAgain(Some(label)) => {
+            visitor.visit_def_mention(Def::Label(label.loop_id));
+            visitor.visit_name(label.span, label.name);
         }
         ExprRet(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);

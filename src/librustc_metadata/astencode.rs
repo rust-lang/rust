@@ -18,7 +18,7 @@ use schema::*;
 
 use rustc::middle::cstore::{InlinedItem, InlinedItemRef};
 use rustc::middle::const_qualif::ConstQualif;
-use rustc::hir::def::{self, Def};
+use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TyCtxt, Ty};
 
@@ -35,7 +35,7 @@ pub struct Ast<'tcx> {
 
 #[derive(RustcEncodable, RustcDecodable)]
 enum TableEntry<'tcx> {
-    Def(Def),
+    TypeRelativeDef(Def),
     NodeType(Ty<'tcx>),
     ItemSubsts(ty::ItemSubsts<'tcx>),
     Adjustment(ty::adjustment::Adjustment<'tcx>),
@@ -93,7 +93,8 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> 
             }
         };
 
-        encode(tcx.expect_def_or_none(id).map(TableEntry::Def));
+        encode(tcx.tables().type_relative_path_defs.get(&id).cloned()
+                  .map(TableEntry::TypeRelativeDef));
         encode(tcx.tables().node_types.get(&id).cloned().map(TableEntry::NodeType));
         encode(tcx.tables().item_substs.get(&id).cloned().map(TableEntry::ItemSubsts));
         encode(tcx.tables().adjustments.get(&id).cloned().map(TableEntry::Adjustment));
@@ -140,8 +141,8 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
 
     for (id, entry) in ast.side_tables.decode((cdata, tcx, id_ranges)) {
         match entry {
-            TableEntry::Def(def) => {
-                tcx.def_map.borrow_mut().insert(id, def::PathResolution::new(def));
+            TableEntry::TypeRelativeDef(def) => {
+                tcx.tables.borrow_mut().type_relative_path_defs.insert(id, def);
             }
             TableEntry::NodeType(ty) => {
                 tcx.tables.borrow_mut().node_types.insert(id, ty);

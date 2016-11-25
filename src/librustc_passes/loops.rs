@@ -12,10 +12,10 @@ use self::Context::*;
 use rustc::session::Session;
 
 use rustc::dep_graph::DepNode;
-use rustc::hir::def::{Def, DefMap};
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir;
+use syntax::ast;
 use syntax_pos::Span;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -45,17 +45,15 @@ enum Context {
 #[derive(Copy, Clone)]
 struct CheckLoopVisitor<'a, 'ast: 'a> {
     sess: &'a Session,
-    def_map: &'a DefMap,
     hir_map: &'a Map<'ast>,
     cx: Context,
 }
 
-pub fn check_crate(sess: &Session, def_map: &DefMap, map: &Map) {
+pub fn check_crate(sess: &Session, map: &Map) {
     let _task = map.dep_graph.in_task(DepNode::CheckLoops);
     let krate = map.krate();
     krate.visit_all_item_likes(&mut CheckLoopVisitor {
         sess: sess,
-        def_map: def_map,
         hir_map: map,
         cx: Normal,
     }.as_deep_visitor());
@@ -84,21 +82,18 @@ impl<'a, 'ast, 'v> Visitor<'v> for CheckLoopVisitor<'a, 'ast> {
             hir::ExprClosure(.., ref b, _) => {
                 self.with_context(Closure, |v| v.visit_expr(&b));
             }
-            hir::ExprBreak(ref opt_label, ref opt_expr) => {
+            hir::ExprBreak(label, ref opt_expr) => {
                 if opt_expr.is_some() {
-                    let loop_kind = if opt_label.is_some() {
-                        let loop_def = self.def_map.get(&e.id).unwrap().full_def();
-                        if loop_def == Def::Err {
+                    let loop_kind = if let Some(label) = label {
+                        if label.loop_id == ast::DUMMY_NODE_ID {
                             None
-                        } else if let Def::Label(loop_id) = loop_def {
-                            Some(match self.hir_map.expect_expr(loop_id).node {
+                        } else {
+                            Some(match self.hir_map.expect_expr(label.loop_id).node {
                                 hir::ExprWhile(..) => LoopKind::WhileLoop,
                                 hir::ExprLoop(_, _, source) => LoopKind::Loop(source),
                                 ref r => span_bug!(e.span,
                                                    "break label resolved to a non-loop: {:?}", r),
                             })
-                        } else {
-                            span_bug!(e.span, "break resolved to a non-label")
                         }
                     } else if let Loop(kind) = self.cx {
                         Some(kind)

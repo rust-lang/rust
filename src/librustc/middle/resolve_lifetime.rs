@@ -21,7 +21,7 @@ use self::ScopeChain::*;
 use dep_graph::DepNode;
 use hir::map::Map;
 use session::Session;
-use hir::def::{Def, DefMap};
+use hir::def::Def;
 use hir::def_id::DefId;
 use middle::region;
 use ty;
@@ -65,7 +65,6 @@ struct LifetimeContext<'a, 'tcx: 'a> {
     hir_map: &'a Map<'tcx>,
     map: &'a mut NamedRegionMap,
     scope: Scope<'a>,
-    def_map: &'a DefMap,
     // Deep breath. Our representation for poly trait refs contains a single
     // binder and thus we only allow a single level of quantification. However,
     // the syntax of Rust permits quantification in two places, e.g., `T: for <'a> Foo<'a>`
@@ -109,8 +108,7 @@ type Scope<'a> = &'a ScopeChain<'a>;
 static ROOT_SCOPE: ScopeChain<'static> = RootScope;
 
 pub fn krate(sess: &Session,
-             hir_map: &Map,
-             def_map: &DefMap)
+             hir_map: &Map)
              -> Result<NamedRegionMap, usize> {
     let _task = hir_map.dep_graph.in_task(DepNode::ResolveLifetimes);
     let krate = hir_map.krate();
@@ -124,7 +122,6 @@ pub fn krate(sess: &Session,
             hir_map: hir_map,
             map: &mut map,
             scope: &ROOT_SCOPE,
-            def_map: def_map,
             trait_ref_hack: false,
             labels_in_fn: vec![],
         }, krate);
@@ -247,8 +244,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
                 // if this path references a trait, then this will resolve to
                 // a trait ref, which introduces a binding scope.
-                match self.def_map.get(&ty.id).map(|d| (d.base_def, d.depth)) {
-                    Some((Def::Trait(..), 0)) => {
+                match path.def {
+                    Def::Trait(..) => {
                         self.with(LateScope(&[], self.scope), |_, this| {
                             this.visit_path(path, ty.id);
                         });
@@ -541,7 +538,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             hir_map: hir_map,
             map: *map,
             scope: &wrap_scope,
-            def_map: self.def_map,
             trait_ref_hack: self.trait_ref_hack,
             labels_in_fn: self.labels_in_fn.clone(),
         };

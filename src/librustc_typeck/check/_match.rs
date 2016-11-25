@@ -103,7 +103,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.demand_eqtype(pat.span, expected, rhs_ty);
                 common_type
             }
-            PatKind::Binding(bm, _, ref sub) => {
+            PatKind::Binding(bm, def_id, _, ref sub) => {
                 let typ = self.local_ty(pat.span, pat.id);
                 match bm {
                     hir::BindByRef(mutbl) => {
@@ -130,16 +130,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // if there are multiple arms, make sure they all agree on
                 // what the type of the binding `x` ought to be
-                match tcx.expect_def(pat.id) {
-                    Def::Err => {}
-                    Def::Local(def_id) => {
-                        let var_id = tcx.map.as_local_node_id(def_id).unwrap();
-                        if var_id != pat.id {
-                            let vt = self.local_ty(pat.span, var_id);
-                            self.demand_eqtype(pat.span, vt, typ);
-                        }
-                    }
-                    d => bug!("bad def for pattern binding `{:?}`", d)
+                let var_id = tcx.map.as_local_node_id(def_id).unwrap();
+                if var_id != pat.id {
+                    let vt = self.local_ty(pat.span, var_id);
+                    self.demand_eqtype(pat.span, vt, typ);
                 }
 
                 if let Some(ref p) = *sub {
@@ -373,7 +367,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // want to use the *precise* type of the discriminant, *not* some
         // supertype, as the "discriminant type" (issue #23116).
         let contains_ref_bindings = arms.iter()
-                                        .filter_map(|a| tcx.arm_contains_ref_binding(a))
+                                        .filter_map(|a| a.contains_ref_binding())
                                         .max_by_key(|m| match *m {
                                             hir::MutMutable => 1,
                                             hir::MutImmutable => 0,

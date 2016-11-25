@@ -542,11 +542,10 @@ fn is_param<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       param_id: ast::NodeId)
                       -> bool
 {
-    if let hir::TyPath(hir::QPath::Resolved(None, _)) = ast_ty.node {
-        let path_res = tcx.expect_resolution(ast_ty.id);
-        match path_res.base_def {
+    if let hir::TyPath(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
+        match path.def {
             Def::SelfTy(Some(def_id), None) |
-            Def::TyParam(def_id) if path_res.depth == 0 => {
+            Def::TyParam(def_id) => {
                 def_id == tcx.map.local_def_id(param_id)
             }
             _ => false
@@ -1625,8 +1624,7 @@ fn add_unsized_bound<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
         Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.
             if let Ok(kind_id) = kind_id {
-                let trait_def = tcx.expect_def(tpb.ref_id);
-                if trait_def != Def::Trait(kind_id) {
+                if tpb.path.def != Def::Trait(kind_id) {
                     tcx.sess.span_warn(span,
                                        "default bound relaxed for a type parameter, but \
                                        this does nothing because the given bound is not \
