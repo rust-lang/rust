@@ -9,3 +9,6 @@ repository = "https://github.com/BurntSushi/stdsimd"
 readme = "README.md"
 keywords = ["std", "simd", "intrinsics", "sse", "avx"]
 license = "MIT"
+
+[profile.release]
+debug = true
