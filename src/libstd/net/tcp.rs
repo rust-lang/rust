@@ -86,18 +86,52 @@ impl TcpStream {
     /// documentation for concrete examples.
     /// In case `ToSocketAddrs::to_socket_addrs()` returns more than one entry,
     /// then the first valid and reachable address is used.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// if let Ok(stream) = TcpStream::connect("127.0.0.1:8080") {
+    ///     println!("Connected to the server!");
+    /// } else {
+    ///     println!("Couldn't connect to server...");
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
         super::each_addr(addr, net_imp::TcpStream::connect).map(TcpStream)
     }
 
     /// Returns the socket address of the remote peer of this TCP connection.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// assert_eq!(stream.peer_addr().unwrap(),
+    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080)));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         self.0.peer_addr()
     }
 
     /// Returns the socket address of the local half of this TCP connection.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// assert_eq!(stream.local_addr().unwrap(),
+    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080)));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.0.socket_addr()
@@ -107,7 +141,19 @@ impl TcpStream {
     ///
     /// This function will cause all pending and future I/O on the specified
     /// portions to return immediately with an appropriate value (see the
-    /// documentation of `Shutdown`).
+    /// documentation of [`Shutdown`]).
+    ///
+    /// [`Shutdown`]: ../../std/net/enum.Shutdown.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::{Shutdown, TcpStream};
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.shutdown(Shutdown::Both).expect("shutdown call failed");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.0.shutdown(how)
@@ -119,6 +165,16 @@ impl TcpStream {
     /// object references. Both handles will read and write the same stream of
     /// data, and options set on one stream will be propagated to the other
     /// stream.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// let stream_clone = stream.try_clone().expect("clone failed...");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_clone(&self) -> io::Result<TcpStream> {
         self.0.duplicate().map(TcpStream)
@@ -126,7 +182,7 @@ impl TcpStream {
 
     /// Sets the read timeout to the timeout specified.
     ///
-    /// If the value specified is `None`, then `read` calls will block
+    /// If the value specified is [`None`], then [`read()`] calls will block
     /// indefinitely. It is an error to pass the zero `Duration` to this
     /// method.
     ///
@@ -134,7 +190,22 @@ impl TcpStream {
     ///
     /// Platforms may return a different error code whenever a read times out as
     /// a result of setting this option. For example Unix typically returns an
-    /// error of the kind `WouldBlock`, but Windows may return `TimedOut`.
+    /// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`read()`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
+    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_read_timeout(None).expect("set_read_timeout call failed");
+    /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.0.set_read_timeout(dur)
@@ -142,15 +213,31 @@ impl TcpStream {
 
     /// Sets the write timeout to the timeout specified.
     ///
-    /// If the value specified is `None`, then `write` calls will block
-    /// indefinitely. It is an error to pass the zero `Duration` to this
+    /// If the value specified is [`None`], then [`write()`] calls will block
+    /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
     /// # Note
     ///
     /// Platforms may return a different error code whenever a write times out
     /// as a result of setting this option. For example Unix typically returns
-    /// an error of the kind `WouldBlock`, but Windows may return `TimedOut`.
+    /// an error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`Duration`]: ../../std/time/struct.Duration.html
+    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
+    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_write_timeout(None).expect("set_write_timeout call failed");
+    /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.0.set_write_timeout(dur)
@@ -158,11 +245,25 @@ impl TcpStream {
 
     /// Returns the read timeout of this socket.
     ///
-    /// If the timeout is `None`, then `read` calls will block indefinitely.
+    /// If the timeout is [`None`], then [`read()`] calls will block indefinitely.
     ///
     /// # Note
     ///
     /// Some platforms do not provide access to the current timeout.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`read()`]: ../../std/io/trait.Read.html#tymethod.read
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_read_timeout(None).expect("set_read_timeout call failed");
+    /// assert_eq!(stream.read_timeout().unwrap(), None);
+    /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.read_timeout()
@@ -170,11 +271,25 @@ impl TcpStream {
 
     /// Returns the write timeout of this socket.
     ///
-    /// If the timeout is `None`, then `write` calls will block indefinitely.
+    /// If the timeout is [`None`], then [`write()`] calls will block indefinitely.
     ///
     /// # Note
     ///
     /// Some platforms do not provide access to the current timeout.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_write_timeout(None).expect("set_write_timeout call failed");
+    /// assert_eq!(stream.write_timeout().unwrap(), None);
+    /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.write_timeout()
@@ -187,6 +302,16 @@ impl TcpStream {
     /// small amount of data. When not set, data is buffered until there is a
     /// sufficient amount to send out, thereby avoiding the frequent sending of
     /// small packets.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_nodelay(true).expect("set_nodelay call failed");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         self.0.set_nodelay(nodelay)
@@ -197,6 +322,17 @@ impl TcpStream {
     /// For more information about this option, see [`set_nodelay`][link].
     ///
     /// [link]: #method.set_nodelay
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_nodelay(true).expect("set_nodelay call failed");
+    /// assert_eq!(stream.nodelay().unwrap_or(false), true);
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn nodelay(&self) -> io::Result<bool> {
         self.0.nodelay()
@@ -206,6 +342,16 @@ impl TcpStream {
     ///
     /// This value sets the time-to-live field that is used in every packet sent
     /// from this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_ttl(100).expect("set_ttl call failed");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         self.0.set_ttl(ttl)
@@ -216,6 +362,17 @@ impl TcpStream {
     /// For more information about this option, see [`set_ttl`][link].
     ///
     /// [link]: #method.set_ttl
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_ttl(100).expect("set_ttl call failed");
+    /// assert_eq!(stream.ttl().unwrap_or(0), 100);
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn ttl(&self) -> io::Result<u32> {
         self.0.ttl()
@@ -226,6 +383,16 @@ impl TcpStream {
     /// This will retrieve the stored error in the underlying socket, clearing
     /// the field in the process. This can be useful for checking errors between
     /// calls.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.take_error().expect("No error was expected...");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
@@ -235,6 +402,16 @@ impl TcpStream {
     ///
     /// On Unix this corresponds to calling fcntl, and on Windows this
     /// corresponds to calling ioctlsocket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_nonblocking(true).expect("set_nonblocking call failed");
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
