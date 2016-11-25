@@ -114,6 +114,17 @@ impl IntoInner<imp::Process> for Child {
     fn into_inner(self) -> imp::Process { self.handle }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Child {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Child")
+            .field("stdin", &self.stdin)
+            .field("stdout", &self.stdout)
+            .field("stderr", &self.stderr)
+            .finish()
+    }
+}
+
 /// A handle to a child process's stdin. This struct is used in the [`stdin`]
 /// field on [`Child`].
 ///
@@ -146,6 +157,13 @@ impl IntoInner<AnonPipe> for ChildStdin {
 impl FromInner<AnonPipe> for ChildStdin {
     fn from_inner(pipe: AnonPipe) -> ChildStdin {
         ChildStdin { inner: pipe }
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for ChildStdin {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("ChildStdin { .. }")
     }
 }
 
@@ -183,6 +201,13 @@ impl FromInner<AnonPipe> for ChildStdout {
     }
 }
 
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for ChildStdout {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("ChildStdout { .. }")
+    }
+}
+
 /// A handle to a child process's stderr. This struct is used in the [`stderr`]
 /// field on [`Child`].
 ///
@@ -214,6 +239,13 @@ impl IntoInner<AnonPipe> for ChildStderr {
 impl FromInner<AnonPipe> for ChildStderr {
     fn from_inner(pipe: AnonPipe) -> ChildStderr {
         ChildStderr { inner: pipe }
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for ChildStderr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("ChildStderr { .. }")
     }
 }
 
@@ -619,6 +651,13 @@ impl Stdio {
 impl FromInner<imp::Stdio> for Stdio {
     fn from_inner(inner: imp::Stdio) -> Stdio {
         Stdio(inner)
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Stdio {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Stdio { .. }")
     }
 }
 

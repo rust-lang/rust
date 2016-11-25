@@ -12,6 +12,8 @@
 
 #![stable(feature = "raw_os", since = "1.1.0")]
 
+use fmt;
+
 #[cfg(any(target_os = "android",
           target_os = "emscripten",
           all(target_os = "linux", any(target_arch = "aarch64",
@@ -69,6 +71,13 @@ pub enum c_void {
     #[unstable(feature = "c_void_variant", reason = "should not have to exist",
                issue = "0")]
     #[doc(hidden)] __variant2,
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for c_void {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("c_void")
+    }
 }
 
 #[cfg(test)]

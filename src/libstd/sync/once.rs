@@ -64,6 +64,7 @@
 // You'll find a few more details in the implementation, but that's the gist of
 // it!
 
+use fmt;
 use marker;
 use ptr;
 use sync::atomic::{AtomicUsize, AtomicBool, Ordering};
@@ -103,6 +104,7 @@ unsafe impl Send for Once {}
 /// State yielded to the `call_once_force` method which can be used to query
 /// whether the `Once` was previously poisoned or not.
 #[unstable(feature = "once_poison", issue = "33577")]
+#[derive(Debug)]
 pub struct OnceState {
     poisoned: bool,
 }
@@ -325,6 +327,13 @@ impl Once {
                 }
             }
         }
+    }
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl fmt::Debug for Once {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Once { .. }")
     }
 }
 

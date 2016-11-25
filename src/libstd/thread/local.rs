@@ -13,6 +13,7 @@
 #![unstable(feature = "thread_local_internals", issue = "0")]
 
 use cell::UnsafeCell;
+use fmt;
 use mem;
 
 /// A thread local storage key which owns its contents.
@@ -96,6 +97,13 @@ pub struct LocalKey<T: 'static> {
 
     // initialization routine to invoke to create a value
     init: fn() -> T,
+}
+
+#[stable(feature = "std_debug", since = "1.15.0")]
+impl<T: 'static> fmt::Debug for LocalKey<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("LocalKey { .. }")
+    }
 }
 
 /// Declare a new thread local storage key of type `std::thread::LocalKey`.
@@ -184,7 +192,7 @@ macro_rules! __thread_local_inner {
 #[unstable(feature = "thread_local_state",
            reason = "state querying was recently added",
            issue = "27716")]
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum LocalKeyState {
     /// All keys are in this state whenever a thread starts. Keys will
     /// transition to the `Valid` state once the first call to `with` happens
@@ -313,6 +321,7 @@ impl<T: 'static> LocalKey<T> {
 #[doc(hidden)]
 pub mod os {
     use cell::{Cell, UnsafeCell};
+    use fmt;
     use marker;
     use ptr;
     use sys_common::thread_local::StaticKey as OsStaticKey;
@@ -321,6 +330,13 @@ pub mod os {
         // OS-TLS key that we'll use to key off.
         os: OsStaticKey,
         marker: marker::PhantomData<Cell<T>>,
+    }
+
+    #[stable(feature = "std_debug", since = "1.15.0")]
+    impl<T> fmt::Debug for Key<T> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.pad("Key { .. }")
+        }
     }
 
     unsafe impl<T> ::marker::Sync for Key<T> { }
