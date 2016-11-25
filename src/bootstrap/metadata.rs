@@ -70,6 +70,7 @@ fn build_krate(build: &mut Build, krate: &str) {
                 build_step: format!("build-crate-{}", package.name),
                 doc_step: format!("doc-crate-{}", package.name),
                 test_step: format!("test-crate-{}", package.name),
+                bench_step: format!("bench-crate-{}", package.name),
                 name: package.name,
                 deps: Vec::new(),
                 path: path,
