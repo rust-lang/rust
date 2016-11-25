@@ -45,6 +45,7 @@ core = { path = "../../libcore" }
 
 # Reexport features from std
 [features]
-jemalloc = ["std/jemalloc"]
-debug-jemalloc = ["std/debug-jemalloc"]
 backtrace = ["std/backtrace"]
+debug-jemalloc = ["std/debug-jemalloc"]
+jemalloc = ["std/jemalloc"]
+panic-unwind = ["std/panic-unwind"]

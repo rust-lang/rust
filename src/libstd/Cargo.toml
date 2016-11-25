@@ -13,7 +13,7 @@ crate-type = ["dylib", "rlib"]
 alloc = { path = "../liballoc" }
 alloc_jemalloc = { path = "../liballoc_jemalloc", optional = true }
 alloc_system = { path = "../liballoc_system" }
-panic_unwind = { path = "../libpanic_unwind" }
+panic_unwind = { path = "../libpanic_unwind", optional = true }
 panic_abort = { path = "../libpanic_abort" }
 collections = { path = "../libcollections" }
 core = { path = "../libcore" }
@@ -29,5 +29,6 @@ gcc = "0.3.27"
 
 [features]
 backtrace = []
-jemalloc = ["alloc_jemalloc"]
 debug-jemalloc = ["alloc_jemalloc/debug"]
+jemalloc = ["alloc_jemalloc"]
+panic-unwind = ["panic_unwind"]
