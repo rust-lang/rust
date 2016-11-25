@@ -64,11 +64,11 @@ impl LateLintPass for UnusedLabel {
 impl<'v> Visitor<'v> for UnusedLabelVisitor {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
-            hir::ExprBreak(Some(label)) |
+            hir::ExprBreak(Some(label), _) |
             hir::ExprAgain(Some(label)) => {
                 self.labels.remove(&label.node.as_str());
             }
-            hir::ExprLoop(_, Some(label)) |
+            hir::ExprLoop(_, Some(label), _) |
             hir::ExprWhile(_, _, Some(label)) => {
                 self.labels.insert(label.node.as_str(), expr.span);
             }

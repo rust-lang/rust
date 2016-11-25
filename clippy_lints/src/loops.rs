@@ -315,7 +315,7 @@ impl LateLintPass for Pass {
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
-        if let ExprLoop(ref block, _) = expr.node {
+        if let ExprLoop(ref block, _, LoopSource::Loop) = expr.node {
             // also check for empty `loop {}` statements
             if block.stmts.is_empty() && block.expr.is_none() {
                 span_lint(cx,
@@ -911,7 +911,7 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
 /// Return true if expr contains a single break expr (maybe within a block).
 fn is_break_expr(expr: &Expr) -> bool {
     match expr.node {
-        ExprBreak(None) => true,
+        ExprBreak(None, _) => true,
         ExprBlock(ref b) => {
             match extract_first_expr(b) {
                 Some(subexpr) => is_break_expr(subexpr),

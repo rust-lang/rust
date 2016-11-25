@@ -285,7 +285,12 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
             println!("mutability: {:?}", muta);
             print_expr(cx, e, indent + 1);
         },
-        hir::ExprBreak(_) => println!("{}Break, {}", ind, ty),
+        hir::ExprBreak(_, ref e) => {
+            println!("{}Break, {}", ind, ty);
+            if let Some(ref e) = *e {
+                print_expr(cx, e, indent + 1);
+            }
+        },
         hir::ExprAgain(_) => println!("{}Again, {}", ind, ty),
         hir::ExprRet(ref e) => {
             println!("{}Ret, {}", ind, ty);
