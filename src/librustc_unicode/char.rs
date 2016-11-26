@@ -138,7 +138,7 @@ impl char {
     /// A 'radix' here is sometimes also called a 'base'. A radix of two
     /// indicates a binary number, a radix of ten, decimal, and a radix of
     /// sixteen, hexadecimal, to give some common values. Arbitrary
-    /// radicum are supported.
+    /// radices are supported.
     ///
     /// Compared to `is_numeric()`, this function only recognizes the characters
     /// `0-9`, `a-z` and `A-Z`.
@@ -190,7 +190,7 @@ impl char {
     /// A 'radix' here is sometimes also called a 'base'. A radix of two
     /// indicates a binary number, a radix of ten, decimal, and a radix of
     /// sixteen, hexadecimal, to give some common values. Arbitrary
-    /// radicum are supported.
+    /// radices are supported.
     ///
     /// 'Digit' is defined to be only the following characters:
     ///
