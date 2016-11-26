@@ -283,8 +283,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         if !subty.has_escaping_regions() {
             let cause = self.cause(cause);
             let trait_ref = ty::TraitRef {
-                def_id: self.infcx.tcx.lang_items.require(lang_items::SizedTraitLangItem)
-                    .unwrap_or_else(|msg| self.infcx.tcx.sess.fatal(&msg[..])),
+                def_id: self.infcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
                 substs: self.infcx.tcx.mk_substs_trait(subty, &[]),
             };
             self.out.push(traits::Obligation::new(cause, trait_ref.to_predicate()));

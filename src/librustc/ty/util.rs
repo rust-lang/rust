@@ -646,8 +646,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
         }.unwrap_or_else(|| {
             !self.impls_bound(tcx, param_env,
-                              tcx.lang_items.require(lang_items::CopyTraitLangItem)
-                                .unwrap_or_else(|msg| tcx.sess.fatal(&msg[..])),
+                              tcx.require_lang_item(lang_items::CopyTraitLangItem),
                               &param_env.is_copy_cache, span) });
 
         if !self.has_param_types() && !self.has_self_ty() {
@@ -689,9 +688,8 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             TyAdt(..) | TyProjection(..) | TyParam(..) |
             TyInfer(..) | TyAnon(..) | TyError => None
         }.unwrap_or_else(|| {
-            self.impls_bound(tcx, param_env, tcx.lang_items.require(lang_items::SizedTraitLangItem)
-                              .unwrap_or_else(|msg| tcx.sess.fatal(&msg[..])),
-                              &param_env.is_copy_cache, span) });
+            self.impls_bound(tcx, param_env, tcx.require_lang_item(lang_items::SizedTraitLangItem),
+                              &param_env.is_sized_cache, span) });
 
         if !self.has_param_types() && !self.has_self_ty() {
             self.flags.set(self.flags.get() | if result {

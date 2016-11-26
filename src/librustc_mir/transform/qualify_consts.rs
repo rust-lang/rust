@@ -1048,9 +1048,7 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants {
                 let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
                 let mut fulfillment_cx = traits::FulfillmentContext::new();
                 fulfillment_cx.register_bound(&infcx, ty,
-                                              tcx.lang_items
-                                                .require(lang_items::SyncTraitLangItem)
-                                                .unwrap_or_else(|msg| tcx.sess.fatal(&msg[..])),
+                                              tcx.require_lang_item(lang_items::SyncTraitLangItem),
                                               cause);
                 if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
                     infcx.report_fulfillment_errors(&err);

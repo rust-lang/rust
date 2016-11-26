@@ -11,6 +11,7 @@
 use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
+use middle::lang_items::OwnedBoxLangItem;
 
 use self::SimplifiedType::*;
 
@@ -70,10 +71,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         }
         ty::TyBox(_) => {
             // treat like we would treat `Box`
-            match tcx.lang_items.require_owned_box() {
-                Ok(def_id) => Some(AdtSimplifiedType(def_id)),
-                Err(msg) => tcx.sess.fatal(&msg),
-            }
+            Some(AdtSimplifiedType(tcx.require_lang_item(OwnedBoxLangItem)))
         }
         ty::TyClosure(def_id, _) => {
             Some(ClosureSimplifiedType(def_id))

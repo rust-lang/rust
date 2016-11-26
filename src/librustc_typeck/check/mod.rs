@@ -1819,8 +1819,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  span: Span,
                                  code: traits::ObligationCauseCode<'tcx>)
     {
-        let lang_item = self.tcx.lang_items.require(lang_items::SizedTraitLangItem)
-                            .unwrap_or_else(|msg| self.tcx.sess.fatal(&msg[..]));
+        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem);
         self.require_type_meets(ty, span, code, lang_item);
     }
 
@@ -3902,8 +3901,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if count > 1 {
                 // For [foo, ..n] where n > 1, `foo` must have
                 // Copy type:
-                let lang_item = self.tcx.lang_items.require(lang_items::CopyTraitLangItem)
-                            .unwrap_or_else(|msg| self.tcx.sess.fatal(&msg[..]));
+                let lang_item = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
                 self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
             }
 
