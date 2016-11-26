@@ -339,7 +339,8 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        cvt(libc::mkdir(p.to_str().unwrap(), self.mode))?;
+        let fd = cvt(libc::open(p.to_str().unwrap(), libc::O_CREAT | libc::O_DIRECTORY | libc::O_EXCL | (self.mode as usize & 0o777)))?;
+        let _ = libc::close(fd);
         Ok(())
     }
 
@@ -372,11 +373,12 @@ impl fmt::Debug for File {
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = Arc::new(p.to_path_buf());
-    let mut options = OpenOptions::new();
-    options.read(true);
-    let fd = File::open(p, &options)?;
+
+    let fd = cvt(open(p.to_str().unwrap(), libc::O_CLOEXEC | libc::O_RDONLY | libc::O_DIRECTORY))?;
+    let file = FileDesc::new(fd);
     let mut data = Vec::new();
-    fd.read_to_end(&mut data)?;
+    file.read_to_end(&mut data)?;
+
     Ok(ReadDir { data: data, i: 0, root: root })
 }
 
@@ -437,10 +439,11 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let mut stat: stat = stat::default();
-    let mut options = OpenOptions::new();
-    options.read(true);
-    let file = File::open(p, &options)?;
-    cvt(fstat(file.0.raw(), &mut stat))?;
+
+    let fd = cvt(open(p.to_str().unwrap(), libc::O_CLOEXEC | libc::O_STAT))?;
+    cvt(fstat(fd, &mut stat))?;
+    let _ = libc::close(fd);
+
     Ok(FileAttr { stat: stat })
 }
 
