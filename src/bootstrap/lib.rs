@@ -141,6 +141,7 @@ struct Crate {
     doc_step: String,
     build_step: String,
     test_step: String,
+    bench_step: String,
 }
 
 /// The various "modes" of invoking Cargo.
@@ -457,7 +458,8 @@ impl Build {
         if self.config.verbose || self.flags.verbose {
             cargo.arg("-v");
         }
-        if self.config.rust_optimize {
+        // FIXME: cargo bench does not accept `--release`
+        if self.config.rust_optimize && cmd != "bench" {
             cargo.arg("--release");
         }
         if self.config.vendor {
