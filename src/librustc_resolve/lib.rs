@@ -35,7 +35,6 @@ extern crate arena;
 extern crate rustc;
 
 use self::Namespace::*;
-use self::ResolveResult::*;
 use self::FallbackSuggestion::*;
 use self::TypeParameters::*;
 use self::RibKind::*;
@@ -667,22 +666,6 @@ impl<'a> Visitor for Resolver<'a> {
 }
 
 pub type ErrorMessage = Option<(Span, String)>;
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum ResolveResult<T> {
-    Failed(ErrorMessage), // Failed to resolve the name, optional helpful error message.
-    Indeterminate, // Couldn't determine due to unresolved globs.
-    Success(T), // Successfully resolved the import.
-}
-
-impl<T> ResolveResult<T> {
-    fn success(self) -> Option<T> {
-        match self {
-            Success(t) => Some(t),
-            _ => None,
-        }
-    }
-}
 
 enum FallbackSuggestion {
     NoSuggestion,
@@ -1417,7 +1400,7 @@ impl<'a> Resolver<'a> {
             if let ModuleRibKind(module) = self.ribs[ns][i].kind {
                 let name = ident.name;
                 let item = self.resolve_name_in_module(module, name, ns, false, record_used);
-                if let Success(binding) = item {
+                if let Ok(binding) = item {
                     // The ident resolves to an item.
                     return Some(LexicalScopeBinding::Item(binding));
                 }
@@ -1425,7 +1408,7 @@ impl<'a> Resolver<'a> {
                 if let ModuleKind::Block(..) = module.kind { // We can see through blocks
                 } else if !module.no_implicit_prelude {
                     return self.prelude.and_then(|prelude| {
-                        self.resolve_name_in_module(prelude, name, ns, false, None).success()
+                        self.resolve_name_in_module(prelude, name, ns, false, None).ok()
                     }).map(LexicalScopeBinding::Item)
                 } else {
                     return None;
@@ -2398,11 +2381,7 @@ impl<'a> Resolver<'a> {
             allow_super = false;
 
             let binding = if let Some(module) = module {
-                match self.resolve_name_in_module(module, ident.name, ns, false, record_used) {
-                    Success(binding) => Ok(binding),
-                    Indeterminate => Err(Undetermined),
-                    Failed(_) => Err(Determined),
-                }
+                self.resolve_name_in_module(module, ident.name, ns, false, record_used)
             } else {
                 match self.resolve_ident_in_lexical_scope(ident, ns, record_used) {
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
