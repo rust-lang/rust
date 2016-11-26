@@ -1996,77 +1996,52 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_type(&mut self, ty: &Ty) {
-        match ty.node {
-            TyKind::Path(ref maybe_qself, ref path) => {
-                // This is a path in the type namespace. Walk through scopes
-                // looking for it.
-                if let Some(def) = self.resolve_possibly_assoc_item(ty.id, maybe_qself.as_ref(),
-                                                                    path, TypeNS) {
-                    match def.base_def {
-                        Def::Mod(..) if def.depth == 0 => {
-                            self.session.span_err(path.span, "expected type, found module");
-                            self.record_def(ty.id, err_path_resolution());
-                        }
-                        _ => {
-                            // Write the result into the def map.
-                            debug!("(resolving type) writing resolution for `{}` (id {}) = {:?}",
-                                   path_names_to_string(path, 0), ty.id, def);
-                            self.record_def(ty.id, def);
-                        }
+        if let TyKind::Path(ref maybe_qself, ref path) = ty.node {
+            // This is a path in the type namespace. Walk through scopes looking for it.
+            if let Some(def) =
+                    self.resolve_possibly_assoc_item(ty.id, maybe_qself.as_ref(), path, TypeNS) {
+                match def.base_def {
+                    Def::Mod(..) if def.depth == 0 => {
+                        self.session.span_err(path.span, "expected type, found module");
+                        self.record_def(ty.id, err_path_resolution());
                     }
+                    _ => {
+                        // Write the result into the def map.
+                        debug!("(resolving type) writing resolution for `{}` (id {}) = {:?}",
+                               path_names_to_string(path, 0), ty.id, def);
+                        self.record_def(ty.id, def);
+                   }
+                }
+            } else {
+                self.record_def(ty.id, err_path_resolution());
+                // Keep reporting some errors even if they're ignored above.
+                let kind = if maybe_qself.is_some() { "associated type" } else { "type name" };
+                let is_invalid_self_type_name = {
+                    path.segments.len() > 0 &&
+                    maybe_qself.is_none() &&
+                    path.segments[0].identifier.name == keywords::SelfType.name()
+                };
+
+                if is_invalid_self_type_name {
+                    resolve_error(self, ty.span, ResolutionError::SelfUsedOutsideImplOrTrait);
                 } else {
-                    self.record_def(ty.id, err_path_resolution());
-
-                    // Keep reporting some errors even if they're ignored above.
-                    {
-                        let kind = if maybe_qself.is_some() {
-                            "associated type"
-                        } else {
-                            "type name"
-                        };
-
-                        let is_invalid_self_type_name = path.segments.len() > 0 &&
-                                                        maybe_qself.is_none() &&
-                                                        path.segments[0].identifier.name ==
-                                                        keywords::SelfType.name();
-                        if is_invalid_self_type_name {
-                            resolve_error(self,
-                                          ty.span,
-                                          ResolutionError::SelfUsedOutsideImplOrTrait);
-                        } else {
-                            let segment = path.segments.last();
-                            let segment = segment.expect("missing name in path");
-                            let type_name = segment.identifier.name;
-
-                            let candidates =
-                                self.lookup_candidates(
-                                    type_name,
-                                    TypeNS,
-                                    |def| match def {
-                                        Def::Trait(_) |
-                                        Def::Enum(_) |
-                                        Def::Struct(_) |
-                                        Def::Union(_) |
-                                        Def::TyAlias(_) => true,
-                                        _               => false,
-                                    },
-                                );
-
-                            // create error object
-                            let name = &path_names_to_string(path, 0);
-                            let error =
-                                ResolutionError::UseOfUndeclared(
-                                    kind,
-                                    name,
-                                    candidates,
-                                );
-
-                            resolve_error(self, ty.span, error);
+                    let type_name = path.segments.last().unwrap().identifier.name;
+                    let candidates = self.lookup_candidates(type_name, TypeNS, |def| {
+                        match def {
+                            Def::Trait(_) |
+                            Def::Enum(_) |
+                            Def::Struct(_) |
+                            Def::Union(_) |
+                            Def::TyAlias(_) => true,
+                            _ => false,
                         }
-                    }
+                    });
+
+                    let name = &path_names_to_string(path, 0);
+                    let error = ResolutionError::UseOfUndeclared(kind, name, candidates);
+                    resolve_error(self, ty.span, error);
                 }
             }
-            _ => {}
         }
         // Resolve embedded types.
         visit::walk_ty(self, ty);
@@ -2697,78 +2672,72 @@ impl<'a> Resolver<'a> {
                         err.emit();
                     } else {
                         // Keep reporting some errors even if they're ignored above.
-                        {
-                            let mut method_scope = false;
-                            let mut is_static = false;
-                            self.ribs[ValueNS].iter().rev().all(|rib| {
-                                method_scope = match rib.kind {
-                                    MethodRibKind(is_static_) => {
-                                        is_static = is_static_;
-                                        true
-                                    }
-                                    ItemRibKind | ConstantItemRibKind => false,
-                                    _ => return true, // Keep advancing
-                                };
-                                false // Stop advancing
-                            });
-
-                            if method_scope && keywords::SelfValue.name() == &*path_name {
-                                resolve_error(self,
-                                              expr.span,
-                                              ResolutionError::SelfNotAvailableInStaticMethod);
-                            } else {
-                                let last_name = path.last().unwrap().name;
-                                let (mut msg, is_field) =
-                                    match self.find_fallback_in_self_type(last_name) {
-                                    NoSuggestion => {
-                                        // limit search to 5 to reduce the number
-                                        // of stupid suggestions
-                                        (match self.find_best_match(&path_name) {
-                                            SuggestionType::Macro(s) => {
-                                                format!("the macro `{}`", s)
-                                            }
-                                            SuggestionType::Function(s) => format!("`{}`", s),
-                                            SuggestionType::NotFound => "".to_string(),
-                                        }, false)
-                                    }
-                                    Field => {
-                                        (if is_static && method_scope {
-                                            "".to_string()
-                                        } else {
-                                            format!("`self.{}`", path_name)
-                                        }, true)
-                                    }
-                                    TraitItem => (format!("to call `self.{}`", path_name), false),
-                                    TraitMethod(path_str) =>
-                                        (format!("to call `{}::{}`", path_str, path_name), false),
-                                };
-
-                                let mut context =  UnresolvedNameContext::Other;
-                                let mut def = Def::Err;
-                                if !msg.is_empty() {
-                                    msg = format!("did you mean {}?", msg);
-                                } else {
-                                    // we display a help message if this is a module
-                                    match self.resolve_path(&path, scope, None, None) {
-                                        PathResult::Module(module) => {
-                                            def = module.def().unwrap();
-                                            context = UnresolvedNameContext::PathIsMod(parent);
-                                        },
-                                        _ => {},
-                                    };
+                        let mut method_scope = false;
+                        let mut is_static = false;
+                        self.ribs[ValueNS].iter().rev().all(|rib| {
+                            method_scope = match rib.kind {
+                                MethodRibKind(is_static_) => {
+                                    is_static = is_static_;
+                                    true
                                 }
+                                ItemRibKind | ConstantItemRibKind => false,
+                                _ => return true, // Keep advancing
+                            };
+                            false // Stop advancing
+                        });
 
-                                resolve_error(self,
-                                              expr.span,
-                                              ResolutionError::UnresolvedName {
-                                                  path: &path_name,
-                                                  message: &msg,
-                                                  context: context,
-                                                  is_static_method: method_scope && is_static,
-                                                  is_field: is_field,
-                                                  def: def,
-                                              });
+                        if method_scope && keywords::SelfValue.name() == &*path_name {
+                            let error = ResolutionError::SelfNotAvailableInStaticMethod;
+                            resolve_error(self, expr.span, error);
+                        } else {
+                            let fallback =
+                                self.find_fallback_in_self_type(path.last().unwrap().name);
+                            let (mut msg, is_field) = match fallback {
+                                NoSuggestion => {
+                                    // limit search to 5 to reduce the number
+                                    // of stupid suggestions
+                                    (match self.find_best_match(&path_name) {
+                                        SuggestionType::Macro(s) => {
+                                            format!("the macro `{}`", s)
+                                        }
+                                        SuggestionType::Function(s) => format!("`{}`", s),
+                                        SuggestionType::NotFound => "".to_string(),
+                                    }, false)
+                                }
+                                Field => {
+                                    (if is_static && method_scope {
+                                        "".to_string()
+                                    } else {
+                                        format!("`self.{}`", path_name)
+                                    }, true)
+                                }
+                                TraitItem => (format!("to call `self.{}`", path_name), false),
+                                TraitMethod(path_str) =>
+                                    (format!("to call `{}::{}`", path_str, path_name), false),
+                            };
+
+                            let mut context = UnresolvedNameContext::Other;
+                            let mut def = Def::Err;
+                            if !msg.is_empty() {
+                                msg = format!("did you mean {}?", msg);
+                            } else {
+                                // we display a help message if this is a module
+                                if let PathResult::Module(module) =
+                                        self.resolve_path(&path, scope, None, None) {
+                                    def = module.def().unwrap();
+                                    context = UnresolvedNameContext::PathIsMod(parent);
+                                }
                             }
+
+                            let error = ResolutionError::UnresolvedName {
+                                path: &path_name,
+                                message: &msg,
+                                context: context,
+                                is_static_method: method_scope && is_static,
+                                is_field: is_field,
+                                def: def,
+                            };
+                            resolve_error(self, expr.span, error);
                         }
                     }
                 }
