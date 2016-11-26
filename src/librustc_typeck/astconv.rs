@@ -962,7 +962,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                    ty.id,
                                                    path.segments.last().unwrap(),
                                                    span,
-                                                   partition_bounds(tcx, span, bounds))
+                                                   partition_bounds(bounds))
                 } else {
                     struct_span_err!(tcx.sess, ty.span, E0172,
                                      "expected a reference to a trait")
@@ -1045,10 +1045,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                         trait_segment,
                                                         &mut projection_bounds);
 
-        let PartitionedBounds { auto_traits,
-                                trait_bounds,
+        let PartitionedBounds { trait_bounds,
                                 region_bounds } =
             partitioned_bounds;
+
+        let (auto_traits, trait_bounds) = split_auto_traits(tcx, trait_bounds);
 
         if !trait_bounds.is_empty() {
             let b = &trait_bounds[0];
@@ -1443,7 +1444,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                path_id,
                                                path.segments.last().unwrap(),
                                                span,
-                                               partition_bounds(tcx, span, &[]))
+                                               partition_bounds(&[]))
             }
             Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) | Def::Union(did) => {
                 assert_eq!(opt_self_ty, None);
@@ -1897,7 +1898,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         ast_bounds: &[hir::TyParamBound])
         -> Ty<'tcx>
     {
-        let mut partitioned_bounds = partition_bounds(self.tcx(), span, &ast_bounds[..]);
+        let mut partitioned_bounds = partition_bounds(ast_bounds);
 
         let trait_bound = if !partitioned_bounds.trait_bounds.is_empty() {
             partitioned_bounds.trait_bounds.remove(0)
@@ -1982,49 +1983,62 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 }
 
 pub struct PartitionedBounds<'a> {
-    pub auto_traits: Vec<DefId>,
     pub trait_bounds: Vec<&'a hir::PolyTraitRef>,
     pub region_bounds: Vec<&'a hir::Lifetime>,
 }
 
-/// Divides a list of bounds from the AST into three groups: builtin bounds (Copy, Sized etc),
-/// general trait bounds, and region bounds.
-pub fn partition_bounds<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                            _span: Span,
-                                            ast_bounds: &'b [hir::TyParamBound])
-                                            -> PartitionedBounds<'b>
+/// Divides a list of general trait bounds into two groups: builtin bounds (Sync/Send) and the
+/// remaining general trait bounds.
+fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                         trait_bounds: Vec<&'b hir::PolyTraitRef>)
+    -> (Vec<DefId>, Vec<&'b hir::PolyTraitRef>)
 {
-    let mut auto_traits = Vec::new();
+    let (auto_traits, trait_bounds): (Vec<_>, _) = trait_bounds.into_iter().partition(|bound| {
+        match bound.trait_ref.path.def {
+            Def::Trait(trait_did) => {
+                // Checks whether `trait_did` refers to one of the builtin
+                // traits, like `Send`, and adds it to `auto_traits` if so.
+                if Some(trait_did) == tcx.lang_items.send_trait() ||
+                    Some(trait_did) == tcx.lang_items.sync_trait() {
+                    let segments = &bound.trait_ref.path.segments;
+                    let parameters = &segments[segments.len() - 1].parameters;
+                    if !parameters.types().is_empty() {
+                        check_type_argument_count(tcx, bound.trait_ref.path.span,
+                                                  parameters.types().len(), &[]);
+                    }
+                    if !parameters.lifetimes().is_empty() {
+                        report_lifetime_number_error(tcx, bound.trait_ref.path.span,
+                                                     parameters.lifetimes().len(), 0);
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false
+        }
+    });
+
+    let auto_traits = auto_traits.into_iter().map(|tr| {
+        if let Def::Trait(trait_did) = tr.trait_ref.path.def {
+            trait_did
+        } else {
+            unreachable!()
+        }
+    }).collect::<Vec<_>>();
+
+    (auto_traits, trait_bounds)
+}
+
+/// Divides a list of bounds from the AST into two groups: general trait bounds and region bounds
+pub fn partition_bounds<'a, 'b, 'gcx, 'tcx>(ast_bounds: &'b [hir::TyParamBound])
+    -> PartitionedBounds<'b>
+{
     let mut region_bounds = Vec::new();
     let mut trait_bounds = Vec::new();
     for ast_bound in ast_bounds {
         match *ast_bound {
             hir::TraitTyParamBound(ref b, hir::TraitBoundModifier::None) => {
-                match b.trait_ref.path.def {
-                    Def::Trait(trait_did) => {
-                        // Checks whether `trait_did` refers to one of the builtin
-                        // traits, like `Send`, and adds it to `auto_traits` if so.
-                        if Some(trait_did) == tcx.lang_items.send_trait() ||
-                            Some(trait_did) == tcx.lang_items.sync_trait() {
-                            auto_traits.push(trait_did);
-                            let segments = &b.trait_ref.path.segments;
-                            let parameters = &segments[segments.len() - 1].parameters;
-                            if !parameters.types().is_empty() {
-                                check_type_argument_count(tcx, b.trait_ref.path.span,
-                                                          parameters.types().len(), &[]);
-                            }
-                            if !parameters.lifetimes().is_empty() {
-                                report_lifetime_number_error(tcx, b.trait_ref.path.span,
-                                                             parameters.lifetimes().len(), 0);
-                            }
-                            continue; // success
-                        }
-                    }
-                    _ => {
-                        // Not a trait? that's an error, but it'll get
-                        // reported later.
-                    }
-                }
                 trait_bounds.push(b);
             }
             hir::TraitTyParamBound(_, hir::TraitBoundModifier::Maybe) => {}
@@ -2035,7 +2049,6 @@ pub fn partition_bounds<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     }
 
     PartitionedBounds {
-        auto_traits: auto_traits,
         trait_bounds: trait_bounds,
         region_bounds: region_bounds,
     }
@@ -2110,7 +2123,7 @@ fn report_lifetime_number_error(tcx: TyCtxt, span: Span, number: usize, expected
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Bounds<'tcx> {
     pub region_bounds: Vec<&'tcx ty::Region>,
-    pub auto_traits: Vec<DefId>,
+    pub implicitly_sized: bool,
     pub trait_bounds: Vec<ty::PolyTraitRef<'tcx>>,
     pub projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
 }
