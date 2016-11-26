@@ -65,8 +65,8 @@ fn main() {}
 
 The `inline` attribute only supports two arguments:
 
- - always
- - never
+ * always
+ * never
 
 All other arguments given to the `inline` attribute will return this error.
 Example:
@@ -121,9 +121,9 @@ pub fn main() {}
 
 The `cfg` attribute supports only three kinds of predicates:
 
- - any
- - all
- - not
+ * any
+ * all
+ * not
 
 Example:
 
