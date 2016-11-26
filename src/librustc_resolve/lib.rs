@@ -774,7 +774,7 @@ enum ModuleKind {
 }
 
 /// One node in the tree of modules.
-pub struct ModuleS<'a> {
+pub struct ModuleData<'a> {
     parent: Option<Module<'a>>,
     kind: ModuleKind,
 
@@ -802,11 +802,11 @@ pub struct ModuleS<'a> {
     populated: Cell<bool>,
 }
 
-pub type Module<'a> = &'a ModuleS<'a>;
+pub type Module<'a> = &'a ModuleData<'a>;
 
-impl<'a> ModuleS<'a> {
+impl<'a> ModuleData<'a> {
     fn new(parent: Option<Module<'a>>, kind: ModuleKind) -> Self {
-        ModuleS {
+        ModuleData {
             parent: parent,
             kind: kind,
             normal_ancestor_id: None,
@@ -859,7 +859,7 @@ impl<'a> ModuleS<'a> {
     }
 }
 
-impl<'a> fmt::Debug for ModuleS<'a> {
+impl<'a> fmt::Debug for ModuleData<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.def())
     }
@@ -1116,7 +1116,7 @@ pub struct Resolver<'a> {
 }
 
 pub struct ResolverArenas<'a> {
-    modules: arena::TypedArena<ModuleS<'a>>,
+    modules: arena::TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
     import_directives: arena::TypedArena<ImportDirective<'a>>,
@@ -1126,7 +1126,7 @@ pub struct ResolverArenas<'a> {
 }
 
 impl<'a> ResolverArenas<'a> {
-    fn alloc_module(&'a self, module: ModuleS<'a>) -> Module<'a> {
+    fn alloc_module(&'a self, module: ModuleData<'a>) -> Module<'a> {
         let module = self.modules.alloc(module);
         if module.def_id().map(|def_id| def_id.is_local()).unwrap_or(true) {
             self.local_modules.borrow_mut().push(module);
@@ -1206,10 +1206,10 @@ impl<'a> Resolver<'a> {
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def = Def::Mod(DefId::local(CRATE_DEF_INDEX));
-        let graph_root = arenas.alloc_module(ModuleS {
+        let graph_root = arenas.alloc_module(ModuleData {
             normal_ancestor_id: Some(CRATE_NODE_ID),
             no_implicit_prelude: attr::contains_name(&krate.attrs, "no_implicit_prelude"),
-            ..ModuleS::new(None, ModuleKind::Def(root_def, keywords::Invalid.name()))
+            ..ModuleData::new(None, ModuleKind::Def(root_def, keywords::Invalid.name()))
         });
         let mut module_map = NodeMap();
         module_map.insert(CRATE_NODE_ID, graph_root);
@@ -1327,17 +1327,17 @@ impl<'a> Resolver<'a> {
     }
 
     fn new_module(&self, parent: Module<'a>, kind: ModuleKind, local: bool) -> Module<'a> {
-        self.arenas.alloc_module(ModuleS {
+        self.arenas.alloc_module(ModuleData {
             normal_ancestor_id: if local { self.current_module.normal_ancestor_id } else { None },
             populated: Cell::new(local),
-            ..ModuleS::new(Some(parent), kind)
+            ..ModuleData::new(Some(parent), kind)
         })
     }
 
     fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
                   -> bool /* true if an error was reported */ {
         // track extern crates for unused_extern_crate lint
-        if let Some(DefId { krate, .. }) = binding.module().and_then(ModuleS::def_id) {
+        if let Some(DefId { krate, .. }) = binding.module().and_then(ModuleData::def_id) {
             self.used_crates.insert(krate);
         }
 
@@ -2403,7 +2403,7 @@ impl<'a> Resolver<'a> {
                             });
                         }
                     }
-                    let msg = if module.and_then(ModuleS::def) == self.graph_root.def() {
+                    let msg = if module.and_then(ModuleData::def) == self.graph_root.def() {
                         let is_mod = |def| match def { Def::Mod(..) => true, _ => false };
                         let mut candidates =
                             self.lookup_candidates(ident.name, TypeNS, is_mod).candidates;

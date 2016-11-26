@@ -16,7 +16,7 @@
 use macros::{InvocationData, LegacyScope};
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
-use {Module, ModuleS, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
+use {Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
 use {Resolver, ResolverArenas};
 use Namespace::{self, TypeNS, ValueNS, MacroNS};
 use {resolve_error, resolve_struct_error, ResolutionError};
@@ -261,12 +261,12 @@ impl<'b> Resolver<'b> {
 
             ItemKind::Mod(..) => {
                 let def = Def::Mod(self.definitions.local_def_id(item.id));
-                let module = self.arenas.alloc_module(ModuleS {
+                let module = self.arenas.alloc_module(ModuleData {
                     no_implicit_prelude: parent.no_implicit_prelude || {
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
                     },
                     normal_ancestor_id: Some(item.id),
-                    ..ModuleS::new(Some(parent), ModuleKind::Def(def, ident.name))
+                    ..ModuleData::new(Some(parent), ModuleKind::Def(def, ident.name))
                 });
                 self.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.module_map.insert(item.id, module);
@@ -493,9 +493,9 @@ impl<'b> Resolver<'b> {
         let macros_only = self.session.cstore.dep_kind(cnum).macros_only();
         let arenas = self.arenas;
         *self.extern_crate_roots.entry((cnum, macros_only)).or_insert_with(|| {
-            arenas.alloc_module(ModuleS {
+            arenas.alloc_module(ModuleData {
                 populated: Cell::new(false),
-                ..ModuleS::new(None, ModuleKind::Def(Def::Mod(def_id), keywords::Invalid.name()))
+                ..ModuleData::new(None, ModuleKind::Def(Def::Mod(def_id), keywords::Invalid.name()))
             })
         })
     }
