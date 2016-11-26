@@ -452,9 +452,8 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-    let mut options = OpenOptions::new();
-    options.read(true);
-    let file = File::open(p, &options)?;
+    let fd = cvt(open(p.to_str().unwrap(), libc::O_CLOEXEC | libc::O_STAT))?;
+    let file = File(FileDesc::new(fd));
     file.path()
 }
 
