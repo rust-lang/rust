@@ -74,11 +74,11 @@ struct LegacyMacroImports {
     reexports: Vec<(Name, Span)>,
 }
 
-impl<'b> Resolver<'b> {
+impl<'a> Resolver<'a> {
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
-    fn define<T>(&mut self, parent: Module<'b>, ident: Ident, ns: Namespace, def: T)
-        where T: ToNameBinding<'b>,
+    fn define<T>(&mut self, parent: Module<'a>, ident: Ident, ns: Namespace, def: T)
+        where T: ToNameBinding<'a>,
     {
         let binding = def.to_name_binding(self.arenas);
         if let Err(old_binding) = self.try_define(parent, ident, ns, binding) {
@@ -363,7 +363,7 @@ impl<'b> Resolver<'b> {
     // type and value namespaces.
     fn build_reduced_graph_for_variant(&mut self,
                                        variant: &Variant,
-                                       parent: Module<'b>,
+                                       parent: Module<'a>,
                                        vis: ty::Visibility,
                                        expansion: Mark) {
         let ident = variant.node.name;
@@ -412,7 +412,7 @@ impl<'b> Resolver<'b> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'b>, child: Export) {
+    fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'a>, child: Export) {
         let ident = Ident::with_empty_ctxt(child.name);
         let def = child.def;
         let def_id = def.def_id();
@@ -488,7 +488,7 @@ impl<'b> Resolver<'b> {
         }
     }
 
-    fn get_extern_crate_root(&mut self, cnum: CrateNum) -> Module<'b> {
+    fn get_extern_crate_root(&mut self, cnum: CrateNum) -> Module<'a> {
         let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
         let macros_only = self.session.cstore.dep_kind(cnum).macros_only();
         let arenas = self.arenas;
@@ -531,7 +531,7 @@ impl<'b> Resolver<'b> {
 
     /// Ensures that the reduced graph rooted at the given external module
     /// is built, building it if it is not.
-    pub fn populate_module_if_necessary(&mut self, module: Module<'b>) {
+    pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
         if module.populated.get() { return }
         for child in self.session.cstore.item_children(module.def_id().unwrap()) {
             self.build_reduced_graph_for_external_crate_def(module, child);
@@ -541,7 +541,7 @@ impl<'b> Resolver<'b> {
 
     fn legacy_import_macro(&mut self,
                            name: Name,
-                           binding: &'b NameBinding<'b>,
+                           binding: &'a NameBinding<'a>,
                            span: Span,
                            allow_shadowing: bool) {
         self.used_crates.insert(binding.def().def_id().krate);
@@ -554,7 +554,7 @@ impl<'b> Resolver<'b> {
         }
     }
 
-    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'b>, expansion: Mark) {
+    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>, expansion: Mark) {
         let allow_shadowing = expansion == Mark::root();
         let legacy_imports = self.legacy_macro_imports(&item.attrs);
         let cnum = module.def_id().unwrap().krate;
