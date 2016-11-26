@@ -17,8 +17,8 @@
 #![crate_name = "compiler_builtins"]
 #![crate_type = "rlib"]
 #![feature(staged_api)]
-#![feature(core_intrinsics)]
-#![feature(core_float)]
+#![cfg_attr(any(target_pointer_width="32", target_pointer_width="16"),
+            feature(core_intrinsics, core_float))]
 #![feature(associated_consts)]
 #![cfg_attr(not(stage0), feature(i128_type))]
 
