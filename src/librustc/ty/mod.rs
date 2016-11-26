@@ -1878,18 +1878,14 @@ pub enum ClosureKind {
 
 impl<'a, 'tcx> ClosureKind {
     pub fn trait_did(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> DefId {
-        let result = match *self {
-            ClosureKind::Fn => tcx.lang_items.require(FnTraitLangItem),
+        match *self {
+            ClosureKind::Fn => tcx.require_lang_item(FnTraitLangItem),
             ClosureKind::FnMut => {
-                tcx.lang_items.require(FnMutTraitLangItem)
+                tcx.require_lang_item(FnMutTraitLangItem)
             }
             ClosureKind::FnOnce => {
-                tcx.lang_items.require(FnOnceTraitLangItem)
+                tcx.require_lang_item(FnOnceTraitLangItem)
             }
-        };
-        match result {
-            Ok(trait_did) => trait_did,
-            Err(err) => tcx.sess.fatal(&err[..]),
         }
     }
 

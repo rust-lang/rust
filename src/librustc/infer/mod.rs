@@ -1493,8 +1493,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        let copy_def_id = self.tcx.lang_items.require(lang_items::CopyTraitLangItem)
-            .unwrap_or_else(|msg| self.tcx.sess.fatal(&msg[..]));
+        let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
 
         // this can get called from typeck (by euv), and moves_by_default
         // rightly refuses to work with inference variables, but

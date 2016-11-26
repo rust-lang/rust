@@ -594,8 +594,7 @@ pub enum TyParamBound {
 
 impl TyParamBound {
     fn maybe_sized(cx: &DocContext) -> TyParamBound {
-        let did = cx.tcx.lang_items.require(lang_items::SizedTraitLangItem)
-            .unwrap_or_else(|msg| cx.tcx.sess.fatal(&msg[..]));
+        let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem);
         let empty = cx.tcx.intern_substs(&[]);
         let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
             Some(did), false, vec![], empty);

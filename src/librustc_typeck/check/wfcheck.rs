@@ -238,8 +238,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                 for field in &variant.fields[..variant.fields.len() - unsized_len] {
                     fcx.register_bound(
                         field.ty,
-                        fcx.tcx.lang_items.require(lang_items::SizedTraitLangItem)
-                            .unwrap_or_else(|msg| fcx.tcx.sess.fatal(&msg[..])),
+                        fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
                         traits::ObligationCause::new(field.span,
                                                      fcx.body_id,
                                                      traits::FieldSized));

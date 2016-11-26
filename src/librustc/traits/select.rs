@@ -2521,8 +2521,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
                 // We can only make objects from sized types.
                 let tr = ty::TraitRef {
-                    def_id: tcx.lang_items.require(lang_items::SizedTraitLangItem)
-                        .unwrap_or_else(|msg| tcx.sess.fatal(&msg[..])),
+                    def_id: tcx.require_lang_item(lang_items::SizedTraitLangItem),
                     substs: tcx.mk_substs_trait(source, &[]),
                 };
                 push(tr.to_predicate());
