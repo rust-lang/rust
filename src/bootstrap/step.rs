@@ -11,7 +11,7 @@
 use std::collections::{HashMap, HashSet};
 use std::mem;
 
-use check;
+use check::{self, TestKind};
 use compile;
 use dist;
 use doc;
@@ -268,37 +268,55 @@ pub fn build_rules(build: &Build) -> Rules {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
-                                        Mode::Libstd, Some(&krate.name)));
+                                        Mode::Libstd, TestKind::Test,
+                                        Some(&krate.name)));
     }
     rules.test("check-std-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
          .default(true)
-         .run(move |s| check::krate(build, &s.compiler(), s.target, Mode::Libstd,
-                               None));
+         .run(move |s| check::krate(build, &s.compiler(), s.target,
+                                    Mode::Libstd, TestKind::Test, None));
+
+    // std benchmarks
+    for (krate, path, _default) in krates("std_shim") {
+        rules.bench(&krate.bench_step, path)
+             .dep(|s| s.name("libtest"))
+             .run(move |s| check::krate(build, &s.compiler(), s.target,
+                                        Mode::Libstd, TestKind::Bench,
+                                        Some(&krate.name)));
+    }
+    rules.bench("bench-std-all", "path/to/nowhere")
+         .dep(|s| s.name("libtest"))
+         .default(true)
+         .run(move |s| check::krate(build, &s.compiler(), s.target,
+                                    Mode::Libstd, TestKind::Bench, None));
+
     for (krate, path, _default) in krates("test_shim") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
-                                        Mode::Libtest, Some(&krate.name)));
+                                        Mode::Libtest, TestKind::Test,
+                                        Some(&krate.name)));
     }
     rules.test("check-test-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
          .default(true)
-         .run(move |s| check::krate(build, &s.compiler(), s.target, Mode::Libtest,
-                               None));
+         .run(move |s| check::krate(build, &s.compiler(), s.target,
+                                    Mode::Libtest, TestKind::Test, None));
     for (krate, path, _default) in krates("rustc-main") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("librustc"))
              .host(true)
              .run(move |s| check::krate(build, &s.compiler(), s.target,
-                                        Mode::Librustc, Some(&krate.name)));
+                                        Mode::Librustc, TestKind::Test,
+                                        Some(&krate.name)));
     }
     rules.test("check-rustc-all", "path/to/nowhere")
          .dep(|s| s.name("librustc"))
          .default(true)
          .host(true)
-         .run(move |s| check::krate(build, &s.compiler(), s.target, Mode::Librustc,
-                               None));
+         .run(move |s| check::krate(build, &s.compiler(), s.target,
+                                    Mode::Librustc, TestKind::Test, None));
 
     rules.test("check-linkchecker", "src/tools/linkchecker")
          .dep(|s| s.name("tool-linkchecker"))
@@ -449,6 +467,7 @@ struct Rule<'a> {
 enum Kind {
     Build,
     Test,
+    Bench,
     Dist,
     Doc,
 }
@@ -538,6 +557,11 @@ impl<'a> Rules<'a> {
         self.rule(name, path, Kind::Test)
     }
 
+    fn bench<'b>(&'b mut self, name: &'a str, path: &'a str)
+                -> RuleBuilder<'a, 'b> {
+        self.rule(name, path, Kind::Bench)
+    }
+
     fn doc<'b>(&'b mut self, name: &'a str, path: &'a str)
                -> RuleBuilder<'a, 'b> {
         self.rule(name, path, Kind::Doc)
@@ -583,6 +607,7 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             "build" => Kind::Build,
             "doc" => Kind::Doc,
             "test" => Kind::Test,
+            "bench" => Kind::Bench,
             "dist" => Kind::Dist,
             _ => return,
         };
@@ -606,6 +631,7 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
             Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
             Subcommand::Test { ref paths, test_args: _ } => (Kind::Test, &paths[..]),
+            Subcommand::Bench { ref paths, test_args: _ } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { install } => {
                 if install {
                     return vec![self.sbuild.name("install")]

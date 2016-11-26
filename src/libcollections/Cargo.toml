@@ -15,3 +15,7 @@ rustc_unicode = { path = "../librustc_unicode" }
 [[test]]
 name = "collectionstest"
 path = "../libcollectionstest/lib.rs"
+
+[[bench]]
+name = "collectionstest"
+path = "../libcollectionstest/lib.rs"

@@ -15,6 +15,7 @@
 
 use std::collections::HashSet;
 use std::env;
+use std::fmt;
 use std::fs;
 use std::path::{PathBuf, Path};
 use std::process::Command;
@@ -25,6 +26,34 @@ use {Build, Compiler, Mode};
 use util::{self, dylib_path, dylib_path_var};
 
 const ADB_TEST_DIR: &'static str = "/data/tmp";
+
+/// The two modes of the test runner; tests or benchmarks.
+#[derive(Copy, Clone)]
+pub enum TestKind {
+    /// Run `cargo test`
+    Test,
+    /// Run `cargo bench`
+    Bench,
+}
+
+impl TestKind {
+    // Return the cargo subcommand for this test kind
+    fn subcommand(self) -> &'static str {
+        match self {
+            TestKind::Test => "test",
+            TestKind::Bench => "bench",
+        }
+    }
+}
+
+impl fmt::Display for TestKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match *self {
+            TestKind::Test => "Testing",
+            TestKind::Bench => "Benchmarking",
+        })
+    }
+}
 
 /// Runs the `linkchecker` tool as compiled in `stage` by the `host` compiler.
 ///
@@ -278,6 +307,7 @@ pub fn krate(build: &Build,
              compiler: &Compiler,
              target: &str,
              mode: Mode,
+             test_kind: TestKind,
              krate: Option<&str>) {
     let (name, path, features, root) = match mode {
         Mode::Libstd => {
@@ -291,7 +321,7 @@ pub fn krate(build: &Build,
         }
         _ => panic!("can only test libraries"),
     };
-    println!("Testing {} stage{} ({} -> {})", name, compiler.stage,
+    println!("{} {} stage{} ({} -> {})", test_kind, name, compiler.stage,
              compiler.host, target);
 
     // Build up the base `cargo test` command.
@@ -299,7 +329,7 @@ pub fn krate(build: &Build,
     // Pass in some standard flags then iterate over the graph we've discovered
     // in `cargo metadata` with the maps above and figure out what `-p`
     // arguments need to get passed.
-    let mut cargo = build.cargo(compiler, mode, target, "test");
+    let mut cargo = build.cargo(compiler, mode, target, test_kind.subcommand());
     cargo.arg("--manifest-path")
          .arg(build.src.join(path).join("Cargo.toml"))
          .arg("--features").arg(features);
