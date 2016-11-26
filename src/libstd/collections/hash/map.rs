@@ -371,9 +371,9 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F) -> Inter
         return InternalEntry::TableIsEmpty;
     }
 
-    let size = table.size() as isize;
+    let size = table.size();
     let mut probe = Bucket::new(table, hash);
-    let ib = probe.index() as isize;
+    let mut displacement = 0;
 
     loop {
         let full = match probe.peek() {
@@ -387,15 +387,15 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F) -> Inter
             Full(bucket) => bucket,
         };
 
-        let robin_ib = full.index() as isize - full.displacement() as isize;
+        let probe_displacement = full.displacement();
 
-        if ib < robin_ib {
+        if probe_displacement < displacement {
             // Found a luckier bucket than me.
             // We can finish the search early if we hit any bucket
             // with a lower distance to initial bucket than we've probed.
             return InternalEntry::Vacant {
                 hash: hash,
-                elem: NeqElem(full, robin_ib as usize),
+                elem: NeqElem(full, probe_displacement),
             };
         }
 
@@ -406,9 +406,9 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F) -> Inter
                 return InternalEntry::Occupied { elem: full };
             }
         }
-
+        displacement += 1;
         probe = full.next();
-        debug_assert!(probe.index() as isize != ib + size + 1);
+        debug_assert!(displacement <= size);
     }
 }
 
@@ -431,12 +431,11 @@ fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>) -> (K, V) {
 }
 
 /// Perform robin hood bucket stealing at the given `bucket`. You must
-/// also pass the position of that bucket's initial bucket so we don't have
-/// to recalculate it.
+/// also pass that bucket's displacement so we don't have to recalculate it.
 ///
 /// `hash`, `k`, and `v` are the elements to "robin hood" into the hashtable.
 fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
-                                mut ib: usize,
+                                mut displacement: usize,
                                 mut hash: SafeHash,
                                 mut key: K,
                                 mut val: V)
@@ -457,6 +456,7 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
         val = old_val;
 
         loop {
+            displacement += 1;
             let probe = bucket.next();
             debug_assert!(probe.index() != idx_end);
 
@@ -476,13 +476,13 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                 Full(bucket) => bucket,
             };
 
-            let probe_ib = full_bucket.index() - full_bucket.displacement();
+            let probe_displacement = full_bucket.displacement();
 
             bucket = full_bucket;
 
             // Robin hood! Steal the spot.
-            if ib < probe_ib {
-                ib = probe_ib;
+            if probe_displacement < displacement {
+                displacement = probe_displacement;
                 break;
             }
         }
@@ -520,13 +520,16 @@ impl<K, V, S> HashMap<K, V, S>
         search_hashed(&mut self.table, hash, |k| q.eq(k.borrow()))
     }
 
-    // The caller should ensure that invariants by Robin Hood Hashing hold.
+    // The caller should ensure that invariants by Robin Hood Hashing hold
+    // and that there's space in the underlying table.
     fn insert_hashed_ordered(&mut self, hash: SafeHash, k: K, v: V) {
         let raw_cap = self.raw_capacity();
         let mut buckets = Bucket::new(&mut self.table, hash);
-        let ib = buckets.index();
+        // note that buckets.index() keeps increasing
+        // even if the pointer wraps back to the first bucket.
+        let limit_bucket = buckets.index() + raw_cap;
 
-        while buckets.index() != ib + raw_cap {
+        loop {
             // We don't need to compare hashes for value swap.
             // Not even DIBs for Robin Hood.
             buckets = match buckets.peek() {
@@ -537,8 +540,8 @@ impl<K, V, S> HashMap<K, V, S>
                 Full(b) => b.into_bucket(),
             };
             buckets.next();
+            debug_assert!(buckets.index() < limit_bucket);
         }
-        panic!("Internal HashMap error: Out of space.");
     }
 }
 
@@ -1959,7 +1962,7 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
         match self.elem {
-            NeqElem(bucket, ib) => robin_hood(bucket, ib, self.hash, self.key, value),
+            NeqElem(bucket, disp) => robin_hood(bucket, disp, self.hash, self.key, value),
             NoElem(bucket) => bucket.put(self.hash, self.key, value).into_mut_refs().1,
         }
     }
