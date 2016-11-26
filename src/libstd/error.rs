@@ -109,7 +109,7 @@ pub trait Error: Debug + Display {
     ///
     /// impl Error for SuperError {
     ///     fn description(&self) -> &str {
-    ///         "I'm the superhero of errors!"
+    ///         "I'm the superhero of errors"
     ///     }
     ///
     ///     fn cause(&self) -> Option<&Error> {
@@ -128,7 +128,7 @@ pub trait Error: Debug + Display {
     ///
     /// impl Error for SuperErrorSideKick {
     ///     fn description(&self) -> &str {
-    ///         "I'm SuperError side kick!"
+    ///         "I'm SuperError side kick"
     ///     }
     /// }
     ///
