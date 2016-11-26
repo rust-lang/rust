@@ -153,7 +153,7 @@ pub fn take_hook() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
 
         match hook {
             Hook::Default => Box::new(default_hook),
-            Hook::Custom(ptr) => {Box::from_raw(ptr)} // FIXME #30530
+            Hook::Custom(ptr) => Box::from_raw(ptr),
         }
     }
 }
