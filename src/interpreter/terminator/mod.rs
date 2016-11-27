@@ -29,7 +29,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, ()> {
         use rustc::mir::TerminatorKind::*;
         match terminator.kind {
-            Return => self.pop_stack_frame()?,
+            Return => {
+                self.dump_local(self.frame().return_lvalue);
+                self.pop_stack_frame()?
+            }
 
             Goto { target } => self.goto_block(target),
 
