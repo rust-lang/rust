@@ -23,7 +23,6 @@ use std::fs::File;
 use std::io::{BufRead, Read};
 use std::path::Path;
 
-use syntax::parse;
 use syntax::parse::lexer;
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
@@ -31,7 +30,6 @@ use rustc::middle::cstore::DummyCrateStore;
 
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ast::Name;
 use syntax::codemap;
 use syntax::parse::token::{self, BinOpToken, DelimToken, Lit, Token};
 use syntax::parse::lexer::TokenAndSpan;
@@ -41,7 +39,7 @@ use syntax::symbol::Symbol;
 
 fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
     fn id() -> token::Token {
-        Token::Ident(ast::Ident::with_empty_ctxt(Name(0)))
+        Token::Ident(ast::Ident::with_empty_ctxt(Symbol::invalid()))
     }
 
     let mut res = HashMap::new();
@@ -67,7 +65,7 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "SHL"               => Token::BinOp(BinOpToken::Shl),
             "LBRACE"            => Token::OpenDelim(DelimToken::Brace),
             "RARROW"            => Token::RArrow,
-            "LIT_STR"           => Token::Literal(Lit::Str_(Name(0)), None),
+            "LIT_STR"           => Token::Literal(Lit::Str_(Symbol::invalid()), None),
             "DOTDOT"            => Token::DotDot,
             "MOD_SEP"           => Token::ModSep,
             "DOTDOTDOT"         => Token::DotDotDot,
@@ -77,21 +75,21 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "ANDAND"            => Token::AndAnd,
             "AT"                => Token::At,
             "LBRACKET"          => Token::OpenDelim(DelimToken::Bracket),
-            "LIT_STR_RAW"       => Token::Literal(Lit::StrRaw(Name(0), 0), None),
+            "LIT_STR_RAW"       => Token::Literal(Lit::StrRaw(Symbol::invalid(), 0), None),
             "RPAREN"            => Token::CloseDelim(DelimToken::Paren),
             "SLASH"             => Token::BinOp(BinOpToken::Slash),
             "COMMA"             => Token::Comma,
-            "LIFETIME"          => Token::Lifetime(ast::Ident::with_empty_ctxt(Name(0))),
+            "LIFETIME"          => Token::Lifetime(ast::Ident::with_empty_ctxt(Symbol::invalid())),
             "CARET"             => Token::BinOp(BinOpToken::Caret),
             "TILDE"             => Token::Tilde,
             "IDENT"             => id(),
             "PLUS"              => Token::BinOp(BinOpToken::Plus),
-            "LIT_CHAR"          => Token::Literal(Lit::Char(Name(0)), None),
-            "LIT_BYTE"          => Token::Literal(Lit::Byte(Name(0)), None),
+            "LIT_CHAR"          => Token::Literal(Lit::Char(Symbol::invalid()), None),
+            "LIT_BYTE"          => Token::Literal(Lit::Byte(Symbol::invalid()), None),
             "EQ"                => Token::Eq,
             "RBRACKET"          => Token::CloseDelim(DelimToken::Bracket),
             "COMMENT"           => Token::Comment,
-            "DOC_COMMENT"       => Token::DocComment(Name(0)),
+            "DOC_COMMENT"       => Token::DocComment(Symbol::invalid()),
             "DOT"               => Token::Dot,
             "EQEQ"              => Token::EqEq,
             "NE"                => Token::Ne,
@@ -101,9 +99,9 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "BINOP"             => Token::BinOp(BinOpToken::Plus),
             "POUND"             => Token::Pound,
             "OROR"              => Token::OrOr,
-            "LIT_INTEGER"       => Token::Literal(Lit::Integer(Name(0)), None),
+            "LIT_INTEGER"       => Token::Literal(Lit::Integer(Symbol::invalid()), None),
             "BINOPEQ"           => Token::BinOpEq(BinOpToken::Plus),
-            "LIT_FLOAT"         => Token::Literal(Lit::Float(Name(0)), None),
+            "LIT_FLOAT"         => Token::Literal(Lit::Float(Symbol::invalid()), None),
             "WHITESPACE"        => Token::Whitespace,
             "UNDERSCORE"        => Token::Underscore,
             "MINUS"             => Token::BinOp(BinOpToken::Minus),
@@ -113,10 +111,10 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "OR"                => Token::BinOp(BinOpToken::Or),
             "GT"                => Token::Gt,
             "LE"                => Token::Le,
-            "LIT_BINARY"        => Token::Literal(Lit::ByteStr(Name(0)), None),
-            "LIT_BINARY_RAW"    => Token::Literal(Lit::ByteStrRaw(Name(0), 0), None),
+            "LIT_BINARY"        => Token::Literal(Lit::ByteStr(Symbol::invalid()), None),
+            "LIT_BINARY_RAW"    => Token::Literal(Lit::ByteStrRaw(Symbol::invalid(), 0), None),
             "QUESTION"          => Token::Question,
-            "SHEBANG"           => Token::Shebang(Name(0)),
+            "SHEBANG"           => Token::Shebang(Symbol::invalid()),
             _                   => continue,
         };
 
