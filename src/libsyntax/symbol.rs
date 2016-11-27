@@ -35,6 +35,10 @@ impl Symbol {
         with_interner(|interner| interner.gensym(string))
     }
 
+    pub fn invalid() -> Self {
+        Symbol(0u32)
+    }
+
     pub fn as_str(self) -> InternedString {
         with_interner(|interner| unsafe {
             InternedString {
