@@ -1377,6 +1377,7 @@ let x = |_| {}; // error: cannot determine a type for this expression
 ```
 
 You have two possibilities to solve this situation:
+
  * Give an explicit definition of the expression
  * Infer the expression
 
