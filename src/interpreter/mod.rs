@@ -282,8 +282,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     pub fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         let substituted = ty.subst(self.tcx, substs);
-        let new = self.tcx.normalize_associated_type(&substituted);
-        new
+        self.tcx.normalize_associated_type(&substituted)
     }
 
     fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {
