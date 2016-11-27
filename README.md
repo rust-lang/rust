@@ -140,6 +140,10 @@ CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.
 python x.py build
 ```
 
+## Building on OSX
+Easiest to get dependencies by installing xcode-cli tools, e.g. `xcode-select --install`
+XCode can be installed from the App store, or older versions, from developer.apple.com/resources, but requiring an Apple developer account (free as in beer).
+
 ## Building Documentation
 
 If you’d like to build the documentation, it’s almost the same:
