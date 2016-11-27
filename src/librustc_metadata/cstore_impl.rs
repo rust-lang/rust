@@ -228,6 +228,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(cnum).dep_kind.get()
     }
 
+    fn export_macros(&self, cnum: CrateNum) {
+        if self.get_crate_data(cnum).dep_kind.get() == DepKind::UnexportedMacrosOnly {
+            self.get_crate_data(cnum).dep_kind.set(DepKind::MacrosOnly)
+        }
+    }
+
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
     {
         self.get_crate_data(cnum).get_lang_items()
