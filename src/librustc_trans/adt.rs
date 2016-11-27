@@ -688,9 +688,8 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>, discr: D
             let lldiscr = C_integral(Type::from_integer(ccx, d), discr.0 as u64, true);
             let mut vals_with_discr = vec![lldiscr];
             vals_with_discr.extend_from_slice(vals);
-            let mut contents = build_const_struct(ccx, &variant,
-                &vals_with_discr[..]);
-            let needed_padding = l.size(dl).bytes() - variant.min_size.bytes();
+            let mut contents = build_const_struct(ccx, &variant, &vals_with_discr[..]);
+            let needed_padding = l.size(dl).bytes() - variant.stride().bytes();
             if needed_padding > 0 {
                 contents.push(padding(ccx, needed_padding));
             }
@@ -703,8 +702,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>, discr: D
         }
         layout::Univariant { ref variant, .. } => {
             assert_eq!(discr, Disr(0));
-            let contents = build_const_struct(ccx,
-                &variant, vals);
+            let contents = build_const_struct(ccx, &variant, vals);
             C_struct(ccx, &contents[..], variant.packed)
         }
         layout::Vector { .. } => {
@@ -721,8 +719,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>, discr: D
         }
         layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             if discr.0 == nndiscr {
-                C_struct(ccx, &build_const_struct(ccx, &nonnull, vals),
-                         false)
+                C_struct(ccx, &build_const_struct(ccx, &nonnull, vals), false)
             } else {
                 let fields = compute_fields(ccx, t, nndiscr as usize, false);
                 let vals = fields.iter().map(|&ty| {
@@ -730,8 +727,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>, discr: D
                     // field; see #8506.
                     C_null(type_of::sizing_type_of(ccx, ty))
                 }).collect::<Vec<ValueRef>>();
-                C_struct(ccx, &build_const_struct(ccx, &nonnull, &vals[..]),
-                         false)
+                C_struct(ccx, &build_const_struct(ccx, &nonnull, &vals[..]), false)
             }
         }
         _ => bug!("trans_const: cannot handle type {} repreented as {:#?}", t, l)
