@@ -97,8 +97,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn cast_ptr(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         use rustc::ty::TypeVariants::*;
         match ty.sty {
-            TyRef(..) | TyRawPtr(_) | TyFnPtr(_) => Ok(PrimVal::from_ptr(ptr)),
-            TyInt(_) | TyUint(_) => self.transmute_primval(PrimVal::from_ptr(ptr), ty),
+            TyRef(..) | TyRawPtr(_) | TyFnPtr(_) | TyInt(_) | TyUint(_) =>
+                Ok(PrimVal::from_ptr(ptr)),
             _ => Err(EvalError::Unimplemented(format!("ptr to {:?} cast", ty))),
         }
     }

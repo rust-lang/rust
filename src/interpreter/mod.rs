@@ -1165,18 +1165,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Value::ByRef(_) => bug!("follow_by_ref_value can't result in `ByRef`"),
 
             Value::ByVal(primval) => {
-                let new_primval = self.transmute_primval(primval, ty)?;
-                self.ensure_valid_value(new_primval, ty)?;
-                Ok(new_primval)
+                self.ensure_valid_value(primval, ty)?;
+                Ok(primval)
             }
 
             Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
         }
-    }
-
-    // FIXME(solson): Delete this.
-    fn transmute_primval(&self, val: PrimVal, _ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
-        Ok(val)
     }
 
     fn write_primval(
