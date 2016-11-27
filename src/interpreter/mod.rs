@@ -23,7 +23,7 @@ mod cast;
 mod vtable;
 mod value;
 
-pub type MirRef<'tcx> = ::std::cell::Ref<'tcx, mir::Mir<'tcx>>;
+pub type MirRef<'tcx> = Ref<'tcx, mir::Mir<'tcx>>;
 
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
