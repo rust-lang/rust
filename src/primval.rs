@@ -38,11 +38,6 @@ pub struct PrimVal {
     /// `Allocation` in the `memory` module has a list of relocations, but a `PrimVal` is only
     /// large enough to contain one, hence the `Option`.
     pub relocation: Option<AllocId>,
-
-    // FIXME(solson): I think we can make this field unnecessary, or at least move it outside of
-    // this struct. We can either match over `Ty`s or generate simple `PrimVal`s from `Ty`s and
-    // match over those to decide which operations to perform on `PrimVal`s.
-    pub kind: PrimValKind,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -87,44 +82,40 @@ impl PrimValKind {
 }
 
 impl PrimVal {
-    pub fn new(bits: u64, kind: PrimValKind) -> Self {
-        PrimVal { bits: bits, relocation: None, kind: kind }
+    pub fn new(bits: u64) -> Self {
+        PrimVal { bits: bits, relocation: None }
     }
 
-    pub fn new_with_relocation(bits: u64, kind: PrimValKind, alloc_id: AllocId) -> Self {
-        PrimVal { bits: bits, relocation: Some(alloc_id), kind: kind }
+    pub fn new_with_relocation(bits: u64, alloc_id: AllocId) -> Self {
+        PrimVal { bits: bits, relocation: Some(alloc_id) }
     }
 
     pub fn from_ptr(ptr: Pointer) -> Self {
-        PrimVal::new_with_relocation(ptr.offset as u64, PrimValKind::Ptr, ptr.alloc_id)
-    }
-
-    pub fn from_fn_ptr(ptr: Pointer) -> Self {
-        PrimVal::new_with_relocation(ptr.offset as u64, PrimValKind::FnPtr, ptr.alloc_id)
+        PrimVal::new_with_relocation(ptr.offset as u64, ptr.alloc_id)
     }
 
     pub fn from_bool(b: bool) -> Self {
-        PrimVal::new(b as u64, PrimValKind::Bool)
+        PrimVal::new(b as u64)
     }
 
     pub fn from_char(c: char) -> Self {
-        PrimVal::new(c as u64, PrimValKind::Char)
+        PrimVal::new(c as u64)
     }
 
     pub fn from_f32(f: f32) -> Self {
-        PrimVal::new(f32_to_bits(f), PrimValKind::F32)
+        PrimVal::new(f32_to_bits(f))
     }
 
     pub fn from_f64(f: f64) -> Self {
-        PrimVal::new(f64_to_bits(f), PrimValKind::F64)
+        PrimVal::new(f64_to_bits(f))
     }
 
-    pub fn from_uint_with_size(n: u64, size: u64) -> Self {
-        PrimVal::new(n, PrimValKind::from_uint_size(size))
+    pub fn from_uint(n: u64) -> Self {
+        PrimVal::new(n)
     }
 
-    pub fn from_int_with_size(n: i64, size: u64) -> Self {
-        PrimVal::new(n as u64, PrimValKind::from_int_size(size))
+    pub fn from_int(n: i64) -> Self {
+        PrimVal::new(n as u64)
     }
 
     pub fn to_f32(self) -> f32 {
@@ -144,31 +135,27 @@ impl PrimVal {
     }
 
     pub fn try_as_uint<'tcx>(self) -> EvalResult<'tcx, u64> {
-        self.to_ptr().to_int().map(|val| val as u64)
+        self.to_ptr().to_int().map(|val| val)
     }
 
-    pub fn expect_uint(self, error_msg: &str) -> u64 {
-        if let Ok(int) = self.try_as_uint() {
-            return int;
+    pub fn to_u64(self) -> u64 {
+        if let Some(ptr) = self.try_as_ptr() {
+            return ptr.to_int().expect("non abstract ptr") as u64;
         }
-
-        use self::PrimValKind::*;
-        match self.kind {
-            U8 | U16 | U32 | U64 => self.bits,
-            _ => bug!("{}", error_msg),
-        }
+        self.bits
     }
 
-    pub fn expect_int(self, error_msg: &str) -> i64 {
-        if let Ok(int) = self.try_as_uint() {
-            return int as i64;
+    pub fn to_i64(self) -> i64 {
+        if let Some(ptr) = self.try_as_ptr() {
+            return ptr.to_int().expect("non abstract ptr") as i64;
         }
+        self.bits as i64
+    }
 
-        use self::PrimValKind::*;
-        match self.kind {
-            I8 | I16 | I32 | I64 => self.bits as i64,
-            _ => bug!("{}", error_msg),
-        }
+    pub fn try_as_ptr(self) -> Option<Pointer> {
+        self.relocation.map(|alloc_id| {
+            Pointer::new(alloc_id, self.bits)
+        })
     }
 
     pub fn try_as_bool<'tcx>(self) -> EvalResult<'tcx, bool> {
@@ -179,19 +166,6 @@ impl PrimVal {
         }
     }
 
-    pub fn expect_f32(self, error_msg: &str) -> f32 {
-        match self.kind {
-            PrimValKind::F32 => bits_to_f32(self.bits),
-            _ => bug!("{}", error_msg),
-        }
-    }
-
-    pub fn expect_f64(self, error_msg: &str) -> f64 {
-        match self.kind {
-            PrimValKind::F32 => bits_to_f64(self.bits),
-            _ => bug!("{}", error_msg),
-        }
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,9 +173,9 @@ impl PrimVal {
 ////////////////////////////////////////////////////////////////////////////////
 
 macro_rules! overflow {
-    ($kind:expr, $op:ident, $l:expr, $r:expr) => ({
+    ($op:ident, $l:expr, $r:expr) => ({
         let (val, overflowed) = $l.$op($r);
-        let primval = PrimVal::new(val as u64, $kind);
+        let primval = PrimVal::new(val as u64);
         Ok((primval, overflowed))
     })
 }
@@ -211,14 +185,14 @@ macro_rules! int_arithmetic {
         let l = $l;
         let r = $r;
         match $kind {
-            I8  => overflow!(I8,  $int_op, l as i8,  r as i8),
-            I16 => overflow!(I16, $int_op, l as i16, r as i16),
-            I32 => overflow!(I32, $int_op, l as i32, r as i32),
-            I64 => overflow!(I64, $int_op, l as i64, r as i64),
-            U8  => overflow!(U8,  $int_op, l as u8,  r as u8),
-            U16 => overflow!(U16, $int_op, l as u16, r as u16),
-            U32 => overflow!(U32, $int_op, l as u32, r as u32),
-            U64 => overflow!(U64, $int_op, l as u64, r as u64),
+            I8  => overflow!($int_op, l as i8,  r as i8),
+            I16 => overflow!($int_op, l as i16, r as i16),
+            I32 => overflow!($int_op, l as i32, r as i32),
+            I64 => overflow!($int_op, l as i64, r as i64),
+            U8  => overflow!($int_op, l as u8,  r as u8),
+            U16 => overflow!($int_op, l as u16, r as u16),
+            U32 => overflow!($int_op, l as u32, r as u32),
+            U64 => overflow!($int_op, l as u64, r as u64),
             _ => bug!("int_arithmetic should only be called on int primvals"),
         }
     })
@@ -229,37 +203,37 @@ macro_rules! int_shift {
         let l = $l;
         let r = $r;
         match $kind {
-            I8  => overflow!(I8,  $int_op, l as i8,  r),
-            I16 => overflow!(I16, $int_op, l as i16, r),
-            I32 => overflow!(I32, $int_op, l as i32, r),
-            I64 => overflow!(I64, $int_op, l as i64, r),
-            U8  => overflow!(U8,  $int_op, l as u8,  r),
-            U16 => overflow!(U16, $int_op, l as u16, r),
-            U32 => overflow!(U32, $int_op, l as u32, r),
-            U64 => overflow!(U64, $int_op, l as u64, r),
+            I8  => overflow!($int_op, l as i8,  r),
+            I16 => overflow!($int_op, l as i16, r),
+            I32 => overflow!($int_op, l as i32, r),
+            I64 => overflow!($int_op, l as i64, r),
+            U8  => overflow!($int_op, l as u8,  r),
+            U16 => overflow!($int_op, l as u16, r),
+            U32 => overflow!($int_op, l as u32, r),
+            U64 => overflow!($int_op, l as u64, r),
             _ => bug!("int_shift should only be called on int primvals"),
         }
     })
 }
 
 macro_rules! float_arithmetic {
-    ($kind:expr, $from_bits:ident, $to_bits:ident, $float_op:tt, $l:expr, $r:expr) => ({
+    ($from_bits:ident, $to_bits:ident, $float_op:tt, $l:expr, $r:expr) => ({
         let l = $from_bits($l);
         let r = $from_bits($r);
         let bits = $to_bits(l $float_op r);
-        PrimVal::new(bits, $kind)
+        PrimVal::new(bits)
     })
 }
 
 macro_rules! f32_arithmetic {
     ($float_op:tt, $l:expr, $r:expr) => (
-        float_arithmetic!(F32, bits_to_f32, f32_to_bits, $float_op, $l, $r)
+        float_arithmetic!(bits_to_f32, f32_to_bits, $float_op, $l, $r)
     )
 }
 
 macro_rules! f64_arithmetic {
     ($float_op:tt, $l:expr, $r:expr) => (
-        float_arithmetic!(F64, bits_to_f64, f64_to_bits, $float_op, $l, $r)
+        float_arithmetic!(bits_to_f64, f64_to_bits, $float_op, $l, $r)
     )
 }
 
@@ -267,7 +241,9 @@ macro_rules! f64_arithmetic {
 pub fn binary_op<'tcx>(
     bin_op: mir::BinOp,
     left: PrimVal,
-    right: PrimVal
+    left_kind: PrimValKind,
+    right: PrimVal,
+    right_kind: PrimValKind,
 ) -> EvalResult<'tcx, (PrimVal, bool)> {
     use rustc::mir::BinOp::*;
     use self::PrimValKind::*;
@@ -288,7 +264,7 @@ pub fn binary_op<'tcx>(
         // These are the maximum values a bitshift RHS could possibly have. For example, u16
         // can be bitshifted by 0..16, so masking with 0b1111 (16 - 1) will ensure we are in
         // that range.
-        let type_bits: u32 = match left.kind {
+        let type_bits: u32 = match left_kind {
             I8  | U8  => 8,
             I16 | U16 => 16,
             I32 | U32 => 32,
@@ -301,18 +277,18 @@ pub fn binary_op<'tcx>(
         let r = (right.bits as u32) & (type_bits - 1);
 
         return match bin_op {
-            Shl => int_shift!(left.kind, overflowing_shl, l, r),
-            Shr => int_shift!(left.kind, overflowing_shr, l, r),
+            Shl => int_shift!(left_kind, overflowing_shl, l, r),
+            Shr => int_shift!(left_kind, overflowing_shr, l, r),
             _ => bug!("it has already been checked that this is a shift op"),
         };
     }
 
-    if left.kind != right.kind {
+    if left_kind != right_kind {
         let msg = format!("unimplemented binary op: {:?}, {:?}, {:?}", left, right, bin_op);
         return Err(EvalError::Unimplemented(msg));
     }
 
-    let val = match (bin_op, left.kind) {
+    let val = match (bin_op, left_kind) {
         (Eq, F32) => PrimVal::from_bool(bits_to_f32(l) == bits_to_f32(r)),
         (Ne, F32) => PrimVal::from_bool(bits_to_f32(l) != bits_to_f32(r)),
         (Lt, F32) => PrimVal::from_bool(bits_to_f32(l) <  bits_to_f32(r)),
@@ -346,9 +322,9 @@ pub fn binary_op<'tcx>(
         (Gt, _) => PrimVal::from_bool(l >  r),
         (Ge, _) => PrimVal::from_bool(l >= r),
 
-        (BitOr,  k) => PrimVal::new(l | r, k),
-        (BitAnd, k) => PrimVal::new(l & r, k),
-        (BitXor, k) => PrimVal::new(l ^ r, k),
+        (BitOr,  _) => PrimVal::new(l | r),
+        (BitAnd, _) => PrimVal::new(l & r),
+        (BitXor, _) => PrimVal::new(l ^ r),
 
         (Add, k) if k.is_int() => return int_arithmetic!(k, overflowing_add, l, r),
         (Sub, k) if k.is_int() => return int_arithmetic!(k, overflowing_sub, l, r),
@@ -378,11 +354,15 @@ fn unrelated_ptr_ops<'tcx>(bin_op: mir::BinOp, left: Pointer, right: Pointer) ->
     }
 }
 
-pub fn unary_op<'tcx>(un_op: mir::UnOp, val: PrimVal) -> EvalResult<'tcx, PrimVal> {
+pub fn unary_op<'tcx>(
+    un_op: mir::UnOp,
+    val: PrimVal,
+    val_kind: PrimValKind,
+) -> EvalResult<'tcx, PrimVal> {
     use rustc::mir::UnOp::*;
     use self::PrimValKind::*;
 
-    let bits = match (un_op, val.kind) {
+    let bits = match (un_op, val_kind) {
         (Not, Bool) => !bits_to_bool(val.bits) as u64,
 
         (Not, U8)  => !(val.bits as u8) as u64,
@@ -409,5 +389,5 @@ pub fn unary_op<'tcx>(un_op: mir::UnOp, val: PrimVal) -> EvalResult<'tcx, PrimVa
         }
     };
 
-    Ok(PrimVal::new(bits, val.kind))
+    Ok(PrimVal::new(bits))
 }

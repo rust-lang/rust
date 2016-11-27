@@ -44,10 +44,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "arith_offset" => {
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
-                let offset = self.value_to_primval(arg_vals[1], isize)?
-                    .expect_int("arith_offset second arg not isize");
+                let offset = self.value_to_primval(arg_vals[1], isize)?.to_i64();
                 let new_ptr = ptr.signed_offset(offset);
-                self.write_primval(dest, PrimVal::from_ptr(new_ptr))?;
+                self.write_primval(dest, PrimVal::from_ptr(new_ptr), dest_ty)?;
             }
 
             "assume" => {
@@ -85,8 +84,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByRef(_) => bug!("just read the value, can't be byref"),
                     Value::ByValPair(..) => bug!("atomic_xchg doesn't work with nonprimitives"),
                 };
-                self.write_primval(dest, old)?;
-                self.write_primval(Lvalue::from_ptr(ptr), change)?;
+                self.write_primval(dest, old, ty)?;
+                self.write_primval(Lvalue::from_ptr(ptr), change, ty)?;
             }
 
             "atomic_cxchg" => {
@@ -100,10 +99,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByRef(_) => bug!("just read the value, can't be byref"),
                     Value::ByValPair(..) => bug!("atomic_cxchg doesn't work with nonprimitives"),
                 };
-                let (val, _) = primval::binary_op(mir::BinOp::Eq, old, expect_old)?;
+                let kind = self.ty_to_primval_kind(ty)?;
+                let (val, _) = primval::binary_op(mir::BinOp::Eq, old, kind, expect_old, kind)?;
                 let dest = self.force_allocation(dest)?.to_ptr();
                 self.write_pair_to_ptr(old, val, dest, dest_ty)?;
-                self.write_primval(Lvalue::from_ptr(ptr), change)?;
+                self.write_primval(Lvalue::from_ptr(ptr), change, ty)?;
             }
 
             "atomic_xadd_relaxed" => {
@@ -116,10 +116,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByRef(_) => bug!("just read the value, can't be byref"),
                     Value::ByValPair(..) => bug!("atomic_xadd_relaxed doesn't work with nonprimitives"),
                 };
-                self.write_primval(dest, old)?;
+                self.write_primval(dest, old, ty)?;
+                let kind = self.ty_to_primval_kind(ty)?;
                 // FIXME: what do atomics do on overflow?
-                let (val, _) = primval::binary_op(mir::BinOp::Add, old, change)?;
-                self.write_primval(Lvalue::from_ptr(ptr), val)?;
+                let (val, _) = primval::binary_op(mir::BinOp::Add, old, kind, change, kind)?;
+                self.write_primval(Lvalue::from_ptr(ptr), val, ty)?;
             },
 
             "atomic_xsub_rel" => {
@@ -132,10 +133,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByRef(_) => bug!("just read the value, can't be byref"),
                     Value::ByValPair(..) => bug!("atomic_xsub_rel doesn't work with nonprimitives"),
                 };
-                self.write_primval(dest, old)?;
+                self.write_primval(dest, old, ty)?;
+                let kind = self.ty_to_primval_kind(ty)?;
                 // FIXME: what do atomics do on overflow?
-                let (val, _) = primval::binary_op(mir::BinOp::Sub, old, change)?;
-                self.write_primval(Lvalue::from_ptr(ptr), val)?;
+                let (val, _) = primval::binary_op(mir::BinOp::Sub, old, kind, change, kind)?;
+                self.write_primval(Lvalue::from_ptr(ptr), val, ty)?;
             }
 
             "breakpoint" => unimplemented!(), // halt miri
@@ -148,8 +150,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let elem_align = self.type_align(elem_ty)?;
                 let src = arg_vals[0].read_ptr(&self.memory)?;
                 let dest = arg_vals[1].read_ptr(&self.memory)?;
-                let count = self.value_to_primval(arg_vals[2], usize)?
-                    .expect_uint("arith_offset second arg not isize");
+                let count = self.value_to_primval(arg_vals[2], usize)?.to_u64();
                 self.memory.copy(src, dest, count * elem_size, elem_align)?;
             }
 
@@ -157,17 +158,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "cttz" |
             "ctlz" |
             "bswap" => {
-                let elem_ty = substs.type_at(0);
-                let num = self.value_to_primval(arg_vals[0], elem_ty)?;
-                let num = numeric_intrinsic(intrinsic_name, num);
-                self.write_primval(dest, num)?;
+                let ty = substs.type_at(0);
+                let num = self.value_to_primval(arg_vals[0], ty)?;
+                let kind = self.ty_to_primval_kind(ty)?;
+                let num = numeric_intrinsic(intrinsic_name, num, kind);
+                self.write_primval(dest, num, ty)?;
             }
 
             "discriminant_value" => {
                 let ty = substs.type_at(0);
                 let adt_ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
-                self.write_primval(dest, PrimVal::new(discr_val, PrimValKind::U64))?;
+                self.write_primval(dest, PrimVal::new(discr_val), dest_ty)?;
             }
 
             "drop_in_place" => {
@@ -196,23 +198,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "fabsf32" => {
-                let f = self.value_to_primval(arg_vals[2], f32)?
-                    .expect_f32("fabsf32 read non f32");
-                self.write_primval(dest, PrimVal::from_f32(f.abs()))?;
+                let f = self.value_to_primval(arg_vals[2], f32)?.to_f32();
+                self.write_primval(dest, PrimVal::from_f32(f.abs()), dest_ty)?;
             }
 
             "fabsf64" => {
-                let f = self.value_to_primval(arg_vals[2], f64)?
-                    .expect_f64("fabsf64 read non f64");
-                self.write_primval(dest, PrimVal::from_f64(f.abs()))?;
+                let f = self.value_to_primval(arg_vals[2], f64)?.to_f64();
+                self.write_primval(dest, PrimVal::from_f64(f.abs()), dest_ty)?;
             }
 
             "fadd_fast" => {
                 let ty = substs.type_at(0);
+                let kind = self.ty_to_primval_kind(ty)?;
                 let a = self.value_to_primval(arg_vals[0], ty)?;
                 let b = self.value_to_primval(arg_vals[0], ty)?;
-                let result = primval::binary_op(mir::BinOp::Add, a, b)?;
-                self.write_primval(dest, result.0)?;
+                let result = primval::binary_op(mir::BinOp::Add, a, kind, b, kind)?;
+                self.write_primval(dest, result.0, dest_ty)?;
             }
 
             "likely" |
@@ -220,27 +221,26 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "forget" => {}
 
             "init" => {
-                let size = dest_layout.size(&self.tcx.data_layout).bytes();
+                let size = self.type_size(dest_ty)?.expect("cannot init unsized value");;
                 let init = |this: &mut Self, val: Option<Value>| {
-                    match val {
+                    let zero_val = match val {
                         Some(Value::ByRef(ptr)) => {
                             this.memory.write_repeat(ptr, 0, size)?;
-                            Ok(Some(Value::ByRef(ptr)))
+                            Value::ByRef(ptr)
                         },
                         None => match this.ty_to_primval_kind(dest_ty) {
-                            Ok(kind) => Ok(Some(Value::ByVal(PrimVal::new(0, kind)))),
+                            Ok(_) => Value::ByVal(PrimVal::new(0)),
                             Err(_) => {
                                 let ptr = this.alloc_ptr_with_substs(dest_ty, substs)?;
                                 this.memory.write_repeat(ptr, 0, size)?;
-                                Ok(Some(Value::ByRef(ptr)))
+                                Value::ByRef(ptr)
                             }
                         },
-                        Some(Value::ByVal(value)) => Ok(Some(Value::ByVal(PrimVal::new(0, value.kind)))),
-                        Some(Value::ByValPair(a, b)) => Ok(Some(Value::ByValPair(
-                            PrimVal::new(0, a.kind),
-                            PrimVal::new(0, b.kind),
-                        ))),
-                    }
+                        Some(Value::ByVal(_)) => Value::ByVal(PrimVal::new(0)),
+                        Some(Value::ByValPair(..)) =>
+                            Value::ByValPair(PrimVal::new(0), PrimVal::new(0)),
+                    };
+                    Ok(Some(zero_val))
                 };
                 match dest {
                     Lvalue::Local { frame, local } => self.modify_local(frame, local, init)?,
@@ -253,16 +253,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
                 let elem_align = self.type_align(elem_ty)?;
-                let align_val = self.usize_primval(elem_align as u64);
-                self.write_primval(dest, align_val)?;
+                let align_val = PrimVal::from_uint(elem_align as u64);
+                self.write_primval(dest, align_val, dest_ty)?;
             }
 
             "pref_align_of" => {
                 let ty = substs.type_at(0);
                 let layout = self.type_layout(ty)?;
                 let align = layout.align(&self.tcx.data_layout).pref();
-                let align_val = self.usize_primval(align);
-                self.write_primval(dest, align_val)?;
+                let align_val = PrimVal::from_uint(align);
+                self.write_primval(dest, align_val, dest_ty)?;
             }
 
             "move_val_init" => {
@@ -275,59 +275,52 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = substs.type_at(0);
                 let env = self.tcx.empty_parameter_environment();
                 let needs_drop = self.tcx.type_needs_drop_given_env(ty, &env);
-                self.write_primval(dest, PrimVal::from_bool(needs_drop))?;
+                self.write_primval(dest, PrimVal::from_bool(needs_drop), dest_ty)?;
             }
 
             "offset" => {
                 let pointee_ty = substs.type_at(0);
                 // FIXME: assuming here that type size is < i64::max_value()
                 let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
-                let offset = self.value_to_primval(arg_vals[1], isize)?
-                    .expect_int("offset second arg not isize");
+                let offset = self.value_to_primval(arg_vals[1], isize)?.to_i64();
 
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let result_ptr = ptr.signed_offset(offset * pointee_size);
-                self.write_primval(dest, PrimVal::from_ptr(result_ptr))?;
+                self.write_primval(dest, PrimVal::from_ptr(result_ptr), dest_ty)?;
             }
 
             "overflowing_sub" => {
-                self.intrinsic_overflowing(mir::BinOp::Sub, &args[0], &args[1], dest)?;
+                self.intrinsic_overflowing(mir::BinOp::Sub, &args[0], &args[1], dest, dest_ty)?;
             }
 
             "overflowing_mul" => {
-                self.intrinsic_overflowing(mir::BinOp::Mul, &args[0], &args[1], dest)?;
+                self.intrinsic_overflowing(mir::BinOp::Mul, &args[0], &args[1], dest, dest_ty)?;
             }
 
             "overflowing_add" => {
-                self.intrinsic_overflowing(mir::BinOp::Add, &args[0], &args[1], dest)?;
+                self.intrinsic_overflowing(mir::BinOp::Add, &args[0], &args[1], dest, dest_ty)?;
             }
 
             "powif32" => {
-                let f = self.value_to_primval(arg_vals[0], f32)?
-                    .expect_f32("powif32 first arg not f32");
-                let i = self.value_to_primval(arg_vals[1], i32)?
-                    .expect_int("powif32 second arg not i32");
-                self.write_primval(dest, PrimVal::from_f32(f.powi(i as i32)))?;
+                let f = self.value_to_primval(arg_vals[0], f32)?.to_f32();
+                let i = self.value_to_primval(arg_vals[1], i32)?.to_i64();
+                self.write_primval(dest, PrimVal::from_f32(f.powi(i as i32)), dest_ty)?;
             }
 
             "powif64" => {
-                let f = self.value_to_primval(arg_vals[0], f64)?
-                    .expect_f64("powif64 first arg not f64");
-                let i = self.value_to_primval(arg_vals[1], i32)?
-                    .expect_int("powif64 second arg not i32");
-                self.write_primval(dest, PrimVal::from_f64(f.powi(i as i32)))?;
+                let f = self.value_to_primval(arg_vals[0], f64)?.to_f64();
+                let i = self.value_to_primval(arg_vals[1], i32)?.to_i64();
+                self.write_primval(dest, PrimVal::from_f64(f.powi(i as i32)), dest_ty)?;
             }
 
             "sqrtf32" => {
-                let f = self.value_to_primval(arg_vals[0], f32)?
-                    .expect_f32("sqrtf32 first arg not f32");
-                self.write_primval(dest, PrimVal::from_f32(f.sqrt()))?;
+                let f = self.value_to_primval(arg_vals[0], f32)?.to_f32();
+                self.write_primval(dest, PrimVal::from_f32(f.sqrt()), dest_ty)?;
             }
 
             "sqrtf64" => {
-                let f = self.value_to_primval(arg_vals[0], f64)?
-                    .expect_f64("sqrtf64 first arg not f64");
-                self.write_primval(dest, PrimVal::from_f64(f.sqrt()))?;
+                let f = self.value_to_primval(arg_vals[0], f64)?.to_f64();
+                self.write_primval(dest, PrimVal::from_f64(f.sqrt()), dest_ty)?;
             }
 
             "size_of" => {
@@ -337,23 +330,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // .expect("size_of intrinsic called on unsized value")
                 // see https://github.com/rust-lang/rust/pull/37708
                 let size = self.type_size(ty)?.unwrap_or(!0) as u64;
-                let size_val = self.usize_primval(size);
-                self.write_primval(dest, size_val)?;
+                self.write_primval(dest, PrimVal::from_uint(size), dest_ty)?;
             }
 
             "size_of_val" => {
                 let ty = substs.type_at(0);
                 let (size, _) = self.size_and_align_of_dst(ty, arg_vals[0])?;
-                let size_val = self.usize_primval(size);
-                self.write_primval(dest, size_val)?;
+                self.write_primval(dest, PrimVal::from_uint(size), dest_ty)?;
             }
 
             "min_align_of_val" |
             "align_of_val" => {
                 let ty = substs.type_at(0);
                 let (_, align) = self.size_and_align_of_dst(ty, arg_vals[0])?;
-                let align_val = self.usize_primval(align);
-                self.write_primval(dest, align_val)?;
+                self.write_primval(dest, PrimVal::from_uint(align), dest_ty)?;
             }
 
             "type_name" => {
@@ -365,17 +355,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "type_id" => {
                 let ty = substs.type_at(0);
                 let n = self.tcx.type_id_hash(ty);
-                self.write_primval(dest, PrimVal::new(n, PrimValKind::U64))?;
+                self.write_primval(dest, PrimVal::new(n), dest_ty)?;
             }
 
             "transmute" => {
                 let dest_ty = substs.type_at(1);
-                let val = match arg_vals[0] {
-                    Value::ByVal(primval) =>
-                        Value::ByVal(self.transmute_primval(primval, dest_ty)?),
-                    v => v,
-                };
-                self.write_value(val, dest, dest_ty)?;
+                self.write_value(arg_vals[0], dest, dest_ty)?;
             }
 
             "uninit" => {
@@ -511,11 +496,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 }
 
 macro_rules! integer_intrinsic {
-    ($name:expr, $val:expr, $method:ident) => ({
+    ($name:expr, $val:expr, $kind:expr, $method:ident) => ({
         let val = $val;
 
         use primval::PrimValKind::*;
-        let bits = match val.kind {
+        let bits = match $kind {
             I8 => (val.bits as i8).$method() as u64,
             U8 => (val.bits as u8).$method() as u64,
             I16 => (val.bits as i16).$method() as u64,
@@ -527,16 +512,16 @@ macro_rules! integer_intrinsic {
             _ => bug!("invalid `{}` argument: {:?}", $name, val),
         };
 
-        PrimVal::new(bits, val.kind)
+        PrimVal::new(bits)
     });
 }
 
-fn numeric_intrinsic(name: &str, val: PrimVal) -> PrimVal {
+fn numeric_intrinsic(name: &str, val: PrimVal, kind: PrimValKind) -> PrimVal {
     match name {
-        "bswap" => integer_intrinsic!("bswap", val, swap_bytes),
-        "ctlz"  => integer_intrinsic!("ctlz", val, leading_zeros),
-        "ctpop" => integer_intrinsic!("ctpop", val, count_ones),
-        "cttz"  => integer_intrinsic!("cttz", val, trailing_zeros),
+        "bswap" => integer_intrinsic!("bswap", val, kind, swap_bytes),
+        "ctlz"  => integer_intrinsic!("ctlz",  val, kind, leading_zeros),
+        "ctpop" => integer_intrinsic!("ctpop", val, kind, count_ones),
+        "cttz"  => integer_intrinsic!("cttz",  val, kind, trailing_zeros),
         _       => bug!("not a numeric intrinsic: {}", name),
     }
 }

@@ -222,16 +222,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &self.stack
     }
 
-    fn usize_primval(&self, n: u64) -> PrimVal {
-        PrimVal::from_uint_with_size(n, self.memory.pointer_size())
-    }
-
     fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         // FIXME: cache these allocs
         let ptr = self.memory.allocate(s.len() as u64, 1)?;
         self.memory.write_bytes(ptr, s.as_bytes())?;
         self.memory.freeze(ptr.alloc_id)?;
-        Ok(Value::ByValPair(PrimVal::from_ptr(ptr), self.usize_primval(s.len() as u64)))
+        Ok(Value::ByValPair(PrimVal::from_ptr(ptr), PrimVal::from_uint(s.len() as u64)))
     }
 
     fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
@@ -239,27 +235,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc_const_math::ConstFloat;
 
         let primval = match *const_val {
-            Integral(const_int) => {
-                use rustc_const_math::ConstInt::*;
-                use rustc_const_math::ConstIsize::*;
-                use rustc_const_math::ConstUsize::*;
-
-                let kind = match const_int {
-                    I8(_)                   => PrimValKind::I8,
-                    I16(_) | Isize(Is16(_)) => PrimValKind::I16,
-                    I32(_) | Isize(Is32(_)) => PrimValKind::I32,
-                    I64(_) | Isize(Is64(_)) => PrimValKind::I64,
-                    U8(_)                   => PrimValKind::U8,
-                    U16(_) | Usize(Us16(_)) => PrimValKind::U16,
-                    U32(_) | Usize(Us32(_)) => PrimValKind::U32,
-                    U64(_) | Usize(Us64(_)) => PrimValKind::U64,
-
-                    Infer(_) | InferSigned(_) =>
-                        bug!("uninferred constants only exist before typeck"),
-                };
-
-                PrimVal::new(const_int.to_u64_unchecked(), kind)
-            }
+            Integral(const_int) => PrimVal::new(const_int.to_u64_unchecked()),
 
             Float(ConstFloat::F32(f)) => PrimVal::from_f32(f),
             Float(ConstFloat::F64(f)) => PrimVal::from_f64(f),
@@ -306,7 +282,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     pub fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         let substituted = ty.subst(self.tcx, substs);
-        self.tcx.normalize_associated_type(&substituted)
+        let new = self.tcx.normalize_associated_type(&substituted);
+        new
     }
 
     fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {
@@ -432,9 +409,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         left: &mir::Operand<'tcx>,
         right: &mir::Operand<'tcx>,
     ) -> EvalResult<'tcx, (PrimVal, bool)> {
-        let left_primval = self.eval_operand_to_primval(left)?;
-        let right_primval = self.eval_operand_to_primval(right)?;
-        primval::binary_op(op, left_primval, right_primval)
+        let left_ty    = self.operand_ty(left);
+        let right_ty   = self.operand_ty(right);
+        let left_kind  = self.ty_to_primval_kind(left_ty)?;
+        let right_kind = self.ty_to_primval_kind(right_ty)?;
+        let left_val   = self.eval_operand_to_primval(left)?;
+        let right_val  = self.eval_operand_to_primval(right)?;
+        primval::binary_op(op, left_val, left_kind, right_val, right_kind)
     }
 
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
@@ -460,9 +441,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         left: &mir::Operand<'tcx>,
         right: &mir::Operand<'tcx>,
         dest: Lvalue<'tcx>,
+        dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, bool> {
         let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
-        self.write_primval(dest, val)?;
+        self.write_primval(dest, val, dest_ty)?;
         Ok(overflowed)
     }
 
@@ -506,7 +488,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             BinaryOp(bin_op, ref left, ref right) => {
                 // ignore overflow bit, rustc inserts check branches for us
-                self.intrinsic_overflowing(bin_op, left, right, dest)?;
+                self.intrinsic_overflowing(bin_op, left, right, dest, dest_ty)?;
             }
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
@@ -515,7 +497,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             UnaryOp(un_op, ref operand) => {
                 let val = self.eval_operand_to_primval(operand)?;
-                self.write_primval(dest, primval::unary_op(un_op, val)?)?;
+                let kind = self.ty_to_primval_kind(dest_ty)?;
+                self.write_primval(dest, primval::unary_op(un_op, val, kind)?, dest_ty)?;
             }
 
             Aggregate(ref kind, ref operands) => {
@@ -571,9 +554,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                     let operand_ty = self.operand_ty(operand);
                                     assert_eq!(self.type_size(operand_ty)?, Some(0));
                                 }
-                                let value_size = self.type_size(dest_ty)?.expect("pointer types are sized");
-                                let zero = PrimVal::from_int_with_size(0, value_size);
-                                self.write_primval(dest, zero)?;
+                                self.write_primval(dest, PrimVal::from_int(0), dest_ty)?;
                             }
                         } else {
                             bug!("tried to assign {:?} to Layout::RawNullablePointer", kind);
@@ -604,19 +585,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     }
 
-                    CEnum { discr, signed, .. } => {
+                    CEnum { .. } => {
                         assert_eq!(operands.len(), 0);
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
                             let n = adt_def.variants[variant].disr_val.to_u64_unchecked();
-                            let size = discr.size().bytes();
-
-                            let val = if signed {
-                                PrimVal::from_int_with_size(n as i64, size)
-                            } else {
-                                PrimVal::from_uint_with_size(n, size)
-                            };
-
-                            self.write_primval(dest, val)?;
+                            self.write_primval(dest, PrimVal::new(n), dest_ty)?;
                         } else {
                             bug!("tried to assign {:?} to Layout::CEnum", kind);
                         }
@@ -655,8 +628,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
                 let (_, len) = src.elem_ty_and_len(ty);
-                let len_val = self.usize_primval(len);
-                self.write_primval(dest, len_val)?;
+                self.write_primval(dest, PrimVal::from_uint(len), dest_ty)?;
             }
 
             Ref(_, _, ref lvalue) => {
@@ -666,7 +638,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let val = match extra {
                     LvalueExtra::None => Value::ByVal(ptr),
-                    LvalueExtra::Length(len) => Value::ByValPair(ptr, self.usize_primval(len)),
+                    LvalueExtra::Length(len) => Value::ByValPair(ptr, PrimVal::from_uint(len)),
                     LvalueExtra::Vtable(vtable) => Value::ByValPair(ptr, PrimVal::from_ptr(vtable)),
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
@@ -677,7 +649,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Box(ty) => {
                 let ptr = self.alloc_ptr(ty)?;
-                self.write_primval(dest, PrimVal::from_ptr(ptr))?;
+                self.write_primval(dest, PrimVal::from_ptr(ptr), dest_ty)?;
             }
 
             Cast(kind, ref operand, cast_ty) => {
@@ -707,7 +679,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             }
                         } else {
                             let src_val = self.value_to_primval(src, src_ty)?;
-                            let dest_val = self.cast_primval(src_val, dest_ty)?;
+                            let dest_val = self.cast_primval(src_val, src_ty, dest_ty)?;
                             self.write_value(Value::ByVal(dest_val), dest, dest_ty)?;
                         }
                     }
@@ -716,7 +688,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         ty::TyFnDef(def_id, substs, fn_ty) => {
                             let fn_ty = self.tcx.erase_regions(&fn_ty);
                             let fn_ptr = self.memory.create_fn_ptr(self.tcx,def_id, substs, fn_ty);
-                            self.write_value(Value::ByVal(PrimVal::from_fn_ptr(fn_ptr)), dest, dest_ty)?;
+                            self.write_value(Value::ByVal(PrimVal::from_ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("reify fn pointer on {:?}", other),
                     },
@@ -728,7 +700,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let (def_id, substs, _, _) = self.memory.get_fn(ptr.alloc_id)?;
                             let unsafe_fn_ty = self.tcx.erase_regions(&unsafe_fn_ty);
                             let fn_ptr = self.memory.create_fn_ptr(self.tcx, def_id, substs, unsafe_fn_ty);
-                            self.write_value(Value::ByVal(PrimVal::from_fn_ptr(fn_ptr)), dest, dest_ty)?;
+                            self.write_value(Value::ByVal(PrimVal::from_ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("fn to unsafe fn cast on {:?}", other),
                     },
@@ -1059,8 +1031,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
                 let n_ptr = self.eval_operand(operand)?;
                 let usize = self.tcx.types.usize;
-                let n = self.value_to_primval(n_ptr, usize)?
-                    .expect_uint("Projection::Index expected usize");
+                let n = self.value_to_primval(n_ptr, usize)?.to_u64();
                 assert!(n < len);
                 let ptr = base_ptr.offset(n * elem_size);
                 (ptr, LvalueExtra::None)
@@ -1124,6 +1095,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Some(Value::ByRef(ptr)) => Lvalue::from_ptr(ptr),
                     opt_val => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
+                        let ty = self.monomorphize(ty, self.stack[frame].substs);
                         let substs = self.stack[frame].substs;
                         let ptr = self.alloc_ptr_with_substs(ty, substs)?;
                         self.stack[frame].set_local(local, Value::ByRef(ptr));
@@ -1168,7 +1140,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Value::ByVal(primval) => {
                 let ptr = self.alloc_ptr(ty)?;
-                self.memory.write_primval(ptr, primval)?;
+                let kind = self.ty_to_primval_kind(ty)?;
+                self.memory.write_primval(ptr, primval, kind)?;
                 Ok(ptr)
             }
 
@@ -1202,19 +1175,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn transmute_primval(&self, val: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
-        Ok(PrimVal { kind: self.ty_to_primval_kind(ty)?, ..val })
+    // FIXME(solson): Delete this.
+    fn transmute_primval(&self, val: PrimVal, _ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+        Ok(val)
     }
 
     fn write_primval(
         &mut self,
         dest: Lvalue<'tcx>,
         val: PrimVal,
+        dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
         match dest {
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
-                self.memory.write_primval(ptr, val)
+                let kind = self.ty_to_primval_kind(dest_ty)?;
+                self.memory.write_primval(ptr, val, kind)
             }
             Lvalue::Local { frame, local } => {
                 self.stack[frame].set_local(local, Value::ByVal(val));
@@ -1319,7 +1295,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, ()> {
         match value {
             Value::ByRef(ptr) => self.copy(ptr, dest, dest_ty),
-            Value::ByVal(primval) => self.memory.write_primval(dest, primval),
+            Value::ByVal(primval) => {
+                let kind = self.ty_to_primval_kind(dest_ty)?;
+                self.memory.write_primval(dest, primval, kind)
+            }
             Value::ByValPair(a, b) => self.write_pair_to_ptr(a, b, dest, dest_ty),
         }
     }
@@ -1334,8 +1313,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         assert_eq!(self.get_field_count(ty)?, 2);
         let field_0 = self.get_field_offset(ty, 0)?.bytes();
         let field_1 = self.get_field_offset(ty, 1)?.bytes();
-        self.memory.write_primval(ptr.offset(field_0), a)?;
-        self.memory.write_primval(ptr.offset(field_1), b)?;
+        let field_0_ty = self.get_field_ty(ty, 0)?;
+        let field_1_ty = self.get_field_ty(ty, 1)?;
+        let field_0_kind = self.ty_to_primval_kind(field_0_ty)?;
+        let field_1_kind = self.ty_to_primval_kind(field_1_ty)?;
+        self.memory.write_primval(ptr.offset(field_0), a, field_0_kind)?;
+        self.memory.write_primval(ptr.offset(field_1), b, field_1_kind)?;
         Ok(())
     }
 
@@ -1432,8 +1415,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     I64 => 8,
                     Is => self.memory.pointer_size(),
                 };
-                let n = self.memory.read_int(ptr, size)?;
-                PrimVal::from_int_with_size(n, size)
+                PrimVal::from_int(self.memory.read_int(ptr, size)?)
             }
 
             ty::TyUint(uint_ty) => {
@@ -1445,17 +1427,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     U64 => 8,
                     Us => self.memory.pointer_size(),
                 };
-                let n = self.memory.read_uint(ptr, size)?;
-                PrimVal::from_uint_with_size(n, size)
+                PrimVal::from_uint(self.memory.read_uint(ptr, size)?)
             }
 
             ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr)?),
             ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr)?),
 
+            // TODO(solson): Should this even be here? Fn items aren't primvals, are they?
             ty::TyFnDef(def_id, substs, fn_ty) => {
-                PrimVal::from_fn_ptr(self.memory.create_fn_ptr(self.tcx, def_id, substs, fn_ty))
+                PrimVal::from_ptr(self.memory.create_fn_ptr(self.tcx, def_id, substs, fn_ty))
             },
-            ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::from_fn_ptr)?,
+
+            ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::from_ptr)?,
             ty::TyBox(ty) |
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
@@ -1468,7 +1451,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let extra = match self.tcx.struct_tail(ty).sty {
                         ty::TyTrait(..) => PrimVal::from_ptr(self.memory.read_ptr(extra)?),
                         ty::TySlice(..) |
-                        ty::TyStr => self.usize_primval(self.memory.read_usize(extra)?),
+                        ty::TyStr => PrimVal::from_uint(self.memory.read_usize(extra)?),
                         _ => bug!("unsized primval ptr read from {:?}", ty),
                     };
                     return Ok(Value::ByValPair(PrimVal::from_ptr(p), extra));
@@ -1480,11 +1463,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
                     let size = discr.size().bytes();
                     if signed {
-                        let n = self.memory.read_int(ptr, size)?;
-                        PrimVal::from_int_with_size(n, size)
+                        PrimVal::from_int(self.memory.read_int(ptr, size)?)
                     } else {
-                        let n = self.memory.read_uint(ptr, size)?;
-                        PrimVal::from_uint_with_size(n, size)
+                        PrimVal::from_uint(self.memory.read_uint(ptr, size)?)
                     }
                 } else {
                     bug!("primitive read of non-clike enum: {:?}", ty);
@@ -1531,7 +1512,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                     (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                         let ptr = src.read_ptr(&self.memory)?;
-                        let len = self.usize_primval(length as u64);
+                        let len = PrimVal::from_uint(length as u64);
                         let ptr = PrimVal::from_ptr(ptr);
                         self.write_value(Value::ByValPair(ptr, len), dest, dest_ty)?;
                     }
