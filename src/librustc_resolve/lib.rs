@@ -908,13 +908,11 @@ struct AmbiguityError<'a> {
 }
 
 impl<'a> NameBinding<'a> {
-    fn module(&self) -> Result<Module<'a>, bool /* true if an error has already been reported */> {
+    fn module(&self) -> Option<Module<'a>> {
         match self.kind {
-            NameBindingKind::Module(module) => Ok(module),
+            NameBindingKind::Module(module) => Some(module),
             NameBindingKind::Import { binding, .. } => binding.module(),
-            NameBindingKind::Def(Def::Err) => Err(true),
-            NameBindingKind::Def(_) => Err(false),
-            NameBindingKind::Ambiguity { ..  } => Err(false),
+            _ => None,
         }
     }
 
@@ -1332,7 +1330,7 @@ impl<'a> Resolver<'a> {
     fn record_use(&mut self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
                   -> bool /* true if an error was reported */ {
         // track extern crates for unused_extern_crate lint
-        if let Some(DefId { krate, .. }) = binding.module().ok().and_then(ModuleS::def_id) {
+        if let Some(DefId { krate, .. }) = binding.module().and_then(ModuleS::def_id) {
             self.used_crates.insert(krate);
         }
 
@@ -2372,7 +2370,7 @@ impl<'a> Resolver<'a> {
 
             match binding {
                 Ok(binding) => {
-                    if let Ok(next_module) = binding.module() {
+                    if let Some(next_module) = binding.module() {
                         module = Some(next_module);
                     } else if binding.def() == Def::Err {
                         return PathResult::NonModule(err_path_resolution());
@@ -2980,7 +2978,7 @@ impl<'a> Resolver<'a> {
                 }
 
                 // collect submodules to explore
-                if let Ok(module) = name_binding.module() {
+                if let Some(module) = name_binding.module() {
                     // form the path
                     let mut path_segments = path_segments.clone();
                     path_segments.push(PathSegment {
@@ -3141,8 +3139,8 @@ impl<'a> Resolver<'a> {
                 (ValueNS, _) => "a value",
                 (MacroNS, _) => "a macro",
                 (TypeNS, _) if old_binding.is_extern_crate() => "an extern crate",
-                (TypeNS, Ok(module)) if module.is_normal() => "a module",
-                (TypeNS, Ok(module)) if module.is_trait() => "a trait",
+                (TypeNS, Some(module)) if module.is_normal() => "a module",
+                (TypeNS, Some(module)) if module.is_trait() => "a trait",
                 (TypeNS, _) => "a type",
             };
             format!("{} named `{}` has already been {} in this {}",
