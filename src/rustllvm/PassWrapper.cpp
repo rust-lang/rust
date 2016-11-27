@@ -529,10 +529,17 @@ LLVMRustPrintPasses() {
     LLVMInitializePasses();
     struct MyListener : PassRegistrationListener {
         void passEnumerate(const PassInfo *info) {
+#if LLVM_VERSION_GE(4, 0)
+            if (!info->getPassArgument().empty()) {
+                printf("%15s - %s\n", info->getPassArgument().data(),
+                       info->getPassName().data());
+            }
+#else
             if (info->getPassArgument() && *info->getPassArgument()) {
                 printf("%15s - %s\n", info->getPassArgument(),
                        info->getPassName());
             }
+#endif
         }
     } listener;
 
