@@ -925,6 +925,14 @@ impl<'a> NameBinding<'a> {
         }
     }
 
+    fn get_macro(&self, resolver: &mut Resolver<'a>) -> Rc<SyntaxExtension> {
+        match self.kind {
+            NameBindingKind::Import { binding, .. } => binding.get_macro(resolver),
+            NameBindingKind::Ambiguity { b1, .. } => b1.get_macro(resolver),
+            _ => resolver.get_macro(self.def()),
+        }
+    }
+
     // We sometimes need to treat variants as `pub` for backwards compatibility
     fn pseudo_vis(&self) -> ty::Visibility {
         if self.is_variant() { ty::Visibility::Public } else { self.vis }

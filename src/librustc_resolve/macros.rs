@@ -193,7 +193,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn find_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
             match self.builtin_macros.get(&attrs[i].name()).cloned() {
-                Some(binding) => match *self.get_macro(binding) {
+                Some(binding) => match *binding.get_macro(self) {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))
                     }
@@ -215,11 +215,11 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         let invocation = self.invocations[&scope];
         self.current_module = invocation.module.get();
-        let result = match self.resolve_legacy_scope(&invocation.legacy_scope, name, false) {
-            Some(MacroBinding::Legacy(binding)) => Ok(binding.ext.clone()),
-            Some(MacroBinding::Modern(binding)) => Ok(self.get_macro(binding)),
+        let ext = match self.resolve_legacy_scope(&invocation.legacy_scope, name, false) {
+            Some(MacroBinding::Legacy(binding)) => binding.ext.clone(),
+            Some(MacroBinding::Modern(binding)) => binding.get_macro(self),
             None => match self.resolve_in_item_lexical_scope(name, MacroNS, None) {
-                Some(binding) => Ok(self.get_macro(binding)),
+                Some(binding) => binding.get_macro(self),
                 None => return Err(if force {
                     let msg = format!("macro undefined: '{}!'", name);
                     let mut err = self.session.struct_span_err(path.span, &msg);
@@ -236,7 +236,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.current_module.legacy_macro_resolutions.borrow_mut()
                 .push((scope, name, path.span));
         }
-        result
+        Ok(ext)
     }
 }
 
