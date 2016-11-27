@@ -82,6 +82,7 @@ use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc::util::common::time;
 
+use std::borrow::Cow;
 use std::cmp::max;
 use std::cmp::Ordering::Equal;
 use std::default::Default;
@@ -112,12 +113,11 @@ mod derive_registrar;
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
 
-#[inline]
-fn abort_msg(err_count: usize) -> String {
+fn abort_msg(err_count: usize) -> Cow<'static, str> {
     match err_count {
-        0 => "aborting with no errors (maybe a bug?)".to_owned(),
-        1 => "aborting due to previous error".to_owned(),
-        e => format!("aborting due to {} previous errors", e),
+        0 => "aborting with no errors (maybe a bug?)".into(),
+        1 => "aborting due to previous error".into(),
+        e => format!("aborting due to {} previous errors", e).into(),
     }
 }
 
@@ -351,21 +351,21 @@ pub struct RustcDefaultCalls;
 fn handle_explain(code: &str,
                   descriptions: &errors::registry::Registry,
                   output: ErrorOutputType) {
-    let normalised = if code.starts_with("E") {
-        code.to_string()
+    let normalised: Cow<str> = if code.starts_with("E") {
+        code.into()
     } else {
-        format!("E{0:0>4}", code)
+        format!("E{0:0>4}", code).into()
     };
     match descriptions.find_description(&normalised) {
         Some(ref description) => {
             // Slice off the leading newline and print.
-            print!("{}", &(&description[1..]).split("\n").map(|x| {
-                format!("{}\n", if x.starts_with("```") {
+            for s in description[1..].split("\n") {
+                println!("{}", if s.starts_with("```") {
                     "```"
                 } else {
-                    x
+                    s
                 })
-            }).collect::<String>());
+            }
         }
         None => {
             early_error(output, &format!("no extended information for {}", code));
