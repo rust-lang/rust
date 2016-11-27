@@ -35,11 +35,11 @@ use syntax::parse::token::{self, BinOpToken, DelimToken, Lit, Token};
 use syntax::parse::lexer::TokenAndSpan;
 use syntax_pos::Pos;
 
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, keywords};
 
 fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
     fn id() -> token::Token {
-        Token::Ident(ast::Ident::with_empty_ctxt(Symbol::invalid()))
+        Token::Ident(ast::Ident::with_empty_ctxt(keywords::Invalid.name()))
     }
 
     let mut res = HashMap::new();
@@ -65,7 +65,7 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "SHL"               => Token::BinOp(BinOpToken::Shl),
             "LBRACE"            => Token::OpenDelim(DelimToken::Brace),
             "RARROW"            => Token::RArrow,
-            "LIT_STR"           => Token::Literal(Lit::Str_(Symbol::invalid()), None),
+            "LIT_STR"           => Token::Literal(Lit::Str_(keywords::Invalid.name()), None),
             "DOTDOT"            => Token::DotDot,
             "MOD_SEP"           => Token::ModSep,
             "DOTDOTDOT"         => Token::DotDotDot,
@@ -75,21 +75,22 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "ANDAND"            => Token::AndAnd,
             "AT"                => Token::At,
             "LBRACKET"          => Token::OpenDelim(DelimToken::Bracket),
-            "LIT_STR_RAW"       => Token::Literal(Lit::StrRaw(Symbol::invalid(), 0), None),
+            "LIT_STR_RAW"       => Token::Literal(Lit::StrRaw(keywords::Invalid.name(), 0), None),
             "RPAREN"            => Token::CloseDelim(DelimToken::Paren),
             "SLASH"             => Token::BinOp(BinOpToken::Slash),
             "COMMA"             => Token::Comma,
-            "LIFETIME"          => Token::Lifetime(ast::Ident::with_empty_ctxt(Symbol::invalid())),
+            "LIFETIME"          => Token::Lifetime(
+                                            ast::Ident::with_empty_ctxt(keywords::Invalid.name())),
             "CARET"             => Token::BinOp(BinOpToken::Caret),
             "TILDE"             => Token::Tilde,
             "IDENT"             => id(),
             "PLUS"              => Token::BinOp(BinOpToken::Plus),
-            "LIT_CHAR"          => Token::Literal(Lit::Char(Symbol::invalid()), None),
-            "LIT_BYTE"          => Token::Literal(Lit::Byte(Symbol::invalid()), None),
+            "LIT_CHAR"          => Token::Literal(Lit::Char(keywords::Invalid.name()), None),
+            "LIT_BYTE"          => Token::Literal(Lit::Byte(keywords::Invalid.name()), None),
             "EQ"                => Token::Eq,
             "RBRACKET"          => Token::CloseDelim(DelimToken::Bracket),
             "COMMENT"           => Token::Comment,
-            "DOC_COMMENT"       => Token::DocComment(Symbol::invalid()),
+            "DOC_COMMENT"       => Token::DocComment(keywords::Invalid.name()),
             "DOT"               => Token::Dot,
             "EQEQ"              => Token::EqEq,
             "NE"                => Token::Ne,
@@ -99,9 +100,9 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "BINOP"             => Token::BinOp(BinOpToken::Plus),
             "POUND"             => Token::Pound,
             "OROR"              => Token::OrOr,
-            "LIT_INTEGER"       => Token::Literal(Lit::Integer(Symbol::invalid()), None),
+            "LIT_INTEGER"       => Token::Literal(Lit::Integer(keywords::Invalid.name()), None),
             "BINOPEQ"           => Token::BinOpEq(BinOpToken::Plus),
-            "LIT_FLOAT"         => Token::Literal(Lit::Float(Symbol::invalid()), None),
+            "LIT_FLOAT"         => Token::Literal(Lit::Float(keywords::Invalid.name()), None),
             "WHITESPACE"        => Token::Whitespace,
             "UNDERSCORE"        => Token::Underscore,
             "MINUS"             => Token::BinOp(BinOpToken::Minus),
@@ -111,10 +112,11 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "OR"                => Token::BinOp(BinOpToken::Or),
             "GT"                => Token::Gt,
             "LE"                => Token::Le,
-            "LIT_BINARY"        => Token::Literal(Lit::ByteStr(Symbol::invalid()), None),
-            "LIT_BINARY_RAW"    => Token::Literal(Lit::ByteStrRaw(Symbol::invalid(), 0), None),
+            "LIT_BINARY"        => Token::Literal(Lit::ByteStr(keywords::Invalid.name()), None),
+            "LIT_BINARY_RAW"    => Token::Literal(
+                                            Lit::ByteStrRaw(keywords::Invalid.name(), 0), None),
             "QUESTION"          => Token::Question,
-            "SHEBANG"           => Token::Shebang(Symbol::invalid()),
+            "SHEBANG"           => Token::Shebang(keywords::Invalid.name()),
             _                   => continue,
         };
 
