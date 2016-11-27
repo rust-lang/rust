@@ -6,4 +6,3 @@ version = "0.0.0"
 [lib]
 name = "rustc_i128"
 path = "lib.rs"
-crate-type = ["dylib"]
