@@ -37,6 +37,8 @@ use syntax::parse::token::{self, BinOpToken, DelimToken, Lit, Token};
 use syntax::parse::lexer::TokenAndSpan;
 use syntax_pos::Pos;
 
+use syntax::symbol::Symbol;
+
 fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
     fn id() -> token::Token {
         Token::Ident(ast::Ident::with_empty_ctxt(Name(0)))
@@ -158,7 +160,7 @@ fn fix(mut lit: &str) -> ast::Name {
     let leading_hashes = count(lit);
 
     // +1/-1 to adjust for single quotes
-    parse::token::intern(&lit[leading_hashes + 1..lit.len() - leading_hashes - 1])
+    Symbol::intern(&lit[leading_hashes + 1..lit.len() - leading_hashes - 1])
 }
 
 /// Assuming a char/byte literal, strip the 'b' prefix and the single quotes.
@@ -168,7 +170,7 @@ fn fixchar(mut lit: &str) -> ast::Name {
         lit = &lit[1..];
     }
 
-    parse::token::intern(&lit[1..lit.len() - 1])
+    Symbol::intern(&lit[1..lit.len() - 1])
 }
 
 fn count(lit: &str) -> usize {
@@ -196,7 +198,7 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>, surrogate_
     let not_found = format!("didn't find token {:?} in the map", toknum);
     let proto_tok = tokens.get(toknum).expect(&not_found[..]);
 
-    let nm = parse::token::intern(content);
+    let nm = Symbol::intern(content);
 
     debug!("What we got: content (`{}`), proto: {:?}", content, proto_tok);
 
