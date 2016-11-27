@@ -10,7 +10,7 @@
 
 use self::ImportDirectiveSubclass::*;
 
-use {Module, PerNS};
+use {AmbiguityError, Module, PerNS};
 use Namespace::{self, TypeNS, MacroNS};
 use {NameBinding, NameBindingKind, PathResult, PathScope, PrivacyError, ToNameBinding};
 use Resolver;
@@ -73,6 +73,7 @@ pub struct NameResolution<'a> {
     single_imports: SingleImports<'a>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
+    shadows_glob: Option<&'a NameBinding<'a>>,
 }
 
 #[derive(Clone, Debug)]
@@ -151,6 +152,18 @@ impl<'a> Resolver<'a> {
 
         if let Some(span) = record_used {
             if let Some(binding) = resolution.binding {
+                if let Some(shadowed_glob) = resolution.shadows_glob {
+                    // If we ignore unresolved invocations, we must forbid
+                    // expanded shadowing to avoid time travel.
+                    if ignore_unresolved_invocations &&
+                       binding.expansion != Mark::root() &&
+                       ns != MacroNS && // In MacroNS, `try_define` always forbids this shadowing
+                       binding.def() != shadowed_glob.def() {
+                        self.ambiguity_errors.push(AmbiguityError {
+                            span: span, name: name, lexical: false, b1: binding, b2: shadowed_glob,
+                        });
+                    }
+                }
                 if self.record_use(name, ns, binding, span) {
                     return Ok(self.dummy_binding);
                 }
@@ -298,6 +311,7 @@ impl<'a> Resolver<'a> {
                 if binding.is_glob_import() {
                     if !old_binding.is_glob_import() &&
                        !(ns == MacroNS && old_binding.expansion != Mark::root()) {
+                        resolution.shadows_glob = Some(binding);
                     } else if binding.def() != old_binding.def() {
                         resolution.binding = Some(this.ambiguity(old_binding, binding));
                     } else if !old_binding.vis.is_at_least(binding.vis, this) {
@@ -310,6 +324,7 @@ impl<'a> Resolver<'a> {
                         resolution.binding = Some(this.ambiguity(binding, old_binding));
                     } else {
                         resolution.binding = Some(binding);
+                        resolution.shadows_glob = Some(old_binding);
                     }
                 } else {
                     return Err(old_binding);
