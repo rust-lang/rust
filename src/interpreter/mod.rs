@@ -166,15 +166,32 @@ pub enum StackPopCleanup {
     None,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct ResourceLimits {
+    pub memory_size: u64,
+    pub step_limit: u64,
+    pub stack_limit: usize,
+}
+
+impl Default for ResourceLimits {
+    fn default() -> Self {
+        ResourceLimits {
+            memory_size: 100 * 1024 * 1024, // 100 MB
+            step_limit: 1_000_000,
+            stack_limit: 100,
+        }
+    }
+}
+
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, memory_size: u64, stack_limit: usize, step_limit: u64) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, limits: ResourceLimits) -> Self {
         EvalContext {
             tcx: tcx,
-            memory: Memory::new(&tcx.data_layout, memory_size),
+            memory: Memory::new(&tcx.data_layout, limits.memory_size),
             globals: HashMap::new(),
             stack: Vec::new(),
-            stack_limit: stack_limit,
-            steps_remaining: step_limit,
+            stack_limit: limits.stack_limit,
+            steps_remaining: limits.step_limit,
         }
     }
 
@@ -1696,11 +1713,9 @@ impl<'tcx> Lvalue<'tcx> {
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-    memory_size: u64,
-    step_limit: u64,
-    stack_limit: usize,
+    limits: ResourceLimits,
 ) {
-    let mut ecx = EvalContext::new(tcx, memory_size, stack_limit, step_limit);
+    let mut ecx = EvalContext::new(tcx, limits);
     let mir = ecx.load_mir(def_id).expect("main function's MIR not found");
 
     ecx.push_stack_frame(

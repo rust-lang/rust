@@ -33,12 +33,13 @@ pub use error::{
 pub use interpreter::{
     EvalContext,
     Frame,
-    eval_main,
-    run_mir_passes,
-    StackPopCleanup,
-    Value,
     Lvalue,
     LvalueExtra,
+    ResourceLimits,
+    StackPopCleanup,
+    Value,
+    eval_main,
+    run_mir_passes,
 };
 
 pub use memory::{

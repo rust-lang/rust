@@ -9,7 +9,6 @@ extern crate log_settings;
 extern crate syntax;
 #[macro_use] extern crate log;
 
-use miri::{eval_main, run_mir_passes};
 use rustc::session::Session;
 use rustc_driver::{CompilerCalls, Compilation};
 use rustc_driver::driver::{CompileState, CompileController};
@@ -39,17 +38,23 @@ fn after_analysis(state: &mut CompileState) {
     let (entry_node_id, _) = state.session.entry_fn.borrow()
         .expect("no main or start function found");
     let entry_def_id = tcx.map.local_def_id(entry_node_id);
+    let limits = resource_limits_from_attributes(state);
+    miri::run_mir_passes(tcx);
+    miri::eval_main(tcx, entry_def_id, limits);
+
+    state.session.abort_if_errors();
+}
+
+fn resource_limits_from_attributes(state: &CompileState) -> miri::ResourceLimits {
+    let mut limits = miri::ResourceLimits::default();
     let krate = state.hir_crate.as_ref().unwrap();
-    let mut memory_size = 100 * 1024 * 1024; // 100 MB
-    let mut step_limit = 1_000_000;
-    let mut stack_limit = 100;
+    let err_msg = "miri attributes need to be in the form `miri(key = value)`";
     let extract_int = |lit: &syntax::ast::Lit| -> u64 {
         match lit.node {
             syntax::ast::LitKind::Int(i, _) => i,
             _ => state.session.span_fatal(lit.span, "expected an integer literal"),
         }
     };
-    let err_msg = "miri attributes need to be in the form `miri(key = value)`";
 
     for attr in krate.attrs.iter().filter(|a| a.name() == "miri") {
         if let MetaItemKind::List(ref items) = attr.value.node {
@@ -57,9 +62,9 @@ fn after_analysis(state: &mut CompileState) {
                 if let NestedMetaItemKind::MetaItem(ref inner) = item.node {
                     if let MetaItemKind::NameValue(ref value) = inner.node {
                         match &inner.name().as_str()[..] {
-                            "memory_size" => memory_size = extract_int(value),
-                            "step_limit" => step_limit = extract_int(value),
-                            "stack_limit" => stack_limit = extract_int(value) as usize,
+                            "memory_size" => limits.memory_size = extract_int(value),
+                            "step_limit" => limits.step_limit = extract_int(value),
+                            "stack_limit" => limits.stack_limit = extract_int(value) as usize,
                             _ => state.session.span_err(item.span, "unknown miri attribute"),
                         }
                     } else {
@@ -73,11 +78,7 @@ fn after_analysis(state: &mut CompileState) {
             state.session.span_err(attr.span, err_msg);
         }
     }
-
-    run_mir_passes(tcx);
-    eval_main(tcx, entry_def_id, memory_size, step_limit, stack_limit);
-
-    state.session.abort_if_errors();
+    limits
 }
 
 fn init_logger() {
