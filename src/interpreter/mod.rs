@@ -1364,17 +1364,30 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             ty::TyAdt(..) => {
                 use rustc::ty::layout::Layout::*;
-                if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
-                    let size = discr.size().bytes();
-                    if signed {
-                        PrimValKind::from_int_size(size)
-                    } else {
-                        PrimValKind::from_uint_size(size)
+                match *self.type_layout(ty)? {
+                    CEnum { discr, signed, .. } => {
+                        let size = discr.size().bytes();
+                        if signed {
+                            PrimValKind::from_int_size(size)
+                        } else {
+                            PrimValKind::from_uint_size(size)
+                        }
                     }
-                } else {
-                    return Err(EvalError::TypeNotPrimitive(ty));
+
+                    RawNullablePointer { value, .. } => {
+                        use rustc::ty::layout::Primitive::*;
+                        match value {
+                            // TODO(solson): Does signedness matter here? What should the sign be?
+                            Int(int) => PrimValKind::from_uint_size(int.size().bytes()),
+                            F32 => PrimValKind::F32,
+                            F64 => PrimValKind::F64,
+                            Pointer => PrimValKind::Ptr,
+                        }
+                    }
+
+                    _ => return Err(EvalError::TypeNotPrimitive(ty)),
                 }
-            },
+            }
 
             _ => return Err(EvalError::TypeNotPrimitive(ty)),
         };
