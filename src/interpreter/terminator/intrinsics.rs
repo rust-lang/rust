@@ -221,7 +221,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "forget" => {}
 
             "init" => {
-                let size = self.type_size(dest_ty)?.expect("cannot init unsized value");;
+                let size = self.type_size(dest_ty)?.expect("cannot zero unsized value");;
                 let init = |this: &mut Self, val: Option<Value>| {
                     let zero_val = match val {
                         Some(Value::ByRef(ptr)) => {
