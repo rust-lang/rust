@@ -21,7 +21,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
-use rustc::middle::cstore::{DepKind, InlinedItem, LinkagePreference};
+use rustc::middle::cstore::{InlinedItem, LinkagePreference};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::middle::lang_items;
@@ -729,7 +729,7 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         // Iterate over all children.
-        let macros_only = self.dep_kind.get() == DepKind::MacrosOnly;
+        let macros_only = self.dep_kind.get().macros_only();
         for child_index in item.children.decode(self) {
             if macros_only {
                 continue

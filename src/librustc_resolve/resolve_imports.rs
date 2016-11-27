@@ -743,6 +743,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                (binding.is_import() || binding.is_extern_crate()) {
                 let def = binding.def();
                 if def != Def::Err {
+                    if !def.def_id().is_local() {
+                        self.session.cstore.export_macros(def.def_id().krate);
+                    }
                     reexports.push(Export { name: name, def: def });
                 }
             }

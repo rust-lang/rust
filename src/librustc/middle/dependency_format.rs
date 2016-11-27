@@ -124,7 +124,7 @@ fn calculate_type(sess: &session::Session,
                 return v;
             }
             for cnum in sess.cstore.crates() {
-                if sess.cstore.dep_kind(cnum) == DepKind::MacrosOnly { continue }
+                if sess.cstore.dep_kind(cnum).macros_only() { continue }
                 let src = sess.cstore.used_crate_source(cnum);
                 if src.rlib.is_some() { continue }
                 sess.err(&format!("dependency `{}` not found in rlib format",
@@ -157,7 +157,7 @@ fn calculate_type(sess: &session::Session,
     // dependencies, ensuring there are no conflicts. The only valid case for a
     // dependency to be relied upon twice is for both cases to rely on a dylib.
     for cnum in sess.cstore.crates() {
-        if sess.cstore.dep_kind(cnum) == DepKind::MacrosOnly { continue }
+        if sess.cstore.dep_kind(cnum).macros_only() { continue }
         let name = sess.cstore.crate_name(cnum);
         let src = sess.cstore.used_crate_source(cnum);
         if src.dylib.is_some() {

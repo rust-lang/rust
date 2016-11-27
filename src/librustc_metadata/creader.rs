@@ -171,7 +171,7 @@ impl<'a> CrateLoader<'a> {
                     name: name,
                     id: i.id,
                     dep_kind: if attr::contains_name(&i.attrs, "no_link") {
-                        DepKind::MacrosOnly
+                        DepKind::UnexportedMacrosOnly
                     } else {
                         DepKind::Explicit
                     },
@@ -350,7 +350,7 @@ impl<'a> CrateLoader<'a> {
             };
 
             self.load(&mut locate_ctxt).or_else(|| {
-                dep_kind = DepKind::MacrosOnly;
+                dep_kind = DepKind::UnexportedMacrosOnly;
 
                 let mut proc_macro_locator = locator::Context {
                     target: &self.sess.host,
@@ -373,7 +373,7 @@ impl<'a> CrateLoader<'a> {
             LoadResult::Previous(cnum) => {
                 let data = self.cstore.get_crate_data(cnum);
                 if data.root.macro_derive_registrar.is_some() {
-                    dep_kind = DepKind::MacrosOnly;
+                    dep_kind = DepKind::UnexportedMacrosOnly;
                 }
                 data.dep_kind.set(cmp::max(data.dep_kind.get(), dep_kind));
                 (cnum, data)
@@ -460,11 +460,14 @@ impl<'a> CrateLoader<'a> {
             return cstore::CrateNumMap::new();
         }
 
-        // The map from crate numbers in the crate we're resolving to local crate
-        // numbers
-        let deps = crate_root.crate_deps.decode(metadata);
-        let map: FxHashMap<_, _> = deps.enumerate().map(|(crate_num, dep)| {
+        // The map from crate numbers in the crate we're resolving to local crate numbers.
+        // We map 0 and all other holes in the map to our parent crate. The "additional"
+        // self-dependencies should be harmless.
+        ::std::iter::once(krate).chain(crate_root.crate_deps.decode(metadata).map(|dep| {
             debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
+            if dep.kind == DepKind::UnexportedMacrosOnly {
+                return krate;
+            }
             let dep_kind = match dep_kind {
                 DepKind::MacrosOnly => DepKind::MacrosOnly,
                 _ => dep.kind,
@@ -472,16 +475,8 @@ impl<'a> CrateLoader<'a> {
             let (local_cnum, ..) = self.resolve_crate(
                 root, dep.name, dep.name, Some(&dep.hash), span, PathKind::Dependency, dep_kind,
             );
-            (CrateNum::new(crate_num + 1), local_cnum)
-        }).collect();
-
-        let max_cnum = map.values().cloned().max().map(|cnum| cnum.as_u32()).unwrap_or(0);
-
-        // we map 0 and all other holes in the map to our parent crate. The "additional"
-        // self-dependencies should be harmless.
-        (0..max_cnum+1).map(|cnum| {
-            map.get(&CrateNum::from_u32(cnum)).cloned().unwrap_or(krate)
-        }).collect()
+            local_cnum
+        })).collect()
     }
 
     fn read_extension_crate(&mut self, span: Span, info: &ExternCrateInfo) -> ExtensionCrate {
@@ -614,7 +609,7 @@ impl<'a> CrateLoader<'a> {
              name: Symbol::intern(name),
              ident: Symbol::intern(name),
              id: ast::DUMMY_NODE_ID,
-             dep_kind: DepKind::MacrosOnly,
+             dep_kind: DepKind::UnexportedMacrosOnly,
         });
 
         if ekrate.target_only {

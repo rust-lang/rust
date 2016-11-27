@@ -197,7 +197,7 @@ impl CStore {
             .borrow()
             .iter()
             .filter_map(|(&cnum, data)| {
-                if data.dep_kind.get() == DepKind::MacrosOnly { return None; }
+                if data.dep_kind.get().macros_only() { return None; }
                 let path = match prefer {
                     LinkagePreference::RequireDynamic => data.source.dylib.clone().map(|p| p.0),
                     LinkagePreference::RequireStatic => data.source.rlib.clone().map(|p| p.0),
