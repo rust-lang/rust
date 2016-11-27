@@ -54,12 +54,12 @@ TARGET_CRATES := libc std term \
                  compiler_builtins core alloc \
                  std_unicode rustc_bitflags \
 		 alloc_system alloc_jemalloc \
-		 panic_abort panic_unwind unwind
+		 panic_abort panic_unwind unwind rustc_i128
 RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_platform_intrinsics rustc_errors \
                 rustc_plugin rustc_metadata rustc_passes rustc_save_analysis \
-                rustc_const_eval rustc_const_math rustc_incremental proc_macro rustc_i128
+                rustc_const_eval rustc_const_math rustc_incremental proc_macro
 HOST_CRATES := syntax syntax_ext proc_macro_tokens proc_macro_plugin syntax_pos $(RUSTC_CRATES) \
 		rustdoc fmt_macros flate arena graphviz log serialize
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
