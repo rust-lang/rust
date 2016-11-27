@@ -11,71 +11,73 @@ extern crate syntax;
 
 use miri::{eval_main, run_mir_passes};
 use rustc::session::Session;
-use rustc_driver::{driver, CompilerCalls, Compilation};
+use rustc_driver::{CompilerCalls, Compilation};
+use rustc_driver::driver::{CompileState, CompileController};
 use syntax::ast::{MetaItemKind, NestedMetaItemKind};
 
 struct MiriCompilerCalls;
 
 impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
-    fn build_controller(
-        &mut self,
-        _: &Session,
-        _: &getopts::Matches
-    ) -> driver::CompileController<'a> {
-        let mut control = driver::CompileController::basic();
-        control.after_hir_lowering.callback = Box::new(|state| {
-            state.session.plugin_attributes.borrow_mut().push(("miri".to_owned(), syntax::feature_gate::AttributeType::Whitelisted));
-        });
+    fn build_controller(&mut self, _: &Session, _: &getopts::Matches) -> CompileController<'a> {
+        let mut control = CompileController::basic();
+        control.after_hir_lowering.callback = Box::new(after_hir_lowering);
+        control.after_analysis.callback = Box::new(after_analysis);
         control.after_analysis.stop = Compilation::Stop;
-        control.after_analysis.callback = Box::new(|state| {
-            state.session.abort_if_errors();
-
-            let tcx = state.tcx.unwrap();
-            let (entry_node_id, _) = state.session.entry_fn.borrow()
-                .expect("no main or start function found");
-            let entry_def_id = tcx.map.local_def_id(entry_node_id);
-
-            let krate = state.hir_crate.as_ref().unwrap();
-            let mut memory_size = 100*1024*1024; // 100MB
-            let mut step_limit = 1000_000;
-            let mut stack_limit = 100;
-            let extract_int = |lit: &syntax::ast::Lit| -> u64 {
-                match lit.node {
-                    syntax::ast::LitKind::Int(i, _) => i,
-                    _ => state.session.span_fatal(lit.span, "expected an integer literal"),
-                }
-            };
-            for attr in krate.attrs.iter() {
-                match attr.node.value.node {
-                    MetaItemKind::List(ref name, _) if name != "miri" => {}
-                    MetaItemKind::List(_, ref items) => for item in items {
-                        match item.node {
-                            NestedMetaItemKind::MetaItem(ref inner) => match inner.node {
-                                MetaItemKind::NameValue(ref name, ref value) => {
-                                    match &**name {
-                                        "memory_size" => memory_size = extract_int(value),
-                                        "step_limit" => step_limit = extract_int(value),
-                                        "stack_limit" => stack_limit = extract_int(value) as usize,
-                                        _ => state.session.span_err(item.span, "unknown miri attribute"),
-                                    }
-                                }
-                                _ => state.session.span_err(inner.span, "miri attributes need to be of key = value kind"),
-                            },
-                            _ => state.session.span_err(item.span, "miri attributes need to be of key = value kind"),
-                        }
-                    },
-                    _ => {},
-                }
-            }
-
-            run_mir_passes(tcx);
-            eval_main(tcx, entry_def_id, memory_size, step_limit, stack_limit);
-
-            state.session.abort_if_errors();
-        });
-
         control
     }
+}
+
+fn after_hir_lowering(state: &mut CompileState) {
+    let attr = (String::from("miri"), syntax::feature_gate::AttributeType::Whitelisted);
+    state.session.plugin_attributes.borrow_mut().push(attr);
+}
+
+fn after_analysis(state: &mut CompileState) {
+    state.session.abort_if_errors();
+
+    let tcx = state.tcx.unwrap();
+    let (entry_node_id, _) = state.session.entry_fn.borrow()
+        .expect("no main or start function found");
+    let entry_def_id = tcx.map.local_def_id(entry_node_id);
+    let krate = state.hir_crate.as_ref().unwrap();
+    let mut memory_size = 100 * 1024 * 1024; // 100 MB
+    let mut step_limit = 1_000_000;
+    let mut stack_limit = 100;
+    let extract_int = |lit: &syntax::ast::Lit| -> u64 {
+        match lit.node {
+            syntax::ast::LitKind::Int(i, _) => i,
+            _ => state.session.span_fatal(lit.span, "expected an integer literal"),
+        }
+    };
+    let err_msg = "miri attributes need to be in the form `miri(key = value)`";
+
+    for attr in krate.attrs.iter().filter(|a| a.name() == "miri") {
+        if let MetaItemKind::List(ref items) = attr.value.node {
+            for item in items {
+                if let NestedMetaItemKind::MetaItem(ref inner) = item.node {
+                    if let MetaItemKind::NameValue(ref value) = inner.node {
+                        match &inner.name().as_str()[..] {
+                            "memory_size" => memory_size = extract_int(value),
+                            "step_limit" => step_limit = extract_int(value),
+                            "stack_limit" => stack_limit = extract_int(value) as usize,
+                            _ => state.session.span_err(item.span, "unknown miri attribute"),
+                        }
+                    } else {
+                        state.session.span_err(inner.span, err_msg);
+                    }
+                } else {
+                    state.session.span_err(item.span, err_msg);
+                }
+            }
+        } else {
+            state.session.span_err(attr.span, err_msg);
+        }
+    }
+
+    run_mir_passes(tcx);
+    eval_main(tcx, entry_def_id, memory_size, step_limit, stack_limit);
+
+    state.session.abort_if_errors();
 }
 
 fn init_logger() {
