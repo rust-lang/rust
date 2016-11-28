@@ -70,9 +70,42 @@ impl<'a> FnKind<'a> {
 /// Specifies what nested things a visitor wants to visit. Currently there are
 /// two modes: `OnlyBodies` descends into item bodies, but not into nested
 /// items; `All` descends into item bodies and nested items.
-pub enum NestedVisitMode {
-    OnlyBodies,
-    All
+pub enum NestedVisitorMap<'this, 'tcx: 'this> {
+    /// Do not visit any nested things. When you add a new
+    /// "non-nested" thing, you will want to audit such uses to see if
+    /// they remain valid.
+    None,
+
+    /// Do not visit nested item-like things, but visit nested things
+    /// that are inside of an item-like.
+    ///
+    /// **This is the default mode.**
+    OnlyBodies(&'this Map<'tcx>),
+
+    /// Visit all nested things, including item-likes.
+    All(&'this Map<'tcx>),
+}
+
+impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
+    /// Returns the map to use for an "intra item-like" thing (if any).
+    /// e.g., function body.
+    pub fn intra(self) -> Option<&'this Map<'tcx>> {
+        match self {
+            NestedVisitorMap::None => None,
+            NestedVisitorMap::OnlyBodies(map) => Some(map),
+            NestedVisitorMap::All(map) => Some(map),
+        }
+    }
+
+    /// Returns the map to use for an "item-like" thing (if any).
+    /// e.g., item, impl-item.
+    pub fn inter(self) -> Option<&'this Map<'tcx>> {
+        match self {
+            NestedVisitorMap::None => None,
+            NestedVisitorMap::OnlyBodies(_) => None,
+            NestedVisitorMap::All(map) => Some(map),
+        }
+    }
 }
 
 /// Each method of the Visitor trait is a hook to be potentially
@@ -109,13 +142,7 @@ pub trait Visitor<'v> : Sized {
     /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
     /// added in the future, we will see the panic in your code and
     /// fix it appropriately.
-    fn nested_visit_map(&mut self) -> Option<&Map<'v>>;
-
-    /// Specifies what things nested things this visitor wants to visit. By
-    /// default, bodies will be visited, but not nested items.
-    fn nested_visit_mode(&mut self) -> NestedVisitMode {
-        NestedVisitMode::OnlyBodies
-    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v>;
 
     /// Invoked when a nested item is encountered. By default does
     /// nothing unless you override `nested_visit_map` to return
@@ -127,8 +154,7 @@ pub trait Visitor<'v> : Sized {
     /// but cannot supply a `Map`; see `nested_visit_map` for advice.
     #[allow(unused_variables)]
     fn visit_nested_item(&mut self, id: ItemId) {
-        let opt_item = map_for_item(self)
-                           .map(|map| map.expect_item(id.id));
+        let opt_item = self.nested_visit_map().inter().map(|map| map.expect_item(id.id));
         if let Some(item) = opt_item {
             self.visit_item(item);
         }
@@ -139,8 +165,7 @@ pub trait Visitor<'v> : Sized {
     /// method.
     #[allow(unused_variables)]
     fn visit_nested_impl_item(&mut self, id: ImplItemId) {
-        let opt_item = map_for_item(self)
-                           .map(|map| map.impl_item(id));
+        let opt_item = self.nested_visit_map().inter().map(|map| map.impl_item(id));
         if let Some(item) = opt_item {
             self.visit_impl_item(item);
         }
@@ -151,8 +176,7 @@ pub trait Visitor<'v> : Sized {
     /// `nested_visit_map` to return `Some(_)`, in which case it will walk the
     /// body.
     fn visit_body(&mut self, id: ExprId) {
-        let opt_expr = map_for_body(self)
-                           .map(|map| map.expr(id));
+        let opt_expr = self.nested_visit_map().intra().map(|map| map.expr(id));
         if let Some(expr) = opt_expr {
             self.visit_expr(expr);
         }
@@ -299,18 +323,6 @@ pub trait Visitor<'v> : Sized {
     }
     fn visit_defaultness(&mut self, defaultness: &'v Defaultness) {
         walk_defaultness(self, defaultness);
-    }
-}
-
-fn map_for_body<'v, V: Visitor<'v>>(visitor: &mut V) -> Option<&Map<'v>> {
-    visitor.nested_visit_map()
-}
-
-fn map_for_item<'v, V: Visitor<'v>>(visitor: &mut V) -> Option<&Map<'v>> {
-    match visitor.nested_visit_mode() {
-        NestedVisitMode::OnlyBodies => None,
-        NestedVisitMode::All => Some(visitor.nested_visit_map()
-                                     .expect("NestedVisitMode::All without nested_visit_map"))
     }
 }
 
@@ -1061,8 +1073,8 @@ impl<'a, 'ast> IdRangeComputingVisitor<'a, 'ast> {
 }
 
 impl<'a, 'ast> Visitor<'ast> for IdRangeComputingVisitor<'a, 'ast> {
-    fn nested_visit_map(&mut self) -> Option<&Map<'ast>> {
-        Some(&self.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+        NestedVisitorMap::OnlyBodies(&self.map)
     }
 
     fn visit_id(&mut self, id: NodeId) {

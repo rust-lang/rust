@@ -20,7 +20,7 @@ use rustc::util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax_pos::Span;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
 
 use std::cell::RefCell;
@@ -36,7 +36,9 @@ struct CheckCrateVisitor<'a, 'ast: 'a> {
 }
 
 impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'ast>> { None }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+        NestedVisitorMap::None
+    }
 
     fn visit_item(&mut self, it: &'ast hir::Item) {
         match it.node {
@@ -202,8 +204,8 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
 }
 
 impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'ast>> {
-        Some(&self.ast_map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+        NestedVisitorMap::OnlyBodies(&self.ast_map)
     }
 
     fn visit_item(&mut self, it: &'ast hir::Item) {

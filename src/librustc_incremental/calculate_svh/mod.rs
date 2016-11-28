@@ -34,7 +34,7 @@ use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::intravisit as visit;
-use rustc::hir::intravisit::Visitor;
+use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::util::common::record_time;
@@ -224,7 +224,9 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
 
 
 impl<'a, 'tcx> Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> { None }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.calculate_node_id(item.id, |v| v.visit_item(item));

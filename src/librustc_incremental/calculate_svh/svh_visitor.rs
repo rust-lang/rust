@@ -513,11 +513,11 @@ macro_rules! hash_span {
 }
 
 impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'hash, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+    fn nested_visit_map<'this>(&'this mut self) -> visit::NestedVisitorMap<'this, 'tcx> {
         if self.hash_bodies {
-            Some(&self.tcx.map)
+            visit::NestedVisitorMap::OnlyBodies(&self.tcx.map)
         } else {
-            None
+            visit::NestedVisitorMap::None
         }
     }
 

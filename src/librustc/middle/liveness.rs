@@ -128,7 +128,7 @@ use syntax_pos::Span;
 use hir::Expr;
 use hir;
 use hir::print::{expr_to_string, block_to_string};
-use hir::intravisit::{self, Visitor, FnKind};
+use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 /// For use with `propagate_through_loop`.
 enum LoopKind<'a> {
@@ -183,9 +183,10 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt) -> String {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
     }
+
     fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
                 b: hir::ExprId, s: Span, id: NodeId) {
         visit_fn(self, fk, fd, b, s, id);
@@ -352,9 +353,10 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.ir.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.ir.tcx.map)
     }
+
     fn visit_fn(&mut self, _: FnKind<'tcx>, _: &'tcx hir::FnDecl,
                 _: hir::ExprId, _: Span, _: NodeId) {
         // do not check contents of nested fns

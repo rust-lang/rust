@@ -99,7 +99,7 @@ use std::mem;
 use std::ops::Deref;
 use syntax::ast;
 use syntax_pos::Span;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, PatKind};
 
 use self::SubjectNode::Subject;
@@ -480,8 +480,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
     // hierarchy, and in particular the relationships between free
     // regions, until regionck, as described in #3238.
 
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'gcx>> {
-        Some(&self.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
     }
 
     fn visit_fn(&mut self, _fk: intravisit::FnKind<'gcx>, fd: &'gcx hir::FnDecl,

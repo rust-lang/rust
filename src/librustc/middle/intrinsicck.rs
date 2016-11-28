@@ -19,7 +19,7 @@ use ty::layout::{LayoutError, Pointer, SizeSkeleton};
 use syntax::abi::Abi::RustIntrinsic;
 use syntax::ast;
 use syntax_pos::Span;
-use hir::intravisit::{self, Visitor, FnKind};
+use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 use hir;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
@@ -117,8 +117,8 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
     }
 
     // const, static and N in [T; N].
@@ -163,8 +163,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for ExprVisitor<'a, 'gcx, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'gcx>> {
-        Some(&self.infcx.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+        NestedVisitorMap::OnlyBodies(&self.infcx.tcx.map)
     }
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {

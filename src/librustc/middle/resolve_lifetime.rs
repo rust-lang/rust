@@ -34,7 +34,7 @@ use util::nodemap::NodeMap;
 use rustc_data_structures::fx::FxHashSet;
 use hir;
 use hir::print::lifetime_to_string;
-use hir::intravisit::{self, Visitor, FnKind, NestedVisitMode};
+use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum DefRegion {
@@ -132,11 +132,9 @@ pub fn krate(sess: &Session,
 impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     // Override the nested functions -- lifetimes follow lexical scope,
     // so it's convenient to walk the tree in lexical order.
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.hir_map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.hir_map)
     }
-
-    fn nested_visit_mode(&mut self) -> NestedVisitMode { NestedVisitMode::All }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         // Save labels for nested items.
@@ -425,7 +423,9 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: hir::ExprId) {
     return;
 
     impl<'v, 'a> Visitor<'v> for GatherLabels<'a> {
-        fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> { None }
+        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+            NestedVisitorMap::None
+        }
 
         fn visit_expr(&mut self, ex: &'v hir::Expr) {
             // do not recurse into closures defined in the block
@@ -942,7 +942,9 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     }
 
     impl<'v> Visitor<'v> for ConstrainedCollector {
-        fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> { None }
+        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+            NestedVisitorMap::None
+        }
 
         fn visit_ty(&mut self, ty: &'v hir::Ty) {
             match ty.node {
@@ -981,7 +983,9 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     }
 
     impl<'v> Visitor<'v> for AllCollector {
-        fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> { None }
+        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+            NestedVisitorMap::None
+        }
 
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
             self.regions.insert(lifetime_ref.name);

@@ -28,7 +28,7 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use hir;
-use hir::intravisit::{Visitor};
+use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 use hir::intravisit;
 
@@ -89,8 +89,8 @@ struct ReachableContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {

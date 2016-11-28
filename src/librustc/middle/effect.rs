@@ -21,7 +21,7 @@ use syntax::ast;
 use syntax_pos::Span;
 use hir::{self, PatKind};
 use hir::def::Def;
-use hir::intravisit::{self, FnKind, Visitor};
+use hir::intravisit::{self, FnKind, Visitor, NestedVisitorMap};
 
 #[derive(Copy, Clone)]
 struct UnsafeContext {
@@ -93,8 +93,8 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
     }
 
     fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, fn_decl: &'tcx hir::FnDecl,
