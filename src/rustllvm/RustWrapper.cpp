@@ -1408,3 +1408,45 @@ extern "C" void LLVMRustSetLinkage(LLVMValueRef V, LLVMRustLinkage RustLinkage) 
 extern "C" LLVMContextRef LLVMRustGetValueContext(LLVMValueRef V) {
     return wrap(&unwrap(V)->getContext());
 }
+
+enum class LLVMRustVisibility {
+    Default = 0,
+    Hidden = 1,
+    Protected = 2,
+};
+
+static LLVMRustVisibility to_rust(LLVMVisibility vis) {
+    switch (vis) {
+        case LLVMDefaultVisibility:
+            return LLVMRustVisibility::Default;
+        case LLVMHiddenVisibility:
+            return LLVMRustVisibility::Hidden;
+        case LLVMProtectedVisibility:
+            return LLVMRustVisibility::Protected;
+
+        default:
+            llvm_unreachable("Invalid LLVMRustVisibility value!");
+    }
+}
+
+static LLVMVisibility from_rust(LLVMRustVisibility vis) {
+    switch (vis) {
+        case LLVMRustVisibility::Default:
+            return LLVMDefaultVisibility;
+        case LLVMRustVisibility::Hidden:
+            return LLVMHiddenVisibility;
+        case LLVMRustVisibility::Protected:
+            return LLVMProtectedVisibility;
+
+        default:
+            llvm_unreachable("Invalid LLVMRustVisibility value!");
+    }
+}
+
+extern "C" LLVMRustVisibility LLVMRustGetVisibility(LLVMValueRef V) {
+    return to_rust(LLVMGetVisibility(V));
+}
+
+extern "C" void LLVMRustSetVisibility(LLVMValueRef V, LLVMRustVisibility RustVisibility) {
+    LLVMSetVisibility(V, from_rust(RustVisibility));
+}

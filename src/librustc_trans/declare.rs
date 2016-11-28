@@ -78,7 +78,7 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
     // don't want the symbols to get exported.
     if attr::contains_name(ccx.tcx().map.krate_attrs(), "compiler_builtins") {
         unsafe {
-            llvm::LLVMSetVisibility(llfn, llvm::Visibility::Hidden);
+            llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
     }
 
