@@ -90,45 +90,40 @@ struct ReachableContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
-        match expr.node {
-            hir::ExprPath(..) => {
-                let def = self.tcx.expect_def(expr.id);
-                let def_id = def.def_id();
-                if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
-                    if self.def_id_represents_local_inlined_item(def_id) {
-                        self.worklist.push(node_id);
-                    } else {
-                        match def {
-                            // If this path leads to a constant, then we need to
-                            // recurse into the constant to continue finding
-                            // items that are reachable.
-                            Def::Const(..) | Def::AssociatedConst(..) => {
-                                self.worklist.push(node_id);
-                            }
+        let def = match expr.node {
+            hir::ExprPath(ref qpath) => {
+                Some(self.tcx.tables().qpath_def(qpath, expr.id))
+            }
+            hir::ExprMethodCall(..) => {
+                let method_call = ty::MethodCall::expr(expr.id);
+                let def_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
+                Some(Def::Method(def_id))
+            }
+            _ => None
+        };
 
-                            // If this wasn't a static, then the destination is
-                            // surely reachable.
-                            _ => {
-                                self.reachable_symbols.insert(node_id);
-                            }
+        if let Some(def) = def {
+            let def_id = def.def_id();
+            if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
+                if self.def_id_represents_local_inlined_item(def_id) {
+                    self.worklist.push(node_id);
+                } else {
+                    match def {
+                        // If this path leads to a constant, then we need to
+                        // recurse into the constant to continue finding
+                        // items that are reachable.
+                        Def::Const(..) | Def::AssociatedConst(..) => {
+                            self.worklist.push(node_id);
+                        }
+
+                        // If this wasn't a static, then the destination is
+                        // surely reachable.
+                        _ => {
+                            self.reachable_symbols.insert(node_id);
                         }
                     }
                 }
             }
-            hir::ExprMethodCall(..) => {
-                let method_call = ty::MethodCall::expr(expr.id);
-                let def_id = self.tcx.tables().method_map[&method_call].def_id;
-
-                // Mark the trait item (and, possibly, its default impl) as reachable
-                // Or mark inherent impl item as reachable
-                if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
-                    if self.def_id_represents_local_inlined_item(def_id) {
-                        self.worklist.push(node_id)
-                    }
-                    self.reachable_symbols.insert(node_id);
-                }
-            }
-            _ => {}
         }
 
         intravisit::walk_expr(self, expr)
@@ -265,7 +260,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     // These are normal, nothing reachable about these
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
-                    hir::ItemExternCrate(_) | hir::ItemUse(_) |
+                    hir::ItemExternCrate(_) | hir::ItemUse(..) |
                     hir::ItemTy(..) | hir::ItemStatic(..) |
                     hir::ItemMod(..) | hir::ItemForeignMod(..) |
                     hir::ItemImpl(..) | hir::ItemTrait(..) |
@@ -303,7 +298,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // Nothing to recurse on for these
             ast_map::NodeForeignItem(_) |
             ast_map::NodeVariant(_) |
-            ast_map::NodeStructCtor(_) => {}
+            ast_map::NodeStructCtor(_) |
+            ast_map::NodeField(_) |
+            ast_map::NodeTy(_) => {}
             _ => {
                 bug!("found unexpected thingy in worklist: {}",
                      self.tcx.map.node_to_string(search_item))

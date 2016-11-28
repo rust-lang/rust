@@ -225,42 +225,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om
     }
 
-    fn visit_view_path(&mut self, path: hir::ViewPath_,
-                       om: &mut Module,
-                       id: ast::NodeId,
-                       please_inline: bool) -> Option<hir::ViewPath_> {
-        match path {
-            hir::ViewPathSimple(dst, base) => {
-                if self.maybe_inline_local(id, Some(dst), false, om, please_inline) {
-                    None
-                } else {
-                    Some(hir::ViewPathSimple(dst, base))
-                }
-            }
-            hir::ViewPathList(p, paths) => {
-                let mine = paths.into_iter().filter(|path| {
-                    !self.maybe_inline_local(path.node.id, path.node.rename,
-                                             false, om, please_inline)
-                }).collect::<hir::HirVec<hir::PathListItem>>();
-
-                if mine.is_empty() {
-                    None
-                } else {
-                    Some(hir::ViewPathList(p, mine))
-                }
-            }
-
-            hir::ViewPathGlob(base) => {
-                if self.maybe_inline_local(id, None, true, om, please_inline) {
-                    None
-                } else {
-                    Some(hir::ViewPathGlob(base))
-                }
-            }
-        }
-
-    }
-
     /// Tries to resolve the target of a `pub use` statement and inlines the
     /// target if it is defined locally and would not be documented otherwise,
     /// or when it is specifically requested with `please_inline`.
@@ -270,8 +234,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     /// and follows different rules.
     ///
     /// Returns true if the target has been inlined.
-    fn maybe_inline_local(&mut self, id: ast::NodeId, renamed: Option<ast::Name>,
-                  glob: bool, om: &mut Module, please_inline: bool) -> bool {
+    fn maybe_inline_local(&mut self,
+                          id: ast::NodeId,
+                          def: Def,
+                          renamed: Option<ast::Name>,
+                          glob: bool,
+                          om: &mut Module,
+                          please_inline: bool) -> bool {
 
         fn inherits_doc_hidden(cx: &core::DocContext, mut node: ast::NodeId) -> bool {
             while let Some(id) = cx.tcx.map.get_enclosing_scope(node) {
@@ -287,7 +256,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
 
         let tcx = self.cx.tcx;
-        let def = tcx.expect_def(id);
+        if def == Def::Err {
+            return false;
+        }
         let def_did = def.def_id();
 
         let use_attrs = tcx.map.attrs(id);
@@ -388,11 +359,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     whence: item.span,
                 })
             }
-            hir::ItemUse(ref vpath) => {
-                let node = vpath.node.clone();
+            hir::ItemUse(_, hir::UseKind::ListStem) => {}
+            hir::ItemUse(ref path, kind) => {
+                let is_glob = kind == hir::UseKind::Glob;
+
                 // If there was a private module in the current path then don't bother inlining
                 // anything as it will probably be stripped anyway.
-                let node = if item.vis == hir::Public && self.inside_public_path {
+                if item.vis == hir::Public && self.inside_public_path {
                     let please_inline = item.attrs.iter().any(|item| {
                         match item.meta_item_list() {
                             Some(list) if item.check_name("doc") => {
@@ -401,18 +374,24 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                             _ => false,
                         }
                     });
-                    match self.visit_view_path(node, om, item.id, please_inline) {
-                        None => return,
-                        Some(p) => p
+                    let name = if is_glob { None } else { Some(name) };
+                    if self.maybe_inline_local(item.id,
+                                               path.def,
+                                               name,
+                                               is_glob,
+                                               om,
+                                               please_inline) {
+                        return;
                     }
-                } else {
-                    node
-                };
+                }
+
                 om.imports.push(Import {
+                    name: name,
                     id: item.id,
                     vis: item.vis.clone(),
                     attrs: item.attrs.clone(),
-                    node: node,
+                    path: (**path).clone(),
+                    glob: is_glob,
                     whence: item.span,
                 });
             }

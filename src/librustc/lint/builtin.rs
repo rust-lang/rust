@@ -211,6 +211,12 @@ declare_lint! {
      not named `mod.rs`"
 }
 
+declare_lint! {
+    pub DEPRECATED,
+    Warn,
+    "detects use of deprecated items"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -250,7 +256,8 @@ impl LintPass for HardwiredLints {
             SAFE_EXTERN_STATICS,
             PATTERNS_IN_FNS_WITHOUT_BODY,
             EXTRA_REQUIREMENT_IN_IMPL,
-            LEGACY_DIRECTORY_OWNERSHIP
+            LEGACY_DIRECTORY_OWNERSHIP,
+            DEPRECATED
         )
     }
 }

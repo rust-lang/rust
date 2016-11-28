@@ -14,7 +14,6 @@ use hir::def_id::DefId;
 use hir::map::DefPathData;
 use infer::InferCtxt;
 use hir::map as ast_map;
-use hir::pat_util;
 use traits::{self, Reveal};
 use ty::{self, Ty, AdtKind, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::{Disr, ParameterEnvironment};
@@ -180,14 +179,6 @@ impl<'tcx> ParameterEnvironment<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn pat_contains_ref_binding(self, pat: &hir::Pat) -> Option<hir::Mutability> {
-        pat_util::pat_contains_ref_binding(pat)
-    }
-
-    pub fn arm_contains_ref_binding(self, arm: &hir::Arm) -> Option<hir::Mutability> {
-        pat_util::arm_contains_ref_binding(arm)
-    }
-
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
             ty::TyAdt(def, substs) => {

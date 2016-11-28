@@ -18,7 +18,6 @@ use rustc::hir::map;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval as const_eval;
-use rustc::middle::region::CodeExtent;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
@@ -265,10 +264,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     args: vec![fun.to_ref(), tupled_args.to_ref()]
                 }
             } else {
-                let adt_data = if let hir::ExprPath(..) = fun.node {
+                let adt_data = if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = fun.node {
                     // Tuple-like ADTs are represented as ExprCall. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def|{
-                        match cx.tcx.expect_def(fun.id) {
+                        match path.def {
                             Def::VariantCtor(variant_id, CtorKind::Fn) => {
                                 Some((adt_def, adt_def.variant_index_with_id(variant_id)))
                             },
@@ -456,7 +455,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprStruct(_, ref fields, ref base) => {
+        hir::ExprStruct(ref qpath, ref fields, ref base) => {
             match expr_ty.sty {
                 ty::TyAdt(adt, substs) => match adt.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
@@ -476,7 +475,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         }
                     }
                     AdtKind::Enum => {
-                        match cx.tcx.expect_def(expr.id) {
+                        let def = match *qpath {
+                            hir::QPath::Resolved(_, ref path) => path.def,
+                            hir::QPath::TypeRelative(..) => Def::Err
+                        };
+                        match def {
                             Def::Variant(variant_id) => {
                                 assert!(base.is_none());
 
@@ -490,7 +493,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                     base: None
                                 }
                             }
-                            ref def => {
+                            _ => {
                                 span_bug!(
                                     expr.span,
                                     "unexpected def: {:?}",
@@ -531,8 +534,9 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprPath(..) => {
-            convert_path_expr(cx, expr)
+        hir::ExprPath(ref qpath) => {
+            let def = cx.tcx.tables().qpath_def(qpath, expr.id);
+            convert_path_expr(cx, expr, def)
         }
 
         hir::ExprInlineAsm(ref asm, ref outputs, ref inputs) => {
@@ -559,10 +563,18 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprRet(ref v) =>
             ExprKind::Return { value: v.to_ref() },
         hir::ExprBreak(label, ref value) =>
-            ExprKind::Break { label: label.map(|_| loop_label(cx, expr)),
-                              value: value.to_ref() },
+            ExprKind::Break {
+                label: label.map(|label| {
+                    cx.tcx.region_maps.node_extent(label.loop_id)
+                }),
+                value: value.to_ref()
+            },
         hir::ExprAgain(label) =>
-            ExprKind::Continue { label: label.map(|_| loop_label(cx, expr)) },
+            ExprKind::Continue {
+                label: label.map(|label| {
+                    cx.tcx.region_maps.node_extent(label.loop_id)
+                })
+            },
         hir::ExprMatch(ref discr, ref arms, _) =>
             ExprKind::Match { discriminant: discr.to_ref(),
                               arms: arms.iter().map(|a| convert_arm(cx, a)).collect() },
@@ -661,11 +673,11 @@ fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 }
 
 fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                     expr: &'tcx hir::Expr)
+                                     expr: &'tcx hir::Expr,
+                                     def: Def)
                                      -> ExprKind<'tcx> {
     let substs = cx.tcx.tables().node_id_item_substs(expr.id)
         .unwrap_or_else(|| cx.tcx.intern_substs(&[]));
-    let def = cx.tcx.expect_def(expr.id);
     let def_id = match def {
         // A regular function, constructor function or a constant.
         Def::Fn(def_id) | Def::Method(def_id) |
@@ -987,14 +999,6 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                          arg: captured_var.to_ref() }
             }.to_ref()
         }
-    }
-}
-
-fn loop_label<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                              expr: &'tcx hir::Expr) -> CodeExtent {
-    match cx.tcx.expect_def(expr.id) {
-        Def::Label(loop_id) => cx.tcx.region_maps.node_extent(loop_id),
-        d => span_bug!(expr.span, "loop scope resolved to {:?}", d),
     }
 }
 

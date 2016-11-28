@@ -10,8 +10,6 @@
 
 use rustc_data_structures::graph;
 use cfg::*;
-use hir::def::Def;
-use hir::pat_util;
 use ty::{self, TyCtxt};
 use syntax::ast;
 use syntax::ptr::P;
@@ -100,7 +98,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn pat(&mut self, pat: &hir::Pat, pred: CFGIndex) -> CFGIndex {
         match pat.node {
             PatKind::Binding(.., None) |
-            PatKind::Path(..) |
+            PatKind::Path(_) |
             PatKind::Lit(..) |
             PatKind::Range(..) |
             PatKind::Wild => {
@@ -284,7 +282,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             hir::ExprBreak(label, ref opt_expr) => {
                 let v = self.opt_expr(opt_expr, pred);
-                let loop_scope = self.find_scope(expr, label.map(|l| l.node));
+                let loop_scope = self.find_scope(expr, label);
                 let b = self.add_ast_node(expr.id, &[v]);
                 self.add_exiting_edge(expr, b,
                                       loop_scope, loop_scope.break_index);
@@ -292,7 +290,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprAgain(label) => {
-                let loop_scope = self.find_scope(expr, label.map(|l| l.node));
+                let loop_scope = self.find_scope(expr, label);
                 let a = self.add_ast_node(expr.id, &[pred]);
                 self.add_exiting_edge(expr, a,
                                       loop_scope, loop_scope.continue_index);
@@ -361,7 +359,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             hir::ExprClosure(..) |
             hir::ExprLit(..) |
-            hir::ExprPath(..) => {
+            hir::ExprPath(_) => {
                 self.straightline(expr, pred, None::<hir::Expr>.iter())
             }
         }
@@ -457,7 +455,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     // Visit the guard expression
                     let guard_exit = self.expr(&guard, guard_start);
 
-                    let this_has_bindings = pat_util::pat_contains_bindings_or_wild(&pat);
+                    let this_has_bindings = pat.contains_bindings_or_wild();
 
                     // If both this pattern and the previous pattern
                     // were free of bindings, they must consist only
@@ -570,23 +568,16 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn find_scope(&self,
                   expr: &hir::Expr,
-                  label: Option<ast::Name>) -> LoopScope {
-        if label.is_none() {
-            return *self.loop_scopes.last().unwrap();
-        }
-
-        match self.tcx.expect_def(expr.id) {
-            Def::Label(loop_id) => {
+                  label: Option<hir::Label>) -> LoopScope {
+        match label {
+            None => *self.loop_scopes.last().unwrap(),
+            Some(label) => {
                 for l in &self.loop_scopes {
-                    if l.loop_id == loop_id {
+                    if l.loop_id == label.loop_id {
                         return *l;
                     }
                 }
-                span_bug!(expr.span, "no loop scope for id {}", loop_id);
-            }
-
-            r => {
-                span_bug!(expr.span, "bad entry `{:?}` in def_map for label", r);
+                span_bug!(expr.span, "no loop scope for id {}", label.loop_id);
             }
         }
     }

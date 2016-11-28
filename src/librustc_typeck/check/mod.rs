@@ -80,12 +80,11 @@ pub use self::Expectation::*;
 pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::TupleArgumentsFlag::*;
 
-use astconv::{AstConv, ast_region_to_region, PathParamMode};
+use astconv::{AstConv, ast_region_to_region};
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
-use hir::def::{Def, CtorKind, PathResolution};
+use hir::def::{Def, CtorKind};
 use hir::def_id::{DefId, LOCAL_CRATE};
-use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin,
                    TypeTrace, type_variable};
 use rustc::ty::subst::{Kind, Subst, Substs};
@@ -342,7 +341,7 @@ impl UnsafetyState {
                         (unsafety, blk.id, self.unsafe_push_count.checked_sub(1).unwrap()),
                     hir::UnsafeBlock(..) =>
                         (hir::Unsafety::Unsafe, blk.id, self.unsafe_push_count),
-                    hir::DefaultBlock | hir::PushUnstableBlock | hir:: PopUnstableBlock =>
+                    hir::DefaultBlock =>
                         (unsafety, self.def, self.unsafe_push_count),
                 };
                 UnsafetyState{ def: def,
@@ -711,7 +710,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
-        if let PatKind::Binding(_, ref path1, _) = p.node {
+        if let PatKind::Binding(_, _, ref path1, _) = p.node {
             let var_ty = self.assign(p.span, p.id, None);
 
             self.fcx.require_type_is_sized(var_ty, p.span,
@@ -796,7 +795,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             fcx.register_old_wf_obligation(arg_ty, input.ty.span, traits::MiscObligation);
 
             // Create type variables for each argument.
-            pat_util::pat_bindings(&input.pat, |_bm, pat_id, sp, _path| {
+            input.pat.each_binding(|_bm, pat_id, sp, _path| {
                 let var_ty = visit.assign(sp, pat_id, None);
                 fcx.require_type_is_sized(var_ty, sp, traits::VariableType(pat_id));
             });
@@ -2999,6 +2998,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
                             autoderef.finalize(lvalue_pref, Some(base));
                             self.write_autoderef_adjustment(base.id, autoderefs, base_t);
+
+                            self.tcx.check_stability(field.did, expr.id, expr.span);
+
                             return field_ty;
                         }
                         private_candidate = Some((base_def.did, field_ty));
@@ -3101,6 +3103,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let field_ty = self.field_ty(expr.span, field, substs);
                         private_candidate = Some((base_def.did, field_ty));
                         if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
+                            self.tcx.check_stability(field.did, expr.id, expr.span);
                             Some(field_ty)
                         } else {
                             None
@@ -3193,13 +3196,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_expr_struct_fields(&self,
                                 adt_ty: Ty<'tcx>,
+                                expr_id: ast::NodeId,
                                 span: Span,
                                 variant: ty::VariantDef<'tcx>,
                                 ast_fields: &'gcx [hir::Field],
                                 check_completeness: bool) {
         let tcx = self.tcx;
-        let (substs, kind_name) = match adt_ty.sty {
-            ty::TyAdt(adt, substs) => (substs, adt.variant_descr()),
+        let (substs, adt_kind, kind_name) = match adt_ty.sty {
+            ty::TyAdt(adt, substs) => (substs, adt.adt_kind(), adt.variant_descr()),
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
@@ -3220,6 +3224,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 expected_field_type = self.field_ty(field.span, v_field, substs);
 
                 seen_fields.insert(field.name.node, field.span);
+
+                // we don't look at stability attributes on
+                // struct-like enums (yet...), but it's definitely not
+                // a bug to have construct one.
+                if adt_kind != ty::AdtKind::Enum {
+                    tcx.check_stability(v_field.did, expr_id, field.span);
+                }
             } else {
                 error_happened = true;
                 expected_field_type = tcx.types.err;
@@ -3301,10 +3312,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_struct_path(&self,
-                             path: &hir::Path,
+                             qpath: &hir::QPath,
                              node_id: ast::NodeId)
                              -> Option<(ty::VariantDef<'tcx>,  Ty<'tcx>)> {
-        let (def, ty) = self.finish_resolving_struct_path(path, node_id);
+        let path_span = match *qpath {
+            hir::QPath::Resolved(_, ref path) => path.span,
+            hir::QPath::TypeRelative(ref qself, _) => qself.span
+        };
+        let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, node_id);
         let variant = match def {
             Def::Err => {
                 self.set_tainted_by_errors();
@@ -3324,7 +3339,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Def::AssociatedTy(..) | Def::SelfTy(..)
                             if !self.tcx.sess.features.borrow().more_struct_aliases => {
                         emit_feature_err(&self.tcx.sess.parse_sess,
-                                         "more_struct_aliases", path.span, GateIssue::Language,
+                                         "more_struct_aliases", path_span, GateIssue::Language,
                                          "`Self` and associated types in struct \
                                           expressions and patterns are unstable");
                     }
@@ -3342,17 +3357,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some((variant, did, substs)) = variant {
             // Check bounds on type arguments used in the path.
-            let bounds = self.instantiate_bounds(path.span, did, substs);
-            let cause = traits::ObligationCause::new(path.span, self.body_id,
+            let bounds = self.instantiate_bounds(path_span, did, substs);
+            let cause = traits::ObligationCause::new(path_span, self.body_id,
                                                      traits::ItemObligation(did));
             self.add_obligations_for_parameters(cause, &bounds);
 
             Some((variant, ty))
         } else {
-            struct_span_err!(self.tcx.sess, path.span, E0071,
+            struct_span_err!(self.tcx.sess, path_span, E0071,
                              "expected struct, variant or union type, found {}",
                              ty.sort_string(self.tcx))
-                .span_label(path.span, &format!("not a struct"))
+                .span_label(path_span, &format!("not a struct"))
                 .emit();
             None
         }
@@ -3360,19 +3375,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_expr_struct(&self,
                          expr: &hir::Expr,
-                         path: &hir::Path,
+                         qpath: &hir::QPath,
                          fields: &'gcx [hir::Field],
                          base_expr: &'gcx Option<P<hir::Expr>>) -> Ty<'tcx>
     {
         // Find the relevant variant
-        let (variant, struct_ty) = if let Some(variant_ty) = self.check_struct_path(path, expr.id) {
+        let (variant, struct_ty) =
+        if let Some(variant_ty) = self.check_struct_path(qpath, expr.id) {
             variant_ty
         } else {
             self.check_struct_fields_on_error(fields, base_expr);
             return self.tcx.types.err;
         };
 
-        self.check_expr_struct_fields(struct_ty, path.span, variant, fields,
+        let path_span = match *qpath {
+            hir::QPath::Resolved(_, ref path) => path.span,
+            hir::QPath::TypeRelative(ref qself, _) => qself.span
+        };
+
+        self.check_expr_struct_fields(struct_ty, expr.id, path_span, variant, fields,
                                       base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
             self.check_expr_has_type(base_expr, struct_ty);
@@ -3590,9 +3611,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tcx.mk_ref(region, tm)
             }
           }
-          hir::ExprPath(ref opt_qself, ref path) => {
-              let opt_self_ty = opt_qself.as_ref().map(|qself| self.to_ty(&qself.ty));
-              let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(opt_self_ty, path,
+          hir::ExprPath(ref qpath) => {
+              let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath,
                                                                          expr.id, expr.span);
               let ty = if def != Def::Err {
                   self.instantiate_value_path(segments, opt_ty, def, expr.span, id)
@@ -3618,72 +3638,58 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               }
               tcx.mk_nil()
           }
-          hir::ExprBreak(ref label_opt, ref expr_opt) => {
-            let loop_id = if label_opt.is_some() {
-                let loop_def = tcx.expect_def(expr.id);
-                if let Def::Label(loop_id) = loop_def {
-                    Some(Some(loop_id))
-                } else if loop_def == Def::Err {
-                    // an error was already printed, so just ignore it
-                    None
-                } else {
-                    span_bug!(expr.span, "break label resolved to a non-label");
-                }
-            } else {
-                Some(None)
+          hir::ExprBreak(label, ref expr_opt) => {
+            let loop_id = label.map(|l| l.loop_id);
+            let coerce_to = {
+                let mut enclosing_loops = self.enclosing_loops.borrow_mut();
+                enclosing_loops.find_loop(loop_id).map(|ctxt| ctxt.coerce_to)
             };
-            if let Some(loop_id) = loop_id {
-                let coerce_to = {
-                    let mut enclosing_loops = self.enclosing_loops.borrow_mut();
-                    enclosing_loops.find_loop(loop_id).map(|ctxt| ctxt.coerce_to)
-                };
-                if let Some(coerce_to) = coerce_to {
-                    let e_ty;
-                    let cause;
-                    if let Some(ref e) = *expr_opt {
-                        // Recurse without `enclosing_loops` borrowed.
-                        e_ty = self.check_expr_with_hint(e, coerce_to);
-                        cause = self.misc(e.span);
-                        // Notably, the recursive call may alter coerce_to - must not keep using it!
-                    } else {
-                        // `break` without argument acts like `break ()`.
-                        e_ty = tcx.mk_nil();
-                        cause = self.misc(expr.span);
-                    }
-                    let mut enclosing_loops = self.enclosing_loops.borrow_mut();
-                    let ctxt = enclosing_loops.find_loop(loop_id).unwrap();
-
-                    let result = if let Some(ref e) = *expr_opt {
-                        // Special-case the first element, as it has no "previous expressions".
-                        let result = if !ctxt.may_break {
-                            self.try_coerce(e, e_ty, ctxt.coerce_to)
-                        } else {
-                            self.try_find_coercion_lub(&cause, || ctxt.break_exprs.iter().cloned(),
-                                                       ctxt.unified, e, e_ty)
-                        };
-
-                        ctxt.break_exprs.push(e);
-                        result
-                    } else {
-                        self.eq_types(true, &cause, e_ty, ctxt.unified)
-                            .map(|InferOk { obligations, .. }| {
-                                // FIXME(#32730) propagate obligations
-                                assert!(obligations.is_empty());
-                                e_ty
-                            })
-                    };
-                    match result {
-                        Ok(ty) => ctxt.unified = ty,
-                        Err(err) => {
-                            self.report_mismatched_types(&cause, ctxt.unified, e_ty, err);
-                        }
-                    }
-
-                    ctxt.may_break = true;
+            if let Some(coerce_to) = coerce_to {
+                let e_ty;
+                let cause;
+                if let Some(ref e) = *expr_opt {
+                    // Recurse without `enclosing_loops` borrowed.
+                    e_ty = self.check_expr_with_hint(e, coerce_to);
+                    cause = self.misc(e.span);
+                    // Notably, the recursive call may alter coerce_to - must not keep using it!
+                } else {
+                    // `break` without argument acts like `break ()`.
+                    e_ty = tcx.mk_nil();
+                    cause = self.misc(expr.span);
                 }
-                // Otherwise, we failed to find the enclosing loop; this can only happen if the
-                // `break` was not inside a loop at all, which is caught by the loop-checking pass.
+                let mut enclosing_loops = self.enclosing_loops.borrow_mut();
+                let ctxt = enclosing_loops.find_loop(loop_id).unwrap();
+
+                let result = if let Some(ref e) = *expr_opt {
+                    // Special-case the first element, as it has no "previous expressions".
+                    let result = if !ctxt.may_break {
+                        self.try_coerce(e, e_ty, ctxt.coerce_to)
+                    } else {
+                        self.try_find_coercion_lub(&cause, || ctxt.break_exprs.iter().cloned(),
+                                                   ctxt.unified, e, e_ty)
+                    };
+
+                    ctxt.break_exprs.push(e);
+                    result
+                } else {
+                    self.eq_types(true, &cause, e_ty, ctxt.unified)
+                        .map(|InferOk { obligations, .. }| {
+                            // FIXME(#32730) propagate obligations
+                            assert!(obligations.is_empty());
+                            e_ty
+                        })
+                };
+                match result {
+                    Ok(ty) => ctxt.unified = ty,
+                    Err(err) => {
+                        self.report_mismatched_types(&cause, ctxt.unified, e_ty, err);
+                    }
+                }
+
+                ctxt.may_break = true;
             }
+            // Otherwise, we failed to find the enclosing loop; this can only happen if the
+            // `break` was not inside a loop at all, which is caught by the loop-checking pass.
             tcx.types.never
           }
           hir::ExprAgain(_) => { tcx.types.never }
@@ -3930,8 +3936,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tuple
             }
           }
-          hir::ExprStruct(ref path, ref fields, ref base_expr) => {
-            self.check_expr_struct(expr, path, fields, base_expr)
+          hir::ExprStruct(ref qpath, ref fields, ref base_expr) => {
+            self.check_expr_struct(expr, qpath, fields, base_expr)
           }
           hir::ExprField(ref base, ref field) => {
             self.check_field(expr, lvalue_pref, &base, field)
@@ -3997,83 +4003,81 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Finish resolving a path in a struct expression or pattern `S::A { .. }` if necessary.
-    // The newly resolved definition is written into `def_map`.
+    // The newly resolved definition is written into `type_relative_path_defs`.
     fn finish_resolving_struct_path(&self,
-                                    path: &hir::Path,
+                                    qpath: &hir::QPath,
+                                    path_span: Span,
                                     node_id: ast::NodeId)
                                     -> (Def, Ty<'tcx>)
     {
-        let path_res = self.tcx.expect_resolution(node_id);
-        let base_ty_end = path.segments.len() - path_res.depth;
-        let (ty, def) = AstConv::finish_resolving_def_to_ty(self, self, path.span,
-                                                            PathParamMode::Optional,
-                                                            path_res.base_def,
-                                                            None,
-                                                            node_id,
-                                                            &path.segments[..base_ty_end],
-                                                            &path.segments[base_ty_end..],
-                                                            true);
-        // Write back the new resolution.
-        if path_res.depth != 0 {
-            self.tcx.def_map.borrow_mut().insert(node_id, PathResolution::new(def));
+        match *qpath {
+            hir::QPath::Resolved(ref maybe_qself, ref path) => {
+                let opt_self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
+                let ty = AstConv::def_to_ty(self, self, opt_self_ty, path, node_id, true);
+                (path.def, ty)
+            }
+            hir::QPath::TypeRelative(ref qself, ref segment) => {
+                let ty = self.to_ty(qself);
+
+                let def = if let hir::TyPath(hir::QPath::Resolved(_, ref path)) = qself.node {
+                    path.def
+                } else {
+                    Def::Err
+                };
+                let (ty, def) = AstConv::associated_path_def_to_ty(self, node_id, path_span,
+                                                                   ty, def, segment);
+
+                // Write back the new resolution.
+                self.tables.borrow_mut().type_relative_path_defs.insert(node_id, def);
+
+                (def, ty)
+            }
         }
-        (def, ty)
     }
 
     // Resolve associated value path into a base type and associated constant or method definition.
-    // The newly resolved definition is written into `def_map`.
+    // The newly resolved definition is written into `type_relative_path_defs`.
     pub fn resolve_ty_and_def_ufcs<'b>(&self,
-                                       opt_self_ty: Option<Ty<'tcx>>,
-                                       path: &'b hir::Path,
+                                       qpath: &'b hir::QPath,
                                        node_id: ast::NodeId,
                                        span: Span)
                                        -> (Def, Option<Ty<'tcx>>, &'b [hir::PathSegment])
     {
-        let path_res = self.tcx.expect_resolution(node_id);
-        if path_res.depth == 0 {
-            // If fully resolved already, we don't have to do anything.
-            (path_res.base_def, opt_self_ty, &path.segments)
-        } else {
-            // Try to resolve everything except for the last segment as a type.
-            let ty_segments = path.segments.split_last().unwrap().1;
-            let base_ty_end = path.segments.len() - path_res.depth;
-            let (ty, _def) = AstConv::finish_resolving_def_to_ty(self, self, span,
-                                                                 PathParamMode::Optional,
-                                                                 path_res.base_def,
-                                                                 opt_self_ty,
-                                                                 node_id,
-                                                                 &ty_segments[..base_ty_end],
-                                                                 &ty_segments[base_ty_end..],
-                                                                 false);
-
-            // Resolve an associated constant or method on the previously resolved type.
-            let item_segment = path.segments.last().unwrap();
-            let item_name = item_segment.name;
-            let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
-                Ok(def) => def,
-                Err(error) => {
-                    let def = match error {
-                        method::MethodError::PrivateMatch(def) => def,
-                        _ => Def::Err,
-                    };
-                    if item_name != keywords::Invalid.name() {
-                        self.report_method_error(span, ty, item_name, None, error);
-                    }
-                    def
+        let (ty, item_segment) = match *qpath {
+            hir::QPath::Resolved(ref opt_qself, ref path) => {
+                return (path.def,
+                        opt_qself.as_ref().map(|qself| self.to_ty(qself)),
+                        &path.segments[..]);
+            }
+            hir::QPath::TypeRelative(ref qself, ref segment) => {
+                (self.to_ty(qself), segment)
+            }
+        };
+        let item_name = item_segment.name;
+        let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
+            Ok(def) => def,
+            Err(error) => {
+                let def = match error {
+                    method::MethodError::PrivateMatch(def) => def,
+                    _ => Def::Err,
+                };
+                if item_name != keywords::Invalid.name() {
+                    self.report_method_error(span, ty, item_name, None, error);
                 }
-            };
+                def
+            }
+        };
 
-            // Write back the new resolution.
-            self.tcx.def_map.borrow_mut().insert(node_id, PathResolution::new(def));
-            (def, Some(ty), slice::ref_slice(item_segment))
-        }
+        // Write back the new resolution.
+        self.tables.borrow_mut().type_relative_path_defs.insert(node_id, def);
+        (def, Some(ty), slice::ref_slice(&**item_segment))
     }
 
     pub fn check_decl_initializer(&self,
                                   local: &'gcx hir::Local,
                                   init: &'gcx hir::Expr) -> Ty<'tcx>
     {
-        let ref_bindings = self.tcx.pat_contains_ref_binding(&local.pat);
+        let ref_bindings = local.pat.contains_ref_binding();
 
         let local_ty = self.local_ty(init.span, local.id);
         if let Some(m) = ref_bindings {
@@ -4379,11 +4383,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => bug!("unexpected definition: {:?}", def),
         }
 
-        // In `<T as Trait<A, B>>::method`, `A` and `B` are mandatory, but
-        // `opt_self_ty` can also be Some for `Foo::method`, where Foo's
-        // type parameters are not mandatory.
-        let require_type_space = opt_self_ty.is_some() && ufcs_associated.is_none();
-
         debug!("type_segment={:?} fn_segment={:?}", type_segment, fn_segment);
 
         // Now that we have categorized what space the parameters for each
@@ -4414,8 +4413,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // variables. If the user provided some types, we may still need
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
-        self.check_path_parameter_count(span, !require_type_space, &mut type_segment);
-        self.check_path_parameter_count(span, true, &mut fn_segment);
+        self.check_path_parameter_count(span, &mut type_segment);
+        self.check_path_parameter_count(span, &mut fn_segment);
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
@@ -4450,7 +4449,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }, |def, substs| {
             let mut i = def.index as usize;
 
-            let can_omit = i >= fn_start || !require_type_space;
             let segment = if i < fn_start {
                 // Handle Self first, so we can adjust the index to match the AST.
                 if has_self && i == 0 {
@@ -4464,10 +4462,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= fn_start;
                 fn_segment
             };
-            let types = match segment.map(|(s, _)| &s.parameters) {
-                Some(&hir::AngleBracketedParameters(ref data)) => &data.types[..],
+            let (types, infer_types) = match segment.map(|(s, _)| &s.parameters) {
+                Some(&hir::AngleBracketedParameters(ref data)) => {
+                    (&data.types[..], data.infer_types)
+                }
                 Some(&hir::ParenthesizedParameters(_)) => bug!(),
-                None => &[]
+                None => (&[][..], true)
             };
 
             // Skip over the lifetimes in the same segment.
@@ -4475,11 +4475,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= generics.regions.len();
             }
 
-            let omitted = can_omit && types.is_empty();
             if let Some(ast_ty) = types.get(i) {
                 // A provided type parameter.
                 self.to_ty(ast_ty)
-            } else if let (false, Some(default)) = (omitted, def.default) {
+            } else if let (false, Some(default)) = (infer_types, def.default) {
                 // No type parameter provided, but a default exists.
                 default.subst_spanned(self.tcx, substs, Some(span))
             } else {
@@ -4539,16 +4538,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Report errors if the provided parameters are too few or too many.
     fn check_path_parameter_count(&self,
                                   span: Span,
-                                  can_omit: bool,
                                   segment: &mut Option<(&hir::PathSegment, &ty::Generics)>) {
-        let (lifetimes, types, bindings) = match segment.map(|(s, _)| &s.parameters) {
-            Some(&hir::AngleBracketedParameters(ref data)) => {
-                (&data.lifetimes[..], &data.types[..], &data.bindings[..])
+        let (lifetimes, types, infer_types, bindings) = {
+            match segment.map(|(s, _)| &s.parameters) {
+                Some(&hir::AngleBracketedParameters(ref data)) => {
+                    (&data.lifetimes[..], &data.types[..], data.infer_types, &data.bindings[..])
+                }
+                Some(&hir::ParenthesizedParameters(_)) => {
+                    span_bug!(span, "parenthesized parameters cannot appear in ExprPath");
+                }
+                None => (&[][..], &[][..], true, &[][..])
             }
-            Some(&hir::ParenthesizedParameters(_)) => {
-                span_bug!(span, "parenthesized parameters cannot appear in ExprPath");
-            }
-            None => (&[][..], &[][..], &[][..])
         };
 
         let count = |n| {
@@ -4597,7 +4597,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
             *segment = None;
-        } else if !(can_omit && types.len() == 0) && types.len() < required_len {
+        } else if !infer_types && types.len() < required_len {
             let adjust = |len| if len > 1 { "parameters" } else { "parameter" };
             let required_param_str = adjust(required_len);
             let actual_param_str = adjust(types.len());

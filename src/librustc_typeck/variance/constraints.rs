@@ -104,7 +104,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             }
 
             hir::ItemExternCrate(_) |
-            hir::ItemUse(_) |
+            hir::ItemUse(..) |
             hir::ItemStatic(..) |
             hir::ItemConst(..) |
             hir::ItemFn(..) |

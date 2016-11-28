@@ -246,7 +246,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
             }
 
             hir::ItemExternCrate(_) |
-            hir::ItemUse(_) |
+            hir::ItemUse(..) |
             hir::ItemDefaultImpl(..) |
             hir::ItemImpl(..) |
             hir::ItemStatic(..) |

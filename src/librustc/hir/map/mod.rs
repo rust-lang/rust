@@ -46,9 +46,11 @@ pub enum Node<'ast> {
     NodeTraitItem(&'ast TraitItem),
     NodeImplItem(&'ast ImplItem),
     NodeVariant(&'ast Variant),
+    NodeField(&'ast StructField),
     NodeExpr(&'ast Expr),
     NodeStmt(&'ast Stmt),
     NodeTy(&'ast Ty),
+    NodeTraitRef(&'ast TraitRef),
     NodeLocal(&'ast Pat),
     NodePat(&'ast Pat),
     NodeBlock(&'ast Block),
@@ -57,7 +59,8 @@ pub enum Node<'ast> {
     NodeStructCtor(&'ast VariantData),
 
     NodeLifetime(&'ast Lifetime),
-    NodeTyParam(&'ast TyParam)
+    NodeTyParam(&'ast TyParam),
+    NodeVisibility(&'ast Visibility),
 }
 
 /// Represents an entry and its parent NodeID.
@@ -73,15 +76,18 @@ pub enum MapEntry<'ast> {
     EntryTraitItem(NodeId, &'ast TraitItem),
     EntryImplItem(NodeId, &'ast ImplItem),
     EntryVariant(NodeId, &'ast Variant),
+    EntryField(NodeId, &'ast StructField),
     EntryExpr(NodeId, &'ast Expr),
     EntryStmt(NodeId, &'ast Stmt),
     EntryTy(NodeId, &'ast Ty),
+    EntryTraitRef(NodeId, &'ast TraitRef),
     EntryLocal(NodeId, &'ast Pat),
     EntryPat(NodeId, &'ast Pat),
     EntryBlock(NodeId, &'ast Block),
     EntryStructCtor(NodeId, &'ast VariantData),
     EntryLifetime(NodeId, &'ast Lifetime),
     EntryTyParam(NodeId, &'ast TyParam),
+    EntryVisibility(NodeId, &'ast Visibility),
 
     /// Roots for node trees.
     RootCrate,
@@ -102,15 +108,18 @@ impl<'ast> MapEntry<'ast> {
             NodeTraitItem(n) => EntryTraitItem(p, n),
             NodeImplItem(n) => EntryImplItem(p, n),
             NodeVariant(n) => EntryVariant(p, n),
+            NodeField(n) => EntryField(p, n),
             NodeExpr(n) => EntryExpr(p, n),
             NodeStmt(n) => EntryStmt(p, n),
             NodeTy(n) => EntryTy(p, n),
+            NodeTraitRef(n) => EntryTraitRef(p, n),
             NodeLocal(n) => EntryLocal(p, n),
             NodePat(n) => EntryPat(p, n),
             NodeBlock(n) => EntryBlock(p, n),
             NodeStructCtor(n) => EntryStructCtor(p, n),
             NodeLifetime(n) => EntryLifetime(p, n),
             NodeTyParam(n) => EntryTyParam(p, n),
+            NodeVisibility(n) => EntryVisibility(p, n),
         }
     }
 
@@ -121,15 +130,18 @@ impl<'ast> MapEntry<'ast> {
             EntryTraitItem(id, _) => id,
             EntryImplItem(id, _) => id,
             EntryVariant(id, _) => id,
+            EntryField(id, _) => id,
             EntryExpr(id, _) => id,
             EntryStmt(id, _) => id,
             EntryTy(id, _) => id,
+            EntryTraitRef(id, _) => id,
             EntryLocal(id, _) => id,
             EntryPat(id, _) => id,
             EntryBlock(id, _) => id,
             EntryStructCtor(id, _) => id,
             EntryLifetime(id, _) => id,
             EntryTyParam(id, _) => id,
+            EntryVisibility(id, _) => id,
 
             NotPresent |
             RootCrate |
@@ -144,15 +156,18 @@ impl<'ast> MapEntry<'ast> {
             EntryTraitItem(_, n) => NodeTraitItem(n),
             EntryImplItem(_, n) => NodeImplItem(n),
             EntryVariant(_, n) => NodeVariant(n),
+            EntryField(_, n) => NodeField(n),
             EntryExpr(_, n) => NodeExpr(n),
             EntryStmt(_, n) => NodeStmt(n),
             EntryTy(_, n) => NodeTy(n),
+            EntryTraitRef(_, n) => NodeTraitRef(n),
             EntryLocal(_, n) => NodeLocal(n),
             EntryPat(_, n) => NodePat(n),
             EntryBlock(_, n) => NodeBlock(n),
             EntryStructCtor(_, n) => NodeStructCtor(n),
             EntryLifetime(_, n) => NodeLifetime(n),
             EntryTyParam(_, n) => NodeTyParam(n),
+            EntryVisibility(_, n) => NodeVisibility(n),
             _ => return None
         })
     }
@@ -240,16 +255,8 @@ impl<'ast> Map<'ast> {
             loop {
                 match map[id.as_usize()] {
                     EntryItem(_, item) => {
-                        let def_id = self.local_def_id(item.id);
-                        // NB                          ^~~~~~~
-                        //
-                        // You would expect that `item.id == id`, but this
-                        // is not always the case. In particular, for a
-                        // ViewPath item like `use self::{mem, foo}`, we
-                        // map the ids for `mem` and `foo` to the
-                        // enclosing view path item. This seems mega super
-                        // ultra wrong, but then who am I to judge?
-                        // -nmatsakis
+                        assert_eq!(id, item.id);
+                        let def_id = self.local_def_id(id);
                         assert!(!self.is_inlined_def_id(def_id));
                         return DepNode::Hir(def_id);
                     }
@@ -263,15 +270,18 @@ impl<'ast> Map<'ast> {
                     EntryForeignItem(p, _) |
                     EntryTraitItem(p, _) |
                     EntryVariant(p, _) |
+                    EntryField(p, _) |
                     EntryExpr(p, _) |
                     EntryStmt(p, _) |
                     EntryTy(p, _) |
+                    EntryTraitRef(p, _) |
                     EntryLocal(p, _) |
                     EntryPat(p, _) |
                     EntryBlock(p, _) |
                     EntryStructCtor(p, _) |
                     EntryLifetime(p, _) |
-                    EntryTyParam(p, _) =>
+                    EntryTyParam(p, _) |
+                    EntryVisibility(p, _) =>
                         id = p,
 
                     RootCrate =>
@@ -304,15 +314,18 @@ impl<'ast> Map<'ast> {
                     EntryTraitItem(p, _) |
                     EntryImplItem(p, _) |
                     EntryVariant(p, _) |
+                    EntryField(p, _) |
                     EntryExpr(p, _) |
                     EntryStmt(p, _) |
                     EntryTy(p, _) |
+                    EntryTraitRef(p, _) |
                     EntryLocal(p, _) |
                     EntryPat(p, _) |
                     EntryBlock(p, _) |
                     EntryStructCtor(p, _) |
                     EntryLifetime(p, _) |
-                    EntryTyParam(p, _) =>
+                    EntryTyParam(p, _) |
+                    EntryVisibility(p, _) =>
                         id = p,
 
                     RootInlinedParent(parent) => match *parent {
@@ -650,9 +663,10 @@ impl<'ast> Map<'ast> {
             NodeImplItem(ii) => ii.name,
             NodeTraitItem(ti) => ti.name,
             NodeVariant(v) => v.node.name,
+            NodeField(f) => f.name,
             NodeLifetime(lt) => lt.name,
             NodeTyParam(tp) => tp.name,
-            NodeLocal(&Pat { node: PatKind::Binding(_,l,_), .. }) => l.node,
+            NodeLocal(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.node,
             NodeStructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }
@@ -668,6 +682,7 @@ impl<'ast> Map<'ast> {
             Some(NodeTraitItem(ref ti)) => Some(&ti.attrs[..]),
             Some(NodeImplItem(ref ii)) => Some(&ii.attrs[..]),
             Some(NodeVariant(ref v)) => Some(&v.node.attrs[..]),
+            Some(NodeField(ref f)) => Some(&f.attrs[..]),
             Some(NodeExpr(ref e)) => Some(&*e.attrs),
             Some(NodeStmt(ref s)) => Some(s.node.attrs()),
             // unit/tuple structs take the attributes straight from
@@ -704,14 +719,17 @@ impl<'ast> Map<'ast> {
             Some(NodeTraitItem(trait_method)) => trait_method.span,
             Some(NodeImplItem(ref impl_item)) => impl_item.span,
             Some(NodeVariant(variant)) => variant.span,
+            Some(NodeField(field)) => field.span,
             Some(NodeExpr(expr)) => expr.span,
             Some(NodeStmt(stmt)) => stmt.span,
             Some(NodeTy(ty)) => ty.span,
+            Some(NodeTraitRef(tr)) => tr.path.span,
             Some(NodeLocal(pat)) => pat.span,
             Some(NodePat(pat)) => pat.span,
             Some(NodeBlock(block)) => block.span,
             Some(NodeStructCtor(_)) => self.expect_item(self.get_parent(id)).span,
             Some(NodeTyParam(ty_param)) => ty_param.span,
+            Some(NodeVisibility(&Visibility::Restricted { ref path, .. })) => path.span,
             _ => return None,
         };
         Some(sp)
@@ -823,6 +841,7 @@ impl<'a, 'ast> Iterator for NodesMatchingSuffix<'a, 'ast> {
                 Some(EntryTraitItem(_, n))  => n.name(),
                 Some(EntryImplItem(_, n))   => n.name(),
                 Some(EntryVariant(_, n))    => n.name(),
+                Some(EntryField(_, n))      => n.name(),
                 _ => continue,
             };
             if self.matches_names(self.map.get_parent(idx), name) {
@@ -841,6 +860,7 @@ impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() }
 impl Named for Item { fn name(&self) -> Name { self.name } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.name } }
 impl Named for Variant_ { fn name(&self) -> Name { self.name } }
+impl Named for StructField { fn name(&self) -> Name { self.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.name } }
 
@@ -926,10 +946,13 @@ impl<'a> NodePrinter for pprust::State<'a> {
             NodeExpr(a)        => self.print_expr(&a),
             NodeStmt(a)        => self.print_stmt(&a),
             NodeTy(a)          => self.print_type(&a),
+            NodeTraitRef(a)    => self.print_trait_ref(&a),
             NodePat(a)         => self.print_pat(&a),
             NodeBlock(a)       => self.print_block(&a),
             NodeLifetime(a)    => self.print_lifetime(&a),
+            NodeVisibility(a)  => self.print_visibility(&a),
             NodeTyParam(_)     => bug!("cannot print TyParam"),
+            NodeField(_)       => bug!("cannot print StructField"),
             // these cases do not carry enough information in the
             // ast_map to reconstruct their full structure for pretty
             // printing.
@@ -1009,6 +1032,11 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                     variant.node.name,
                     path_str(), id_str)
         }
+        Some(NodeField(ref field)) => {
+            format!("field {} in {}{}",
+                    field.name,
+                    path_str(), id_str)
+        }
         Some(NodeExpr(ref expr)) => {
             format!("expr {}{}", pprust::expr_to_string(&expr), id_str)
         }
@@ -1017,6 +1045,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeTy(ref ty)) => {
             format!("type {}{}", pprust::ty_to_string(&ty), id_str)
+        }
+        Some(NodeTraitRef(ref tr)) => {
+            format!("trait_ref {}{}", pprust::path_to_string(&tr.path), id_str)
         }
         Some(NodeLocal(ref pat)) => {
             format!("local {}{}", pprust::pat_to_string(&pat), id_str)
@@ -1036,6 +1067,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeTyParam(ref ty_param)) => {
             format!("typaram {:?}{}", ty_param, id_str)
+        }
+        Some(NodeVisibility(ref vis)) => {
+            format!("visibility {:?}{}", vis, id_str)
         }
         None => {
             format!("unknown node{}", id_str)

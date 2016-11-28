@@ -22,13 +22,15 @@ impl MyTrait for Foo {}
 
 fn main() {
     match 0u32 {
-        Foo::bar => {} //~ ERROR expected unit struct/variant or constant, found method `Foo::bar`
+        Foo::bar => {}
+        //~^ ERROR expected unit struct/variant or constant, found method `<Foo>::bar`
     }
     match 0u32 {
-        <Foo>::bar => {} //~ ERROR expected unit struct/variant or constant, found method `bar`
+        <Foo>::bar => {}
+        //~^ ERROR expected unit struct/variant or constant, found method `<Foo>::bar`
     }
     match 0u32 {
         <Foo>::trait_bar => {}
-        //~^ ERROR expected unit struct/variant or constant, found method `trait_bar`
+        //~^ ERROR expected unit struct/variant or constant, found method `<Foo>::trait_bar`
     }
 }

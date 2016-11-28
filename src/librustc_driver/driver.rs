@@ -25,7 +25,7 @@ use rustc::middle::{self, dependency_format, stability, reachable};
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::time;
-use rustc::util::nodemap::NodeSet;
+use rustc::util::nodemap::{NodeSet, NodeMap};
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_resolve::{MakeGlobMap, Resolver};
@@ -332,9 +332,9 @@ impl<'a> PhaseController<'a> {
 /// State that is passed to a callback. What state is available depends on when
 /// during compilation the callback is made. See the various constructor methods
 /// (`state_*`) in the impl to see which data is provided for any given entry point.
-pub struct CompileState<'a, 'b, 'ast: 'a, 'tcx: 'b> where 'ast: 'tcx {
+pub struct CompileState<'a, 'tcx: 'a> {
     pub input: &'a Input,
-    pub session: &'ast Session,
+    pub session: &'tcx Session,
     pub krate: Option<ast::Crate>,
     pub registry: Option<Registry<'a>>,
     pub cstore: Option<&'a CStore>,
@@ -342,21 +342,21 @@ pub struct CompileState<'a, 'b, 'ast: 'a, 'tcx: 'b> where 'ast: 'tcx {
     pub output_filenames: Option<&'a OutputFilenames>,
     pub out_dir: Option<&'a Path>,
     pub out_file: Option<&'a Path>,
-    pub arenas: Option<&'ast ty::CtxtArenas<'ast>>,
+    pub arenas: Option<&'tcx ty::CtxtArenas<'tcx>>,
     pub expanded_crate: Option<&'a ast::Crate>,
     pub hir_crate: Option<&'a hir::Crate>,
-    pub ast_map: Option<&'a hir_map::Map<'ast>>,
+    pub ast_map: Option<&'a hir_map::Map<'tcx>>,
     pub resolutions: Option<&'a Resolutions>,
-    pub analysis: Option<&'a ty::CrateAnalysis<'a>>,
-    pub tcx: Option<TyCtxt<'b, 'tcx, 'tcx>>,
+    pub analysis: Option<&'a ty::CrateAnalysis<'tcx>>,
+    pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
     pub trans: Option<&'a trans::CrateTranslation>,
 }
 
-impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
+impl<'a, 'tcx> CompileState<'a, 'tcx> {
     fn empty(input: &'a Input,
-             session: &'ast Session,
+             session: &'tcx Session,
              out_dir: &'a Option<PathBuf>)
-             -> CompileState<'a, 'b, 'ast, 'tcx> {
+             -> Self {
         CompileState {
             input: input,
             session: session,
@@ -379,12 +379,12 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
     }
 
     fn state_after_parse(input: &'a Input,
-                         session: &'ast Session,
+                         session: &'tcx Session,
                          out_dir: &'a Option<PathBuf>,
                          out_file: &'a Option<PathBuf>,
                          krate: ast::Crate,
                          cstore: &'a CStore)
-                         -> CompileState<'a, 'b, 'ast, 'tcx> {
+                         -> Self {
         CompileState {
             // Initialize the registry before moving `krate`
             registry: Some(Registry::new(&session, krate.span)),
@@ -396,13 +396,13 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
     }
 
     fn state_after_expand(input: &'a Input,
-                          session: &'ast Session,
+                          session: &'tcx Session,
                           out_dir: &'a Option<PathBuf>,
                           out_file: &'a Option<PathBuf>,
                           cstore: &'a CStore,
                           expanded_crate: &'a ast::Crate,
                           crate_name: &'a str)
-                          -> CompileState<'a, 'b, 'ast, 'tcx> {
+                          -> Self {
         CompileState {
             crate_name: Some(crate_name),
             cstore: Some(cstore),
@@ -413,18 +413,18 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
     }
 
     fn state_after_hir_lowering(input: &'a Input,
-                                session: &'ast Session,
+                                session: &'tcx Session,
                                 out_dir: &'a Option<PathBuf>,
                                 out_file: &'a Option<PathBuf>,
-                                arenas: &'ast ty::CtxtArenas<'ast>,
+                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                 cstore: &'a CStore,
-                                hir_map: &'a hir_map::Map<'ast>,
-                                analysis: &'a ty::CrateAnalysis,
+                                hir_map: &'a hir_map::Map<'tcx>,
+                                analysis: &'a ty::CrateAnalysis<'static>,
                                 resolutions: &'a Resolutions,
                                 krate: &'a ast::Crate,
                                 hir_crate: &'a hir::Crate,
                                 crate_name: &'a str)
-                                -> CompileState<'a, 'b, 'ast, 'tcx> {
+                                -> Self {
         CompileState {
             crate_name: Some(crate_name),
             arenas: Some(arenas),
@@ -440,15 +440,15 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
     }
 
     fn state_after_analysis(input: &'a Input,
-                            session: &'ast Session,
+                            session: &'tcx Session,
                             out_dir: &'a Option<PathBuf>,
                             out_file: &'a Option<PathBuf>,
                             krate: Option<&'a ast::Crate>,
                             hir_crate: &'a hir::Crate,
-                            analysis: &'a ty::CrateAnalysis<'a>,
-                            tcx: TyCtxt<'b, 'tcx, 'tcx>,
+                            analysis: &'a ty::CrateAnalysis<'tcx>,
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             crate_name: &'a str)
-                            -> CompileState<'a, 'b, 'ast, 'tcx> {
+                            -> Self {
         CompileState {
             analysis: Some(analysis),
             tcx: Some(tcx),
@@ -462,11 +462,11 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
 
 
     fn state_after_llvm(input: &'a Input,
-                        session: &'ast Session,
+                        session: &'tcx Session,
                         out_dir: &'a Option<PathBuf>,
                         out_file: &'a Option<PathBuf>,
                         trans: &'a trans::CrateTranslation)
-                        -> CompileState<'a, 'b, 'ast, 'tcx> {
+                        -> Self {
         CompileState {
             trans: Some(trans),
             out_file: out_file.as_ref().map(|s| &**s),
@@ -475,10 +475,10 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
     }
 
     fn state_when_compilation_done(input: &'a Input,
-                                    session: &'ast Session,
+                                    session: &'tcx Session,
                                     out_dir: &'a Option<PathBuf>,
                                     out_file: &'a Option<PathBuf>)
-                                    -> CompileState<'a, 'b, 'ast, 'tcx> {
+                                    -> Self {
         CompileState {
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
@@ -532,10 +532,10 @@ fn count_nodes(krate: &ast::Crate) -> usize {
 // For continuing compilation after a parsed crate has been
 // modified
 
-pub struct ExpansionResult<'a> {
+pub struct ExpansionResult {
     pub expanded_crate: ast::Crate,
     pub defs: hir_map::Definitions,
-    pub analysis: ty::CrateAnalysis<'a>,
+    pub analysis: ty::CrateAnalysis<'static>,
     pub resolutions: Resolutions,
     pub hir_forest: hir_map::Forest,
 }
@@ -547,15 +547,15 @@ pub struct ExpansionResult<'a> {
 /// standard library and prelude, and name resolution.
 ///
 /// Returns `None` if we're aborting after handling -W help.
-pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
-                                           cstore: &CStore,
-                                           krate: ast::Crate,
-                                           registry: Option<Registry>,
-                                           crate_name: &'a str,
-                                           addl_plugins: Option<Vec<String>>,
-                                           make_glob_map: MakeGlobMap,
-                                           after_expand: F)
-                                           -> Result<ExpansionResult<'a>, usize>
+pub fn phase_2_configure_and_expand<F>(sess: &Session,
+                                       cstore: &CStore,
+                                       krate: ast::Crate,
+                                       registry: Option<Registry>,
+                                       crate_name: &str,
+                                       addl_plugins: Option<Vec<String>>,
+                                       make_glob_map: MakeGlobMap,
+                                       after_expand: F)
+                                       -> Result<ExpansionResult, usize>
     where F: FnOnce(&ast::Crate) -> CompileResult,
 {
     let time_passes = sess.time_passes();
@@ -789,8 +789,9 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
             export_map: resolver.export_map,
             access_levels: AccessLevels::default(),
             reachable: NodeSet(),
-            name: crate_name,
+            name: crate_name.to_string(),
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
+            hir_ty_to_ty: NodeMap(),
         },
         resolutions: Resolutions {
             def_map: resolver.def_map,
@@ -807,14 +808,14 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                hir_map: hir_map::Map<'tcx>,
-                                               mut analysis: ty::CrateAnalysis,
+                                               mut analysis: ty::CrateAnalysis<'tcx>,
                                                resolutions: Resolutions,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: &str,
                                                f: F)
                                                -> Result<R, usize>
     where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
-                            ty::CrateAnalysis,
+                            ty::CrateAnalysis<'tcx>,
                             IncrementalHashesMap,
                             CompileResult) -> R
 {
@@ -840,9 +841,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let named_region_map = time(time_passes,
                                 "lifetime resolution",
-                                || middle::resolve_lifetime::krate(sess,
-                                                                   &hir_map,
-                                                                   &resolutions.def_map))?;
+                                || middle::resolve_lifetime::krate(sess, &hir_map))?;
 
     time(time_passes,
          "looking for entry point",
@@ -859,17 +858,16 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     time(time_passes,
          "loop checking",
-         || loops::check_crate(sess, &resolutions.def_map, &hir_map));
+         || loops::check_crate(sess, &hir_map));
 
     time(time_passes,
               "static item recursion checking",
-              || static_recursion::check_crate(sess, &resolutions.def_map, &hir_map))?;
+              || static_recursion::check_crate(sess, &hir_map))?;
 
     let index = stability::Index::new(&hir_map);
 
     TyCtxt::create_and_enter(sess,
                              arenas,
-                             resolutions.def_map,
                              resolutions.trait_map,
                              named_region_map,
                              hir_map,
@@ -888,8 +886,17 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "load_dep_graph",
              || rustc_incremental::load_dep_graph(tcx, &incremental_hashes_map));
 
+        time(time_passes, "stability index", || {
+            tcx.stability.borrow_mut().build(tcx)
+        });
+
+        time(time_passes,
+             "stability checking",
+             || stability::check_unstable_api_usage(tcx));
+
         // passes are timed inside typeck
-        try_with_f!(typeck::check_crate(tcx), (tcx, analysis, incremental_hashes_map));
+        analysis.hir_ty_to_ty =
+            try_with_f!(typeck::check_crate(tcx), (tcx, analysis, incremental_hashes_map));
 
         time(time_passes,
              "const checking",
@@ -899,11 +906,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             time(time_passes, "privacy checking", || {
                 rustc_privacy::check_crate(tcx, &analysis.export_map)
             });
-
-        // Do not move this check past lint
-        time(time_passes, "stability index", || {
-            tcx.stability.borrow_mut().build(tcx, &analysis.access_levels)
-        });
 
         time(time_passes,
              "intrinsic checking",
@@ -973,14 +975,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             middle::dead::check_crate(tcx, &analysis.access_levels);
         });
 
-        let ref lib_features_used =
-            time(time_passes,
-                 "stability checking",
-                 || stability::check_unstable_api_usage(tcx));
-
         time(time_passes, "unused lib feature checking", || {
-            stability::check_unused_or_stable_features(&tcx.sess,
-                                                       lib_features_used)
+            stability::check_unused_or_stable_features(tcx, &analysis.access_levels)
         });
 
         time(time_passes,

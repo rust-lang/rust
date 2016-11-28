@@ -111,6 +111,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
 
     add_early_builtin!(sess,
                        UnusedParens,
+                       UnusedImportBraces,
                        );
 
     add_early_builtin_with_new!(sess,
@@ -129,7 +130,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  NonCamelCaseTypes,
                  NonSnakeCase,
                  NonUpperCaseGlobals,
-                 UnusedImportBraces,
                  NonShorthandFieldPatterns,
                  UnusedUnsafe,
                  UnsafeCode,
@@ -145,7 +145,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  );
 
     add_builtin_with_new!(sess,
-                          Deprecated,
                           TypeLimits,
                           MissingDoc,
                           MissingDebugImplementations,

@@ -14,7 +14,7 @@
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as ast_map;
 use rustc::session::{CompileResult, Session};
-use rustc::hir::def::{Def, CtorKind, DefMap};
+use rustc::hir::def::{Def, CtorKind};
 use rustc::util::nodemap::NodeMap;
 
 use syntax::ast;
@@ -27,7 +27,6 @@ use std::cell::RefCell;
 
 struct CheckCrateVisitor<'a, 'ast: 'a> {
     sess: &'a Session,
-    def_map: &'a DefMap,
     ast_map: &'a ast_map::Map<'ast>,
     // `discriminant_map` is a cache that associates the `NodeId`s of local
     // variant definitions with the discriminant expression that applies to
@@ -88,14 +87,12 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
 }
 
 pub fn check_crate<'ast>(sess: &Session,
-                         def_map: &DefMap,
                          ast_map: &ast_map::Map<'ast>)
                          -> CompileResult {
     let _task = ast_map.dep_graph.in_task(DepNode::CheckStaticRecursion);
 
     let mut visitor = CheckCrateVisitor {
         sess: sess,
-        def_map: def_map,
         ast_map: ast_map,
         discriminant_map: RefCell::new(NodeMap()),
     };
@@ -109,7 +106,6 @@ struct CheckItemRecursionVisitor<'a, 'ast: 'a> {
     root_span: &'a Span,
     sess: &'a Session,
     ast_map: &'a ast_map::Map<'ast>,
-    def_map: &'a DefMap,
     discriminant_map: &'a RefCell<NodeMap<Option<&'ast hir::Expr>>>,
     idstack: Vec<ast::NodeId>,
 }
@@ -122,7 +118,6 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
             root_span: span,
             sess: v.sess,
             ast_map: v.ast_map,
-            def_map: v.def_map,
             discriminant_map: &v.discriminant_map,
             idstack: Vec::new(),
         }
@@ -250,11 +245,11 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
 
     fn visit_expr(&mut self, e: &'ast hir::Expr) {
         match e.node {
-            hir::ExprPath(..) => {
-                match self.def_map.get(&e.id).map(|d| d.base_def) {
-                    Some(Def::Static(def_id, _)) |
-                    Some(Def::AssociatedConst(def_id)) |
-                    Some(Def::Const(def_id)) => {
+            hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
+                match path.def {
+                    Def::Static(def_id, _) |
+                    Def::AssociatedConst(def_id) |
+                    Def::Const(def_id) => {
                         if let Some(node_id) = self.ast_map.as_local_node_id(def_id) {
                             match self.ast_map.get(node_id) {
                                 ast_map::NodeItem(item) => self.visit_item(item),
@@ -273,7 +268,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                     // affect the specific variant used, but we need to check
                     // the whole enum definition to see what expression that
                     // might be (if any).
-                    Some(Def::VariantCtor(variant_id, CtorKind::Const)) => {
+                    Def::VariantCtor(variant_id, CtorKind::Const) => {
                         if let Some(variant_id) = self.ast_map.as_local_node_id(variant_id) {
                             let variant = self.ast_map.expect_variant(variant_id);
                             let enum_id = self.ast_map.get_parent(variant_id);

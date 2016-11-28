@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate collections;
 use std::collections::HashSet;
 
 struct Foo {

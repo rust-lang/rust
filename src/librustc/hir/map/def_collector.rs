@@ -155,7 +155,20 @@ impl<'a> visit::Visitor for DefCollector<'a> {
                 DefPathData::ValueNs(i.ident.name.as_str()),
             ItemKind::Mac(..) if i.id == DUMMY_NODE_ID => return, // Scope placeholder
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id, false),
-            ItemKind::Use(..) => DefPathData::Misc,
+            ItemKind::Use(ref view_path) => {
+                match view_path.node {
+                    ViewPathGlob(..) => {}
+
+                    // FIXME(eddyb) Should use the real name. Which namespace?
+                    ViewPathSimple(..) => {}
+                    ViewPathList(_, ref imports) => {
+                        for import in imports {
+                            self.create_def(import.node.id, DefPathData::Misc);
+                        }
+                    }
+                }
+                DefPathData::Misc
+            }
         };
         let def = self.create_def(i.id, def_data);
 
@@ -423,7 +436,7 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     fn visit_pat(&mut self, pat: &'ast hir::Pat) {
         let parent_def = self.parent_def;
 
-        if let hir::PatKind::Binding(_, name, _) = pat.node {
+        if let hir::PatKind::Binding(_, _, name, _) = pat.node {
             let def = self.create_def(pat.id, DefPathData::Binding(name.node.as_str()));
             self.parent_def = Some(def);
         }

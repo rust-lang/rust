@@ -272,7 +272,11 @@ pub fn fn_block_to_string(p: &hir::FnDecl) -> String {
 }
 
 pub fn path_to_string(p: &hir::Path) -> String {
-    to_string(|s| s.print_path(p, false, 0))
+    to_string(|s| s.print_path(p, false))
+}
+
+pub fn qpath_to_string(p: &hir::QPath) -> String {
+    to_string(|s| s.print_qpath(p, false))
 }
 
 pub fn name_to_string(name: ast::Name) -> String {
@@ -528,11 +532,8 @@ impl<'a> State<'a> {
                 };
                 self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &generics)?;
             }
-            hir::TyPath(None, ref path) => {
-                self.print_path(path, false, 0)?;
-            }
-            hir::TyPath(Some(ref qself), ref path) => {
-                self.print_qpath(path, qself, false)?
+            hir::TyPath(ref qpath) => {
+                self.print_qpath(qpath, false)?
             }
             hir::TyObjectSum(ref ty, ref bounds) => {
                 self.print_type(&ty)?;
@@ -668,10 +669,22 @@ impl<'a> State<'a> {
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
-            hir::ItemUse(ref vp) => {
+            hir::ItemUse(ref path, kind) => {
                 self.head(&visibility_qualified(&item.vis, "use"))?;
-                self.print_view_path(&vp)?;
-                word(&mut self.s, ";")?;
+                self.print_path(path, false)?;
+
+                match kind {
+                    hir::UseKind::Single => {
+                        if path.segments.last().unwrap().name != item.name {
+                            space(&mut self.s)?;
+                            self.word_space("as")?;
+                            self.print_name(item.name)?;
+                        }
+                        word(&mut self.s, ";")?;
+                    }
+                    hir::UseKind::Glob => word(&mut self.s, "::*;")?,
+                    hir::UseKind::ListStem => word(&mut self.s, "::{};")?
+                }
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
@@ -844,8 +857,8 @@ impl<'a> State<'a> {
         self.ann.post(self, NodeItem(item))
     }
 
-    fn print_trait_ref(&mut self, t: &hir::TraitRef) -> io::Result<()> {
-        self.print_path(&t.path, false, 0)
+    pub fn print_trait_ref(&mut self, t: &hir::TraitRef) -> io::Result<()> {
+        self.print_path(&t.path, false)
     }
 
     fn print_formal_lifetime_list(&mut self, lifetimes: &[hir::LifetimeDef]) -> io::Result<()> {
@@ -1115,8 +1128,6 @@ impl<'a> State<'a> {
             hir::UnsafeBlock(..) => self.word_space("unsafe")?,
             hir::PushUnsafeBlock(..) => self.word_space("push_unsafe")?,
             hir::PopUnsafeBlock(..) => self.word_space("pop_unsafe")?,
-            hir::PushUnstableBlock => self.word_space("push_unstable")?,
-            hir::PopUnstableBlock => self.word_space("pop_unstable")?,
             hir::DefaultBlock => (),
         }
         self.maybe_print_comment(blk.span.lo)?;
@@ -1237,11 +1248,11 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_struct(&mut self,
-                         path: &hir::Path,
+                         qpath: &hir::QPath,
                          fields: &[hir::Field],
                          wth: &Option<P<hir::Expr>>)
                          -> io::Result<()> {
-        self.print_path(path, true, 0)?;
+        self.print_qpath(qpath, true)?;
         word(&mut self.s, "{")?;
         self.commasep_cmnt(Consistent,
                            &fields[..],
@@ -1345,8 +1356,8 @@ impl<'a> State<'a> {
             hir::ExprRepeat(ref element, ref count) => {
                 self.print_expr_repeat(&element, &count)?;
             }
-            hir::ExprStruct(ref path, ref fields, ref wth) => {
-                self.print_expr_struct(path, &fields[..], wth)?;
+            hir::ExprStruct(ref qpath, ref fields, ref wth) => {
+                self.print_expr_struct(qpath, &fields[..], wth)?;
             }
             hir::ExprTup(ref exprs) => {
                 self.print_expr_tup(exprs)?;
@@ -1465,17 +1476,14 @@ impl<'a> State<'a> {
                 self.print_expr(&index)?;
                 word(&mut self.s, "]")?;
             }
-            hir::ExprPath(None, ref path) => {
-                self.print_path(path, true, 0)?
+            hir::ExprPath(ref qpath) => {
+                self.print_qpath(qpath, true)?
             }
-            hir::ExprPath(Some(ref qself), ref path) => {
-                self.print_qpath(path, qself, true)?
-            }
-            hir::ExprBreak(opt_name, ref opt_expr) => {
+            hir::ExprBreak(opt_label, ref opt_expr) => {
                 word(&mut self.s, "break")?;
                 space(&mut self.s)?;
-                if let Some(name) = opt_name {
-                    self.print_name(name.node)?;
+                if let Some(label) = opt_label {
+                    self.print_name(label.name)?;
                     space(&mut self.s)?;
                 }
                 if let Some(ref expr) = *opt_expr {
@@ -1483,11 +1491,11 @@ impl<'a> State<'a> {
                     space(&mut self.s)?;
                 }
             }
-            hir::ExprAgain(opt_name) => {
+            hir::ExprAgain(opt_label) => {
                 word(&mut self.s, "continue")?;
                 space(&mut self.s)?;
-                if let Some(name) = opt_name {
-                    self.print_name(name.node)?;
+                if let Some(label) = opt_label {
+                    self.print_name(label.name)?;
                     space(&mut self.s)?
                 }
             }
@@ -1622,13 +1630,12 @@ impl<'a> State<'a> {
 
     fn print_path(&mut self,
                   path: &hir::Path,
-                  colons_before_params: bool,
-                  depth: usize)
+                  colons_before_params: bool)
                   -> io::Result<()> {
         self.maybe_print_comment(path.span.lo)?;
 
         let mut first = !path.global;
-        for segment in &path.segments[..path.segments.len() - depth] {
+        for segment in &path.segments {
             if first {
                 first = false
             } else {
@@ -1644,23 +1651,45 @@ impl<'a> State<'a> {
     }
 
     fn print_qpath(&mut self,
-                   path: &hir::Path,
-                   qself: &hir::QSelf,
+                   qpath: &hir::QPath,
                    colons_before_params: bool)
                    -> io::Result<()> {
-        word(&mut self.s, "<")?;
-        self.print_type(&qself.ty)?;
-        if qself.position > 0 {
-            space(&mut self.s)?;
-            self.word_space("as")?;
-            let depth = path.segments.len() - qself.position;
-            self.print_path(&path, false, depth)?;
+        match *qpath {
+            hir::QPath::Resolved(None, ref path) => {
+                self.print_path(path, colons_before_params)
+            }
+            hir::QPath::Resolved(Some(ref qself), ref path) => {
+                word(&mut self.s, "<")?;
+                self.print_type(qself)?;
+                space(&mut self.s)?;
+                self.word_space("as")?;
+
+                let mut first = !path.global;
+                for segment in &path.segments[..path.segments.len() - 1] {
+                    if first {
+                        first = false
+                    } else {
+                        word(&mut self.s, "::")?
+                    }
+                    self.print_name(segment.name)?;
+                    self.print_path_parameters(&segment.parameters, colons_before_params)?;
+                }
+
+                word(&mut self.s, ">")?;
+                word(&mut self.s, "::")?;
+                let item_segment = path.segments.last().unwrap();
+                self.print_name(item_segment.name)?;
+                self.print_path_parameters(&item_segment.parameters, colons_before_params)
+            }
+            hir::QPath::TypeRelative(ref qself, ref item_segment) => {
+                word(&mut self.s, "<")?;
+                self.print_type(qself)?;
+                word(&mut self.s, ">")?;
+                word(&mut self.s, "::")?;
+                self.print_name(item_segment.name)?;
+                self.print_path_parameters(&item_segment.parameters, colons_before_params)
+            }
         }
-        word(&mut self.s, ">")?;
-        word(&mut self.s, "::")?;
-        let item_segment = path.segments.last().unwrap();
-        self.print_name(item_segment.name)?;
-        self.print_path_parameters(&item_segment.parameters, colons_before_params)
     }
 
     fn print_path_parameters(&mut self,
@@ -1668,7 +1697,15 @@ impl<'a> State<'a> {
                              colons_before_params: bool)
                              -> io::Result<()> {
         if parameters.is_empty() {
-            return Ok(());
+            let infer_types = match *parameters {
+                hir::AngleBracketedParameters(ref data) => data.infer_types,
+                hir::ParenthesizedParameters(_) => false
+            };
+
+            // FIXME(eddyb) See the comment below about infer_types.
+            if !(infer_types && false) {
+                return Ok(());
+            }
         }
 
         if colons_before_params {
@@ -1693,6 +1730,16 @@ impl<'a> State<'a> {
                         self.word_space(",")?
                     }
                     self.commasep(Inconsistent, &data.types, |s, ty| s.print_type(&ty))?;
+                    comma = true;
+                }
+
+                // FIXME(eddyb) This would leak into error messages, e.g.:
+                // "non-exhaustive patterns: `Some::<..>(_)` not covered".
+                if data.infer_types && false {
+                    if comma {
+                        self.word_space(",")?
+                    }
+                    word(&mut self.s, "..")?;
                     comma = true;
                 }
 
@@ -1733,7 +1780,7 @@ impl<'a> State<'a> {
         // is that it doesn't matter
         match pat.node {
             PatKind::Wild => word(&mut self.s, "_")?,
-            PatKind::Binding(binding_mode, ref path1, ref sub) => {
+            PatKind::Binding(binding_mode, _, ref path1, ref sub) => {
                 match binding_mode {
                     hir::BindByRef(mutbl) => {
                         self.word_nbsp("ref")?;
@@ -1750,8 +1797,8 @@ impl<'a> State<'a> {
                     self.print_pat(&p)?;
                 }
             }
-            PatKind::TupleStruct(ref path, ref elts, ddpos) => {
-                self.print_path(path, true, 0)?;
+            PatKind::TupleStruct(ref qpath, ref elts, ddpos) => {
+                self.print_qpath(qpath, true)?;
                 self.popen()?;
                 if let Some(ddpos) = ddpos {
                     self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(&p))?;
@@ -1768,14 +1815,11 @@ impl<'a> State<'a> {
                 }
                 self.pclose()?;
             }
-            PatKind::Path(None, ref path) => {
-                self.print_path(path, true, 0)?;
+            PatKind::Path(ref qpath) => {
+                self.print_qpath(qpath, true)?;
             }
-            PatKind::Path(Some(ref qself), ref path) => {
-                self.print_qpath(path, qself, false)?;
-            }
-            PatKind::Struct(ref path, ref fields, etc) => {
-                self.print_path(path, true, 0)?;
+            PatKind::Struct(ref qpath, ref fields, etc) => {
+                self.print_qpath(qpath, true)?;
                 self.nbsp()?;
                 self.word_space("{")?;
                 self.commasep_cmnt(Consistent,
@@ -2108,7 +2152,7 @@ impl<'a> State<'a> {
                     }
                 }
                 &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{ref path, ref ty, ..}) => {
-                    self.print_path(path, false, 0)?;
+                    self.print_path(path, false)?;
                     space(&mut self.s)?;
                     self.word_space("=")?;
                     self.print_type(&ty)?;
@@ -2117,38 +2161,6 @@ impl<'a> State<'a> {
         }
 
         Ok(())
-    }
-
-    pub fn print_view_path(&mut self, vp: &hir::ViewPath) -> io::Result<()> {
-        match vp.node {
-            hir::ViewPathSimple(name, ref path) => {
-                self.print_path(path, false, 0)?;
-
-                if path.segments.last().unwrap().name != name {
-                    space(&mut self.s)?;
-                    self.word_space("as")?;
-                    self.print_name(name)?;
-                }
-
-                Ok(())
-            }
-
-            hir::ViewPathGlob(ref path) => {
-                self.print_path(path, false, 0)?;
-                word(&mut self.s, "::*")
-            }
-
-            hir::ViewPathList(ref path, ref segments) => {
-                if path.segments.is_empty() {
-                    word(&mut self.s, "{")?;
-                } else {
-                    self.print_path(path, false, 0)?;
-                    word(&mut self.s, "::{")?;
-                }
-                self.commasep(Inconsistent, &segments[..], |s, w| s.print_name(w.node.name))?;
-                word(&mut self.s, "}")
-            }
-        }
     }
 
     pub fn print_mutability(&mut self, mutbl: hir::Mutability) -> io::Result<()> {
@@ -2171,7 +2183,7 @@ impl<'a> State<'a> {
                 if let Some(eself) = input.to_self() {
                     self.print_explicit_self(&eself)?;
                 } else {
-                    let invalid = if let PatKind::Binding(_, name, _) = input.pat.node {
+                    let invalid = if let PatKind::Binding(_, _, name, _) = input.pat.node {
                         name.node == keywords::Invalid.name()
                     } else {
                         false

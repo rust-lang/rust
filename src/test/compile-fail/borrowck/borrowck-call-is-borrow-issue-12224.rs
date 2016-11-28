@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(fn_traits)]
+
 // Ensure that invoking a closure counts as a unique immutable borrow
 
 type Fn<'a> = Box<FnMut() + 'a>;

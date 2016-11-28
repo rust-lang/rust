@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rand)]
+
 fn main() {
     extern crate rand;
     use rand::Rng; //~ ERROR unresolved import
