@@ -497,7 +497,10 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
         result.push_str(&where_clause_str);
 
         match context.config.item_brace_style {
-            BraceStyle::AlwaysNextLine => result.push('\n'),
+            BraceStyle::AlwaysNextLine => {
+                result.push('\n');
+                result.push_str(&offset.to_string(context.config));
+            }
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => {
                 if !where_clause_str.is_empty() {
