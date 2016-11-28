@@ -413,6 +413,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             hir::ItemStatic(..)
             | hir::ItemConst(..)
             | hir::ItemFn(..)
+            | hir::ItemTy(..)
             | hir::ItemEnum(..)
             | hir::ItemStruct(..)
             | hir::ItemUnion(..) => true,
