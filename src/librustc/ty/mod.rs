@@ -1280,8 +1280,13 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             }
             Some(ast_map::NodeExpr(expr)) => {
                 // This is a convenience to allow closures to work.
-                if let hir::ExprClosure(..) = expr.node {
-                    ParameterEnvironment::for_item(tcx, tcx.map.get_parent(id))
+                if let hir::ExprClosure(.., ref body, _) = expr.node {
+                    let def_id = tcx.map.local_def_id(id);
+                    let base_def_id = tcx.closure_base_def_id(def_id);
+                    tcx.construct_parameter_environment(
+                        expr.span,
+                        base_def_id,
+                        tcx.region_maps.call_site_extent(id, body.id))
                 } else {
                     tcx.empty_parameter_environment()
                 }

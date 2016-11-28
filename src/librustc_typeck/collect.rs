@@ -136,7 +136,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &hir::Expr) {
         if let hir::ExprClosure(..) = expr.node {
-            convert_closure(self.ccx, expr.id);
+            let def_id = self.ccx.tcx.map.local_def_id(expr.id);
+            generics_of_def_id(self.ccx, def_id);
+            type_of_def_id(self.ccx, def_id);
         }
         intravisit::walk_expr(self, expr);
     }
@@ -568,40 +570,6 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     ccx.tcx.item_types.borrow_mut().insert(def_id, tt);
     ccx.tcx.generics.borrow_mut().insert(def_id, struct_generics);
     ccx.tcx.predicates.borrow_mut().insert(def_id, struct_predicates.clone());
-}
-
-fn convert_closure<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                             node_id: ast::NodeId)
-{
-    let tcx = ccx.tcx;
-    let def_id = tcx.map.local_def_id(node_id);
-    let base_def_id = tcx.closure_base_def_id(def_id);
-    let base_generics = generics_of_def_id(ccx, base_def_id);
-
-    // provide junk type parameter defs - the only place that
-    // cares about anything but the length is instantiation,
-    // and we don't do that for closures.
-    let upvar_decls : Vec<_> = tcx.with_freevars(node_id, |fv| {
-        fv.iter().enumerate().map(|(i, _)| ty::TypeParameterDef {
-            index: (base_generics.count() as u32) + (i as u32),
-            name: Symbol::intern("<upvar>"),
-            def_id: def_id,
-            default_def_id: base_def_id,
-            default: None,
-            object_lifetime_default: ty::ObjectLifetimeDefault::BaseDefault,
-            pure_wrt_drop: false,
-        }).collect()
-    });
-    tcx.generics.borrow_mut().insert(def_id, tcx.alloc_generics(ty::Generics {
-        parent: Some(base_def_id),
-        parent_regions: base_generics.parent_regions + (base_generics.regions.len() as u32),
-        parent_types: base_generics.parent_types + (base_generics.types.len() as u32),
-        regions: vec![],
-        types: upvar_decls,
-        has_self: base_generics.has_self,
-    }));
-
-    type_of_def_id(ccx, def_id);
 }
 
 fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -1320,6 +1288,9 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let parent_id = tcx.map.get_parent(node_id);
                 Some(tcx.map.local_def_id(parent_id))
             }
+            NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
+                Some(tcx.closure_base_def_id(def_id))
+            }
             NodeTy(&hir::Ty { node: hir::TyImplTrait(..), .. }) => {
                 let mut parent_id = node_id;
                 loop {
@@ -1437,7 +1408,24 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let i = type_start + i as u32;
             get_or_create_type_parameter_def(ccx, ast_generics, i, p, allow_defaults)
         });
-        let types: Vec<_> = opt_self.into_iter().chain(types).collect();
+        let mut types: Vec<_> = opt_self.into_iter().chain(types).collect();
+
+        // provide junk type parameter defs - the only place that
+        // cares about anything but the length is instantiation,
+        // and we don't do that for closures.
+        if let NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) = node {
+            tcx.with_freevars(node_id, |fv| {
+                types.extend(fv.iter().enumerate().map(|(i, _)| ty::TypeParameterDef {
+                    index: type_start + i as u32,
+                    name: Symbol::intern("<upvar>"),
+                    def_id: def_id,
+                    default_def_id: parent_def_id.unwrap(),
+                    default: None,
+                    object_lifetime_default: ty::ObjectLifetimeDefault::BaseDefault,
+                    pure_wrt_drop: false,
+               }));
+            });
+        }
 
         // Debugging aid.
         if tcx.has_attr(def_id, "rustc_object_lifetime_default") {
