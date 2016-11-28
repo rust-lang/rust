@@ -13,7 +13,7 @@
 pub use self::OptimizationDiagnosticKind::*;
 pub use self::Diagnostic::*;
 
-use libc::{c_char, c_uint};
+use libc::c_uint;
 use std::ptr;
 
 use {DiagnosticInfoRef, TwineRef, ValueRef};
@@ -45,7 +45,7 @@ impl OptimizationDiagnosticKind {
 
 pub struct OptimizationDiagnostic {
     pub kind: OptimizationDiagnosticKind,
-    pub pass_name: *const c_char,
+    pub pass_name: String,
     pub function: ValueRef,
     pub debug_loc: DebugLocRef,
     pub message: String,
@@ -55,21 +55,23 @@ impl OptimizationDiagnostic {
     unsafe fn unpack(kind: OptimizationDiagnosticKind,
                      di: DiagnosticInfoRef)
                      -> OptimizationDiagnostic {
-        let mut pass_name = ptr::null();
         let mut function = ptr::null_mut();
         let mut debug_loc = ptr::null_mut();
 
-        let message = super::build_string(|message|
-            super::LLVMRustUnpackOptimizationDiagnostic(di,
-                                                        &mut pass_name,
-                                                        &mut function,
-                                                        &mut debug_loc,
-                                                        message)
+        let mut message = None;
+        let pass_name = super::build_string(|pass_name|
+            message = super::build_string(|message|
+                super::LLVMRustUnpackOptimizationDiagnostic(di,
+                                                            pass_name,
+                                                            &mut function,
+                                                            &mut debug_loc,
+                                                            message)
+            )
         );
 
         OptimizationDiagnostic {
             kind: kind,
-            pass_name: pass_name,
+            pass_name: pass_name.expect("got a non-UTF8 pass name from LLVM"),
             function: function,
             debug_loc: debug_loc,
             message: message.expect("got a non-UTF8 OptimizationDiagnostic message from LLVM")

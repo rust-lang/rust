@@ -872,7 +872,7 @@ LLVMRustWriteTwineToString(LLVMTwineRef T, RustStringRef str) {
 extern "C" void
 LLVMRustUnpackOptimizationDiagnostic(
     LLVMDiagnosticInfoRef di,
-    const char **pass_name_out,
+    RustStringRef pass_name_out,
     LLVMValueRef *function_out,
     LLVMDebugLocRef *debugloc_out,
     RustStringRef message_out)
@@ -881,15 +881,12 @@ LLVMRustUnpackOptimizationDiagnostic(
     llvm::DiagnosticInfoOptimizationBase *opt
         = static_cast<llvm::DiagnosticInfoOptimizationBase*>(unwrap(di));
 
-#if LLVM_VERSION_GE(4, 0)
-    *pass_name_out = opt->getPassName().data();
-#else
-    *pass_name_out = opt->getPassName();
-#endif
+    raw_rust_string_ostream pass_name_os(pass_name_out);
+    pass_name_os << opt->getPassName();
     *function_out = wrap(&opt->getFunction());
     *debugloc_out = wrap(&opt->getDebugLoc());
-    raw_rust_string_ostream os(message_out);
-    os << opt->getMsg();
+    raw_rust_string_ostream message_os(message_out);
+    message_os << opt->getMsg();
 }
 
 extern "C" void

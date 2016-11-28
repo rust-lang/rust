@@ -26,7 +26,7 @@ use errors::emitter::Emitter;
 use syntax_pos::MultiSpan;
 use context::{is_pie_binary, get_reloc_model};
 
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -403,19 +403,16 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
         }
 
         llvm::diagnostic::Optimization(opt) => {
-            let pass_name = str::from_utf8(CStr::from_ptr(opt.pass_name).to_bytes())
-                                .ok()
-                                .expect("got a non-UTF8 pass name from LLVM");
             let enabled = match cgcx.remark {
                 AllPasses => true,
-                SomePasses(ref v) => v.iter().any(|s| *s == pass_name),
+                SomePasses(ref v) => v.iter().any(|s| *s == opt.pass_name),
             };
 
             if enabled {
                 let loc = llvm::debug_loc_to_string(llcx, opt.debug_loc);
                 cgcx.handler.note_without_error(&format!("optimization {} for {} at {}: {}",
                                                 opt.kind.describe(),
-                                                pass_name,
+                                                opt.pass_name,
                                                 if loc.is_empty() { "[unknown]" } else { &*loc },
                                                 opt.message));
             }
