@@ -67,6 +67,9 @@ pub struct CrateSource {
 
 #[derive(RustcEncodable, RustcDecodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum DepKind {
+    /// A dependency that is only used for its macros, none of which are visible from other crates.
+    /// These are included in the metadata only as placeholders and are ignored when decoding.
+    UnexportedMacrosOnly,
     /// A dependency that is only used for its macros.
     MacrosOnly,
     /// A dependency that is always injected into the dependency list and so
@@ -75,6 +78,15 @@ pub enum DepKind {
     /// A dependency that is required by an rlib version of this crate.
     /// Ordinary `extern crate`s result in `Explicit` dependencies.
     Explicit,
+}
+
+impl DepKind {
+    pub fn macros_only(self) -> bool {
+        match self {
+            DepKind::UnexportedMacrosOnly | DepKind::MacrosOnly => true,
+            DepKind::Implicit | DepKind::Explicit => false,
+        }
+    }
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -220,6 +232,7 @@ pub trait CrateStore<'tcx> {
     fn dylib_dependency_formats(&self, cnum: CrateNum)
                                     -> Vec<(CrateNum, LinkagePreference)>;
     fn dep_kind(&self, cnum: CrateNum) -> DepKind;
+    fn export_macros(&self, cnum: CrateNum);
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
     fn is_staged_api(&self, cnum: CrateNum) -> bool;
@@ -393,6 +406,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         { bug!("missing_lang_items") }
     fn is_staged_api(&self, cnum: CrateNum) -> bool { bug!("is_staged_api") }
     fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
+    fn export_macros(&self, cnum: CrateNum) { bug!("export_macros") }
     fn is_allocator(&self, cnum: CrateNum) -> bool { bug!("is_allocator") }
     fn is_panic_runtime(&self, cnum: CrateNum) -> bool { bug!("is_panic_runtime") }
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool { bug!("is_compiler_builtins") }
