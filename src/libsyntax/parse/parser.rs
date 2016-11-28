@@ -88,13 +88,6 @@ pub enum PathStyle {
     Expr,
 }
 
-/// How to parse a bound, whether to allow bound modifiers such as `?`.
-#[derive(Copy, Clone, PartialEq)]
-pub enum BoundParsingMode {
-    Bare,
-    Modified,
-}
-
 #[derive(Clone, Copy, PartialEq)]
 pub enum SemiColonMode {
     Break,
@@ -1041,7 +1034,7 @@ impl<'a> Parser<'a> {
                                                      trait_ref: trait_ref,
                                                      span: mk_sp(lo, hi)};
             let other_bounds = if self.eat(&token::BinOp(token::Plus)) {
-                self.parse_ty_param_bounds(BoundParsingMode::Bare)?
+                self.parse_ty_param_bounds()?
             } else {
                 P::new()
             };
@@ -1059,7 +1052,7 @@ impl<'a> Parser<'a> {
         The `impl` has already been consumed.
         */
 
-        let bounds = self.parse_ty_param_bounds(BoundParsingMode::Modified)?;
+        let bounds = self.parse_ty_param_bounds()?;
 
         if !bounds.iter().any(|b| if let TraitTyParamBound(..) = *b { true } else { false }) {
             self.span_err(self.prev_span, "at least one trait must be specified");
@@ -1271,7 +1264,7 @@ impl<'a> Parser<'a> {
             return Ok(lhs);
         }
 
-        let bounds = self.parse_ty_param_bounds(BoundParsingMode::Bare)?;
+        let bounds = self.parse_ty_param_bounds()?;
 
         // In type grammar, `+` is treated like a binary operator,
         // and hence both L and R side are required.
@@ -4148,14 +4141,12 @@ impl<'a> Parser<'a> {
 
     // Parses a sequence of bounds if a `:` is found,
     // otherwise returns empty list.
-    fn parse_colon_then_ty_param_bounds(&mut self,
-                                        mode: BoundParsingMode)
-                                        -> PResult<'a, TyParamBounds>
+    fn parse_colon_then_ty_param_bounds(&mut self) -> PResult<'a, TyParamBounds>
     {
         if !self.eat(&token::Colon) {
             Ok(P::new())
         } else {
-            self.parse_ty_param_bounds(mode)
+            self.parse_ty_param_bounds()
         }
     }
 
@@ -4163,9 +4154,7 @@ impl<'a> Parser<'a> {
     // where   boundseq  = ( polybound + boundseq ) | polybound
     // and     polybound = ( 'for' '<' 'region '>' )? bound
     // and     bound     = 'region | trait_ref
-    fn parse_ty_param_bounds(&mut self,
-                             mode: BoundParsingMode)
-                             -> PResult<'a, TyParamBounds>
+    fn parse_ty_param_bounds(&mut self) -> PResult<'a, TyParamBounds>
     {
         let mut result = vec![];
         loop {
@@ -4187,13 +4176,7 @@ impl<'a> Parser<'a> {
                 token::ModSep | token::Ident(..) => {
                     let poly_trait_ref = self.parse_poly_trait_ref()?;
                     let modifier = if ate_question {
-                        if mode == BoundParsingMode::Modified {
-                            TraitBoundModifier::Maybe
-                        } else {
-                            self.span_err(question_span,
-                                          "unexpected `?`");
-                            TraitBoundModifier::None
-                        }
+                        TraitBoundModifier::Maybe
                     } else {
                         TraitBoundModifier::None
                     };
@@ -4215,7 +4198,7 @@ impl<'a> Parser<'a> {
         let span = self.span;
         let ident = self.parse_ident()?;
 
-        let bounds = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Modified)?;
+        let bounds = self.parse_colon_then_ty_param_bounds()?;
 
         let default = if self.check(&token::Eq) {
             self.bump();
@@ -4439,7 +4422,7 @@ impl<'a> Parser<'a> {
                     let bounded_ty = self.parse_ty()?;
 
                     if self.eat(&token::Colon) {
-                        let bounds = self.parse_ty_param_bounds(BoundParsingMode::Bare)?;
+                        let bounds = self.parse_ty_param_bounds()?;
                         let hi = self.prev_span.hi;
                         let span = mk_sp(lo, hi);
 
@@ -4901,7 +4884,7 @@ impl<'a> Parser<'a> {
         let mut tps = self.parse_generics()?;
 
         // Parse supertrait bounds.
-        let bounds = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare)?;
+        let bounds = self.parse_colon_then_ty_param_bounds()?;
 
         tps.where_clause = self.parse_where_clause()?;
 

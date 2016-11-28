@@ -86,6 +86,19 @@ impl<'a> AstValidator<'a> {
             _ => {}
         }
     }
+
+    fn no_questions_in_bounds(&self, bounds: &TyParamBounds, where_: &str, is_trait: bool) {
+        for bound in bounds {
+            if let TraitTyParamBound(ref poly, TraitBoundModifier::Maybe) = *bound {
+                let mut err = self.err_handler().struct_span_err(poly.span,
+                                    &format!("`?Trait` is not permitted in {}", where_));
+                if is_trait {
+                    err.note(&format!("traits are `?{}` by default", poly.trait_ref.path));
+                }
+                err.emit();
+            }
+        }
+    }
 }
 
 impl<'a> Visitor for AstValidator<'a> {
@@ -129,6 +142,10 @@ impl<'a> Visitor for AstValidator<'a> {
                                   "this is a recent error, see issue #35203 for more details");
                     err.emit();
                 });
+            }
+            TyKind::ObjectSum(_, ref bounds) |
+            TyKind::PolyTraitRef(ref bounds) => {
+                self.no_questions_in_bounds(bounds, "trait object types", false);
             }
             _ => {}
         }
@@ -189,7 +206,8 @@ impl<'a> Visitor for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::Trait(.., ref trait_items) => {
+            ItemKind::Trait(.., ref bounds, ref trait_items) => {
+                self.no_questions_in_bounds(bounds, "supertraits", true);
                 for trait_item in trait_items {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
                         self.check_trait_fn_not_const(sig.constness);
