@@ -211,7 +211,7 @@ macro_rules! impl_Display {
                 // convert the negative num to positive by summing 1 to it's 2 complement
                 (!self.$conv_fn()).wrapping_add(1)
             };
-            let mut buf: [u8; 40] = unsafe { mem::uninitialized() };
+            let mut buf: [u8; 39] = unsafe { mem::uninitialized() };
             let mut curr = buf.len() as isize;
             let buf_ptr = buf.as_mut_ptr();
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
