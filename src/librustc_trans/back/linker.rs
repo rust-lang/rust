@@ -34,10 +34,10 @@ pub struct LinkerInfo {
 
 impl<'a, 'tcx> LinkerInfo {
     pub fn new(scx: &SharedCrateContext<'a, 'tcx>,
-               reachable: &[String]) -> LinkerInfo {
+               exports: &[String]) -> LinkerInfo {
         LinkerInfo {
             exports: scx.sess().crate_types.borrow().iter().map(|&c| {
-                (c, exported_symbols(scx, reachable, c))
+                (c, exported_symbols(scx, exports, c))
             }).collect(),
         }
     }
@@ -473,7 +473,7 @@ impl<'a> Linker for MsvcLinker<'a> {
 }
 
 fn exported_symbols(scx: &SharedCrateContext,
-                    reachable: &[String],
+                    exported_symbols: &[String],
                     crate_type: CrateType)
                     -> Vec<String> {
     // See explanation in GnuLinker::export_symbols, for
@@ -485,7 +485,7 @@ fn exported_symbols(scx: &SharedCrateContext,
         }
     }
 
-    let mut symbols = reachable.to_vec();
+    let mut symbols = exported_symbols.to_vec();
 
     // If we're producing anything other than a dylib then the `reachable` array
     // above is the exhaustive set of symbols we should be exporting.
@@ -507,7 +507,7 @@ fn exported_symbols(scx: &SharedCrateContext,
             None
         }
     }).flat_map(|cnum| {
-        cstore.reachable_ids(cnum)
+        cstore.exported_symbols(cnum)
     }).map(|did| -> String {
         Instance::mono(scx, did).symbol_name(scx)
     }));

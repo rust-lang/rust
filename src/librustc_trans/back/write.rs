@@ -343,9 +343,9 @@ struct CodegenContext<'a> {
 }
 
 impl<'a> CodegenContext<'a> {
-    fn new_with_session(sess: &'a Session, reachable: &'a [String]) -> CodegenContext<'a> {
+    fn new_with_session(sess: &'a Session, exported_symbols: &'a [String]) -> CodegenContext<'a> {
         CodegenContext {
-            lto_ctxt: Some((sess, reachable)),
+            lto_ctxt: Some((sess, exported_symbols)),
             handler: sess.diagnostic(),
             plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
             remark: sess.opts.cg.remark.clone(),
@@ -516,14 +516,14 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         llvm::LLVMDisposePassManager(mpm);
 
         match cgcx.lto_ctxt {
-            Some((sess, reachable)) if sess.lto() =>  {
+            Some((sess, exported_symbols)) if sess.lto() =>  {
                 time(sess.time_passes(), "all lto passes", || {
                     let temp_no_opt_bc_filename =
                         output_names.temp_path_ext("no-opt.lto.bc", module_name);
                     lto::run(sess,
                              llmod,
                              tm,
-                             reachable,
+                             exported_symbols,
                              &config,
                              &temp_no_opt_bc_filename);
                 });
@@ -753,7 +753,7 @@ pub fn run_passes(sess: &Session,
     //       potentially create hundreds of them).
     let num_workers = work_items.len() - 1;
     if num_workers == 1 {
-        run_work_singlethreaded(sess, &trans.reachable, work_items);
+        run_work_singlethreaded(sess, &trans.exported_symbols, work_items);
     } else {
         run_work_multithreaded(sess, work_items, num_workers);
     }
@@ -997,9 +997,9 @@ fn execute_work_item(cgcx: &CodegenContext,
 }
 
 fn run_work_singlethreaded(sess: &Session,
-                           reachable: &[String],
+                           exported_symbols: &[String],
                            work_items: Vec<WorkItem>) {
-    let cgcx = CodegenContext::new_with_session(sess, reachable);
+    let cgcx = CodegenContext::new_with_session(sess, exported_symbols);
 
     // Since we're running single-threaded, we can pass the session to
     // the proc, allowing `optimize_and_codegen` to perform LTO.
