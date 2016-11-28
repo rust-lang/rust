@@ -1545,7 +1545,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.sess.opts.debug_assertions
     };
 
-    let link_meta = link::build_link_meta(incremental_hashes_map, name);
+    let link_meta = link::build_link_meta(incremental_hashes_map, &name);
 
     let shared_ccx = SharedCrateContext::new(tcx,
                                              export_map,

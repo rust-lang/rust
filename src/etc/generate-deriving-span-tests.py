@@ -37,8 +37,6 @@ TEMPLATE = """// Copyright {year} The Rust Project Developers. See the COPYRIGHT
 
 // This file was auto-generated using 'src/etc/generate-deriving-span-tests.py'
 
-extern crate rand;
-
 {error_deriving}
 struct Error;
 {code}
@@ -106,7 +104,6 @@ STRUCT = 2
 ALL = STRUCT | ENUM
 
 traits = {
-    'Zero': (STRUCT, [], 1),
     'Default': (STRUCT, [], 1),
     'FromPrimitive': (0, [], 0), # only works for C-like enums
 
@@ -116,7 +113,7 @@ traits = {
 
 for (trait, supers, errs) in [('Clone', [], 1),
                               ('PartialEq', [], 2),
-                              ('PartialOrd', ['PartialEq'], 8),
+                              ('PartialOrd', ['PartialEq'], 9),
                               ('Eq', ['PartialEq'], 1),
                               ('Ord', ['Eq', 'PartialOrd', 'PartialEq'], 1),
                               ('Debug', [], 1),

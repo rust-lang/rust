@@ -43,6 +43,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
         wbcx.visit_deferred_obligations(item_id);
+        wbcx.visit_type_nodes();
     }
 
     pub fn resolve_type_vars_in_fn(&self,
@@ -67,6 +68,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_fru_field_types();
         wbcx.visit_anon_types();
         wbcx.visit_deferred_obligations(item_id);
+        wbcx.visit_type_nodes();
     }
 }
 
@@ -356,6 +358,11 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_node_id(&self, reason: ResolveReason, id: ast::NodeId) {
+        // Export associated path extensions.
+        if let Some(def) = self.fcx.tables.borrow_mut().type_relative_path_defs.remove(&id) {
+            self.tcx().tables.borrow_mut().type_relative_path_defs.insert(id, def);
+        }
+
         // Resolve any borrowings for the node with id `id`
         self.visit_adjustments(reason, id);
 
@@ -478,6 +485,13 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
+    fn visit_type_nodes(&self) {
+        for (&id, ty) in self.fcx.ast_ty_to_ty_cache.borrow().iter() {
+            let ty = self.resolve(ty, ResolvingTyNode(id));
+            self.fcx.ccx.ast_ty_to_ty_cache.borrow_mut().insert(id, ty);
+        }
+    }
+
     fn resolve<T>(&self, x: &T, reason: ResolveReason) -> T::Lifted
         where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
     {
@@ -505,6 +519,7 @@ enum ResolveReason {
     ResolvingFieldTypes(ast::NodeId),
     ResolvingAnonTy(DefId),
     ResolvingDeferredObligation(Span),
+    ResolvingTyNode(ast::NodeId),
 }
 
 impl<'a, 'gcx, 'tcx> ResolveReason {
@@ -516,10 +531,9 @@ impl<'a, 'gcx, 'tcx> ResolveReason {
             ResolvingUpvar(upvar_id) => {
                 tcx.expr_span(upvar_id.closure_expr_id)
             }
-            ResolvingFnSig(id) => {
-                tcx.map.span(id)
-            }
-            ResolvingFieldTypes(id) => {
+            ResolvingFnSig(id) |
+            ResolvingFieldTypes(id) |
+            ResolvingTyNode(id) => {
                 tcx.map.span(id)
             }
             ResolvingClosure(did) |
@@ -601,7 +615,8 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
 
                 ResolvingFnSig(_) |
                 ResolvingFieldTypes(_) |
-                ResolvingDeferredObligation(_) => {
+                ResolvingDeferredObligation(_) |
+                ResolvingTyNode(_) => {
                     // any failures here should also fail when
                     // resolving the patterns, closure types, or
                     // something else.

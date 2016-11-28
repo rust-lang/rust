@@ -30,14 +30,13 @@
 
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
-use middle::stability;
 use rustc::cfg;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::traits::{self, Reveal};
 use rustc::hir::map as hir_map;
 use util::nodemap::NodeSet;
-use lint::{Level, LateContext, LintContext, LintArray, Lint};
+use lint::{Level, LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
 
 use std::collections::HashSet;
@@ -45,7 +44,6 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
-use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use rustc::hir::{self, PatKind};
@@ -167,7 +165,7 @@ impl LateLintPass for NonShorthandFieldPatterns {
                 if fieldpat.node.is_shorthand {
                     continue;
                 }
-                if let PatKind::Binding(_, ident, None) = fieldpat.node.pat.node {
+                if let PatKind::Binding(_, _, ident, None) = fieldpat.node.pat.node {
                     if ident.node == fieldpat.node.name {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
@@ -391,7 +389,7 @@ impl LateLintPass for MissingDoc {
             hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_item_refs) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
-                let real_trait = cx.tcx.expect_def(trait_ref.ref_id).def_id();
+                let real_trait = trait_ref.path.def.def_id();
                 if let Some(node_id) = cx.tcx.map.as_local_node_id(real_trait) {
                     match cx.tcx.map.find(node_id) {
                         Some(hir_map::NodeItem(item)) => {
@@ -608,142 +606,6 @@ impl LateLintPass for MissingDebugImplementations {
 }
 
 declare_lint! {
-    DEPRECATED,
-    Warn,
-    "detects use of deprecated items"
-}
-
-/// Checks for use of items with `#[deprecated]` or `#[rustc_deprecated]` attributes
-#[derive(Clone)]
-pub struct Deprecated {
-    /// Tracks the `NodeId` of the current item.
-    ///
-    /// This is required since not all node ids are present in the hir map.
-    current_item: ast::NodeId,
-}
-
-impl Deprecated {
-    pub fn new() -> Deprecated {
-        Deprecated { current_item: ast::CRATE_NODE_ID }
-    }
-
-    fn lint(&self,
-            cx: &LateContext,
-            _id: DefId,
-            span: Span,
-            stability: &Option<&attr::Stability>,
-            deprecation: &Option<stability::DeprecationEntry>) {
-        // Deprecated attributes apply in-crate and cross-crate.
-        if let Some(&attr::Stability{rustc_depr: Some(attr::RustcDeprecation{reason, ..}), ..})
-                = *stability {
-            output(cx, DEPRECATED, span, Some(reason))
-        } else if let Some(ref depr_entry) = *deprecation {
-            if let Some(parent_depr) = cx.tcx.lookup_deprecation_entry(self.parent_def(cx)) {
-                if parent_depr.same_origin(depr_entry) {
-                    return;
-                }
-            }
-
-            output(cx, DEPRECATED, span, depr_entry.attr.note)
-        }
-
-        fn output(cx: &LateContext, lint: &'static Lint, span: Span, note: Option<Symbol>) {
-            let msg = if let Some(note) = note {
-                format!("use of deprecated item: {}", note)
-            } else {
-                format!("use of deprecated item")
-            };
-
-            cx.span_lint(lint, span, &msg);
-        }
-    }
-
-    fn push_item(&mut self, item_id: ast::NodeId) {
-        self.current_item = item_id;
-    }
-
-    fn item_post(&mut self, cx: &LateContext, item_id: ast::NodeId) {
-        assert_eq!(self.current_item, item_id);
-        self.current_item = cx.tcx.map.get_parent(item_id);
-    }
-
-    fn parent_def(&self, cx: &LateContext) -> DefId {
-        cx.tcx.map.local_def_id(self.current_item)
-    }
-}
-
-impl LintPass for Deprecated {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DEPRECATED)
-    }
-}
-
-impl LateLintPass for Deprecated {
-    fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        self.push_item(item.id);
-        stability::check_item(cx.tcx,
-                              item,
-                              false,
-                              &mut |id, sp, stab, depr| self.lint(cx, id, sp, &stab, &depr));
-    }
-
-    fn check_item_post(&mut self, cx: &LateContext, item: &hir::Item) {
-        self.item_post(cx, item.id);
-    }
-
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        stability::check_expr(cx.tcx,
-                              e,
-                              &mut |id, sp, stab, depr| self.lint(cx, id, sp, &stab, &depr));
-    }
-
-    fn check_path(&mut self, cx: &LateContext, path: &hir::Path, id: ast::NodeId) {
-        stability::check_path(cx.tcx,
-                              path,
-                              id,
-                              &mut |id, sp, stab, depr| self.lint(cx, id, sp, &stab, &depr));
-    }
-
-    fn check_path_list_item(&mut self, cx: &LateContext, item: &hir::PathListItem) {
-        stability::check_path_list_item(cx.tcx,
-                                        item,
-                                        &mut |id, sp, stab, depr| {
-                                            self.lint(cx, id, sp, &stab, &depr)
-                                        });
-    }
-
-    fn check_pat(&mut self, cx: &LateContext, pat: &hir::Pat) {
-        stability::check_pat(cx.tcx,
-                             pat,
-                             &mut |id, sp, stab, depr| self.lint(cx, id, sp, &stab, &depr));
-    }
-
-    fn check_impl_item(&mut self, _: &LateContext, item: &hir::ImplItem) {
-        self.push_item(item.id);
-    }
-
-    fn check_impl_item_post(&mut self, cx: &LateContext, item: &hir::ImplItem) {
-        self.item_post(cx, item.id);
-    }
-
-    fn check_trait_item(&mut self, _: &LateContext, item: &hir::TraitItem) {
-        self.push_item(item.id);
-    }
-
-    fn check_trait_item_post(&mut self, cx: &LateContext, item: &hir::TraitItem) {
-        self.item_post(cx, item.id);
-    }
-
-    fn check_foreign_item(&mut self, _: &LateContext, item: &hir::ForeignItem) {
-        self.push_item(item.id);
-    }
-
-    fn check_foreign_item_post(&mut self, cx: &LateContext, item: &hir::ForeignItem) {
-        self.item_post(cx, item.id);
-    }
-}
-
-declare_lint! {
     DEPRECATED_ATTR,
     Warn,
     "detects use of deprecated attributes"
@@ -928,8 +790,12 @@ impl LateLintPass for UnconditionalRecursion {
         fn expr_refers_to_this_fn(tcx: TyCtxt, fn_id: ast::NodeId, id: ast::NodeId) -> bool {
             match tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
-                    tcx.expect_def_or_none(callee.id)
-                        .map_or(false, |def| def.def_id() == tcx.map.local_def_id(fn_id))
+                    let def = if let hir::ExprPath(ref qpath) = callee.node {
+                        tcx.tables().qpath_def(qpath, callee.id)
+                    } else {
+                        return false;
+                    };
+                    def.def_id() == tcx.map.local_def_id(fn_id)
                 }
                 _ => false,
             }
@@ -967,10 +833,13 @@ impl LateLintPass for UnconditionalRecursion {
             // Check for calls to methods via explicit paths (e.g. `T::method()`).
             match tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
-                    // The callee is an arbitrary expression,
-                    // it doesn't necessarily have a definition.
-                    match tcx.expect_def_or_none(callee.id) {
-                        Some(Def::Method(def_id)) => {
+                    let def = if let hir::ExprPath(ref qpath) = callee.node {
+                        tcx.tables().qpath_def(qpath, callee.id)
+                    } else {
+                        return false;
+                    };
+                    match def {
+                        Def::Method(def_id) => {
                             let substs = tcx.tables().node_id_item_substs(callee.id)
                                 .unwrap_or_else(|| tcx.intern_substs(&[]));
                             method_call_refers_to_method(
@@ -1203,11 +1072,12 @@ impl LateLintPass for MutableTransmutes {
             (cx: &LateContext<'a, 'tcx>,
              expr: &hir::Expr)
              -> Option<(&'tcx ty::TypeVariants<'tcx>, &'tcx ty::TypeVariants<'tcx>)> {
-            match expr.node {
-                hir::ExprPath(..) => (),
-                _ => return None,
-            }
-            if let Def::Fn(did) = cx.tcx.expect_def(expr.id) {
+            let def = if let hir::ExprPath(ref qpath) = expr.node {
+                cx.tcx.tables().qpath_def(qpath, expr.id)
+            } else {
+                return None;
+            };
+            if let Def::Fn(did) = def {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }

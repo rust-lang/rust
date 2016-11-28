@@ -136,7 +136,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &hir::Expr) {
         if let hir::ExprClosure(..) = expr.node {
-            convert_closure(self.ccx, expr.id);
+            let def_id = self.ccx.tcx.map.local_def_id(expr.id);
+            generics_of_def_id(self.ccx, def_id);
+            type_of_def_id(self.ccx, def_id);
         }
         intravisit::walk_expr(self, expr);
     }
@@ -542,11 +544,10 @@ fn is_param<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       param_id: ast::NodeId)
                       -> bool
 {
-    if let hir::TyPath(None, _) = ast_ty.node {
-        let path_res = tcx.expect_resolution(ast_ty.id);
-        match path_res.base_def {
+    if let hir::TyPath(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
+        match path.def {
             Def::SelfTy(Some(def_id), None) |
-            Def::TyParam(def_id) if path_res.depth == 0 => {
+            Def::TyParam(def_id) => {
                 def_id == tcx.map.local_def_id(param_id)
             }
             _ => false
@@ -569,40 +570,6 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     ccx.tcx.item_types.borrow_mut().insert(def_id, tt);
     ccx.tcx.generics.borrow_mut().insert(def_id, struct_generics);
     ccx.tcx.predicates.borrow_mut().insert(def_id, struct_predicates.clone());
-}
-
-fn convert_closure<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                             node_id: ast::NodeId)
-{
-    let tcx = ccx.tcx;
-    let def_id = tcx.map.local_def_id(node_id);
-    let base_def_id = tcx.closure_base_def_id(def_id);
-    let base_generics = generics_of_def_id(ccx, base_def_id);
-
-    // provide junk type parameter defs - the only place that
-    // cares about anything but the length is instantiation,
-    // and we don't do that for closures.
-    let upvar_decls : Vec<_> = tcx.with_freevars(node_id, |fv| {
-        fv.iter().enumerate().map(|(i, _)| ty::TypeParameterDef {
-            index: (base_generics.count() as u32) + (i as u32),
-            name: Symbol::intern("<upvar>"),
-            def_id: def_id,
-            default_def_id: base_def_id,
-            default: None,
-            object_lifetime_default: ty::ObjectLifetimeDefault::BaseDefault,
-            pure_wrt_drop: false,
-        }).collect()
-    });
-    tcx.generics.borrow_mut().insert(def_id, tcx.alloc_generics(ty::Generics {
-        parent: Some(base_def_id),
-        parent_regions: base_generics.parent_regions + (base_generics.regions.len() as u32),
-        parent_types: base_generics.parent_types + (base_generics.types.len() as u32),
-        regions: vec![],
-        types: upvar_decls,
-        has_self: base_generics.has_self,
-    }));
-
-    type_of_def_id(ccx, def_id);
 }
 
 fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -696,7 +663,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
     debug!("convert: item {} with id {}", it.name, it.id);
     match it.node {
         // These don't define types.
-        hir::ItemExternCrate(_) | hir::ItemUse(_) | hir::ItemMod(_) => {
+        hir::ItemExternCrate(_) | hir::ItemUse(..) | hir::ItemMod(_) => {
         }
         hir::ItemForeignMod(ref foreign_mod) => {
             for item in &foreign_mod.items {
@@ -1321,6 +1288,9 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let parent_id = tcx.map.get_parent(node_id);
                 Some(tcx.map.local_def_id(parent_id))
             }
+            NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
+                Some(tcx.closure_base_def_id(def_id))
+            }
             NodeTy(&hir::Ty { node: hir::TyImplTrait(..), .. }) => {
                 let mut parent_id = node_id;
                 loop {
@@ -1438,7 +1408,24 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let i = type_start + i as u32;
             get_or_create_type_parameter_def(ccx, ast_generics, i, p, allow_defaults)
         });
-        let types: Vec<_> = opt_self.into_iter().chain(types).collect();
+        let mut types: Vec<_> = opt_self.into_iter().chain(types).collect();
+
+        // provide junk type parameter defs - the only place that
+        // cares about anything but the length is instantiation,
+        // and we don't do that for closures.
+        if let NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) = node {
+            tcx.with_freevars(node_id, |fv| {
+                types.extend(fv.iter().enumerate().map(|(i, _)| ty::TypeParameterDef {
+                    index: type_start + i as u32,
+                    name: Symbol::intern("<upvar>"),
+                    def_id: def_id,
+                    default_def_id: parent_def_id.unwrap(),
+                    default: None,
+                    object_lifetime_default: ty::ObjectLifetimeDefault::BaseDefault,
+                    pure_wrt_drop: false,
+               }));
+            });
+        }
 
         // Debugging aid.
         if tcx.has_attr(def_id, "rustc_object_lifetime_default") {
@@ -1625,8 +1612,7 @@ fn add_unsized_bound<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
         Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.
             if let Ok(kind_id) = kind_id {
-                let trait_def = tcx.expect_def(tpb.ref_id);
-                if trait_def != Def::Trait(kind_id) {
+                if tpb.path.def != Def::Trait(kind_id) {
                     tcx.sess.span_warn(span,
                                        "default bound relaxed for a type parameter, but \
                                        this does nothing because the given bound is not \

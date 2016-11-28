@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(fn_traits)]
+
 struct closure_box<'a> {
     cl: Box<FnMut() + 'a>,
 }

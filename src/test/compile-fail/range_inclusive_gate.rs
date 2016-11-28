@@ -16,10 +16,8 @@
 pub fn main() {
     let _: std::ops::RangeInclusive<_> = { use std::intrinsics; 1 } ... { use std::intrinsics; 2 };
     //~^ ERROR use of unstable library feature 'inclusive_range'
-    //~^^ ERROR core_intrinsics
-    //~^^^ ERROR core_intrinsics
-    //~^^^^ WARN unused_imports
-    //~^^^^^ WARN unused_imports
+    //~| ERROR core_intrinsics
+    //~| ERROR core_intrinsics
 }
 
 

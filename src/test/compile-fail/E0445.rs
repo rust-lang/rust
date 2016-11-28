@@ -13,13 +13,13 @@ trait Foo {
 }
 
 pub trait Bar : Foo {}
-//~^ ERROR private trait in public interface [E0445]
+//~^ ERROR private trait `Foo` in public interface [E0445]
 //~| NOTE private trait can't be public
 pub struct Bar2<T: Foo>(pub T);
-//~^ ERROR private trait in public interface [E0445]
+//~^ ERROR private trait `Foo` in public interface [E0445]
 //~| NOTE private trait can't be public
 pub fn foo<T: Foo> (t: T) {}
-//~^ ERROR private trait in public interface [E0445]
+//~^ ERROR private trait `Foo` in public interface [E0445]
 //~| NOTE private trait can't be public
 
 fn main() {}

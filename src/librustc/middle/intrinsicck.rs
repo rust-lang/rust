@@ -160,23 +160,26 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
 
 impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for ExprVisitor<'a, 'gcx, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
-        if let hir::ExprPath(..) = expr.node {
-            match self.infcx.tcx.expect_def(expr.id) {
-                Def::Fn(did) if self.def_id_is_transmute(did) => {
-                    let typ = self.infcx.tcx.tables().node_id_to_type(expr.id);
-                    match typ.sty {
-                        ty::TyFnDef(.., ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
-                            let from = bare_fn_ty.sig.0.inputs[0];
-                            let to = bare_fn_ty.sig.0.output;
-                            self.check_transmute(expr.span, from, to, expr.id);
-                        }
-                        _ => {
-                            span_bug!(expr.span, "transmute wasn't a bare fn?!");
-                        }
+        let def = if let hir::ExprPath(ref qpath) = expr.node {
+            self.infcx.tcx.tables().qpath_def(qpath, expr.id)
+        } else {
+            Def::Err
+        };
+        match def {
+            Def::Fn(did) if self.def_id_is_transmute(did) => {
+                let typ = self.infcx.tcx.tables().node_id_to_type(expr.id);
+                match typ.sty {
+                    ty::TyFnDef(.., ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
+                        let from = bare_fn_ty.sig.0.inputs[0];
+                        let to = bare_fn_ty.sig.0.output;
+                        self.check_transmute(expr.span, from, to, expr.id);
+                    }
+                    _ => {
+                        span_bug!(expr.span, "transmute wasn't a bare fn?!");
                     }
                 }
-                _ => {}
             }
+            _ => {}
         }
 
         intravisit::walk_expr(self, expr);

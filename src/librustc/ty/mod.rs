@@ -19,7 +19,7 @@ pub use self::fold::TypeFoldable;
 use dep_graph::{self, DepNode};
 use hir::map as ast_map;
 use middle;
-use hir::def::{Def, CtorKind, PathResolution, ExportMap};
+use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
@@ -29,8 +29,7 @@ use ty;
 use ty::subst::{Subst, Substs};
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
-use util::nodemap::NodeSet;
-use util::nodemap::{FxHashMap, FxHashSet};
+use util::nodemap::{NodeSet, NodeMap, FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
@@ -111,12 +110,13 @@ pub type Disr = ConstInt;
 /// The complete set of all analyses described in this module. This is
 /// produced by the driver and fed to trans and later passes.
 #[derive(Clone)]
-pub struct CrateAnalysis<'a> {
+pub struct CrateAnalysis<'tcx> {
     pub export_map: ExportMap,
     pub access_levels: middle::privacy::AccessLevels,
     pub reachable: NodeSet,
-    pub name: &'a str,
+    pub name: String,
     pub glob_map: Option<hir::GlobMap>,
+    pub hir_ty_to_ty: NodeMap<Ty<'tcx>>,
 }
 
 #[derive(Copy, Clone)]
@@ -247,7 +247,7 @@ impl Visibility {
         match *visibility {
             hir::Public => Visibility::Public,
             hir::Visibility::Crate => Visibility::Restricted(ast::CRATE_NODE_ID),
-            hir::Visibility::Restricted { id, .. } => match tcx.expect_def(id) {
+            hir::Visibility::Restricted { ref path, .. } => match path.def {
                 // If there is no resolution, `resolve` will have already reported an error, so
                 // assume that the visibility is public to avoid reporting more privacy errors.
                 Def::Err => Visibility::Public,
@@ -1280,8 +1280,13 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             }
             Some(ast_map::NodeExpr(expr)) => {
                 // This is a convenience to allow closures to work.
-                if let hir::ExprClosure(..) = expr.node {
-                    ParameterEnvironment::for_item(tcx, tcx.map.get_parent(id))
+                if let hir::ExprClosure(.., ref body, _) = expr.node {
+                    let def_id = tcx.map.local_def_id(id);
+                    let base_def_id = tcx.closure_base_def_id(def_id);
+                    tcx.construct_parameter_environment(
+                        expr.span,
+                        base_def_id,
+                        tcx.region_maps.call_site_extent(id, body.id))
                 } else {
                     tcx.empty_parameter_environment()
                 }
@@ -2047,7 +2052,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         match self.map.find(id) {
             Some(ast_map::NodeLocal(pat)) => {
                 match pat.node {
-                    hir::PatKind::Binding(_, ref path1, _) => path1.node.as_str(),
+                    hir::PatKind::Binding(_, _, ref path1, _) => path1.node.as_str(),
                     _ => {
                         bug!("Variable id {} maps to {:?}, not local", id, pat);
                     },
@@ -2059,11 +2064,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn expr_is_lval(self, expr: &hir::Expr) -> bool {
          match expr.node {
-            hir::ExprPath(..) => {
-                // This function can be used during type checking when not all paths are
-                // fully resolved. Partially resolved paths in expressions can only legally
-                // refer to associated items which are always rvalues.
-                match self.expect_resolution(expr.id).base_def {
+            hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
+                match path.def {
                     Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
                     _ => false,
                 }
@@ -2079,6 +2081,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             hir::ExprIndex(..) => {
                 true
             }
+
+            // Partially qualified paths in expressions can only legally
+            // refer to associated items which are always rvalues.
+            hir::ExprPath(hir::QPath::TypeRelative(..)) |
 
             hir::ExprCall(..) |
             hir::ExprMethodCall(..) |
@@ -2295,22 +2301,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         lookup_locally_or_in_crate_store(
             "impl_trait_refs", id, &self.impl_trait_refs,
             || self.sess.cstore.impl_trait_ref(self.global_tcx(), id))
-    }
-
-    /// Returns a path resolution for node id if it exists, panics otherwise.
-    pub fn expect_resolution(self, id: NodeId) -> PathResolution {
-        *self.def_map.borrow().get(&id).expect("no def-map entry for node id")
-    }
-
-    /// Returns a fully resolved definition for node id if it exists, panics otherwise.
-    pub fn expect_def(self, id: NodeId) -> Def {
-        self.expect_resolution(id).full_def()
-    }
-
-    /// Returns a fully resolved definition for node id if it exists, or none if no
-    /// definition exists, panics on partial resolutions to catch errors.
-    pub fn expect_def_or_none(self, id: NodeId) -> Option<Def> {
-        self.def_map.borrow().get(&id).map(|resolution| resolution.full_def())
     }
 
     // Returns `ty::VariantDef` if `def` refers to a struct,

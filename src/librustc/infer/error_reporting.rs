@@ -1440,8 +1440,8 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                     }
                     ty_queue.push(&mut_ty.ty);
                 }
-                hir::TyPath(ref maybe_qself, ref path) => {
-                    match self.tcx.expect_def(cur_ty.id) {
+                hir::TyPath(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
+                    match path.def {
                         Def::Enum(did) | Def::TyAlias(did) |
                         Def::Struct(did) | Def::Union(did) => {
                             let generics = self.tcx.item_generics(did);
@@ -1476,15 +1476,12 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                             };
                             let new_path = self.rebuild_path(rebuild_info, lifetime);
                             let qself = maybe_qself.as_ref().map(|qself| {
-                                hir::QSelf {
-                                    ty: self.rebuild_arg_ty_or_output(&qself.ty, lifetime,
-                                                                      anon_nums, region_names),
-                                    position: qself.position
-                                }
+                                self.rebuild_arg_ty_or_output(qself, lifetime,
+                                                              anon_nums, region_names)
                             });
                             let to = hir::Ty {
                                 id: cur_ty.id,
-                                node: hir::TyPath(qself, new_path),
+                                node: hir::TyPath(hir::QPath::Resolved(qself, P(new_path))),
                                 span: cur_ty.span
                             };
                             new_ty = self.rebuild_ty(new_ty, P(to));
@@ -1609,6 +1606,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
                     lifetimes: new_lts.into(),
                     types: new_types,
+                    infer_types: data.infer_types,
                     bindings: new_bindings,
                })
             }
@@ -1623,6 +1621,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
         hir::Path {
             span: path.span,
             global: path.global,
+            def: path.def,
             segments: new_segs.into()
         }
     }

@@ -23,9 +23,4 @@ fn f2() { }
 #[unstable(feature = "a", issue = "no")] //~ ERROR incorrect 'issue'
 fn f3() { }
 
-#[macro_export]
-macro_rules! mac { //~ ERROR This node does not have a stability attribute
-    () => ()
-}
-
 fn main() { }

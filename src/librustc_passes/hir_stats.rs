@@ -218,15 +218,13 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.record("LifetimeDef", Id::None, lifetime);
         hir_visit::walk_lifetime_def(self, lifetime)
     }
+    fn visit_qpath(&mut self, qpath: &'v hir::QPath, id: NodeId, span: Span) {
+        self.record("QPath", Id::None, qpath);
+        hir_visit::walk_qpath(self, qpath, id, span)
+    }
     fn visit_path(&mut self, path: &'v hir::Path, _id: NodeId) {
         self.record("Path", Id::None, path);
         hir_visit::walk_path(self, path)
-    }
-    fn visit_path_list_item(&mut self,
-                            prefix: &'v hir::Path,
-                            item: &'v hir::PathListItem) {
-        self.record("PathListItem", Id::Node(item.node.id), item);
-        hir_visit::walk_path_list_item(self, prefix, item)
     }
     fn visit_path_segment(&mut self,
                           path_span: Span,
@@ -234,7 +232,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.record("PathSegment", Id::None, path_segment);
         hir_visit::walk_path_segment(self, path_span, path_segment)
     }
-
     fn visit_assoc_type_binding(&mut self, type_binding: &'v hir::TypeBinding) {
         self.record("TypeBinding", Id::Node(type_binding.id), type_binding);
         hir_visit::walk_assoc_type_binding(self, type_binding)

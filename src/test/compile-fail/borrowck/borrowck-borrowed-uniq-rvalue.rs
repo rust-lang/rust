@@ -12,7 +12,6 @@
 
 #![feature(box_syntax)]
 
-extern crate collections;
 use std::collections::HashMap;
 
 fn main() {
