@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(rustc_attrs)]
+#![allow(dead_code)]
 
 pub type T = ();
 mod foo { pub use super::T; }

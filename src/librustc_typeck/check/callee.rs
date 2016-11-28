@@ -219,9 +219,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 if let hir::ExprCall(ref expr, _) = call_expr.node {
                     let tcx = self.tcx;
-                    if let Some(pr) = tcx.def_map.borrow().get(&expr.id) {
-                        if pr.depth == 0 && pr.base_def != Def::Err {
-                            if let Some(span) = tcx.map.span_if_local(pr.base_def.def_id()) {
+                    if let Some(def) = tcx.def_map.borrow().get(&expr.id).cloned() {
+                        if def != Def::Err {
+                            if let Some(span) = tcx.map.span_if_local(def.def_id()) {
                                 err.span_note(span, "defined here");
                             }
                         }

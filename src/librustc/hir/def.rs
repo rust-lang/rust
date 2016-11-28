@@ -101,7 +101,8 @@ impl PathResolution {
 }
 
 // Definition mapping
-pub type DefMap = NodeMap<PathResolution>;
+pub type DefMap = NodeMap<Def>;
+pub type AssocMap = NodeMap<PathResolution>;
 // This is the replacement export map. It maps a module to all of the exports
 // within.
 pub type ExportMap = NodeMap<Vec<Export>>;

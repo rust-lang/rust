@@ -19,7 +19,7 @@ use rustc::hir::map as ast_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::cstore::InlinedItem;
 use rustc::traits;
-use rustc::hir::def::{Def, CtorKind, PathResolution};
+use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util::def_to_path;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -284,7 +284,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hir::ExprCall(ref callee, ref args) => {
             let def = tcx.expect_def(callee.id);
             if let Vacant(entry) = tcx.def_map.borrow_mut().entry(expr.id) {
-               entry.insert(PathResolution::new(def));
+               entry.insert(def);
             }
             let path = match def {
                 Def::StructCtor(def_id, CtorKind::Fn) |

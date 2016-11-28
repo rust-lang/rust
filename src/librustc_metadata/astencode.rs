@@ -18,7 +18,7 @@ use schema::*;
 
 use rustc::middle::cstore::{InlinedItem, InlinedItemRef};
 use rustc::middle::const_qualif::ConstQualif;
-use rustc::hir::def::{self, Def};
+use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TyCtxt, Ty};
 
@@ -141,7 +141,7 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
     for (id, entry) in ast.side_tables.decode((cdata, tcx, id_ranges)) {
         match entry {
             TableEntry::Def(def) => {
-                tcx.def_map.borrow_mut().insert(id, def::PathResolution::new(def));
+                tcx.def_map.borrow_mut().insert(id, def);
             }
             TableEntry::NodeType(ty) => {
                 tcx.tables.borrow_mut().node_types.insert(id, ty);

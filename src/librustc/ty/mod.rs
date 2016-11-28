@@ -2299,18 +2299,24 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Returns a path resolution for node id if it exists, panics otherwise.
     pub fn expect_resolution(self, id: NodeId) -> PathResolution {
-        *self.def_map.borrow().get(&id).expect("no def-map entry for node id")
+        if let Some(def) = self.def_map.borrow().get(&id) {
+            return PathResolution::new(*def);
+        }
+        if let Some(resolution) = self.assoc_map.get(&id) {
+            return *resolution;
+        }
+        panic!("no def-map entry for node id");
     }
 
     /// Returns a fully resolved definition for node id if it exists, panics otherwise.
     pub fn expect_def(self, id: NodeId) -> Def {
-        self.expect_resolution(id).full_def()
+        *self.def_map.borrow().get(&id).expect("no def-map entry for node id")
     }
 
     /// Returns a fully resolved definition for node id if it exists, or none if no
-    /// definition exists, panics on partial resolutions to catch errors.
+    /// definition exists or only a partial resolution exists.
     pub fn expect_def_or_none(self, id: NodeId) -> Option<Def> {
-        self.def_map.borrow().get(&id).map(|resolution| resolution.full_def())
+        self.def_map.borrow().get(&id).cloned()
     }
 
     // Returns `ty::VariantDef` if `def` refers to a struct,

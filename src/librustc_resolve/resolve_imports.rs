@@ -678,7 +678,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
         self.per_ns(|this, ns| if let Some(binding) = result[ns].get().ok() {
-            this.def_map.entry(directive.id).or_insert(PathResolution::new(binding.def()));
+            this.def_map.entry(directive.id).or_insert(binding.def());
         });
 
         debug!("(resolving single import) successfully resolved import");
@@ -716,8 +716,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         // Record the destination of this import
         if let Some(did) = module.def_id() {
-            let resolution = PathResolution::new(Def::Mod(did));
-            self.def_map.insert(directive.id, resolution);
+            let def = Def::Mod(did);
+            self.def_map.insert(directive.id, def);
         }
     }
 
