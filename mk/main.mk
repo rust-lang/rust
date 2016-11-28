@@ -378,10 +378,6 @@ ifdef CFG_MUSL_ROOT
 export CFG_MUSL_ROOT
 endif
 
-# FIXME: Transitionary measure to bootstrap using the old bootstrap logic.
-# Remove this once the bootstrap compiler uses the new login in Issue #36548.
-export RUSTC_BOOTSTRAP_KEY=62b3e239
-
 ######################################################################
 # Per-stage targets and runner
 ######################################################################
