@@ -23,7 +23,7 @@ use syntax::ast;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
@@ -609,7 +609,9 @@ fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, def_id: DefId) {
 }
 
 impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> { None }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+        NestedVisitorMap::None
+    }
 
     fn visit_item(&mut self, i: &hir::Item) {
         debug!("visit_item: {:?}", i);

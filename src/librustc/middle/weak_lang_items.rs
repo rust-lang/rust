@@ -18,7 +18,7 @@ use rustc_back::PanicStrategy;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use hir::intravisit::Visitor;
+use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::intravisit;
 use hir;
 
@@ -125,7 +125,9 @@ impl<'a> Context<'a> {
 }
 
 impl<'a, 'v> Visitor<'v> for Context<'a> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> { None }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+        NestedVisitorMap::None
+    }
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
         if let Some(lang_item) = lang_items::extract(&i.attrs) {

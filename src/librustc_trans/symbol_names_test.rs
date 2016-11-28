@@ -15,7 +15,7 @@
 //! paths etc in all kinds of annoying scenarios.
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use syntax::ast;
 
 use common::SharedCrateContext;
@@ -67,7 +67,9 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for SymbolNamesTest<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> { None }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.process_attrs(item.id);

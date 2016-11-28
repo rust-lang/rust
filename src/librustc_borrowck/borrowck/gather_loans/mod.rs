@@ -30,7 +30,7 @@ use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::Expr;
 use rustc::hir::intravisit;
-use rustc::hir::intravisit::{Visitor};
+use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 
 use self::restrictions::RestrictionResult;
 
@@ -521,8 +521,8 @@ struct StaticInitializerCtxt<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for StaticInitializerCtxt<'a, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.bccx.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.bccx.tcx.map)
     }
 
     fn visit_expr(&mut self, ex: &'tcx Expr) {

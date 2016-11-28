@@ -27,7 +27,7 @@ use syntax::ast;
 use syntax_pos::{DUMMY_SP, Span};
 
 use rustc::hir::print::pat_to_string;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, PatKind};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -187,8 +187,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 // traffic in node-ids or update tables in the type context etc.
 
 impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'gcx>> {
-        Some(&self.fcx.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+        NestedVisitorMap::OnlyBodies(&self.fcx.tcx.map)
     }
 
     fn visit_stmt(&mut self, s: &'gcx hir::Stmt) {
