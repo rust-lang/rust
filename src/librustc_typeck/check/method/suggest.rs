@@ -28,6 +28,7 @@ use syntax_pos::Span;
 
 use rustc::hir::print as pprust;
 use rustc::hir;
+use rustc::infer::type_variable::TypeVariableOrigin;
 
 use std::cell;
 use std::cmp::Ordering;
@@ -53,7 +54,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 self.autoderef(span, ty).any(|(ty, _)| {
                     self.probe(|_| {
-                        let fn_once_substs = tcx.mk_substs_trait(ty, &[self.next_ty_var()]);
+                        let fn_once_substs = tcx.mk_substs_trait(ty,
+                            &[self.next_ty_var(TypeVariableOrigin::MiscVariable(span))]);
                         let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                         let poly_trait_ref = trait_ref.to_poly_trait_ref();
                         let obligation =

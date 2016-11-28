@@ -20,6 +20,7 @@ use rustc::infer::InferOk;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
+use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast;
 use syntax_pos::Span;
@@ -1225,7 +1226,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         let substs = Substs::for_item(self.tcx,
                                       impl_def_id,
                                       |_, _| self.tcx.mk_region(ty::ReErased),
-                                      |_, _| self.next_ty_var());
+                                      |_, _| self.next_ty_var(
+                                        TypeVariableOrigin::SubstitutionPlaceholder(
+                                            self.tcx.def_span(impl_def_id))));
 
         (impl_ty, substs)
     }

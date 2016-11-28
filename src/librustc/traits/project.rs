@@ -25,6 +25,7 @@ use super::util;
 
 use hir::def_id::DefId;
 use infer::InferOk;
+use infer::type_variable::TypeVariableOrigin;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -382,7 +383,12 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // and a deferred predicate to resolve this when more type
             // information is available.
 
-            let ty_var = selcx.infcx().next_ty_var();
+            let tcx = selcx.infcx().tcx;
+            let def_id = tcx.associated_items(projection_ty.trait_ref.def_id).find(|i|
+                i.name == projection_ty.item_name && i.kind == ty::AssociatedKind::Type
+            ).map(|i| i.def_id).unwrap();
+            let ty_var = selcx.infcx().next_ty_var(
+                TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
             let projection = ty::Binder(ty::ProjectionPredicate {
                 projection_ty: projection_ty,
                 ty: ty_var
@@ -596,7 +602,12 @@ fn normalize_to_error<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tc
     let trait_obligation = Obligation { cause: cause,
                                         recursion_depth: depth,
                                         predicate: trait_ref.to_predicate() };
-    let new_value = selcx.infcx().next_ty_var();
+    let tcx = selcx.infcx().tcx;
+    let def_id = tcx.associated_items(projection_ty.trait_ref.def_id).find(|i|
+        i.name == projection_ty.item_name && i.kind == ty::AssociatedKind::Type
+    ).map(|i| i.def_id).unwrap();
+    let new_value = selcx.infcx().next_ty_var(
+        TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
     Normalized {
         value: new_value,
         obligations: vec![trait_obligation]
