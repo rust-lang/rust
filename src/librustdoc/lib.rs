@@ -162,10 +162,10 @@ pub fn opts() -> Vec<RustcOptGroup> {
         unstable(optmulti("Z", "",
                           "internal and debugging options (only on nightly build)", "FLAG")),
         stable(optopt("", "sysroot", "Override the system root", "PATH")),
-        stable(optopt("", "playground-url",
-                      "URL to send code snippets to, may be reset by --markdown-playground-url \
-                       or `#![doc(html_playground_url=...)]`",
-                      "URL")),
+        unstable(optopt("", "playground-url",
+                        "URL to send code snippets to, may be reset by --markdown-playground-url \
+                         or `#![doc(html_playground_url=...)]`",
+                        "URL")),
     ]
 }
 
