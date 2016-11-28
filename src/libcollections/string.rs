@@ -1260,6 +1260,39 @@ impl String {
         self.len() == 0
     }
 
+    /// Divide one string into two at an index.
+    ///
+    /// The argument, `mid`, should be a byte offset from the start of the string. It must also
+    /// be on the boundary of a UTF-8 code point.
+    ///
+    /// The two strings returned go from the start of the string to `mid`, and from `mid` to the end
+    /// of the string.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `mid` is not on a `UTF-8` code point boundary, or if it is beyond the last
+    /// code point of the string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(string_split_off)]
+    /// # fn main() {
+    /// let mut hello = String::from("Hello, World!");
+    /// let world = hello.split_off(7);
+    /// assert_eq!(hello, "Hello, ");
+    /// assert_eq!(world, "World!");
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "string_split_off", issue = "38080")]
+    pub fn split_off(&mut self, mid: usize) -> String {
+        assert!(self.is_char_boundary(mid));
+        assert!(mid <= self.len());
+        let other = self.vec.split_off(mid);
+        unsafe { String::from_utf8_unchecked(other) }
+    }
+
     /// Truncates this `String`, removing all contents.
     ///
     /// While this means the `String` will have a length of zero, it does not
