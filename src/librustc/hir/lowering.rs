@@ -46,6 +46,7 @@ use hir::map::definitions::DefPathData;
 use hir::def_id::{DefIndex, DefId};
 use hir::def::{Def, PathResolution};
 use session::Session;
+use util::nodemap::NodeMap;
 
 use std::collections::BTreeMap;
 use std::iter;
@@ -508,7 +509,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_ty_param(&mut self, tp: &TyParam) -> hir::TyParam {
+    fn lower_ty_param(&mut self, tp: &TyParam, add_bounds: &[TyParamBound]) -> hir::TyParam {
         let mut name = tp.ident.name;
 
         // Don't expose `Self` (recovered "keyword used as ident" parse error).
@@ -518,18 +519,26 @@ impl<'a> LoweringContext<'a> {
             name = Symbol::gensym("Self");
         }
 
+        let mut bounds = self.lower_bounds(&tp.bounds);
+        if !add_bounds.is_empty() {
+            bounds = bounds.into_iter().chain(self.lower_bounds(add_bounds).into_iter()).collect();
+        }
+
         hir::TyParam {
             id: tp.id,
             name: name,
-            bounds: self.lower_bounds(&tp.bounds),
+            bounds: bounds,
             default: tp.default.as_ref().map(|x| self.lower_ty(x)),
             span: tp.span,
             pure_wrt_drop: tp.attrs.iter().any(|attr| attr.check_name("may_dangle")),
         }
     }
 
-    fn lower_ty_params(&mut self, tps: &P<[TyParam]>) -> hir::HirVec<hir::TyParam> {
-        tps.iter().map(|tp| self.lower_ty_param(tp)).collect()
+    fn lower_ty_params(&mut self, tps: &P<[TyParam]>, add_bounds: &NodeMap<Vec<TyParamBound>>)
+                       -> hir::HirVec<hir::TyParam> {
+        tps.iter().map(|tp| {
+            self.lower_ty_param(tp, add_bounds.get(&tp.id).map_or(&[][..], |x| &x))
+        }).collect()
     }
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
@@ -561,8 +570,47 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_generics(&mut self, g: &Generics) -> hir::Generics {
+        // Collect `?Trait` bounds in where clause and move them to parameter definitions.
+        let mut add_bounds = NodeMap();
+        for pred in &g.where_clause.predicates {
+            if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
+                'next_bound: for bound in &bound_pred.bounds {
+                    if let TraitTyParamBound(_, TraitBoundModifier::Maybe) = *bound {
+                        let report_error = |this: &mut Self| {
+                            this.diagnostic().span_err(bound_pred.bounded_ty.span,
+                                                       "`?Trait` bounds are only permitted at the \
+                                                        point where a type parameter is declared");
+                        };
+                        // Check if the where clause type is a plain type parameter.
+                        match bound_pred.bounded_ty.node {
+                            TyKind::Path(None, ref path)
+                                    if !path.global && path.segments.len() == 1 &&
+                                        bound_pred.bound_lifetimes.is_empty() => {
+                                if let Some(Def::TyParam(def_id)) =
+                                        self.resolver.get_resolution(bound_pred.bounded_ty.id)
+                                                     .map(|d| d.base_def) {
+                                    if let Some(node_id) =
+                                            self.resolver.definitions().as_local_node_id(def_id) {
+                                        for ty_param in &g.ty_params {
+                                            if node_id == ty_param.id {
+                                                add_bounds.entry(ty_param.id).or_insert(Vec::new())
+                                                                            .push(bound.clone());
+                                                continue 'next_bound;
+                                            }
+                                        }
+                                    }
+                                }
+                                report_error(self)
+                            }
+                            _ => report_error(self)
+                        }
+                    }
+                }
+            }
+        }
+
         hir::Generics {
-            ty_params: self.lower_ty_params(&g.ty_params),
+            ty_params: self.lower_ty_params(&g.ty_params, &add_bounds),
             lifetimes: self.lower_lifetime_defs(&g.lifetimes),
             where_clause: self.lower_where_clause(&g.where_clause),
             span: g.span,
@@ -588,7 +636,11 @@ impl<'a> LoweringContext<'a> {
                 hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
                     bound_lifetimes: self.lower_lifetime_defs(bound_lifetimes),
                     bounded_ty: self.lower_ty(bounded_ty),
-                    bounds: bounds.iter().map(|x| self.lower_ty_param_bound(x)).collect(),
+                    bounds: bounds.iter().filter_map(|bound| match *bound {
+                        // Ignore `?Trait` bounds, they were copied into type parameters already.
+                        TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
+                        _ => Some(self.lower_ty_param_bound(bound))
+                    }).collect(),
                     span: span,
                 })
             }
@@ -677,7 +729,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_bounds(&mut self, bounds: &TyParamBounds) -> hir::TyParamBounds {
+    fn lower_bounds(&mut self, bounds: &[TyParamBound]) -> hir::TyParamBounds {
         bounds.iter().map(|bound| self.lower_ty_param_bound(bound)).collect()
     }
 
