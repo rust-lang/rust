@@ -510,19 +510,24 @@ pub fn is_useful<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                            -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:?}, {:?})", matrix, v);
-    if rows.is_empty() {
-        return match witness {
-            ConstructWitness => UsefulWithWitness(vec![Witness(
-                repeat(cx.wild_pattern).take(v.len()).cloned().collect()
-            )]),
-            LeaveOutWitness => Useful
-        };
-    }
-    if rows[0].is_empty() {
-        return NotUseful;
-    }
 
-    let &Matrix(ref rows) = matrix;
+    // The base case. We are pattern-matching on () and the return value is
+    // based on whether our matrix has a row or not.
+    // NOTE: This could potentially be optimized by checking rows.is_empty()
+    // first and then, if v is non-empty, the return value is based on whether
+    // the type of the tuple we're checking is inhabited or not.
+    if v.is_empty() {
+        return if rows.is_empty() {
+            match witness {
+                ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
+                LeaveOutWitness => Useful,
+            }
+        }
+        else {
+            NotUseful
+        }
+    };
+
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
 
