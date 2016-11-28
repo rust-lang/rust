@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use core::iter::*;
-use core::{i8, i16, isize};
-use core::usize;
+use core::{i8, i16, u16, i32, u32, f32, isize, usize};
+use core::num::Wrapping;
 
 use test::Bencher;
 use test::black_box;
@@ -544,6 +544,49 @@ fn test_iterator_sum() {
     assert_eq!(v[..4].iter().cloned().sum::<i32>(), 6);
     assert_eq!(v.iter().cloned().sum::<i32>(), 55);
     assert_eq!(v[..0].iter().cloned().sum::<i32>(), 0);
+
+    // sum values of type i8, get a result of type i64
+    let v = vec![100i8, 50];
+    assert_eq!(v.iter().sum::<i64>(), 150);
+    assert_eq!(v.into_iter().sum::<i64>(), 150);
+
+    let v = vec![200u8, 100];
+    assert_eq!(v.iter().sum::<u64>(), 300);
+    assert_eq!(v.into_iter().sum::<u64>(), 300);
+
+    let n = i16::MAX;
+    let v = vec![n as i16, n, n];
+    assert_eq!(v.iter().sum::<i64>(), (n as i64) * 3);
+    assert_eq!(v.into_iter().sum::<i64>(), (n as i64) * 3);
+
+    let n = u16::MAX;
+    let v = vec![n as u16, n, n];
+    assert_eq!(v.iter().sum::<u64>(), (n as u64) * 3);
+    assert_eq!(v.into_iter().sum::<u64>(), (n as u64) * 3);
+
+    let n = i32::MAX;
+    let v = vec![n as i32, n, n];
+    assert_eq!(v.iter().sum::<i64>(), (n as i64) * 3);
+    assert_eq!(v.into_iter().sum::<i64>(), (n as i64) * 3);
+
+    let n = u32::MAX;
+    let v = vec![n as u32, n, n];
+    assert_eq!(v.iter().sum::<u64>(), (n as u64) * 3);
+    assert_eq!(v.into_iter().sum::<u64>(), (n as u64) * 3);
+
+    let n = f32::MAX;
+    let v = vec![n as f32, n, n];
+    assert_eq!(v.iter().sum::<f64>(), (n as f64) * 3.0);
+    assert_eq!(v.into_iter().sum::<f64>(), (n as f64) * 3.0);
+
+    // wrapping
+    let v = vec![Wrapping(100i8), Wrapping(50i8)];
+    assert_eq!(v.iter().sum::<Wrapping<i64>>(), Wrapping(150i64));
+    assert_eq!(v.into_iter().sum::<Wrapping<i64>>(), Wrapping(150i64));
+
+    let v = vec![Wrapping(100u8), Wrapping(200u8)];
+    assert_eq!(v.iter().sum::<Wrapping<u64>>(), Wrapping(300u64));
+    assert_eq!(v.into_iter().sum::<Wrapping<u64>>(), Wrapping(300u64));
 }
 
 #[test]
@@ -552,6 +595,49 @@ fn test_iterator_product() {
     assert_eq!(v[..4].iter().cloned().product::<i32>(), 0);
     assert_eq!(v[1..5].iter().cloned().product::<i32>(), 24);
     assert_eq!(v[..0].iter().cloned().product::<i32>(), 1);
+
+    // product values of type i8, get a result of type i64
+    let v = vec![100i8, 50];
+    assert_eq!(v.iter().product::<i64>(), 5000);
+    assert_eq!(v.into_iter().product::<i64>(), 5000);
+
+    let v = vec![200u8, 100];
+    assert_eq!(v.iter().product::<u64>(), 20000);
+    assert_eq!(v.into_iter().product::<u64>(), 20000);
+
+    let n = i16::MAX;
+    let v = vec![n as i16, n, n];
+    assert_eq!(v.iter().product::<i64>(), (n as i64).pow(3));
+    assert_eq!(v.into_iter().product::<i64>(), (n as i64).pow(3));
+
+    let n = u16::MAX;
+    let v = vec![n as u16, n, n];
+    assert_eq!(v.iter().product::<u64>(), (n as u64).pow(3));
+    assert_eq!(v.into_iter().product::<u64>(), (n as u64).pow(3));
+
+    let n = i32::MAX;
+    let v = vec![n as i32, n];
+    assert_eq!(v.iter().product::<i64>(), (n as i64).pow(2));
+    assert_eq!(v.into_iter().product::<i64>(), (n as i64).pow(2));
+
+    let n = u32::MAX;
+    let v = vec![n as u32, n];
+    assert_eq!(v.iter().product::<u64>(), (n as u64).pow(2));
+    assert_eq!(v.into_iter().product::<u64>(), (n as u64).pow(2));
+
+    let n = f32::MAX;
+    let v = vec![n as f32, n];
+    assert_eq!(v.iter().product::<f64>(), (n as f64).powi(2));
+    assert_eq!(v.into_iter().product::<f64>(), (n as f64).powi(2));
+
+    // wrapping
+    let v = vec![Wrapping(100i8), Wrapping(50i8)];
+    assert_eq!(v.iter().product::<Wrapping<i64>>(), Wrapping(5000i64));
+    assert_eq!(v.into_iter().product::<Wrapping<i64>>(), Wrapping(5000i64));
+
+    let v = vec![Wrapping(100u8), Wrapping(200u8)];
+    assert_eq!(v.iter().product::<Wrapping<u64>>(), Wrapping(20000u64));
+    assert_eq!(v.into_iter().product::<Wrapping<u64>>(), Wrapping(20000u64));
 }
 
 #[test]
