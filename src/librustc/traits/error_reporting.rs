@@ -827,12 +827,26 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
 
     fn need_type_info(&self, span: Span, ty: Ty<'tcx>) {
+        let ty = self.resolve_type_vars_if_possible(&ty);
+        let name = if let ty::TyInfer(ty::TyVar(ty_vid)) = ty.sty {
+            let ty_vars = self.type_variables.borrow();
+            if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
+                    *ty_vars.var_origin(ty_vid)
+            {
+                name.to_string()
+            } else {
+                ty.to_string()
+            }
+        } else {
+            ty.to_string()
+        };
+
         let mut err = struct_span_err!(self.tcx.sess, span, E0282,
                                        "unable to infer enough type information about `{}`",
-                                       ty);
+                                       name);
         err.note("type annotations or generic parameter binding required");
-        err.span_label(span, &format!("cannot infer type for `{}`", ty));
-        err.emit()
+        err.span_label(span, &format!("cannot infer type for `{}`", name));
+        err.emit();
     }
 
     fn note_obligation_cause<T>(&self,
