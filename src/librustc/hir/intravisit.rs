@@ -67,22 +67,37 @@ impl<'a> FnKind<'a> {
     }
 }
 
-/// Specifies what nested things a visitor wants to visit. Currently there are
-/// two modes: `OnlyBodies` descends into item bodies, but not into nested
-/// items; `All` descends into item bodies and nested items.
+/// Specifies what nested things a visitor wants to visit. The most
+/// common choice is `OnlyBodies`, which will cause the visitor to
+/// visit fn bodies for fns that it encounters, but skip over nested
+/// item-like things.
+///
+/// See the comments on `ItemLikeVisitor` for more details on the overall
+/// visit strategy.
 pub enum NestedVisitorMap<'this, 'tcx: 'this> {
     /// Do not visit any nested things. When you add a new
     /// "non-nested" thing, you will want to audit such uses to see if
     /// they remain valid.
+    ///
+    /// Use this if you are only walking some particular kind of tree
+    /// (i.e., a type, or fn signature) and you don't want to thread a
+    /// HIR map around.
     None,
 
     /// Do not visit nested item-like things, but visit nested things
     /// that are inside of an item-like.
     ///
-    /// **This is the default mode.**
+    /// **This is the most common choice.** A very commmon pattern is
+    /// to use `tcx.visit_all_item_likes_in_krate()` as an outer loop,
+    /// and to have the visitor that visits the contents of each item
+    /// using this setting.
     OnlyBodies(&'this Map<'tcx>),
 
     /// Visit all nested things, including item-likes.
+    ///
+    /// **This is an unusual choice.** It is used when you want to
+    /// process everything within their lexical context. Typically you
+    /// kick off the visit by doing `walk_krate()`.
     All(&'this Map<'tcx>),
 }
 
@@ -128,13 +143,15 @@ pub trait Visitor<'v> : Sized {
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
-    /// The default versions of the `visit_nested_XXX` routines invoke this
-    /// method to get a map to use; if they get back `None`, they just skip
-    /// nested things. Otherwise, they will lookup the nested thing in the map
-    /// and visit it depending on what `nested_visit_mode` returns. So the best
-    /// way to implement a nested visitor is to override this method to return a
-    /// `Map`; one advantage of this is that if we add more types of nested
-    /// things in the future, they will automatically work.
+    /// The default versions of the `visit_nested_XXX` routines invoke
+    /// this method to get a map to use. By selecting an enum variant,
+    /// you control which kinds of nested HIR are visited; see
+    /// `NestedVisitorMap` for details. By "nested HIR", we are
+    /// referring to bits of HIR that are not directly embedded within
+    /// one another but rather indirectly, through a table in the
+    /// crate. This is done to control dependencies during incremental
+    /// compilation: the non-inline bits of HIR can be tracked and
+    /// hashed separately.
     ///
     /// **If for some reason you want the nested behavior, but don't
     /// have a `Map` are your disposal:** then you should override the
