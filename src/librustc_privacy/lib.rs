@@ -1067,8 +1067,12 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
+    }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item) {
         let tcx = self.tcx;
         let min = |vis1: ty::Visibility, vis2| {
             if vis1.is_at_least(vis2, &tcx.map) { vis2 } else { vis1 }
@@ -1171,11 +1175,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
         }
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) {
         // handled in `visit_item` above
     }
 
-    fn visit_ty(&mut self, ty: &hir::Ty) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         if let hir::TyImplTrait(..) = ty.node {
             // Check the traits being exposed, as they're separate,
             // e.g. `impl Iterator<Item=T>` has two predicates,
@@ -1189,9 +1193,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
     }
 
     // Don't recurse into expressions in array sizes or const initializers
-    fn visit_expr(&mut self, _: &hir::Expr) {}
+    fn visit_expr(&mut self, _: &'tcx hir::Expr) {}
     // Don't recurse into patterns in function arguments
-    fn visit_pat(&mut self, _: &hir::Pat) {}
+    fn visit_pat(&mut self, _: &'tcx hir::Pat) {}
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

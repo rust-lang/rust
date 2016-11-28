@@ -61,7 +61,7 @@ pub fn check_crate(sess: &Session, map: &Map) {
 
 impl<'a, 'ast> Visitor<'ast> for CheckLoopVisitor<'a, 'ast> {
     fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'ast>> {
-        Some(&self.map)
+        Some(&self.hir_map)
     }
 
     fn visit_item(&mut self, i: &'ast hir::Item) {

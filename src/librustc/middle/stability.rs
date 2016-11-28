@@ -328,8 +328,12 @@ impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for MissingStabilityAnnotations<'a, 'tcx> {
-    fn visit_item(&mut self, i: &Item) {
+impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
+    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
+        Some(&self.tcx.map)
+    }
+
+    fn visit_item(&mut self, i: &'tcx Item) {
         match i.node {
             // Inherent impls and foreign modules serve only as containers for other items,
             // they don't have their own stability. They still can be annotated as unstable
@@ -343,12 +347,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MissingStabilityAnnotations<'a, 'tcx> {
         intravisit::walk_item(self, i)
     }
 
-    fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
         self.check_missing_stability(ti.id, ti.span);
         intravisit::walk_trait_item(self, ti);
     }
 
-    fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
         let impl_def_id = self.tcx.map.local_def_id(self.tcx.map.get_parent(ii.id));
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
             self.check_missing_stability(ii.id, ii.span);
@@ -356,22 +360,22 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MissingStabilityAnnotations<'a, 'tcx> {
         intravisit::walk_impl_item(self, ii);
     }
 
-    fn visit_variant(&mut self, var: &Variant, g: &Generics, item_id: NodeId) {
+    fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: NodeId) {
         self.check_missing_stability(var.node.data.id(), var.span);
         intravisit::walk_variant(self, var, g, item_id);
     }
 
-    fn visit_struct_field(&mut self, s: &StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx StructField) {
         self.check_missing_stability(s.id, s.span);
         intravisit::walk_struct_field(self, s);
     }
 
-    fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
         self.check_missing_stability(i.id, i.span);
         intravisit::walk_foreign_item(self, i);
     }
 
-    fn visit_macro_def(&mut self, md: &hir::MacroDef) {
+    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
         if md.imported_from.is_none() {
             self.check_missing_stability(md.id, md.span);
         }
