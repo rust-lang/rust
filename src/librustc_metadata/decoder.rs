@@ -1038,8 +1038,8 @@ impl<'a, 'tcx> CrateMetadata {
         arg_names.decode(self).collect()
     }
 
-    pub fn get_reachable_ids(&self) -> Vec<DefId> {
-        self.root.reachable_ids.decode(self).map(|index| self.local_def_id(index)).collect()
+    pub fn get_exported_symbols(&self) -> Vec<DefId> {
+        self.root.exported_symbols.decode(self).map(|index| self.local_def_id(index)).collect()
     }
 
     pub fn get_macro(&self, id: DefIndex) -> (ast::Name, MacroDef) {

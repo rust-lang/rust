@@ -1243,7 +1243,7 @@ fn contains_null(s: &str) -> bool {
 }
 
 fn write_metadata(cx: &SharedCrateContext,
-                  reachable_ids: &NodeSet) -> Vec<u8> {
+                  exported_symbols: &NodeSet) -> Vec<u8> {
     use flate;
 
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -1275,7 +1275,7 @@ fn write_metadata(cx: &SharedCrateContext,
     let metadata = cstore.encode_metadata(cx.tcx(),
                                           cx.export_map(),
                                           cx.link_meta(),
-                                          reachable_ids);
+                                          exported_symbols);
     if kind == MetadataKind::Uncompressed {
         return metadata;
     }
@@ -1313,7 +1313,7 @@ fn write_metadata(cx: &SharedCrateContext,
 fn internalize_symbols<'a, 'tcx>(sess: &Session,
                                  ccxs: &CrateContextList<'a, 'tcx>,
                                  symbol_map: &SymbolMap<'tcx>,
-                                 reachable: &FxHashSet<&str>) {
+                                 exported_symbols: &FxHashSet<&str>) {
     let scx = ccxs.shared();
     let tcx = scx.tcx();
 
@@ -1379,7 +1379,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
                     let name_cow = Cow::Borrowed(name_str);
 
                     let is_referenced_somewhere = referenced_somewhere.contains(&name_cstr);
-                    let is_reachable = reachable.contains(&name_str);
+                    let is_reachable = exported_symbols.contains(&name_str);
                     let has_fixed_linkage = linkage_fixed_explicitly.contains(&name_cow);
 
                     if !is_referenced_somewhere && !is_reachable && !has_fixed_linkage {
@@ -1481,7 +1481,7 @@ fn iter_functions(llmod: llvm::ModuleRef) -> ValueIter {
 ///
 /// This list is later used by linkers to determine the set of symbols needed to
 /// be exposed from a dynamic library and it's also encoded into the metadata.
-pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
+pub fn find_exported_symbols(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
     reachable.into_iter().filter(|&id| {
         // Next, we want to ignore some FFI functions that are not exposed from
         // this crate. Reachable FFI functions can be lumped into two
@@ -1535,7 +1535,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let krate = tcx.map.krate();
 
     let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
-    let reachable = filter_reachable_ids(tcx, reachable);
+    let exported_symbols = find_exported_symbols(tcx, reachable);
 
     let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
         v
@@ -1548,11 +1548,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let shared_ccx = SharedCrateContext::new(tcx,
                                              export_map,
                                              link_meta.clone(),
-                                             reachable,
+                                             exported_symbols,
                                              check_overflow);
     // Translate the metadata.
     let metadata = time(tcx.sess.time_passes(), "write metadata", || {
-        write_metadata(&shared_ccx, shared_ccx.reachable())
+        write_metadata(&shared_ccx, shared_ccx.exported_symbols())
     });
 
     let metadata_module = ModuleTranslation {
@@ -1608,7 +1608,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             metadata_module: metadata_module,
             link: link_meta,
             metadata: metadata,
-            reachable: vec![],
+            exported_symbols: vec![],
             no_builtins: no_builtins,
             linker_info: linker_info,
             windows_subsystem: None,
@@ -1688,17 +1688,17 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let sess = shared_ccx.sess();
-    let mut reachable_symbols = shared_ccx.reachable().iter().map(|&id| {
+    let mut exported_symbols = shared_ccx.exported_symbols().iter().map(|&id| {
         let def_id = shared_ccx.tcx().map.local_def_id(id);
         symbol_for_def_id(def_id, &shared_ccx, &symbol_map)
     }).collect::<Vec<_>>();
 
     if sess.entry_fn.borrow().is_some() {
-        reachable_symbols.push("main".to_string());
+        exported_symbols.push("main".to_string());
     }
 
     if sess.crate_types.borrow().contains(&config::CrateTypeDylib) {
-        reachable_symbols.push(shared_ccx.metadata_symbol_name());
+        exported_symbols.push(shared_ccx.metadata_symbol_name());
     }
 
     // For the purposes of LTO or when creating a cdylib, we add to the
@@ -1708,10 +1708,10 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     //
     // Note that this happens even if LTO isn't requested or we're not creating
     // a cdylib. In those cases, though, we're not even reading the
-    // `reachable_symbols` list later on so it should be ok.
+    // `exported_symbols` list later on so it should be ok.
     for cnum in sess.cstore.crates() {
-        let syms = sess.cstore.reachable_ids(cnum);
-        reachable_symbols.extend(syms.into_iter().filter(|&def_id| {
+        let syms = sess.cstore.exported_symbols(cnum);
+        exported_symbols.extend(syms.into_iter().filter(|&def_id| {
             let applicable = match sess.cstore.describe_def(def_id) {
                 Some(Def::Static(..)) => true,
                 Some(Def::Fn(_)) => {
@@ -1735,7 +1735,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         internalize_symbols(sess,
                             &crate_context_list,
                             &symbol_map,
-                            &reachable_symbols.iter()
+                            &exported_symbols.iter()
                                               .map(|s| &s[..])
                                               .collect())
     });
@@ -1749,7 +1749,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         create_imps(&crate_context_list);
     }
 
-    let linker_info = LinkerInfo::new(&shared_ccx, &reachable_symbols);
+    let linker_info = LinkerInfo::new(&shared_ccx, &exported_symbols);
 
     let subsystem = attr::first_attr_value_str_by_name(&krate.attrs,
                                                        "windows_subsystem");
@@ -1767,7 +1767,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         metadata_module: metadata_module,
         link: link_meta,
         metadata: metadata,
-        reachable: reachable_symbols,
+        exported_symbols: exported_symbols,
         no_builtins: no_builtins,
         linker_info: linker_info,
         windows_subsystem: windows_subsystem,

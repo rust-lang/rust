@@ -180,7 +180,7 @@ pub struct CrateRoot {
     pub native_libraries: LazySeq<NativeLibrary>,
     pub codemap: LazySeq<syntax_pos::FileMap>,
     pub impls: LazySeq<TraitImpls>,
-    pub reachable_ids: LazySeq<DefIndex>,
+    pub exported_symbols: LazySeq<DefIndex>,
     pub index: LazySeq<index::Index>,
 }
 

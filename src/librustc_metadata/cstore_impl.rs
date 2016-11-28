@@ -311,9 +311,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(cnum).get_native_libraries()
     }
 
-    fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId>
+    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>
     {
-        self.get_crate_data(cnum).get_reachable_ids()
+        self.get_crate_data(cnum).get_exported_symbols()
     }
 
     fn is_no_builtins(&self, cnum: CrateNum) -> bool {

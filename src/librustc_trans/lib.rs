@@ -169,7 +169,7 @@ pub struct CrateTranslation {
     pub metadata_module: ModuleTranslation,
     pub link: middle::cstore::LinkMeta,
     pub metadata: Vec<u8>,
-    pub reachable: Vec<String>,
+    pub exported_symbols: Vec<String>,
     pub no_builtins: bool,
     pub windows_subsystem: Option<String>,
     pub linker_info: back::linker::LinkerInfo

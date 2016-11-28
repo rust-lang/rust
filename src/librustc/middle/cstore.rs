@@ -329,7 +329,7 @@ pub trait CrateStore<'tcx> {
     fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol;
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>;
-    fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId>;
+    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>;
     fn is_no_builtins(&self, cnum: CrateNum) -> bool;
 
     // resolve
@@ -493,7 +493,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         { bug!("plugin_registrar_fn") }
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
         { bug!("native_libraries") }
-    fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId> { bug!("reachable_ids") }
+    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId> { bug!("exported_symbols") }
     fn is_no_builtins(&self, cnum: CrateNum) -> bool { bug!("is_no_builtins") }
 
     // resolve

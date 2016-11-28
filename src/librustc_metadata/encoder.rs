@@ -50,7 +50,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     reexports: &'a def::ExportMap,
     link_meta: &'a LinkMeta,
     cstore: &'a cstore::CStore,
-    reachable: &'a NodeSet,
+    exported_symbols: &'a NodeSet,
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
@@ -1223,16 +1223,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_seq(all_impls)
     }
 
-    // Encodes all reachable symbols in this crate into the metadata.
+    // Encodes all symbols exported from this crate into the metadata.
     //
     // This pass is seeded off the reachability list calculated in the
     // middle::reachable module but filters out items that either don't have a
     // symbol associated with them (they weren't translated) or if they're an FFI
     // definition (as that's not defined in this crate).
-    fn encode_reachable(&mut self) -> LazySeq<DefIndex> {
-        let reachable = self.reachable;
+    fn encode_exported_symbols(&mut self) -> LazySeq<DefIndex> {
+        let exported_symbols = self.exported_symbols;
         let tcx = self.tcx;
-        self.lazy_seq(reachable.iter().map(|&id| tcx.map.local_def_id(id).index))
+        self.lazy_seq(exported_symbols.iter().map(|&id| tcx.map.local_def_id(id).index))
     }
 
     fn encode_dylib_dependency_formats(&mut self) -> LazySeq<Option<LinkagePreference>> {
@@ -1278,10 +1278,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let impls = self.encode_impls();
         let impl_bytes = self.position() - i;
 
-        // Encode reachability info.
+        // Encode exported symbols info.
         i = self.position();
-        let reachable_ids = self.encode_reachable();
-        let reachable_bytes = self.position() - i;
+        let exported_symbols = self.encode_exported_symbols();
+        let exported_symbols_bytes = self.position() - i;
 
         // Encode and index the items.
         i = self.position();
@@ -1319,7 +1319,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             native_libraries: native_libraries,
             codemap: codemap,
             impls: impls,
-            reachable_ids: reachable_ids,
+            exported_symbols: exported_symbols,
             index: index,
         });
 
@@ -1339,7 +1339,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("          native bytes: {}", native_lib_bytes);
             println!("         codemap bytes: {}", codemap_bytes);
             println!("            impl bytes: {}", impl_bytes);
-            println!("       reachable bytes: {}", reachable_bytes);
+            println!("    exp. symbols bytes: {}", exported_symbols_bytes);
             println!("            item bytes: {}", item_bytes);
             println!("           index bytes: {}", index_bytes);
             println!("            zero bytes: {}", zero_bytes);
@@ -1377,7 +1377,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  cstore: &cstore::CStore,
                                  reexports: &def::ExportMap,
                                  link_meta: &LinkMeta,
-                                 reachable: &NodeSet)
+                                 exported_symbols: &NodeSet)
                                  -> Vec<u8> {
     let mut cursor = Cursor::new(vec![]);
     cursor.write_all(METADATA_HEADER).unwrap();
@@ -1392,7 +1392,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             reexports: reexports,
             link_meta: link_meta,
             cstore: cstore,
-            reachable: reachable,
+            exported_symbols: exported_symbols,
             lazy_state: LazyState::NoNode,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),

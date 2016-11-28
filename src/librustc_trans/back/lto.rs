@@ -25,7 +25,7 @@ use std::ffi::CString;
 use std::path::Path;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
-           tm: TargetMachineRef, reachable: &[String],
+           tm: TargetMachineRef, exported_symbols: &[String],
            config: &ModuleConfig,
            temp_no_opt_bc_filename: &Path) {
     if sess.opts.cg.prefer_dynamic {
@@ -118,8 +118,8 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         }
     });
 
-    // Internalize everything but the reachable symbols of the current module
-    let cstrs: Vec<CString> = reachable.iter().map(|s| {
+    // Internalize everything but the exported symbols of the current module
+    let cstrs: Vec<CString> = exported_symbols.iter().map(|s| {
         CString::new(s.clone()).unwrap()
     }).collect();
     let arr: Vec<*const libc::c_char> = cstrs.iter().map(|c| c.as_ptr()).collect();
