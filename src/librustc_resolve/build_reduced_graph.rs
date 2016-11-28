@@ -21,7 +21,7 @@ use Namespace::{self, TypeNS, ValueNS, MacroNS};
 use ResolveResult::Success;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
-use rustc::middle::cstore::{DepKind, LoadedMacro};
+use rustc::middle::cstore::LoadedMacro;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::ty;
@@ -492,7 +492,7 @@ impl<'b> Resolver<'b> {
 
     fn get_extern_crate_root(&mut self, cnum: CrateNum) -> Module<'b> {
         let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-        let macros_only = self.session.cstore.dep_kind(cnum) == DepKind::MacrosOnly;
+        let macros_only = self.session.cstore.dep_kind(cnum).macros_only();
         let arenas = self.arenas;
         *self.extern_crate_roots.entry((cnum, macros_only)).or_insert_with(|| {
             arenas.alloc_module(ModuleS {
@@ -567,7 +567,8 @@ impl<'b> Resolver<'b> {
         if self.current_module.parent.is_some() && legacy_imports != LegacyMacroImports::default() {
             span_err!(self.session, item.span, E0468,
                       "an `extern crate` loading macros must be at the crate root");
-        } else if self.session.cstore.dep_kind(cnum) == DepKind::MacrosOnly &&
+        } else if !self.use_extern_macros &&
+                  self.session.cstore.dep_kind(cnum).macros_only() &&
                   legacy_imports == LegacyMacroImports::default() {
             let msg = "custom derive crates and `#[no_link]` crates have no effect without \
                        `#[macro_use]`";
@@ -590,7 +591,9 @@ impl<'b> Resolver<'b> {
             }
         }
         for (name, span) in legacy_imports.reexports {
-            self.used_crates.insert(module.def_id().unwrap().krate);
+            let krate = module.def_id().unwrap().krate;
+            self.used_crates.insert(krate);
+            self.session.cstore.export_macros(krate);
             let result = self.resolve_name_in_module(module, name, MacroNS, false, None);
             if let Success(binding) = result {
                 self.macro_exports.push(Export { name: name, def: binding.def() });
