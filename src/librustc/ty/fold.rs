@@ -191,6 +191,10 @@ pub trait TypeVisitor<'tcx> : Sized {
         t.super_visit_with(self)
     }
 
+    fn visit_trait_ref(&mut self, trait_ref: ty::TraitRef<'tcx>) -> bool {
+        trait_ref.super_visit_with(self)
+    }
+
     fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
         r.super_visit_with(self)
     }

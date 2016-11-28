@@ -599,6 +599,10 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitRef<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.substs.visit_with(visitor)
     }
+
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        visitor.visit_trait_ref(*self)
+    }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ExistentialTraitRef<'tcx> {
@@ -763,6 +767,36 @@ impl<'tcx> TypeFoldable<'tcx> for ty::RegionParameterDef<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.bounds.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::Generics<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        ty::Generics {
+            parent: self.parent,
+            parent_regions: self.parent_regions,
+            parent_types: self.parent_types,
+            regions: self.regions.fold_with(folder),
+            types: self.types.fold_with(folder),
+            has_self: self.has_self,
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.regions.visit_with(visitor) || self.types.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::GenericPredicates<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        ty::GenericPredicates {
+            parent: self.parent,
+            predicates: self.predicates.fold_with(folder),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.predicates.visit_with(visitor)
     }
 }
 

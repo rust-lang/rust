@@ -35,7 +35,8 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
+use rustc::ty::fold::TypeVisitor;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast;
 use syntax_pos::Span;
@@ -62,40 +63,32 @@ struct EmbargoVisitor<'a, 'tcx: 'a> {
 }
 
 struct ReachEverythingInTheInterfaceVisitor<'b, 'a: 'b, 'tcx: 'a> {
+    item_def_id: DefId,
     ev: &'b mut EmbargoVisitor<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
-    fn ty_level(&self, ty: &hir::Ty) -> Option<AccessLevel> {
-        if let hir::TyPath(ref qpath) = ty.node {
-            let def = match *qpath {
-                hir::QPath::Resolved(_, ref path) => path.def,
-                hir::QPath::TypeRelative(..) => self.tcx.tables().type_relative_path_defs[&ty.id]
-            };
-            match def {
-                Def::PrimTy(..) | Def::SelfTy(..) | Def::TyParam(..) => {
-                    Some(AccessLevel::Public)
-                }
-                def => {
-                    if let Some(node_id) = self.tcx.map.as_local_node_id(def.def_id()) {
-                        self.get(node_id)
-                    } else {
-                        Some(AccessLevel::Public)
-                    }
-                }
-            }
+    fn item_ty_level(&self, item_def_id: DefId) -> Option<AccessLevel> {
+        let ty_def_id = match self.tcx.item_type(item_def_id).sty {
+            ty::TyAdt(adt, _) => adt.did,
+            ty::TyTrait(ref obj) => obj.principal.def_id(),
+            ty::TyProjection(ref proj) => proj.trait_ref.def_id,
+            _ => return Some(AccessLevel::Public)
+        };
+        if let Some(node_id) = self.tcx.map.as_local_node_id(ty_def_id) {
+            self.get(node_id)
         } else {
             Some(AccessLevel::Public)
         }
     }
 
-    fn trait_level(&self, trait_ref: &hir::TraitRef) -> Option<AccessLevel> {
-        let did = trait_ref.path.def.def_id();
-        if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
-            self.get(node_id)
-        } else {
-            Some(AccessLevel::Public)
+    fn impl_trait_level(&self, impl_def_id: DefId) -> Option<AccessLevel> {
+        if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_def_id) {
+            if let Some(node_id) = self.tcx.map.as_local_node_id(trait_ref.def_id) {
+                return self.get(node_id);
+            }
         }
+        Some(AccessLevel::Public)
     }
 
     fn get(&self, id: ast::NodeId) -> Option<AccessLevel> {
@@ -115,8 +108,12 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
         }
     }
 
-    fn reach<'b>(&'b mut self) -> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
-        ReachEverythingInTheInterfaceVisitor { ev: self }
+    fn reach<'b>(&'b mut self, item_id: ast::NodeId)
+                 -> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
+        ReachEverythingInTheInterfaceVisitor {
+            item_def_id: self.tcx.map.local_def_id(item_id),
+            ev: self,
+        }
     }
 }
 
@@ -130,14 +127,13 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let inherited_item_level = match item.node {
             // Impls inherit level from their types and traits
-            hir::ItemImpl(.., None, ref ty, _) => {
-                self.ty_level(&ty)
+            hir::ItemImpl(..) => {
+                let def_id = self.tcx.map.local_def_id(item.id);
+                cmp::min(self.item_ty_level(def_id), self.impl_trait_level(def_id))
             }
-            hir::ItemImpl(.., Some(ref trait_ref), ref ty, _) => {
-                cmp::min(self.ty_level(&ty), self.trait_level(trait_ref))
-            }
-            hir::ItemDefaultImpl(_, ref trait_ref) => {
-                self.trait_level(trait_ref)
+            hir::ItemDefaultImpl(..) => {
+                let def_id = self.tcx.map.local_def_id(item.id);
+                self.impl_trait_level(def_id)
             }
             // Foreign mods inherit level from parents
             hir::ItemForeignMod(..) => {
@@ -209,22 +205,54 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemMod(..) => {}
             // Reexports are handled in visit_mod
             hir::ItemUse(..) => {}
+            // The interface is empty
+            hir::ItemDefaultImpl(..) => {}
             // Visit everything
-            hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
-            hir::ItemTrait(..) | hir::ItemTy(..) | hir::ItemImpl(.., Some(..), _, _) => {
+            hir::ItemConst(..) | hir::ItemStatic(..) |
+            hir::ItemFn(..) | hir::ItemTy(..) => {
                 if item_level.is_some() {
-                    self.reach().visit_item(item);
+                    self.reach(item.id).generics().predicates().item_type();
                 }
             }
-            // Visit everything, but enum variants have their own levels
-            hir::ItemEnum(ref def, ref generics) => {
+            hir::ItemTrait(.., ref trait_items) => {
                 if item_level.is_some() {
-                    self.reach().visit_generics(generics);
+                    self.reach(item.id).generics().predicates();
+
+                    for trait_item in trait_items {
+                        let mut reach = self.reach(trait_item.id);
+                        reach.generics().predicates();
+
+                        if let hir::TypeTraitItem(_, None) = trait_item.node {
+                            // No type to visit.
+                        } else {
+                            reach.item_type();
+                        }
+                    }
+                }
+            }
+            // Visit everything except for private impl items
+            hir::ItemImpl(.., ref trait_ref, _, ref impl_items) => {
+                if item_level.is_some() {
+                    self.reach(item.id).generics().predicates().impl_trait_ref();
+
+                    for impl_item in impl_items {
+                        let id = impl_item.id.node_id;
+                        if trait_ref.is_some() || self.get(id).is_some() {
+                            self.reach(id).generics().predicates().item_type();
+                        }
+                    }
+                }
+            }
+
+            // Visit everything, but enum variants have their own levels
+            hir::ItemEnum(ref def, _) => {
+                if item_level.is_some() {
+                    self.reach(item.id).generics().predicates();
                 }
                 for variant in &def.variants {
                     if self.get(variant.node.data.id()).is_some() {
                         for field in variant.node.data.fields() {
-                            self.reach().visit_struct_field(field);
+                            self.reach(field.id).item_type();
                         }
                         // Corner case: if the variant is reachable, but its
                         // enum is not, make the enum reachable as well.
@@ -236,32 +264,18 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
                     if self.get(foreign_item.id).is_some() {
-                        self.reach().visit_foreign_item(foreign_item);
+                        self.reach(foreign_item.id).generics().predicates().item_type();
                     }
                 }
             }
             // Visit everything except for private fields
-            hir::ItemStruct(ref struct_def, ref generics) |
-            hir::ItemUnion(ref struct_def, ref generics) => {
+            hir::ItemStruct(ref struct_def, _) |
+            hir::ItemUnion(ref struct_def, _) => {
                 if item_level.is_some() {
-                    self.reach().visit_generics(generics);
+                    self.reach(item.id).generics().predicates();
                     for field in struct_def.fields() {
                         if self.get(field.id).is_some() {
-                            self.reach().visit_struct_field(field);
-                        }
-                    }
-                }
-            }
-            // The interface is empty
-            hir::ItemDefaultImpl(..) => {}
-            // Visit everything except for private impl items
-            hir::ItemImpl(.., ref generics, None, _, ref impl_item_refs) => {
-                if item_level.is_some() {
-                    self.reach().visit_generics(generics);
-                    for impl_item_ref in impl_item_refs {
-                        if self.get(impl_item_ref.id.node_id).is_some() {
-                            let impl_item = self.tcx.map.impl_item(impl_item_ref.id);
-                            self.reach().visit_impl_item(impl_item);
+                            self.reach(field.id).item_type();
                         }
                     }
                 }
@@ -306,87 +320,69 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
         self.update(md.id, Some(AccessLevel::Public));
     }
-}
-
-impl<'b, 'a, 'tcx: 'a> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
-    // Make the type hidden under a type alias reachable
-    fn reach_aliased_type(&mut self, item: &'tcx hir::Item, segment: &'tcx hir::PathSegment) {
-        if let hir::ItemTy(ref ty, ref generics) = item.node {
-            // See `fn is_public_type_alias` for details
-            self.visit_ty(ty);
-            let provided_params = segment.parameters.types().len();
-            for ty_param in &generics.ty_params[provided_params..] {
-                if let Some(ref default_ty) = ty_param.default {
-                    self.visit_ty(default_ty);
-                }
-            }
-        }
-    }
-}
-
-impl<'b, 'a, 'tcx: 'a> Visitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
-    fn visit_nested_impl_item(&mut self, item_id: hir::ImplItemId) {
-        // when we visit an impl, its methods and items are part of its "interface"
-        let impl_item = self.ev.tcx.map.impl_item(item_id);
-        self.visit_impl_item(impl_item)
-    }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        let def_and_segment = match ty.node {
-            hir::TyPath(hir::QPath::Resolved(_, ref path)) => {
-                Some((path.def, path.segments.last().unwrap()))
-            }
-            hir::TyPath(hir::QPath::TypeRelative(_, ref segment)) => {
-                Some((self.ev.tcx.tables().type_relative_path_defs[&ty.id], &**segment))
-            }
-            _ => None
-        };
-        if let Some((def, segment)) = def_and_segment {
-            match def {
-                Def::Struct(def_id) | Def::Union(def_id) | Def::Enum(def_id) |
-                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id) => {
-                    if let Some(mut node_id) = self.ev.tcx.map.as_local_node_id(def_id) {
-                        // Check the trait for associated types.
-                        if let hir::map::NodeTraitItem(_) = self.ev.tcx.map.get(node_id) {
-                            node_id = self.ev.tcx.map.get_parent(node_id);
-                        }
-
-                        let item = self.ev.tcx.map.expect_item(node_id);
-                        if let Def::TyAlias(..) = def {
-                            // Type aliases are substituted. Associated type aliases are not
-                            // substituted yet, but ideally they should be.
-                            if self.ev.get(item.id).is_none() {
-                                self.reach_aliased_type(item, segment);
-                            }
-                        } else {
-                            self.ev.update(item.id, Some(AccessLevel::Reachable));
-                        }
-                    }
-                }
-
-                _ => {}
+        if let hir::TyImplTrait(..) = ty.node {
+            if self.get(ty.id).is_some() {
+                // Reach the (potentially private) type and the API being exposed.
+                self.reach(ty.id).item_type().predicates();
             }
         }
 
         intravisit::walk_ty(self, ty);
     }
+}
 
-    fn visit_trait_ref(&mut self, trait_ref: &'tcx hir::TraitRef) {
-        let def_id = trait_ref.path.def.def_id();
-        if let Some(node_id) = self.ev.tcx.map.as_local_node_id(def_id) {
+impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
+    fn generics(&mut self) -> &mut Self {
+        self.ev.tcx.item_generics(self.item_def_id).visit_with(self);
+        self
+    }
+
+    fn predicates(&mut self) -> &mut Self {
+        self.ev.tcx.item_predicates(self.item_def_id).visit_with(self);
+        self
+    }
+
+    fn item_type(&mut self) -> &mut Self {
+        self.ev.tcx.item_type(self.item_def_id).visit_with(self);
+        self
+    }
+
+    fn impl_trait_ref(&mut self) -> &mut Self {
+        self.ev.tcx.impl_trait_ref(self.item_def_id).visit_with(self);
+        self
+    }
+}
+
+impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+        let ty_def_id = match ty.sty {
+            ty::TyAdt(adt, _) => Some(adt.did),
+            ty::TyTrait(ref obj) => Some(obj.principal.def_id()),
+            ty::TyProjection(ref proj) => Some(proj.trait_ref.def_id),
+            ty::TyFnDef(def_id, ..) |
+            ty::TyAnon(def_id, _) => Some(def_id),
+            _ => None
+        };
+
+        if let Some(def_id) = ty_def_id {
+            if let Some(node_id) = self.ev.tcx.map.as_local_node_id(def_id) {
+                self.ev.update(node_id, Some(AccessLevel::Reachable));
+            }
+        }
+
+        ty.super_visit_with(self)
+    }
+
+    fn visit_trait_ref(&mut self, trait_ref: ty::TraitRef<'tcx>) -> bool {
+        if let Some(node_id) = self.ev.tcx.map.as_local_node_id(trait_ref.def_id) {
             let item = self.ev.tcx.map.expect_item(node_id);
             self.ev.update(item.id, Some(AccessLevel::Reachable));
         }
 
-        intravisit::walk_trait_ref(self, trait_ref);
+        trait_ref.super_visit_with(self)
     }
-
-    // Don't recurse into function bodies
-    fn visit_block(&mut self, _: &hir::Block) {}
-    // Don't recurse into expressions in array sizes or const initializers
-    fn visit_expr(&mut self, _: &hir::Expr) {}
-    // Don't recurse into patterns in function arguments
-    fn visit_pat(&mut self, _: &hir::Pat) {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
