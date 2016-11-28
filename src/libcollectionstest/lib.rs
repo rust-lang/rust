@@ -25,6 +25,7 @@
 #![feature(step_by)]
 #![feature(str_escape)]
 #![feature(str_replacen)]
+#![feature(string_split_off)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]

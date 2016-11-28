@@ -232,6 +232,45 @@ fn test_pop() {
 }
 
 #[test]
+fn test_split_off_empty() {
+    let orig = "Hello, world!";
+    let mut split = String::from(orig);
+    let empty: String = split.split_off(orig.len());
+    assert!(empty.is_empty());
+}
+
+#[test]
+#[should_panic]
+fn test_split_off_past_end() {
+    let orig = "Hello, world!";
+    let mut split = String::from(orig);
+    split.split_off(orig.len() + 1);
+}
+
+#[test]
+#[should_panic]
+fn test_split_off_mid_char() {
+    let mut orig = String::from("山");
+    orig.split_off(1);
+}
+
+#[test]
+fn test_split_off_ascii() {
+    let mut ab = String::from("ABCD");
+    let cd = ab.split_off(2);
+    assert_eq!(ab, "AB");
+    assert_eq!(cd, "CD");
+}
+
+#[test]
+fn test_split_off_unicode() {
+    let mut nihon = String::from("日本語");
+    let go = nihon.split_off("日本".len());
+    assert_eq!(nihon, "日本");
+    assert_eq!(go, "語");
+}
+
+#[test]
 fn test_str_truncate() {
     let mut s = String::from("12345");
     s.truncate(5);
