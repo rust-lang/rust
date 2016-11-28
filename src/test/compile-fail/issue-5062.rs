@@ -9,4 +9,4 @@
 // except according to those terms.
 
 fn main() { format!("{:?}", None); }
-    //~^ ERROR unable to infer enough type information about `_` [E0282]
+    //~^ ERROR unable to infer enough type information about `T` [E0282]
