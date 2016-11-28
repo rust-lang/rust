@@ -11,7 +11,7 @@ use rustc::ty::layout::{self, TargetDataLayout};
 use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
-use primval::PrimVal;
+use primval::{PrimVal, PrimValKind};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Allocations and pointers
@@ -559,13 +559,18 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn write_primval(&mut self, dest: Pointer, val: PrimVal) -> EvalResult<'tcx, ()> {
+    pub fn write_primval(
+        &mut self,
+        dest: Pointer,
+        val: PrimVal,
+        kind: PrimValKind,
+    ) -> EvalResult<'tcx, ()> {
         if let Some(alloc_id) = val.relocation {
             return self.write_ptr(dest, Pointer::new(alloc_id, val.bits));
         }
 
         use primval::PrimValKind::*;
-        let (size, bits) = match val.kind {
+        let (size, bits) = match kind {
             I8 | U8 | Bool         => (1, val.bits as u8  as u64),
             I16 | U16              => (2, val.bits as u16 as u64),
             I32 | U32 | F32 | Char => (4, val.bits as u32 as u64),

@@ -100,7 +100,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                           terminator.source_info.span)?
                     }
 
-                    _ => return Err(EvalError::Unimplemented(format!("can't handle callee of type {:?}", func_ty))),
+                    _ => {
+                        let msg = format!("can't handle callee of type {:?}", func_ty);
+                        return Err(EvalError::Unimplemented(msg));
+                    }
                 }
             }
 
@@ -126,11 +129,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     return match *msg {
                         mir::AssertMessage::BoundsCheck { ref len, ref index } => {
                             let span = terminator.source_info.span;
-                            let len = self.eval_operand_to_primval(len).expect("can't eval len")
-                                .expect_uint("BoundsCheck len wasn't a uint");
+                            let len = self.eval_operand_to_primval(len)
+                                .expect("can't eval len")
+                                .to_u64();
                             let index = self.eval_operand_to_primval(index)
                                 .expect("can't eval index")
-                                .expect_uint("BoundsCheck index wasn't a uint");
+                                .to_u64();
                             Err(EvalError::ArrayIndexOutOfBounds(span, len, index))
                         },
                         mir::AssertMessage::Math(ref err) =>
@@ -194,9 +198,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Abi::C => {
                 let ty = fn_ty.sig.0.output;
-                let size = self.type_size(ty)?.expect("function return type cannot be unsized");
                 let (ret, target) = destination.unwrap();
-                self.call_c_abi(def_id, arg_operands, ret, size)?;
+                self.call_c_abi(def_id, arg_operands, ret, ty)?;
                 self.goto_block(target);
                 Ok(())
             }
@@ -303,7 +306,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         def_id: DefId,
         args: &[mir::Operand<'tcx>],
         dest: Lvalue<'tcx>,
-        dest_size: u64,
+        dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, ()> {
         let name = self.tcx.item_name(def_id);
         let attrs = self.tcx.get_attrs(def_id);
@@ -325,36 +328,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         match &link_name[..] {
             "__rust_allocate" => {
-                let size = self.value_to_primval(args[0], usize)?
-                    .expect_uint("__rust_allocate first arg not usize");
-                let align = self.value_to_primval(args[1], usize)?
-                    .expect_uint("__rust_allocate second arg not usize");
+                let size = self.value_to_primval(args[0], usize)?.to_u64();
+                let align = self.value_to_primval(args[1], usize)?.to_u64();
                 let ptr = self.memory.allocate(size, align)?;
-                self.write_primval(dest, PrimVal::from_ptr(ptr))?;
+                self.write_primval(dest, PrimVal::from_ptr(ptr), dest_ty)?;
             }
 
             "__rust_deallocate" => {
                 let ptr = args[0].read_ptr(&self.memory)?;
                 // FIXME: insert sanity check for size and align?
-                let _old_size = self.value_to_primval(args[1], usize)?
-                    .expect_uint("__rust_deallocate second arg not usize");
-                let _align = self.value_to_primval(args[2], usize)?
-                    .expect_uint("__rust_deallocate third arg not usize");
+                let _old_size = self.value_to_primval(args[1], usize)?.to_u64();
+                let _align = self.value_to_primval(args[2], usize)?.to_u64();
                 self.memory.deallocate(ptr)?;
             },
 
             "__rust_reallocate" => {
                 let ptr = args[0].read_ptr(&self.memory)?;
-                let size = self.value_to_primval(args[2], usize)?.expect_uint("__rust_reallocate third arg not usize");
-                let align = self.value_to_primval(args[3], usize)?.expect_uint("__rust_reallocate fourth arg not usize");
+                let size = self.value_to_primval(args[2], usize)?.to_u64();
+                let align = self.value_to_primval(args[3], usize)?.to_u64();
                 let new_ptr = self.memory.reallocate(ptr, size, align)?;
-                self.write_primval(dest, PrimVal::from_ptr(new_ptr))?;
+                self.write_primval(dest, PrimVal::from_ptr(new_ptr), dest_ty)?;
             }
 
             "memcmp" => {
                 let left = args[0].read_ptr(&self.memory)?;
                 let right = args[1].read_ptr(&self.memory)?;
-                let n = self.value_to_primval(args[2], usize)?.expect_uint("__rust_reallocate first arg not usize");
+                let n = self.value_to_primval(args[2], usize)?.to_u64();
 
                 let result = {
                     let left_bytes = self.memory.read_bytes(left, n)?;
@@ -368,7 +367,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 };
 
-                self.write_primval(dest, PrimVal::from_int_with_size(result, dest_size))?;
+                self.write_primval(dest, PrimVal::new(result as u64), dest_ty)?;
             }
 
             _ => {
