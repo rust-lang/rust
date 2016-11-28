@@ -21,14 +21,14 @@
 #![allow(dead_code)]
 
 #![rustc_partition_reused(module="struct_point-fn_calls_methods_in_same_impl", cfg="rpass2")]
-#![rustc_partition_reused(module="struct_point-fn_calls_methods_in_another_impl", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_calls_free_fn", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_read_field", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_write_field", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="rpass2")]
 
 extern crate point;
 
-/// A fn item that calls (public) methods on `Point` from the same impl which changed
+/// A fn item that calls (public) methods on `Point` from the same impl
 mod fn_calls_methods_in_same_impl {
     use point::Point;
 
@@ -40,13 +40,13 @@ mod fn_calls_methods_in_same_impl {
 }
 
 /// A fn item that calls (public) methods on `Point` from another impl
-mod fn_calls_methods_in_another_impl {
-    use point::Point;
+mod fn_calls_free_fn {
+    use point::{self, Point};
 
     #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
     pub fn check() {
-        let mut x = Point { x: 2.0, y: 2.0 };
-        x.translate(3.0, 3.0);
+        let x = Point { x: 2.0, y: 2.0 };
+        point::distance_squared(&x);
     }
 }
 
