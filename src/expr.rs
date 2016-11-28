@@ -1315,17 +1315,17 @@ impl Rewrite for ast::Arm {
         let indent_str = offset.block_indent(context.config).to_string(context.config);
         let (body_prefix, body_suffix) = if context.config.wrap_match_arms {
             if context.config.match_block_trailing_comma {
-                (" {", "},")
+                ("{", "},")
             } else {
-                (" {", "}")
+                ("{", "}")
             }
         } else {
             ("", "")
         };
 
         let block_sep = match context.config.control_brace_style {
-            ControlBraceStyle::AlwaysNextLine => alt_block_sep,
-            ControlBraceStyle::AlwaysSameLine => String::from(body_prefix) + "\n",
+            ControlBraceStyle::AlwaysNextLine => alt_block_sep + body_prefix + "\n",
+            ControlBraceStyle::AlwaysSameLine => String::from(" ") + body_prefix + "\n",
         };
         Some(format!("{}{} =>{}{}{}\n{}{}",
                      attr_str.trim_left(),
