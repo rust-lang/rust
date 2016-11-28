@@ -1042,8 +1042,8 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                     token::Lit::Float(val) |
                     token::Lit::Str_(val) |
                     token::Lit::ByteStr(val) => val.as_str().hash(self.st),
-                    token::Lit::StrRaw(val, n) |
-                    token::Lit::ByteStrRaw(val, n) => {
+                    token::Lit::StrRaw(n, val) |
+                    token::Lit::ByteStrRaw(n, val) => {
                         val.as_str().hash(self.st);
                         n.hash(self.st);
                     }

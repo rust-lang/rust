@@ -157,6 +157,7 @@ impl TokenTree {
 
                 // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
                 // required to wrap the text.
+                // njn: check for u16 overflow?
                 let num_of_hashes = stripped.chars()
                     .scan(0, |cnt, x| {
                         *cnt = if x == '"' {
@@ -177,7 +178,7 @@ impl TokenTree {
                     tts: vec![TokenTree::Token(sp, token::Ident(ast::Ident::from_str("doc"))),
                               TokenTree::Token(sp, token::Eq),
                               TokenTree::Token(sp, token::Literal(
-                                  token::StrRaw(Symbol::intern(&stripped), num_of_hashes), None))],
+                                  token::StrRaw(num_of_hashes, Symbol::intern(&stripped)), None))],
                     close_span: sp,
                 }))
             }
@@ -303,7 +304,7 @@ impl TokenTree {
                     span: sp,
                 })
             }
-            TokenTree::Token(sp, Token::Literal(Lit::StrRaw(s, n), _)) => {
+            TokenTree::Token(sp, Token::Literal(Lit::StrRaw(n, s), _)) => {
                 let l = LitKind::Str(Symbol::intern(&parse::raw_str_lit(&s.as_str())),
                                      ast::StrStyle::Raw(n));
                 Some(Spanned {

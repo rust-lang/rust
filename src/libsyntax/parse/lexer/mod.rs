@@ -1428,7 +1428,7 @@ impl<'a> StringReader<'a> {
                     Symbol::intern("??")
                 };
                 let suffix = self.scan_optional_raw_name();
-                return Ok(token::Literal(token::StrRaw(id, hash_count), suffix));
+                return Ok(token::Literal(token::StrRaw(hash_count, id), suffix));
             }
             '-' => {
                 if self.nextch_is('>') {
@@ -1597,6 +1597,7 @@ impl<'a> StringReader<'a> {
         let mut hash_count = 0;
         while self.ch_is('#') {
             self.bump();
+            // njn: check for u16 overflow?
             hash_count += 1;
         }
 
@@ -1641,8 +1642,8 @@ impl<'a> StringReader<'a> {
             self.bump();
         }
         self.bump();
-        return token::ByteStrRaw(self.name_from_to(content_start_bpos, content_end_bpos),
-                                 hash_count);
+        return token::ByteStrRaw(hash_count,
+                                 self.name_from_to(content_start_bpos, content_end_bpos));
     }
 }
 
@@ -1849,7 +1850,7 @@ mod tests {
         assert_eq!(setup(&cm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string())
                        .next_token()
                        .tok,
-                   token::Literal(token::StrRaw(Symbol::intern("\"#a\\b\x00c\""), 3), None));
+                   token::Literal(token::StrRaw(3, Symbol::intern("\"#a\\b\x00c\"")), None));
     }
 
     #[test]
@@ -1882,10 +1883,10 @@ mod tests {
                    token::Literal(token::Integer(Symbol::intern("2")),
                                   Some(Symbol::intern("us"))));
         assert_eq!(setup(&cm, &sh, "r###\"raw\"###suffix".to_string()).next_token().tok,
-                   token::Literal(token::StrRaw(Symbol::intern("raw"), 3),
+                   token::Literal(token::StrRaw(3, Symbol::intern("raw")),
                                   Some(Symbol::intern("suffix"))));
         assert_eq!(setup(&cm, &sh, "br###\"raw\"###suffix".to_string()).next_token().tok,
-                   token::Literal(token::ByteStrRaw(Symbol::intern("raw"), 3),
+                   token::Literal(token::ByteStrRaw(3, Symbol::intern("raw")),
                                   Some(Symbol::intern("suffix"))));
     }
 
