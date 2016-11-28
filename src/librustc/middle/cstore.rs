@@ -140,7 +140,7 @@ pub struct NativeLibrary {
 pub struct InlinedItem {
     pub def_id: DefId,
     pub body: P<hir::Expr>,
-    pub const_fn_args: Vec<DefId>,
+    pub const_fn_args: Vec<Option<DefId>>,
 }
 
 /// A borrowed version of `hir::InlinedItem`. This is what's encoded when saving
@@ -149,11 +149,14 @@ pub struct InlinedItem {
 pub struct InlinedItemRef<'a> {
     pub def_id: DefId,
     pub body: &'a hir::Expr,
-    pub const_fn_args: Vec<DefId>,
+    pub const_fn_args: Vec<Option<DefId>>,
 }
 
-fn get_fn_args(tcx: TyCtxt, decl: &hir::FnDecl) -> Vec<DefId> {
-    decl.inputs.iter().map(|arg| tcx.expect_def(arg.pat.id).def_id()).collect()
+fn get_fn_args(decl: &hir::FnDecl) -> Vec<Option<DefId>> {
+    decl.inputs.iter().map(|arg| match arg.pat.node {
+        hir::PatKind::Binding(_, def_id, _, _) => Some(def_id),
+        _ => None
+    }).collect()
 }
 
 impl<'a> InlinedItemRef<'a> {
@@ -163,7 +166,7 @@ impl<'a> InlinedItemRef<'a> {
                                -> InlinedItemRef<'a> {
         let (body, args) = match item.node {
             hir::ItemFn(ref decl, _, _, _, _, body_id) =>
-                (tcx.map.expr(body_id), get_fn_args(tcx, decl)),
+                (tcx.map.expr(body_id), get_fn_args(decl)),
             hir::ItemConst(_, ref body) => (&**body, Vec::new()),
             _ => bug!("InlinedItemRef::from_item wrong kind")
         };
@@ -199,7 +202,7 @@ impl<'a> InlinedItemRef<'a> {
                                     -> InlinedItemRef<'a> {
         let (body, args) = match item.node {
             hir::ImplItemKind::Method(ref sig, body_id) =>
-                (tcx.map.expr(body_id), get_fn_args(tcx, &sig.decl)),
+                (tcx.map.expr(body_id), get_fn_args(&sig.decl)),
             hir::ImplItemKind::Const(_, ref body) =>
                 (&**body, Vec::new()),
             _ => bug!("InlinedItemRef::from_impl_item wrong kind")

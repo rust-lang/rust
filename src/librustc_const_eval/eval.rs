@@ -868,7 +868,10 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               Some(ConstFnNode::Inlined(ii)) => (ii.const_fn_args.clone(), ii.body.expr_id()),
               Some(ConstFnNode::Local(fn_like)) =>
                   (fn_like.decl().inputs.iter()
-                   .map(|arg| tcx.expect_def(arg.pat.id).def_id()).collect(),
+                   .map(|arg| match arg.pat.node {
+                       hir::PatKind::Binding(_, def_id, _, _) => Some(def_id),
+                       _ => None
+                   }).collect(),
                    fn_like.body()),
               None => signal!(e, NonConstPath),
           };
@@ -876,7 +879,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           assert_eq!(arg_defs.len(), args.len());
 
           let mut call_args = DefIdMap();
-          for (arg, arg_expr) in arg_defs.iter().zip(args.iter()) {
+          for (arg, arg_expr) in arg_defs.into_iter().zip(args.iter()) {
               let arg_hint = ty_hint.erase_hint();
               let arg_val = eval_const_expr_partial(
                   tcx,
@@ -885,7 +888,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   fn_args
               )?;
               debug!("const call arg: {:?}", arg);
-              if let PatKind::Binding(_, def_id, _, _) = arg.pat.node {
+              if let Some(def_id) = arg {
                 assert!(call_args.insert(def_id, arg_val).is_none());
               }
           }
