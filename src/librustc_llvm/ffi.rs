@@ -1820,7 +1820,7 @@ extern "C" {
                                            DiagnosticContext: *mut c_void);
 
     pub fn LLVMRustUnpackOptimizationDiagnostic(DI: DiagnosticInfoRef,
-                                                pass_name_out: *mut *const c_char,
+                                                pass_name_out: RustStringRef,
                                                 function_out: *mut ValueRef,
                                                 debugloc_out: *mut DebugLocRef,
                                                 message_out: RustStringRef);
