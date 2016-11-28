@@ -135,7 +135,7 @@ impl PrimVal {
     }
 
     pub fn try_as_uint<'tcx>(self) -> EvalResult<'tcx, u64> {
-        self.to_ptr().to_int().map(|val| val)
+        self.to_ptr().to_int()
     }
 
     pub fn to_u64(self) -> u64 {
