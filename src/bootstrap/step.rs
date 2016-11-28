@@ -98,6 +98,13 @@ pub fn build_rules(build: &Build) -> Rules {
          .run(move |s| compile::assemble_rustc(build, s.stage, s.target));
     rules.build("llvm", "src/llvm")
          .host(true)
+         .dep(move |s| {
+             if s.target == build.config.build {
+                 dummy(s, build)
+             } else {
+                 s.target(&build.config.build)
+             }
+         })
          .run(move |s| native::llvm(build, s.target));
 
     // ========================================================================
