@@ -207,15 +207,107 @@ pub unsafe fn _mm_sad_epu8(a: __m128i, b: __m128i) -> __m128i {
     psadbw(u8x16::from(a), u8x16::from(b)).as_m128i()
 }
 
+/// Subtract packed 8-bit integers in `b` from packed 8-bit integers in `a`,
+/// and return the results.
+#[inline]
+pub unsafe fn _mm_sub_epi8(a: __m128i, b: __m128i) -> __m128i {
+    simd_sub(u8x16::from(a), u8x16::from(b)).as_m128i()
+}
 
+/// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`,
+/// and return the results.
+#[inline]
+pub unsafe fn _mm_sub_epi16(a: __m128i, b: __m128i) -> __m128i {
+    simd_sub(u16x8::from(a), u16x8::from(b)).as_m128i()
+}
 
+/// Subtract packed 32-bit integers in `b` from packed 32-bit integers in `a`,
+/// and return the results.
+#[inline]
+pub unsafe fn _mm_sub_epi32(a: __m128i, b: __m128i) -> __m128i {
+    simd_sub(u32x4::from(a), u32x4::from(b)).as_m128i()
+}
 
+/// Subtract 64-bit integer `b` from 64-bit integer `a`, and return the result.
+#[inline]
+unsafe fn _mm_sub_si64(_a: __m64, _b: __m64) -> __m64 {
+    unimplemented!()
+}
 
+/// Subtract packed 64-bit integers in `b` from packed 64-bit integers in `a`,
+/// and return the results.
+#[inline]
+pub unsafe fn _mm_sub_epi64(a: __m128i, b: __m128i) -> __m128i {
+    simd_sub(u64x2::from(a), u64x2::from(b)).as_m128i()
+}
 
+/// Subtract packed 8-bit integers in `b` from packed 8-bit integers in `a`
+/// using saturation, and return the results.
+#[inline]
+pub unsafe fn _mm_subs_epi8(a: __m128i, b: __m128i) -> __m128i {
+    psubsb(i8x16::from(a), i8x16::from(b)).as_m128i()
+}
 
+/// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`
+/// using saturation, and return the results.
+#[inline]
+pub unsafe fn _mm_subs_epi16(a: __m128i, b: __m128i) -> __m128i {
+    psubsw(i16x8::from(a), i16x8::from(b)).as_m128i()
+}
 
+/// Subtract packed unsigned 8-bit integers in `b` from packed unsigned 8-bit
+/// integers in `a` using saturation, and return the results.
+#[inline]
+pub unsafe fn _mm_subs_epu8(a: __m128i, b: __m128i) -> __m128i {
+    psubusb(u8x16::from(a), u8x16::from(b)).as_m128i()
+}
 
+/// Subtract packed unsigned 16-bit integers in `b` from packed unsigned 16-bit
+/// integers in `a` using saturation, and return the results.
+#[inline]
+pub unsafe fn _mm_subs_epu16(a: __m128i, b: __m128i) -> __m128i {
+    psubusw(u16x8::from(a), u16x8::from(b)).as_m128i()
+}
 
+/// Shift `a` left by `imm8` bytes while shifting in zeros, and return the
+/// results.
+#[inline]
+pub unsafe fn _mm_slli_si128(a: __m128i, imm8: i32) -> __m128i {
+    let (a, zero, imm8) = (u8x16::from(a), u8x16::splat(0), imm8 as u32);
+    const fn sub(a: u32, b: u32) -> u32 { a - b }
+    macro_rules! shuffle {
+        ($shift:expr) => {
+            simd_shuffle16::<u8x16, u8x16>(zero, a, [
+                sub(16, $shift), sub(17, $shift),
+                sub(18, $shift), sub(19, $shift),
+                sub(20, $shift), sub(21, $shift),
+                sub(22, $shift), sub(23, $shift),
+                sub(24, $shift), sub(25, $shift),
+                sub(26, $shift), sub(27, $shift),
+                sub(28, $shift), sub(29, $shift),
+                sub(30, $shift), sub(31, $shift),
+            ])
+        }
+    }
+    match imm8 {
+        0 => shuffle!(0), 1 => shuffle!(1),
+        2 => shuffle!(2), 3 => shuffle!(3),
+        4 => shuffle!(4), 5 => shuffle!(5),
+        6 => shuffle!(6), 7 => shuffle!(7),
+        8 => shuffle!(8), 9 => shuffle!(9),
+        10 => shuffle!(10), 11 => shuffle!(11),
+        12 => shuffle!(12), 13 => shuffle!(13),
+        14 => shuffle!(14), 15 => shuffle!(15),
+        _ => shuffle!(16),
+    }.as_m128i()
+}
+
+/// Shift `a` left by `imm8` bytes while shifting in zeros, and return the
+/// results.
+#[inline]
+pub unsafe fn _mm_bslli_si128(a: __m128i, imm8: i32) -> __m128i {
+    _mm_slli_si128(a, imm8)
+}
 
 
 
@@ -281,6 +373,14 @@ extern {
     pub fn pmuludq(a: u32x4, b: u32x4) -> u64x2;
     #[link_name = "llvm.x86.sse2.psad.bw"]
     pub fn psadbw(a: u8x16, b: u8x16) -> u64x2;
+    #[link_name = "llvm.x86.sse2.psubs.b"]
+    pub fn psubsb(a: i8x16, b: i8x16) -> i8x16;
+    #[link_name = "llvm.x86.sse2.psubs.w"]
+    pub fn psubsw(a: i16x8, b: i16x8) -> i16x8;
+    #[link_name = "llvm.x86.sse2.psubus.b"]
+    pub fn psubusb(a: u8x16, b: u8x16) -> u8x16;
+    #[link_name = "llvm.x86.sse2.psubus.w"]
+    pub fn psubusw(a: u16x8, b: u16x8) -> u16x8;
 }
 
 #[cfg(test)]
@@ -288,7 +388,6 @@ mod tests {
     use std::os::raw::c_void;
 
     use v128::*;
-    use v64::*;
     use x86::sse2 as sse2;
 
     #[test]
@@ -348,15 +447,6 @@ mod tests {
         let r = unsafe { sse2::_mm_add_epi32(a.as_m128i(), b.as_m128i()) };
         let e = u32x4::new(4, 6, 8, 10);
         assert_eq!(u32x4::from(r), e);
-    }
-
-    #[test]
-    #[ignore]
-    fn _mm_add_si64() {
-        let (a, b) = (u64x1::new(1), u64x1::new(2));
-        let r = unsafe { sse2::_mm_add_si64(a.as_m64(), b.as_m64()) };
-        let e = u64x1::new(3);
-        assert_eq!(u64x1::from(r), e);
     }
 
     #[test]
@@ -535,16 +625,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn _mm_mul_su32() {
-        let a = u32x2::new(1_000_000_000, 3);
-        let b = u32x2::new(1_000_000_000, 4);
-        let r = unsafe { sse2::_mm_mul_su32(a.as_m64(), b.as_m64()) };
-        let e = u64x1::new(1_000_000_000 * 1_000_000_000);
-        assert_eq!(u64x1::from(r), e);
-    }
-
-    #[test]
     fn _mm_mul_epu32() {
         let a = u64x2::new(1_000_000_000, 1 << 34);
         let b = u64x2::new(1_000_000_000, 1 << 35);
@@ -564,5 +644,169 @@ mod tests {
         let r = unsafe { sse2::_mm_sad_epu8(a.as_m128i(), b.as_m128i()) };
         let e = u64x2::new(1020, 614);
         assert_eq!(u64x2::from(r), e);
+    }
+
+    #[test]
+    fn _mm_sub_epi8() {
+        let (a, b) = (u8x16::splat(5), u8x16::splat(2));
+        let r = unsafe { sse2::_mm_sub_epi8(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u8x16::from(r), u8x16::splat(3));
+    }
+
+    #[test]
+    fn _mm_sub_epi8_underflow() {
+        let (a, b) = (u8x16::splat(5), u8x16::splat(6));
+        let r = unsafe { sse2::_mm_sub_epi8(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u8x16::from(r), u8x16::splat(0xFF));
+    }
+
+    #[test]
+    fn _mm_sub_epi16() {
+        let (a, b) = (u16x8::splat(5), u16x8::splat(2));
+        let r = unsafe { sse2::_mm_sub_epi16(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u16x8::from(r), u16x8::splat(3));
+    }
+
+    #[test]
+    fn _mm_sub_epi16_underflow() {
+        let (a, b) = (u16x8::splat(5), u16x8::splat(6));
+        let r = unsafe { sse2::_mm_sub_epi16(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u16x8::from(r), u16x8::splat(0xFFFF));
+    }
+
+    #[test]
+    fn _mm_sub_epi32() {
+        let (a, b) = (u32x4::splat(5), u32x4::splat(2));
+        let r = unsafe { sse2::_mm_sub_epi32(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u32x4::from(r), u32x4::splat(3));
+    }
+
+    #[test]
+    fn _mm_sub_epi32_underflow() {
+        let (a, b) = (u32x4::splat(5), u32x4::splat(6));
+        let r = unsafe { sse2::_mm_sub_epi32(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u32x4::from(r), u32x4::splat(0xFFFFFFFF));
+    }
+
+    #[test]
+    fn _mm_sub_epi64() {
+        let (a, b) = (u64x2::splat(5), u64x2::splat(2));
+        let r = unsafe { sse2::_mm_sub_epi64(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u64x2::from(r), u64x2::splat(3));
+    }
+
+    #[test]
+    fn _mm_sub_epi64_underflow() {
+        let (a, b) = (u64x2::splat(5), u64x2::splat(6));
+        let r = unsafe { sse2::_mm_sub_epi64(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u64x2::from(r), u64x2::splat(0xFFFFFFFFFFFFFFFF));
+    }
+
+    #[test]
+    fn _mm_subs_epi8() {
+        let (a, b) = (i8x16::splat(5), i8x16::splat(2));
+        let r = unsafe { sse2::_mm_subs_epi8(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(i8x16::from(r), i8x16::splat(3));
+    }
+
+    #[test]
+    fn _mm_subs_epi8_saturate_positive() {
+        let a = i8x16::splat(0x7F);
+        let b = i8x16::splat(-1);
+        let r = unsafe { sse2::_mm_subs_epi8(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(i8x16::from(r), a);
+    }
+
+    #[test]
+    fn _mm_subs_epi8_saturate_negative() {
+        let a = i8x16::splat(-0x80);
+        let b = i8x16::splat(1);
+        let r = unsafe { sse2::_mm_subs_epi8(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(i8x16::from(r), a);
+    }
+
+    #[test]
+    fn _mm_subs_epi16() {
+        let (a, b) = (i16x8::splat(5), i16x8::splat(2));
+        let r = unsafe { sse2::_mm_subs_epi16(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(i16x8::from(r), i16x8::splat(3));
+    }
+
+    #[test]
+    fn _mm_subs_epi16_saturate_positive() {
+        let a = i16x8::splat(0x7FFF);
+        let b = i16x8::splat(-1);
+        let r = unsafe { sse2::_mm_subs_epi16(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(i16x8::from(r), a);
+    }
+
+    #[test]
+    fn _mm_subs_epi16_saturate_negative() {
+        let a = i16x8::splat(-0x8000);
+        let b = i16x8::splat(1);
+        let r = unsafe { sse2::_mm_subs_epi16(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(i16x8::from(r), a);
+    }
+
+    #[test]
+    fn _mm_subs_epu8() {
+        let (a, b) = (u8x16::splat(5), u8x16::splat(2));
+        let r = unsafe { sse2::_mm_subs_epu8(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u8x16::from(r), u8x16::splat(3));
+    }
+
+    #[test]
+    fn _mm_subs_epu8_saturate() {
+        let a = u8x16::splat(0);
+        let b = u8x16::splat(1);
+        let r = unsafe { sse2::_mm_subs_epu8(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u8x16::from(r), a);
+    }
+
+    #[test]
+    fn _mm_subs_epu16() {
+        let (a, b) = (u16x8::splat(5), u16x8::splat(2));
+        let r = unsafe { sse2::_mm_subs_epu16(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u16x8::from(r), u16x8::splat(3));
+    }
+
+    #[test]
+    fn _mm_subs_epu16_saturate() {
+        let a = u16x8::splat(0);
+        let b = u16x8::splat(1);
+        let r = unsafe { sse2::_mm_subs_epu16(a.as_m128i(), b.as_m128i()) };
+        assert_eq!(u16x8::from(r), a);
+    }
+
+    #[test]
+    fn _mm_slli_si128() {
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = unsafe { sse2::_mm_slli_si128(a.as_m128i(), 1) };
+        let e = u8x16::new(
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        assert_eq!(u8x16::from(r), e);
+
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = unsafe { sse2::_mm_slli_si128(a.as_m128i(), 15) };
+        let e = u8x16::new(
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+        assert_eq!(u8x16::from(r), e);
+
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = unsafe { sse2::_mm_slli_si128(a.as_m128i(), 16) };
+        assert_eq!(u8x16::from(r), u8x16::splat(0));
+
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = unsafe { sse2::_mm_slli_si128(a.as_m128i(), -1) };
+        assert_eq!(u8x16::from(r), u8x16::splat(0));
+
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = unsafe { sse2::_mm_slli_si128(a.as_m128i(), -0x80000000) };
+        assert_eq!(u8x16::from(r), u8x16::splat(0));
     }
 }
