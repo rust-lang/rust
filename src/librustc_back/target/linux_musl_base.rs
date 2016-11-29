@@ -62,7 +62,7 @@ pub fn opts() -> TargetOptions {
     // MUSL support doesn't currently include dynamic linking, so there's no
     // need for dylibs or rpath business. Additionally `-pie` is incompatible
     // with `-static`, so we can't pass `-pie`.
-    base.dynamic_linking = false;
+    base.dynamic_linking = true;
     base.has_rpath = false;
     base.position_independent_executables = false;
 

@@ -237,7 +237,16 @@ pub fn default_output_for_target(sess: &Session) -> config::CrateType {
 /// Checks if target supports crate_type as output
 pub fn invalid_output_for_target(sess: &Session,
                                  crate_type: config::CrateType) -> bool {
-    match (sess.target.target.options.dynamic_linking,
+    let requested_features = sess.opts.cg.target_feature.split(',');
+    let found_negative = requested_features.clone().any(|r| r == "-crt-static");
+    let found_positive = requested_features.clone().any(|r| r == "+crt-static");
+    let crt_static = if sess.target.target.options.crt_static_default {
+        !found_negative
+    } else {
+        found_positive
+    };
+
+    match (sess.target.target.options.dynamic_linking && !crt_static,
            sess.target.target.options.executables, crate_type) {
         (false, _, config::CrateTypeCdylib) |
         (false, _, config::CrateTypeProcMacro) |
