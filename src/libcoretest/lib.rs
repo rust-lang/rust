@@ -40,7 +40,7 @@
 extern crate core;
 extern crate test;
 extern crate libc;
-extern crate rustc_unicode;
+extern crate std_unicode;
 extern crate rand;
 
 mod any;

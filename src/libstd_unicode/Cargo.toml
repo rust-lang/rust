@@ -1,10 +1,10 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "rustc_unicode"
+name = "std_unicode"
 version = "0.0.0"
 
 [lib]
-name = "rustc_unicode"
+name = "std_unicode"
 path = "lib.rs"
 test = false
 bench = false
