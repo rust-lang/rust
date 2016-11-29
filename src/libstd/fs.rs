@@ -383,16 +383,6 @@ impl File {
     pub fn set_permissions(&self, perm: Permissions) -> io::Result<()> {
         self.inner.set_permissions(perm.0)
     }
-
-    /// Get the path that this file points to.
-    ///
-    /// This function is only implemented on Redox, but could be
-    /// implemented on other operating systems using readlink
-    #[cfg(target_os = "redox")]
-    #[unstable(feature = "file_path", issue="0")]
-    pub fn path(&self) -> io::Result<PathBuf> {
-        self.inner.path()
-    }
 }
 
 impl AsInner<fs_imp::File> for File {

@@ -319,10 +319,8 @@ impl File {
 
     pub fn path(&self) -> io::Result<PathBuf> {
         let mut buf: [u8; 4096] = [0; 4096];
-        match syscall::fpath(*self.fd().as_inner() as usize, &mut buf) {
-            Ok(count) => Ok(PathBuf::from(unsafe { String::from_utf8_unchecked(Vec::from(&buf[0..count])) })),
-            Err(err) => Err(Error::from_raw_os_error(err.errno)),
-        }
+        let count = cvt(syscall::fpath(*self.fd().as_inner() as usize, &mut buf))?;
+        Ok(PathBuf::from(unsafe { String::from_utf8_unchecked(Vec::from(&buf[..count])) }))
     }
 
     pub fn fd(&self) -> &FileDesc { &self.0 }
