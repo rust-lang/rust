@@ -369,14 +369,14 @@ pub unsafe fn _mm_cvtepi32_pd(a: __m128i) -> __m128d  {
 
 /// Set packed 64-bit integers with the supplied values.
 #[inline]
-pub unsafe fn _mm_set_epi64x(e1: i64, e0: i64) -> __m128i {
-    i64x2::new(e0, e1).as_m128i()
+unsafe fn _mm_set_epi64(_e1: __m64, _e0: __m64) -> __m128i {
+    unimplemented!()
 }
 
 /// Set packed 64-bit integers with the supplied values.
 #[inline]
-unsafe fn _mm_set_epi64(_e1: __m64, _e0: __m64) -> __m128i {
-    unimplemented!()
+pub unsafe fn _mm_set_epi64x(e1: i64, e0: i64) -> __m128i {
+    i64x2::new(e0, e1).as_m128i()
 }
 
 /// Set packed 32-bit integers with the supplied values.
