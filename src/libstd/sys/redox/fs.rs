@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -118,9 +118,11 @@ impl FilePermissions {
 impl FileType {
     pub fn is_dir(&self) -> bool { self.is(syscall::MODE_DIR) }
     pub fn is_file(&self) -> bool { self.is(syscall::MODE_FILE) }
-    pub fn is_symlink(&self) -> bool { false }
+    pub fn is_symlink(&self) -> bool { false /*FIXME: Implement symlink mode*/ }
 
-    pub fn is(&self, mode: u16) -> bool { self.mode & (syscall::MODE_DIR | syscall::MODE_FILE) == mode }
+    pub fn is(&self, mode: u16) -> bool {
+        self.mode & (syscall::MODE_DIR | syscall::MODE_FILE) == mode
+    }
 }
 
 impl FromInner<u32> for FilePermissions {
@@ -334,7 +336,8 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let fd = cvt(syscall::open(p.to_str().unwrap(), syscall::O_CREAT | syscall::O_DIRECTORY | syscall::O_EXCL | (self.mode as usize & 0o777)))?;
+        let flags = syscall::O_CREAT | syscall::O_DIRECTORY | syscall::O_EXCL;
+        let fd = cvt(syscall::open(p.to_str().unwrap(), flags | (self.mode as usize & 0o777)))?;
         let _ = syscall::close(fd);
         Ok(())
     }
@@ -369,7 +372,8 @@ impl fmt::Debug for File {
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = Arc::new(p.to_path_buf());
 
-    let fd = cvt(syscall::open(p.to_str().unwrap(), syscall::O_CLOEXEC | syscall::O_RDONLY | syscall::O_DIRECTORY))?;
+    let flags = syscall::O_CLOEXEC | syscall::O_RDONLY | syscall::O_DIRECTORY;
+    let fd = cvt(syscall::open(p.to_str().unwrap(), flags))?;
     let file = FileDesc::new(fd);
     let mut data = Vec::new();
     file.read_to_end(&mut data)?;
