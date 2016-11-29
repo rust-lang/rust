@@ -18,6 +18,9 @@ use std::path::Path;
 
 use syntax::ast;
 use syntax::parse::lexer::{self, Reader, StringReader};
+use syntax::parse::token::{self, Token};
+use syntax::parse::parser::Parser;
+use syntax::symbol::keywords;
 use syntax::tokenstream::TokenTree;
 use syntax_pos::*;
 
@@ -317,7 +320,7 @@ impl<'a> SpanUtils<'a> {
     /// function returns the program text from the start of the span until the
     /// end of the 'signature' part, that is up to, but not including an opening
     /// brace or semicolon.
-    pub fn signature_string_for_span(&self, span: Span) -> Option<String> {
+    pub fn signature_string_for_span(&self, span: Span) -> String {
         let mut toks = self.span_to_tts(span).into_iter();
         let mut prev = toks.next().unwrap();
         let first_span = prev.get_span();
@@ -325,7 +328,7 @@ impl<'a> SpanUtils<'a> {
         for tok in toks {
             if let TokenTree::Token(_, ref tok) = prev {
                 angle_count += match *tok {
-                    token::Eof => { return None; }
+                    token::Eof => { break; }
                     token::Lt => 1,
                     token::Gt => -1,
                     token::BinOp(token::Shl) => 2,
@@ -338,15 +341,15 @@ impl<'a> SpanUtils<'a> {
                 continue;
             }
             if let TokenTree::Token(_, token::Semi) = tok {
-                return Some(self.snippet(mk_sp(first_span.lo, prev.get_span().hi)));
+                return self.snippet(mk_sp(first_span.lo, prev.get_span().hi));
             } else if let TokenTree::Delimited(_, ref d) = tok {
                 if d.delim == token::Brace {
-                    return Some(self.snippet(mk_sp(first_span.lo, prev.get_span().hi)));
+                    return self.snippet(mk_sp(first_span.lo, prev.get_span().hi));
                 }
             }
             prev = tok;
         }
-        None
+        self.snippet(span)
     }
 
     pub fn sub_span_before_token(&self, span: Span, tok: Token) -> Option<Span> {

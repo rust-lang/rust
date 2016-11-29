@@ -86,7 +86,7 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
             children: data.items.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
-            sig: None,
+            sig: Some(From::from(data.sig)),
         };
         if def.span.file_name != def.value {
             // If the module is an out-of-line defintion, then we'll make the
@@ -266,7 +266,7 @@ impl From<EnumData> for Def {
             children: data.variants.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
-            sig: None,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -283,7 +283,7 @@ impl From<TupleVariantData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
-            sig: None,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -299,7 +299,7 @@ impl From<StructVariantData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
-            sig: None,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -331,7 +331,7 @@ impl From<TraitData> for Def {
             children: data.items.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
             docs: data.docs,
-            sig: None,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -347,7 +347,7 @@ impl From<FunctionData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
-            sig: None,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -363,7 +363,7 @@ impl From<MethodData> for Def {
             children: vec![],
             decl_id: data.decl_id.map(|id| From::from(id)),
             docs: data.docs,
-            sig: None,
+            sig: Some(From::from(data.sig)),
         }
     }
 }
@@ -379,7 +379,7 @@ impl From<MacroData> for Def {
             children: vec![],
             decl_id: None,
             docs: data.docs,
-            sig: data.sig.map(|s| From::from(s)),
+            sig: None,
         }
     }
 }
@@ -395,7 +395,7 @@ impl From<TypeDefData> for Def {
             children: vec![],
             decl_id: None,
             docs: String::new(),
-            sig: None,
+            sig: data.sig.map(|s| From::from(s)),
         }
     }
 }

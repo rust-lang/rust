@@ -152,6 +152,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     parent: None,
                     docs: docs_for_attrs(&item.attrs),
+                    sig: self.sig_base(item),
                 }))
             }
             ast::ItemKind::Static(ref typ, mt, ref expr) => {
@@ -179,7 +180,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(&typ),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
-                    sig: None,
+                    sig: Some(self.sig_base(item)),
                 }))
             }
             ast::ItemKind::Const(ref typ, ref expr) => {
@@ -198,7 +199,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(&typ),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
-                    sig: None,
+                    sig: Some(self.sig_base(item)),
                 }))
             }
             ast::ItemKind::Mod(ref m) => {
@@ -209,6 +210,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Mod);
                 filter!(self.span_utils, sub_span, item.span, None);
+
                 Some(Data::ModData(ModData {
                     id: item.id,
                     name: item.ident.to_string(),
@@ -219,6 +221,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     items: m.items.iter().map(|i| i.id).collect(),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
+                    sig: self.sig_base(item),
                 }))
             }
             ast::ItemKind::Enum(ref def, _) => {
@@ -241,6 +244,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     variants: def.variants.iter().map(|v| v.node.data.id()).collect(),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
+                    sig: self.sig_base(item),
                 }))
             }
             ast::ItemKind::Impl(.., ref trait_ref, ref typ, _) => {
@@ -305,17 +309,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             let text = self.span_utils.snippet(field.span);
             let ident_start = text.find(&name).unwrap();
             let ident_end = ident_start + name.len();
-            // TODO refs
             let sig = Signature {
                 span: span,
                 text: text,
                 ident_start: ident_start,
                 ident_end: ident_end,
-                defs: vec![SigElement {
-                    id: def_id,
-                    start: ident_start,
-                    end: ident_end,
-                }],
+                defs: vec![],
                 refs: vec![],
             };
             Some(VariableData {
@@ -412,9 +411,24 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         let sub_span = self.span_utils.sub_span_after_keyword(span, keywords::Fn);
         filter!(self.span_utils, sub_span, span, None);
+
+        let name = name.to_string();
+        let text = self.span_utils.signature_string_for_span(span);
+        println!("text: `{}`, name: `{}`", text, name);
+        let ident_start = text.find(&name).unwrap();
+        let ident_end = ident_start + name.len();
+        let sig = Signature {
+            span: span,
+            text: text,
+            ident_start: ident_start,
+            ident_end: ident_end,
+            defs: vec![],
+            refs: vec![],
+        };
+
         Some(FunctionData {
             id: id,
-            name: name.to_string(),
+            name: name,
             qualname: qualname,
             declaration: decl_id,
             span: sub_span.unwrap(),
@@ -424,6 +438,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             visibility: vis,
             parent: parent_scope,
             docs: docs,
+            sig: sig,
         })
     }
 
@@ -569,11 +584,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Data> {
-<<<<<<< HEAD
         let def = self.get_path_def(id);
-=======
-        let def = option_try!(self.tcx.expect_resolution(id).maybe_full_def());
->>>>>>> save-analysis: fix ICE on partially resolved path
         let sub_span = self.span_utils.span_for_last_ident(path.span);
         filter!(self.span_utils, sub_span, path.span, None);
         match def {
@@ -720,6 +731,21 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         match self.get_path_def(ref_id) {
             Def::PrimTy(_) | Def::SelfTy(..) | Def::Err => None,
             def => Some(def.def_id()),
+        }
+    }
+
+    fn sig_base(&self, item: &ast::Item) -> Signature {
+        let text = self.span_utils.signature_string_for_span(item.span);
+        let name = item.ident.to_string();
+        let ident_start = text.find(&name).expect("Name not in signature?");
+        let ident_end = ident_start + name.len();
+        Signature {
+            span: mk_sp(item.span.lo, item.span.lo + BytePos(text.len() as u32)),
+            text: text,
+            ident_start: ident_start,
+            ident_end: ident_end,
+            defs: vec![],
+            refs: vec![],
         }
     }
 
