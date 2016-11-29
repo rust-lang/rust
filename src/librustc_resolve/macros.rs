@@ -20,6 +20,7 @@ use rustc::ty;
 use std::cell::Cell;
 use std::rc::Rc;
 use syntax::ast::{self, Name, Ident};
+use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{NormalTT, SyntaxExtension};
@@ -138,7 +139,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         invocation.expansion.set(visitor.legacy_scope);
     }
 
-    fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef, export: bool) {
+    fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef) {
         if def.ident.name == "macro_rules" {
             self.session.span_err(def.span, "user-defined macros may not be named `macro_rules`");
         }
@@ -153,7 +154,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         invocation.legacy_scope.set(LegacyScope::Binding(binding));
         self.macro_names.insert(def.ident.name);
 
-        if export {
+        if attr::contains_name(&def.attrs, "macro_export") {
             def.id = self.next_node_id();
             DefCollector::new(&mut self.definitions).with_parent(CRATE_DEF_INDEX, |collector| {
                 collector.visit_macro_def(&def)

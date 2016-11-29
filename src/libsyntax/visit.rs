@@ -178,7 +178,6 @@ pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) {
 
 pub fn walk_macro_def<'a, V: Visitor<'a>>(visitor: &mut V, macro_def: &'a MacroDef) {
     visitor.visit_ident(macro_def.span, macro_def.ident);
-    walk_opt_ident(visitor, macro_def.span, macro_def.imported_from);
     walk_list!(visitor, visit_attribute, &macro_def.attrs);
 }
 
