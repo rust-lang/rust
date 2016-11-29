@@ -86,7 +86,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Tuple up the arguments and insert the resulting function type into
         // the `closures` table.
-        fn_ty.sig.0.inputs = vec![self.tcx.intern_tup(&fn_ty.sig.0.inputs[..])];
+        fn_ty.sig.0 = ty::FnSig::new(vec![self.tcx.intern_tup(fn_ty.sig.skip_binder().inputs())],
+            fn_ty.sig.skip_binder().output(),
+            fn_ty.sig.variadic()
+        );
 
         debug!("closure for {:?} --> sig={:?} opt_kind={:?}",
                expr_def_id,
@@ -224,11 +227,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("deduce_sig_from_projection: ret_param_ty {:?}",
                ret_param_ty);
 
-        let fn_sig = ty::FnSig {
-            inputs: input_tys,
-            output: ret_param_ty,
-            variadic: false,
-        };
+        let fn_sig = ty::FnSig::new(input_tys, ret_param_ty, false);
         debug!("deduce_sig_from_projection: fn_sig {:?}", fn_sig);
 
         Some(fn_sig)

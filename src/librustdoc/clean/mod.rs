@@ -1152,11 +1152,11 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
             cx.tcx.sess.cstore.fn_arg_names(did).into_iter()
         }.peekable();
         FnDecl {
-            output: Return(sig.0.output.clean(cx)),
+            output: Return(sig.skip_binder().output().clean(cx)),
             attrs: Attributes::default(),
-            variadic: sig.0.variadic,
+            variadic: sig.skip_binder().variadic,
             inputs: Arguments {
-                values: sig.0.inputs.iter().map(|t| {
+                values: sig.skip_binder().inputs().iter().map(|t| {
                     Argument {
                         type_: t.clean(cx),
                         id: ast::CRATE_NODE_ID,

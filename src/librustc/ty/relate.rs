@@ -180,35 +180,22 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
                            -> RelateResult<'tcx, ty::FnSig<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        if a.variadic != b.variadic {
+        if a.variadic() != b.variadic() {
             return Err(TypeError::VariadicMismatch(
-                expected_found(relation, &a.variadic, &b.variadic)));
+                expected_found(relation, &a.variadic(), &b.variadic())));
         }
 
-        let inputs = relate_arg_vecs(relation,
-                                     &a.inputs,
-                                     &b.inputs)?;
-        let output = relation.relate(&a.output, &b.output)?;
+        if a.inputs().len() != b.inputs().len() {
+            return Err(TypeError::ArgCount);
+        }
 
-        Ok(ty::FnSig {inputs: inputs,
-                      output: output,
-                      variadic: a.variadic})
+        let inputs = a.inputs().iter().zip(b.inputs()).map(|(&a, &b)| {
+            relation.relate_with_variance(ty::Contravariant, &a, &b)
+        }).collect::<Result<Vec<_>, _>>()?;
+        let output = relation.relate(&a.output(), &b.output())?;
+
+        Ok(ty::FnSig::new(inputs, output, a.variadic()))
     }
-}
-
-fn relate_arg_vecs<'a, 'gcx, 'tcx, R>(relation: &mut R,
-                                      a_args: &[Ty<'tcx>],
-                                      b_args: &[Ty<'tcx>])
-                                      -> RelateResult<'tcx, Vec<Ty<'tcx>>>
-    where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
-{
-    if a_args.len() != b_args.len() {
-        return Err(TypeError::ArgCount);
-    }
-
-    a_args.iter().zip(b_args)
-          .map(|(a, b)| relation.relate_with_variance(ty::Contravariant, a, b))
-          .collect()
 }
 
 impl<'tcx> Relate<'tcx> for ast::Unsafety {

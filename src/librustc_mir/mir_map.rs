@@ -238,14 +238,14 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
                 .iter()
                 .enumerate()
                 .map(|(index, arg)| {
-                    (fn_sig.inputs[index], Some(&*arg.pat))
+                    (fn_sig.inputs()[index], Some(&*arg.pat))
                 });
 
         let body = self.tcx.map.expr(body_id);
 
         let arguments = implicit_argument.into_iter().chain(explicit_arguments);
         self.cx(MirSource::Fn(id)).build(|cx| {
-            build::construct_fn(cx, id, arguments, abi, fn_sig.output, body)
+            build::construct_fn(cx, id, arguments, abi, fn_sig.output(), body)
         });
 
         intravisit::walk_fn(self, fk, decl, body_id, span, id);

@@ -222,11 +222,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                                       tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
-                    inputs: Vec::new(),
-                    output: tcx.mk_nil(),
-                    variadic: false
-                })
+                sig: ty::Binder(ty::FnSig::new(Vec::new(), tcx.mk_nil(), false))
             }));
 
             require_same_types(
@@ -274,14 +270,14 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                                       tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
-                    inputs: vec![
+                sig: ty::Binder(ty::FnSig::new(
+                    vec![
                         tcx.types.isize,
                         tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
                     ],
-                    output: tcx.types.isize,
-                    variadic: false,
-                }),
+                    tcx.types.isize,
+                    false,
+                )),
             }));
 
             require_same_types(

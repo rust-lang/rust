@@ -487,14 +487,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>)>
     {
         let arguments_tuple = match tuple_arguments {
-            TupleArgumentsFlag::No => sig.0.inputs[0],
-            TupleArgumentsFlag::Yes => self.intern_tup(&sig.0.inputs[..]),
+            TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
+            TupleArgumentsFlag::Yes =>
+                self.intern_tup(sig.skip_binder().inputs()),
         };
         let trait_ref = ty::TraitRef {
             def_id: fn_trait_def_id,
             substs: self.mk_substs_trait(self_ty, &[arguments_tuple]),
         };
-        ty::Binder((trait_ref, sig.0.output))
+        ty::Binder((trait_ref, sig.skip_binder().output()))
     }
 }
 

@@ -81,7 +81,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             Some(TupleSimplifiedType(tys.len()))
         }
         ty::TyFnDef(.., ref f) | ty::TyFnPtr(ref f) => {
-            Some(FunctionSimplifiedType(f.sig.0.inputs.len()))
+            Some(FunctionSimplifiedType(f.sig.skip_binder().inputs().len()))
         }
         ty::TyProjection(_) | ty::TyParam(_) => {
             if can_simplify_params {
