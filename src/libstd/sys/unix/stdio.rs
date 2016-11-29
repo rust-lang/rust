@@ -71,7 +71,7 @@ impl io::Write for Stderr {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         Stderr::write(self, data)
     }
-    
+
     fn flush(&mut self) -> io::Result<()> {
         Stderr::flush(self)
     }

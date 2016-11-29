@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -235,10 +235,10 @@ pub trait FileTypeExt {
 
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 impl FileTypeExt for fs::FileType {
-    fn is_block_device(&self) -> bool { false /*TODO*/ }
-    fn is_char_device(&self) -> bool { false /*TODO*/ }
-    fn is_fifo(&self) -> bool { false /*TODO*/ }
-    fn is_socket(&self) -> bool { false /*TODO*/ }
+    fn is_block_device(&self) -> bool { false /*FIXME: Implement block device mode*/ }
+    fn is_char_device(&self) -> bool { false /*FIXME: Implement char device mode*/ }
+    fn is_fifo(&self) -> bool { false /*FIXME: Implement fifo mode*/ }
+    fn is_socket(&self) -> bool { false /*FIXME: Implement socket mode*/ }
 }
 
 /// Creates a new symbolic link on the filesystem.

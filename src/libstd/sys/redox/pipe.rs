@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use io;
-use sys::syscall;
+use sys::{cvt, syscall};
 use sys::fd::FileDesc;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -20,9 +20,7 @@ pub struct AnonPipe(FileDesc);
 
 pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     let mut fds = [0; 2];
-
-    syscall::pipe2(&mut fds, syscall::O_CLOEXEC).map_err(|err| io::Error::from_raw_os_error(err.errno))?;
-
+    cvt(syscall::pipe2(&mut fds, syscall::O_CLOEXEC))?;
     Ok((AnonPipe(FileDesc::new(fds[0])), AnonPipe(FileDesc::new(fds[1]))))
 }
 
@@ -52,7 +50,7 @@ pub fn read2(p1: AnonPipe,
              v1: &mut Vec<u8>,
              p2: AnonPipe,
              v2: &mut Vec<u8>) -> io::Result<()> {
-    //TODO: Use event based I/O multiplexing
+    //FIXME: Use event based I/O multiplexing
     //unimplemented!()
 
     p1.read_to_end(v1)?;
