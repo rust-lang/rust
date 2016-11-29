@@ -12,7 +12,7 @@ use self::ImportDirectiveSubclass::*;
 
 use {AmbiguityError, Module, PerNS};
 use Namespace::{self, TypeNS, MacroNS};
-use {NameBinding, NameBindingKind, PathResult, PathScope, PrivacyError, ToNameBinding};
+use {NameBinding, NameBindingKind, PathResult, PathScope, PrivacyError};
 use Resolver;
 use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
@@ -273,7 +273,7 @@ impl<'a> Resolver<'a> {
     // Given a binding and an import directive that resolves to it,
     // return the corresponding binding defined by the import directive.
     pub fn import(&mut self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
-                  -> NameBinding<'a> {
+                  -> &'a NameBinding<'a> {
         let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) ||
                      !directive.is_glob() && binding.is_extern_crate() { // c.f. `PRIVATE_IN_PUBLIC`
             directive.vis.get()
@@ -287,7 +287,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        NameBinding {
+        self.arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Import {
                 binding: binding,
                 directive: directive,
@@ -296,16 +296,17 @@ impl<'a> Resolver<'a> {
             span: directive.span,
             vis: vis,
             expansion: directive.expansion,
-        }
+        })
     }
 
     // Define the name or return the existing binding if there is a collision.
-    pub fn try_define<T>(&mut self, module: Module<'a>, ident: Ident, ns: Namespace, binding: T)
-                         -> Result<(), &'a NameBinding<'a>>
-        where T: ToNameBinding<'a>
-    {
+    pub fn try_define(&mut self,
+                      module: Module<'a>,
+                      ident: Ident,
+                      ns: Namespace,
+                      binding: &'a NameBinding<'a>)
+                      -> Result<(), &'a NameBinding<'a>> {
         let ident = ident.unhygienize();
-        let binding = self.arenas.alloc_name_binding(binding.to_name_binding());
         self.update_resolution(module, ident, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {
@@ -389,7 +390,7 @@ impl<'a> Resolver<'a> {
             let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, directive);
             self.per_ns(|this, ns| {
-                let _ = this.try_define(directive.parent, target, ns, dummy_binding.clone());
+                let _ = this.try_define(directive.parent, target, ns, dummy_binding);
             });
         }
     }
@@ -516,10 +517,11 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 return
             };
 
+            let parent = directive.parent;
             match result[ns].get() {
                 Err(Undetermined) => indeterminate = true,
                 Err(Determined) => {
-                    this.update_resolution(directive.parent, target, ns, |_, resolution| {
+                    this.update_resolution(parent, target, ns, |_, resolution| {
                         resolution.single_imports.directive_failed()
                     });
                 }
@@ -534,10 +536,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 }
                 Ok(binding) => {
                     let imported_binding = this.import(binding, directive);
-                    let conflict = this.try_define(directive.parent, target, ns, imported_binding);
+                    let conflict = this.try_define(parent, target, ns, imported_binding);
                     if let Err(old_binding) = conflict {
-                        let binding = &this.import(binding, directive);
-                        this.report_conflict(directive.parent, target, ns, binding, old_binding);
+                        this.report_conflict(parent, target, ns, imported_binding, old_binding);
                     }
                 }
             }
