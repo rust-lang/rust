@@ -19,9 +19,7 @@
 
 #![rustc_partition_translated(module="struct_point-point", cfg="rpass2")]
 
-// FIXME(#35078) -- this gets recompiled because we don't separate sig from body
-#![rustc_partition_translated(module="struct_point-fn_calls_changed_method", cfg="rpass2")]
-
+#![rustc_partition_reused(module="struct_point-fn_calls_changed_method", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_calls_another_method", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_read_field", cfg="rpass2")]
@@ -52,8 +50,7 @@ mod point {
 mod fn_calls_changed_method {
     use point::Point;
 
-    // FIXME(#35078) -- this gets recompiled because we don't separate sig from body
-    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
     pub fn check() {
         let p = Point { x: 2.0, y: 2.0 };
         p.distance_from_origin();

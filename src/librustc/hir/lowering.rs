@@ -47,9 +47,12 @@ use hir::def_id::{DefIndex, DefId};
 use hir::def::{Def, PathResolution};
 use session::Session;
 use util::nodemap::NodeMap;
+use rustc_data_structures::fnv::FnvHashMap;
 
 use std::collections::BTreeMap;
 use std::iter;
+use std::mem;
+
 use syntax::ast::*;
 use syntax::errors;
 use syntax::ptr::P;
@@ -68,6 +71,7 @@ pub struct LoweringContext<'a> {
     // the form of a DefIndex) so that if we create a new node which introduces
     // a definition, then we can properly create the def id.
     parent_def: Option<DefIndex>,
+    exprs: FnvHashMap<hir::ExprId, hir::Expr>,
     resolver: &'a mut Resolver,
 
     /// The items being lowered are collected here.
@@ -104,6 +108,7 @@ pub fn lower_crate(sess: &Session,
         crate_root: std_inject::injected_crate_name(krate),
         sess: sess,
         parent_def: None,
+        exprs: FnvHashMap(),
         resolver: resolver,
         items: BTreeMap::new(),
         impl_items: BTreeMap::new(),
@@ -120,6 +125,23 @@ enum ParamMode {
 
 impl<'a> LoweringContext<'a> {
     fn lower_crate(mut self, c: &Crate) -> hir::Crate {
+        self.lower_items(c);
+        let module = self.lower_mod(&c.module);
+        let attrs = self.lower_attrs(&c.attrs);
+        let exported_macros = c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect();
+
+        hir::Crate {
+            module: module,
+            attrs: attrs,
+            span: c.span,
+            exported_macros: exported_macros,
+            items: self.items,
+            impl_items: self.impl_items,
+            exprs: mem::replace(&mut self.exprs, FnvHashMap()),
+        }
+    }
+
+    fn lower_items(&mut self, c: &Crate) {
         struct ItemLowerer<'lcx, 'interner: 'lcx> {
             lctx: &'lcx mut LoweringContext<'interner>,
         }
@@ -139,16 +161,14 @@ impl<'a> LoweringContext<'a> {
             }
         }
 
-        visit::walk_crate(&mut ItemLowerer { lctx: &mut self }, c);
+        let mut item_lowerer = ItemLowerer { lctx: self };
+        visit::walk_crate(&mut item_lowerer, c);
+    }
 
-        hir::Crate {
-            module: self.lower_mod(&c.module),
-            attrs: self.lower_attrs(&c.attrs),
-            span: c.span,
-            exported_macros: c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect(),
-            items: self.items,
-            impl_items: self.impl_items,
-        }
+    fn record_expr(&mut self, expr: hir::Expr) -> hir::ExprId {
+        let id = hir::ExprId(expr.id);
+        self.exprs.insert(id, expr);
+        id
     }
 
     fn next_id(&self) -> NodeId {
@@ -825,12 +845,14 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
                 let body = self.lower_block(body);
+                let body = self.expr_block(body, ThinVec::new());
+                let body_id = self.record_expr(body);
                 hir::ItemFn(self.lower_fn_decl(decl),
                             self.lower_unsafety(unsafety),
                             self.lower_constness(constness),
                             abi,
                             self.lower_generics(generics),
-                            P(self.expr_block(body, ThinVec::new())))
+                            body_id)
             }
             ItemKind::Mod(ref m) => hir::ItemMod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemForeignMod(self.lower_foreign_mod(nm)),
@@ -897,7 +919,8 @@ impl<'a> LoweringContext<'a> {
                         hir::MethodTraitItem(this.lower_method_sig(sig),
                                              body.as_ref().map(|x| {
                             let body = this.lower_block(x);
-                            P(this.expr_block(body, ThinVec::new()))
+                            let expr = this.expr_block(body, ThinVec::new());
+                            this.record_expr(expr)
                         }))
                     }
                     TraitItemKind::Type(ref bounds, ref default) => {
@@ -925,8 +948,9 @@ impl<'a> LoweringContext<'a> {
                     }
                     ImplItemKind::Method(ref sig, ref body) => {
                         let body = this.lower_block(body);
-                        hir::ImplItemKind::Method(this.lower_method_sig(sig),
-                                                  P(this.expr_block(body, ThinVec::new())))
+                        let expr = this.expr_block(body, ThinVec::new());
+                        let expr_id = this.record_expr(expr);
+                        hir::ImplItemKind::Method(this.lower_method_sig(sig), expr_id)
                     }
                     ImplItemKind::Type(ref ty) => hir::ImplItemKind::Type(this.lower_ty(ty)),
                     ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
@@ -1375,9 +1399,10 @@ impl<'a> LoweringContext<'a> {
                 }
                 ExprKind::Closure(capture_clause, ref decl, ref body, fn_decl_span) => {
                     self.with_parent_def(e.id, |this| {
+                        let expr = this.lower_expr(body);
                         hir::ExprClosure(this.lower_capture_clause(capture_clause),
                                          this.lower_fn_decl(decl),
-                                         P(this.lower_expr(body)),
+                                         this.record_expr(expr),
                                          fn_decl_span)
                     })
                 }

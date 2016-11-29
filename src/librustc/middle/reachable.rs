@@ -28,7 +28,7 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use hir;
-use hir::intravisit::Visitor;
+use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 use hir::intravisit;
 
@@ -88,8 +88,12 @@ struct ReachableContext<'a, 'tcx: 'a> {
     any_library: bool,
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &hir::Expr) {
+impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         let def = match expr.node {
             hir::ExprPath(ref qpath) => {
                 Some(self.tcx.tables().qpath_def(qpath, expr.id))
@@ -216,7 +220,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         }
     }
 
-    fn propagate_node(&mut self, node: &ast_map::Node,
+    fn propagate_node(&mut self, node: &ast_map::Node<'tcx>,
                       search_item: ast::NodeId) {
         if !self.any_library {
             // If we are building an executable, only explicitly extern
@@ -244,9 +248,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
-                    hir::ItemFn(.., ref body) => {
+                    hir::ItemFn(.., body) => {
                         if item_might_be_inlined(&item) {
-                            self.visit_expr(body);
+                            self.visit_body(body);
                         }
                     }
 
@@ -274,9 +278,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::MethodTraitItem(_, None) => {
                         // Keep going, nothing to get exported
                     }
-                    hir::ConstTraitItem(_, Some(ref body)) |
-                    hir::MethodTraitItem(_, Some(ref body)) => {
+                    hir::ConstTraitItem(_, Some(ref body)) => {
                         self.visit_expr(body);
+                    }
+                    hir::MethodTraitItem(_, Some(body_id)) => {
+                        self.visit_body(body_id);
                     }
                     hir::TypeTraitItem(..) => {}
                 }
@@ -286,10 +292,10 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ImplItemKind::Const(_, ref expr) => {
                         self.visit_expr(&expr);
                     }
-                    hir::ImplItemKind::Method(ref sig, ref body) => {
+                    hir::ImplItemKind::Method(ref sig, body) => {
                         let did = self.tcx.map.get_parent_did(search_item);
                         if method_might_be_inlined(self.tcx, sig, impl_item, did) {
-                            self.visit_expr(body)
+                            self.visit_body(body)
                         }
                     }
                     hir::ImplItemKind::Type(_) => {}

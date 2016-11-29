@@ -23,7 +23,7 @@ use syntax::ast;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
@@ -127,8 +127,8 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                     }
                 }
             }
-            hir::ItemFn(.., ref body) => {
-                self.check_item_fn(item, body);
+            hir::ItemFn(.., body_id) => {
+                self.check_item_fn(item, body_id);
             }
             hir::ItemStatic(..) => {
                 self.check_item_type(item);
@@ -347,7 +347,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
     fn check_item_fn(&mut self,
                      item: &hir::Item,
-                     body: &hir::Expr)
+                     body_id: hir::ExprId)
     {
         self.for_item(item).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
@@ -364,7 +364,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             let predicates = fcx.instantiate_bounds(item.span, def_id, free_substs);
 
             let mut implied_bounds = vec![];
-            let free_id_outlive = fcx.tcx.region_maps.call_site_extent(item.id, body.id);
+            let free_id_outlive = fcx.tcx.region_maps.call_site_extent(item.id, body_id.node_id());
             this.check_fn_or_method(fcx, item.span, bare_fn_ty, &predicates,
                                     free_id_outlive, &mut implied_bounds);
             implied_bounds
@@ -609,6 +609,10 @@ fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, def_id: DefId) {
 }
 
 impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+        NestedVisitorMap::None
+    }
+
     fn visit_item(&mut self, i: &hir::Item) {
         debug!("visit_item: {:?}", i);
         self.check_item_well_formed(i);

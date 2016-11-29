@@ -33,6 +33,7 @@ pub use self::PathParameters::*;
 use hir::def::Def;
 use hir::def_id::DefId;
 use util::nodemap::{NodeMap, FxHashSet};
+use rustc_data_structures::fnv::FnvHashMap;
 
 use syntax_pos::{mk_sp, Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, respan, Spanned};
@@ -428,6 +429,7 @@ pub struct Crate {
     pub items: BTreeMap<NodeId, Item>,
 
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
+    pub exprs: FnvHashMap<ExprId, Expr>,
 }
 
 impl Crate {
@@ -457,6 +459,10 @@ impl Crate {
         for (_, impl_item) in &self.impl_items {
             visitor.visit_impl_item(impl_item);
         }
+    }
+
+    pub fn expr(&self, id: ExprId) -> &Expr {
+        &self.exprs[&id]
     }
 }
 
@@ -846,6 +852,15 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct ExprId(NodeId);
+
+impl ExprId {
+    pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+
 /// An expression
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Expr {
@@ -853,6 +868,12 @@ pub struct Expr {
     pub span: Span,
     pub node: Expr_,
     pub attrs: ThinVec<Attribute>,
+}
+
+impl Expr {
+    pub fn expr_id(&self) -> ExprId {
+        ExprId(self.id)
+    }
 }
 
 impl fmt::Debug for Expr {
@@ -914,7 +935,7 @@ pub enum Expr_ {
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
-    ExprClosure(CaptureClause, P<FnDecl>, P<Expr>, Span),
+    ExprClosure(CaptureClause, P<FnDecl>, ExprId, Span),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
@@ -1068,7 +1089,7 @@ pub enum TraitItem_ {
     /// must contain a value)
     ConstTraitItem(P<Ty>, Option<P<Expr>>),
     /// A method with an optional body
-    MethodTraitItem(MethodSig, Option<P<Expr>>),
+    MethodTraitItem(MethodSig, Option<ExprId>),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type
     TypeTraitItem(TyParamBounds, Option<P<Ty>>),
@@ -1101,7 +1122,7 @@ pub enum ImplItemKind {
     /// of the expression
     Const(P<Ty>, P<Expr>),
     /// A method implementation with the given signature and body
-    Method(MethodSig, P<Expr>),
+    Method(MethodSig, ExprId),
     /// An associated type
     Type(P<Ty>),
 }
@@ -1546,7 +1567,7 @@ pub enum Item_ {
     /// A `const` item
     ItemConst(P<Ty>, P<Expr>),
     /// A function declaration
-    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Expr>),
+    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, ExprId),
     /// A module
     ItemMod(Mod),
     /// An external module

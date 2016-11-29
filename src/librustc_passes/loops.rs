@@ -13,7 +13,7 @@ use rustc::session::Session;
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::map::Map;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
 use syntax::ast;
 use syntax_pos::Span;
@@ -59,16 +59,20 @@ pub fn check_crate(sess: &Session, map: &Map) {
     }.as_deep_visitor());
 }
 
-impl<'a, 'ast, 'v> Visitor<'v> for CheckLoopVisitor<'a, 'ast> {
-    fn visit_item(&mut self, i: &hir::Item) {
+impl<'a, 'ast> Visitor<'ast> for CheckLoopVisitor<'a, 'ast> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+        NestedVisitorMap::OnlyBodies(&self.hir_map)
+    }
+
+    fn visit_item(&mut self, i: &'ast hir::Item) {
         self.with_context(Normal, |v| intravisit::walk_item(v, i));
     }
 
-    fn visit_impl_item(&mut self, i: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, i: &'ast hir::ImplItem) {
         self.with_context(Normal, |v| intravisit::walk_impl_item(v, i));
     }
 
-    fn visit_expr(&mut self, e: &hir::Expr) {
+    fn visit_expr(&mut self, e: &'ast hir::Expr) {
         match e.node {
             hir::ExprWhile(ref e, ref b, _) => {
                 self.with_context(Loop(LoopKind::WhileLoop), |v| {
@@ -79,8 +83,8 @@ impl<'a, 'ast, 'v> Visitor<'v> for CheckLoopVisitor<'a, 'ast> {
             hir::ExprLoop(ref b, _, source) => {
                 self.with_context(Loop(LoopKind::Loop(source)), |v| v.visit_block(&b));
             }
-            hir::ExprClosure(.., ref b, _) => {
-                self.with_context(Closure, |v| v.visit_expr(&b));
+            hir::ExprClosure(.., b, _) => {
+                self.with_context(Closure, |v| v.visit_body(b));
             }
             hir::ExprBreak(label, ref opt_expr) => {
                 if opt_expr.is_some() {

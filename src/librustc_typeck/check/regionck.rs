@@ -99,7 +99,7 @@ use std::mem;
 use std::ops::Deref;
 use syntax::ast;
 use syntax_pos::Span;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, PatKind};
 
 use self::SubjectNode::Subject;
@@ -113,7 +113,7 @@ macro_rules! ignore_err {
 // PUBLIC ENTRY POINTS
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn regionck_expr(&self, e: &hir::Expr) {
+    pub fn regionck_expr(&self, e: &'gcx hir::Expr) {
         let mut rcx = RegionCtxt::new(self, RepeatingScope(e.id), e.id, Subject(e.id));
         if self.err_count_since_creation() == 0 {
             // regionck assumes typeck succeeded
@@ -141,13 +141,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn regionck_fn(&self,
                        fn_id: ast::NodeId,
                        decl: &hir::FnDecl,
-                       body: &hir::Expr) {
+                       body_id: hir::ExprId) {
         debug!("regionck_fn(id={})", fn_id);
-        let mut rcx = RegionCtxt::new(self, RepeatingScope(body.id), body.id, Subject(fn_id));
+        let node_id = body_id.node_id();
+        let mut rcx = RegionCtxt::new(self, RepeatingScope(node_id), node_id, Subject(fn_id));
 
         if self.err_count_since_creation() == 0 {
             // regionck assumes typeck succeeded
-            rcx.visit_fn_body(fn_id, decl, body, self.tcx.map.span(fn_id));
+            rcx.visit_fn_body(fn_id, decl, body_id, self.tcx.map.span(fn_id));
         }
 
         rcx.free_region_map.relate_free_regions_from_predicates(
@@ -267,14 +268,14 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn visit_fn_body(&mut self,
                      id: ast::NodeId, // the id of the fn itself
                      fn_decl: &hir::FnDecl,
-                     body: &hir::Expr,
+                     body_id: hir::ExprId,
                      span: Span)
     {
         // When we enter a function, we can derive
         debug!("visit_fn_body(id={})", id);
 
         let call_site = self.tcx.region_maps.lookup_code_extent(
-            region::CodeExtentData::CallSiteScope { fn_id: id, body_id: body.id });
+            region::CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id() });
         let old_call_site_scope = self.set_call_site_scope(Some(call_site));
 
         let fn_sig = {
@@ -300,19 +301,20 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                          .chain(Some(fn_sig.output))
                          .collect();
 
-        let old_body_id = self.set_body_id(body.id);
-        self.relate_free_regions(&fn_sig_tys[..], body.id, span);
-        self.link_fn_args(self.tcx.region_maps.node_extent(body.id),
+        let old_body_id = self.set_body_id(body_id.node_id());
+        self.relate_free_regions(&fn_sig_tys[..], body_id.node_id(), span);
+        self.link_fn_args(self.tcx.region_maps.node_extent(body_id.node_id()),
                           &fn_decl.inputs[..]);
+        let body = self.tcx.map.expr(body_id);
         self.visit_expr(body);
-        self.visit_region_obligations(body.id);
+        self.visit_region_obligations(body_id.node_id());
 
         let call_site_scope = self.call_site_scope.unwrap();
         debug!("visit_fn_body body.id {} call_site_scope: {:?}",
                body.id, call_site_scope);
         let call_site_region = self.tcx.mk_region(ty::ReScope(call_site_scope));
         self.type_of_node_must_outlive(infer::CallReturn(span),
-                                       body.id,
+                                       body_id.node_id(),
                                        call_site_region);
 
         self.region_bound_pairs.truncate(old_region_bounds_pairs_len);
@@ -469,7 +471,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
     // (..) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
     // However, right now we run into an issue whereby some free
     // regions are not properly related if they appear within the
@@ -478,14 +480,18 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
     // hierarchy, and in particular the relationships between free
     // regions, until regionck, as described in #3238.
 
-    fn visit_fn(&mut self, _fk: intravisit::FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Expr, span: Span, id: ast::NodeId) {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
+    fn visit_fn(&mut self, _fk: intravisit::FnKind<'gcx>, fd: &'gcx hir::FnDecl,
+                b: hir::ExprId, span: Span, id: ast::NodeId) {
         self.visit_fn_body(id, fd, b, span)
     }
 
     //visit_pat: visit_pat, // (..) see above
 
-    fn visit_arm(&mut self, arm: &hir::Arm) {
+    fn visit_arm(&mut self, arm: &'gcx hir::Arm) {
         // see above
         for p in &arm.pats {
             self.constrain_bindings_in_pat(p);
@@ -493,14 +499,14 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
         intravisit::walk_arm(self, arm);
     }
 
-    fn visit_local(&mut self, l: &hir::Local) {
+    fn visit_local(&mut self, l: &'gcx hir::Local) {
         // see above
         self.constrain_bindings_in_pat(&l.pat);
         self.link_local(l);
         intravisit::walk_local(self, l);
     }
 
-    fn visit_expr(&mut self, expr: &hir::Expr) {
+    fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         debug!("regionck::visit_expr(e={:?}, repeating_scope={})",
                expr, self.repeating_scope);
 
@@ -737,8 +743,8 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprClosure(.., ref body, _) => {
-                self.check_expr_fn_block(expr, &body);
+            hir::ExprClosure(.., body_id, _) => {
+                self.check_expr_fn_block(expr, body_id);
             }
 
             hir::ExprLoop(ref body, _, _) => {
@@ -823,9 +829,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn check_expr_fn_block(&mut self,
-                           expr: &hir::Expr,
-                           body: &hir::Expr) {
-        let repeating_scope = self.set_repeating_scope(body.id);
+                           expr: &'gcx hir::Expr,
+                           body_id: hir::ExprId) {
+        let repeating_scope = self.set_repeating_scope(body_id.node_id());
         intravisit::walk_expr(self, expr);
         self.set_repeating_scope(repeating_scope);
     }

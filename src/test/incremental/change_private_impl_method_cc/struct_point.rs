@@ -23,9 +23,8 @@
 #![rustc_partition_reused(module="struct_point-fn_write_field", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="rpass2")]
 
-// FIXME(#37720) these two should be reused, but data gets entangled across crates
-#![rustc_partition_translated(module="struct_point-fn_calls_methods_in_same_impl", cfg="rpass2")]
-#![rustc_partition_translated(module="struct_point-fn_calls_methods_in_another_impl", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_calls_methods_in_same_impl", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_calls_methods_in_another_impl", cfg="rpass2")]
 
 extern crate point;
 
@@ -33,8 +32,7 @@ extern crate point;
 mod fn_calls_methods_in_same_impl {
     use point::Point;
 
-    // FIXME(#37720) data gets entangled across crates
-    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
     pub fn check() {
         let x = Point { x: 2.0, y: 2.0 };
         x.distance_from_origin();
@@ -45,8 +43,7 @@ mod fn_calls_methods_in_same_impl {
 mod fn_calls_methods_in_another_impl {
     use point::Point;
 
-    // FIXME(#37720) data gets entangled across crates
-    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
     pub fn dirty() {
         let mut x = Point { x: 2.0, y: 2.0 };
         x.translate(3.0, 3.0);

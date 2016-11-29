@@ -137,18 +137,96 @@ pub struct NativeLibrary {
 /// part of the AST that we parse from a file, but it becomes part of the tree
 /// that we trans.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum InlinedItem {
-    Item(DefId /* def-id in source crate */, P<hir::Item>),
-    TraitItem(DefId /* impl id */, P<hir::TraitItem>),
-    ImplItem(DefId /* impl id */, P<hir::ImplItem>)
+pub struct InlinedItem {
+    pub def_id: DefId,
+    pub body: P<hir::Expr>,
+    pub const_fn_args: Vec<Option<DefId>>,
 }
 
-/// A borrowed version of `hir::InlinedItem`.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, Hash, Debug)]
-pub enum InlinedItemRef<'a> {
-    Item(DefId, &'a hir::Item),
-    TraitItem(DefId, &'a hir::TraitItem),
-    ImplItem(DefId, &'a hir::ImplItem)
+/// A borrowed version of `hir::InlinedItem`. This is what's encoded when saving
+/// a crate; it then gets read as an InlinedItem.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, Hash, Debug)]
+pub struct InlinedItemRef<'a> {
+    pub def_id: DefId,
+    pub body: &'a hir::Expr,
+    pub const_fn_args: Vec<Option<DefId>>,
+}
+
+fn get_fn_args(decl: &hir::FnDecl) -> Vec<Option<DefId>> {
+    decl.inputs.iter().map(|arg| match arg.pat.node {
+        hir::PatKind::Binding(_, def_id, _, _) => Some(def_id),
+        _ => None
+    }).collect()
+}
+
+impl<'a> InlinedItemRef<'a> {
+    pub fn from_item<'b, 'tcx>(def_id: DefId,
+                               item: &'a hir::Item,
+                               tcx: TyCtxt<'b, 'a, 'tcx>)
+                               -> InlinedItemRef<'a> {
+        let (body, args) = match item.node {
+            hir::ItemFn(ref decl, _, _, _, _, body_id) =>
+                (tcx.map.expr(body_id), get_fn_args(decl)),
+            hir::ItemConst(_, ref body) => (&**body, Vec::new()),
+            _ => bug!("InlinedItemRef::from_item wrong kind")
+        };
+        InlinedItemRef {
+            def_id: def_id,
+            body: body,
+            const_fn_args: args
+        }
+    }
+
+    pub fn from_trait_item(def_id: DefId,
+                           item: &'a hir::TraitItem,
+                           _tcx: TyCtxt)
+                           -> InlinedItemRef<'a> {
+        let (body, args) = match item.node {
+            hir::ConstTraitItem(_, Some(ref body)) =>
+                (&**body, Vec::new()),
+            hir::ConstTraitItem(_, None) => {
+                bug!("InlinedItemRef::from_trait_item called for const without body")
+            },
+            _ => bug!("InlinedItemRef::from_trait_item wrong kind")
+        };
+        InlinedItemRef {
+            def_id: def_id,
+            body: body,
+            const_fn_args: args
+        }
+    }
+
+    pub fn from_impl_item<'b, 'tcx>(def_id: DefId,
+                                    item: &'a hir::ImplItem,
+                                    tcx: TyCtxt<'b, 'a, 'tcx>)
+                                    -> InlinedItemRef<'a> {
+        let (body, args) = match item.node {
+            hir::ImplItemKind::Method(ref sig, body_id) =>
+                (tcx.map.expr(body_id), get_fn_args(&sig.decl)),
+            hir::ImplItemKind::Const(_, ref body) =>
+                (&**body, Vec::new()),
+            _ => bug!("InlinedItemRef::from_impl_item wrong kind")
+        };
+        InlinedItemRef {
+            def_id: def_id,
+            body: body,
+            const_fn_args: args
+        }
+    }
+
+    pub fn visit<V>(&self, visitor: &mut V)
+        where V: Visitor<'a>
+    {
+        visitor.visit_expr(&self.body);
+    }
+}
+
+impl InlinedItem {
+    pub fn visit<'ast,V>(&'ast self, visitor: &mut V)
+        where V: Visitor<'ast>
+    {
+        visitor.visit_expr(&self.body);
+    }
 }
 
 pub enum LoadedMacro {
@@ -290,18 +368,6 @@ pub trait CrateStore<'tcx> {
                            link_meta: &LinkMeta,
                            reachable: &NodeSet) -> Vec<u8>;
     fn metadata_encoding_version(&self) -> &[u8];
-}
-
-impl InlinedItem {
-    pub fn visit<'ast,V>(&'ast self, visitor: &mut V)
-        where V: Visitor<'ast>
-    {
-        match *self {
-            InlinedItem::Item(_, ref i) => visitor.visit_item(&i),
-            InlinedItem::TraitItem(_, ref ti) => visitor.visit_trait_item(ti),
-            InlinedItem::ImplItem(_, ref ii) => visitor.visit_impl_item(ii),
-        }
-    }
 }
 
 // FIXME: find a better place for this?

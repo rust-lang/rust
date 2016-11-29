@@ -385,7 +385,6 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
         self.check_item(item);
     }
 
-
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }

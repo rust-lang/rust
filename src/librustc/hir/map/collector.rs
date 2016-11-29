@@ -10,7 +10,7 @@
 
 use super::*;
 
-use hir::intravisit::Visitor;
+use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::def_id::DefId;
 use middle::cstore::InlinedItem;
 use std::iter::repeat;
@@ -91,7 +91,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     /// deep walking so that we walk nested items in the context of
     /// their outer items.
 
-    fn nested_visit_map(&mut self) -> Option<&map::Map<'ast>> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
         panic!("visit_nested_xxx must be manually implemented in this visitor")
     }
 
@@ -104,6 +104,10 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_nested_impl_item(&mut self, item_id: ImplItemId) {
         self.visit_impl_item(self.krate.impl_item(item_id))
+    }
+
+    fn visit_body(&mut self, id: ExprId) {
+        self.visit_expr(self.krate.expr(id))
     }
 
     fn visit_item(&mut self, i: &'ast Item) {
@@ -209,7 +213,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_fn(&mut self, fk: intravisit::FnKind<'ast>, fd: &'ast FnDecl,
-                b: &'ast Expr, s: Span, id: NodeId) {
+                b: ExprId, s: Span, id: NodeId) {
         assert_eq!(self.parent_node, id);
         intravisit::walk_fn(self, fk, fd, b, s, id);
     }

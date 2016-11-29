@@ -47,7 +47,7 @@ use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor, FnKind};
+use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 pub mod check_loans;
 
@@ -62,9 +62,13 @@ pub struct LoanDataFlowOperator;
 
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
-impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Expr, s: Span, id: ast::NodeId) {
+impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
+    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
+                b: hir::ExprId, s: Span, id: ast::NodeId) {
         match fk {
             FnKind::ItemFn(..) |
             FnKind::Method(..) => {
@@ -79,18 +83,18 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item) {
         borrowck_item(self, item);
     }
 
-    fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
         if let hir::ConstTraitItem(_, Some(ref expr)) = ti.node {
             gather_loans::gather_loans_in_static_initializer(self, ti.id, &expr);
         }
         intravisit::walk_trait_item(self, ti);
     }
 
-    fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
         if let hir::ImplItemKind::Const(_, ref expr) = ii.node {
             gather_loans::gather_loans_in_static_initializer(self, ii.id, &expr);
         }
@@ -131,7 +135,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 }
 
-fn borrowck_item(this: &mut BorrowckCtxt, item: &hir::Item) {
+fn borrowck_item<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>, item: &'tcx hir::Item) {
     // Gather loans for items. Note that we don't need
     // to check loans for single expressions. The check
     // loan step is intended for things that have a data
@@ -154,14 +158,16 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
     pub move_data: move_data::FlowedMoveData<'a, 'tcx>,
 }
 
-fn borrowck_fn(this: &mut BorrowckCtxt,
-               fk: FnKind,
-               decl: &hir::FnDecl,
-               body: &hir::Expr,
-               sp: Span,
-               id: ast::NodeId,
-               attributes: &[ast::Attribute]) {
+fn borrowck_fn<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
+                         fk: FnKind<'tcx>,
+                         decl: &'tcx hir::FnDecl,
+                         body_id: hir::ExprId,
+                         sp: Span,
+                         id: ast::NodeId,
+                         attributes: &[ast::Attribute]) {
     debug!("borrowck_fn(id={})", id);
+
+    let body = this.tcx.map.expr(body_id);
 
     if attributes.iter().any(|item| item.check_name("rustc_mir_borrowck")) {
         this.with_temp_region_map(id, |this| {
@@ -191,21 +197,21 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                              decl,
                              body);
 
-    intravisit::walk_fn(this, fk, decl, body, sp, id);
+    intravisit::walk_fn(this, fk, decl, body_id, sp, id);
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
-                                          fk: FnKind,
-                                          decl: &hir::FnDecl,
+                                          fk: FnKind<'tcx>,
+                                          decl: &'tcx hir::FnDecl,
                                           cfg: &cfg::CFG,
-                                          body: &hir::Expr,
+                                          body: &'tcx hir::Expr,
                                           sp: Span,
                                           id: ast::NodeId)
                                           -> AnalysisData<'a, 'tcx>
 {
     // Check the body of fn items.
     let tcx = this.tcx;
-    let id_range = intravisit::compute_id_range_for_fn_body(fk, decl, body, sp, id);
+    let id_range = intravisit::compute_id_range_for_fn_body(fk, decl, body, sp, id, &tcx.map);
     let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, id, decl, body);
 
@@ -241,7 +247,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    fn_parts: FnParts<'a>,
+    fn_parts: FnParts<'tcx>,
     cfg: &cfg::CFG)
     -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
 {
@@ -257,11 +263,13 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
         }
     };
 
+    let body = tcx.map.expr(fn_parts.body);
+
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx,
                                                      fn_parts.kind,
                                                      &fn_parts.decl,
                                                      cfg,
-                                                     &fn_parts.body,
+                                                     body,
                                                      fn_parts.span,
                                                      fn_parts.id);
 
@@ -407,8 +415,8 @@ pub fn closure_to_block(closure_id: ast::NodeId,
                         tcx: TyCtxt) -> ast::NodeId {
     match tcx.map.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
-            hir::ExprClosure(.., ref block, _) => {
-                block.id
+            hir::ExprClosure(.., body_id, _) => {
+                body_id.node_id()
             }
             _ => {
                 bug!("encountered non-closure id: {}", closure_id)

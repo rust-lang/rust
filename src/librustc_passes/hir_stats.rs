@@ -106,7 +106,7 @@ impl<'k> StatCollector<'k> {
 }
 
 impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'v>> {
+    fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, 'v> {
         panic!("visit_nested_xxx must be manually implemented in this visitor")
     }
 
@@ -172,7 +172,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_fn(&mut self,
                 fk: hir_visit::FnKind<'v>,
                 fd: &'v hir::FnDecl,
-                b: &'v hir::Expr,
+                b: hir::ExprId,
                 s: Span,
                 id: NodeId) {
         self.record("FnDecl", Id::None, fd);

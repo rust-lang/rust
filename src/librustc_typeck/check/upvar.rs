@@ -50,14 +50,14 @@ use rustc::infer::UpvarRegion;
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::util::nodemap::NodeMap;
 
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn closure_analyze(&self, body: &hir::Expr) {
+    pub fn closure_analyze(&self, body: &'gcx hir::Expr) {
         let mut seed = SeedBorrowKind::new(self);
         seed.visit_expr(body);
 
@@ -77,11 +77,15 @@ struct SeedBorrowKind<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     temp_closure_kinds: NodeMap<ty::ClosureKind>,
 }
 
-impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'gcx, 'tcx> {
-    fn visit_expr(&mut self, expr: &hir::Expr) {
+impl<'a, 'gcx, 'tcx> Visitor<'gcx> for SeedBorrowKind<'a, 'gcx, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+        NestedVisitorMap::OnlyBodies(&self.fcx.tcx.map)
+    }
+
+    fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         match expr.node {
-            hir::ExprClosure(cc, _, ref body, _) => {
-                self.check_closure(expr, cc, &body);
+            hir::ExprClosure(cc, _, body_id, _) => {
+                self.check_closure(expr, cc, body_id);
             }
 
             _ => { }
@@ -99,7 +103,7 @@ impl<'a, 'gcx, 'tcx> SeedBorrowKind<'a, 'gcx, 'tcx> {
     fn check_closure(&mut self,
                      expr: &hir::Expr,
                      capture_clause: hir::CaptureClause,
-                     _body: &hir::Expr)
+                     _body_id: hir::ExprId)
     {
         let closure_def_id = self.fcx.tcx.map.local_def_id(expr.id);
         if !self.fcx.tables.borrow().closure_kinds.contains_key(&closure_def_id) {
@@ -153,14 +157,15 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                        id: ast::NodeId,
                        span: Span,
                        decl: &hir::FnDecl,
-                       body: &hir::Expr) {
+                       body_id: hir::ExprId) {
         /*!
          * Analysis starting point.
          */
 
-        debug!("analyze_closure(id={:?}, body.id={:?})", id, body.id);
+        debug!("analyze_closure(id={:?}, body.id={:?})", id, body_id);
 
         {
+            let body = self.fcx.tcx.map.expr(body_id);
             let mut euv =
                 euv::ExprUseVisitor::with_options(self,
                                                   self.fcx,
@@ -484,11 +489,15 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> Visitor<'gcx> for AdjustBorrowKind<'a, 'gcx, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+        NestedVisitorMap::OnlyBodies(&self.fcx.tcx.map)
+    }
+
     fn visit_fn(&mut self,
-                fn_kind: intravisit::FnKind<'v>,
-                decl: &'v hir::FnDecl,
-                body: &'v hir::Expr,
+                fn_kind: intravisit::FnKind<'gcx>,
+                decl: &'gcx hir::FnDecl,
+                body: hir::ExprId,
                 span: Span,
                 id: ast::NodeId)
     {

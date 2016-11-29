@@ -18,7 +18,6 @@ pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
 use dep_graph::{DepGraph, DepNode};
 
 use middle::cstore::InlinedItem;
-use middle::cstore::InlinedItem as II;
 use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 
 use syntax::abi::Abi;
@@ -61,6 +60,8 @@ pub enum Node<'ast> {
     NodeLifetime(&'ast Lifetime),
     NodeTyParam(&'ast TyParam),
     NodeVisibility(&'ast Visibility),
+
+    NodeInlinedItem(&'ast InlinedItem),
 }
 
 /// Represents an entry and its parent NodeID.
@@ -120,6 +121,8 @@ impl<'ast> MapEntry<'ast> {
             NodeLifetime(n) => EntryLifetime(p, n),
             NodeTyParam(n) => EntryTyParam(p, n),
             NodeVisibility(n) => EntryVisibility(p, n),
+
+            NodeInlinedItem(n) => RootInlinedParent(n),
         }
     }
 
@@ -168,6 +171,7 @@ impl<'ast> MapEntry<'ast> {
             EntryLifetime(_, n) => NodeLifetime(n),
             EntryTyParam(_, n) => NodeTyParam(n),
             EntryVisibility(_, n) => NodeVisibility(n),
+            RootInlinedParent(n) => NodeInlinedItem(n),
             _ => return None
         })
     }
@@ -252,18 +256,36 @@ impl<'ast> Map<'ast> {
         let map = self.map.borrow();
         let mut id = id0;
         if !self.is_inlined_node_id(id) {
+            let mut last_expr = None;
             loop {
                 match map[id.as_usize()] {
                     EntryItem(_, item) => {
                         assert_eq!(id, item.id);
                         let def_id = self.local_def_id(id);
                         assert!(!self.is_inlined_def_id(def_id));
+
+                        if let Some(last_id) = last_expr {
+                            // The body of the item may have a separate dep node
+                            // (Note that trait items don't currently have
+                            // their own dep node, so there's also just one
+                            // HirBody node for all the items)
+                            if self.is_body(last_id, item) {
+                                return DepNode::HirBody(def_id);
+                            }
+                        }
                         return DepNode::Hir(def_id);
                     }
 
-                    EntryImplItem(..) => {
+                    EntryImplItem(_, item) => {
                         let def_id = self.local_def_id(id);
                         assert!(!self.is_inlined_def_id(def_id));
+
+                        if let Some(last_id) = last_expr {
+                            // The body of the item may have a separate dep node
+                            if self.is_impl_item_body(last_id, item) {
+                                return DepNode::HirBody(def_id);
+                            }
+                        }
                         return DepNode::Hir(def_id);
                     }
 
@@ -271,7 +293,6 @@ impl<'ast> Map<'ast> {
                     EntryTraitItem(p, _) |
                     EntryVariant(p, _) |
                     EntryField(p, _) |
-                    EntryExpr(p, _) |
                     EntryStmt(p, _) |
                     EntryTy(p, _) |
                     EntryTraitRef(p, _) |
@@ -283,6 +304,11 @@ impl<'ast> Map<'ast> {
                     EntryTyParam(p, _) |
                     EntryVisibility(p, _) =>
                         id = p,
+
+                    EntryExpr(p, _) => {
+                        last_expr = Some(id);
+                        id = p;
+                    }
 
                     RootCrate =>
                         return DepNode::Krate,
@@ -328,12 +354,8 @@ impl<'ast> Map<'ast> {
                     EntryVisibility(p, _) =>
                         id = p,
 
-                    RootInlinedParent(parent) => match *parent {
-                        InlinedItem::Item(def_id, _) |
-                        InlinedItem::TraitItem(def_id, _) |
-                        InlinedItem::ImplItem(def_id, _) =>
-                            return DepNode::MetaData(def_id)
-                    },
+                    RootInlinedParent(parent) =>
+                        return DepNode::MetaData(parent.def_id),
 
                     RootCrate =>
                         bug!("node {} has crate ancestor but is inlined", id0),
@@ -342,6 +364,29 @@ impl<'ast> Map<'ast> {
                         bug!("node {} is inlined but not present in map", id0),
                 }
             }
+        }
+    }
+
+    fn is_body(&self, node_id: NodeId, item: &Item) -> bool {
+        match item.node {
+            ItemFn(_, _, _, _, _, body) => body.node_id() == node_id,
+            // Since trait items currently don't get their own dep nodes,
+            // we check here whether node_id is the body of any of the items.
+            // If they get their own dep nodes, this can go away
+            ItemTrait(_, _, _, ref trait_items) => {
+                trait_items.iter().any(|trait_item| { match trait_item.node {
+                    MethodTraitItem(_, Some(body)) => body.node_id() == node_id,
+                    _ => false
+                }})
+            }
+            _ => false
+        }
+    }
+
+    fn is_impl_item_body(&self, node_id: NodeId, item: &ImplItem) -> bool {
+        match item.node {
+            ImplItemKind::Method(_, body) => body.node_id() == node_id,
+            _ => false
         }
     }
 
@@ -556,8 +601,7 @@ impl<'ast> Map<'ast> {
     pub fn get_parent_did(&self, id: NodeId) -> DefId {
         let parent = self.get_parent(id);
         match self.find_entry(parent) {
-            Some(RootInlinedParent(&II::TraitItem(did, _))) |
-            Some(RootInlinedParent(&II::ImplItem(did, _))) => did,
+            Some(RootInlinedParent(ii)) => ii.def_id,
             _ => self.local_def_id(parent)
         }
     }
@@ -653,6 +697,10 @@ impl<'ast> Map<'ast> {
             Some(RootInlinedParent(inlined_item)) => inlined_item,
             _ => bug!("expected inlined item, found {}", self.node_to_string(id)),
         }
+    }
+
+    pub fn expr(&self, id: ExprId) -> &'ast Expr {
+        self.expect_expr(id.node_id())
     }
 
     /// Returns the name associated with the given NodeId's AST.
@@ -958,6 +1006,8 @@ impl<'a> NodePrinter for pprust::State<'a> {
             // printing.
             NodeLocal(_)       => bug!("cannot print isolated Local"),
             NodeStructCtor(_)  => bug!("cannot print isolated StructCtor"),
+
+            NodeInlinedItem(_) => bug!("cannot print inlined item"),
         }
     }
 }
@@ -1070,6 +1120,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeVisibility(ref vis)) => {
             format!("visibility {:?}{}", vis, id_str)
+        }
+        Some(NodeInlinedItem(_)) => {
+            format!("inlined item {}", id_str)
         }
         None => {
             format!("unknown node{}", id_str)

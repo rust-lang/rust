@@ -145,8 +145,8 @@ pub fn encode_dep_graph(preds: &Predecessors,
     for (&target, sources) in &preds.inputs {
         match *target {
             DepNode::MetaData(ref def_id) => {
-                // Metadata *targets* are always local metadata nodes. We handle
-                // those in `encode_metadata_hashes`, which comes later.
+                // Metadata *targets* are always local metadata nodes. We have
+                // already handled those in `encode_metadata_hashes`.
                 assert!(def_id.is_local());
                 continue;
             }

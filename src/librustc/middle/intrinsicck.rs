@@ -19,7 +19,7 @@ use ty::layout::{LayoutError, Pointer, SizeSkeleton};
 use syntax::abi::Abi::RustIntrinsic;
 use syntax::ast;
 use syntax_pos::Span;
-use hir::intravisit::{self, Visitor, FnKind};
+use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 use hir;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
@@ -34,7 +34,7 @@ struct ItemVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> ItemVisitor<'a, 'tcx> {
-    fn visit_const(&mut self, item_id: ast::NodeId, expr: &hir::Expr) {
+    fn visit_const(&mut self, item_id: ast::NodeId, expr: &'tcx hir::Expr) {
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, item_id);
         self.tcx.infer_ctxt(None, Some(param_env), Reveal::All).enter(|infcx| {
             let mut visitor = ExprVisitor {
@@ -116,9 +116,13 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
     // const, static and N in [T; N].
-    fn visit_expr(&mut self, expr: &hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx
@@ -127,7 +131,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
         });
     }
 
-    fn visit_trait_item(&mut self, item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
         if let hir::ConstTraitItem(_, Some(ref expr)) = item.node {
             self.visit_const(item.id, expr);
         } else {
@@ -135,7 +139,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_impl_item(&mut self, item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
         if let hir::ImplItemKind::Const(_, ref expr) = item.node {
             self.visit_const(item.id, expr);
         } else {
@@ -143,8 +147,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Expr, s: Span, id: ast::NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
+                b: hir::ExprId, s: Span, id: ast::NodeId) {
         if let FnKind::Closure(..) = fk {
             span_bug!(s, "intrinsicck: closure outside of function")
         }
@@ -158,8 +162,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for ExprVisitor<'a, 'gcx, 'tcx> {
-    fn visit_expr(&mut self, expr: &hir::Expr) {
+impl<'a, 'gcx, 'tcx> Visitor<'gcx> for ExprVisitor<'a, 'gcx, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+        NestedVisitorMap::OnlyBodies(&self.infcx.tcx.map)
+    }
+
+    fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         let def = if let hir::ExprPath(ref qpath) = expr.node {
             self.infcx.tcx.tables().qpath_def(qpath, expr.id)
         } else {
