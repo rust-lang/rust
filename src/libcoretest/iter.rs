@@ -10,7 +10,6 @@
 
 use core::iter::*;
 use core::{i8, i16, u16, i32, u32, f32, isize, usize};
-use core::num::Wrapping;
 
 use test::Bencher;
 use test::black_box;
@@ -578,15 +577,6 @@ fn test_iterator_sum() {
     let v = vec![n as f32, n, n];
     assert_eq!(v.iter().sum::<f64>(), (n as f64) * 3.0);
     assert_eq!(v.into_iter().sum::<f64>(), (n as f64) * 3.0);
-
-    // wrapping
-    let v = vec![Wrapping(100i8), Wrapping(50i8)];
-    assert_eq!(v.iter().sum::<Wrapping<i64>>(), Wrapping(150i64));
-    assert_eq!(v.into_iter().sum::<Wrapping<i64>>(), Wrapping(150i64));
-
-    let v = vec![Wrapping(100u8), Wrapping(200u8)];
-    assert_eq!(v.iter().sum::<Wrapping<u64>>(), Wrapping(300u64));
-    assert_eq!(v.into_iter().sum::<Wrapping<u64>>(), Wrapping(300u64));
 }
 
 #[test]
@@ -629,15 +619,6 @@ fn test_iterator_product() {
     let v = vec![n as f32, n];
     assert_eq!(v.iter().product::<f64>(), (n as f64).powi(2));
     assert_eq!(v.into_iter().product::<f64>(), (n as f64).powi(2));
-
-    // wrapping
-    let v = vec![Wrapping(100i8), Wrapping(50i8)];
-    assert_eq!(v.iter().product::<Wrapping<i64>>(), Wrapping(5000i64));
-    assert_eq!(v.into_iter().product::<Wrapping<i64>>(), Wrapping(5000i64));
-
-    let v = vec![Wrapping(100u8), Wrapping(200u8)];
-    assert_eq!(v.iter().product::<Wrapping<u64>>(), Wrapping(20000u64));
-    assert_eq!(v.into_iter().product::<Wrapping<u64>>(), Wrapping(20000u64));
 }
 
 #[test]

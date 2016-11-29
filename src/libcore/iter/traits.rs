@@ -699,43 +699,6 @@ macro_rules! num_sum_product_ex {
 
 num_sum_product_ex!((f64,f32) (i64,i32) (i64,i16) (i64,i8) (u64,u32) (u64,u16) (u64,u8));
 
-// Wrapping<$ret> = Wrapping<$item> + Wrapping<$item> + ...
-// Wrapping<$ret> = Wrapping<$item> * Wrapping<$item> * ...
-macro_rules! num_sum_product_ex_wrapping {
-    ($(($ret:ty, $item:ty))*) => ($(
-        #[unstable(feature = "sum_product_ex", issue = "0")]
-        impl Sum<Wrapping<$item>> for Wrapping<$ret> {
-            fn sum<I: Iterator<Item=Wrapping<$item>>>(iter: I) -> Wrapping<$ret> {
-                iter.fold(Wrapping(0 as $ret), |a, b| Wrapping(a.0.wrapping_add(b.0 as $ret)))
-            }
-        }
-
-        #[unstable(feature = "sum_product_ex", issue = "0")]
-        impl Product<Wrapping<$item>> for Wrapping<$ret> {
-            fn product<I: Iterator<Item=Wrapping<$item>>>(iter: I) -> Wrapping<$ret> {
-                iter.fold(Wrapping(1 as $ret), |a, b| Wrapping(a.0.wrapping_mul(b.0 as $ret)))
-            }
-        }
-
-        #[unstable(feature = "sum_product_ex", issue = "0")]
-        impl<'a> Sum<&'a Wrapping<$item>> for Wrapping<$ret> {
-            fn sum<I: Iterator<Item=&'a Wrapping<$item>>>(iter: I) -> Wrapping<$ret> {
-                iter.fold(Wrapping(0 as $ret), |a, b| Wrapping(a.0.wrapping_add(b.0 as $ret)))
-            }
-        }
-
-        #[unstable(feature = "sum_product_ex", issue = "0")]
-        impl<'a> Product<&'a Wrapping<$item>> for Wrapping<$ret> {
-            fn product<I: Iterator<Item=&'a Wrapping<$item>>>(iter: I) -> Wrapping<$ret> {
-                iter.fold(Wrapping(1 as $ret), |a, b| Wrapping(a.0.wrapping_mul(b.0 as $ret)))
-            }
-        }
-    )*);
-}
-
-num_sum_product_ex_wrapping!((i64,i32) (i64,i16) (i64,i8) (u64,u32) (u64,u16) (u64,u8));
-
-
 /// An iterator that always continues to yield `None` when exhausted.
 ///
 /// Calling next on a fused iterator that has returned `None` once is guaranteed
