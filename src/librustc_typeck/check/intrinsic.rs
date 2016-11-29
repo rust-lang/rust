@@ -14,7 +14,6 @@
 use intrinsics;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::Substs;
-use rustc::ty::FnSig;
 use rustc::ty::{self, Ty};
 use rustc::util::nodemap::FxHashMap;
 use {CrateCtxt, require_same_types};
@@ -25,6 +24,8 @@ use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use rustc::hir;
+
+use std::iter;
 
 fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    it: &hir::ForeignItem,
@@ -42,7 +43,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let fty = tcx.mk_fn_def(def_id, substs, tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: abi,
-        sig: ty::Binder(FnSig::new(inputs, output, false)),
+        sig: ty::Binder(tcx.mk_fn_sig(inputs.into_iter(), output, false)),
     }));
     let i_n_tps = tcx.item_generics(def_id).types.len();
     if i_n_tps != n_tps {
@@ -295,7 +296,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                 let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
                     unsafety: hir::Unsafety::Normal,
                     abi: Abi::Rust,
-                    sig: ty::Binder(FnSig::new(vec![mut_u8], tcx.mk_nil(), false)),
+                    sig: ty::Binder(tcx.mk_fn_sig(iter::once(mut_u8), tcx.mk_nil(), false)),
                 });
                 (0, vec![tcx.mk_fn_ptr(fn_ty), mut_u8, mut_u8], tcx.types.i32)
             }

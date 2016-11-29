@@ -18,8 +18,10 @@ use ty::subst::{Kind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};
 use std::rc::Rc;
+use std::iter;
 use syntax::abi;
 use hir as ast;
+use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
@@ -180,21 +182,30 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
                            -> RelateResult<'tcx, ty::FnSig<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        if a.variadic() != b.variadic() {
+        if a.variadic != b.variadic {
             return Err(TypeError::VariadicMismatch(
-                expected_found(relation, &a.variadic(), &b.variadic())));
+                expected_found(relation, &a.variadic, &b.variadic)));
         }
 
         if a.inputs().len() != b.inputs().len() {
             return Err(TypeError::ArgCount);
         }
 
-        let inputs = a.inputs().iter().zip(b.inputs()).map(|(&a, &b)| {
-            relation.relate_with_variance(ty::Contravariant, &a, &b)
-        }).collect::<Result<Vec<_>, _>>()?;
-        let output = relation.relate(&a.output(), &b.output())?;
-
-        Ok(ty::FnSig::new(inputs, output, a.variadic()))
+        let inputs_and_output = a.inputs().iter().cloned()
+            .zip(b.inputs().iter().cloned())
+            .map(|x| (x, false))
+            .chain(iter::once(((a.output(), b.output()), true)))
+            .map(|((a, b), is_output)| {
+                if is_output {
+                    relation.relate(&a, &b)
+                } else {
+                    relation.relate_with_variance(ty::Contravariant, &a, &b)
+                }
+            }).collect::<Result<AccumulateVec<[_; 8]>, _>>()?;
+        Ok(ty::FnSig {
+            inputs_and_output: relation.tcx().intern_type_list(&inputs_and_output),
+            variadic: a.variadic
+        })
     }
 }
 

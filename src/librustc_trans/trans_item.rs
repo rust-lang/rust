@@ -187,7 +187,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert_eq!(dg.ty(), glue::get_drop_glue_type(tcx, dg.ty()));
         let t = dg.ty();
 
-        let sig = ty::FnSig::new(vec![tcx.mk_mut_ptr(tcx.types.i8)], tcx.mk_nil(), false);
+        let sig = tcx.mk_fn_sig(iter::once(tcx.mk_mut_ptr(tcx.types.i8)), tcx.mk_nil(), false);
 
         // Create a FnType for fn(*mut i8) and substitute the real type in
         // later - that prevents FnType from splitting fat pointers up.
@@ -487,7 +487,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                     output.pop();
                 }
 
-                if sig.variadic() {
+                if sig.variadic {
                     if !sig.inputs().is_empty() {
                         output.push_str(", ...");
                     } else {

@@ -1077,7 +1077,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
         let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
-        for (i, arg_ty) in sig.inputs().into_iter().enumerate() {
+        for (i, arg_ty) in sig.inputs().iter().enumerate() {
             let lldestptr = adt::trans_field_ptr(bcx, sig.output(), dest_val, Disr::from(disr), i);
             let arg = &fcx.fn_ty.args[arg_idx];
             arg_idx += 1;

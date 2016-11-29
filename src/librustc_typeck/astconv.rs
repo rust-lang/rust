@@ -1796,15 +1796,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::DefaultReturn(..) => self.tcx().mk_nil(),
         };
 
-        let input_tys = self_ty.into_iter().chain(arg_tys).collect();
-
-        debug!("ty_of_method_or_bare_fn: input_tys={:?}", input_tys);
         debug!("ty_of_method_or_bare_fn: output_ty={:?}", output_ty);
 
         self.tcx().mk_bare_fn(ty::BareFnTy {
             unsafety: unsafety,
             abi: abi,
-            sig: ty::Binder(ty::FnSig::new(input_tys, output_ty, decl.variadic)),
+            sig: ty::Binder(self.tcx().mk_fn_sig(
+                self_ty.into_iter().chain(arg_tys),
+                output_ty,
+                decl.variadic
+            )),
         })
     }
 
@@ -1846,7 +1847,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // that function type
         let rb = rscope::BindingRscope::new();
 
-        let input_tys: Vec<_> = decl.inputs.iter().enumerate().map(|(i, a)| {
+        let input_tys = decl.inputs.iter().enumerate().map(|(i, a)| {
             let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
                 // no guarantee that the correct number of expected args
                 // were supplied
@@ -1857,9 +1858,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
             });
             self.ty_of_arg(&rb, a, expected_arg_ty)
-        }).collect();
+        });
 
-        let expected_ret_ty = expected_sig.map(|e| e.output());
+        let expected_ret_ty = expected_sig.as_ref().map(|e| e.output());
 
         let is_infer = match decl.output {
             hir::Return(ref output) if output.node == hir::TyInfer => true,
@@ -1876,13 +1877,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::DefaultReturn(..) => bug!(),
         };
 
-        debug!("ty_of_closure: input_tys={:?}", input_tys);
         debug!("ty_of_closure: output_ty={:?}", output_ty);
 
         ty::ClosureTy {
             unsafety: unsafety,
             abi: abi,
-            sig: ty::Binder(ty::FnSig::new(input_tys, output_ty, decl.variadic)),
+            sig: ty::Binder(self.tcx().mk_fn_sig(input_tys, output_ty, decl.variadic)),
         }
     }
 
