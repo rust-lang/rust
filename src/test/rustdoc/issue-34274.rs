@@ -16,5 +16,5 @@
 
 extern crate issue_34274;
 
-// @has foo/fn.extern_c_fn.html '//a/@href' '../issue_34274/fn.extern_c_fn.html?gotosrc='
+// @has foo/fn.extern_c_fn.html '//a/@href' '../src/issue_34274/issue-34274.rs.html#12'
 pub use issue_34274::extern_c_fn;
