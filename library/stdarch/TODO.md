@@ -1,7 +1,7 @@
 sse2
 ----
-[x] `_mm_pause`
-[ ] `_mm_clflush`
+* [x] `_mm_pause`
+* [ ] `_mm_clflush`
 
 `_mm_lfence`
 `_mm_mfence`
