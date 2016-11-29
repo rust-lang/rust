@@ -1050,7 +1050,7 @@ pub struct Resolver<'a> {
     // The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
 
-    pub def_map: DefMap,
+    def_map: DefMap,
     pub freevars: FreevarMap,
     freevars_seen: NodeMap<NodeMap<usize>>,
     pub export_map: ExportMap,
@@ -1181,10 +1181,6 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 
     fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
         self.def_map.get(&id).cloned()
-    }
-
-    fn record_resolution(&mut self, id: NodeId, def: Def) {
-        self.def_map.insert(id, PathResolution::new(def));
     }
 
     fn definitions(&mut self) -> &mut Definitions {
