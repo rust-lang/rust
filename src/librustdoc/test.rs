@@ -489,12 +489,8 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
 }
 
 impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'hir>> {
-        Some(self.map)
-    }
-
-    fn nested_visit_mode(&mut self) -> intravisit::NestedVisitMode {
-        intravisit::NestedVisitMode::All
+    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'hir> {
+        intravisit::NestedVisitorMap::All(&self.map)
     }
 
     fn visit_item(&mut self, item: &'hir hir::Item) {
