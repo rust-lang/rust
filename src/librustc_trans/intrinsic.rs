@@ -36,6 +36,7 @@ use rustc::session::Session;
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::cmp::Ordering;
+use std::iter;
 
 fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     let llvm_name = match name {
@@ -1012,7 +1013,7 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                     trans: &mut for<'b> FnMut(Block<'b, 'tcx>))
                     -> ValueRef {
     let ccx = fcx.ccx;
-    let sig = ty::FnSig::new(inputs, output, false);
+    let sig = ccx.tcx().mk_fn_sig(inputs.into_iter(), output, false);
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
     let rust_fn_ty = ccx.tcx().mk_fn_ptr(ccx.tcx().mk_bare_fn(ty::BareFnTy {
@@ -1047,7 +1048,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: Abi::Rust,
-        sig: ty::Binder(ty::FnSig::new(vec![i8p], tcx.mk_nil(), false)),
+        sig: ty::Binder(tcx.mk_fn_sig(iter::once(i8p), tcx.mk_nil(), false)),
     }));
     let output = tcx.types.i32;
     let rust_try = gen_fn(fcx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);

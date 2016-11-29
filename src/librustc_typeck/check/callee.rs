@@ -237,8 +237,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // This is the "default" function signature, used in case of error.
                 // In that case, we check each argument against "error" in order to
                 // set up all the node type bindings.
-                error_fn_sig = ty::Binder(ty::FnSig::new(
-                    self.err_args(arg_exprs.len()),
+                error_fn_sig = ty::Binder(self.tcx.mk_fn_sig(
+                    self.err_args(arg_exprs.len()).into_iter(),
                     self.tcx.types.err,
                     false,
                 ));
@@ -267,7 +267,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   fn_sig.inputs(),
                                   &expected_arg_tys[..],
                                   arg_exprs,
-                                  fn_sig.variadic(),
+                                  fn_sig.variadic,
                                   TupleArgumentsFlag::DontTupleArguments,
                                   def_span);
 
@@ -294,7 +294,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   fn_sig.inputs(),
                                   &expected_arg_tys,
                                   arg_exprs,
-                                  fn_sig.variadic(),
+                                  fn_sig.variadic,
                                   TupleArgumentsFlag::TupleArguments,
                                   None);
 
@@ -366,7 +366,7 @@ impl<'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> for CallResolution<'gcx, 'tc
                 debug!("attempt_resolution: method_callee={:?}", method_callee);
 
                 for (method_arg_ty, self_arg_ty) in
-                    method_sig.inputs().into_iter().skip(1).zip(self.fn_sig.inputs()) {
+                    method_sig.inputs().iter().skip(1).zip(self.fn_sig.inputs()) {
                     fcx.demand_eqtype(self.call_expr.span, &self_arg_ty, &method_arg_ty);
                 }
 

@@ -125,7 +125,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 output.pop();
             }
 
-            if sig.variadic() {
+            if sig.variadic {
                 if !sig.inputs().is_empty() {
                     output.push_str(", ...");
                 } else {

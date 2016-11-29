@@ -563,40 +563,31 @@ pub struct ClosureTy<'tcx> {
 /// - `variadic` indicates whether this is a variadic function. (only true for foreign fns)
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct FnSig<'tcx> {
-    inputs: Vec<Ty<'tcx>>,
-    output: Ty<'tcx>,
-    variadic: bool
+    pub inputs_and_output: &'tcx Slice<Ty<'tcx>>,
+    pub variadic: bool
 }
 
 impl<'tcx> FnSig<'tcx> {
-    pub fn new(inputs: Vec<Ty<'tcx>>, output: Ty<'tcx>, variadic: bool) -> Self {
-        FnSig { inputs: inputs, output: output, variadic: variadic }
-    }
-
     pub fn inputs(&self) -> &[Ty<'tcx>] {
-        &self.inputs
+        &self.inputs_and_output[..self.inputs_and_output.len() - 1]
     }
 
     pub fn output(&self) -> Ty<'tcx> {
-        self.output
-    }
-
-    pub fn variadic(&self) -> bool {
-        self.variadic
+        self.inputs_and_output[self.inputs_and_output.len() - 1]
     }
 }
 
 pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 
 impl<'tcx> PolyFnSig<'tcx> {
-    pub fn inputs<'a>(&'a self) -> Binder<&[Ty<'tcx>]> {
-        Binder(self.0.inputs())
+    pub fn inputs(&self) -> Binder<&[Ty<'tcx>]> {
+        Binder(self.skip_binder().inputs())
     }
     pub fn input(&self, index: usize) -> ty::Binder<Ty<'tcx>> {
-        self.map_bound_ref(|fn_sig| fn_sig.inputs[index])
+        self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
     }
     pub fn output(&self) -> ty::Binder<Ty<'tcx>> {
-        self.map_bound_ref(|fn_sig| fn_sig.output.clone())
+        self.map_bound_ref(|fn_sig| fn_sig.output().clone())
     }
     pub fn variadic(&self) -> bool {
         self.skip_binder().variadic
@@ -1261,8 +1252,8 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 
     // Type accessors for substructures of types
-    pub fn fn_args(&self) -> ty::Binder<Vec<Ty<'tcx>>> {
-        ty::Binder(self.fn_sig().inputs().skip_binder().iter().cloned().collect::<Vec<_>>())
+    pub fn fn_args(&self) -> ty::Binder<&[Ty<'tcx>]> {
+        self.fn_sig().inputs()
     }
 
     pub fn fn_ret(&self) -> Binder<Ty<'tcx>> {

@@ -369,7 +369,7 @@ impl FnType {
 
         let mut inputs = sig.inputs();
         let extra_args = if abi == RustCall {
-            assert!(!sig.variadic() && extra_args.is_empty());
+            assert!(!sig.variadic && extra_args.is_empty());
 
             match sig.inputs().last().unwrap().sty {
                 ty::TyTuple(ref tupled_arguments) => {
@@ -382,7 +382,7 @@ impl FnType {
                 }
             }
         } else {
-            assert!(sig.variadic() || extra_args.is_empty());
+            assert!(sig.variadic || extra_args.is_empty());
             extra_args
         };
 
@@ -525,7 +525,7 @@ impl FnType {
         FnType {
             args: args,
             ret: ret,
-            variadic: sig.variadic(),
+            variadic: sig.variadic,
             cconv: cconv
         }
     }

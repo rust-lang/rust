@@ -265,15 +265,10 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_fn(&self, input_tys: &[Ty<'tcx>], output_ty: Ty<'tcx>) -> Ty<'tcx> {
-        let input_args = input_tys.iter().cloned().collect();
         self.infcx.tcx.mk_fn_ptr(self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Normal,
             abi: Abi::Rust,
-            sig: ty::Binder(ty::FnSig {
-                inputs: input_args,
-                output: output_ty,
-                variadic: false,
-            }),
+            sig: ty::Binder(self.infcx.tcx.mk_fn_sig(input_tys.iter().cloned(), output_ty, false)),
         }))
     }
 
