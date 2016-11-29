@@ -67,6 +67,62 @@ impl<'a> FnKind<'a> {
     }
 }
 
+/// Specifies what nested things a visitor wants to visit. The most
+/// common choice is `OnlyBodies`, which will cause the visitor to
+/// visit fn bodies for fns that it encounters, but skip over nested
+/// item-like things.
+///
+/// See the comments on `ItemLikeVisitor` for more details on the overall
+/// visit strategy.
+pub enum NestedVisitorMap<'this, 'tcx: 'this> {
+    /// Do not visit any nested things. When you add a new
+    /// "non-nested" thing, you will want to audit such uses to see if
+    /// they remain valid.
+    ///
+    /// Use this if you are only walking some particular kind of tree
+    /// (i.e., a type, or fn signature) and you don't want to thread a
+    /// HIR map around.
+    None,
+
+    /// Do not visit nested item-like things, but visit nested things
+    /// that are inside of an item-like.
+    ///
+    /// **This is the most common choice.** A very commmon pattern is
+    /// to use `tcx.visit_all_item_likes_in_krate()` as an outer loop,
+    /// and to have the visitor that visits the contents of each item
+    /// using this setting.
+    OnlyBodies(&'this Map<'tcx>),
+
+    /// Visit all nested things, including item-likes.
+    ///
+    /// **This is an unusual choice.** It is used when you want to
+    /// process everything within their lexical context. Typically you
+    /// kick off the visit by doing `walk_krate()`.
+    All(&'this Map<'tcx>),
+}
+
+impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
+    /// Returns the map to use for an "intra item-like" thing (if any).
+    /// e.g., function body.
+    pub fn intra(self) -> Option<&'this Map<'tcx>> {
+        match self {
+            NestedVisitorMap::None => None,
+            NestedVisitorMap::OnlyBodies(map) => Some(map),
+            NestedVisitorMap::All(map) => Some(map),
+        }
+    }
+
+    /// Returns the map to use for an "item-like" thing (if any).
+    /// e.g., item, impl-item.
+    pub fn inter(self) -> Option<&'this Map<'tcx>> {
+        match self {
+            NestedVisitorMap::None => None,
+            NestedVisitorMap::OnlyBodies(_) => None,
+            NestedVisitorMap::All(map) => Some(map),
+        }
+    }
+}
+
 /// Each method of the Visitor trait is a hook to be potentially
 /// overridden.  Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;
@@ -88,13 +144,14 @@ pub trait Visitor<'v> : Sized {
     // Nested items.
 
     /// The default versions of the `visit_nested_XXX` routines invoke
-    /// this method to get a map to use; if they get back `None`, they
-    /// just skip nested things. Otherwise, they will lookup the
-    /// nested item-like things in the map and visit it. So the best
-    /// way to implement a nested visitor is to override this method
-    /// to return a `Map`; one advantage of this is that if we add
-    /// more types of nested things in the future, they will
-    /// automatically work.
+    /// this method to get a map to use. By selecting an enum variant,
+    /// you control which kinds of nested HIR are visited; see
+    /// `NestedVisitorMap` for details. By "nested HIR", we are
+    /// referring to bits of HIR that are not directly embedded within
+    /// one another but rather indirectly, through a table in the
+    /// crate. This is done to control dependencies during incremental
+    /// compilation: the non-inline bits of HIR can be tracked and
+    /// hashed separately.
     ///
     /// **If for some reason you want the nested behavior, but don't
     /// have a `Map` are your disposal:** then you should override the
@@ -102,9 +159,7 @@ pub trait Visitor<'v> : Sized {
     /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
     /// added in the future, we will see the panic in your code and
     /// fix it appropriately.
-    fn nested_visit_map(&mut self) -> Option<&Map<'v>> {
-        None
-    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v>;
 
     /// Invoked when a nested item is encountered. By default does
     /// nothing unless you override `nested_visit_map` to return
@@ -116,8 +171,7 @@ pub trait Visitor<'v> : Sized {
     /// but cannot supply a `Map`; see `nested_visit_map` for advice.
     #[allow(unused_variables)]
     fn visit_nested_item(&mut self, id: ItemId) {
-        let opt_item = self.nested_visit_map()
-                           .map(|map| map.expect_item(id.id));
+        let opt_item = self.nested_visit_map().inter().map(|map| map.expect_item(id.id));
         if let Some(item) = opt_item {
             self.visit_item(item);
         }
@@ -128,10 +182,20 @@ pub trait Visitor<'v> : Sized {
     /// method.
     #[allow(unused_variables)]
     fn visit_nested_impl_item(&mut self, id: ImplItemId) {
-        let opt_item = self.nested_visit_map()
-                           .map(|map| map.impl_item(id));
+        let opt_item = self.nested_visit_map().inter().map(|map| map.impl_item(id));
         if let Some(item) = opt_item {
             self.visit_impl_item(item);
+        }
+    }
+
+    /// Invoked to visit the body of a function, method or closure. Like
+    /// visit_nested_item, does nothing by default unless you override
+    /// `nested_visit_map` to return `Some(_)`, in which case it will walk the
+    /// body.
+    fn visit_body(&mut self, id: ExprId) {
+        let opt_expr = self.nested_visit_map().intra().map(|map| map.expr(id));
+        if let Some(expr) = opt_expr {
+            self.visit_expr(expr);
         }
     }
 
@@ -200,7 +264,7 @@ pub trait Visitor<'v> : Sized {
     fn visit_where_predicate(&mut self, predicate: &'v WherePredicate) {
         walk_where_predicate(self, predicate)
     }
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: &'v Expr, s: Span, id: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: ExprId, s: Span, id: NodeId) {
         walk_fn(self, fk, fd, b, s, id)
     }
     fn visit_trait_item(&mut self, ti: &'v TraitItem) {
@@ -363,7 +427,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(typ);
             visitor.visit_expr(expr);
         }
-        ItemFn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
+        ItemFn(ref declaration, unsafety, constness, abi, ref generics, body_id) => {
             visitor.visit_fn(FnKind::ItemFn(item.name,
                                             generics,
                                             unsafety,
@@ -372,7 +436,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                                             &item.vis,
                                             &item.attrs),
                              declaration,
-                             body,
+                             body_id,
                              item.span,
                              item.id)
         }
@@ -697,13 +761,25 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'
 pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
                                    function_kind: FnKind<'v>,
                                    function_declaration: &'v FnDecl,
-                                   function_body: &'v Expr,
+                                   body_id: ExprId,
                                    _span: Span,
                                    id: NodeId) {
     visitor.visit_id(id);
     walk_fn_decl(visitor, function_declaration);
     walk_fn_kind(visitor, function_kind);
-    visitor.visit_expr(function_body)
+    visitor.visit_body(body_id)
+}
+
+pub fn walk_fn_with_body<'v, V: Visitor<'v>>(visitor: &mut V,
+                                             function_kind: FnKind<'v>,
+                                             function_declaration: &'v FnDecl,
+                                             body: &'v Expr,
+                                             _span: Span,
+                                             id: NodeId) {
+    visitor.visit_id(id);
+    walk_fn_decl(visitor, function_declaration);
+    walk_fn_kind(visitor, function_kind);
+    visitor.visit_expr(body)
 }
 
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem) {
@@ -720,13 +796,13 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             visitor.visit_generics(&sig.generics);
             walk_fn_decl(visitor, &sig.decl);
         }
-        MethodTraitItem(ref sig, Some(ref body)) => {
+        MethodTraitItem(ref sig, Some(body_id)) => {
             visitor.visit_fn(FnKind::Method(trait_item.name,
                                             sig,
                                             None,
                                             &trait_item.attrs),
                              &sig.decl,
-                             body,
+                             body_id,
                              trait_item.span,
                              trait_item.id);
         }
@@ -752,13 +828,13 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_ty(ty);
             visitor.visit_expr(expr);
         }
-        ImplItemKind::Method(ref sig, ref body) => {
+        ImplItemKind::Method(ref sig, body_id) => {
             visitor.visit_fn(FnKind::Method(impl_item.name,
                                             sig,
                                             Some(&impl_item.vis),
                                             &impl_item.attrs),
                              &sig.decl,
-                             body,
+                             body_id,
                              impl_item.span,
                              impl_item.id);
         }
@@ -883,7 +959,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprClosure(_, ref function_declaration, ref body, _fn_decl_span) => {
+        ExprClosure(_, ref function_declaration, body, _fn_decl_span) => {
             visitor.visit_fn(FnKind::Closure(&expression.attrs),
                              function_declaration,
                              body,
@@ -998,13 +1074,14 @@ impl IdRange {
 }
 
 
-pub struct IdRangeComputingVisitor {
-    pub result: IdRange,
+pub struct IdRangeComputingVisitor<'a, 'ast: 'a> {
+    result: IdRange,
+    map: &'a map::Map<'ast>,
 }
 
-impl IdRangeComputingVisitor {
-    pub fn new() -> IdRangeComputingVisitor {
-        IdRangeComputingVisitor { result: IdRange::max() }
+impl<'a, 'ast> IdRangeComputingVisitor<'a, 'ast> {
+    pub fn new(map: &'a map::Map<'ast>) -> IdRangeComputingVisitor<'a, 'ast> {
+        IdRangeComputingVisitor { result: IdRange::max(), map: map }
     }
 
     pub fn result(&self) -> IdRange {
@@ -1012,20 +1089,25 @@ impl IdRangeComputingVisitor {
     }
 }
 
-impl<'v> Visitor<'v> for IdRangeComputingVisitor {
+impl<'a, 'ast> Visitor<'ast> for IdRangeComputingVisitor<'a, 'ast> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+        NestedVisitorMap::OnlyBodies(&self.map)
+    }
+
     fn visit_id(&mut self, id: NodeId) {
         self.result.add(id);
     }
 }
 
 /// Computes the id range for a single fn body, ignoring nested items.
-pub fn compute_id_range_for_fn_body(fk: FnKind,
-                                    decl: &FnDecl,
-                                    body: &Expr,
-                                    sp: Span,
-                                    id: NodeId)
-                                    -> IdRange {
-    let mut visitor = IdRangeComputingVisitor::new();
-    visitor.visit_fn(fk, decl, body, sp, id);
+pub fn compute_id_range_for_fn_body<'v>(fk: FnKind<'v>,
+                                        decl: &'v FnDecl,
+                                        body: &'v Expr,
+                                        sp: Span,
+                                        id: NodeId,
+                                        map: &map::Map<'v>)
+                                        -> IdRange {
+    let mut visitor = IdRangeComputingVisitor::new(map);
+    walk_fn_with_body(&mut visitor, fk, decl, body, sp, id);
     visitor.result()
 }

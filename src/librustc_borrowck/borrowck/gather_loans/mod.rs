@@ -30,7 +30,7 @@ use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::Expr;
 use rustc::hir::intravisit;
-use rustc::hir::intravisit::Visitor;
+use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 
 use self::restrictions::RestrictionResult;
 
@@ -520,8 +520,12 @@ struct StaticInitializerCtxt<'a, 'tcx: 'a> {
     item_id: ast::NodeId
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &Expr) {
+impl<'a, 'tcx> Visitor<'tcx> for StaticInitializerCtxt<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.bccx.tcx.map)
+    }
+
+    fn visit_expr(&mut self, ex: &'tcx Expr) {
         if let hir::ExprAddrOf(mutbl, ref base) = ex.node {
             let param_env = ty::ParameterEnvironment::for_item(self.bccx.tcx,
                                                                self.item_id);
@@ -542,9 +546,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     }
 }
 
-pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt,
-                                          item_id: ast::NodeId,
-                                          expr: &hir::Expr) {
+pub fn gather_loans_in_static_initializer<'a, 'tcx>(bccx: &mut BorrowckCtxt<'a, 'tcx>,
+                                                    item_id: ast::NodeId,
+                                                    expr: &'tcx hir::Expr) {
 
     debug!("gather_loans_in_static_initializer(expr={:?})", expr);
 

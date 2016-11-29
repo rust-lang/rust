@@ -39,7 +39,7 @@ use syntax_pos;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::intravisit::Visitor;
+use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::hir::intravisit;
 
 use super::index_builder::{FromId, IndexBuilder, Untracked};
@@ -516,9 +516,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
-            ast: if trait_item.kind == ty::AssociatedKind::Const {
+            ast: if let hir::ConstTraitItem(_, Some(_)) = ast_item.node {
+                // We only save the HIR for associated consts with bodies
+                // (InlinedItemRef::from_trait_item panics otherwise)
                 let trait_def_id = trait_item.container.id();
-                Some(self.encode_inlined_item(InlinedItemRef::TraitItem(trait_def_id, ast_item)))
+                Some(self.encode_inlined_item(
+                    InlinedItemRef::from_trait_item(trait_def_id, ast_item, tcx)
+                ))
             } else {
                 None
             },
@@ -527,6 +531,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) -> Entry<'tcx> {
+        let tcx = self.tcx;
+
         let node_id = self.tcx.map.as_local_node_id(def_id).unwrap();
         let ast_item = self.tcx.map.expect_impl_item(node_id);
         let impl_item = self.tcx.associated_item(def_id);
@@ -587,7 +593,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: if ast {
-                Some(self.encode_inlined_item(InlinedItemRef::ImplItem(impl_def_id, ast_item)))
+                Some(self.encode_inlined_item(
+                    InlinedItemRef::from_impl_item(impl_def_id, ast_item, tcx)
+                ))
             } else {
                 None
             },
@@ -630,7 +638,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.tcx.lookup_deprecation(def_id).map(|depr| self.lazy(&depr))
     }
 
-    fn encode_info_for_item(&mut self, (def_id, item): (DefId, &hir::Item)) -> Entry<'tcx> {
+    fn encode_info_for_item(&mut self, (def_id, item): (DefId, &'tcx hir::Item)) -> Entry<'tcx> {
         let tcx = self.tcx;
 
         debug!("encoding info for item at {}",
@@ -817,7 +825,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ast: match item.node {
                 hir::ItemConst(..) |
                 hir::ItemFn(_, _, hir::Constness::Const, ..) => {
-                    Some(self.encode_inlined_item(InlinedItemRef::Item(def_id, item)))
+                    Some(self.encode_inlined_item(
+                        InlinedItemRef::from_item(def_id, item, tcx)
+                    ))
                 }
                 _ => None,
             },
@@ -973,6 +983,9 @@ struct EncodeVisitor<'a, 'b: 'a, 'tcx: 'b> {
 }
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.index.tcx.map)
+    }
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         intravisit::walk_expr(self, ex);
         self.index.encode_info_for_expr(ex);

@@ -34,7 +34,7 @@ use util::nodemap::NodeMap;
 use rustc_data_structures::fx::FxHashSet;
 use hir;
 use hir::print::lifetime_to_string;
-use hir::intravisit::{self, Visitor, FnKind};
+use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum DefRegion {
@@ -132,8 +132,8 @@ pub fn krate(sess: &Session,
 impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     // Override the nested functions -- lifetimes follow lexical scope,
     // so it's convenient to walk the tree in lexical order.
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.hir_map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.hir_map)
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
@@ -206,7 +206,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, decl: &'tcx hir::FnDecl,
-                b: &'tcx hir::Expr, s: Span, fn_id: ast::NodeId) {
+                b: hir::ExprId, s: Span, fn_id: ast::NodeId) {
         match fk {
             FnKind::ItemFn(_, generics, ..) => {
                 self.visit_early_late(fn_id,decl, generics, |this| {
@@ -407,7 +407,7 @@ fn signal_shadowing_problem(sess: &Session, name: ast::Name, orig: Original, sha
 
 // Adds all labels in `b` to `ctxt.labels_in_fn`, signalling a warning
 // if one of the label shadows a lifetime or another label.
-fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Expr) {
+fn extract_labels(ctxt: &mut LifetimeContext, b: hir::ExprId) {
     struct GatherLabels<'a> {
         sess: &'a Session,
         scope: Scope<'a>,
@@ -419,10 +419,14 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Expr) {
         scope: ctxt.scope,
         labels_in_fn: &mut ctxt.labels_in_fn,
     };
-    gather.visit_expr(b);
+    gather.visit_expr(ctxt.hir_map.expr(b));
     return;
 
     impl<'v, 'a> Visitor<'v> for GatherLabels<'a> {
+        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+            NestedVisitorMap::None
+        }
+
         fn visit_expr(&mut self, ex: &'v hir::Expr) {
             // do not recurse into closures defined in the block
             // since they are treated as separate fns from the POV of
@@ -497,7 +501,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn add_scope_and_walk_fn(&mut self,
                              fk: FnKind<'tcx>,
                              fd: &'tcx hir::FnDecl,
-                             fb: &'tcx hir::Expr,
+                             fb: hir::ExprId,
                              _span: Span,
                              fn_id: ast::NodeId) {
         match fk {
@@ -518,8 +522,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // `self.labels_in_fn`.
         extract_labels(self, fb);
 
-        self.with(FnScope { fn_id: fn_id, body_id: fb.id, s: self.scope },
-                  |_old_scope, this| this.visit_expr(fb))
+        self.with(FnScope { fn_id: fn_id, body_id: fb.node_id(), s: self.scope },
+                  |_old_scope, this| this.visit_body(fb))
     }
 
     // FIXME(#37666) this works around a limitation in the region inferencer
@@ -938,6 +942,10 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     }
 
     impl<'v> Visitor<'v> for ConstrainedCollector {
+        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+            NestedVisitorMap::None
+        }
+
         fn visit_ty(&mut self, ty: &'v hir::Ty) {
             match ty.node {
                 hir::TyPath(hir::QPath::Resolved(Some(_), _)) |
@@ -975,6 +983,10 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     }
 
     impl<'v> Visitor<'v> for AllCollector {
+        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+            NestedVisitorMap::None
+        }
+
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
             self.regions.insert(lifetime_ref.name);
         }

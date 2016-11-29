@@ -11,7 +11,7 @@
 use hir::map::definitions::*;
 
 use hir;
-use hir::intravisit;
+use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 
 use middle::cstore::InlinedItem;
@@ -326,7 +326,18 @@ impl<'a> visit::Visitor for DefCollector<'a> {
 }
 
 // We walk the HIR rather than the AST when reading items from metadata.
-impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
+impl<'ast> Visitor<'ast> for DefCollector<'ast> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+        // note however that we override `visit_body` below
+        NestedVisitorMap::None
+    }
+
+    fn visit_body(&mut self, id: hir::ExprId) {
+        if let Some(krate) = self.hir_crate {
+            self.visit_expr(krate.expr(id));
+        }
+    }
+
     fn visit_item(&mut self, i: &'ast hir::Item) {
         debug!("visit_item: {:?}", i);
 

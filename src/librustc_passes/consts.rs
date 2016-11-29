@@ -27,7 +27,7 @@
 use rustc::dep_graph::DepNode;
 use rustc::ty::cast::CastKind;
 use rustc_const_eval::{ConstEvalErr, lookup_const_fn_by_id, compare_lit_exprs};
-use rustc_const_eval::{eval_const_expr_partial, lookup_const_by_id};
+use rustc_const_eval::{ConstFnNode, eval_const_expr_partial, lookup_const_by_id};
 use rustc_const_eval::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll, Math};
 use rustc_const_eval::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
 use rustc_const_eval::ErrKind::UnresolvedPath;
@@ -48,7 +48,7 @@ use rustc::lint::builtin::CONST_ERR;
 use rustc::hir::{self, PatKind};
 use syntax::ast;
 use syntax_pos::Span;
-use rustc::hir::intravisit::{self, FnKind, Visitor};
+use rustc::hir::intravisit::{self, FnKind, Visitor, NestedVisitorMap};
 
 use std::collections::hash_map::Entry;
 use std::cmp::Ordering;
@@ -100,7 +100,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
             .enter(|infcx| f(&mut euv::ExprUseVisitor::new(self, &infcx)))
     }
 
-    fn global_expr(&mut self, mode: Mode, expr: &hir::Expr) -> ConstQualif {
+    fn global_expr(&mut self, mode: Mode, expr: &'gcx hir::Expr) -> ConstQualif {
         assert!(mode != Mode::Var);
         match self.tcx.const_qualif_map.borrow_mut().entry(expr.id) {
             Entry::Occupied(entry) => return *entry.get(),
@@ -132,9 +132,9 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     }
 
     fn fn_like(&mut self,
-               fk: FnKind,
-               fd: &hir::FnDecl,
-               b: &hir::Expr,
+               fk: FnKind<'gcx>,
+               fd: &'gcx hir::FnDecl,
+               b: hir::ExprId,
                s: Span,
                fn_id: ast::NodeId)
                -> ConstQualif {
@@ -160,7 +160,8 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         };
 
         let qualif = self.with_mode(mode, |this| {
-            this.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, b));
+            let body = this.tcx.map.expr(b);
+            this.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, body));
             intravisit::walk_fn(this, fk, fd, b, s, fn_id);
             this.qualif
         });
@@ -179,21 +180,39 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
     /// Returns true if the call is to a const fn or method.
     fn handle_const_fn_call(&mut self, _expr: &hir::Expr, def_id: DefId, ret_ty: Ty<'gcx>) -> bool {
-        if let Some(fn_like) = lookup_const_fn_by_id(self.tcx, def_id) {
-            let qualif = self.fn_like(fn_like.kind(),
-                                      fn_like.decl(),
-                                      fn_like.body(),
-                                      fn_like.span(),
-                                      fn_like.id());
-            self.add_qualif(qualif);
+        match lookup_const_fn_by_id(self.tcx, def_id) {
+            Some(ConstFnNode::Local(fn_like)) => {
+                let qualif = self.fn_like(fn_like.kind(),
+                                          fn_like.decl(),
+                                          fn_like.body(),
+                                          fn_like.span(),
+                                          fn_like.id());
 
-            if ret_ty.type_contents(self.tcx).interior_unsafe() {
-                self.add_qualif(ConstQualif::MUTABLE_MEM);
-            }
+                self.add_qualif(qualif);
 
-            true
-        } else {
-            false
+                if ret_ty.type_contents(self.tcx).interior_unsafe() {
+                    self.add_qualif(ConstQualif::MUTABLE_MEM);
+                }
+
+                true
+            },
+            Some(ConstFnNode::Inlined(ii)) => {
+                let node_id = ii.body.id;
+
+                let qualif = match self.tcx.const_qualif_map.borrow_mut().entry(node_id) {
+                    Entry::Occupied(entry) => *entry.get(),
+                    _ => bug!("const qualif entry missing for inlined item")
+                };
+
+                self.add_qualif(qualif);
+
+                if ret_ty.type_contents(self.tcx).interior_unsafe() {
+                    self.add_qualif(ConstQualif::MUTABLE_MEM);
+                }
+
+                true
+            },
+            None => false
         }
     }
 
@@ -213,8 +232,12 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &hir::Item) {
+impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
+    fn visit_item(&mut self, i: &'tcx hir::Item) {
         debug!("visit_item(item={})", self.tcx.map.node_to_string(i.id));
         assert_eq!(self.mode, Mode::Var);
         match i.node {
@@ -240,7 +263,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, t: &'v hir::TraitItem) {
+    fn visit_trait_item(&mut self, t: &'tcx hir::TraitItem) {
         match t.node {
             hir::ConstTraitItem(_, ref default) => {
                 if let Some(ref expr) = *default {
@@ -253,7 +276,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_impl_item(&mut self, i: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, i: &'tcx hir::ImplItem) {
         match i.node {
             hir::ImplItemKind::Const(_, ref expr) => {
                 self.global_expr(Mode::Const, &expr);
@@ -263,15 +286,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self,
-                fk: FnKind<'v>,
-                fd: &'v hir::FnDecl,
-                b: &'v hir::Expr,
+                fk: FnKind<'tcx>,
+                fd: &'tcx hir::FnDecl,
+                b: hir::ExprId,
                 s: Span,
                 fn_id: ast::NodeId) {
         self.fn_like(fk, fd, b, s, fn_id);
     }
 
-    fn visit_pat(&mut self, p: &hir::Pat) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat) {
         match p.node {
             PatKind::Lit(ref lit) => {
                 self.global_expr(Mode::Const, &lit);
@@ -296,7 +319,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_block(&mut self, block: &hir::Block) {
+    fn visit_block(&mut self, block: &'tcx hir::Block) {
         // Check all statements in the block
         for stmt in &block.stmts {
             match stmt.node {
@@ -315,7 +338,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         intravisit::walk_block(self, block);
     }
 
-    fn visit_expr(&mut self, ex: &hir::Expr) {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         let mut outer = self.qualif;
         self.qualif = ConstQualif::empty();
 

@@ -128,7 +128,7 @@ use syntax_pos::Span;
 use hir::Expr;
 use hir;
 use hir::print::{expr_to_string, block_to_string};
-use hir::intravisit::{self, Visitor, FnKind};
+use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 /// For use with `propagate_through_loop`.
 enum LoopKind<'a> {
@@ -182,14 +182,18 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt) -> String {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Expr, s: Span, id: NodeId) {
+impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
+    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
+                b: hir::ExprId, s: Span, id: NodeId) {
         visit_fn(self, fk, fd, b, s, id);
     }
-    fn visit_local(&mut self, l: &hir::Local) { visit_local(self, l); }
-    fn visit_expr(&mut self, ex: &Expr) { visit_expr(self, ex); }
-    fn visit_arm(&mut self, a: &hir::Arm) { visit_arm(self, a); }
+    fn visit_local(&mut self, l: &'tcx hir::Local) { visit_local(self, l); }
+    fn visit_expr(&mut self, ex: &'tcx Expr) { visit_expr(self, ex); }
+    fn visit_arm(&mut self, a: &'tcx hir::Arm) { visit_arm(self, a); }
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
@@ -348,28 +352,32 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for Liveness<'a, 'tcx> {
-    fn visit_fn(&mut self, _: FnKind<'v>, _: &'v hir::FnDecl,
-                _: &'v hir::Expr, _: Span, _: NodeId) {
+impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.ir.tcx.map)
+    }
+
+    fn visit_fn(&mut self, _: FnKind<'tcx>, _: &'tcx hir::FnDecl,
+                _: hir::ExprId, _: Span, _: NodeId) {
         // do not check contents of nested fns
     }
-    fn visit_local(&mut self, l: &hir::Local) {
+    fn visit_local(&mut self, l: &'tcx hir::Local) {
         check_local(self, l);
     }
-    fn visit_expr(&mut self, ex: &Expr) {
+    fn visit_expr(&mut self, ex: &'tcx Expr) {
         check_expr(self, ex);
     }
-    fn visit_arm(&mut self, a: &hir::Arm) {
+    fn visit_arm(&mut self, a: &'tcx hir::Arm) {
         check_arm(self, a);
     }
 }
 
-fn visit_fn(ir: &mut IrMaps,
-            fk: FnKind,
-            decl: &hir::FnDecl,
-            body: &hir::Expr,
-            sp: Span,
-            id: ast::NodeId) {
+fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
+                          fk: FnKind<'tcx>,
+                          decl: &'tcx hir::FnDecl,
+                          body_id: hir::ExprId,
+                          sp: Span,
+                          id: ast::NodeId) {
     debug!("visit_fn");
 
     // swap in a new set of IR maps for this function body:
@@ -387,7 +395,7 @@ fn visit_fn(ir: &mut IrMaps,
 
     // gather up the various local variables, significant expressions,
     // and so forth:
-    intravisit::walk_fn(&mut fn_maps, fk, decl, body, sp, id);
+    intravisit::walk_fn(&mut fn_maps, fk, decl, body_id, sp, id);
 
     // Special nodes and variables:
     // - exit_ln represents the end of the fn, either by return or panic
@@ -400,6 +408,8 @@ fn visit_fn(ir: &mut IrMaps,
         clean_exit_var: fn_maps.add_variable(CleanExit)
     };
 
+    let body = ir.tcx.map.expr(body_id);
+
     // compute liveness
     let mut lsets = Liveness::new(&mut fn_maps, specials);
     let entry_ln = lsets.compute(body);
@@ -410,7 +420,7 @@ fn visit_fn(ir: &mut IrMaps,
     lsets.warn_about_unused_args(decl, entry_ln);
 }
 
-fn visit_local(ir: &mut IrMaps, local: &hir::Local) {
+fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
     local.pat.each_binding(|_, p_id, sp, path1| {
         debug!("adding local variable {}", p_id);
         let name = path1.node;
@@ -423,7 +433,7 @@ fn visit_local(ir: &mut IrMaps, local: &hir::Local) {
     intravisit::walk_local(ir, local);
 }
 
-fn visit_arm(ir: &mut IrMaps, arm: &hir::Arm) {
+fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
     for pat in &arm.pats {
         pat.each_binding(|bm, p_id, sp, path1| {
             debug!("adding local variable {} from match with bm {:?}",
@@ -439,7 +449,7 @@ fn visit_arm(ir: &mut IrMaps, arm: &hir::Arm) {
     intravisit::walk_arm(ir, arm);
 }
 
-fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
+fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
@@ -923,7 +933,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.propagate_through_expr(&e, succ)
           }
 
-          hir::ExprClosure(.., ref blk, _) => {
+          hir::ExprClosure(.., blk_id, _) => {
               debug!("{} is an ExprClosure",
                      expr_to_string(expr));
 
@@ -932,7 +942,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               loop. The next-node for a continue is the top of this loop.
               */
               let node = self.live_node(expr.id, expr.span);
-              self.with_loop_nodes(blk.id, succ, node, |this| {
+              self.with_loop_nodes(blk_id.node_id(), succ, node, |this| {
 
                  // the construction of a closure itself is not important,
                  // but we have to consider the closed over variables.
@@ -1354,7 +1364,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 // _______________________________________________________________________
 // Checking for error conditions
 
-fn check_local(this: &mut Liveness, local: &hir::Local) {
+fn check_local<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, local: &'tcx hir::Local) {
     match local.init {
         Some(_) => {
             this.warn_about_unused_or_dead_vars_in_pat(&local.pat);
@@ -1369,7 +1379,7 @@ fn check_local(this: &mut Liveness, local: &hir::Local) {
     intravisit::walk_local(this, local);
 }
 
-fn check_arm(this: &mut Liveness, arm: &hir::Arm) {
+fn check_arm<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, arm: &'tcx hir::Arm) {
     // only consider the first pattern; any later patterns must have
     // the same bindings, and we also consider the first pattern to be
     // the "authoritative" set of ids
@@ -1379,7 +1389,7 @@ fn check_arm(this: &mut Liveness, arm: &hir::Arm) {
     intravisit::walk_arm(this, arm);
 }
 
-fn check_expr(this: &mut Liveness, expr: &Expr) {
+fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
     match expr.node {
       hir::ExprAssign(ref l, _) => {
         this.check_lvalue(&l);
@@ -1469,7 +1479,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn check_lvalue(&mut self, expr: &Expr) {
+    fn check_lvalue(&mut self, expr: &'tcx Expr) {
         match expr.node {
             hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
                 if let Def::Local(def_id) = path.def {

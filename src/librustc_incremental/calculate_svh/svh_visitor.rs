@@ -52,6 +52,7 @@ pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
     hash_spans: bool,
     codemap: &'a mut CachingCodemapView<'tcx>,
     overflow_checks_enabled: bool,
+    hash_bodies: bool,
 }
 
 impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
@@ -59,7 +60,8 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                tcx: TyCtxt<'hash, 'tcx, 'tcx>,
                def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
                codemap: &'a mut CachingCodemapView<'tcx>,
-               hash_spans: bool)
+               hash_spans: bool,
+               hash_bodies: bool)
                -> Self {
         let check_overflow = tcx.sess.opts.debugging_opts.force_overflow_checks
             .unwrap_or(tcx.sess.opts.debug_assertions);
@@ -71,6 +73,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             hash_spans: hash_spans,
             codemap: codemap,
             overflow_checks_enabled: check_overflow,
+            hash_bodies: hash_bodies,
         }
     }
 
@@ -459,15 +462,16 @@ fn saw_ty(node: &Ty_) -> SawTyComponent {
 #[derive(Hash)]
 enum SawTraitOrImplItemComponent {
     SawTraitOrImplItemConst,
-    SawTraitOrImplItemMethod(Unsafety, Constness, Abi),
+    // The boolean signifies whether a body is present
+    SawTraitOrImplItemMethod(Unsafety, Constness, Abi, bool),
     SawTraitOrImplItemType
 }
 
 fn saw_trait_item(ti: &TraitItem_) -> SawTraitOrImplItemComponent {
     match *ti {
         ConstTraitItem(..) => SawTraitOrImplItemConst,
-        MethodTraitItem(ref sig, _) =>
-            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi),
+        MethodTraitItem(ref sig, ref body) =>
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi, body.is_some()),
         TypeTraitItem(..) => SawTraitOrImplItemType
     }
 }
@@ -476,7 +480,7 @@ fn saw_impl_item(ii: &ImplItemKind) -> SawTraitOrImplItemComponent {
     match *ii {
         ImplItemKind::Const(..) => SawTraitOrImplItemConst,
         ImplItemKind::Method(ref sig, _) =>
-            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi),
+            SawTraitOrImplItemMethod(sig.unsafety, sig.constness, sig.abi, true),
         ImplItemKind::Type(..) => SawTraitOrImplItemType
     }
 }
@@ -509,6 +513,14 @@ macro_rules! hash_span {
 }
 
 impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'hash, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> visit::NestedVisitorMap<'this, 'tcx> {
+        if self.hash_bodies {
+            visit::NestedVisitorMap::OnlyBodies(&self.tcx.map)
+        } else {
+            visit::NestedVisitorMap::None
+        }
+    }
+
     fn visit_variant_data(&mut self,
                           s: &'tcx VariantData,
                           name: Name,
@@ -609,7 +621,8 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
 
     fn visit_mod(&mut self, m: &'tcx Mod, _s: Span, n: NodeId) {
         debug!("visit_mod: st={:?}", self.st);
-        SawMod.hash(self.st); visit::walk_mod(self, m, n)
+        SawMod.hash(self.st);
+        visit::walk_mod(self, m, n)
     }
 
     fn visit_ty(&mut self, t: &'tcx Ty) {

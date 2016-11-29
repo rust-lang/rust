@@ -1208,7 +1208,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         tcx.construct_parameter_environment(
                             impl_item.span,
                             tcx.map.local_def_id(id),
-                            tcx.region_maps.call_site_extent(id, body.id))
+                            tcx.region_maps.call_site_extent(id, body.node_id()))
                     }
                 }
             }
@@ -1227,9 +1227,9 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         // Use call-site for extent (unless this is a
                         // trait method with no default; then fallback
                         // to the method id).
-                        let extent = if let Some(ref body) = *body {
+                        let extent = if let Some(body_id) = *body {
                             // default impl: use call_site extent as free_id_outlive bound.
-                            tcx.region_maps.call_site_extent(id, body.id)
+                            tcx.region_maps.call_site_extent(id, body_id.node_id())
                         } else {
                             // no default impl: use item extent as free_id_outlive bound.
                             tcx.region_maps.item_extent(id)
@@ -1243,14 +1243,14 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             }
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    hir::ItemFn(.., ref body) => {
+                    hir::ItemFn(.., body_id) => {
                         // We assume this is a function.
                         let fn_def_id = tcx.map.local_def_id(id);
 
                         tcx.construct_parameter_environment(
                             item.span,
                             fn_def_id,
-                            tcx.region_maps.call_site_extent(id, body.id))
+                            tcx.region_maps.call_site_extent(id, body_id.node_id()))
                     }
                     hir::ItemEnum(..) |
                     hir::ItemStruct(..) |
@@ -1280,13 +1280,13 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             }
             Some(ast_map::NodeExpr(expr)) => {
                 // This is a convenience to allow closures to work.
-                if let hir::ExprClosure(.., ref body, _) = expr.node {
+                if let hir::ExprClosure(.., body, _) = expr.node {
                     let def_id = tcx.map.local_def_id(id);
                     let base_def_id = tcx.closure_base_def_id(def_id);
                     tcx.construct_parameter_environment(
                         expr.span,
                         base_def_id,
-                        tcx.region_maps.call_site_extent(id, body.id))
+                        tcx.region_maps.call_site_extent(id, body.node_id()))
                 } else {
                     tcx.empty_parameter_environment()
                 }

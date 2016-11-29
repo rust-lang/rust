@@ -23,11 +23,14 @@ fn foo() {
 
 #[cfg(rpass2)]
 #[rustc_clean(label="Hir", cfg="rpass2")]
+#[rustc_clean(label="HirBody", cfg="rpass2")]
 fn foo() {
     #[rustc_clean(label="Hir", cfg="rpass2")]
+    #[rustc_clean(label="HirBody", cfg="rpass2")]
     fn baz() { } // order is different...
 
     #[rustc_clean(label="Hir", cfg="rpass2")]
+    #[rustc_clean(label="HirBody", cfg="rpass2")]
     fn bar() { } // but that doesn't matter.
 
     fn bap() { } // neither does adding a new item

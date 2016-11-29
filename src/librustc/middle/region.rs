@@ -31,7 +31,7 @@ use syntax::ast::{self, NodeId};
 use syntax_pos::Span;
 
 use hir;
-use hir::intravisit::{self, Visitor, FnKind};
+use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 use hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
@@ -302,13 +302,15 @@ pub struct Context {
     parent: CodeExtent
 }
 
-struct RegionResolutionVisitor<'a> {
+struct RegionResolutionVisitor<'ast: 'a, 'a> {
     sess: &'a Session,
 
     // Generated maps:
     region_maps: &'a RegionMaps,
 
     cx: Context,
+
+    map: &'a ast_map::Map<'ast>,
 
     /// `terminating_scopes` is a set containing the ids of each
     /// statement, or conditional/repeating expression. These scopes
@@ -660,7 +662,7 @@ fn record_var_lifetime(visitor: &mut RegionResolutionVisitor,
     }
 }
 
-fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &hir::Block) {
+fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>, blk: &'tcx hir::Block) {
     debug!("resolve_block(blk.id={:?})", blk.id);
 
     let prev_cx = visitor.cx;
@@ -731,7 +733,7 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &hir::Block) {
     visitor.cx = prev_cx;
 }
 
-fn resolve_arm(visitor: &mut RegionResolutionVisitor, arm: &hir::Arm) {
+fn resolve_arm<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>, arm: &'tcx hir::Arm) {
     visitor.terminating_scopes.insert(arm.body.id);
 
     if let Some(ref expr) = arm.guard {
@@ -741,7 +743,7 @@ fn resolve_arm(visitor: &mut RegionResolutionVisitor, arm: &hir::Arm) {
     intravisit::walk_arm(visitor, arm);
 }
 
-fn resolve_pat(visitor: &mut RegionResolutionVisitor, pat: &hir::Pat) {
+fn resolve_pat<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>, pat: &'tcx hir::Pat) {
     visitor.new_node_extent(pat.id);
 
     // If this is a binding then record the lifetime of that binding.
@@ -752,7 +754,7 @@ fn resolve_pat(visitor: &mut RegionResolutionVisitor, pat: &hir::Pat) {
     intravisit::walk_pat(visitor, pat);
 }
 
-fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &hir::Stmt) {
+fn resolve_stmt<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>, stmt: &'tcx hir::Stmt) {
     let stmt_id = stmt.node.id();
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
@@ -770,7 +772,7 @@ fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &hir::Stmt) {
     visitor.cx.parent = prev_parent;
 }
 
-fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &hir::Expr) {
+fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>, expr: &'tcx hir::Expr) {
     debug!("resolve_expr(expr.id={:?})", expr.id);
 
     let expr_extent = visitor.new_node_extent_with_dtor(expr.id);
@@ -848,7 +850,8 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &hir::Expr) {
     visitor.cx = prev_cx;
 }
 
-fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
+fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
+                           local: &'tcx hir::Local) {
     debug!("resolve_local(local.id={:?},local.init={:?})",
            local.id,local.init.is_some());
 
@@ -1063,7 +1066,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
     }
 }
 
-fn resolve_item(visitor: &mut RegionResolutionVisitor, item: &hir::Item) {
+fn resolve_item<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>, item: &'tcx hir::Item) {
     // Items create a new outer block scope as far as we're concerned.
     let prev_cx = visitor.cx;
     let prev_ts = mem::replace(&mut visitor.terminating_scopes, NodeSet());
@@ -1078,38 +1081,38 @@ fn resolve_item(visitor: &mut RegionResolutionVisitor, item: &hir::Item) {
     visitor.terminating_scopes = prev_ts;
 }
 
-fn resolve_fn(visitor: &mut RegionResolutionVisitor,
-              kind: FnKind,
-              decl: &hir::FnDecl,
-              body: &hir::Expr,
-              sp: Span,
-              id: ast::NodeId) {
+fn resolve_fn<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'tcx, 'a>,
+                        kind: FnKind<'tcx>,
+                        decl: &'tcx hir::FnDecl,
+                        body_id: hir::ExprId,
+                        sp: Span,
+                        id: ast::NodeId) {
     debug!("region::resolve_fn(id={:?}, \
                                span={:?}, \
                                body.id={:?}, \
                                cx.parent={:?})",
            id,
            visitor.sess.codemap().span_to_string(sp),
-           body.id,
+           body_id,
            visitor.cx.parent);
 
     visitor.cx.parent = visitor.new_code_extent(
-        CodeExtentData::CallSiteScope { fn_id: id, body_id: body.id });
+        CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id() });
 
     let fn_decl_scope = visitor.new_code_extent(
-        CodeExtentData::ParameterScope { fn_id: id, body_id: body.id });
+        CodeExtentData::ParameterScope { fn_id: id, body_id: body_id.node_id() });
 
     if let Some(root_id) = visitor.cx.root_id {
-        visitor.region_maps.record_fn_parent(body.id, root_id);
+        visitor.region_maps.record_fn_parent(body_id.node_id(), root_id);
     }
 
     let outer_cx = visitor.cx;
     let outer_ts = mem::replace(&mut visitor.terminating_scopes, NodeSet());
-    visitor.terminating_scopes.insert(body.id);
+    visitor.terminating_scopes.insert(body_id.node_id());
 
     // The arguments and `self` are parented to the fn.
     visitor.cx = Context {
-        root_id: Some(body.id),
+        root_id: Some(body_id.node_id()),
         parent: ROOT_CODE_EXTENT,
         var_parent: fn_decl_scope,
     };
@@ -1119,18 +1122,18 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
 
     // The body of the every fn is a root scope.
     visitor.cx = Context {
-        root_id: Some(body.id),
+        root_id: Some(body_id.node_id()),
         parent: fn_decl_scope,
         var_parent: fn_decl_scope
     };
-    visitor.visit_expr(body);
+    visitor.visit_body(body_id);
 
     // Restore context we had at the start.
     visitor.cx = outer_cx;
     visitor.terminating_scopes = outer_ts;
 }
 
-impl<'a> RegionResolutionVisitor<'a> {
+impl<'ast, 'a> RegionResolutionVisitor<'ast, 'a> {
     /// Records the current parent (if any) as the parent of `child_scope`.
     fn new_code_extent(&mut self, child_scope: CodeExtentData) -> CodeExtent {
         self.region_maps.intern_code_extent(child_scope, self.cx.parent)
@@ -1166,42 +1169,46 @@ impl<'a> RegionResolutionVisitor<'a> {
     }
 }
 
-impl<'a, 'v> Visitor<'v> for RegionResolutionVisitor<'a> {
-    fn visit_block(&mut self, b: &Block) {
+impl<'ast, 'a> Visitor<'ast> for RegionResolutionVisitor<'ast, 'a> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'ast> {
+        NestedVisitorMap::OnlyBodies(&self.map)
+    }
+
+    fn visit_block(&mut self, b: &'ast Block) {
         resolve_block(self, b);
     }
 
-    fn visit_item(&mut self, i: &Item) {
+    fn visit_item(&mut self, i: &'ast Item) {
         resolve_item(self, i);
     }
 
-    fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'ast hir::ImplItem) {
         intravisit::walk_impl_item(self, ii);
         self.create_item_scope_if_needed(ii.id);
     }
 
-    fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'ast hir::TraitItem) {
         intravisit::walk_trait_item(self, ti);
         self.create_item_scope_if_needed(ti.id);
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
-                b: &'v Expr, s: Span, n: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'ast>, fd: &'ast FnDecl,
+                b: hir::ExprId, s: Span, n: NodeId) {
         resolve_fn(self, fk, fd, b, s, n);
     }
-    fn visit_arm(&mut self, a: &Arm) {
+    fn visit_arm(&mut self, a: &'ast Arm) {
         resolve_arm(self, a);
     }
-    fn visit_pat(&mut self, p: &Pat) {
+    fn visit_pat(&mut self, p: &'ast Pat) {
         resolve_pat(self, p);
     }
-    fn visit_stmt(&mut self, s: &Stmt) {
+    fn visit_stmt(&mut self, s: &'ast Stmt) {
         resolve_stmt(self, s);
     }
-    fn visit_expr(&mut self, ex: &Expr) {
+    fn visit_expr(&mut self, ex: &'ast Expr) {
         resolve_expr(self, ex);
     }
-    fn visit_local(&mut self, l: &Local) {
+    fn visit_local(&mut self, l: &'ast Local) {
         resolve_local(self, l);
     }
 }
@@ -1228,6 +1235,7 @@ pub fn resolve_crate(sess: &Session, map: &ast_map::Map) -> RegionMaps {
         let mut visitor = RegionResolutionVisitor {
             sess: sess,
             region_maps: &maps,
+            map: map,
             cx: Context {
                 root_id: None,
                 parent: ROOT_CODE_EXTENT,

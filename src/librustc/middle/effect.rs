@@ -21,7 +21,7 @@ use syntax::ast;
 use syntax_pos::Span;
 use hir::{self, PatKind};
 use hir::def::Def;
-use hir::intravisit::{self, FnKind, Visitor};
+use hir::intravisit::{self, FnKind, Visitor, NestedVisitorMap};
 
 #[derive(Copy, Clone)]
 struct UnsafeContext {
@@ -92,9 +92,13 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
-    fn visit_fn(&mut self, fn_kind: FnKind<'v>, fn_decl: &'v hir::FnDecl,
-                block: &'v hir::Expr, span: Span, id: ast::NodeId) {
+impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
+    fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, fn_decl: &'tcx hir::FnDecl,
+                body_id: hir::ExprId, span: Span, id: ast::NodeId) {
 
         let (is_item_fn, is_unsafe_fn) = match fn_kind {
             FnKind::ItemFn(_, _, unsafety, ..) =>
@@ -111,12 +115,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
             self.unsafe_context = UnsafeContext::new(SafeContext)
         }
 
-        intravisit::walk_fn(self, fn_kind, fn_decl, block, span, id);
+        intravisit::walk_fn(self, fn_kind, fn_decl, body_id, span, id);
 
         self.unsafe_context = old_unsafe_context
     }
 
-    fn visit_block(&mut self, block: &hir::Block) {
+    fn visit_block(&mut self, block: &'tcx hir::Block) {
         let old_unsafe_context = self.unsafe_context;
         match block.rules {
             hir::UnsafeBlock(source) => {
@@ -155,7 +159,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
         self.unsafe_context = old_unsafe_context
     }
 
-    fn visit_expr(&mut self, expr: &hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprMethodCall(..) => {
                 let method_call = MethodCall::expr(expr.id);
@@ -212,7 +216,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
-    fn visit_pat(&mut self, pat: &hir::Pat) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
         if let PatKind::Struct(_, ref fields, _) = pat.node {
             if let ty::TyAdt(adt, ..) = self.tcx.tables().pat_ty(pat).sty {
                 if adt.is_union() {

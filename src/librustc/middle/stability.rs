@@ -30,8 +30,7 @@ use util::nodemap::{DefIdMap, FxHashSet, FxHashMap};
 
 use hir;
 use hir::{Item, Generics, StructField, Variant};
-use hir::intravisit::{self, Visitor};
-use hir::itemlikevisit::DeepVisitor;
+use hir::intravisit::{self, Visitor, NestedVisitorMap};
 
 use std::mem::replace;
 use std::cmp::Ordering;
@@ -234,8 +233,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     /// Because stability levels are scoped lexically, we want to walk
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.tcx.map)
     }
 
     fn visit_item(&mut self, i: &'tcx Item) {
@@ -326,8 +325,12 @@ impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for MissingStabilityAnnotations<'a, 'tcx> {
-    fn visit_item(&mut self, i: &Item) {
+impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
+    fn visit_item(&mut self, i: &'tcx Item) {
         match i.node {
             // Inherent impls and foreign modules serve only as containers for other items,
             // they don't have their own stability. They still can be annotated as unstable
@@ -341,12 +344,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MissingStabilityAnnotations<'a, 'tcx> {
         intravisit::walk_item(self, i)
     }
 
-    fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
         self.check_missing_stability(ti.id, ti.span);
         intravisit::walk_trait_item(self, ti);
     }
 
-    fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
         let impl_def_id = self.tcx.map.local_def_id(self.tcx.map.get_parent(ii.id));
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
             self.check_missing_stability(ii.id, ii.span);
@@ -354,22 +357,22 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MissingStabilityAnnotations<'a, 'tcx> {
         intravisit::walk_impl_item(self, ii);
     }
 
-    fn visit_variant(&mut self, var: &Variant, g: &Generics, item_id: NodeId) {
+    fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: NodeId) {
         self.check_missing_stability(var.node.data.id(), var.span);
         intravisit::walk_variant(self, var, g, item_id);
     }
 
-    fn visit_struct_field(&mut self, s: &StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx StructField) {
         self.check_missing_stability(s.id, s.span);
         intravisit::walk_struct_field(self, s);
     }
 
-    fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
         self.check_missing_stability(i.id, i.span);
         intravisit::walk_foreign_item(self, i);
     }
 
-    fn visit_macro_def(&mut self, md: &hir::MacroDef) {
+    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
         if md.imported_from.is_none() {
             self.check_missing_stability(md.id, md.span);
         }
@@ -425,8 +428,7 @@ impl<'a, 'tcx> Index<'tcx> {
 /// features and possibly prints errors.
 pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut checker = Checker { tcx: tcx };
-    tcx.visit_all_item_likes_in_krate(DepNode::StabilityCheck,
-                                      &mut DeepVisitor::new(&mut checker));
+    tcx.visit_all_item_likes_in_krate(DepNode::StabilityCheck, &mut checker.as_deep_visitor());
 }
 
 struct Checker<'a, 'tcx: 'a> {
@@ -534,6 +536,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
+    /// Because stability levels are scoped lexically, we want to walk
+    /// nested items in the context of the outer item, so enable
+    /// deep-walking.
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
             hir::ItemExternCrate(_) => {
@@ -641,7 +650,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
         missing.check_missing_stability(ast::CRATE_NODE_ID, krate.span);
         intravisit::walk_crate(&mut missing, krate);
-        krate.visit_all_item_likes(&mut DeepVisitor::new(&mut missing));
+        krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }
 
     let ref declared_lib_features = sess.features.borrow().declared_lib_features;

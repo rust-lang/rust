@@ -719,10 +719,10 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
         }
     }
 
-    fn visit_ids<F>(&mut self, f: F)
-        where F: FnOnce(&mut IdVisitor)
+    fn visit_ids<'b, F: 'b>(&'b mut self, f: F)
+        where F: FnOnce(&mut IdVisitor<'b, 'a, 'tcx>)
     {
-        let mut v = IdVisitor {
+        let mut v = IdVisitor::<'b, 'a, 'tcx> {
             cx: self
         };
         f(&mut v);
@@ -791,8 +791,8 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, 'tcx> {
+        hir_visit::NestedVisitorMap::All(&self.tcx.map)
     }
 
     fn visit_item(&mut self, it: &'tcx hir::Item) {
@@ -835,9 +835,10 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: hir_visit::FnKind<'tcx>, decl: &'tcx hir::FnDecl,
-                body: &'tcx hir::Expr, span: Span, id: ast::NodeId) {
+                body_id: hir::ExprId, span: Span, id: ast::NodeId) {
+        let body = self.tcx.map.expr(body_id);
         run_lints!(self, check_fn, late_passes, fk, decl, body, span, id);
-        hir_visit::walk_fn(self, fk, decl, body, span, id);
+        hir_visit::walk_fn(self, fk, decl, body_id, span, id);
         run_lints!(self, check_fn_post, late_passes, fk, decl, body, span, id);
     }
 
@@ -1107,7 +1108,11 @@ struct IdVisitor<'a, 'b: 'a, 'tcx: 'a+'b> {
 }
 
 // Output any lints that were previously added to the session.
-impl<'a, 'b, 'tcx, 'v> hir_visit::Visitor<'v> for IdVisitor<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> hir_visit::Visitor<'tcx> for IdVisitor<'a, 'b, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, 'tcx> {
+        hir_visit::NestedVisitorMap::OnlyBodies(&self.cx.tcx.map)
+    }
+
     fn visit_id(&mut self, id: ast::NodeId) {
         if let Some(lints) = self.cx.sess().lints.borrow_mut().remove(&id) {
             debug!("LateContext::visit_id: id={:?} lints={:?}", id, lints);
@@ -1117,12 +1122,12 @@ impl<'a, 'b, 'tcx, 'v> hir_visit::Visitor<'v> for IdVisitor<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _ti: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, _ti: &'tcx hir::TraitItem) {
         // Do not recurse into trait or impl items automatically. These are
         // processed separately by calling hir_visit::walk_trait_item()
     }
 
-    fn visit_impl_item(&mut self, _ii: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _ii: &'tcx hir::ImplItem) {
         // See visit_trait_item()
     }
 }

@@ -15,7 +15,7 @@
 use dep_graph::DepNode;
 use hir::map as ast_map;
 use hir::{self, PatKind};
-use hir::intravisit::{self, Visitor};
+use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 
 use middle::privacy;
@@ -175,7 +175,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_node(&mut self, node: &ast_map::Node) {
+    fn visit_node(&mut self, node: &ast_map::Node<'tcx>) {
         let had_extern_repr = self.struct_has_extern_repr;
         self.struct_has_extern_repr = false;
         let had_inherited_pub_visibility = self.inherited_pub_visibility;
@@ -220,9 +220,12 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
 
-    fn visit_variant_data(&mut self, def: &hir::VariantData, _: ast::Name,
+    fn visit_variant_data(&mut self, def: &'tcx hir::VariantData, _: ast::Name,
                         _: &hir::Generics, _: ast::NodeId, _: syntax_pos::Span) {
         let has_extern_repr = self.struct_has_extern_repr;
         let inherited_pub_visibility = self.inherited_pub_visibility;
@@ -234,7 +237,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         intravisit::walk_struct_def(self, def);
     }
 
-    fn visit_expr(&mut self, expr: &hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprPath(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let def = self.tcx.tables().qpath_def(qpath, expr.id);
@@ -255,7 +258,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
-    fn visit_arm(&mut self, arm: &hir::Arm) {
+    fn visit_arm(&mut self, arm: &'tcx hir::Arm) {
         if arm.pats.len() == 1 {
             let variants = arm.pats[0].necessary_variants();
 
@@ -271,7 +274,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_pat(&mut self, pat: &hir::Pat) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
         match pat.node {
             PatKind::Struct(hir::QPath::Resolved(_, ref path), ref fields, _) => {
                 self.handle_field_pattern_match(pat, path.def, fields);
@@ -288,7 +291,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         self.ignore_non_const_paths = false;
     }
 
-    fn visit_path(&mut self, path: &hir::Path, id: ast::NodeId) {
+    fn visit_path(&mut self, path: &'tcx hir::Path, id: ast::NodeId) {
         self.handle_definition(id, path.def);
         intravisit::walk_path(self, path);
     }
@@ -507,8 +510,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     /// on inner functions when the outer function is already getting
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
-    fn nested_visit_map(&mut self) -> Option<&hir::map::Map<'tcx>> {
-        Some(&self.tcx.map)
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.tcx.map)
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
@@ -562,12 +565,12 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                 }
                 intravisit::walk_expr(self, expr)
             }
-            hir::ImplItemKind::Method(_, ref body) => {
+            hir::ImplItemKind::Method(_, body_id) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     self.warn_dead_code(impl_item.id, impl_item.span,
                                         impl_item.name, "method");
                 }
-                intravisit::walk_expr(self, body)
+                self.visit_body(body_id)
             }
             hir::ImplItemKind::Type(..) => {}
         }
@@ -576,9 +579,11 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     // Overwrite so that we don't warn the trait item itself.
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         match trait_item.node {
-            hir::ConstTraitItem(_, Some(ref body))|
-            hir::MethodTraitItem(_, Some(ref body)) => {
+            hir::ConstTraitItem(_, Some(ref body)) => {
                 intravisit::walk_expr(self, body)
+            }
+            hir::MethodTraitItem(_, Some(body_id)) => {
+                self.visit_body(body_id)
             }
             hir::ConstTraitItem(_, None) |
             hir::MethodTraitItem(_, None) |

@@ -27,14 +27,14 @@ use syntax::ast;
 use syntax_pos::{DUMMY_SP, Span};
 
 use rustc::hir::print::pat_to_string;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, PatKind};
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point functions
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn resolve_type_vars_in_expr(&self, e: &hir::Expr, item_id: ast::NodeId) {
+    pub fn resolve_type_vars_in_expr(&self, e: &'gcx hir::Expr, item_id: ast::NodeId) {
         assert_eq!(self.writeback_errors.get(), false);
         let mut wbcx = WritebackCx::new(self);
         wbcx.visit_expr(e);
@@ -47,8 +47,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn resolve_type_vars_in_fn(&self,
-                                   decl: &hir::FnDecl,
-                                   body: &hir::Expr,
+                                   decl: &'gcx hir::FnDecl,
+                                   body: &'gcx hir::Expr,
                                    item_id: ast::NodeId) {
         assert_eq!(self.writeback_errors.get(), false);
         let mut wbcx = WritebackCx::new(self);
@@ -186,8 +186,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 // below. In general, a function is made into a `visitor` if it must
 // traffic in node-ids or update tables in the type context etc.
 
-impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
-    fn visit_stmt(&mut self, s: &hir::Stmt) {
+impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+        NestedVisitorMap::OnlyBodies(&self.fcx.tcx.map)
+    }
+
+    fn visit_stmt(&mut self, s: &'gcx hir::Stmt) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -196,7 +200,7 @@ impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
         intravisit::walk_stmt(self, s);
     }
 
-    fn visit_expr(&mut self, e: &hir::Expr) {
+    fn visit_expr(&mut self, e: &'gcx hir::Expr) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -216,7 +220,7 @@ impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
         intravisit::walk_expr(self, e);
     }
 
-    fn visit_block(&mut self, b: &hir::Block) {
+    fn visit_block(&mut self, b: &'gcx hir::Block) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -225,7 +229,7 @@ impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
         intravisit::walk_block(self, b);
     }
 
-    fn visit_pat(&mut self, p: &hir::Pat) {
+    fn visit_pat(&mut self, p: &'gcx hir::Pat) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -240,7 +244,7 @@ impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
         intravisit::walk_pat(self, p);
     }
 
-    fn visit_local(&mut self, l: &hir::Local) {
+    fn visit_local(&mut self, l: &'gcx hir::Local) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -251,7 +255,7 @@ impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
         intravisit::walk_local(self, l);
     }
 
-    fn visit_ty(&mut self, t: &hir::Ty) {
+    fn visit_ty(&mut self, t: &'gcx hir::Ty) {
         match t.node {
             hir::TyArray(ref ty, ref count_expr) => {
                 self.visit_ty(&ty);

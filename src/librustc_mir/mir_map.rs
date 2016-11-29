@@ -30,7 +30,7 @@ use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::hir;
-use rustc::hir::intravisit::{self, FnKind, Visitor};
+use rustc::hir::intravisit::{self, FnKind, Visitor, NestedVisitorMap};
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax_pos::Span;
@@ -144,6 +144,10 @@ impl<'a, 'gcx> BuildMir<'a, 'gcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
     // Const and static items.
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
@@ -210,7 +214,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fk: FnKind<'tcx>,
                 decl: &'tcx hir::FnDecl,
-                body: &'tcx hir::Expr,
+                body_id: hir::ExprId,
                 span: Span,
                 id: ast::NodeId) {
         // fetch the fully liberated fn signature (that is, all bound
@@ -223,7 +227,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
         };
 
         let (abi, implicit_argument) = if let FnKind::Closure(..) = fk {
-            (Abi::Rust, Some((closure_self_ty(self.tcx, id, body.id), None)))
+            (Abi::Rust, Some((closure_self_ty(self.tcx, id, body_id.node_id()), None)))
         } else {
             let def_id = self.tcx.map.local_def_id(id);
             (self.tcx.item_type(def_id).fn_abi(), None)
@@ -237,12 +241,14 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
                     (fn_sig.inputs[index], Some(&*arg.pat))
                 });
 
+        let body = self.tcx.map.expr(body_id);
+
         let arguments = implicit_argument.into_iter().chain(explicit_arguments);
         self.cx(MirSource::Fn(id)).build(|cx| {
             build::construct_fn(cx, id, arguments, abi, fn_sig.output, body)
         });
 
-        intravisit::walk_fn(self, fk, decl, body, span, id);
+        intravisit::walk_fn(self, fk, decl, body_id, span, id);
     }
 }
 

@@ -45,11 +45,13 @@ mod mod3 {
     use test;
 
     #[rustc_clean(label="Hir", cfg="rpass2")]
+    #[rustc_clean(label="HirBody", cfg="rpass2")]
     fn in_expr() {
         Foo(0);
     }
 
     #[rustc_clean(label="Hir", cfg="rpass2")]
+    #[rustc_clean(label="HirBody", cfg="rpass2")]
     fn in_type() {
         test::<Foo>();
     }
@@ -60,12 +62,14 @@ mod mod3 {
     use test;
     use mod2::Foo; // <-- This changed!
 
-    #[rustc_dirty(label="Hir", cfg="rpass3")]
+    #[rustc_clean(label="Hir", cfg="rpass3")]
+    #[rustc_dirty(label="HirBody", cfg="rpass3")]
     fn in_expr() {
         Foo(0);
     }
 
-    #[rustc_dirty(label="Hir", cfg="rpass3")]
+    #[rustc_clean(label="Hir", cfg="rpass3")]
+    #[rustc_dirty(label="HirBody", cfg="rpass3")]
     fn in_type() {
         test::<Foo>();
     }

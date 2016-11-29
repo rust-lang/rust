@@ -29,7 +29,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc_errors::DiagnosticBuilder;
 
 use rustc::hir::def::*;
-use rustc::hir::intravisit::{self, Visitor, FnKind};
+use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 use rustc::hir::print::pat_to_string;
 use rustc::hir::{self, Pat, PatKind};
 
@@ -41,12 +41,16 @@ use syntax_pos::Span;
 
 struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
-impl<'a, 'v, 'tcx> Visitor<'v> for OuterVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, _expr: &hir::Expr) {
+impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_expr(&mut self, _expr: &'tcx hir::Expr) {
         return // const, static and N in [T; N] - shouldn't contain anything
     }
 
-    fn visit_trait_item(&mut self, item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
         if let hir::ConstTraitItem(..) = item.node {
             return // nothing worth match checking in a constant
         } else {
@@ -54,7 +58,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for OuterVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_impl_item(&mut self, item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
         if let hir::ImplItemKind::Const(..) = item.node {
             return // nothing worth match checking in a constant
         } else {
@@ -62,8 +66,8 @@ impl<'a, 'v, 'tcx> Visitor<'v> for OuterVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Expr, s: Span, id: ast::NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
+                b: hir::ExprId, s: Span, id: ast::NodeId) {
         if let FnKind::Closure(..) = fk {
             span_bug!(s, "check_match: closure outside of function")
         }
@@ -90,8 +94,12 @@ struct MatchVisitor<'a, 'tcx: 'a> {
     param_env: &'a ty::ParameterEnvironment<'tcx>
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for MatchVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &hir::Expr) {
+impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.tcx.map)
+    }
+
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         intravisit::walk_expr(self, ex);
 
         match ex.node {
@@ -102,7 +110,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_local(&mut self, loc: &hir::Local) {
+    fn visit_local(&mut self, loc: &'tcx hir::Local) {
         intravisit::walk_local(self, loc);
 
         self.check_irrefutable(&loc.pat, false);
@@ -111,8 +119,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchVisitor<'a, 'tcx> {
         self.check_patterns(false, slice::ref_slice(&loc.pat));
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
-                b: &'v hir::Expr, s: Span, n: ast::NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
+                b: hir::ExprId, s: Span, n: ast::NodeId) {
         intravisit::walk_fn(self, fk, fd, b, s, n);
 
         for input in &fd.inputs {
@@ -557,6 +565,10 @@ struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
 }
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+        NestedVisitorMap::None
+    }
+
     fn visit_pat(&mut self, pat: &Pat) {
         match pat.node {
             PatKind::Binding(.., ref subpat) => {

@@ -10,7 +10,7 @@
 
 use rustc::hir::map as ast_map;
 
-use rustc::hir::intravisit::{Visitor, IdRangeComputingVisitor, IdRange};
+use rustc::hir::intravisit::{Visitor, IdRangeComputingVisitor, IdRange, NestedVisitorMap};
 
 use cstore::CrateMetadata;
 use encoder::EncodeContext;
@@ -43,13 +43,9 @@ enum TableEntry<'tcx> {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    pub fn encode_inlined_item(&mut self, ii: InlinedItemRef) -> Lazy<Ast<'tcx>> {
-        let mut id_visitor = IdRangeComputingVisitor::new();
-        match ii {
-            InlinedItemRef::Item(_, i) => id_visitor.visit_item(i),
-            InlinedItemRef::TraitItem(_, ti) => id_visitor.visit_trait_item(ti),
-            InlinedItemRef::ImplItem(_, ii) => id_visitor.visit_impl_item(ii),
-        }
+    pub fn encode_inlined_item(&mut self, ii: InlinedItemRef<'tcx>) -> Lazy<Ast<'tcx>> {
+        let mut id_visitor = IdRangeComputingVisitor::new(&self.tcx.map);
+        ii.visit(&mut id_visitor);
 
         let ii_pos = self.position();
         ii.encode(self).unwrap();
@@ -60,11 +56,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 ecx: self,
                 count: 0,
             };
-            match ii {
-                InlinedItemRef::Item(_, i) => visitor.visit_item(i),
-                InlinedItemRef::TraitItem(_, ti) => visitor.visit_trait_item(ti),
-                InlinedItemRef::ImplItem(_, ii) => visitor.visit_impl_item(ii),
-            }
+            ii.visit(&mut visitor);
             visitor.count
         };
 
@@ -81,7 +73,11 @@ struct SideTableEncodingIdVisitor<'a, 'b: 'a, 'tcx: 'b> {
     count: usize,
 }
 
-impl<'a, 'b, 'tcx, 'v> Visitor<'v> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> Visitor<'tcx> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.ecx.tcx.map)
+    }
+
     fn visit_id(&mut self, id: ast::NodeId) {
         debug!("Encoding side tables for id {}", id);
 
@@ -122,17 +118,13 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
                      }];
 
     let ii = ast.item.decode((cdata, tcx, id_ranges));
+    let item_node_id = tcx.sess.next_node_id();
     let ii = ast_map::map_decoded_item(&tcx.map,
                                        parent_def_path,
                                        parent_did,
                                        ii,
-                                       tcx.sess.next_node_id());
+                                       item_node_id);
 
-    let item_node_id = match ii {
-        &InlinedItem::Item(_, ref i) => i.id,
-        &InlinedItem::TraitItem(_, ref ti) => ti.id,
-        &InlinedItem::ImplItem(_, ref ii) => ii.id,
-    };
     let inlined_did = tcx.map.local_def_id(item_node_id);
     let ty = tcx.item_type(orig_did);
     let generics = tcx.item_generics(orig_did);
