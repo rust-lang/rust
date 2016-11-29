@@ -148,10 +148,6 @@ use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 #[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Prefix<'a> {
-    /// Prefix `scheme:`, where `scheme` is the component stored
-    #[unstable(feature="redox_prefix", issue="0")]
-    Scheme(&'a OsStr),
-
     /// Prefix `\\?\`, together with the given component immediately following it.
     #[stable(feature = "rust1", since = "1.0.0")]
     Verbatim(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
@@ -191,7 +187,9 @@ impl<'a> Prefix<'a> {
             os_str_as_u8_slice(s).len()
         }
         match *self {
-            Scheme(x) => os_str_len(x) + 1,
+            #[cfg(target_os = "redox")]
+            Verbatim(x) => 1 + os_str_len(x),
+            #[cfg(not(target_os = "redox"))]
             Verbatim(x) => 4 + os_str_len(x),
             VerbatimUNC(x, y) => {
                 8 + os_str_len(x) +
