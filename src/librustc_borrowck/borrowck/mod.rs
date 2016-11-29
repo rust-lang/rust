@@ -24,7 +24,7 @@ use self::InteriorKind::*;
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
-use rustc::hir::map::blocks::FnParts;
+use rustc::hir::map::blocks::{FnParts, FnLikeNode};
 use rustc::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
@@ -978,51 +978,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
     pub fn note_and_explain_bckerr(&self, db: &mut DiagnosticBuilder, err: BckError<'tcx>,
         error_span: Span) {
-        let code = err.code;
-        match code {
-            err_mutbl => {
-                match err.cmt.note {
-                    mc::NoteClosureEnv(upvar_id) | mc::NoteUpvarRef(upvar_id) => {
-                        // If this is an `Fn` closure, it simply can't mutate upvars.
-                        // If it's an `FnMut` closure, the original variable was declared immutable.
-                        // We need to determine which is the case here.
-                        let kind = match err.cmt.upvar().unwrap().cat {
-                            Categorization::Upvar(mc::Upvar { kind, .. }) => kind,
-                            _ => bug!()
-                        };
-                        if kind == ty::ClosureKind::Fn {
-                            db.span_help(
-                                self.tcx.map.span(upvar_id.closure_expr_id),
-                                "consider changing this closure to take \
-                                 self by mutable reference");
-                        }
-                    }
-                    _ => {
-                        if let Categorization::Local(local_id) = err.cmt.cat {
-                            let span = self.tcx.map.span(local_id);
-                            if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
-                                if snippet.starts_with("ref mut ") || snippet.starts_with("&mut ") {
-                                    db.span_label(error_span, &format!("cannot reborrow mutably"));
-                                    db.span_label(error_span, &format!("try removing `&mut` here"));
-                                } else {
-                                    if snippet.starts_with("ref ") {
-                                        db.span_label(span,
-                                            &format!("use `{}` here to make mutable",
-                                                snippet.replace("ref ", "ref mut ")));
-                                    } else if snippet != "self" {
-                                        db.span_label(span,
-                                            &format!("use `mut {}` here to make mutable", snippet));
-                                    }
-                                    db.span_label(error_span, &format!("cannot borrow mutably"));
-                                }
-                            } else {
-                                db.span_label(error_span, &format!("cannot borrow mutably"));
-                            }
-                        }
-                    }
-                }
-            }
-
+        match err.code {
+            err_mutbl => self.note_and_explain_mutbl_error(db, &err, &error_span),
             err_out_of_scope(super_scope, sub_scope, cause) => {
                 let (value_kind, value_msg) = match err.cmt.cat {
                     mc::Categorization::Rvalue(_) =>
@@ -1143,6 +1100,86 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
+    fn note_and_explain_mutbl_error(&self, db: &mut DiagnosticBuilder, err: &BckError<'tcx>,
+                                    error_span: &Span) {
+        match err.cmt.note {
+            mc::NoteClosureEnv(upvar_id) | mc::NoteUpvarRef(upvar_id) => {
+                // If this is an `Fn` closure, it simply can't mutate upvars.
+                // If it's an `FnMut` closure, the original variable was declared immutable.
+                // We need to determine which is the case here.
+                let kind = match err.cmt.upvar().unwrap().cat {
+                    Categorization::Upvar(mc::Upvar { kind, .. }) => kind,
+                    _ => bug!()
+                };
+                if kind == ty::ClosureKind::Fn {
+                    db.span_help(self.tcx.map.span(upvar_id.closure_expr_id),
+                                 "consider changing this closure to take \
+                                 self by mutable reference");
+                }
+            }
+            _ => {
+                if let Categorization::Deref(ref inner_cmt, ..) = err.cmt.cat {
+                    if let Categorization::Local(local_id) = inner_cmt.cat {
+                        let parent = self.tcx.map.get_parent_node(local_id);
+                        let opt_fn_decl = FnLikeNode::from_node(self.tcx.map.get(parent))
+                            .map(|fn_like| fn_like.decl());
+
+                        if let Some(fn_decl) = opt_fn_decl {
+                            if let Some(ref arg) = fn_decl.inputs.iter()
+                                .find(|ref arg| arg.pat.id == local_id) {
+                                if let hir::TyRptr(
+                                    opt_lifetime,
+                                    hir::MutTy{mutbl: hir::Mutability::MutImmutable, ref ty}) =
+                                    arg.ty.node {
+                                    if let Some(lifetime) = opt_lifetime {
+                                        if let Ok(snippet) = self.tcx.sess.codemap()
+                                            .span_to_snippet(ty.span) {
+                                            if let Ok(lifetime_snippet) = self.tcx.sess.codemap()
+                                                .span_to_snippet(lifetime.span) {
+                                                    db.span_label(arg.ty.span,
+                                                                  &format!("use `&{} mut {}` \
+                                                                            here to make mutable",
+                                                                            lifetime_snippet,
+                                                                            snippet));
+                                            }
+                                        }
+                                    }
+                                    else if let Ok(snippet) = self.tcx.sess.codemap()
+                                        .span_to_snippet(arg.ty.span) {
+                                        if snippet.starts_with("&") {
+                                            db.span_label(arg.ty.span,
+                                                          &format!("use `{}` here to make mutable",
+                                                                   snippet.replace("&", "&mut ")));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if let Categorization::Local(local_id) = err.cmt.cat {
+                    let span = self.tcx.map.span(local_id);
+                    if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+                        if snippet.starts_with("ref mut ") || snippet.starts_with("&mut ") {
+                            db.span_label(*error_span, &format!("cannot reborrow mutably"));
+                            db.span_label(*error_span, &format!("try removing `&mut` here"));
+                        } else {
+                            if snippet.starts_with("ref ") {
+                                db.span_label(span, &format!("use `{}` here to make mutable",
+                                                             snippet.replace("ref ", "ref mut ")));
+                            } else if snippet != "self" {
+                                db.span_label(span,
+                                              &format!("use `mut {}` here to make mutable",
+                                                       snippet));
+                            }
+                            db.span_label(*error_span, &format!("cannot borrow mutably"));
+                        }
+                    } else {
+                        db.span_label(*error_span, &format!("cannot borrow mutably"));
+                    }
+                }
+            }
+        }
+    }
     pub fn append_loan_path_to_string(&self,
                                       loan_path: &LoanPath<'tcx>,
                                       out: &mut String) {
