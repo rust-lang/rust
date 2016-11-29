@@ -131,6 +131,9 @@ define_impl! { f32x4, boolu32x4, f32, 2, x0, x1, x2, x3 }
 define_ty_internal! { u64x2, u64, u64 }
 define_impl! { u64x2, boolu64x2, u64, 2, x0, x1 }
 
+define_ty_internal! { i64x2, i64, i64 }
+define_impl! { i64x2, boolu64x2, i64, 2, x0, x1 }
+
 define_ty_internal! { u32x4, u32, u32, u32, u32 }
 define_impl! { u32x4, boolu32x4, u32, 4, x0, x1, x2, x3 }
 

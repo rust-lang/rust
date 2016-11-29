@@ -1,4 +1,6 @@
+use std::mem;
 use std::os::raw::c_void;
+use std::ptr;
 
 use simd::*;
 use v128::*;
@@ -309,6 +311,198 @@ pub unsafe fn _mm_bslli_si128(a: __m128i, imm8: i32) -> __m128i {
     _mm_slli_si128(a, imm8)
 }
 
+/// Shift `a` right by `imm8` bytes while shifting in zeros, and return the
+/// results.
+#[inline]
+pub unsafe fn _mm_bsrli_si128(a: __m128i, imm8: i32) -> __m128i {
+    _mm_srli_si128(a, imm8)
+}
+
+/// Shift packed 16-bit integers in `a` left by `imm8` while shifting in zeros,
+/// and return the results.
+#[inline]
+pub unsafe fn _mm_slli_epi16(a: __m128i, imm8: i32) -> __m128i  {
+    pslliw(u16x8::from(a), imm8).as_m128i()
+}
+
+
+/// Shift `a` right by `imm8` bytes while shifting in zeros, and return the
+/// results.
+#[inline]
+pub unsafe fn _mm_srli_si128(a: __m128i, imm8: i32) -> __m128i {
+    let (a, zero, imm8) = (u8x16::from(a), u8x16::splat(0), imm8 as u32);
+    const fn add(a: u32, b: u32) -> u32 { a + b }
+    macro_rules! shuffle {
+        ($shift:expr) => {
+            simd_shuffle16::<u8x16, u8x16>(a, zero, [
+                add(0, $shift), add(1, $shift),
+                add(2, $shift), add(3, $shift),
+                add(4, $shift), add(5, $shift),
+                add(6, $shift), add(7, $shift),
+                add(8, $shift), add(9, $shift),
+                add(10, $shift), add(11, $shift),
+                add(12, $shift), add(13, $shift),
+                add(14, $shift), add(15, $shift),
+            ])
+        }
+    }
+    match imm8 {
+        0 => shuffle!(0), 1 => shuffle!(1),
+        2 => shuffle!(2), 3 => shuffle!(3),
+        4 => shuffle!(4), 5 => shuffle!(5),
+        6 => shuffle!(6), 7 => shuffle!(7),
+        8 => shuffle!(8), 9 => shuffle!(9),
+        10 => shuffle!(10), 11 => shuffle!(11),
+        12 => shuffle!(12), 13 => shuffle!(13),
+        14 => shuffle!(14), 15 => shuffle!(15),
+        _ => shuffle!(16),
+    }.as_m128i()
+}
+
+/// Convert the lower two packed 32-bit integers in `a` to packed
+/// double-precision (64-bit) floating-point elements, and return the results.
+#[inline]
+pub unsafe fn _mm_cvtepi32_pd(a: __m128i) -> __m128d  {
+    let a = u32x4::from(a);
+    simd_cast::<u32x2, f64x2>(simd_shuffle2(a, a, [0, 1])).as_m128d()
+}
+
+/// Set packed 64-bit integers with the supplied values.
+#[inline]
+pub unsafe fn _mm_set_epi64x(e1: i64, e0: i64) -> __m128i {
+    i64x2::new(e0, e1).as_m128i()
+}
+
+/// Set packed 64-bit integers with the supplied values.
+#[inline]
+unsafe fn _mm_set_epi64(_e1: __m64, _e0: __m64) -> __m128i {
+    unimplemented!()
+}
+
+/// Set packed 32-bit integers with the supplied values.
+#[inline]
+pub unsafe fn _mm_set_epi32(e3: i32, e2: i32, e1: i32, e0: i32) -> __m128i {
+    i32x4::new(e0, e1, e2, e3).as_m128i()
+}
+
+/// Set packed 16-bit integers with the supplied values.
+#[inline]
+pub unsafe fn _mm_set_epi16(
+    e7: i16, e6: i16, e5: i16, e4: i16, e3: i16, e2: i16, e1: i16, e0: i16,
+) -> __m128i {
+    i16x8::new(e0, e1, e2, e3, e4, e5, e6, e7).as_m128i()
+}
+
+/// Set packed 8-bit integers with the supplied values.
+#[inline]
+pub unsafe fn _mm_set_epi8(
+    e15: i8, e14: i8, e13: i8, e12: i8, e11: i8, e10: i8, e9: i8, e8: i8,
+    e7: i8, e6: i8, e5: i8, e4: i8, e3: i8, e2: i8, e1: i8, e0: i8,
+) -> __m128i {
+    i8x16::new(
+        e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15,
+    ).as_m128i()
+}
+
+/// Broadcast 64-bit integer `a` to all elements.
+#[inline]
+unsafe fn _mm_set1_epi64(_a: __m64) -> __m128i {
+    unimplemented!()
+}
+
+/// Broadcast 64-bit integer `a` to all elements.
+#[inline]
+unsafe fn _mm_set1_epi64x(a: i64) -> __m128i {
+    i64x2::splat(a).as_m128i()
+}
+
+/// Broadcast 32-bit integer `a` to all elements.
+#[inline]
+unsafe fn _mm_set1_epi32(a: i32) -> __m128i {
+    i32x4::splat(a).as_m128i()
+}
+
+/// Broadcast 16-bit integer `a` to all elements.
+#[inline]
+unsafe fn _mm_set1_epi16(a: i16) -> __m128i {
+    i16x8::splat(a).as_m128i()
+}
+
+/// Broadcast 8-bit integer `a` to all elements.
+#[inline]
+unsafe fn _mm_set1_epi8(a: i8) -> __m128i {
+    i8x16::splat(a).as_m128i()
+}
+
+/// Set packed 64-bit integers with the supplied values in reverse order.
+#[inline]
+unsafe fn _mm_setr_epi64(_e1: __m64, _e0: __m64) -> __m128i {
+    unimplemented!()
+}
+
+/// Set packed 32-bit integers with the supplied values in reverse order.
+#[inline]
+pub unsafe fn _mm_setr_epi32(e3: i32, e2: i32, e1: i32, e0: i32) -> __m128i {
+    i32x4::new(e3, e2, e1, e0).as_m128i()
+}
+
+/// Set packed 16-bit integers with the supplied values in reverse order.
+#[inline]
+pub unsafe fn _mm_setr_epi16(
+    e7: i16, e6: i16, e5: i16, e4: i16, e3: i16, e2: i16, e1: i16, e0: i16,
+) -> __m128i {
+    i16x8::new(e7, e6, e5, e4, e3, e2, e1, e0).as_m128i()
+}
+
+/// Set packed 8-bit integers with the supplied values in reverse order.
+#[inline]
+pub unsafe fn _mm_setr_epi8(
+    e15: i8, e14: i8, e13: i8, e12: i8, e11: i8, e10: i8, e9: i8, e8: i8,
+    e7: i8, e6: i8, e5: i8, e4: i8, e3: i8, e2: i8, e1: i8, e0: i8,
+) -> __m128i {
+    i8x16::new(
+        e15, e14, e13, e12, e11, e10, e9, e8, e7, e6, e5, e4, e3, e2, e1, e0,
+    ).as_m128i()
+}
+
+/// Returns a vector with all elements set to zero.
+#[inline]
+pub unsafe fn _mm_setzero_si128() -> __m128i {
+    u64x2::splat(0).as_m128i()
+}
+
+/// Load 64-bit integer from memory into first element of returned vector.
+#[inline]
+pub unsafe fn _mm_loadl_epi64(mem_addr: *const __m128i) -> __m128i {
+    _mm_set_epi64x(0, i64x2::from(*mem_addr).extract(0))
+}
+
+/// Load 128-bits of integer data from memory into a new vector.
+///
+/// `mem_addr` must be aligned on a 16-byte boundary.
+#[inline]
+pub unsafe fn _mm_load_si128(mem_addr: *const __m128i) -> __m128i {
+    *mem_addr
+}
+
+/// Load 128-bits of integer data from memory into a new vector.
+///
+/// `mem_addr` does not need to be aligned on any particular boundary.
+#[inline]
+pub unsafe fn _mm_loadu_si128(mem_addr: *const __m128i) -> __m128i {
+    let mut dst = mem::uninitialized();
+    ptr::copy_nonoverlapping(
+        mem_addr as *const u8,
+        &mut dst as *mut __m128i as *mut u8,
+        mem::size_of::<__m128i>());
+    dst
+}
+
+
+
+
+
+
 
 
 
@@ -381,6 +575,8 @@ extern {
     pub fn psubusb(a: u8x16, b: u8x16) -> u8x16;
     #[link_name = "llvm.x86.sse2.psubus.w"]
     pub fn psubusw(a: u16x8, b: u16x8) -> u16x8;
+    #[link_name = "llvm.x86.sse2.pslli.w"]
+    pub fn pslliw(a: u16x8, imm8: i32) -> u16x8;
 }
 
 #[cfg(test)]
@@ -808,5 +1004,81 @@ mod tests {
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let r = unsafe { sse2::_mm_slli_si128(a.as_m128i(), -0x80000000) };
         assert_eq!(u8x16::from(r), u8x16::splat(0));
+    }
+
+    #[test]
+    fn _mm_slli_epi16() {
+        let a = u16x8::new(0xFFFF, 0x0FFF, 0x00FF, 0x000F, 0, 0, 0, 0);
+        let r = unsafe { sse2::_mm_slli_epi16(a.as_m128i(), 4) };
+        let e = u16x8::new(0xFFF0, 0xFFF0, 0x0FF0, 0x00F0, 0, 0, 0, 0);
+        assert_eq!(u16x8::from(r), e);
+    }
+
+    #[test]
+    fn _mm_srli_si128() {
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = unsafe { sse2::_mm_srli_si128(a.as_m128i(), 1) };
+        let e = u8x16::new(
+            2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0);
+        assert_eq!(u8x16::from(r), e);
+
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = unsafe { sse2::_mm_srli_si128(a.as_m128i(), 15) };
+        let e = u8x16::new(
+            16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(u8x16::from(r), e);
+
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = unsafe { sse2::_mm_srli_si128(a.as_m128i(), 16) };
+        assert_eq!(u8x16::from(r), u8x16::splat(0));
+
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = unsafe { sse2::_mm_srli_si128(a.as_m128i(), -1) };
+        assert_eq!(u8x16::from(r), u8x16::splat(0));
+
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = unsafe { sse2::_mm_srli_si128(a.as_m128i(), -0x80000000) };
+        assert_eq!(u8x16::from(r), u8x16::splat(0));
+    }
+
+    #[test]
+    fn _mm_cvtepi32_pd() {
+        unsafe {
+            let a = sse2::_mm_set_epi32(35, 25, 15, 5);
+            let r = sse2::_mm_cvtepi32_pd(a);
+            assert_eq!(f64x2::from(r), f64x2::new(5.0, 15.0));
+        }
+    }
+
+    #[test]
+    fn _mm_loadl_epi64() {
+        unsafe {
+            let a = sse2::_mm_set_epi64x(5, 6);
+            let r = sse2::_mm_loadl_epi64(&a as *const _);
+            assert_eq!(i64x2::from(r), i64x2::new(6, 0));
+        }
+    }
+
+    #[test]
+    fn _mm_load_si128() {
+        unsafe {
+            let a = sse2::_mm_set_epi64x(5, 6);
+            let r = sse2::_mm_load_si128(&a as *const _);
+            assert_eq!(i64x2::from(a), i64x2::from(r));
+        }
+    }
+
+    #[test]
+    fn _mm_loadu_si128() {
+        unsafe {
+            let a = sse2::_mm_set_epi64x(5, 6);
+            let r = sse2::_mm_loadu_si128(&a as *const _);
+            assert_eq!(i64x2::from(a), i64x2::from(r));
+        }
     }
 }

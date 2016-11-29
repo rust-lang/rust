@@ -18,7 +18,7 @@ fn main() {
         // let b = s::u8x16::new(
             // arg3, arg3, arg3, arg3, arg3, arg3, arg3, arg3,
             // arg4, arg4, arg4, arg4, arg4, arg4, arg4, arg4);
-        let r = s::_mm_slli_si128(a.as_m128i(), arg3 as i32);
+        let r = s::_mm_srli_si128(a.as_m128i(), arg3 as i32);
         println!("{:?}", s::u8x16::from(r));
     }
 }
