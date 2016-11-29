@@ -12,7 +12,6 @@ Table of contents:
 *   [Lint list](#lints)
 *   [Usage instructions](#usage)
 *   [Configuration](#configuration)
-*   [*clippy-service*](#link-with-clippy-service)
 *   [License](#license)
 
 ## Usage
@@ -170,15 +169,6 @@ transparently:
 ```rust
 #[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
 ```
-
-## Link with clippy service
-
-`clippy-service` is a rust web initiative providing `rust-clippy` as a web service.
-
-Both projects are independent and maintained by different people
-(even if some `clippy-service`'s contributions are authored by some `rust-clippy` members).
-
-You can check out this great service at [clippy.bashy.io](https://clippy.bashy.io/).
 
 ## Lints
 
