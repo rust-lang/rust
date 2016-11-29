@@ -25,6 +25,7 @@ use rustc::middle::mem_categorization::{cmt};
 use rustc::session::Session;
 use rustc::traits::Reveal;
 use rustc::ty::{self, TyCtxt};
+use rustc::lint;
 use rustc_errors::DiagnosticBuilder;
 
 use rustc::hir::def::*;
@@ -150,7 +151,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             }
         }
 
-        MatchCheckCtxt::create_and_enter(self.tcx, |ref mut cx| {
+        MatchCheckCtxt::create_and_enter(self.tcx, scrut.id, |ref mut cx| {
             let mut have_errors = false;
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
@@ -210,7 +211,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             "local binding"
         };
 
-        MatchCheckCtxt::create_and_enter(self.tcx, |ref mut cx| {
+        MatchCheckCtxt::create_and_enter(self.tcx, pat.id, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx);
             let pats : Matrix = vec![vec![
                 expand_pattern(cx, patcx.lower_pattern(pat))
@@ -324,14 +325,19 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                         },
 
                         hir::MatchSource::Normal => {
-                            let mut err = struct_span_err!(cx.tcx.sess, pat.span, E0001,
-                                                           "unreachable pattern");
-                            err.span_label(pat.span, &"this is an unreachable pattern");
-                            // if we had a catchall pattern, hint at that
+                            // if we had a catchall pattern, raise an error.
+                            // Otherwise an unreachable pattern raises a warning.
                             if let Some(catchall) = catchall {
+                                let mut err = struct_span_err!(cx.tcx.sess, pat.span, E0001,
+                                                               "unreachable pattern");
+                                err.span_label(pat.span, &"this is an unreachable pattern");
                                 err.span_note(catchall, "this pattern matches any value");
+                                err.emit();
+                            } else {
+                                cx.tcx.sess.add_lint(lint::builtin::UNREACHABLE_PATTERNS,
+                                                     hir_pat.id, pat.span,
+                                                     String::from("unreachable pattern"));
                             }
-                            err.emit();
                         },
 
                         hir::MatchSource::TryDesugar => {

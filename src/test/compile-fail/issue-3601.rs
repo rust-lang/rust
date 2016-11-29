@@ -40,6 +40,5 @@ fn main() {
         box NodeKind::Element(ed) => match ed.kind { //~ ERROR non-exhaustive patterns
             box ElementKind::HTMLImageElement(ref d) if d.image.is_some() => { true }
         },
-        _ => panic!("WAT") //~ ERROR unreachable pattern
     };
 }

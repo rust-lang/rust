@@ -8,18 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(overflowing_literals)]
-#![deny(unreachable_patterns)]
-
-fn test(val: u8) {
-  match val {
-    256 => print!("0b1110\n"),
-    512 => print!("0b1111\n"),
-    //~^ ERROR: unreachable pattern
-    _   => print!("fail\n"),
-  }
-}
+#![feature(advanced_slice_patterns, slice_patterns)]
 
 fn main() {
-  test(1);
+    let buf = &[0, 1, 2, 3];
+
+    match buf { //~ ERROR non-exhaustive
+        b"AAAA" => {}
+    }
+
+    let buf: &[u8] = buf;
+
+    match buf { //~ ERROR non-exhaustive
+        b"AAAA" => {}
+    }
 }
+

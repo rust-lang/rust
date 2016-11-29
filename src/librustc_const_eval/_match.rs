@@ -17,7 +17,7 @@ use eval::{compare_const_vals};
 
 use rustc_const_math::ConstInt;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::Idx;
 
 use pattern::{FieldPattern, Pattern, PatternKind};
@@ -29,6 +29,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::mir::Field;
 use rustc::util::common::ErrorReported;
 
+use syntax::ast::NodeId;
 use syntax_pos::{Span, DUMMY_SP};
 
 use arena::TypedArena;
@@ -144,6 +145,14 @@ impl<'a, 'tcx> FromIterator<Vec<&'a Pattern<'tcx>>> for Matrix<'a, 'tcx> {
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    /// (roughly) where in the code the match occurs. This is necessary for
+    /// checking inhabited-ness of types because whether a type is (visibly)
+    /// inhabited can depend on whether it was defined in the current module or
+    /// not. eg.
+    ///     struct Foo { _private: ! }
+    /// can not be seen to be empty outside it's module and should not
+    /// be matchable with an empty match statement.
+    pub node: NodeId,
     /// A wild pattern with an error type - it exists to avoid having to normalize
     /// associated types to get field types.
     pub wild_pattern: &'a Pattern<'tcx>,
@@ -154,6 +163,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub fn create_and_enter<F, R>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        node: NodeId,
         f: F) -> R
         where F: for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R
     {
@@ -167,6 +177,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
         f(MatchCheckCtxt {
             tcx: tcx,
+            node: node,
             wild_pattern: &wild_pattern,
             pattern_arena: &pattern_arena,
             byte_array_map: FxHashMap(),
@@ -362,9 +373,9 @@ impl<'tcx> Witness<'tcx> {
 /// Therefore, if there is some pattern that is unmatched by `matrix`, it will
 /// still be unmatched if the first constructor is replaced by any of the constructors
 /// in the return value.
-fn missing_constructors(cx: &mut MatchCheckCtxt,
-                        matrix: &Matrix,
-                        pcx: PatternContext) -> Vec<Constructor> {
+fn missing_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
+                                      matrix: &Matrix,
+                                      pcx: PatternContext<'tcx>) -> Vec<Constructor> {
     let used_constructors: Vec<Constructor> =
         matrix.0.iter()
         .flat_map(|row| pat_constructors(cx, row[0], pcx).unwrap_or(vec![]))
@@ -384,16 +395,46 @@ fn missing_constructors(cx: &mut MatchCheckCtxt,
 ///
 /// but is instead bounded by the maximum fixed length of slice patterns in
 /// the column of patterns being analyzed.
-fn all_constructors(_cx: &mut MatchCheckCtxt, pcx: PatternContext) -> Vec<Constructor> {
+///
+/// We make sure to omit constructors that are statically impossible. eg for
+/// Option<!> we do not include Some(_) in the returned list of constructors.
+fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
+                                  pcx: PatternContext<'tcx>) -> Vec<Constructor>
+{
     match pcx.ty.sty {
         ty::TyBool =>
             [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
-        ty::TySlice(_) =>
-            (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect(),
-        ty::TyArray(_, length) => vec![Slice(length)],
-        ty::TyAdt(def, _) if def.is_enum() && def.variants.len() > 1 =>
-            def.variants.iter().map(|v| Variant(v.did)).collect(),
-        _ => vec![Single]
+        ty::TySlice(ref sub_ty) => {
+            if sub_ty.is_uninhabited(Some(cx.node), cx.tcx) {
+                vec![Slice(0)]
+            } else {
+                (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect()
+            }
+        }
+        ty::TyArray(ref sub_ty, length) => {
+            if length == 0 || !sub_ty.is_uninhabited(Some(cx.node), cx.tcx) {
+                vec![Slice(length)]
+            } else {
+                vec![]
+            }
+        }
+        ty::TyAdt(def, substs) if def.is_enum() && def.variants.len() != 1 => {
+            def.variants.iter().filter_map(|v| {
+                let mut visited = FxHashSet::default();
+                if v.is_uninhabited_recurse(&mut visited, Some(cx.node), cx.tcx, substs, false) {
+                    None
+                } else {
+                    Some(Variant(v.did))
+                }
+            }).collect()
+        }
+        _ => {
+            if pcx.ty.is_uninhabited(Some(cx.node), cx.tcx) {
+                vec![]
+            } else {
+                vec![Single]
+            }
+        }
     }
 }
 
