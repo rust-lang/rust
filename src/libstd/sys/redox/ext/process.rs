@@ -86,12 +86,12 @@ pub trait CommandExt {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl CommandExt for process::Command {
     fn uid(&mut self, id: u32) -> &mut process::Command {
-        self.as_inner_mut().uid(id as usize);
+        self.as_inner_mut().uid(id);
         self
     }
 
     fn gid(&mut self, id: u32) -> &mut process::Command {
-        self.as_inner_mut().gid(id as usize);
+        self.as_inner_mut().gid(id);
         self
     }
 

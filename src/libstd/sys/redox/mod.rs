@@ -1,7 +1,8 @@
 #![allow(dead_code, missing_docs, bad_style)]
 
+pub extern crate syscall;
+
 use io::{self, ErrorKind};
-use libc;
 
 pub mod args;
 pub mod backtrace;
@@ -42,40 +43,40 @@ pub fn init() {
         use intrinsics;
         let msg = "fatal runtime error: out of memory\n";
         unsafe {
-            let _ = libc::write(libc::STDERR_FILENO, msg.as_bytes());
+            let _ = syscall::write(2, msg.as_bytes());
             intrinsics::abort();
         }
     }
 }
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
-    match errno as libc::c_int {
-        libc::ECONNREFUSED => ErrorKind::ConnectionRefused,
-        libc::ECONNRESET => ErrorKind::ConnectionReset,
-        libc::EPERM | libc::EACCES => ErrorKind::PermissionDenied,
-        libc::EPIPE => ErrorKind::BrokenPipe,
-        libc::ENOTCONN => ErrorKind::NotConnected,
-        libc::ECONNABORTED => ErrorKind::ConnectionAborted,
-        libc::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
-        libc::EADDRINUSE => ErrorKind::AddrInUse,
-        libc::ENOENT => ErrorKind::NotFound,
-        libc::EINTR => ErrorKind::Interrupted,
-        libc::EINVAL => ErrorKind::InvalidInput,
-        libc::ETIMEDOUT => ErrorKind::TimedOut,
-        libc::EEXIST => ErrorKind::AlreadyExists,
+    match errno {
+        syscall::ECONNREFUSED => ErrorKind::ConnectionRefused,
+        syscall::ECONNRESET => ErrorKind::ConnectionReset,
+        syscall::EPERM | syscall::EACCES => ErrorKind::PermissionDenied,
+        syscall::EPIPE => ErrorKind::BrokenPipe,
+        syscall::ENOTCONN => ErrorKind::NotConnected,
+        syscall::ECONNABORTED => ErrorKind::ConnectionAborted,
+        syscall::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
+        syscall::EADDRINUSE => ErrorKind::AddrInUse,
+        syscall::ENOENT => ErrorKind::NotFound,
+        syscall::EINTR => ErrorKind::Interrupted,
+        syscall::EINVAL => ErrorKind::InvalidInput,
+        syscall::ETIMEDOUT => ErrorKind::TimedOut,
+        syscall::EEXIST => ErrorKind::AlreadyExists,
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match
         // clause
-        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
+        x if x == syscall::EAGAIN || x == syscall::EWOULDBLOCK =>
             ErrorKind::WouldBlock,
 
         _ => ErrorKind::Other,
     }
 }
 
-pub fn cvt(result: Result<usize, libc::Error>) -> io::Result<usize> {
-    result.map_err(|err| io::Error::from_raw_os_error(err.errno as i32))
+pub fn cvt(result: Result<usize, syscall::Error>) -> io::Result<usize> {
+    result.map_err(|err| io::Error::from_raw_os_error(err.errno))
 }
 
 /// On Redox, use an illegal instruction to abort

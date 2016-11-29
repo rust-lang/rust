@@ -19,7 +19,6 @@ use ffi::{OsString, OsStr};
 use fmt;
 use io::{self, Read, Write};
 use iter;
-use libc::{self, c_int, c_char, c_void};
 use marker::PhantomData;
 use mem;
 use memchr;
@@ -28,8 +27,7 @@ use ptr;
 use slice;
 use str;
 use sys_common::mutex::Mutex;
-use sys::cvt;
-use sys::fd;
+use sys::{cvt, fd, syscall};
 use vec;
 
 const TMPBUF_SZ: usize = 128;
@@ -42,7 +40,7 @@ pub fn errno() -> i32 {
 
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
-    if let Some(string) = libc::STR_ERROR.get(errno as usize) {
+    if let Some(string) = syscall::STR_ERROR.get(errno as usize) {
         string.to_string()
     } else {
         "unknown error".to_string()
@@ -51,12 +49,12 @@ pub fn error_string(errno: i32) -> String {
 
 pub fn getcwd() -> io::Result<PathBuf> {
     let mut buf = [0; 4096];
-    let count = cvt(libc::getcwd(&mut buf))?;
+    let count = cvt(syscall::getcwd(&mut buf))?;
     Ok(PathBuf::from(OsString::from_vec(buf[.. count].to_vec())))
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
-    cvt(libc::chdir(p.to_str().unwrap())).and(Ok(()))
+    cvt(syscall::chdir(p.to_str().unwrap())).and(Ok(()))
 }
 
 pub struct SplitPaths<'a> {
@@ -200,6 +198,6 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    let _ = libc::exit(code as usize);
+    let _ = syscall::exit(code as usize);
     unreachable!();
 }

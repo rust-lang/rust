@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use io;
-use libc;
-use sys::cvt;
+use sys::{cvt, syscall};
 use sys::fd::FileDesc;
 
 pub struct Stdin(());
@@ -21,14 +20,14 @@ impl Stdin {
     pub fn new() -> io::Result<Stdin> { Ok(Stdin(())) }
 
     pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
-        let fd = FileDesc::new(libc::STDIN_FILENO);
+        let fd = FileDesc::new(0);
         let ret = fd.read(data);
         fd.into_raw();
         ret
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        let fd = FileDesc::new(libc::STDIN_FILENO);
+        let fd = FileDesc::new(0);
         let ret = fd.read_to_end(buf);
         fd.into_raw();
         ret
@@ -39,14 +38,14 @@ impl Stdout {
     pub fn new() -> io::Result<Stdout> { Ok(Stdout(())) }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        let fd = FileDesc::new(libc::STDOUT_FILENO);
+        let fd = FileDesc::new(1);
         let ret = fd.write(data);
         fd.into_raw();
         ret
     }
 
     pub fn flush(&self) -> io::Result<()> {
-        cvt(libc::fsync(libc::STDOUT_FILENO)).and(Ok(()))
+        cvt(syscall::fsync(1)).and(Ok(()))
     }
 }
 
@@ -54,14 +53,14 @@ impl Stderr {
     pub fn new() -> io::Result<Stderr> { Ok(Stderr(())) }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        let fd = FileDesc::new(libc::STDERR_FILENO);
+        let fd = FileDesc::new(2);
         let ret = fd.write(data);
         fd.into_raw();
         ret
     }
 
     pub fn flush(&self) -> io::Result<()> {
-        cvt(libc::fsync(libc::STDERR_FILENO)).and(Ok(()))
+        cvt(syscall::fsync(2)).and(Ok(()))
     }
 }
 
@@ -74,9 +73,9 @@ impl io::Write for Stderr {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        cvt(libc::fsync(libc::STDERR_FILENO)).and(Ok(()))
+        cvt(syscall::fsync(2)).and(Ok(()))
     }
 }
 
-pub const EBADF_ERR: i32 = ::libc::EBADF;
+pub const EBADF_ERR: i32 = ::sys::syscall::EBADF;
 pub const STDIN_BUF_SIZE: usize = ::sys_common::io::DEFAULT_BUF_SIZE;

@@ -9,17 +9,15 @@
 // except according to those terms.
 
 use alloc::boxed::FnBox;
-use cmp;
 use ffi::CStr;
 use io;
-use libc;
 use mem;
 use sys_common::thread::start_thread;
-use sys::cvt;
+use sys::{cvt, syscall};
 use time::Duration;
 
 pub struct Thread {
-    id: libc::pid_t,
+    id: usize,
 }
 
 // Some platforms may have pthread_t as a pointer in which case we still want
@@ -31,10 +29,10 @@ impl Thread {
     pub unsafe fn new<'a>(_stack: usize, p: Box<FnBox() + 'a>) -> io::Result<Thread> {
         let p = box p;
 
-        let id = cvt(libc::clone(libc::CLONE_VM | libc::CLONE_FS | libc::CLONE_FILES))?;
+        let id = cvt(syscall::clone(syscall::CLONE_VM | syscall::CLONE_FS | syscall::CLONE_FILES))?;
         if id == 0 {
             start_thread(&*p as *const _ as *mut _);
-            let _ = libc::exit(0);
+            let _ = syscall::exit(0);
             panic!("thread failed to exit");
         } else {
             mem::forget(p);
@@ -43,7 +41,7 @@ impl Thread {
     }
 
     pub fn yield_now() {
-        let ret = unsafe { libc::sched_yield() };
+        let ret = syscall::sched_yield().expect("failed to sched_yield");
         debug_assert_eq!(ret, 0);
     }
 
@@ -58,13 +56,13 @@ impl Thread {
         // If we're awoken with a signal then the return value will be -1 and
         // nanosleep will fill in `ts` with the remaining time.
         while secs > 0 || nsecs > 0 {
-            let req = libc::timespec {
-                tv_sec: cmp::min(libc::time_t::max_value() as u64, secs) as libc::time_t,
+            let req = syscall::TimeSpec {
+                tv_sec: secs as i64,
                 tv_nsec: nsecs,
             };
             secs -= req.tv_sec as u64;
-            let mut rem = libc::timespec::default();
-            if libc::nanosleep(&req, &mut rem).is_err() {
+            let mut rem = syscall::TimeSpec::default();
+            if syscall::nanosleep(&req, &mut rem).is_err() {
                 secs += rem.tv_sec as u64;
                 nsecs = rem.tv_nsec;
             } else {
@@ -75,12 +73,12 @@ impl Thread {
 
     pub fn join(self) {
         let mut status = 0;
-        libc::waitpid(self.id, &mut status, 0).unwrap();
+        syscall::waitpid(self.id, &mut status, 0).unwrap();
     }
 
-    pub fn id(&self) -> libc::pid_t { self.id }
+    pub fn id(&self) -> usize { self.id }
 
-    pub fn into_id(self) -> libc::pid_t {
+    pub fn into_id(self) -> usize {
         let id = self.id;
         mem::forget(self);
         id
