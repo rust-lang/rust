@@ -160,14 +160,11 @@ impl IdentMacroExpander for MacroRulesExpander {
               tts: Vec<tokenstream::TokenTree>,
               attrs: Vec<ast::Attribute>)
               -> Box<MacResult> {
-        let export = attr::contains_name(&attrs, "macro_export");
         let def = ast::MacroDef {
             ident: ident,
             id: ast::DUMMY_NODE_ID,
             span: span,
-            imported_from: None,
             body: tts,
-            allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
             attrs: attrs,
         };
 
@@ -178,7 +175,7 @@ impl IdentMacroExpander for MacroRulesExpander {
             MacEager::items(placeholders::macro_scope_placeholder().make_items())
         };
 
-        cx.resolver.add_macro(cx.current_expansion.mark, def, export);
+        cx.resolver.add_macro(cx.current_expansion.mark, def);
         result
     }
 }
@@ -282,7 +279,7 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
         valid: valid,
     });
 
-    NormalTT(exp, Some(def.span), def.allow_internal_unstable)
+    NormalTT(exp, Some(def.span), attr::contains_name(&def.attrs, "allow_internal_unstable"))
 }
 
 fn check_lhs_nt_follows(sess: &ParseSess, lhs: &TokenTree) -> bool {

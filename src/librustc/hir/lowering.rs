@@ -987,8 +987,6 @@ impl<'a> LoweringContext<'a> {
             attrs: self.lower_attrs(&m.attrs),
             id: m.id,
             span: m.span,
-            imported_from: m.imported_from.map(|x| x.name),
-            allow_internal_unstable: m.allow_internal_unstable,
             body: m.body.clone().into(),
         }
     }

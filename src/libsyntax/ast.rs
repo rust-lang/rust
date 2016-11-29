@@ -1972,8 +1972,6 @@ pub struct MacroDef {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
-    pub imported_from: Option<Ident>,
-    pub allow_internal_unstable: bool,
     pub body: Vec<TokenTree>,
 }
 
