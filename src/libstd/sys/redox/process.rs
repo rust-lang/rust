@@ -13,12 +13,11 @@ use env;
 use ffi::OsStr;
 use fmt;
 use io::{self, Error, ErrorKind};
-use libc::{self, pid_t, gid_t, uid_t};
 use path::Path;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
 use sys::pipe::{self, AnonPipe};
-use sys::cvt;
+use sys::{cvt, syscall};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -47,8 +46,8 @@ pub struct Command {
     env: HashMap<String, String>,
 
     cwd: Option<String>,
-    uid: Option<uid_t>,
-    gid: Option<gid_t>,
+    uid: Option<u32>,
+    gid: Option<u32>,
     saw_nul: bool,
     closures: Vec<Box<FnMut() -> io::Result<()> + Send + Sync>>,
     stdin: Option<Stdio>,
@@ -121,10 +120,10 @@ impl Command {
     pub fn cwd(&mut self, dir: &OsStr) {
         self.cwd = Some(dir.to_str().unwrap().to_owned());
     }
-    pub fn uid(&mut self, id: uid_t) {
+    pub fn uid(&mut self, id: u32) {
         self.uid = Some(id);
     }
-    pub fn gid(&mut self, id: gid_t) {
+    pub fn gid(&mut self, id: u32) {
         self.gid = Some(id);
     }
 
@@ -156,11 +155,11 @@ impl Command {
          let (input, output) = pipe::anon_pipe()?;
 
          let pid = unsafe {
-             match cvt(libc::clone(0))? {
+             match cvt(syscall::clone(0))? {
                  0 => {
                      drop(input);
                      let err = self.do_exec(theirs);
-                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
+                     let errno = err.raw_os_error().unwrap_or(syscall::EINVAL) as u32;
                      let bytes = [
                          (errno >> 24) as u8,
                          (errno >> 16) as u8,
@@ -173,7 +172,7 @@ impl Command {
                      // we want to be sure we *don't* run at_exit destructors as
                      // we're being torn down regardless
                      assert!(output.write(&bytes).is_ok());
-                     let _ = libc::exit(1);
+                     let _ = syscall::exit(1);
                      panic!("failed to exit");
                  }
                  n => n,
@@ -261,7 +260,7 @@ impl Command {
     // this file descriptor by dropping the FileDesc (which contains an
     // allocation). Instead we just close it manually. This will never
     // have the drop glue anyway because this code never returns (the
-    // child will either exec() or invoke libc::exit)
+    // child will either exec() or invoke syscall::exit)
     unsafe fn do_exec(&mut self, stdio: ChildPipes) -> io::Error {
         macro_rules! t {
             ($e:expr) => (match $e {
@@ -271,29 +270,29 @@ impl Command {
         }
 
         if let Some(fd) = stdio.stderr.fd() {
-            let _ = libc::close(libc::STDERR_FILENO);
-            t!(cvt(libc::dup(fd, &[])));
-            let _ = libc::close(fd);
+            let _ = syscall::close(2);
+            t!(cvt(syscall::dup(fd, &[])));
+            let _ = syscall::close(fd);
         }
         if let Some(fd) = stdio.stdout.fd() {
-            let _ = libc::close(libc::STDOUT_FILENO);
-            t!(cvt(libc::dup(fd, &[])));
-            let _ = libc::close(fd);
+            let _ = syscall::close(1);
+            t!(cvt(syscall::dup(fd, &[])));
+            let _ = syscall::close(fd);
         }
         if let Some(fd) = stdio.stdin.fd() {
-            let _ = libc::close(libc::STDIN_FILENO);
-            t!(cvt(libc::dup(fd, &[])));
-            let _ = libc::close(fd);
+            let _ = syscall::close(0);
+            t!(cvt(syscall::dup(fd, &[])));
+            let _ = syscall::close(fd);
         }
 
         if let Some(g) = self.gid {
-            t!(cvt(libc::setregid(g, g)));
+            t!(cvt(syscall::setregid(g as usize, g as usize)));
         }
         if let Some(u) = self.uid {
-            t!(cvt(libc::setreuid(u, u)));
+            t!(cvt(syscall::setreuid(u as usize, u as usize)));
         }
         if let Some(ref cwd) = self.cwd {
-            t!(cvt(libc::chdir(cwd)));
+            t!(cvt(syscall::chdir(cwd)));
         }
 
         for callback in self.closures.iter_mut() {
@@ -324,7 +323,7 @@ impl Command {
             path_env
         };
 
-        if let Err(err) = libc::exec(&program, &args) {
+        if let Err(err) = syscall::execve(&program, &args) {
             io::Error::from_raw_os_error(err.errno as i32)
         } else {
             panic!("return from exec without err");
@@ -370,7 +369,7 @@ impl Stdio {
             // stderr. No matter which we dup first, the second will get
             // overwritten prematurely.
             Stdio::Fd(ref fd) => {
-                if fd.raw() <= libc::STDERR_FILENO {
+                if fd.raw() <= 2 {
                     Ok((ChildStdio::Owned(fd.duplicate()?), None))
                 } else {
                     Ok((ChildStdio::Explicit(fd.raw()), None))
@@ -471,7 +470,7 @@ impl fmt::Display for ExitStatus {
 
 /// The unique id of the process (this should never be negative).
 pub struct Process {
-    pid: pid_t,
+    pid: usize,
     status: Option<ExitStatus>,
 }
 
@@ -488,7 +487,7 @@ impl Process {
             Err(Error::new(ErrorKind::InvalidInput,
                            "invalid argument: can't kill an exited process"))
         } else {
-            cvt(libc::kill(self.pid, libc::SIGKILL))?;
+            cvt(syscall::kill(self.pid, syscall::SIGKILL))?;
             Ok(())
         }
     }
@@ -498,7 +497,7 @@ impl Process {
             return Ok(status)
         }
         let mut status = 0;
-        cvt(libc::waitpid(self.pid, &mut status, 0))?;
+        cvt(syscall::waitpid(self.pid, &mut status, 0))?;
         self.status = Some(ExitStatus(status as i32));
         Ok(ExitStatus(status as i32))
     }

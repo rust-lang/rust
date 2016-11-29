@@ -10,15 +10,14 @@
 
 use cmp::Ordering;
 use fmt;
-use libc;
-use sys::cvt;
+use sys::{cvt, syscall};
 use time::Duration;
 
 const NSEC_PER_SEC: u64 = 1_000_000_000;
 
 #[derive(Copy, Clone)]
 struct Timespec {
-    t: libc::timespec,
+    t: syscall::TimeSpec,
 }
 
 impl Timespec {
@@ -53,8 +52,8 @@ impl Timespec {
                                                duration to time");
         }
         Timespec {
-            t: libc::timespec {
-                tv_sec: secs as libc::time_t,
+            t: syscall::TimeSpec {
+                tv_sec: secs as i64,
                 tv_nsec: nsec as i32,
             },
         }
@@ -73,8 +72,8 @@ impl Timespec {
                                                duration from time");
         }
         Timespec {
-            t: libc::timespec {
-                tv_sec: secs as libc::time_t,
+            t: syscall::TimeSpec {
+                tv_sec: secs as i64,
                 tv_nsec: nsec as i32,
             },
         }
@@ -115,7 +114,7 @@ pub struct SystemTime {
 
 pub const UNIX_EPOCH: SystemTime = SystemTime {
     t: Timespec {
-        t: libc::timespec {
+        t: syscall::TimeSpec {
             tv_sec: 0,
             tv_nsec: 0,
         },
@@ -124,7 +123,7 @@ pub const UNIX_EPOCH: SystemTime = SystemTime {
 
 impl Instant {
     pub fn now() -> Instant {
-        Instant { t: now(libc::CLOCK_MONOTONIC) }
+        Instant { t: now(syscall::CLOCK_MONOTONIC) }
     }
 
     pub fn sub_instant(&self, other: &Instant) -> Duration {
@@ -153,7 +152,7 @@ impl fmt::Debug for Instant {
 
 impl SystemTime {
     pub fn now() -> SystemTime {
-        SystemTime { t: now(libc::CLOCK_REALTIME) }
+        SystemTime { t: now(syscall::CLOCK_REALTIME) }
     }
 
     pub fn sub_time(&self, other: &SystemTime)
@@ -170,8 +169,8 @@ impl SystemTime {
     }
 }
 
-impl From<libc::timespec> for SystemTime {
-    fn from(t: libc::timespec) -> SystemTime {
+impl From<syscall::TimeSpec> for SystemTime {
+    fn from(t: syscall::TimeSpec) -> SystemTime {
         SystemTime { t: Timespec { t: t } }
     }
 }
@@ -189,11 +188,11 @@ pub type clock_t = usize;
 
 fn now(clock: clock_t) -> Timespec {
     let mut t = Timespec {
-        t: libc::timespec {
+        t: syscall::TimeSpec {
             tv_sec: 0,
             tv_nsec: 0,
         }
     };
-    cvt(libc::clock_gettime(clock, &mut t.t)).unwrap();
+    cvt(syscall::clock_gettime(clock, &mut t.t)).unwrap();
     t
 }

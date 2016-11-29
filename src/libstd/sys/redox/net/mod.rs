@@ -4,7 +4,7 @@ use iter::Iterator;
 use net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use str::FromStr;
 use string::{String, ToString};
-use libc::EINVAL;
+use sys::syscall::EINVAL;
 use time;
 use vec::{IntoIter, Vec};
 

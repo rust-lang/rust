@@ -216,7 +216,6 @@ impl MetadataExt for fs::Metadata {
     }
 }
 
-/* TODO
 /// Add special unix types (block/char device, fifo and socket)
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
@@ -236,12 +235,11 @@ pub trait FileTypeExt {
 
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 impl FileTypeExt for fs::FileType {
-    fn is_block_device(&self) -> bool { self.as_inner().is(libc::S_IFBLK) }
-    fn is_char_device(&self) -> bool { self.as_inner().is(libc::S_IFCHR) }
-    fn is_fifo(&self) -> bool { self.as_inner().is(libc::S_IFIFO) }
-    fn is_socket(&self) -> bool { self.as_inner().is(libc::S_IFSOCK) }
+    fn is_block_device(&self) -> bool { false /*TODO*/ }
+    fn is_char_device(&self) -> bool { false /*TODO*/ }
+    fn is_fifo(&self) -> bool { false /*TODO*/ }
+    fn is_socket(&self) -> bool { false /*TODO*/ }
 }
-*/
 
 /// Creates a new symbolic link on the filesystem.
 ///

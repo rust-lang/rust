@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use io;
-use libc;
+use sys::syscall;
 use sys::fd::FileDesc;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -21,7 +21,7 @@ pub struct AnonPipe(FileDesc);
 pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     let mut fds = [0; 2];
 
-    libc::pipe2(&mut fds, libc::O_CLOEXEC).map_err(|err| io::Error::from_raw_os_error(err.errno))?;
+    syscall::pipe2(&mut fds, syscall::O_CLOEXEC).map_err(|err| io::Error::from_raw_os_error(err.errno))?;
 
     Ok((AnonPipe(FileDesc::new(fds[0])), AnonPipe(FileDesc::new(fds[1]))))
 }

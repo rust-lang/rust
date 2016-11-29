@@ -13,21 +13,18 @@ use os::unix::prelude::*;
 use ffi::{OsString, OsStr};
 use fmt;
 use io::{self, Error, ErrorKind, SeekFrom};
-use libc::{self, c_int, mode_t};
 use path::{Path, PathBuf};
 use sync::Arc;
 use sys::fd::FileDesc;
 use sys::time::SystemTime;
-use sys::cvt;
+use sys::{cvt, syscall};
 use sys_common::{AsInner, FromInner};
-
-use libc::{stat, fstat, fsync, ftruncate, lseek, open};
 
 pub struct File(FileDesc);
 
 #[derive(Clone)]
 pub struct FileAttr {
-    stat: stat,
+    stat: syscall::Stat,
 }
 
 pub struct ReadDir {
@@ -57,53 +54,53 @@ pub struct OpenOptions {
     create_new: bool,
     // system-specific
     custom_flags: i32,
-    mode: mode_t,
+    mode: u16,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct FilePermissions { mode: mode_t }
+pub struct FilePermissions { mode: u16 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct FileType { mode: mode_t }
+pub struct FileType { mode: u16 }
 
-pub struct DirBuilder { mode: mode_t }
+pub struct DirBuilder { mode: u16 }
 
 impl FileAttr {
     pub fn size(&self) -> u64 { self.stat.st_size as u64 }
     pub fn perm(&self) -> FilePermissions {
-        FilePermissions { mode: (self.stat.st_mode as mode_t) & 0o777 }
+        FilePermissions { mode: (self.stat.st_mode as u16) & 0o777 }
     }
 
     pub fn file_type(&self) -> FileType {
-        FileType { mode: self.stat.st_mode as mode_t }
+        FileType { mode: self.stat.st_mode as u16 }
     }
 }
 
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_mtime as libc::time_t,
+        Ok(SystemTime::from(syscall::TimeSpec {
+            tv_sec: self.stat.st_mtime as i64,
             tv_nsec: self.stat.st_mtime_nsec as i32,
         }))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_atime as libc::time_t,
+        Ok(SystemTime::from(syscall::TimeSpec {
+            tv_sec: self.stat.st_atime as i64,
             tv_nsec: self.stat.st_atime_nsec as i32,
         }))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_ctime as libc::time_t,
+        Ok(SystemTime::from(syscall::TimeSpec {
+            tv_sec: self.stat.st_ctime as i64,
             tv_nsec: self.stat.st_ctime_nsec as i32,
         }))
     }
 }
 
-impl AsInner<stat> for FileAttr {
-    fn as_inner(&self) -> &stat { &self.stat }
+impl AsInner<syscall::Stat> for FileAttr {
+    fn as_inner(&self) -> &syscall::Stat { &self.stat }
 }
 
 impl FilePermissions {
@@ -119,16 +116,16 @@ impl FilePermissions {
 }
 
 impl FileType {
-    pub fn is_dir(&self) -> bool { self.is(libc::MODE_DIR) }
-    pub fn is_file(&self) -> bool { self.is(libc::MODE_FILE) }
+    pub fn is_dir(&self) -> bool { self.is(syscall::MODE_DIR) }
+    pub fn is_file(&self) -> bool { self.is(syscall::MODE_FILE) }
     pub fn is_symlink(&self) -> bool { false }
 
-    pub fn is(&self, mode: mode_t) -> bool { self.mode & (libc::MODE_DIR | libc::MODE_FILE) == mode }
+    pub fn is(&self, mode: u16) -> bool { self.mode & (syscall::MODE_DIR | syscall::MODE_FILE) == mode }
 }
 
 impl FromInner<u32> for FilePermissions {
     fn from_inner(mode: u32) -> FilePermissions {
-        FilePermissions { mode: mode as mode_t }
+        FilePermissions { mode: mode as u16 }
     }
 }
 
@@ -215,60 +212,60 @@ impl OpenOptions {
     pub fn create_new(&mut self, create_new: bool) { self.create_new = create_new; }
 
     pub fn custom_flags(&mut self, flags: i32) { self.custom_flags = flags; }
-    pub fn mode(&mut self, mode: u32) { self.mode = mode as mode_t; }
+    pub fn mode(&mut self, mode: u32) { self.mode = mode as u16; }
 
-    fn get_access_mode(&self) -> io::Result<c_int> {
+    fn get_access_mode(&self) -> io::Result<usize> {
         match (self.read, self.write, self.append) {
-            (true,  false, false) => Ok(libc::O_RDONLY as c_int),
-            (false, true,  false) => Ok(libc::O_WRONLY as c_int),
-            (true,  true,  false) => Ok(libc::O_RDWR as c_int),
-            (false, _,     true)  => Ok(libc::O_WRONLY as c_int | libc::O_APPEND as c_int),
-            (true,  _,     true)  => Ok(libc::O_RDWR as c_int | libc::O_APPEND as c_int),
-            (false, false, false) => Err(Error::from_raw_os_error(libc::EINVAL)),
+            (true,  false, false) => Ok(syscall::O_RDONLY),
+            (false, true,  false) => Ok(syscall::O_WRONLY),
+            (true,  true,  false) => Ok(syscall::O_RDWR),
+            (false, _,     true)  => Ok(syscall::O_WRONLY | syscall::O_APPEND),
+            (true,  _,     true)  => Ok(syscall::O_RDWR | syscall::O_APPEND),
+            (false, false, false) => Err(Error::from_raw_os_error(syscall::EINVAL)),
         }
     }
 
-    fn get_creation_mode(&self) -> io::Result<c_int> {
+    fn get_creation_mode(&self) -> io::Result<usize> {
         match (self.write, self.append) {
             (true, false) => {}
             (false, false) =>
                 if self.truncate || self.create || self.create_new {
-                    return Err(Error::from_raw_os_error(libc::EINVAL));
+                    return Err(Error::from_raw_os_error(syscall::EINVAL));
                 },
             (_, true) =>
                 if self.truncate && !self.create_new {
-                    return Err(Error::from_raw_os_error(libc::EINVAL));
+                    return Err(Error::from_raw_os_error(syscall::EINVAL));
                 },
         }
 
         Ok(match (self.create, self.truncate, self.create_new) {
                 (false, false, false) => 0,
-                (true,  false, false) => libc::O_CREAT as c_int,
-                (false, true,  false) => libc::O_TRUNC as c_int,
-                (true,  true,  false) => libc::O_CREAT as c_int | libc::O_TRUNC as c_int,
-                (_,      _,    true)  => libc::O_CREAT as c_int | libc::O_EXCL as c_int,
+                (true,  false, false) => syscall::O_CREAT,
+                (false, true,  false) => syscall::O_TRUNC,
+                (true,  true,  false) => syscall::O_CREAT | syscall::O_TRUNC,
+                (_,      _,    true)  => syscall::O_CREAT | syscall::O_EXCL,
            })
     }
 }
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let flags = libc::O_CLOEXEC |
+        let flags = syscall::O_CLOEXEC |
                     opts.get_access_mode()? as usize |
                     opts.get_creation_mode()? as usize |
-                    (opts.custom_flags as usize & !libc::O_ACCMODE);
-        let fd = cvt(open(path.to_str().unwrap(), flags | opts.mode as usize))?;
+                    (opts.custom_flags as usize & !syscall::O_ACCMODE);
+        let fd = cvt(syscall::open(path.to_str().unwrap(), flags | opts.mode as usize))?;
         Ok(File(FileDesc::new(fd)))
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        let mut stat: stat = stat::default();
-        cvt(fstat(self.0.raw(), &mut stat))?;
+        let mut stat = syscall::Stat::default();
+        cvt(syscall::fstat(self.0.raw(), &mut stat))?;
         Ok(FileAttr { stat: stat })
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        cvt(fsync(self.0.raw()))?;
+        cvt(syscall::fsync(self.0.raw()))?;
         Ok(())
     }
 
@@ -277,7 +274,7 @@ impl File {
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
-        cvt(ftruncate(self.0.raw(), size as usize))?;
+        cvt(syscall::ftruncate(self.0.raw(), size as usize))?;
         Ok(())
     }
 
@@ -299,11 +296,11 @@ impl File {
         let (whence, pos) = match pos {
             // Casting to `i64` is fine, too large values will end up as
             // negative which will cause an error in `lseek64`.
-            SeekFrom::Start(off) => (libc::SEEK_SET, off as i64),
-            SeekFrom::End(off) => (libc::SEEK_END, off),
-            SeekFrom::Current(off) => (libc::SEEK_CUR, off),
+            SeekFrom::Start(off) => (syscall::SEEK_SET, off as i64),
+            SeekFrom::End(off) => (syscall::SEEK_END, off),
+            SeekFrom::Current(off) => (syscall::SEEK_CUR, off),
         };
-        let n = cvt(lseek(self.0.raw(), pos as isize, whence))?;
+        let n = cvt(syscall::lseek(self.0.raw(), pos as isize, whence))?;
         Ok(n as u64)
     }
 
@@ -312,7 +309,7 @@ impl File {
     }
 
     pub fn dup(&self, buf: &[u8]) -> io::Result<File> {
-        let fd = cvt(libc::dup(*self.fd().as_inner() as usize, buf))?;
+        let fd = cvt(syscall::dup(*self.fd().as_inner() as usize, buf))?;
         Ok(File(FileDesc::new(fd)))
     }
 
@@ -322,7 +319,7 @@ impl File {
 
     pub fn path(&self) -> io::Result<PathBuf> {
         let mut buf: [u8; 4096] = [0; 4096];
-        match libc::fpath(*self.fd().as_inner() as usize, &mut buf) {
+        match syscall::fpath(*self.fd().as_inner() as usize, &mut buf) {
             Ok(count) => Ok(PathBuf::from(unsafe { String::from_utf8_unchecked(Vec::from(&buf[0..count])) })),
             Err(err) => Err(Error::from_raw_os_error(err.errno)),
         }
@@ -339,13 +336,13 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let fd = cvt(libc::open(p.to_str().unwrap(), libc::O_CREAT | libc::O_DIRECTORY | libc::O_EXCL | (self.mode as usize & 0o777)))?;
-        let _ = libc::close(fd);
+        let fd = cvt(syscall::open(p.to_str().unwrap(), syscall::O_CREAT | syscall::O_DIRECTORY | syscall::O_EXCL | (self.mode as usize & 0o777)))?;
+        let _ = syscall::close(fd);
         Ok(())
     }
 
     pub fn set_mode(&mut self, mode: u32) {
-        self.mode = mode as mode_t;
+        self.mode = mode as u16;
     }
 }
 
@@ -374,7 +371,7 @@ impl fmt::Debug for File {
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = Arc::new(p.to_path_buf());
 
-    let fd = cvt(open(p.to_str().unwrap(), libc::O_CLOEXEC | libc::O_RDONLY | libc::O_DIRECTORY))?;
+    let fd = cvt(syscall::open(p.to_str().unwrap(), syscall::O_CLOEXEC | syscall::O_RDONLY | syscall::O_DIRECTORY))?;
     let file = FileDesc::new(fd);
     let mut data = Vec::new();
     file.read_to_end(&mut data)?;
@@ -383,7 +380,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    cvt(libc::unlink(p.to_str().unwrap()))?;
+    cvt(syscall::unlink(p.to_str().unwrap()))?;
     Ok(())
 }
 
@@ -393,12 +390,12 @@ pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    cvt(libc::chmod(p.to_str().unwrap(), perm.mode as usize))?;
+    cvt(syscall::chmod(p.to_str().unwrap(), perm.mode as usize))?;
     Ok(())
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    cvt(libc::rmdir(p.to_str().unwrap()))?;
+    cvt(syscall::rmdir(p.to_str().unwrap()))?;
     Ok(())
 }
 
@@ -438,13 +435,9 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let mut stat: stat = stat::default();
-
-    let fd = cvt(open(p.to_str().unwrap(), libc::O_CLOEXEC | libc::O_STAT))?;
-    cvt(fstat(fd, &mut stat))?;
-    let _ = libc::close(fd);
-
-    Ok(FileAttr { stat: stat })
+    let fd = cvt(syscall::open(p.to_str().unwrap(), syscall::O_CLOEXEC | syscall::O_STAT))?;
+    let file = File(FileDesc::new(fd));
+    file.file_attr()
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
@@ -452,7 +445,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-    let fd = cvt(open(p.to_str().unwrap(), libc::O_CLOEXEC | libc::O_STAT))?;
+    let fd = cvt(syscall::open(p.to_str().unwrap(), syscall::O_CLOEXEC | syscall::O_STAT))?;
     let file = File(FileDesc::new(fd));
     file.path()
 }

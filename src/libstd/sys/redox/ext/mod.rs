@@ -44,7 +44,7 @@ pub mod prelude {
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::ffi::{OsStrExt, OsStringExt};
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
-    pub use super::fs::{PermissionsExt, OpenOptionsExt, MetadataExt};
+    pub use super::fs::{FileTypeExt, PermissionsExt, OpenOptionsExt, MetadataExt};
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::process::{CommandExt, ExitStatusExt};
 }

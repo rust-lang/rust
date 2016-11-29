@@ -2,7 +2,7 @@ use cell::UnsafeCell;
 use intrinsics::{atomic_cxchg, atomic_xchg};
 use ptr;
 
-use libc::{futex, getpid, FUTEX_WAIT, FUTEX_WAKE};
+use sys::syscall::{futex, getpid, FUTEX_WAIT, FUTEX_WAKE};
 
 pub unsafe fn mutex_try_lock(m: *mut i32) -> bool {
     atomic_cxchg(m, 0, 1).0 == 0
