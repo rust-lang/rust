@@ -32,7 +32,7 @@ The script accepts commands, flags, and filters to determine what to do:
   # build the whole compiler
   ./x.py build
 
-  # build the stage1 compier
+  # build the stage1 compiler
   ./x.py build --stage 1
 
   # build stage0 libstd
