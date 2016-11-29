@@ -1265,12 +1265,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // if they referred to the same allocation, since then a change to one would
             // implicitly change the other.
             //
-            // TODO(solson): It would be valid to attempt reading a primitive value out of
-            // the source and writing that into the destination without making an
-            // allocation. This would be a pure optimization.
-            let dest_ptr = self.alloc_ptr(dest_ty)?;
-            self.copy(src_ptr, dest_ptr, dest_ty)?;
-            write_dest(self, Value::ByRef(dest_ptr));
+            // It is a valid optimization to attempt reading a primitive value out of the
+            // source and write that into the destination without making an allocation, so
+            // we do so here.
+            if let Ok(Some(src_val)) = self.try_read_value(src_ptr, dest_ty) {
+                write_dest(self, src_val);
+            } else {
+                let dest_ptr = self.alloc_ptr(dest_ty)?;
+                self.copy(src_ptr, dest_ptr, dest_ty)?;
+                write_dest(self, Value::ByRef(dest_ptr));
+            }
 
         } else {
             // Finally, we have the simple case where neither source nor destination are
@@ -1400,6 +1404,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+        if let Some(val) = self.try_read_value(ptr, ty)? {
+            Ok(val)
+        } else {
+            bug!("primitive read failed for type: {:?}", ty);
+        }
+    }
+
+    fn try_read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         use syntax::ast::FloatTy;
 
         let val = match ty.sty {
@@ -1439,11 +1451,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr)?),
             ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr)?),
 
-            // TODO(solson): Should this even be here? Fn items aren't primvals, are they?
-            ty::TyFnDef(def_id, substs, fn_ty) => {
-                PrimVal::from_ptr(self.memory.create_fn_ptr(self.tcx, def_id, substs, fn_ty))
-            },
-
             ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::from_ptr)?,
             ty::TyBox(ty) |
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
@@ -1460,7 +1467,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         ty::TyStr => PrimVal::from_uint(self.memory.read_usize(extra)?),
                         _ => bug!("unsized primval ptr read from {:?}", ty),
                     };
-                    return Ok(Value::ByValPair(PrimVal::from_ptr(p), extra));
+                    return Ok(Some(Value::ByValPair(PrimVal::from_ptr(p), extra)));
                 }
             }
 
@@ -1474,14 +1481,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         PrimVal::from_uint(self.memory.read_uint(ptr, size)?)
                     }
                 } else {
-                    bug!("primitive read of non-clike enum: {:?}", ty);
+                    return Ok(None);
                 }
             },
 
-            _ => bug!("primitive read of non-primitive type: {:?}", ty),
+            _ => return Ok(None),
         };
 
-        Ok(Value::ByVal(val))
+        Ok(Some(Value::ByVal(val)))
     }
 
     fn frame(&self) -> &Frame<'tcx> {
