@@ -73,7 +73,7 @@ impl io::Write for Stderr {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        cvt(syscall::fsync(2)).and(Ok(()))
+        Stderr::flush(self)
     }
 }
 

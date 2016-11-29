@@ -81,16 +81,10 @@ impl Read for StdinRaw {
 }
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
-    #[cfg(not(target_os = "redox"))]
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
-    #[cfg(target_os = "redox")]
     fn flush(&mut self) -> io::Result<()> { self.0.flush() }
 }
 impl Write for StderrRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
-    #[cfg(not(target_os = "redox"))]
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
-    #[cfg(target_os = "redox")]
     fn flush(&mut self) -> io::Result<()> { self.0.flush() }
 }
 
