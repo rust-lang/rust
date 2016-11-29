@@ -781,8 +781,8 @@ pub struct ModuleS<'a> {
     // The node id of the closest normal module (`mod`) ancestor (including this module).
     normal_ancestor_id: Option<NodeId>,
 
-    resolutions: RefCell<FxHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
-    legacy_macro_resolutions: RefCell<Vec<(Mark, Name, Span)>>,
+    resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
+    legacy_macro_resolutions: RefCell<Vec<(Mark, Ident, Span)>>,
     macro_resolutions: RefCell<Vec<(Box<[Ident]>, PathScope, Span)>>,
 
     // Macro invocations that can expand into items in this module.
@@ -794,7 +794,7 @@ pub struct ModuleS<'a> {
     globs: RefCell<Vec<&'a ImportDirective<'a>>>,
 
     // Used to memoize the traits in this module for faster searches through all traits in scope.
-    traits: RefCell<Option<Box<[(Name, &'a NameBinding<'a>)]>>>,
+    traits: RefCell<Option<Box<[(Ident, &'a NameBinding<'a>)]>>>,
 
     // Whether this module is populated. If not populated, any attempt to
     // access the children must be preceded with a
@@ -822,9 +822,9 @@ impl<'a> ModuleS<'a> {
         }
     }
 
-    fn for_each_child<F: FnMut(Name, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
-        for (&(name, ns), name_resolution) in self.resolutions.borrow().iter() {
-            name_resolution.borrow().binding.map(|binding| f(name, ns, binding));
+    fn for_each_child<F: FnMut(Ident, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
+        for (&(ident, ns), name_resolution) in self.resolutions.borrow().iter() {
+            name_resolution.borrow().binding.map(|binding| f(ident, ns, binding));
         }
     }
 
@@ -1334,7 +1334,7 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    fn record_use(&mut self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
+    fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
                   -> bool /* true if an error was reported */ {
         // track extern crates for unused_extern_crate lint
         if let Some(DefId { krate, .. }) = binding.module().and_then(ModuleS::def_id) {
@@ -1345,13 +1345,13 @@ impl<'a> Resolver<'a> {
             NameBindingKind::Import { directive, binding, ref used } if !used.get() => {
                 used.set(true);
                 self.used_imports.insert((directive.id, ns));
-                self.add_to_glob_map(directive.id, name);
-                self.record_use(name, ns, binding, span)
+                self.add_to_glob_map(directive.id, ident);
+                self.record_use(ident, ns, binding, span)
             }
             NameBindingKind::Import { .. } => false,
             NameBindingKind::Ambiguity { b1, b2 } => {
                 self.ambiguity_errors.push(AmbiguityError {
-                    span: span, name: name, lexical: false, b1: b1, b2: b2,
+                    span: span, name: ident.name, lexical: false, b1: b1, b2: b2,
                 });
                 true
             }
@@ -1359,9 +1359,9 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn add_to_glob_map(&mut self, id: NodeId, name: Name) {
+    fn add_to_glob_map(&mut self, id: NodeId, ident: Ident) {
         if self.make_glob_map {
-            self.glob_map.entry(id).or_insert_with(FxHashSet).insert(name);
+            self.glob_map.entry(id).or_insert_with(FxHashSet).insert(ident.name);
         }
     }
 
@@ -1388,7 +1388,7 @@ impl<'a> Resolver<'a> {
                                       record_used: Option<Span>)
                                       -> Option<LexicalScopeBinding<'a>> {
         if ns == TypeNS {
-            ident = Ident::with_empty_ctxt(ident.name);
+            ident = ident.unhygienize();
         }
 
         // Walk backwards up the ribs in scope.
@@ -1403,8 +1403,7 @@ impl<'a> Resolver<'a> {
             }
 
             if let ModuleRibKind(module) = self.ribs[ns][i].kind {
-                let name = ident.name;
-                let item = self.resolve_name_in_module(module, name, ns, false, record_used);
+                let item = self.resolve_ident_in_module(module, ident, ns, false, record_used);
                 if let Ok(binding) = item {
                     // The ident resolves to an item.
                     return Some(LexicalScopeBinding::Item(binding));
@@ -1413,7 +1412,7 @@ impl<'a> Resolver<'a> {
                 if let ModuleKind::Block(..) = module.kind { // We can see through blocks
                 } else if !module.no_implicit_prelude {
                     return self.prelude.and_then(|prelude| {
-                        self.resolve_name_in_module(prelude, name, ns, false, None).ok()
+                        self.resolve_ident_in_module(prelude, ident, ns, false, None).ok()
                     }).map(LexicalScopeBinding::Item)
                 } else {
                     return None;
@@ -2183,8 +2182,7 @@ impl<'a> Resolver<'a> {
                             Def::VariantCtor(_, CtorKind::Const) |
                             Def::Const(..) if !always_binding => {
                                 // A unit struct/variant or constant pattern.
-                                let name = ident.node.name;
-                                self.record_use(name, ValueNS, binding.unwrap(), ident.span);
+                                self.record_use(ident.node, ValueNS, binding.unwrap(), ident.span);
                                 Some(PathResolution::new(def))
                             }
                             Def::StructCtor(..) | Def::VariantCtor(..) |
@@ -2363,9 +2361,9 @@ impl<'a> Resolver<'a> {
             allow_super = false;
 
             let binding = if let Some(module) = module {
-                self.resolve_name_in_module(module, ident.name, ns, false, record_used)
+                self.resolve_ident_in_module(module, ident, ns, false, record_used)
             } else if opt_ns == Some(MacroNS) {
-                self.resolve_lexical_macro_path_segment(ident.name, ns, record_used)
+                self.resolve_lexical_macro_path_segment(ident, ns, record_used)
             } else {
                 match self.resolve_ident_in_lexical_scope(ident, ns, record_used) {
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
@@ -2953,16 +2951,15 @@ impl<'a> Resolver<'a> {
                         in_module_is_extern)) = worklist.pop() {
             self.populate_module_if_necessary(in_module);
 
-            in_module.for_each_child(|name, ns, name_binding| {
+            in_module.for_each_child(|ident, ns, name_binding| {
 
                 // avoid imports entirely
                 if name_binding.is_import() && !name_binding.is_extern_crate() { return; }
 
                 // collect results based on the filter function
-                if name == lookup_name && ns == namespace {
+                if ident.name == lookup_name && ns == namespace {
                     if filter_fn(name_binding.def()) {
                         // create the path
-                        let ident = Ident::with_empty_ctxt(name);
                         let params = PathParameters::none();
                         let segment = PathSegment {
                             identifier: ident,
@@ -2994,7 +2991,7 @@ impl<'a> Resolver<'a> {
                     // form the path
                     let mut path_segments = path_segments.clone();
                     path_segments.push(PathSegment {
-                        identifier: Ident::with_empty_ctxt(name),
+                        identifier: ident,
                         parameters: PathParameters::none(),
                     });
 
@@ -3124,13 +3121,13 @@ impl<'a> Resolver<'a> {
 
     fn report_conflict(&mut self,
                        parent: Module,
-                       name: Name,
+                       ident: Ident,
                        ns: Namespace,
                        binding: &NameBinding,
                        old_binding: &NameBinding) {
         // Error on the second of two conflicting names
         if old_binding.span.lo > binding.span.lo {
-            return self.report_conflict(parent, name, ns, old_binding, binding);
+            return self.report_conflict(parent, ident, ns, old_binding, binding);
         }
 
         let container = match parent.kind {
@@ -3145,7 +3142,7 @@ impl<'a> Resolver<'a> {
             false => ("defined", "definition"),
         };
 
-        let span = binding.span;
+        let (name, span) = (ident.name, binding.span);
 
         if let Some(s) = self.name_already_seen.get(&name) {
             if s == &span {

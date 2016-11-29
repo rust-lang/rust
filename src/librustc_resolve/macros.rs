@@ -19,7 +19,7 @@ use rustc::hir::map::{self, DefCollector};
 use rustc::ty;
 use std::cell::Cell;
 use std::rc::Rc;
-use syntax::ast::{self, Name};
+use syntax::ast::{self, Name, Ident};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{NormalTT, SyntaxExtension};
@@ -246,7 +246,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         let result = match self.resolve_legacy_scope(&invocation.legacy_scope, name, false) {
             Some(MacroBinding::Legacy(binding)) => Ok(binding.ext.clone()),
             Some(MacroBinding::Modern(binding)) => Ok(binding.get_macro(self)),
-            None => match self.resolve_lexical_macro_path_segment(name, MacroNS, None) {
+            None => match self.resolve_lexical_macro_path_segment(path[0], MacroNS, None) {
                 Ok(binding) => Ok(binding.get_macro(self)),
                 Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
                 _ => {
@@ -260,7 +260,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         };
 
         if self.use_extern_macros {
-            self.current_module.legacy_macro_resolutions.borrow_mut().push((scope, name, span));
+            self.current_module.legacy_macro_resolutions.borrow_mut().push((scope, path[0], span));
         }
         result
     }
@@ -269,7 +269,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 impl<'a> Resolver<'a> {
     // Resolve the initial segment of a non-global macro path (e.g. `foo` in `foo::bar!();`)
     pub fn resolve_lexical_macro_path_segment(&mut self,
-                                              name: Name,
+                                              ident: Ident,
                                               ns: Namespace,
                                               record_used: Option<Span>)
                                               -> Result<&'a NameBinding<'a>, Determinacy> {
@@ -278,7 +278,7 @@ impl<'a> Resolver<'a> {
         loop {
             // Since expanded macros may not shadow the lexical scope (enforced below),
             // we can ignore unresolved invocations (indicated by the penultimate argument).
-            match self.resolve_name_in_module(module, name, ns, true, record_used) {
+            match self.resolve_ident_in_module(module, ident, ns, true, record_used) {
                 Ok(binding) => {
                     let span = match record_used {
                         Some(span) => span,
@@ -286,6 +286,7 @@ impl<'a> Resolver<'a> {
                     };
                     match potential_expanded_shadower {
                         Some(shadower) if shadower.def() != binding.def() => {
+                            let name = ident.name;
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: span, name: name, b1: shadower, b2: binding, lexical: true,
                             });
@@ -383,10 +384,10 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        for &(mark, name, span) in module.legacy_macro_resolutions.borrow().iter() {
+        for &(mark, ident, span) in module.legacy_macro_resolutions.borrow().iter() {
             let legacy_scope = &self.invocations[&mark].legacy_scope;
-            let legacy_resolution = self.resolve_legacy_scope(legacy_scope, name, true);
-            let resolution = self.resolve_lexical_macro_path_segment(name, MacroNS, Some(span));
+            let legacy_resolution = self.resolve_legacy_scope(legacy_scope, ident.name, true);
+            let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, Some(span));
             let (legacy_resolution, resolution) = match (legacy_resolution, resolution) {
                 (Some(legacy_resolution), Ok(resolution)) => (legacy_resolution, resolution),
                 _ => continue,
@@ -396,9 +397,9 @@ impl<'a> Resolver<'a> {
                 MacroBinding::Modern(binding) => (binding.span, "imported"),
                 MacroBinding::Legacy(binding) => (binding.span, "defined"),
             };
-            let msg1 = format!("`{}` could resolve to the macro {} here", name, participle);
-            let msg2 = format!("`{}` could also resolve to the macro imported here", name);
-            self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
+            let msg1 = format!("`{}` could resolve to the macro {} here", ident, participle);
+            let msg2 = format!("`{}` could also resolve to the macro imported here", ident);
+            self.session.struct_span_err(span, &format!("`{}` is ambiguous", ident))
                 .span_note(legacy_span, &msg1)
                 .span_note(resolution.span, &msg2)
                 .emit();

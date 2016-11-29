@@ -47,10 +47,14 @@ impl Ident {
         Ident { name: name, ctxt: SyntaxContext::empty() }
     }
 
-   /// Maps a string to an identifier with an empty syntax context.
-   pub fn from_str(s: &str) -> Ident {
-       Ident::with_empty_ctxt(Symbol::intern(s))
-   }
+    /// Maps a string to an identifier with an empty syntax context.
+    pub fn from_str(s: &str) -> Ident {
+        Ident::with_empty_ctxt(Symbol::intern(s))
+    }
+
+    pub fn unhygienize(&self) -> Ident {
+        Ident { name: self.name, ctxt: SyntaxContext::empty() }
+    }
 }
 
 impl fmt::Debug for Ident {
