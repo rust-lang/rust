@@ -16,7 +16,8 @@
 use macros::{InvocationData, LegacyScope};
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
-use {Resolver, Module, ModuleS, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
+use {Module, ModuleS, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
+use {Resolver, ResolverArenas};
 use Namespace::{self, TypeNS, ValueNS, MacroNS};
 use {resolve_error, resolve_struct_error, ResolutionError};
 
@@ -45,24 +46,24 @@ use syntax::visit::{self, Visitor};
 use syntax_pos::{Span, DUMMY_SP};
 
 impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, Mark) {
-    fn to_name_binding(self) -> NameBinding<'a> {
-        NameBinding {
+    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
+        arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Module(self.0),
             vis: self.1,
             span: self.2,
             expansion: self.3,
-        }
+        })
     }
 }
 
 impl<'a> ToNameBinding<'a> for (Def, ty::Visibility, Span, Mark) {
-    fn to_name_binding(self) -> NameBinding<'a> {
-        NameBinding {
+    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
+        arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Def(self.0),
             vis: self.1,
             span: self.2,
             expansion: self.3,
-        }
+        })
     }
 }
 
@@ -79,8 +80,8 @@ impl<'b> Resolver<'b> {
     fn define<T>(&mut self, parent: Module<'b>, ident: Ident, ns: Namespace, def: T)
         where T: ToNameBinding<'b>,
     {
-        let binding = def.to_name_binding();
-        if let Err(old_binding) = self.try_define(parent, ident, ns, binding.clone()) {
+        let binding = def.to_name_binding(self.arenas);
+        if let Err(old_binding) = self.try_define(parent, ident, ns, binding) {
             self.report_conflict(parent, ident, ns, old_binding, &binding);
         }
     }
@@ -238,8 +239,8 @@ impl<'b> Resolver<'b> {
                 // n.b. we don't need to look at the path option here, because cstore already did
                 let crate_id = self.session.cstore.extern_mod_stmt_cnum(item.id).unwrap();
                 let module = self.get_extern_crate_root(crate_id);
-                let binding = (module, ty::Visibility::Public, sp, expansion).to_name_binding();
-                let binding = self.arenas.alloc_name_binding(binding);
+                let binding =
+                    (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.arenas);
                 let directive = self.arenas.alloc_import_directive(ImportDirective {
                     id: item.id,
                     parent: parent,

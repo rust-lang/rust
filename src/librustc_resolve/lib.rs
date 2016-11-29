@@ -875,11 +875,11 @@ pub struct NameBinding<'a> {
 }
 
 pub trait ToNameBinding<'a> {
-    fn to_name_binding(self) -> NameBinding<'a>;
+    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a>;
 }
 
-impl<'a> ToNameBinding<'a> for NameBinding<'a> {
-    fn to_name_binding(self) -> NameBinding<'a> {
+impl<'a> ToNameBinding<'a> for &'a NameBinding<'a> {
+    fn to_name_binding(self, _: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         self
     }
 }
