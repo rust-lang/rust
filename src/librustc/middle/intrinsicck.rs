@@ -178,8 +178,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for ExprVisitor<'a, 'gcx, 'tcx> {
                 let typ = self.infcx.tcx.tables().node_id_to_type(expr.id);
                 match typ.sty {
                     ty::TyFnDef(.., ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
-                        let from = bare_fn_ty.sig.0.inputs[0];
-                        let to = bare_fn_ty.sig.0.output;
+                        let from = bare_fn_ty.sig.skip_binder().inputs()[0];
+                        let to = bare_fn_ty.sig.skip_binder().output();
                         self.check_transmute(expr.span, from, to, expr.id);
                     }
                     _ => {

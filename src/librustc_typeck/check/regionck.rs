@@ -296,10 +296,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         //
         // FIXME(#27579) return types should not be implied bounds
         let fn_sig_tys: Vec<_> =
-            fn_sig.inputs.iter()
-                         .cloned()
-                         .chain(Some(fn_sig.output))
-                         .collect();
+            fn_sig.inputs().iter().cloned().chain(Some(fn_sig.output())).collect();
 
         let old_body_id = self.set_body_id(body_id.node_id());
         self.relate_free_regions(&fn_sig_tys[..], body_id.node_id(), span);
@@ -940,7 +937,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     let fn_sig = method.ty.fn_sig();
                     let fn_sig = // late-bound regions should have been instantiated
                         self.tcx.no_late_bound_regions(fn_sig).unwrap();
-                    let self_ty = fn_sig.inputs[0];
+                    let self_ty = fn_sig.inputs()[0];
                     let (m, r) = match self_ty.sty {
                         ty::TyRef(r, ref m) => (m.mutbl, r),
                         _ => {
@@ -967,8 +964,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     self.type_must_outlive(infer::CallRcvr(deref_expr.span),
                                            self_ty, r_deref_expr);
                     self.type_must_outlive(infer::CallReturn(deref_expr.span),
-                                           fn_sig.output, r_deref_expr);
-                    fn_sig.output
+                                           fn_sig.output(), r_deref_expr);
+                    fn_sig.output()
                 }
                 None => derefd_ty
             };

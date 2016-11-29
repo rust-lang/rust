@@ -247,10 +247,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     span_bug!(expr.span, "method call has late-bound regions")
                 });
 
-                assert_eq!(sig.inputs.len(), 2);
+                assert_eq!(sig.inputs().len(), 2);
 
                 let tupled_args = Expr {
-                    ty: sig.inputs[1],
+                    ty: sig.inputs()[1],
                     temp_lifetime: temp_lifetime,
                     span: expr.span,
                     kind: ExprKind::Tuple {

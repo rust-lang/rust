@@ -246,7 +246,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                     infer::FnCall,
                                                                     &fty.sig).0;
         let fn_sig = self.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
-        let transformed_self_ty = fn_sig.inputs[0];
+        let transformed_self_ty = fn_sig.inputs()[0];
         let method_ty = tcx.mk_fn_def(def_id, trait_ref.substs,
                                       tcx.mk_bare_fn(ty::BareFnTy {
             sig: ty::Binder(fn_sig),

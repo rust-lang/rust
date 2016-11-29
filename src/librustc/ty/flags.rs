@@ -180,8 +180,8 @@ impl FlagComputation {
     fn add_fn_sig(&mut self, fn_sig: &ty::PolyFnSig) {
         let mut computation = FlagComputation::new();
 
-        computation.add_tys(&fn_sig.0.inputs);
-        computation.add_ty(fn_sig.0.output);
+        computation.add_tys(fn_sig.skip_binder().inputs());
+        computation.add_ty(fn_sig.skip_binder().output());
 
         self.add_bound_computation(&computation);
     }

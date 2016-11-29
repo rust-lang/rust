@@ -390,16 +390,16 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 {
     let signature = cx.tcx().erase_late_bound_regions(signature);
 
-    let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs.len() + 1);
+    let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs().len() + 1);
 
     // return type
-    signature_metadata.push(match signature.output.sty {
+    signature_metadata.push(match signature.output().sty {
         ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
-        _ => type_metadata(cx, signature.output, span)
+        _ => type_metadata(cx, signature.output(), span)
     });
 
     // regular arguments
-    for &argument_type in &signature.inputs {
+    for &argument_type in signature.inputs() {
         signature_metadata.push(type_metadata(cx, argument_type, span));
     }
 

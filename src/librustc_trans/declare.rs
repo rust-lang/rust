@@ -124,7 +124,7 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
     let llfn = declare_raw_fn(ccx, name, fty.cconv, fty.llvm_type(ccx));
 
     // FIXME(canndrew): This is_never should really be an is_uninhabited
-    if sig.output.is_never() {
+    if sig.output().is_never() {
         llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
     }
 
