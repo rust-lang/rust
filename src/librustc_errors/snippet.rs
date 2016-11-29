@@ -41,6 +41,86 @@ pub struct Line {
     pub annotations: Vec<Annotation>,
 }
 
+
+#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub struct MultilineAnnotation {
+    pub depth: usize,
+    pub line_start: usize,
+    pub line_end: usize,
+    pub start_col: usize,
+    pub end_col: usize,
+    pub is_primary: bool,
+    pub label: Option<String>,
+}
+
+impl MultilineAnnotation {
+    pub fn increase_depth(&mut self) {
+        self.depth += 1;
+    }
+
+    pub fn as_start(&self) -> Annotation {
+        Annotation {
+            start_col: self.start_col,
+            end_col: self.start_col + 1,
+            is_primary: self.is_primary,
+            label: Some("starting here...".to_owned()),
+            annotation_type: AnnotationType::MultilineStart(self.depth)
+        }
+    }
+
+    pub fn as_end(&self) -> Annotation {
+        Annotation {
+            start_col: self.end_col - 1,
+            end_col: self.end_col,
+            is_primary: self.is_primary,
+            label: match self.label {
+                Some(ref label) => Some(format!("...ending here: {}", label)),
+                None => Some("...ending here".to_owned()),
+            },
+            annotation_type: AnnotationType::MultilineEnd(self.depth)
+        }
+    }
+
+    pub fn as_line(&self) -> Annotation {
+        Annotation {
+            start_col: 0,
+            end_col: 0,
+            is_primary: self.is_primary,
+            label: None,
+            annotation_type: AnnotationType::MultilineLine(self.depth)
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub enum AnnotationType {
+    /// Annotation under a single line of code
+    Singleline,
+
+    /// Annotation under the first character of a multiline span
+    Minimized,
+
+    /// Annotation enclosing the first and last character of a multiline span
+    Multiline(MultilineAnnotation),
+
+    // The Multiline type above is replaced with the following three in order
+    // to reuse the current label drawing code.
+    //
+    // Each of these corresponds to one part of the following diagram:
+    //
+    //     x |   foo(1 + bar(x,
+    //       |  _________^ starting here...           < MultilineStart
+    //     x | |             y),                      < MultilineLine
+    //       | |______________^ ...ending here: label < MultilineEnd
+    //     x |       z);
+    /// Annotation marking the first character of a fully shown multiline span
+    MultilineStart(usize),
+    /// Annotation marking the last character of a fully shown multiline span
+    MultilineEnd(usize),
+    /// Line at the left enclosing the lines of a fully shown multiline span
+    MultilineLine(usize),
+}
+
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Annotation {
     /// Start column, 0-based indexing -- counting *characters*, not
@@ -55,11 +135,32 @@ pub struct Annotation {
     /// Is this annotation derived from primary span
     pub is_primary: bool,
 
-    /// Is this a large span minimized down to a smaller span
-    pub is_minimized: bool,
-
     /// Optional label to display adjacent to the annotation.
     pub label: Option<String>,
+
+    /// Is this a single line, multiline or multiline span minimized down to a
+    /// smaller span.
+    pub annotation_type: AnnotationType,
+}
+
+impl Annotation {
+    pub fn is_minimized(&self) -> bool {
+        match self.annotation_type {
+            AnnotationType::Minimized => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_multiline(&self) -> bool {
+        match self.annotation_type {
+            AnnotationType::Multiline(_) |
+            AnnotationType::MultilineStart(_) |
+            AnnotationType::MultilineLine(_) |
+            AnnotationType::MultilineEnd(_) => true,
+            _ => false,
+        }
+    }
+
 }
 
 #[derive(Debug)]
