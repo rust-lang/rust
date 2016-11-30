@@ -18,7 +18,6 @@ use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use {Resolver, Module, ModuleS, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
 use Namespace::{self, TypeNS, ValueNS, MacroNS};
-use ResolveResult::Success;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
 use rustc::middle::cstore::LoadedMacro;
@@ -583,7 +582,7 @@ impl<'b> Resolver<'b> {
         } else {
             for (name, span) in legacy_imports.imports {
                 let result = self.resolve_name_in_module(module, name, MacroNS, false, None);
-                if let Success(binding) = result {
+                if let Ok(binding) = result {
                     self.legacy_import_macro(name, binding, span, allow_shadowing);
                 } else {
                     span_err!(self.session, span, E0469, "imported macro not found");
@@ -595,7 +594,7 @@ impl<'b> Resolver<'b> {
             self.used_crates.insert(krate);
             self.session.cstore.export_macros(krate);
             let result = self.resolve_name_in_module(module, name, MacroNS, false, None);
-            if let Success(binding) = result {
+            if let Ok(binding) = result {
                 self.macro_exports.push(Export { name: name, def: binding.def() });
             } else {
                 span_err!(self.session, span, E0470, "reexported macro not found");

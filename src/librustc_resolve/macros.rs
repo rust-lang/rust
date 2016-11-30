@@ -10,7 +10,6 @@
 
 use {Module, ModuleKind, NameBinding, NameBindingKind, Resolver, AmbiguityError};
 use Namespace::{self, MacroNS};
-use ResolveResult::{Success, Indeterminate, Failed};
 use build_reduced_graph::BuildReducedGraphVisitor;
 use resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex};
@@ -254,7 +253,7 @@ impl<'a> Resolver<'a> {
             // Since expanded macros may not shadow the lexical scope (enforced below),
             // we can ignore unresolved invocations (indicated by the penultimate argument).
             match self.resolve_name_in_module(module, name, ns, true, record_used) {
-                Success(binding) => {
+                Ok(binding) => {
                     let span = match record_used {
                         Some(span) => span,
                         None => return Some(binding),
@@ -270,8 +269,8 @@ impl<'a> Resolver<'a> {
                         potential_expanded_shadower = Some(binding);
                     }
                 },
-                Indeterminate => return None,
-                Failed(..) => {}
+                Err(Determinacy::Undetermined) => return None,
+                Err(Determinacy::Determined) => {}
             }
 
             match module.kind {
