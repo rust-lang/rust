@@ -65,7 +65,7 @@ HOST_CRATES := syntax syntax_ext proc_macro_tokens proc_macro_plugin syntax_pos 
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
 
 DEPS_core :=
-DEPS_compiler_builtins := core
+DEPS_compiler_builtins := core native:compiler-rt
 DEPS_alloc := core libc alloc_system
 DEPS_alloc_system := core libc
 DEPS_alloc_jemalloc := core libc native:jemalloc
@@ -79,11 +79,7 @@ DEPS_panic_unwind := libc alloc unwind
 DEPS_unwind := libc
 
 RUSTFLAGS_compiler_builtins := -lstatic=compiler-rt
-
-# FIXME(stage0): change this to just `RUSTFLAGS_panic_abort := ...`
-RUSTFLAGS1_panic_abort := -C panic=abort
-RUSTFLAGS2_panic_abort := -C panic=abort
-RUSTFLAGS3_panic_abort := -C panic=abort
+RUSTFLAGS_panic_abort := -C panic=abort
 
 DEPS_std := core libc rand alloc collections compiler_builtins rustc_unicode \
 	native:backtrace \

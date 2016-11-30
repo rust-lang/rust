@@ -22,7 +22,6 @@ extern crate cmake;
 extern crate filetime;
 extern crate gcc;
 extern crate getopts;
-extern crate md5;
 extern crate num_cpus;
 extern crate rustc_serialize;
 extern crate toml;
@@ -120,8 +119,6 @@ pub struct Build {
     version: String,
     package_vers: String,
     local_rebuild: bool,
-    bootstrap_key: String,
-    bootstrap_key_stage0: String,
 
     // Probed tools at runtime
     lldb_version: Option<String>,
@@ -205,8 +202,6 @@ impl Build {
             ver_date: None,
             version: String::new(),
             local_rebuild: local_rebuild,
-            bootstrap_key: String::new(),
-            bootstrap_key_stage0: String::new(),
             package_vers: String::new(),
             cc: HashMap::new(),
             cxx: HashMap::new(),
@@ -438,7 +433,8 @@ impl Build {
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
-        self.add_bootstrap_key(&mut cargo);
+        // Enable usage of unstable features
+        cargo.env("RUSTC_BOOTSTRAP", "1");
 
         // Specify some various options for build scripts used throughout
         // the build.
@@ -653,14 +649,6 @@ impl Build {
         }
 
         add_lib_path(vec![self.rustc_libdir(compiler)], cmd);
-    }
-
-    /// Adds the compiler's bootstrap key to the environment of `cmd`.
-    fn add_bootstrap_key(&self, cmd: &mut Command) {
-        cmd.env("RUSTC_BOOTSTRAP", "1");
-        // FIXME: Transitionary measure to bootstrap using the old bootstrap logic.
-        // Remove this once the bootstrap compiler uses the new login in Issue #36548.
-        cmd.env("RUSTC_BOOTSTRAP_KEY", "62b3e239");
     }
 
     /// Returns the compiler's libdir where it stores the dynamic libraries that

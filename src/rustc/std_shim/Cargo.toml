@@ -28,17 +28,6 @@ authors = ["The Rust Project Developers"]
 name = "std_shim"
 path = "lib.rs"
 
-[profile.release]
-opt-level = 2
-[profile.bench]
-opt-level = 2
-
-# These options are controlled from our rustc wrapper script, so turn them off
-# here and have them controlled elsewhere.
-[profile.dev]
-debug = false
-debug-assertions = false
-
 [dependencies]
 std = { path = "../../libstd" }
 core = { path = "../../libcore" }

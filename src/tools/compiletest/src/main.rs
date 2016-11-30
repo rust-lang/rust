@@ -16,8 +16,6 @@
 #![feature(test)]
 #![feature(libc)]
 
-#![cfg_attr(stage0, feature(question_mark))]
-
 #![deny(warnings)]
 
 extern crate libc;

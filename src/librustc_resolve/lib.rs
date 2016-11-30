@@ -19,7 +19,6 @@
 
 #![feature(associated_consts)]
 #![feature(borrow_state)]
-#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]

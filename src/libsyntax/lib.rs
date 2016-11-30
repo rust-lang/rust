@@ -32,10 +32,8 @@
 #![feature(staged_api)]
 #![feature(str_escape)]
 #![feature(unicode)]
-#![cfg_attr(stage0, feature(question_mark))]
 #![feature(rustc_diagnostic_macros)]
 #![feature(specialization)]
-#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 
 extern crate core;
 extern crate serialize;
