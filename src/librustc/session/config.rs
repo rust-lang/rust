@@ -862,6 +862,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "print the arguments passed to the linker"),
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "prints the llvm optimization passes being run"),
+    ast: bool = (false, parse_bool, [UNTRACKED],
+        "pretty-print the AST and halt"),
+    ast_noexpand: bool = (false, parse_bool, [UNTRACKED],
+        "pretty-print the pre-expansion AST and halt"),
     ast_json: bool = (false, parse_bool, [UNTRACKED],
         "print the AST as JSON and halt"),
     ast_json_noexpand: bool = (false, parse_bool, [UNTRACKED],
@@ -2403,6 +2407,10 @@ mod tests {
         opts.debugging_opts.print_link_args = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.print_llvm_passes = true;
+        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+        opts.debugging_opts.ast = true;
+        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+        opts.debugging_opts.ast_noexpand = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.ast_json = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());

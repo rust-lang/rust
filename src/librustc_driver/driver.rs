@@ -501,6 +501,10 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session, input: &Input) -> PResult<'a, 
 
     sess.diagnostic().set_continue_after_error(true);
 
+    if sess.opts.debugging_opts.ast_noexpand {
+        println!("{:#?}", &krate);
+    }
+
     if sess.opts.debugging_opts.ast_json_noexpand {
         println!("{}", json::as_json(&krate));
     }
@@ -731,6 +735,10 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
     if sess.opts.debugging_opts.hir_stats {
         hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS");
+    }
+
+    if sess.opts.debugging_opts.ast {
+        println!("{:#?}", &krate);
     }
 
     if sess.opts.debugging_opts.ast_json {
