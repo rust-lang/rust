@@ -12,7 +12,12 @@ struct r;
 
 impl Drop for r {
     fn drop(&mut self) {
-        true //~  ERROR mismatched types
+        true
+        //~^ ERROR: mismatched types
+        //~| NOTE: consider adding a semicolon here
+        //~| NOTE: expected (), found bool
+        //~| NOTE: expected type `()`
+        //~| NOTE:    found type `bool`
     }
 }
 

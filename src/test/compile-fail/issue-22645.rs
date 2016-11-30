@@ -24,4 +24,10 @@ fn main() {
   let b = Bob + 3.5;
   b + 3 //~ ERROR E0277
   //~^ ERROR: mismatched types
+  //~| NOTE consider adding a semicolon here
+  //~| NOTE expected (), found
+  //~| NOTE expected type `()`
+  //~| NOTE    found type
+  //~| NOTE the trait `Scalar` is not implemented for `{integer}`
+  //~| NOTE required because of the requirements on the impl of `std::ops::Add<{integer}>`
 }

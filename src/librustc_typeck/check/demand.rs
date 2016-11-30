@@ -10,9 +10,10 @@
 
 
 use check::FnCtxt;
-use rustc::ty::Ty;
-use rustc::infer::{InferOk};
+use rustc::infer::{InferOk, TypeTrace};
 use rustc::traits::ObligationCause;
+use rustc::ty::Ty;
+use errors;
 
 use syntax_pos::Span;
 use rustc::hir;
@@ -51,13 +52,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Checks that the type of `expr` can be coerced to `expected`.
-    pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
+    pub fn demand_coerce_diag(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>)
+        -> Option<errors::DiagnosticBuilder<'tcx>>
+    {
         let expected = self.resolve_type_vars_with_obligations(expected);
         if let Err(e) = self.try_coerce(expr, checked_ty, expected) {
             let cause = self.misc(expr.span);
             let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
-            self.report_mismatched_types(&cause, expected, expr_ty, e);
+            let trace = TypeTrace::types(&cause, true, expected, expr_ty);
+
+            Some(self.report_and_explain_type_error(trace, &e))
+        } else {
+            None
+        }
+    }
+
+    // Checks that the type of `expr` can be coerced to `expected`.
+    pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
+        if let Some(mut err) = self.demand_coerce_diag(expr, checked_ty, expected) {
+            err.emit();
         }
     }
 }
