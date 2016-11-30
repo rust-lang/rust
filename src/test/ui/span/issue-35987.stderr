@@ -1,10 +1,11 @@
-error[E0404]: `Add` is not a trait
+error[E0404]: expected trait, found type parameter `Add`
   --> $DIR/issue-35987.rs:15:21
    |
 15 | impl<T: Clone, Add> Add for Foo<T> {
-   |                ---  ^^^ expected trait, found type parameter
-   |                |
-   |                type parameter defined here
+   |                     ^^^ not a trait
+   |
+   = help: possible better candidate is found in another module, you can import it into scope:
+   = help:   `use std::ops::Add;`
 
 error: main function not found
 

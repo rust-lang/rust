@@ -1,8 +1,8 @@
-error[E0411]: use of `Self` outside of an impl or trait
+error[E0411]: unresolved type `Self`
   --> $DIR/issue-24968.rs:11:11
    |
 11 | fn foo(_: Self) {
-   |           ^^^^ used outside of impl or trait
+   |           ^^^^ `Self` is only available in traits and impls
 
 error: aborting due to previous error
 

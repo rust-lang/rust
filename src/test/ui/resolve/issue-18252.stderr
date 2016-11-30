@@ -1,10 +1,8 @@
-error[E0423]: `Foo::Variant` is the name of a struct or struct variant, but this expression uses it like a function name
+error[E0423]: expected function, found struct variant `Foo::Variant`
   --> $DIR/issue-18252.rs:16:13
    |
 16 |     let f = Foo::Variant(42);
-   |             ^^^^^^^^^^^^ struct called like a function
-   |
-   = help: did you mean to write: `Foo::Variant { /* fields */ }`?
+   |             ^^^^^^^^^^^^ did you mean `Foo::Variant { /* fields */ }`?
 
 error: aborting due to previous error
 

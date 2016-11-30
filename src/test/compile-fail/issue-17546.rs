@@ -20,7 +20,7 @@ mod foo {
     }
 
     fn new() -> NoResult<MyEnum, String> {
-        //~^ ERROR: found value `foo::MyEnum::NoResult` used as a type
+        //~^ ERROR expected type, found variant `NoResult`
         unimplemented!()
     }
 }
@@ -30,18 +30,18 @@ mod bar {
     use foo;
 
     fn new() -> Result<foo::MyEnum, String> {
-        //~^ ERROR: found value `foo::MyEnum::Result` used as a type
+        //~^ ERROR expected type, found variant `Result`
         unimplemented!()
     }
 }
 
 fn new() -> Result<foo::MyEnum, String> {
-    //~^ ERROR: found value `foo::MyEnum::Result` used as a type
+    //~^ ERROR expected type, found variant `Result`
     unimplemented!()
 }
 
 fn newer() -> NoResult<foo::MyEnum, String> {
-    //~^ ERROR: found value `foo::MyEnum::NoResult` used as a type
+    //~^ ERROR expected type, found variant `NoResult`
     unimplemented!()
 }
 

@@ -11,4 +11,4 @@
 #[cfg_attr(all(), cfg_attr(all(), cfg(foo)))]
 fn f() {}
 
-fn main() { f() } //~ ERROR unresolved name `f`
+fn main() { f() } //~ ERROR unresolved function `f`

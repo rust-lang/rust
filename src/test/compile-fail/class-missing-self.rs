@@ -16,8 +16,8 @@ impl cat {
     fn sleep(&self) { loop{} }
     fn meow(&self) {
       println!("Meow");
-      meows += 1; //~ ERROR unresolved name
-      sleep();     //~ ERROR unresolved name
+      meows += 1; //~ ERROR unresolved value `meows`
+      sleep();     //~ ERROR unresolved function `sleep`
     }
 
 }

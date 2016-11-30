@@ -14,11 +14,11 @@
 
 trait Foo {
     fn bar() {
-        let x = foo(); //~ ERROR unresolved name `foo`
+        let x = foo(); //~ ERROR unresolved function `foo`
 
 }
 
 fn main() {
     let x = y.;  //~ ERROR unexpected token
-                 //~^ ERROR unresolved name `y`
+                 //~^ ERROR unresolved value `y`
 } //~ ERROR this file contains an un-closed delimiter

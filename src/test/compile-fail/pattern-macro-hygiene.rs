@@ -12,5 +12,5 @@ macro_rules! foo { () => ( x ) }
 
 fn main() {
     let foo!() = 2;
-    x + 1; //~ ERROR unresolved name `x`
+    x + 1; //~ ERROR unresolved value `x`
 }

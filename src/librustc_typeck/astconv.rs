@@ -1519,14 +1519,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 self.set_tainted_by_errors();
                 return self.tcx().types.err;
             }
-            _ => {
-                struct_span_err!(tcx.sess, span, E0248,
-                           "found value `{}` used as a type",
-                            tcx.item_path_str(path.def.def_id()))
-                           .span_label(span, &format!("value used as a type"))
-                           .emit();
-                return self.tcx().types.err;
-            }
+            _ => span_bug!(span, "unexpected definition: {:?}", path.def)
         }
     }
 
