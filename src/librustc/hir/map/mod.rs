@@ -760,45 +760,38 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    pub fn opt_span(&self, id: NodeId) -> Option<Span> {
-        let sp = match self.find(id) {
-            Some(NodeItem(item)) => item.span,
-            Some(NodeForeignItem(foreign_item)) => foreign_item.span,
-            Some(NodeTraitItem(trait_method)) => trait_method.span,
-            Some(NodeImplItem(ref impl_item)) => impl_item.span,
-            Some(NodeVariant(variant)) => variant.span,
-            Some(NodeField(field)) => field.span,
-            Some(NodeExpr(expr)) => expr.span,
-            Some(NodeStmt(stmt)) => stmt.span,
-            Some(NodeTy(ty)) => ty.span,
-            Some(NodeTraitRef(tr)) => tr.path.span,
-            Some(NodeLocal(pat)) => pat.span,
-            Some(NodePat(pat)) => pat.span,
-            Some(NodeBlock(block)) => block.span,
-            Some(NodeStructCtor(_)) => self.expect_item(self.get_parent(id)).span,
-            Some(NodeTyParam(ty_param)) => ty_param.span,
-            Some(NodeVisibility(&Visibility::Restricted { ref path, .. })) => path.span,
-            _ => return None,
-        };
-        Some(sp)
-    }
-
     pub fn span(&self, id: NodeId) -> Span {
         self.read(id); // reveals span from node
-        self.opt_span(id)
-            .unwrap_or_else(|| bug!("AstMap.span: could not find span for id {:?}", id))
+        match self.find_entry(id) {
+            Some(EntryItem(_, item)) => item.span,
+            Some(EntryForeignItem(_, foreign_item)) => foreign_item.span,
+            Some(EntryTraitItem(_, trait_method)) => trait_method.span,
+            Some(EntryImplItem(_, impl_item)) => impl_item.span,
+            Some(EntryVariant(_, variant)) => variant.span,
+            Some(EntryField(_, field)) => field.span,
+            Some(EntryExpr(_, expr)) => expr.span,
+            Some(EntryStmt(_, stmt)) => stmt.span,
+            Some(EntryTy(_, ty)) => ty.span,
+            Some(EntryTraitRef(_, tr)) => tr.path.span,
+            Some(EntryLocal(_, pat)) => pat.span,
+            Some(EntryPat(_, pat)) => pat.span,
+            Some(EntryBlock(_, block)) => block.span,
+            Some(EntryStructCtor(_, _)) => self.expect_item(self.get_parent(id)).span,
+            Some(EntryLifetime(_, lifetime)) => lifetime.span,
+            Some(EntryTyParam(_, ty_param)) => ty_param.span,
+            Some(EntryVisibility(_, &Visibility::Restricted { ref path, .. })) => path.span,
+            Some(EntryVisibility(_, v)) => bug!("unexpected Visibility {:?}", v),
+
+            Some(RootCrate) => self.krate().span,
+            Some(RootInlinedParent(parent)) => parent.body.span,
+            Some(NotPresent) | None => {
+                bug!("hir::map::Map::span: id not in map: {:?}", id)
+            }
+        }
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
         self.as_local_node_id(id).map(|id| self.span(id))
-    }
-
-    pub fn def_id_span(&self, def_id: DefId, fallback: Span) -> Span {
-        if let Some(node_id) = self.as_local_node_id(def_id) {
-            self.opt_span(node_id).unwrap_or(fallback)
-        } else {
-            fallback
-        }
     }
 
     pub fn node_to_string(&self, id: NodeId) -> String {

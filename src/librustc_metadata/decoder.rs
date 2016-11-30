@@ -25,6 +25,7 @@ use rustc::middle::cstore::{InlinedItem, LinkagePreference};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::middle::lang_items;
+use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 
@@ -47,8 +48,9 @@ use syntax_pos::{self, Span, BytePos, Pos};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Decoder<'a>,
-    tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
     cdata: Option<&'a CrateMetadata>,
+    sess: Option<&'a Session>,
+    tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
     from_id_range: IdRange,
     to_id_range: IdRange,
 
@@ -61,22 +63,21 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
 /// Abstract over the various ways one can create metadata decoders.
 pub trait Metadata<'a, 'tcx>: Copy {
     fn raw_bytes(self) -> &'a [u8];
-    fn cdata(self) -> Option<&'a CrateMetadata> {
-        None
-    }
-    fn tcx(self) -> Option<TyCtxt<'a, 'tcx, 'tcx>> {
-        None
-    }
+    fn cdata(self) -> Option<&'a CrateMetadata> { None }
+    fn sess(self) -> Option<&'a Session> { None }
+    fn tcx(self) -> Option<TyCtxt<'a, 'tcx, 'tcx>> { None }
 
     fn decoder(self, pos: usize) -> DecodeContext<'a, 'tcx> {
         let id_range = IdRange {
             min: NodeId::from_u32(u32::MIN),
             max: NodeId::from_u32(u32::MAX),
         };
+        let tcx = self.tcx();
         DecodeContext {
             opaque: opaque::Decoder::new(self.raw_bytes(), pos),
             cdata: self.cdata(),
-            tcx: self.tcx(),
+            sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
+            tcx: tcx,
             from_id_range: id_range,
             to_id_range: id_range,
             last_filemap_index: 0,
@@ -101,6 +102,18 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a CrateMetadata {
     }
     fn cdata(self) -> Option<&'a CrateMetadata> {
         Some(self)
+    }
+}
+
+impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, &'a Session) {
+    fn raw_bytes(self) -> &'a [u8] {
+        self.0.raw_bytes()
+    }
+    fn cdata(self) -> Option<&'a CrateMetadata> {
+        Some(self.0)
+    }
+    fn sess(self) -> Option<&'a Session> {
+        Some(&self.1)
     }
 }
 
@@ -280,8 +293,8 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let lo = BytePos::decode(self)?;
         let hi = BytePos::decode(self)?;
 
-        let tcx = if let Some(tcx) = self.tcx {
-            tcx
+        let sess = if let Some(sess) = self.sess {
+            sess
         } else {
             return Ok(syntax_pos::mk_sp(lo, hi));
         };
@@ -299,7 +312,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             (lo, hi)
         };
 
-        let imported_filemaps = self.cdata().imported_filemaps(&tcx.sess.codemap());
+        let imported_filemaps = self.cdata().imported_filemaps(&sess.codemap());
         let filemap = {
             // Optimize for the case that most spans within a translated item
             // originate from the same filemap.
@@ -535,6 +548,10 @@ impl<'a, 'tcx> CrateMetadata {
         } else {
             self.entry(index).kind.to_def(self.local_def_id(index))
         }
+    }
+
+    pub fn get_span(&self, index: DefIndex, sess: &Session) -> Span {
+        self.entry(index).span.decode((self, sess))
     }
 
     pub fn get_trait_def(&self,

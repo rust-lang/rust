@@ -2360,6 +2360,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn def_span(self, def_id: DefId) -> Span {
+        if let Some(id) = self.map.as_local_node_id(def_id) {
+            self.map.span(id)
+        } else {
+            self.sess.cstore.def_span(&self.sess, def_id)
+        }
+    }
+
     pub fn item_name(self, id: DefId) -> ast::Name {
         if let Some(id) = self.map.as_local_node_id(id) {
             self.map.name(id)

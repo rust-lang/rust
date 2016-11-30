@@ -275,6 +275,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Entry {
             kind: EntryKind::Variant(self.lazy(&data)),
             visibility: enum_vis.simplify(),
+            span: self.lazy(&tcx.def_span(def_id)),
             def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&tcx.get_attrs(def_id)),
             children: self.lazy_seq(variant.fields.iter().map(|f| {
@@ -313,6 +314,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Entry {
             kind: EntryKind::Mod(self.lazy(&data)),
             visibility: vis.simplify(),
+            span: self.lazy(&md.inner),
             def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(attrs),
             children: self.lazy_seq(md.item_ids.iter().map(|item_id| {
@@ -393,6 +395,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Entry {
             kind: EntryKind::Field,
             visibility: field.vis.simplify(),
+            span: self.lazy(&tcx.def_span(def_id)),
             def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&variant_data.fields()[field_index].attrs),
             children: LazySeq::empty(),
@@ -426,6 +429,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Entry {
             kind: EntryKind::Struct(self.lazy(&data)),
             visibility: struct_vis.simplify(),
+            span: self.lazy(&tcx.def_span(def_id)),
             def_key: self.encode_def_key(def_id),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),
@@ -492,6 +496,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Entry {
             kind: kind,
             visibility: trait_item.vis.simplify(),
+            span: self.lazy(&ast_item.span),
             def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&ast_item.attrs),
             children: LazySeq::empty(),
@@ -580,6 +585,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Entry {
             kind: kind,
             visibility: impl_item.vis.simplify(),
+            span: self.lazy(&ast_item.span),
             def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&ast_item.attrs),
             children: LazySeq::empty(),
@@ -743,6 +749,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Entry {
             kind: kind,
             visibility: item.vis.simplify(),
+            span: self.lazy(&item.span),
             def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&item.attrs),
             children: match item.node {
@@ -850,18 +857,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     /// Serialize the text of exported macros
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef) -> Entry<'tcx> {
         let def_id = self.tcx.map.local_def_id(macro_def.id);
-        let macro_def = MacroDef {
-            name: macro_def.name,
-            attrs: macro_def.attrs.to_vec(),
-            span: macro_def.span,
-            body: ::syntax::print::pprust::tts_to_string(&macro_def.body)
-        };
         Entry {
-            kind: EntryKind::MacroDef(self.lazy(&macro_def)),
+            kind: EntryKind::MacroDef(self.lazy(&MacroDef {
+                body: ::syntax::print::pprust::tts_to_string(&macro_def.body)
+            })),
             visibility: ty::Visibility::Public,
+            span: self.lazy(&macro_def.span),
             def_key: self.encode_def_key(def_id),
 
-            attributes: LazySeq::empty(),
+            attributes: self.encode_attributes(&macro_def.attrs),
             children: LazySeq::empty(),
             stability: None,
             deprecation: None,
@@ -960,6 +964,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Entry {
             kind: kind,
             visibility: nitem.vis.simplify(),
+            span: self.lazy(&nitem.span),
             def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&nitem.attrs),
             children: LazySeq::empty(),
@@ -1038,9 +1043,11 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_anon_ty(&mut self, def_id: DefId) -> Entry<'tcx> {
+        let tcx = self.tcx;
         Entry {
             kind: EntryKind::Type,
             visibility: ty::Visibility::Public,
+            span: self.lazy(&tcx.def_span(def_id)),
             def_key: self.encode_def_key(def_id),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),
@@ -1069,6 +1076,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Entry {
             kind: EntryKind::Closure(self.lazy(&data)),
             visibility: ty::Visibility::Public,
+            span: self.lazy(&tcx.def_span(def_id)),
             def_key: self.encode_def_key(def_id),
             attributes: self.encode_attributes(&tcx.get_attrs(def_id)),
             children: LazySeq::empty(),
@@ -1163,11 +1171,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let all_filemaps = codemap.files.borrow();
         self.lazy_seq_ref(all_filemaps.iter()
             .filter(|filemap| {
-                // No need to export empty filemaps, as they can't contain spans
-                // that need translation.
-                // Also no need to re-export imported filemaps, as any downstream
+                // No need to re-export imported filemaps, as any downstream
                 // crate will import them from their original source.
-                !filemap.lines.borrow().is_empty() && !filemap.is_imported()
+                !filemap.is_imported()
             })
             .map(|filemap| &**filemap))
     }

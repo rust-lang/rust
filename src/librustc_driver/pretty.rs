@@ -1006,11 +1006,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                got {:?}",
                                               node);
 
-                        // Point to what was found, if there's an accessible span.
-                        match tcx.map.opt_span(nodeid) {
-                            Some(sp) => tcx.sess.span_fatal(sp, &message),
-                            None => tcx.sess.fatal(&message),
-                        }
+                        tcx.sess.span_fatal(tcx.map.span(nodeid), &message)
                     }
                 }
             }
