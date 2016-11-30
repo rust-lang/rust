@@ -31,7 +31,6 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
-#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![cfg_attr(stage0, feature(item_like_imports))]
 #![feature(libc)]
 #![feature(nonzero)]
@@ -41,7 +40,6 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
-#![cfg_attr(stage0, feature(question_mark))]
 #![cfg_attr(test, feature(test))]
 
 extern crate arena;

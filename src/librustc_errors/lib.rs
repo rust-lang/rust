@@ -21,7 +21,6 @@
 #![allow(unused_attributes)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![cfg_attr(stage0, feature(question_mark))]
 #![feature(range_contains)]
 #![feature(libc)]
 #![feature(unicode)]

@@ -18,7 +18,6 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(custom_attribute)]
-#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![allow(unused_attributes)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
