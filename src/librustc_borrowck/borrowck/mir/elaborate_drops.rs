@@ -857,8 +857,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
         let tcx = self.tcx;
         let unit_temp = Lvalue::Local(self.patch.new_temp(tcx.mk_nil()));
-        let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
-            .unwrap_or_else(|e| tcx.sess.fatal(&e));
+        let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
         let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
         let fty = tcx.item_type(free_func).subst(tcx, substs);
 

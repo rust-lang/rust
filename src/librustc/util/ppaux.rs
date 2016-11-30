@@ -16,9 +16,8 @@ use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::{TyClosure, TyProjection, TyAnon};
-use ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
+use ty::{TyBox, TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::fold::{TypeFolder, TypeVisitor};
 
 use std::cell::Cell;
 use std::fmt;
@@ -298,74 +297,31 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
     write!(f, "{}", new_value)
 }
 
-/// This curious type is here to help pretty-print trait objects. In
-/// a trait object, the projections are stored separately from the
-/// main trait bound, but in fact we want to package them together
-/// when printing out; they also have separate binders, but we want
-/// them to share a binder when we print them out. (And the binder
-/// pretty-printing logic is kind of clever and we don't want to
-/// reproduce it.) So we just repackage up the structure somewhat.
-///
-/// Right now there is only one trait in an object that can have
-/// projection bounds, so we just stuff them altogether. But in
-/// reality we should eventually sort things out better.
-#[derive(Clone, Debug)]
-struct TraitAndProjections<'tcx>(ty::TraitRef<'tcx>,
-                                 Vec<ty::ProjectionPredicate<'tcx>>);
-
-impl<'tcx> TypeFoldable<'tcx> for TraitAndProjections<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        TraitAndProjections(self.0.fold_with(folder), self.1.fold_with(folder))
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.0.visit_with(visitor) || self.1.visit_with(visitor)
-    }
-}
-
-impl<'tcx> fmt::Display for TraitAndProjections<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let TraitAndProjections(ref trait_ref, ref projection_bounds) = *self;
-        parameterized(f, trait_ref.substs,
-                      trait_ref.def_id,
-                      projection_bounds)
-    }
-}
-
-impl<'tcx> fmt::Display for ty::TraitObject<'tcx> {
+impl<'tcx> fmt::Display for &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Generate the main trait ref, including associated types.
         ty::tls::with(|tcx| {
             // Use a type that can't appear in defaults of type parameters.
             let dummy_self = tcx.mk_infer(ty::FreshTy(0));
 
-            let principal = tcx.lift(&self.principal)
-                               .expect("could not lift TraitRef for printing")
-                               .with_self_ty(tcx, dummy_self).0;
-            let projections = self.projection_bounds.iter().map(|p| {
-                tcx.lift(p)
-                    .expect("could not lift projection for printing")
-                    .with_self_ty(tcx, dummy_self).0
-            }).collect();
+            if let Some(p) = self.principal() {
+                let principal = tcx.lift(&p).expect("could not lift TraitRef for printing")
+                    .with_self_ty(tcx, dummy_self);
+                let projections = self.projection_bounds().map(|p| {
+                    tcx.lift(&p)
+                        .expect("could not lift projection for printing")
+                        .with_self_ty(tcx, dummy_self)
+                }).collect::<Vec<_>>();
+                parameterized(f, principal.substs, principal.def_id, &projections)?;
+            }
 
-            let tap = ty::Binder(TraitAndProjections(principal, projections));
-            in_binder(f, tcx, &ty::Binder(""), Some(tap))
+            // Builtin bounds.
+            for did in self.auto_traits() {
+                write!(f, " + {}", tcx.item_path_str(did))?;
+            }
+
+            Ok(())
         })?;
-
-        // Builtin bounds.
-        for bound in &self.builtin_bounds {
-            write!(f, " + {:?}", bound)?;
-        }
-
-        // FIXME: It'd be nice to compute from context when this bound
-        // is implied, but that's non-trivial -- we'd perhaps have to
-        // use thread-local data of some kind? There are also
-        // advantages to just showing the region, since it makes
-        // people aware that it's there.
-        let bound = self.region_bound.to_string();
-        if !bound.is_empty() {
-            write!(f, " + {}", bound)?;
-        }
 
         Ok(())
     }
@@ -450,41 +406,6 @@ impl<'tcx, 'container> fmt::Debug for ty::AdtDefData<'tcx, 'container> {
 impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?} -> {}", self.kind, self.target)
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::TraitObject<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut empty = true;
-        let mut maybe_continue = |f: &mut fmt::Formatter| {
-            if empty {
-                empty = false;
-                Ok(())
-            } else {
-                write!(f, " + ")
-            }
-        };
-
-        maybe_continue(f)?;
-        write!(f, "{:?}", self.principal)?;
-
-        let region_str = format!("{:?}", self.region_bound);
-        if !region_str.is_empty() {
-            maybe_continue(f)?;
-            write!(f, "{}", region_str)?;
-        }
-
-        for bound in &self.builtin_bounds {
-            maybe_continue(f)?;
-            write!(f, "{:?}", bound)?;
-        }
-
-        for projection_bound in &self.projection_bounds {
-            maybe_continue(f)?;
-            write!(f, "{:?}", projection_bound)?;
-        }
-
-        Ok(())
     }
 }
 
@@ -677,19 +598,6 @@ impl<'tcx> fmt::Display for ty::FnSig<'tcx> {
     }
 }
 
-impl fmt::Display for ty::BuiltinBounds {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut bounds = self.iter();
-        if let Some(bound) = bounds.next() {
-            write!(f, "{:?}", bound)?;
-            for bound in bounds {
-                write!(f, " + {:?}", bound)?;
-            }
-        }
-        Ok(())
-    }
-}
-
 impl fmt::Debug for ty::TyVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "_#{}t", self.index)
@@ -752,6 +660,12 @@ impl fmt::Debug for ty::IntVarValue {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
     }
 }*/
+
+impl<'tcx> fmt::Display for ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
+    }
+}
 
 impl<'tcx> fmt::Display for ty::Binder<ty::TraitRef<'tcx>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -872,7 +786,15 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     }
                 })
             }
-            TyTrait(ref data) => write!(f, "{}", data),
+            TyDynamic(data, r) => {
+                write!(f, "{}", data)?;
+                let r = r.to_string();
+                if !r.is_empty() {
+                    write!(f, " + {}", r)
+                } else {
+                    Ok(())
+                }
+            }
             TyProjection(ref data) => write!(f, "{}", data),
             TyAnon(def_id, substs) => {
                 ty::tls::with(|tcx| {

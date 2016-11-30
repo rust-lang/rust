@@ -316,7 +316,7 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
     match ty.sty {
         ty::TyAdt(adt_def, _) => Some(adt_def.did),
 
-        ty::TyTrait(ref data) => Some(data.principal.def_id()),
+        ty::TyDynamic(data, ..) => data.principal().map(|p| p.def_id()),
 
         ty::TyArray(subty, _) |
         ty::TySlice(subty) |

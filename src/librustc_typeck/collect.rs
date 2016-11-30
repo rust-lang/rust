@@ -1639,11 +1639,10 @@ fn convert_foreign_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     assert!(prev_predicates.is_none());
 }
 
-// Add the Sized bound, unless the type parameter is marked as `?Sized`.
-fn add_unsized_bound<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                       bounds: &mut ty::BuiltinBounds,
-                                       ast_bounds: &[hir::TyParamBound],
-                                       span: Span)
+// Is it marked with ?Sized
+fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+                                ast_bounds: &[hir::TyParamBound],
+                                span: Span) -> bool
 {
     let tcx = astconv.tcx();
 
@@ -1672,16 +1671,17 @@ fn add_unsized_bound<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                        "default bound relaxed for a type parameter, but \
                                        this does nothing because the given bound is not \
                                        a default. Only `?Sized` is supported");
-                    tcx.try_add_builtin_trait(kind_id, bounds);
                 }
             }
         }
         _ if kind_id.is_ok() => {
-            tcx.try_add_builtin_trait(kind_id.unwrap(), bounds);
+            return false;
         }
         // No lang item for Sized, so we can't add it as a bound.
         None => {}
     }
+
+    true
 }
 
 /// Returns the early-bound lifetimes declared in this generics
@@ -1963,14 +1963,9 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 {
     let tcx = astconv.tcx();
     let PartitionedBounds {
-        mut builtin_bounds,
         trait_bounds,
         region_bounds
-    } = partition_bounds(tcx, span, &ast_bounds);
-
-    if let SizedByDefault::Yes = sized_by_default {
-        add_unsized_bound(astconv, &mut builtin_bounds, ast_bounds, span);
-    }
+    } = partition_bounds(&ast_bounds);
 
     let mut projection_bounds = vec![];
 
@@ -1988,9 +1983,15 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 
     trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
 
+    let implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
+        !is_unsized(astconv, ast_bounds, span)
+    } else {
+        false
+    };
+
     Bounds {
         region_bounds: region_bounds,
-        builtin_bounds: builtin_bounds,
+        implicitly_sized: implicitly_sized,
         trait_bounds: trait_bounds,
         projection_bounds: projection_bounds,
     }

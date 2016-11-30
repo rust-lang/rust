@@ -812,11 +812,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             }
 
             /*From:*/ (_,
-            /*To:  */  &ty::TyTrait(ref obj)) => {
+            /*To:  */  &ty::TyDynamic(.., r)) => {
                 // When T is existentially quantified as a trait
                 // `Foo+'to`, it must outlive the region bound `'to`.
-                self.type_must_outlive(infer::RelateObjectBound(cast_expr.span),
-                                       from_ty, obj.region_bound);
+                self.type_must_outlive(infer::RelateObjectBound(cast_expr.span), from_ty, r);
             }
 
             /*From:*/ (&ty::TyBox(from_referent_ty),

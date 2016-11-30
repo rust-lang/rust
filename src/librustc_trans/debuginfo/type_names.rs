@@ -93,11 +93,13 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             push_debuginfo_type_name(cx, inner_type, true, output);
             output.push(']');
         },
-        ty::TyTrait(ref trait_data) => {
-            let principal = cx.tcx().erase_late_bound_regions_and_normalize(
-                &trait_data.principal);
-            push_item_name(cx, principal.def_id, false, output);
-            push_type_params(cx, principal.substs, output);
+        ty::TyDynamic(ref trait_data, ..) => {
+            if let Some(principal) = trait_data.principal() {
+                let principal = cx.tcx().erase_late_bound_regions_and_normalize(
+                    &principal);
+                push_item_name(cx, principal.def_id, false, output);
+                push_type_params(cx, principal.substs, output);
+            }
         },
         ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
         ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {

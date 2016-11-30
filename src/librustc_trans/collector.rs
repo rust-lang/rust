@@ -763,7 +763,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         ty::TyFnDef(..) |
         ty::TyFnPtr(_)  |
         ty::TyNever     |
-        ty::TyTrait(_)  => {
+        ty::TyDynamic(..)  => {
             /* nothing to do */
         }
         ty::TyAdt(adt_def, substs) => {
@@ -1003,18 +1003,20 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
                                                    output: &mut Vec<TransItem<'tcx>>) {
     assert!(!trait_ty.needs_subst() && !impl_ty.needs_subst());
 
-    if let ty::TyTrait(ref trait_ty) = trait_ty.sty {
-        let poly_trait_ref = trait_ty.principal.with_self_ty(scx.tcx(), impl_ty);
-        let param_substs = scx.tcx().intern_substs(&[]);
+    if let ty::TyDynamic(ref trait_ty, ..) = trait_ty.sty {
+        if let Some(principal) = trait_ty.principal() {
+            let poly_trait_ref = principal.with_self_ty(scx.tcx(), impl_ty);
+            let param_substs = scx.tcx().intern_substs(&[]);
 
-        // Walk all methods of the trait, including those of its supertraits
-        let methods = traits::get_vtable_methods(scx.tcx(), poly_trait_ref);
-        let methods = methods.filter_map(|method| method)
-            .filter_map(|(def_id, substs)| do_static_dispatch(scx, def_id, substs, param_substs))
-            .filter(|&(def_id, _)| can_have_local_instance(scx.tcx(), def_id))
-            .map(|(def_id, substs)| create_fn_trans_item(scx, def_id, substs, param_substs));
-        output.extend(methods);
-
+            // Walk all methods of the trait, including those of its supertraits
+            let methods = traits::get_vtable_methods(scx.tcx(), poly_trait_ref);
+            let methods = methods.filter_map(|method| method)
+                .filter_map(|(def_id, substs)| do_static_dispatch(scx, def_id, substs,
+                                                                  param_substs))
+                .filter(|&(def_id, _)| can_have_local_instance(scx.tcx(), def_id))
+                .map(|(def_id, substs)| create_fn_trans_item(scx, def_id, substs, param_substs));
+            output.extend(methods);
+        }
         // Also add the destructor
         let dg_type = glue::get_drop_glue_type(scx.tcx(), impl_ty);
         output.push(TransItem::DropGlue(DropGlueKind::Ty(dg_type)));

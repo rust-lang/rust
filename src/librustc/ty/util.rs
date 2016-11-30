@@ -21,6 +21,7 @@ use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
 use util::nodemap::FxHashMap;
+use middle::lang_items;
 
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 
@@ -531,9 +532,13 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
                 self.hash(f.sig.variadic());
                 self.hash(f.sig.inputs().skip_binder().len());
             }
-            TyTrait(ref data) => {
-                self.def_id(data.principal.def_id());
-                self.hash(data.builtin_bounds);
+            TyDynamic(ref data, ..) => {
+                if let Some(p) = data.principal() {
+                    self.def_id(p.def_id());
+                }
+                for d in data.auto_traits() {
+                    self.def_id(d);
+                }
             }
             TyTuple(tys) => {
                 self.hash(tys.len());
@@ -595,7 +600,7 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
 impl<'a, 'tcx> ty::TyS<'tcx> {
     fn impls_bound(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    param_env: &ParameterEnvironment<'tcx>,
-                   bound: ty::BuiltinBound,
+                   def_id: DefId,
                    cache: &RefCell<FxHashMap<Ty<'tcx>, bool>>,
                    span: Span) -> bool
     {
@@ -607,7 +612,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         let result =
             tcx.infer_ctxt(None, Some(param_env.clone()), Reveal::ExactMatch)
             .enter(|infcx| {
-                traits::type_known_to_meet_builtin_bound(&infcx, self, bound, span)
+                traits::type_known_to_meet_bound(&infcx, self, def_id, span)
             });
         if self.has_param_types() || self.has_self_ty() {
             cache.borrow_mut().insert(self, result);
@@ -636,12 +641,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 mutbl: hir::MutMutable, ..
             }) => Some(true),
 
-            TyArray(..) | TySlice(..) | TyTrait(..) | TyTuple(..) |
+            TyArray(..) | TySlice(..) | TyDynamic(..) | TyTuple(..) |
             TyClosure(..) | TyAdt(..) | TyAnon(..) |
             TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
         }.unwrap_or_else(|| {
-            !self.impls_bound(tcx, param_env, ty::BoundCopy, &param_env.is_copy_cache, span)
-        });
+            !self.impls_bound(tcx, param_env,
+                              tcx.require_lang_item(lang_items::CopyTraitLangItem),
+                              &param_env.is_copy_cache, span) });
 
         if !self.has_param_types() && !self.has_self_ty() {
             self.flags.set(self.flags.get() | if result {
@@ -677,13 +683,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
             TyArray(..) | TyTuple(..) | TyClosure(..) | TyNever => Some(true),
 
-            TyStr | TyTrait(..) | TySlice(_) => Some(false),
+            TyStr | TyDynamic(..) | TySlice(_) => Some(false),
 
             TyAdt(..) | TyProjection(..) | TyParam(..) |
             TyInfer(..) | TyAnon(..) | TyError => None
         }.unwrap_or_else(|| {
-            self.impls_bound(tcx, param_env, ty::BoundSized, &param_env.is_sized_cache, span)
-        });
+            self.impls_bound(tcx, param_env, tcx.require_lang_item(lang_items::SizedTraitLangItem),
+                              &param_env.is_sized_cache, span) });
 
         if !self.has_param_types() && !self.has_self_ty() {
             self.flags.set(self.flags.get() | if result {

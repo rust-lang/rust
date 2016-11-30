@@ -12,7 +12,6 @@ use hir::def_id::DefId;
 use ty::subst::{Subst, Substs};
 use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use ty::outlives::Component;
-use util::common::ErrorReported;
 use util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
@@ -408,25 +407,6 @@ pub fn predicate_for_trait_ref<'tcx>(
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn trait_ref_for_builtin_bound(self,
-        builtin_bound: ty::BuiltinBound,
-        param_ty: Ty<'tcx>)
-        -> Result<ty::TraitRef<'tcx>, ErrorReported>
-    {
-        match self.lang_items.from_builtin_kind(builtin_bound) {
-            Ok(def_id) => {
-                Ok(ty::TraitRef {
-                    def_id: def_id,
-                    substs: self.mk_substs_trait(param_ty, &[])
-                })
-            }
-            Err(e) => {
-                self.sess.err(&e);
-                Err(ErrorReported)
-            }
-        }
-    }
-
     pub fn predicate_for_trait_def(self,
         cause: ObligationCause<'tcx>,
         trait_def_id: DefId,
@@ -440,17 +420,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             substs: self.mk_substs_trait(param_ty, ty_params)
         };
         predicate_for_trait_ref(cause, trait_ref, recursion_depth)
-    }
-
-    pub fn predicate_for_builtin_bound(self,
-        cause: ObligationCause<'tcx>,
-        builtin_bound: ty::BuiltinBound,
-        recursion_depth: usize,
-        param_ty: Ty<'tcx>)
-        -> Result<PredicateObligation<'tcx>, ErrorReported>
-    {
-        let trait_ref = self.trait_ref_for_builtin_bound(builtin_bound, param_ty)?;
-        Ok(predicate_for_trait_ref(cause, trait_ref, recursion_depth))
     }
 
     /// Cast a trait reference into a reference to one of its super

@@ -302,23 +302,6 @@ impl<'tcx> Relate<'tcx> for Vec<ty::PolyExistentialProjection<'tcx>> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::BuiltinBounds {
-    fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &ty::BuiltinBounds,
-                           b: &ty::BuiltinBounds)
-                           -> RelateResult<'tcx, ty::BuiltinBounds>
-        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
-    {
-        // Two sets of builtin bounds are only relatable if they are
-        // precisely the same (but see the coercion code).
-        if a != b {
-            Err(TypeError::BuiltinBoundsMismatch(expected_found(relation, a, b)))
-        } else {
-            Ok(*a)
-        }
-    }
-}
-
 impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
                            a: &ty::TraitRef<'tcx>,
@@ -415,23 +398,15 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_adt(a_def, substs))
         }
 
-        (&ty::TyTrait(ref a_obj), &ty::TyTrait(ref b_obj)) =>
-        {
-            let principal = relation.relate(&a_obj.principal, &b_obj.principal)?;
-            let r =
-                relation.with_cause(
-                    Cause::ExistentialRegionBound,
-                    |relation| relation.relate_with_variance(ty::Contravariant,
-                                                             &a_obj.region_bound,
-                                                             &b_obj.region_bound))?;
-            let nb = relation.relate(&a_obj.builtin_bounds, &b_obj.builtin_bounds)?;
-            let pb = relation.relate(&a_obj.projection_bounds, &b_obj.projection_bounds)?;
-            Ok(tcx.mk_trait(ty::TraitObject {
-                principal: principal,
-                region_bound: r,
-                builtin_bounds: nb,
-                projection_bounds: pb
-            }))
+        (&ty::TyDynamic(ref a_obj, ref a_region), &ty::TyDynamic(ref b_obj, ref b_region)) => {
+            let region_bound = relation.with_cause(Cause::ExistentialRegionBound,
+                                                       |relation| {
+                                                           relation.relate_with_variance(
+                                                               ty::Contravariant,
+                                                               a_region,
+                                                               b_region)
+                                                       })?;
+            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
         }
 
         (&ty::TyClosure(a_id, a_substs),
@@ -524,6 +499,31 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         {
             Err(TypeError::Sorts(expected_found(relation, &a, &b)))
         }
+    }
+}
+
+impl<'tcx> Relate<'tcx> for &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>> {
+    fn relate<'a, 'gcx, R>(relation: &mut R,
+                           a: &Self,
+                           b: &Self)
+        -> RelateResult<'tcx, Self>
+            where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a {
+
+        if a.len() != b.len() {
+            return Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)));
+        }
+
+        let tcx = relation.tcx();
+        let v = a.iter().zip(b.iter()).map(|(ep_a, ep_b)| {
+            use ty::ExistentialPredicate::*;
+            match (*ep_a, *ep_b) {
+                (Trait(ref a), Trait(ref b)) => Ok(Trait(relation.relate(a, b)?)),
+                (Projection(ref a), Projection(ref b)) => Ok(Projection(relation.relate(a, b)?)),
+                (AutoTrait(ref a), AutoTrait(ref b)) if a == b => Ok(AutoTrait(*a)),
+                _ => Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)))
+            }
+        });
+        Ok(tcx.mk_existential_predicates(v)?)
     }
 }
 

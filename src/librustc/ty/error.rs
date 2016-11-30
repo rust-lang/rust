@@ -45,12 +45,12 @@ pub enum TypeError<'tcx> {
     IntMismatch(ExpectedFound<ty::IntVarValue>),
     FloatMismatch(ExpectedFound<ast::FloatTy>),
     Traits(ExpectedFound<DefId>),
-    BuiltinBoundsMismatch(ExpectedFound<ty::BuiltinBounds>),
     VariadicMismatch(ExpectedFound<bool>),
     CyclicTy,
     ProjectionNameMismatched(ExpectedFound<Name>),
     ProjectionBoundsLength(ExpectedFound<usize>),
-    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>)
+    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
+    ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -135,19 +135,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                                        format!("trait `{}`",
                                                tcx.item_path_str(values.found)))
             }),
-            BuiltinBoundsMismatch(values) => {
-                if values.expected.is_empty() {
-                    write!(f, "expected no bounds, found `{}`",
-                           values.found)
-                } else if values.found.is_empty() {
-                    write!(f, "expected bounds `{}`, found no bounds",
-                           values.expected)
-                } else {
-                    write!(f, "expected bounds `{}`, found bounds `{}`",
-                           values.expected,
-                           values.found)
-                }
-            }
             IntMismatch(ref values) => {
                 write!(f, "expected `{:?}`, found `{:?}`",
                        values.expected,
@@ -177,6 +164,10 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 write!(f, "conflicting type parameter defaults `{}` and `{}`",
                        values.expected.ty,
                        values.found.ty)
+            }
+            ExistentialMismatch(ref values) => {
+                report_maybe_different(f, format!("trait `{}`", values.expected),
+                                       format!("trait `{}`", values.found))
             }
         }
     }
@@ -214,8 +205,9 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             }
             ty::TyFnDef(..) => format!("fn item"),
             ty::TyFnPtr(_) => "fn pointer".to_string(),
-            ty::TyTrait(ref inner) => {
-                format!("trait {}", tcx.item_path_str(inner.principal.def_id()))
+            ty::TyDynamic(ref inner, ..) => {
+                inner.principal().map_or_else(|| "trait".to_string(),
+                    |p| format!("trait {}", tcx.item_path_str(p.def_id())))
             }
             ty::TyClosure(..) => "closure".to_string(),
             ty::TyTuple(_) => "tuple".to_string(),

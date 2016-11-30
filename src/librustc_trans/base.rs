@@ -295,16 +295,14 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
     let (source, target) = ccx.tcx().struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::TyArray(_, len), &ty::TySlice(_)) => C_uint(ccx, len),
-        (&ty::TyTrait(_), &ty::TyTrait(_)) => {
+        (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
             // For now, upcasts are limited to changes in marker
             // traits, and hence never actually require an actual
             // change to the vtable.
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
-        (_, &ty::TyTrait(ref data)) => {
-            let trait_ref = data.principal.with_self_ty(ccx.tcx(), source);
-            let trait_ref = ccx.tcx().erase_regions(&trait_ref);
-            consts::ptrcast(meth::get_vtable(ccx, trait_ref),
+        (_, &ty::TyDynamic(ref data, ..)) => {
+            consts::ptrcast(meth::get_vtable(ccx, source, data.principal()),
                             Type::vtable_ptr(ccx))
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",

@@ -1123,7 +1123,7 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
     debug!("confirm_object_candidate(object_ty={:?})",
            object_ty);
     let data = match object_ty.sty {
-        ty::TyTrait(ref data) => data,
+        ty::TyDynamic(ref data, ..) => data,
         _ => {
             span_bug!(
                 obligation.cause.span,
@@ -1131,7 +1131,7 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
                 object_ty)
         }
     };
-    let env_predicates = data.projection_bounds.iter().map(|p| {
+    let env_predicates = data.projection_bounds().map(|p| {
         p.with_self_ty(selcx.tcx(), object_ty).to_predicate()
     }).collect();
     let env_predicate = {

@@ -71,7 +71,8 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn item_ty_level(&self, item_def_id: DefId) -> Option<AccessLevel> {
         let ty_def_id = match self.tcx.item_type(item_def_id).sty {
             ty::TyAdt(adt, _) => adt.did,
-            ty::TyTrait(ref obj) => obj.principal.def_id(),
+            ty::TyDynamic(ref obj, ..) if obj.principal().is_some() =>
+                obj.principal().unwrap().def_id(),
             ty::TyProjection(ref proj) => proj.trait_ref.def_id,
             _ => return Some(AccessLevel::Public)
         };
@@ -359,7 +360,7 @@ impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let ty_def_id = match ty.sty {
             ty::TyAdt(adt, _) => Some(adt.did),
-            ty::TyTrait(ref obj) => Some(obj.principal.def_id()),
+            ty::TyDynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
             ty::TyProjection(ref proj) => Some(proj.trait_ref.def_id),
             ty::TyFnDef(def_id, ..) |
             ty::TyAnon(def_id, _) => Some(def_id),
@@ -938,7 +939,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let ty_def_id = match ty.sty {
             ty::TyAdt(adt, _) => Some(adt.did),
-            ty::TyTrait(ref obj) => Some(obj.principal.def_id()),
+            ty::TyDynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
             ty::TyProjection(ref proj) => {
                 if self.required_visibility == ty::Visibility::PrivateExternal {
                     // Conservatively approximate the whole type alias as public without

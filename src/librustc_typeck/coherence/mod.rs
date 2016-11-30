@@ -23,7 +23,7 @@ use rustc::traits::{self, ObligationCause, Reveal};
 use rustc::ty::ParameterEnvironment;
 use rustc::ty::{Ty, TyBool, TyChar, TyError};
 use rustc::ty::{TyParam, TyRawPtr};
-use rustc::ty::{TyRef, TyAdt, TyTrait, TyNever, TyTuple};
+use rustc::ty::{TyRef, TyAdt, TyDynamic, TyNever, TyTuple};
 use rustc::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
 use rustc::ty::{TyUint, TyClosure, TyBox, TyFnDef, TyFnPtr};
 use rustc::ty::{TyProjection, TyAnon};
@@ -68,7 +68,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         match ty.sty {
             TyAdt(def, _) => Some(def.did),
 
-            TyTrait(ref t) => Some(t.principal.def_id()),
+            TyDynamic(ref t, ..) => t.principal().map(|p| p.def_id()),
 
             TyBox(_) => self.inference_context.tcx.lang_items.owned_box(),
 

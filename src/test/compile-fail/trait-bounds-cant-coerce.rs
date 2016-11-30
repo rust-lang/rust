@@ -21,10 +21,10 @@ fn c(x: Box<Foo+Sync+Send>) {
 }
 
 fn d(x: Box<Foo>) {
-    a(x); //~  ERROR mismatched types
-          //~| expected type `Box<Foo + Send + 'static>`
-          //~| found type `Box<Foo + 'static>`
-          //~| expected bounds `Send`, found no bounds
+    a(x); //~ ERROR mismatched types [E0308]
+          //~| NOTE expected type `Box<Foo + std::marker::Send + 'static>`
+          //~| NOTE found type `Box<Foo + 'static>`
+          //~| NOTE expected trait `Foo + std::marker::Send`, found trait `Foo`
 }
 
 fn main() { }

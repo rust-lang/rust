@@ -255,7 +255,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             .autoderef(self.span, self_ty)
             .filter_map(|(ty, _)| {
                 match ty.sty {
-                    ty::TyTrait(ref data) => Some(closure(self, ty, data.principal)),
+                    ty::TyDynamic(ref data, ..) => data.principal().map(|p| closure(self, ty, p)),
                     _ => None,
                 }
             })

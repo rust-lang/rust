@@ -295,9 +295,11 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         debug!("assemble_probe: self_ty={:?}", self_ty);
 
         match self_ty.sty {
-            ty::TyTrait(box ref data) => {
-                self.assemble_inherent_candidates_from_object(self_ty, data.principal);
-                self.assemble_inherent_impl_candidates_for_type(data.principal.def_id());
+            ty::TyDynamic(ref data, ..) => {
+                if let Some(p) = data.principal() {
+                    self.assemble_inherent_candidates_from_object(self_ty, p);
+                    self.assemble_inherent_impl_candidates_for_type(p.def_id());
+                }
             }
             ty::TyAdt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);
