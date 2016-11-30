@@ -24,7 +24,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization::{cmt};
 use rustc::session::Session;
 use rustc::traits::Reveal;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::lint;
 use rustc_errors::DiagnosticBuilder;
 
@@ -36,7 +36,7 @@ use rustc_back::slice;
 
 use syntax::ast;
 use syntax::ptr::P;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
@@ -81,7 +81,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
 
         match ex.node {
             hir::ExprMatch(ref scrut, ref arms, source) => {
-                self.check_match(scrut, arms, source, ex.span);
+                self.check_match(scrut, arms, source);
             }
             _ => {}
         }
@@ -132,8 +132,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
         &self,
         scrut: &hir::Expr,
         arms: &[hir::Arm],
-        source: hir::MatchSource,
-        span: Span)
+        source: hir::MatchSource)
     {
         for arm in arms {
             // First, check legality of move bindings.
@@ -175,32 +174,14 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Fourth, check for unreachable arms.
             check_arms(cx, &inlined_arms, source);
 
-            // Finally, check if the whole match expression is exhaustive.
-            // Check for empty enum, because is_useful only works on inhabited types.
-            let pat_ty = self.tcx.tables().node_id_to_type(scrut.id);
-            if inlined_arms.is_empty() {
-                if !pat_ty.is_uninhabited(Some(scrut.id), self.tcx) {
-                    // We know the type is inhabited, so this must be wrong
-                    let mut err = create_e0004(self.tcx.sess, span,
-                                               format!("non-exhaustive patterns: type {} \
-                                                        is non-empty",
-                                                       pat_ty));
-                    span_help!(&mut err, span,
-                               "Please ensure that all possible cases are being handled; \
-                                possibly adding wildcards or more match arms.");
-                    err.emit();
-                }
-                // If the type *is* uninhabited, it's vacuously exhaustive
-                return;
-            }
-
             let matrix: Matrix = inlined_arms
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
                 .flat_map(|arm| &arm.0)
                 .map(|pat| vec![pat.0])
                 .collect();
-            check_exhaustive(cx, scrut.span, &matrix, source);
+            let scrut_ty = cx.tcx.tables().node_id_to_type(scrut.id);
+            check_exhaustive(cx, scrut_ty, scrut.span, &matrix, source);
         })
     }
 
@@ -213,11 +194,18 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
         MatchCheckCtxt::create_and_enter(self.tcx, pat.id, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx);
+            let pattern = patcx.lower_pattern(pat);
+            let pattern_ty = pattern.ty;
             let pats : Matrix = vec![vec![
-                expand_pattern(cx, patcx.lower_pattern(pat))
+                expand_pattern(cx, pattern)
             ]].into_iter().collect();
 
-            let witness = match is_useful(cx, &pats, &[cx.wild_pattern], ConstructWitness) {
+            let wild_pattern = Pattern {
+                ty: pattern_ty,
+                span: DUMMY_SP,
+                kind: box PatternKind::Wild,
+            };
+            let witness = match is_useful(cx, &pats, &[&wild_pattern], ConstructWitness) {
                 UsefulWithWitness(witness) => witness,
                 NotUseful => return,
                 Useful => bug!()
@@ -359,10 +347,16 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 }
 
 fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
+                              scrut_ty: Ty<'tcx>,
                               sp: Span,
                               matrix: &Matrix<'a, 'tcx>,
                               source: hir::MatchSource) {
-    match is_useful(cx, matrix, &[cx.wild_pattern], ConstructWitness) {
+    let wild_pattern = Pattern {
+        ty: scrut_ty,
+        span: DUMMY_SP,
+        kind: box PatternKind::Wild,
+    };
+    match is_useful(cx, matrix, &[&wild_pattern], ConstructWitness) {
         UsefulWithWitness(pats) => {
             let witnesses = if pats.is_empty() {
                 vec![cx.wild_pattern]

@@ -1416,7 +1416,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             return false;
         };
         self.variants.iter().all(|v| {
-            v.is_uninhabited_recurse(visited, block, tcx, substs, self.is_union())
+            v.is_uninhabited_recurse(visited, block, tcx, substs, self.adt_kind())
         })
     }
 
@@ -1761,11 +1761,23 @@ impl<'a, 'gcx, 'tcx> VariantDef {
                                   block: Option<NodeId>,
                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>,
-                                  is_union: bool) -> bool {
-        if is_union {
-            self.fields.iter().all(|f| f.is_uninhabited_recurse(visited, block, tcx, substs))
-        } else {
-            self.fields.iter().any(|f| f.is_uninhabited_recurse(visited, block, tcx, substs))
+                                  adt_kind: AdtKind) -> bool {
+        match adt_kind {
+            AdtKind::Union => {
+                self.fields.iter().all(|f| {
+                    f.is_uninhabited_recurse(visited, block, tcx, substs, false)
+                })
+            },
+            AdtKind::Struct => {
+                self.fields.iter().any(|f| {
+                    f.is_uninhabited_recurse(visited, block, tcx, substs, false)
+                })
+            },
+            AdtKind::Enum => {
+                self.fields.iter().any(|f| {
+                    f.is_uninhabited_recurse(visited, block, tcx, substs, true)
+                })
+            },
         }
     }
 }
@@ -1780,9 +1792,12 @@ impl<'a, 'gcx, 'tcx> FieldDef {
                                   visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
                                   block: Option<NodeId>,
                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                  substs: &'tcx Substs<'tcx>) -> bool {
-        block.map_or(true, |b| tcx.vis_is_accessible_from(self.vis, b)) &&
-        self.ty(tcx, substs).is_uninhabited_recurse(visited, block, tcx)
+                                  substs: &'tcx Substs<'tcx>,
+                                  is_enum: bool) -> bool {
+        let visible = is_enum || block.map_or(true, |b| {
+            tcx.vis_is_accessible_from(self.vis, b)
+        });
+        visible && self.ty(tcx, substs).is_uninhabited_recurse(visited, block, tcx)
     }
 }
 
