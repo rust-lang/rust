@@ -1,10 +1,11 @@
-error[E0425]: unresolved name `cx`
+error[E0425]: unresolved value `cx`
   --> $DIR/unresolved_static_type_field.rs:19:11
    |
 19 |         f(cx);
-   |           ^^ unresolved name
-   |
-   = help: this is an associated function, you don't have access to this type's fields or methods
+   |           ^^
+   |           |
+   |           did you mean `self.cx`?
+   |           `self` value is only available in methods with `self` parameter
 
 error: aborting due to previous error
 

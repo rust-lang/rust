@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct Foo<T: ?Hash> { }
-//~^ ERROR trait `Hash` is not in scope [E0405]
-//~^^ ERROR parameter `T` is never used [E0392]
+//~^ ERROR unresolved trait `Hash`
+//~^^ ERROR parameter `T` is never used
 //~^^^ WARN default bound relaxed for a type parameter, but this does nothing
 
 fn main() { }

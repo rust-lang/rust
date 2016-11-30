@@ -1,17 +1,17 @@
-error[E0425]: unresolved name `fake`
+error[E0425]: unresolved value `fake`
   --> $DIR/macro-backtrace-nested.rs:15:12
    |
 15 |     () => (fake)
-   |            ^^^^ unresolved name
+   |            ^^^^ no resolution found
 ...
 27 |     1 + call_nested_expr!();
    |         ------------------- in this macro invocation
 
-error[E0425]: unresolved name `fake`
+error[E0425]: unresolved value `fake`
   --> $DIR/macro-backtrace-nested.rs:15:12
    |
 15 |     () => (fake)
-   |            ^^^^ unresolved name
+   |            ^^^^ no resolution found
 ...
 28 |     call_nested_expr_sum!();
    |     ------------------------ in this macro invocation

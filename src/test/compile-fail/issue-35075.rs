@@ -9,11 +9,11 @@
 // except according to those terms.
 
 struct Bar<T> {
-    inner: Foo<T> //~ ERROR type name `Foo` is undefined or not in scope
+    inner: Foo<T> //~ ERROR unresolved type `Foo`
 }
 
 enum Baz<T> {
-    Foo(Foo<T>) //~ ERROR type name `Foo` is undefined or not in scope
+    Foo(Foo<T>) //~ ERROR unresolved type `Foo`
 }
 
 fn main() {}

@@ -132,6 +132,10 @@ pub struct UnstableStruct {
 pub struct StableStruct {
     #[stable(feature = "test_feature", since = "1.0.0")] pub i: isize
 }
+#[unstable(feature = "test_feature", issue = "0")]
+pub enum UnstableEnum {}
+#[stable(feature = "rust1", since = "1.0.0")]
+pub enum StableEnum {}
 
 #[stable(feature = "test_feature", since = "1.0.0")]
 #[rustc_deprecated(since = "1.0.0", reason = "text")]

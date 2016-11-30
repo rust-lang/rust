@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: failed to resolve. Use of undeclared type or module `bar`
-
 mod foo {
-    pub fn x() { bar::x(); }
+    pub fn x() { bar::x(); } //~ ERROR failed to resolve. Use of undeclared type or module `bar`
 }
 
 mod bar {

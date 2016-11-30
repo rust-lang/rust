@@ -10,11 +10,11 @@ note: unclosed delimiter
 14 |     if foo {
    |            ^
 
-error[E0425]: unresolved name `foo`
+error[E0425]: unresolved value `foo`
   --> $DIR/token-error-correct-2.rs:14:8
    |
 14 |     if foo {
-   |        ^^^ unresolved name
+   |        ^^^ no resolution found
 
 error: aborting due to 2 previous errors
 

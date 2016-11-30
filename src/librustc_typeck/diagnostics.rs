@@ -2861,25 +2861,6 @@ struct Bar<S, T> { x: Foo<S, T> }
 ```
 "##,
 
-E0248: r##"
-This error indicates an attempt to use a value where a type is expected. For
-example:
-
-```compile_fail,E0248
-enum Foo {
-    Bar(u32)
-}
-
-fn do_something(x: Foo::Bar) { }
-```
-
-In this example, we're attempting to take a type of `Foo::Bar` in the
-do_something function. This is not legal: `Foo::Bar` is a value of type `Foo`,
-not a distinct static type. Likewise, it's not legal to attempt to
-`impl Foo::Bar`: instead, you must `impl Foo` and then pattern match to specify
-behavior for specific enum variants.
-"##,
-
 E0569: r##"
 If an impl has a generic parameter with the `#[may_dangle]` attribute, then
 that impl must be declared as an `unsafe impl. For example:
@@ -4247,6 +4228,7 @@ register_diagnostics! {
     E0245, // not a trait
 //  E0246, // invalid recursive type
 //  E0247,
+//  E0248, // value used as a type, now reported earlier during resolution as E0412
 //  E0249,
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck

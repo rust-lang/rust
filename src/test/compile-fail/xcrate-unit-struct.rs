@@ -17,6 +17,6 @@ extern crate xcrate_unit_struct;
 
 fn main() {
     let _ = xcrate_unit_struct::StructWithFields;
-    //~^ ERROR: `xcrate_unit_struct::StructWithFields` is the name of a struct or struct variant
+    //~^ ERROR expected value, found struct `xcrate_unit_struct::StructWithFields`
     let _ = xcrate_unit_struct::Struct;
 }

@@ -28,8 +28,8 @@ mod m {
 pub fn main() {
     use m2::Foo::*;
 
-    foo(); //~ ERROR unresolved name `foo`
-    m::foo(); //~ ERROR unresolved name `m::foo`
-    bar(); //~ ERROR unresolved name `bar`
-    m::bar(); //~ ERROR unresolved name `m::bar`
+    foo(); //~ ERROR unresolved function `foo`
+    m::foo(); //~ ERROR unresolved function `m::foo`
+    bar(); //~ ERROR unresolved function `bar`
+    m::bar(); //~ ERROR unresolved function `m::bar`
 }

@@ -1,10 +1,8 @@
-error[E0423]: `Monster` is the name of a struct or struct variant, but this expression uses it like a function name
+error[E0423]: expected function, found struct `Monster`
   --> $DIR/issue-6702.rs:17:14
    |
 17 |     let _m = Monster(); //~ ERROR expected function, found struct `Monster`
-   |              ^^^^^^^ struct called like a function
-   |
-   = help: did you mean to write: `Monster { /* fields */ }`?
+   |              ^^^^^^^ did you mean `Monster { /* fields */ }`?
 
 error: aborting due to previous error
 

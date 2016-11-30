@@ -10,8 +10,6 @@
 
 // Prefix in imports with empty braces should be resolved and checked privacy, stability, etc.
 
-use foo::{};
-//~^ ERROR failed to resolve. Maybe a missing `extern crate foo;`?
-//~| NOTE foo
+use foo::{}; //~ ERROR unresolved module or enum `foo`
 
 fn main() {}
